@@ -1,0 +1,92 @@
+#!/usr/bin/env python2.7
+#
+# This file is part of Script of Scripts (sos), a workflow system
+# for the execution of commands and scripts in different languages.
+# Please visit https://github.com/bpeng2000/SOS for more information.
+#
+# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+
+import sys
+import argparse
+
+from pysos import SOS_VERSION, SOS_FULL_VERSION
+
+## from pysos.utils import env
+## import subprocess
+## # save the command line that has been processed by the shell.
+## env.command_line = subprocess.list2cmdline(sys.argv[1:])
+## 
+def addCommonArgs(parser):
+    parser.add_argument('-v', '--verbosity', choices=['0', '1', '2', '3'],
+        help='''Output error and warning (0), info (1), debug (2) and trace (3) 
+            information to standard output (default to 1).'''),
+
+if __name__ == '__main__':
+    master_parser = argparse.ArgumentParser(description='''A workflow system
+            for the execution of commands and scripts.''',
+        prog='sos',
+        fromfile_prefix_chars='@',
+        epilog='''Use 'sos cmd -h' for details about each subcommand. Please
+            contact Bo Peng (bpeng at mdanderson.org) if you have any question.''')
+
+    master_parser.add_argument('--version', action='version',
+        version='%(prog)s {}'.format(SOS_FULL_VERSION))
+    subparsers = master_parser.add_subparsers(title='subcommands')
+    #
+##     # command execute
+##     parser = subparsers.add_parser('execute',
+##         help='Execute a pipeline or a SQL query',
+##         description='''Execute a pipeline that uses external commands to
+##             process input files, usually to align raw reads to a reference
+##             genome and call variants from aligned reads. The pipelines are
+##             controlled by pipeline description files. This command can also be
+##             used to execute arbitrary SQL query against the project database.
+##             Additional parameters will be passed to pipelines as pipeline 
+##             parameters. ''')
+##     pipeline.executeArguments(parser)
+##     addCommonArgs(parser)
+##     parser.set_defaults(func=pipeline.execute)
+##     #
+##     # getting args, some commands accept arbitrary arguments so we need to
+##     # separate them into argv
+##     #
+##     # http://bugs.python.org/issue12353
+##     # parse_known_args cannot handle arguments with empty string '', we need
+##     # to manually change it to ' ' to get around of this problem.
+##     # Hopefully this will not cause any trouble in later argument processing.
+##     if '' in sys.argv:
+##         for idx, arg in enumerate(sys.argv):
+##             if arg == '':
+##                 sys.argv[idx] = ' '
+##     #
+    args, argv = master_parser.parse_known_args()
+##     # python3 does not raise an error "too few arguments" when no argument is
+##     # provided so we have to explicitly handle this case. The output of command
+##     # vtools is therefore different in python 2 (error message) and 3 (help message).
+##     if not hasattr(args, 'func'):
+##         master_parser.print_help()
+##         sys.exit(0)
+##     # commands that accepts format and other subparsers can pass arbitrary
+##     # parameter to subparsers
+##     if args.func in [association.associate, importer.importVariants,
+##         update.update, exporter.export, pipeline.execute, pipeline.simulate]:
+##         args.unknown_args = argv
+##     elif len(argv) > 0:
+##         master_parser.print_usage(sys.stderr)
+##         sys.exit('sos: error: unrecognized arguments: ' + ' '.join(argv))
+    # calling the associated functions
+    args.func(args)
