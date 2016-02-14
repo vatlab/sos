@@ -6,7 +6,7 @@ In its simplest form, a sos script consits of a series of scripts that can be ex
 
 Let us assume that you are an bioinformaticist that need to compare the expression levels of two samples for some genes of interest. After reading some online tutorial, you ends up with some working commands such as
 
-```shell
+```bash
 STAR --runMode genomeGenerate --genomeFastaFile human38.fasta \
     --genomeDir STAR_index
 STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate \
@@ -55,7 +55,7 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate \
 ''')
 
 [3]
-@ compare expression values
+# compare expression values
 R('''
 control.count = read.table('aligned/control.out.tab')
 mutated.count = read.table('aligned/mutated.out.tab')
@@ -66,7 +66,7 @@ mutated.count = read.table('aligned/mutated.out.tab')
 
 If you run command
 
-```shell
+```bash
 sos run myanalysis.sos
 ```
 
@@ -101,7 +101,7 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate \
 ''')
 
 [3]
-@ compare expression values
+# compare expression values
 R('''
 control.count = read.table('aligned/control.out.tab')
 mutated.count = read.table('aligned/mutated.out.tab')
@@ -112,7 +112,7 @@ mutated.count = read.table('aligned/mutated.out.tab')
 
 and execute the script as
 
-```shell
+```bash
 sos run myanalysis.sos --input control1.fasta control2.fasta
 ```
 
@@ -148,7 +148,7 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate \
 ''', output=['aligned/control.out.tab', 'aligned/mutated.out.tab'])
 
 [3]
-@ compare expression values
+# compare expression values
 R('''
 control.count = read.table('${input[0]}')
 mutated.count = read.table('${input[1]}')
@@ -165,7 +165,7 @@ Here we
 - Use ``${input[0]}`` and ``${input[1]}`` to present the input of step 3, which is actually the output of step 2.
 
 Now, when you run the same command
-```shell
+```bash
 sos run myanalysis.sos --input control1.fasta control2.fasta
 ```
 
