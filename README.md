@@ -1,7 +1,7 @@
 # Script of Scripts (SoS)
 Script of Scripts (SoS) is a lightweight workflow system that helps you turn your scripts in shell, R, Python, Perl, and other languages into readable pipelines that can be easily understood and modified by others. 
 
-## A trial example
+## A trivial example
 In its simplest form, a sos script consits of a series of scripts that can be executed sequentially by different intepreters.
 
 Let us assume that you are an bioinformaticist that need to compare the expression levels of two samples for some genes of interest. After reading some online tutorial, you ends up with some working commands such as
