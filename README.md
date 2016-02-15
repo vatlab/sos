@@ -1,6 +1,13 @@
 # Script of Scripts (SoS)
 Script of Scripts (SoS) is a lightweight workflow system that helps you turn your scripts in shell, R, Python, Perl, and other languages into readable pipelines that can be easily understood and modified by others. 
 
+
+## Status
+The core of SoS has mostly been implemented in another project but we are re-designing and re-implementing it to make SoS more user-friendly and powerful. Your involvement and suggestions are very welcome.
+
+* **in progress**: Command line interface: [commandline](doc/commandline.md)
+* **in progress**: Format of SoS script: [sections](doc/workflow_secions.md)
+
 ## A trivial example
 In its simplest form, a sos script consits of a series of scripts that can be executed sequentially by different intepreters.
 
@@ -188,11 +195,5 @@ The above example only shows a small fraction of what SoS can offer, but shouls 
 * The pipeline features of SoS is easy to use yet very powerful in helping you execute your pipelines efficiently not only locally, but on cluster and cloud systems. For example, using appropriate parameters, step 2 in the above example can be executed in parallel or be submitted to different computing nodes of a cluster system. step 3 will automatically start once step 2 is completed.
 
 Please refer to the SoS documentation for more details and feel free to [contact me](mailto:ben.bob@gmail.com) if you have any comment on this project.
-
-## Status
-The core of SoS has mostly been implemented in another project but we are re-designing and re-implementing it to make SoS more user-friendly and powerful. Your involvement and suggestions are very welcome.
-
-* **in progress**: Command line interface: [commandline](blob/master/doc/commandline.md)
-* **in progress**: Format of SoS script: [sections](blob/master/doc/workflow_secions.md)
 
 
