@@ -190,9 +190,11 @@ SoS will ignore step 1 if this step has been run with output `STAR_index/chrName
 
 The above example only shows a small fraction of what SoS can offer, but shouls be enough to demonstrate the unique features of SoS. Compared to maintaining multiple scripts or using more specifilized workflow systems such as [YAWL](http://www.yawlfoundation.org/), [CWL](http://common-workflow-language.github.io/), and [Galaxy](https://galaxyproject.org/),
 
-* SoS organizes all scripts in a single file, which makes it easy to execute and maintain. In the meantime, SoS allows the creation of shared actions to organize common actions into modules.
-* SoS script consists of only scripts, descriptions, and a small amount of SoS directives. It is highly readble and can be easily modified by you and others. This is especially important for fields such as bioinformatics where workflows need to be constantly changed to reflect new reference genomes, annotation sources, and new or newer versions of tools.
-* The pipeline features of SoS is easy to use yet very powerful in helping you execute your pipelines efficiently not only locally, but on cluster and cloud systems. For example, using appropriate parameters, step 2 in the above example can be executed in parallel or be submitted to different computing nodes of a cluster system. step 3 will automatically start once step 2 is completed.
+* **SoS offers a way to organize your scripts in a single file**, which makes it easy to execute and maintain. You can include small and freqently changed scripts in SoS and keep large and stable scripts as separate scripts.  
+* **SoS scripts are human readable and writable**. A SoS script consists of only commands, scripts, descriptions, and a small amount of SoS directives. It is highly readble and can be easily modified by users with little or no knowledge of SoS. This is especially important for fields such as bioinformatics where workflows need to be constantly changed to reflect new reference genomes, annotation sources, and new or newer versions of tools.
+* **SoS help you execute your scripts with advanced workflow features**. The workflow features of SoS is easy to use yet very powerful in helping you execute your pipelines efficiently not only locally, but on cluster and cloud systems. For example, using appropriate parameters, step 2 in the above example can be executed in parallel or be submitted to different computing nodes of a cluster system. step 3 will automatically start once step 2 is completed.
+
+If you are afraid of being tied to a new workflow tool, rest assured that SoS allows you to **export SoS scripts** to a master bash script and scripts for each steps. This would allow you to execute your pipeline in an environement without SoS installed.
 
 Please refer to the SoS documentation for more details and feel free to [contact me](mailto:ben.bob@gmail.com) if you have any comment on this project.
 
