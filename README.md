@@ -5,8 +5,8 @@ Script of Scripts (SoS) is a lightweight workflow system that helps you turn you
 ## Status
 The core of SoS has mostly been implemented in another project but we are re-designing and re-implementing it to make SoS more user-friendly and powerful. Your involvement and suggestions are very welcome.
 
-* **in progress**: Command line interface: [commandline](doc/commandline.md)
-* **in progress**: Format of SoS script: [sections](doc/workflow_secions.md)
+* **in progress**: Command line interface: [commandline arguments](doc/commandline.md)
+* **in progress**: Format of SoS script: [file format/workflow sections](doc/workflow_sections.md)
 
 ## A trivial example
 In its simplest form, a sos script consits of a series of scripts that can be executed sequentially by different intepreters.
