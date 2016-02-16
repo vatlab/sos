@@ -1,51 +1,57 @@
-## Design decision 1:
+## Command `sos-runner`
 
-Which is better?
-
-```bash
-sos run myscript.sos 
-```
-
-or 
+Command `sos-runner` is a short cut for ``sos run`` so
 
 ```bash
-sos myscript.sos --run 
+sos-runner myscript.sos
 ```
 
-The latter has the advantage of executing as
+is equivalent to
 
 ```bash
-myscript --run
+sos run myscript.sos
 ```
 
-if the script is named ``myscript`` with appropriate shebang line
+The value of this alias is to allow the execution of SoS scripts directly if it has shebang line
 
 ```
-#!/usr/bin/env sos
+#!/usr/bin/env sos-runner
+
 ```
 
-## Design decision 2:
+and appropriate permissions set.
+
+
+## Command `sos`
+
+Command `sos` accept a number of subcommands (similar to `svn`, `git` etc). Its syntax follows
 
 ```bash
-sos run myscript.sos mouse:2
+sos subcommand [subcommand-options]
 ```
 
-or 
+### subcommand `run` (`sos-runner`)
 
 ```bash
-sos run myscript.sos --workflow mouse:2 
+sos run specfile [workflow:steps] [workflow-options] [--dryrun]
 ```
 
-The latter is more verbose (or a rarely used case) and has the advantage (?) that allowing positional argument of ``--input``, namely
+### subcommand `export`
 
 ```bash
-sos run myscript.sos file1 file2
+sos export specfile [workflow:steps] [workflow-options] [--portable]
 ```
 
-instead of 
+### subcommand `show`
 
 ```bash
-sos run myscript.sos --input file1 file2
+sos show specfile [workflow:steps] 
 ```
 
+Display details of all or specified workflow defined in `specfile`
+
+### subcommand `admin` (set option??)
+
+
+### subcommand `edit` (GUI editor??)
 

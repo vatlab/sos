@@ -1,17 +1,22 @@
 # Script of Scripts (SoS)
-Script of Scripts (SoS) is a lightweight workflow system that helps you turn your scripts in shell, R, Python, Perl, and other languages into readable pipelines that can be easily understood and modified by others. 
-
+Script of Scripts (SoS) is a lightweight workflow system that helps you turn your scripts in shell, R, Python, Perl, and other languages into readable pipelines that can be easily understood and modified by others. It is also an easy-to-use alternative to workflow systems such as [CWL](http://common-workflow-language.github.io/draft-3/) with an emphasis on readability.
 
 ## Status
 The core of SoS has mostly been implemented in another project but we are re-designing and re-implementing it to make SoS more user-friendly and powerful. Your involvement and suggestions are very welcome.
 
 * **in progress**: Command line interface: [commandline arguments](doc/commandline.md)
 * **in progress**: Format of SoS script: [file format/workflow sections](doc/workflow_sections.md)
-
+* **in progress**: Format of SoS script: [file format/step specification](doc/step_format.md)
+* **in progress**: Features: [export SoS scripts](doc/export.md)
+* **in progress**: Features: [file emission](doc/emit_input.md)
+* **in progress**: Features: [workflow control](doc/workflow_control.md)
+* **in progress**: Implementation: [runtime signature](doc/runtime_signature.md)
+ 
+ 
 ## A trivial example
 In its simplest form, a sos script consits of a series of scripts that can be executed sequentially by different intepreters.
 
-Let us assume that you are a bioinformaticist needed to compare the expression levels between two samples. After reading some online tutorials, you ended up with some working commands such as
+Let us assume that you are a bioinformaticist needed to compare the expression levels between two samples. After reading some online tutorials, you ended up with some working commands
 
 ```bash
 # index reference genome
@@ -23,7 +28,7 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn mu
     --quantMode GeneCounts --outFileNamePrefix aligned/mutated
 ```
 
-The first command builds an index, the second command aligns reads from the first sample, and the third command aligns reads from the second sample. Do not panic if you do not know what these commands are doing, this is just an example. 
+The first command builds an index of the reference genome, the second command aligns reads from the first sample to the reference genome, and the third command aligns reads from the second sample to the reference genome. Do not panic if you do not know what these commands are doing, this is just an example.
 
 These commands generate, among other files, two files named ``aligned/control.out.tab`` and ``aligned/mutated.out.tab`` with expression counts of all genes. You then wrote a ``R`` script to analyze the results, something like
 
@@ -39,6 +44,7 @@ dev.off()
 The project completed successfully and you needed to archive the scripts for later reference. Instead of having two files lying around with perhaps another ``README`` file to describe what you have done, you can write a single SoS script named ``myanalysis.sos``
 
 ```python
+#!/usr/bin/env sos-runner
 ##fileformat=SOS1.0
 
 # This script aligns raw reads of a control and a mutated sample 
@@ -73,18 +79,25 @@ dev.off()
 
 ```
 
-If you run command
+You can execute two shell scripts and a R script defined in this SoS script sequentially by running command
 
 ```bash
 sos run myanalysis.sos
 ```
 
-It will execute two shell scripts and a R script in three steps sequentially. 
+or simply
+
+```bash
+myanalysis.sos
+```
+
+if you give `myanalyis.sos` executable permission (`chmod +x myanalysis.sos`). 
 
 ## Making the script work for other input files
-After a while, before you almost forgot about this analysis, you needed to analyze another pair of samples. You could copy ``myanalysis.sos`` to ``myanalysis2.sos``, change filenames and run it, but an easier way is to change your SoS file to accommodate other input files. This can be done by replacing input filenames in ``analysis.sos`` with **SoS variables** `${cmd_input}` (command line input):
+After a while, before you almost forgot about this analysis, you needed to analyze another pair of samples. You could copy ``myanalysis.sos`` to ``myanalysis2.sos``, change filenames and run it, but an easier way is to change your SoS file to accommodate other input files. This can be done by replacing input filenames in ``analysis.sos`` with a **SoS variable** `${cmd_input}` (command line input):
 
 ```python
+#!/usr/bin/env sos-runner
 ##fileformat=SOS1.0
 
 # This script aligns raw reads of a control and a mutated sample 
@@ -129,9 +142,10 @@ Basically, command line parameters are passed to SoS as variable `cmd_input`, wh
 
 ## Convert the SoS script to a real pipeline
 
-Although the SoS script now accepts command line arguments, it is still no more than a compilation of scripts and you immediately realized that it is a waste of time to execute the first command each time. To solve this problem, you can convert the SoS script to a real pipeline by telling SoS some more details of the commands:
+Although the SoS script now accepts command line arguments, it is still no more than a compilation of scripts and you immediately realized that it is a waste of time to execute the first command each time. To solve this problem, you can convert the SoS script to a real workflow by telling SoS some more details of the commands:
 
 ```python
+#!/usr/bin/env sos-runner
 ##fileformat=SOS1.0
 
 # This script aligns raw reads of a control and a mutated sample 
@@ -188,13 +202,13 @@ SoS will ignore step 1 if this step has been run with output `STAR_index/chrName
 
 ## Summary
 
-The above example only shows a small fraction of what SoS can offer, but shouls be enough to demonstrate the unique features of SoS. Compared to maintaining multiple scripts or using more specifilized workflow systems such as [YAWL](http://www.yawlfoundation.org/), [CWL](http://common-workflow-language.github.io/), and [Galaxy](https://galaxyproject.org/),
+The above example only shows a small fraction of what SoS can offer, but should be enough to demonstrate the unique features of SoS. Compared to maintaining multiple scripts or using more specifilized workflow systems such as [YAWL](http://www.yawlfoundation.org/), [CWL](http://common-workflow-language.github.io/), and [Galaxy](https://galaxyproject.org/),
 
-* **SoS offers a way to organize your scripts in a single file**, which makes it easy to execute and maintain. You can include small and freqently changed scripts in SoS and keep large and stable scripts as separate scripts.  
-* **SoS scripts are human readable and writable**. A SoS script consists of only commands, scripts, descriptions, and a small amount of SoS directives. It is highly readble and can be easily modified by users with little or no knowledge of SoS. This is especially important for fields such as bioinformatics where workflows need to be constantly changed to reflect new reference genomes, annotation sources, and new or newer versions of tools.
-* **SoS help you execute your scripts with advanced workflow features**. The workflow features of SoS is easy to use yet very powerful in helping you execute your pipelines efficiently not only locally, but on cluster and cloud systems. For example, using appropriate parameters, step 2 in the above example can be executed in parallel or be submitted to different computing nodes of a cluster system. step 3 will automatically start once step 2 is completed.
+* **SoS offers a way to organize your scripts in a single file**, which makes it easy to execute and maintain. You can include small and freqently changed commands and scripts in SoS and keep large and stable scripts as separate scripts.
+* **SoS scripts are human readable and writable**. A SoS script consists of only commands, scripts, descriptions, and a small amount of SoS directives. It is highly readble and can be easily modified by users with little or no knowledge of SoS. This is especially important for fields such as bioinformatics where workflows need to be constantly changed to reflect new reference genomes, annotation sources, and new or newer versions of tools. In comparison, it would take a lot of time and practice to learn its syntax write a [CWL](http://common-workflow-language.github.io/) workflow (see [this CWL tutorial](https://github.com/common-workflow-language/workflows/wiki/Tutorial-DRAFT2) for an example). 
+* **SoS help you execute your scripts with advanced workflow features**. The workflow features of SoS is easy to use yet very powerful in helping you execute your pipelines efficiently not only locally, but also on cluster and cloud systems. For example, using appropriate parameters, step 2 in the above example can be executed in parallel or be submitted to different computing nodes of a cluster system. step 3 will automatically start once step 2 is completed.
 
-If you are afraid of being tied to a new workflow tool, rest assured that SoS allows you to **export SoS scripts** to a master bash script and scripts for each steps. This would allow you to execute your pipeline in an environement without SoS installed.
+If you are afraid of being tied to a new workflow tool, rest assured that SoS allows you to **[export SoS scripts](doc/export.md)** to a series of scripts called by a master bash (or windows .bat) script. This would allow you to execute your workflow in an environement without SoS installed.
 
 Please refer to the SoS documentation for more details and feel free to [contact me](mailto:ben.bob@gmail.com) if you have any comment on this project.
 
