@@ -4,13 +4,13 @@ Script of Scripts (SoS) is a lightweight workflow system that helps you turn you
 ## Status
 The core of SoS has mostly been implemented in another project but we are re-designing and re-implementing it to make SoS more user-friendly and powerful. Your involvement and suggestions are very welcome.
 
-* **in progress**: Command line interface: [commandline arguments](doc/commandline.md)
-* **in progress**: Format of SoS script: [file format/workflow sections](doc/workflow_sections.md)
-* **in progress**: Format of SoS script: [file format/step specification](doc/step_format.md)
-* **in progress**: Features: [export SoS scripts](doc/export.md)
-* **in progress**: Features: [file emission](doc/emit_input.md)
-* **in progress**: Features: [workflow control](doc/workflow_control.md)
-* **in progress**: Implementation: [runtime signature](doc/runtime_signature.md)
+* Command line interface: [commandline arguments](doc/commandline.md)
+* Format of SoS script: [workflow sections](doc/workflow_sections.md)
+* Format of SoS script: [step specification](doc/step_format.md)
+* Format of SoS script: [specification of input files](doc/input_spec.md)
+* Features: [export SoS scripts](doc/export.md)
+* Features: [workflow control](doc/workflow_control.md)
+* Implementation: [runtime signature](doc/runtime_signature.md)
  
  
 ## A trivial example

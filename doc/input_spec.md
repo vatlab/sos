@@ -1,0 +1,256 @@
+## Input of SoS step
+
+The input of SoS step follows the following rules:
+
+1. **the input of the first step is by default `${cmd_input}`**, namely values pass to parameter `--input`.
+2. **the input of a step is by default the output of its previous step**. If no output is specified by a previous step, there is no input for the current step.
+3. **step option `no_input` specifies that no input file is needed for the current step**
+4. Input of a step can be specified by item `input`, which would be intepreted as filenames from command line. Wildcard characters (`*` and `?`) are always expanded. White space and other unusual characters in filenames need to be quoted.
+
+Examples of input specification are as follows:
+
+```
+input:
+	file1.fasta file2.fasta
+
+input:
+    file*.fasta filename\ with\ space.fasta
+    
+input:
+    file1.txt
+    directory/file2.txt
+   
+input:
+    ${aligned_reads}
+
+input:
+    ${aligned_reads}
+    ${reference_genome}
+
+input:
+    ${aligned_reads[2:]}
+
+```
+
+SoS variables such as `${aligned_reads}` and `${reference_genome}` will be expanded to strings and re-evaluated as input files. For example,
+
+* `'file1.txt file2.txt'` will be translated to `file1.txt file2.txt` and recognized as two files 	`file1.txt` and `file2.txt`.
+* `['file1.txt', 'file2 .txt']` will be expanded to `file1.txt file2\ .txt` and recognized as two files `file1.txt` and `file2 .txt`. (Note the space in filename).
+* `'file*.txt'` will be transted to `file*.txt` and recognized as all files match pattern `file*.txt`.
+
+## Emit input files for workflow execution
+
+The emit options of a SoS step control how input files are passed to the step action.
+
+### Passing input files all at once (default)
+
+This is the default action for a SoS step. That is to say, action in the following step will get all ``input_files`` as its input (variable `${input}`.
+
+```
+[step]
+input:
+    input_files
+
+run('echo ${input}')
+
+```
+
+### Passing files of allowed type (option `filetype`)
+
+Emission options are appended to input file list as comma separated lists. A python parameter syntax is required.
+
+Option `filetype` accepts one or more filetypes (file extension with `.`) or a lambda function. For example,
+
+```
+[step]
+input:
+	input_files
+	: filetype='.fastq'
+	
+```
+
+passes only files with extension `.fastq`.
+
+
+```
+[step]
+input:
+	input_files
+	: filetype=['.fastq', '.fastq.gz']
+	
+```
+
+passes only files with extension `.fastq` or `.fastq.gz`.
+
+
+
+```
+[step]
+input:
+	input_files
+	: filetype=lambda x: open(x).readline().startswith('##fileformat=VCF4.1')
+	
+```
+
+passes only files with the first line starting with string `##fileformat=VCF4.1``. Here the value of the parameter is a lambda function that will be passed to each input filename.
+
+
+### Passing files in groups (option `group_by`)
+
+Option `group_by` pass input files in groups. For example,
+
+```
+[step]
+input:
+	file1 file2 file3 file4
+	: group_by='single'
+
+run('echo ${input}')
+
+```
+
+will execute `run('echo ${input}')` four times, with `${input}` set to `['file1']`, `['file2']`, `['file3']` and `['file4']` respectively.
+
+Other values of `group_by` includes
+
+* `'pairwise'`: yields two groups `['file1', 'file2']`, `['file2', 'file3']`, and `['file3', 'file4']`.
+* `'combinations'`: yields six groups `['file1', 'file2']`, `['file1', 'file3']`,  `['file1', 'file4']`, `['file2', 'file3']`, `['file2', 'file4']` and `['file3', 'file4']`.
+* ``pairs``: yields `['file1', 'file3']` and `['file2', 'file4']`. It basically split the input files in half and match files in the first half with files in the second half.
+
+for four input files. Obviously, the output of the `pairs` cases depends on the order of files. If you need to pair files in any particular order, you can control it in input. For example
+
+```
+[step]
+input:
+	${sorted([x for x in cmd_input if '_R1_' in x])}
+	${sorted([x for x in cmd_input if '_R2_' in x])}
+	: group_by='pairs'
+
+run('echo ${input}')
+
+```
+
+will take all input files and sort them by `_R1_` and `_R2_` and by filename. For example, four files `FEB_R1_1.txt FEB_R2_2.txt FEB_R1_2.txt FEB_R2_1.txt` will be sorted as `FEB_R1_1.txt FEB_R1_2.txt FEB_R2_1.txt FEB_R2_2.txt` and be sent to step action in two groups `['FEB_R1_1.txt', 'FEB_R2_1.txt']` and `['FEB_R1_2.txt', 'FEB_R2_2.txt']`.
+
+### Attaching variables to input filenames (option `labels`)
+
+There are cases where the command line options or output directories depends on input filename. SoS allows you to label each filename with one or more variables so that they can be used accordingly. For example, if you have input files `bam_files` with values
+
+```python
+bam_files = ['case/A1.bam', 'case/A2.bam', 'ctrl/A1.bam', 'ctrl/A2.bam']
+```
+
+You might want to define some derived variables such as
+
+```python
+mutated = ${[x.split('/')[0] for x in bam_files]}
+sample_name = ${[os.path.basename(x).split('.')[0] for x in bam_files]}
+```
+
+with values
+
+```python
+mutated = ['case', 'case', 'ctrl', 'ctrl']
+sample_name = ['A1', 'A2', 'A1', 'A2']
+```
+
+Then, if you are processing these files individually, or in pairs, you can attach values of these derived variables as follows:
+
+
+```
+[step]
+input:
+	${bam_files}
+	: group_by='pairs', labels=['mutated', 'sample_name']
+
+run('process ${input} with variables ${_mutated} and ${_sample_name}')
+
+```
+
+Here `bam_files` will be passed in pairs with file labels set to variables with `_` prefixed to their names. More specifically,
+
+* Group1: `${input} = ['case/A1.bam', 'ctrl/A1.bam']`, `${_mutated}=['case', 'ctrl']`, `${_sample_name}=['A1', 'A1']`
+* Group2: `${input} = ['case/A2.bam', 'ctrl/A2.bam']`, `${_mutated}=['case', 'ctrl']`, `${_sample_name}=['A2', 'A2']`
+
+This is equivalent to
+
+```
+[step]
+input:
+	${bam_files}
+	: group_by='pairs'
+
+_mutated = ${[x.split('/')[0] for x in input]}
+_sample_name = ${[os.path.basename(x).split('.')[0] for x in input]}
+
+run('process ${input} with variables ${_mutated} and ${_sample_name}')
+
+```
+
+but it is cleaner because you do not have to do this each time when `$bam_files}` is used.
+
+### Looping through values of a SoS variable (Option `for_each`)
+
+Option `for_each` allows you to repeat step actions for each value of a variable. For example, if
+
+```python
+method=['method1', 'method2']
+```
+
+You can repeat the analysis with each method using
+
+```
+[step]
+input:
+	${bam_files}
+	: for_each='method'
+
+run('Analyze ${input} with method ${_method}')
+
+```
+
+The step action will be executed twice with value of parameter `${_method}` set to `'method1'` and `'method2'` respectively.
+
+Nested loops are also allowed. For example, if
+
+```python
+method=['method1', 'method2']
+parameters=['-5', '-9']
+```
+
+You can execute 
+
+```
+[step]
+input:
+	${bam_files}
+	: for_each=['method', 'parameter']
+
+run('Analyze ${input} with method ${_method} and parameter ${_parameter}')
+
+```
+
+with parameters
+
+* `_methods='method1', _parameter='-5'`
+* `_methods='method1', _parameter='-9'`
+* `_methods='method2', _parameter='-5'`
+* `_methods='method2', _parameter='-9'`
+
+Finally, if you would like to loop the action with several parameters, you can put them into a the same level using
+
+```
+[step]
+input:
+	${bam_files}
+	: for_each='method,parameter'
+
+run('Analyze ${input} with method ${_method} and parameter ${_parameter}')
+
+```
+
+The action will then be executed twice with parameters
+
+* `_methods='method1', _parameter='-5'`
+* `_methods='method2', _parameter='-9'`
+
