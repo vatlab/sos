@@ -7,10 +7,12 @@ The core of SoS has mostly been implemented in another project but we are re-des
 * Command line interface: [commandline arguments](doc/commandline.md)
 * Format of SoS script: [workflow sections](doc/workflow_sections.md)
 * Format of SoS script: [step specification](doc/step_format.md)
-* Format of SoS script: [specification of input files](doc/input_spec.md)
+* Format of SoS script: [input specification](doc/input_spec.md)
+* Features: [proposed actions](doc/actions.md)
 * Features: [export SoS scripts](doc/export.md)
 * Features: [workflow control](doc/workflow_control.md)
 * Implementation: [runtime signature](doc/runtime_signature.md)
+* Implementation: [Pending problems](doc/problems.md)
  
  
 ## A trivial example

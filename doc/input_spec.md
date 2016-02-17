@@ -1,11 +1,18 @@
-## Input of SoS step
+## Input of SoS steps
+
+The input of SoS consists of three optional parts
+
+1. **Input files** which are by default `${cmd_input}` (command line input to parameter `--input`) for the first step, and the output of the previous step for other steps.
+2. **dependent files** which are not part of the input but are prerequisite of the step. These files will be part of the step signature. The step will not be executed if the files are missing and will be re-executed if these files are changed.
+3. **file emission options** which determined how the input files are sent to the step action. By default all files will be sent as `${input}` but you can choose to pass selected files, pass files one by one, in pairs, or pass them repeatedly with different settings (loop). This option also allow you to test other requirements that are need for the execution of the step.
+
+### Input files (`input:`)
 
 The input of SoS step follows the following rules:
 
-1. **the input of the first step is by default `${cmd_input}`**, namely values pass to parameter `--input`.
-2. **the input of a step is by default the output of its previous step**. If no output is specified by a previous step, there is no input for the current step.
+1. **the input of a SoS step is by default `${cmd_input}` for the first step and the output of the previous step otherwise**.
 3. **step option `no_input` specifies that no input file is needed for the current step**
-4. Input of a step can be specified by item `input`, which would be intepreted as filenames from command line. Wildcard characters (`*` and `?`) are always expanded. White space and other unusual characters in filenames need to be quoted.
+4. **Input of a step can be specified by item `input`**, which would be intepreted as filenames from command line. Wildcard characters (`*` and `?`) are always expanded. White space and other unusual characters in filenames need to be quoted.
 
 Examples of input specification are as follows:
 
@@ -38,11 +45,28 @@ SoS variables such as `${aligned_reads}` and `${reference_genome}` will be expan
 * `['file1.txt', 'file2 .txt']` will be expanded to `file1.txt file2\ .txt` and recognized as two files `file1.txt` and `file2 .txt`. (Note the space in filename).
 * `'file*.txt'` will be transted to `file*.txt` and recognized as all files match pattern `file*.txt`.
 
-## Emit input files for workflow execution
+
+### Dependent files (`depends:` (`dependent`? `requirements`?)
+
+This item specifies files that are required for the step. Although not required, it is a good practice to list resource files and other dependency files for a particular step. For example
+
+```
+[10]
+input:
+	${fasta_files}
+	
+depends:
+	${reference_seq}
+	
+Question: is there a need to test other requirements such as the value of environment variable, existence of other tools, content of file etc?
+
+
+
+### Emit input files for workflow execution
 
 The emit options of a SoS step control how input files are passed to the step action.
 
-### Passing input files all at once (default)
+#### Passing input files all at once (default)
 
 This is the default action for a SoS step. That is to say, action in the following step will get all ``input_files`` as its input (variable `${input}`.
 
@@ -95,7 +119,7 @@ input:
 passes only files with the first line starting with string `##fileformat=VCF4.1``. Here the value of the parameter is a lambda function that will be passed to each input filename.
 
 
-### Passing files in groups (option `group_by`)
+#### Passing files in groups (option `group_by`)
 
 Option `group_by` pass input files in groups. For example,
 
@@ -189,7 +213,7 @@ run('process ${input} with variables ${_mutated} and ${_sample_name}')
 
 but it is cleaner because you do not have to do this each time when `$bam_files}` is used.
 
-### Looping through values of a SoS variable (Option `for_each`)
+#### Looping through values of a SoS variable (Option `for_each`)
 
 Option `for_each` allows you to repeat step actions for each value of a variable. For example, if
 
@@ -254,3 +278,19 @@ The action will then be executed twice with parameters
 * `_methods='method1', _parameter='-5'`
 * `_methods='method2', _parameter='-9'`
 
+#### Conditional skip of a step (option `skip`)
+
+Option `skip=True` will make SoS skip the execution of the current step. Using `skip=True` is not very useful so this option is often used with a SoS variable. For example
+
+```python
+[10]
+input:
+	${fasta_files}
+	: skip=${len(fasta_failes) == 1}
+	
+run('command to merge multiple fasta files.')
+```
+
+Here the `skip` option gets the value of `True` if there is only one input file. The command to merge multiple input files would then be skipped.
+
+One important detail of this option is that the step is actually **executed with a null action** that passes input files to output files so this step still yields its `${output}`. In comparison, a step is completely ignored if it has step option `skip`. The consequence of this rule for this particular example is that its next step would get a merged file if there are multiple input files, or the original file if there is only a single input file.
