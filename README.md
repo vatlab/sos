@@ -202,6 +202,14 @@ sos run myanalysis.sos --input control1.fasta control2.fasta
 
 SoS will ignore step 1 if this step has been run with output `STAR_index/chrName.txt`. The same happens to step 2 and 3 so all steps will be ignored if you run the script repeatedly with the same input and processing scripts. SoS uses **runtime signature** for each step and will re-run the step if and only if the content or filename of input files or the processing scripts are changed.
 
+## Limitations
+
+SoS is essentially a tool to compose and execute commands and scripts. It uses workflow variables (and their derived forms) and string substitution to create scripts (from user-provided templates) and and execute them with their own intepreters. Therefore, 
+
+* SoS only supports command line tools. There is no plan to extend it for interactive or GUI usages.
+* SoS does not understand the underlying tools and scripts and have no control over exactly what they do. Incorrect use of workflow variables can often result in non-executable scripts.
+* SoS workflow system is largely file based (although you can check environments such as environmental variables through SoS variables). It does not support features such as piping between steps (neither do systems such as CWL support it).
+
 ## Summary
 
 The above example only shows a small fraction of what SoS can offer, but should be enough to demonstrate the unique features of SoS. Compared to maintaining multiple scripts or using more specifilized workflow systems such as [YAWL](http://www.yawlfoundation.org/), [CWL](http://common-workflow-language.github.io/), and [Galaxy](https://galaxyproject.org/),
@@ -213,5 +221,4 @@ The above example only shows a small fraction of what SoS can offer, but should 
 If you are afraid of being tied to a new workflow tool, rest assured that SoS allows you to **[export SoS scripts](doc/export.md)** to a series of scripts called by a master bash (or windows .bat) script. This would allow you to execute your workflow in an environement without SoS installed.
 
 Please refer to the SoS documentation for more details and feel free to [contact me](mailto:ben.bob@gmail.com) if you have any comment on this project.
-
 
