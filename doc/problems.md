@@ -11,6 +11,21 @@ Limiting the files that the directory can the step can write to???
 
 Limiting or monitoring the RAM and CPU (cores) the step uses???
 
+
+### Libraries (still investigating)
+
+Libraries would be python modules with defined SoS actions, but how to maintain and import these modules require further investigation. Furthermore, extensive use of libraries somehow beats the purpose of SoS (readability) because libraries hide the details of actions.
+
+### Nested workflow (still investigating)
+
+Not sure how this would work, but in SoS one can certainly define a step with
+
+```python
+run('sos-runner anotherworkflow ${input}'
+```
+
+to execute another workflow.
+
 ### Requirement of steps (solved)
 
 CWL has the requirement keyword which handles all sorts of requirement. SoS solves this by
