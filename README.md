@@ -1,7 +1,7 @@
 # Script of Scripts (SoS)
 Script of Scripts (SoS) is a lightweight workflow system that helps you turn your scripts in shell, R, Python, Perl, and other languages into readable pipelines that can be easily understood and modified by others. It is also an easy-to-use alternative to workflow systems such as [CWL](http://common-workflow-language.github.io/draft-3/) with an emphasis on readability.
 
-## Status
+## Design of SoS (in process)
 The core of SoS has mostly been implemented in another project but we are re-designing and re-implementing it to make SoS more user-friendly and powerful. Your involvement and suggestions are very welcome.
 
 * Command line interface: [commandline arguments](doc/commandline.md)
@@ -10,9 +10,11 @@ The core of SoS has mostly been implemented in another project but we are re-des
 * Format of SoS script: [input specification](doc/input_spec.md)
 * Features: [proposed actions](doc/actions.md)
 * Features: [export SoS scripts](doc/export.md)
+* Features: [define and use of variables](doc/variables.md)
 * Features: [workflow control](doc/workflow_control.md)
 * Implementation: [runtime signature](doc/runtime_signature.md)
 * Implementation: [Pending problems](doc/problems.md)
+* Cookbook: [recipes for common and uncommon scenarios](doc/cookbook.md)
  
  
 ## A trivial example
