@@ -1,3 +1,14 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Runtime signatures of SoS](#runtime-signatures-of-sos)
+  - [Content of runtime signature](#content-of-runtime-signature)
+  - [Storage of runtime signature](#storage-of-runtime-signature)
+  - [Portability of runtime signatures: discouraged](#portability-of-runtime-signatures-discouraged)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Runtime signatures of SoS
 
 ### Content of runtime signature

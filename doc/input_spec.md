@@ -1,3 +1,15 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Input of SoS steps](#input-of-sos-steps)
+  - [Input files (`input:`)](#input-files-input)
+  - [Dependent files (`depends:` (`dependent`? `requirements`?)](#dependent-files-depends-dependent-requirements)
+    - [Looping through values of a SoS variable (Option `for_each`)](#looping-through-values-of-a-sos-variable-option-for_each)
+    - [Conditional skip of a step (option `skip`)](#conditional-skip-of-a-step-option-skip)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Input of SoS steps
 
 The input of SoS consists of three optional parts

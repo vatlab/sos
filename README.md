@@ -1,7 +1,22 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Script of Scripts (SoS)](#script-of-scripts-sos)
+  - [Design of SoS (in progress, comments welcome)](#design-of-sos-in-progress-comments-welcome)
+  - [Tutorial](#tutorial)
+    - [Organize your scripts as a SoS script](#organize-your-scripts-as-a-sos-script)
+    - [Make the script work for other input files](#make-the-script-work-for-other-input-files)
+    - [Convert the SoS script to a real pipeline](#convert-the-sos-script-to-a-real-pipeline)
+  - [Limitations](#limitations)
+  - [Summary](#summary)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Script of Scripts (SoS)
 Script of Scripts (SoS) is a lightweight workflow system that helps you turn your scripts in shell, R, Python, Perl, and other languages into readable pipelines that can be easily understood and modified by others. It is also an easy-to-use alternative to workflow systems such as [CWL](http://common-workflow-language.github.io/draft-3/) with an emphasis on readability.
 
-## Design of SoS (in progress, review welcome)
+## Design of SoS (in progress, comments welcome)
 The core of SoS has mostly been implemented in another project but we are re-designing and re-implementing it to make SoS more user-friendly and powerful. Your involvement and suggestions are very welcome.
 
 * User interface: [commandline arguments](doc/commandline.md)
@@ -20,9 +35,10 @@ The core of SoS has mostly been implemented in another project but we are re-des
 	*  [Pending problems](doc/problems.md)
 * Cookbook: [recipes for common and uncommon scenarios](doc/cookbook.md)
  
- 
-## A trivial example
-In its simplest form, a sos script consits of a series of scripts that can be executed sequentially by different intepreters.
+
+## Tutorial
+
+A SoS script consists of one or more scripts, comments and optional SoS directives. In its simplest form, a sos script is simply a series of scripts that can be executed sequentially by different intepreters.
 
 Let us assume that you are a bioinformaticist needed to compare the expression levels between two samples. After reading some online tutorials, you ended up with some working commands
 
@@ -49,6 +65,7 @@ pdf('myfigure.pdf')
 dev.off()
 ```
 
+### Organize your scripts as a SoS script
 The project completed successfully and you needed to archive the scripts for later reference. Instead of having two files lying around with perhaps another ``README`` file to describe what you have done, you can write a single SoS script named ``myanalysis.sos``
 
 ```python
@@ -101,7 +118,7 @@ myanalysis.sos
 
 if you give `myanalyis.sos` executable permission (`chmod +x myanalysis.sos`). 
 
-## Making the script work for other input files
+### Make the script work for other input files
 After a while, before you almost forgot about this analysis, you needed to analyze another pair of samples. You could copy ``myanalysis.sos`` to ``myanalysis2.sos``, change filenames and run it, but an easier way is to change your SoS file to accommodate other input files. This can be done by replacing input filenames in ``analysis.sos`` with a **SoS variable** `${cmd_input}` (command line input):
 
 ```python
@@ -148,8 +165,7 @@ sos run myanalysis.sos --input control1.fasta control2.fasta
 
 Basically, command line parameters are passed to SoS as variable `cmd_input`, which is a Python list with value `['control.fasta', 'control2.fasta']` in this example. Because these two files are processed separately, you use `${cmd_input[0])` and `${cmd_input[1]}` to return two filenames.
 
-## Convert the SoS script to a real pipeline
-
+### Convert the SoS script to a real pipeline
 Although the SoS script now accepts command line arguments, it is still no more than a compilation of scripts and you immediately realized that it is a waste of time to execute the first command each time. To solve this problem, you can convert the SoS script to a real workflow by telling SoS some more details of the commands:
 
 ```python

@@ -1,3 +1,15 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Format of SoS step](#format-of-sos-step)
+  - [step options](#step-options)
+  - [step input](#step-input)
+  - [step output and variables](#step-output-and-variables)
+  - [step actions](#step-actions)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Format of SoS step
 
 

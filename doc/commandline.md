@@ -1,3 +1,14 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Command `sos`](#command-sos)
+  - [subcommand `run` (see also `sos-runner`)](#subcommand-run-see-also-sos-runner)
+  - [subcommand `show`](#subcommand-show)
+  - [subcommand `export` (detailed examples)](#subcommand-export-detailed-examples)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Command `sos`
 Command `sos` accepts a number of subcommands (similar to `svn`, `git` etc). Its syntax follows
 
@@ -20,17 +31,17 @@ sos subcommand -h
 to get detailed description of a particular subcommand.
 
 
-### subcommand `run` (see also `sos-runner`)
+### subcommand `run` (see also [`sos-runner`](#command-sos-runner))
 
 ```bash
 sos run script [workflow[:steps]] [--input FILE1 FILE2 ...] [workflow-options] 
 ```
 
-Execute specified `steps` of `workflow` defined in `script` with specified `workflow-option`.
+Execute specified `steps` of `workflow` defined in `script` with specified `workflow-options`.
 
-* `script` is a SoS script in [this format](doc/sos_format_v1.md)
-* `workflow` is one of the workflow defined in `script`. If left unspecified, the default (unnamed or with name `default`) workflow or the only workflow defined in `script` will be executed.
-* `steps` should follow be prefixed with `:` and can be a comma separated list of `n` (number, specific step), `-n` (up to and include step `n`), `n-` (from step `n`). This option effectively add option `skip` to unspecified steps.
+* `script` is a SoS script in [this format](sos_format_v1.md)
+* `workflow` is one of the workflows defined in `script`. If left unspecified, the default (unnamed or with name `default`) workflow or the only workflow defined in `script` will be executed.
+* `steps` should be prefixed with `:` and can be a comma separated list of `n` (number, specific step), `-n` (up to and include step `n`), `n-` (from step `n`). This option effectively add option `skip` to unspecified steps.
 * `--input`: input files. Will be passed as variable `${cmd_input}` to the script.
 * `workflow-options`: Options defined in the `[default]` section of `script`. variables with a text default value accepts a string input. variables with a list default value (e.g. `names=${[]}`)  accepts a list of strings.
 
@@ -47,7 +58,7 @@ sos show script [workflow:steps]
 
 Display details of `workflow` defined in `script`, including command line options defined by the `[default]` section of `script`.
 
-### subcommand `export`
+### subcommand `export` ([detailed examples](export.md))
 
 ```bash
 sos export script [workflow:steps] [--input FILE1 FILE2 ...] [workflow-options] [-d OUTPUT_DIR] [-f]
@@ -59,7 +70,8 @@ Export `steps` of `workflow` defined in `script` to `script_dir`. This command w
 *  `-d` (output directory): directory to which scripts are written. Default to current directory.
 *  `-f` (force): overwrite existing files with different content silently. If unspecified, the command will fail with an error message in such cases. 
 
-### Subcommands that might be implemented in the future
+	
+### Features that might be implemented in the future
 * subcommand **`convert`**:
   It miight be useful to convert SoS scripts to other workflow language, at least partially. A complete translation is unlikely to be possible so SoS might simply export the SoS script to shell scripts (`sos export`) and create a pipeline for the master shell script. 
 

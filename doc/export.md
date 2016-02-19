@@ -1,3 +1,14 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Export a SoS script to a series of scripts](#export-a-sos-script-to-a-series-of-scripts)
+- [An example](#an-example)
+- [Export selected workflow and steps](#export-selected-workflow-and-steps)
+- [Export portable workflows (TBD feature)](#export-portable-workflows-tbd-feature)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Export a SoS script to a series of scripts
 
 ```
@@ -117,7 +128,7 @@ sos export myscript1.sos mouse:-50
 
 Please refer to [execution of SoS workflows](execution.md) for more details.
 
-## Export portable workflows (needed feature?)
+## Export portable workflows (TBD feature)
 
 The workflow exported by default expands all SoS variables with specified input files and parameters. The scripts are guaranteed to be executed correctly but are not flexible enough to work with, for example, other input files. The `--portable` option tries not to expand all parameters and add themm as language-specific variables. For example, 
 

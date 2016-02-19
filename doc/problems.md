@@ -1,3 +1,18 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Problems and ideas](#problems-and-ideas)
+  - [Support for docker (still investigating)](#support-for-docker-still-investigating)
+  - [Runtime control (still investigating)](#runtime-control-still-investigating)
+  - [Resource control (still investigating)](#resource-control-still-investigating)
+  - [Libraries (still investigating)](#libraries-still-investigating)
+  - [Nested workflow (still investigating)](#nested-workflow-still-investigating)
+  - [Requirement of steps (solved)](#requirement-of-steps-solved)
+  - [Handling of filenames with spaces and other special characters (solved)](#handling-of-filenames-with-spaces-and-other-special-characters-solved)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Problems and ideas
 
 ### Support for docker (still investigating)

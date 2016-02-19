@@ -1,3 +1,18 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [SoS Variables](#sos-variables)
+  - [Reserved variables](#reserved-variables)
+  - [Default command line option](#default-command-line-option)
+  - [Command line options](#command-line-options)
+  - [Runtime variables](#runtime-variables)
+- [Python Expression with SoS variables](#python-expression-with-sos-variables)
+- [Creation of new variables](#creation-of-new-variables)
+- [Use of SoS variables and expressions](#use-of-sos-variables-and-expressions)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## SoS Variables
 
 SoS variables are python variables associated with the execution of SoS scripts. They are **case sensitive** and can only be **string** or **list of strings**. 
