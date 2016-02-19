@@ -3,6 +3,11 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [format of SoS scripts](#format-of-sos-scripts)
+  - [shebang and file format lines](#shebang-and-file-format-lines)
+  - [Workflow descriptions](#workflow-descriptions)
+  - [Global variables](#global-variables)
+  - [Command line arguments](#command-line-arguments)
+  - [SoS Steps](#sos-steps)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
