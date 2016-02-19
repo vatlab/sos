@@ -15,6 +15,9 @@
 
 ```
 [name_step: option1, option2, ...]
+#
+# description of the step
+#
 input:
     input files
     : emit options

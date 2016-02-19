@@ -8,9 +8,11 @@
 
 ## format of SoS scripts
 
+Although many items can be ignored, a typical SoS script has the following format:
+
 ```python
 #!/usr/bin/env sos-runner
-##fileformat=SOS1.0
+#fileformat=SOS1.0
 #
 # Other overal comments such as
 #    License
@@ -45,3 +47,89 @@ step1 input, variables, and actions
 [step2]
 step2 input, variables, and actions
 ```
+
+### shebang and file format lines
+
+A SoS script usually starts with lines
+
+```python
+#!/usr/bin/env sos-runner
+#fileformat=SOS1.0
+```
+
+The first line allows the script to be executed by command `sos-runner` if it is executed as
+an executable script. The second line tells SoS the version of the script. The `#fileformat` 
+line does not have to be the first line but should be in the first comment block.
+
+### Workflow descriptions
+
+The following comment blocks are description of workflows defined in the script. The description
+is considered to be related to a particular workflow if it starts with only the name of the workflow
+in the first line. These descriptions would be displayed in the output of command `sos view script`.
+
+### Global variables
+
+Variables defined before the first section will be evaluated before the execution of the workflow,
+but after the determination of variables from command line arguments.
+
+### Command line arguments
+
+Although sections can be arranged in any other, a secion named `[default]` is usually the first
+section of a SoS script. This section defined command line arguments of the script, their default
+values and descriptions. The variables are defined in the format of
+
+
+```
+[default]
+par1=default1
+   comment1
+   
+par2=default2
+   comment2
+```
+
+where the default values determines the type of variable (string or list of strings). 
+Please refer to [Command line options](variables#command-line-options) for more details.
+
+### SoS Steps
+
+A SoS script can define any number of sections for different steps of multiple workflows. 
+The name of sections determines the workflow(s) they belong and the order at which 
+they are executed. Please refer to [workflow sections](workflow_sections.md) for details.
+
+Although most of the items are options, a complete SoS step follows the following format:
+
+
+```
+[name_step: option1, option2, ...]
+#
+# description of the step
+#
+input:
+    input files
+    : emit options
+
+depends:
+    dependent files
+
+key1=value1
+key2=value2
+
+action_function
+
+key3=value3
+key4=value4
+
+```
+
+where
+
+* **section options** controls how the steps are treated during execution
+* **comments** of the step describes what this step does. These comments will
+  be displayed in the output of command `sos show script`.
+* **input** item specifies the input files of the step
+* **input options** specifies how the input files are sent to the step action
+* **pre-action variables** are defined before the action is executed.
+* **post-action variables** are defined after the action is executed
+
+Please refer to [step format](step_format.md) for details of these items.

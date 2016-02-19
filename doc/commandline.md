@@ -5,7 +5,9 @@
 - [Command `sos`](#command-sos)
   - [subcommand `run` (see also `sos-runner`)](#subcommand-run-see-also-sos-runner)
   - [subcommand `show`](#subcommand-show)
-  - [subcommand `export` (detailed examples)](#subcommand-export-detailed-examples)
+  - [subcommand `export`](#subcommand-export)
+  - [TBD Features](#tbd-features)
+- [Command `sos-runner`](#command-sos-runner)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -58,7 +60,7 @@ sos show script [workflow:steps]
 
 Display details of `workflow` defined in `script`, including command line options defined by the `[default]` section of `script`.
 
-### subcommand `export` ([detailed examples](export.md))
+### subcommand `export` 
 
 ```bash
 sos export script [workflow:steps] [--input FILE1 FILE2 ...] [workflow-options] [-d OUTPUT_DIR] [-f]
@@ -70,8 +72,9 @@ Export `steps` of `workflow` defined in `script` to `script_dir`. This command w
 *  `-d` (output directory): directory to which scripts are written. Default to current directory.
 *  `-f` (force): overwrite existing files with different content silently. If unspecified, the command will fail with an error message in such cases. 
 
-	
-### Features that might be implemented in the future
+Please refere to [the export feature](export.md) for detailed examples of this command.
+
+### TBD Features
 * subcommand **`convert`**:
   It miight be useful to convert SoS scripts to other workflow language, at least partially. A complete translation is unlikely to be possible so SoS might simply export the SoS script to shell scripts (`sos export`) and create a pipeline for the master shell script. 
 
@@ -80,6 +83,8 @@ Export `steps` of `workflow` defined in `script` to `script_dir`. This command w
   
 * subcommand **`edit`**: potentially a GUI viewer and editor for SoS scripts.
  
+These features might be implemented in the future when needs arise.
+
 ## Command `sos-runner`
 
 Command `sos-runner` is a short cut for ``sos run`` so

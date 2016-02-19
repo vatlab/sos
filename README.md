@@ -2,19 +2,17 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [Script of Scripts (SoS)](#script-of-scripts-sos)
-  - [Design of SoS (in progress, comments welcome)](#design-of-sos-in-progress-comments-welcome)
-  - [Tutorial](#tutorial)
-    - [Organize your scripts as a SoS script](#organize-your-scripts-as-a-sos-script)
-    - [Make the script work for other input files](#make-the-script-work-for-other-input-files)
-    - [Convert the SoS script to a real pipeline](#convert-the-sos-script-to-a-real-pipeline)
-  - [Limitations](#limitations)
-  - [Summary](#summary)
+- [Design of SoS (in progress, comments welcome)](#design-of-sos-in-progress-comments-welcome)
+- [Tutorial](#tutorial)
+  - [Organize your scripts as a SoS script](#organize-your-scripts-as-a-sos-script)
+  - [Make the script work for other input files](#make-the-script-work-for-other-input-files)
+  - [Convert the SoS script to a real pipeline](#convert-the-sos-script-to-a-real-pipeline)
+- [Limitations](#limitations)
+- [Summary](#summary)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# Script of Scripts (SoS)
-Script of Scripts (SoS) is a lightweight workflow system that helps you turn your scripts in shell, R, Python, Perl, and other languages into readable pipelines that can be easily understood and modified by others. It is also an easy-to-use alternative to workflow systems such as [CWL](http://common-workflow-language.github.io/draft-3/) with an emphasis on readability.
+**Script of Scripts (SoS)** is a lightweight workflow system that helps you turn your scripts in shell, R, Python, Perl, and other languages into readable pipelines that can be easily understood and modified by others. It is also an easy-to-use alternative to workflow systems such as [CWL](http://common-workflow-language.github.io/draft-3/) with an emphasis on readability.
 
 ## Design of SoS (in progress, comments welcome)
 The core of SoS has mostly been implemented in another project but we are re-designing and re-implementing it to make SoS more user-friendly and powerful. Your involvement and suggestions are very welcome.
