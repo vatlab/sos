@@ -15,7 +15,7 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-A SoS step generally has the following format
+Although only a *step action* is required for a SoS step, a complete SoS step can have the following form
 
 ```
 [name_step: option1, option2, ...]
@@ -24,7 +24,7 @@ A SoS step generally has the following format
 #
 input:
     input files
-    : emit options
+    : input options
 
 depends:
     dependent files
@@ -32,7 +32,7 @@ depends:
 key1=value1
 key2=value2
 
-action_function
+step_action
 
 key3=value3
 key4=value4
@@ -41,16 +41,20 @@ key4=value4
 
 ### step options
 
-SoS provides the following options
+**Step options** are specified after step name and controls how the step will be executed. SoS provides the following options
 
-* `skip`: the whole step will be skipped as if it is defined
-* `no_input`: specifies that this step does not have any input so the runtime signature does not depend on any input file. 
-* `no_output`: specifies that this step does not have any output, so that the later steps can be executed before the end of this step. Because SoS will wait for the completion of a step if it does not have any defined output (through `output` optin of the workflow action), this option allows the following steps to be executed without waiting for the completion of the current step.  
-* `input_alias`: a variable will be defined as the input files of the step
-* `output_alias`: a variable will be defined as the output files of the step
+* `skip`: the whole step will be skipped as if it is not defined at all in the script. This option provides a quick method to disable a step.
+* `no_input`: this step does not need any input so it is a **root** of the execution tree. This option disconnects the current step with its previous steps so that it can be
+    executed before the completion of previous steps. 
+* `terminal`: this step is one of the **terminals** or **leafs** of the execution tree. This allows the later steps to be
+   executed before the completion of this step. The step can have output but no other step should depend on these output
+   files.
+* `concurrent`: actions of this step can be executed concurrently if it executes step actions repeated (input option `for_each`).
+   By default these actions are executed one by one.
 * `blocking`: the step can only be executed by one instance of SoS. All other SoS instances will wait until one instance complete this step. This option should be used for actions such as the creation of index and downloading of resources.
 
-Question: `no_output` is not very appropriate for its purpose because the action might specify `outpu`. Perhaps `non-blocking` should be used?
+* `input_alias`: a variable will be defined as the input files of the step before the step is executed.
+* `output_alias`: a variable will be defined as the output files of the step after the step is executed.
 
 ### Input files (`input:`)
 
