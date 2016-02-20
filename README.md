@@ -161,7 +161,8 @@ sos run myanalysis.sos --input control1.fasta control2.fasta
 
 Basically, command line parameters are passed to SoS as variable `cmd_input`, which is a Python list with value `['control.fasta', 'control2.fasta']` in this example. Because these two files are processed separately, you use `${cmd_input[0])` and `${cmd_input[1]}` to return two filenames.
 
-### Convert the SoS script to a real pipeline
+### Ignore steps that do not need to be rerun
+
 Although the SoS script now accepts command line arguments, it is still no more than a compilation of scripts and you immediately realized that it is a waste of time to execute the first command each time. To solve this problem, you can convert the SoS script to a real workflow by telling SoS some more details of the commands:
 
 ```python
@@ -219,6 +220,67 @@ sos run myanalysis.sos --input control1.fasta control2.fasta
 ```
 
 SoS will ignore step 1 if this step has been run with output `STAR_index/chrName.txt`. The same happens to step 2 and 3 so all steps will be ignored if you run the script repeatedly with the same input and processing scripts. SoS uses **runtime signature** for each step and will re-run the step if and only if the content or filename of input files or the processing scripts are changed.
+
+### Execute steps in parallel
+
+SoS allows execution of workflows in parallel. Although the three steps of this example has to be
+executed sequentially, the second step runs the `STAR` command twice on two input files, and can
+be executed in parallel. You can tell SoS by modifying the script as follows
+
+```python
+#!/usr/bin/env sos-runner
+##fileformat=SOS1.0
+
+# This script aligns raw reads of a control and a mutated sample 
+# to the reference genome and compare the expression values
+# of the samples at genes A, B and C.
+
+[1: no_input, output_alias='ref_index']
+# create a index for reference genome
+run('''
+STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_index
+''', output='STAR_index/chrName.txt')
+    
+[2: concurrent]
+sample_type=${['control', 'mutated']}
+
+# align the reads to the reference genome
+input:
+	${cmd_input}
+	: group_by='single', for_each='sample_type'
+
+depends:
+   ${ref_index}
+   
+run('''
+STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn ${input[0]}  \
+    --quantMode GeneCounts --outFileNamePrefix aligned/${_sample_type}
+''', output=['aligned/control.out.tab', 'aligned/mutated.out.tab'])
+
+[3]
+# compare expression values
+R('''
+control.count = read.table('${input[0]}')
+mutated.count = read.table('${input[1]}')
+# normalize, compare, output etc, ignored.
+pdf('myfigure.pdf')
+# plot results
+dev.off()
+''', output='myfigure.pdf')
+
+```
+
+Here we define a variable `sample_type` at the beginning of the step (you can also do this at
+the beginning of script) and specify an option `for_each` that runs the action for each of its
+values (with a temporary variable `_sample_type`). You also tells SoS that these actions can be
+executed concurrently using step option `concurrent`. With these changes, you can execute this
+script with option
+
+```bash
+sos run myanalysis.sos --input control1.fasta control2.fasta -j 2
+```
+
+to run the second step in parallel.
 
 ## Limitations
 

@@ -36,7 +36,7 @@ to get detailed description of a particular subcommand.
 ### subcommand `run` (see also [`sos-runner`](#command-sos-runner))
 
 ```bash
-sos run script [workflow[:steps]] [--input FILE1 FILE2 ...] [workflow-options] 
+sos run script [workflow[:steps]] [--input FILE1 FILE2 ...] [workflow-options] [-j NUM_JOBS]
 ```
 
 Execute specified `steps` of `workflow` defined in `script` with specified `workflow-options`.
@@ -46,6 +46,8 @@ Execute specified `steps` of `workflow` defined in `script` with specified `work
 * `steps` should be prefixed with `:` and can be a comma separated list of `n` (number, specific step), `-n` (up to and include step `n`), `n-` (from step `n`). This option effectively add option `skip` to unspecified steps.
 * `--input`: input files. Will be passed as variable `${cmd_input}` to the script.
 * `workflow-options`: Options defined in the `[default]` section of `script`. variables with a text default value accepts a string input. variables with a list default value (e.g. `names=${[]}`)  accepts a list of strings.
+* `-j`: Maximum number of concurrent jobs. A SoS script is by default executed sequentially (`-j 1`) but can have mutliple
+  concurrent jobs if a positive number is specified. Please see [work flow control](workflow_control.md) in detail.
 
 The list of acceptable workflow options for `script` can be displayed using command
 
