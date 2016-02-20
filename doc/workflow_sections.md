@@ -2,15 +2,12 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [Specification and execution of workflow](#specification-and-execution-of-workflow)
-  - [Define a single workflow](#define-a-single-workflow)
-  - [Define multiple workflows](#define-multiple-workflows)
-  - [Shared steps between workflows](#shared-steps-between-workflows)
-  - [Execution of a subset of steps](#execution-of-a-subset-of-steps)
+- [Define a single workflow](#define-a-single-workflow)
+- [Define multiple workflows](#define-multiple-workflows)
+- [Shared steps between workflows](#shared-steps-between-workflows)
+- [Execution of a subset of steps](#execution-of-a-subset-of-steps)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
-# Specification and execution of workflow
 
 A SoS script can specify one or more workflows. Each workflow consists of one or more numbered steps. The numbers specify the **logical order** by which the steps are executed, but a later step might be executed before the completion of previous steps if it does not depend on the output of these steps.
 

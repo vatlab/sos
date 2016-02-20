@@ -129,11 +129,12 @@ key4=value4
 
 where
 
-* **section options** controls how the steps are treated during execution
+* **step options** controls how the steps are treated during execution
 * **comments** of the step describes what this step does. These comments will
   be displayed in the output of command `sos show script`.
 * **input** item specifies the input files of the step
 * **input options** specifies how the input files are sent to the step action
+* **dependent files** which are not part of the input but are prerequisite of the step. These files will be part of the step signature. The step will not be executed if the files are missing and will be re-executed if these files are changed.
 * **pre-action variables** are defined before the action is executed.
 * **post-action variables** are defined after the action is executed
 

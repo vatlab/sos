@@ -19,10 +19,8 @@ The core of SoS has mostly been implemented in another project but we are re-des
 
 * User interface: [commandline arguments](doc/commandline.md)
 * Format of SoS script: [overall format](doc/sos_format_v1.md)
-	* [User defined commandline arguments](doc/var_options.md)
 	* [workflow sections](doc/workflow_sections.md)
 	* [step specification](doc/step_format.md)
-	* [input specification](doc/input_spec.md)
 * Features:
 	* [proposed actions](doc/actions.md)
 	* [export SoS scripts](doc/export.md)
