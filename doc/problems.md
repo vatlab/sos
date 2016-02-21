@@ -12,7 +12,8 @@
   - [Handling of filenames with spaces and other special characters (solved)](#handling-of-filenames-with-spaces-and-other-special-characters-solved)
   - [Section option `concurrent`](#section-option-concurrent)
   - [Default parameter `--input`](#default-parameter---input)
-  - [variable definition](#variable-definition)
+  - [variable definition (decided to use Python syntax)](#variable-definition-decided-to-use-python-syntax)
+  - [A more pythonic approach?](#a-more-pythonic-approach)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -107,9 +108,9 @@ We do not have to allow a default parameter `--input`. It is easier to use
 but the parameter itself is not documented like other command line parameters. It might  
 be better to force the definition of all parameters in the `[default]` section.
 
-### variable definition
+### variable definition (decided to use Python syntax)
 
-Right now we use
+The original design uses
 
 ```
 path=/default/path
@@ -117,60 +118,19 @@ sample_names=${['a', 'b']}
 ```
 
 without quotation marks. Which can be confusing because we sometimes require qutation marks
-(e.g. `group_by='single' in input options)` and sometimes do not. It might be easier to
-either require no qutation marks in these cases (but it is difficult to handle cases
-such as `for_each=['a1', 'a2']`), or requre qutation marks in all cases, e.g.
+(e.g. `group_by='single' in input options)` and sometimes do not. 
+
+The current design uses all python syntax
 
 ```
 path='/default/path'
 sample_names=['a', 'b']
 ```
 
-The latter has the advantage that the right hand side are always valid python expressions.
-
+which is more consistent because the right hand side are always valid python expressions.
 
 ### A more pythonic approach?
 
-How about this
+Currently there are pices of the script that is not python, most notably the input
+specification. It might make sense to turn them all to python syntax.
 
-```
-
-#[1]
-step_input = None
-
-# create a index for reference genome
-run('''
-STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_index
-''', output='STAR_index/chrName.txt')
-
-ref_index=output
-
-#[2]
-sample_type=['control', 'mutated']
-
-# align the reads to the reference genome
-input=cmd_input
-
-input_options = { group_by='single', for_each='sample_type' }
-
-depends = ref_index
-
-run('''
-STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn {}  \
-    --quantMode GeneCounts --outFileNamePrefix aligned/{}
-'''.format(input[0], _sample_type), output=['aligned/control.out.tab', 'aligned/mutated.out.tab'])
-
-#[3]
-# compare expression values
-R('''
-control.count = read.table('{0}')
-mutated.count = read.table('{1}')
-# normalize, compare, output etc, ignored.
-pdf('myfigure.pdf')
-# plot results
-dev.off()
-'''.format(input[0], input[1]), output='myfigure.pdf')
-
-```
-
-Or we can make at least the variable assignments valid python expressions.

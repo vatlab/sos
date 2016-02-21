@@ -3,27 +3,26 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [SoS Variables](#sos-variables)
-  - [Reserved variables](#reserved-variables)
-  - [Default command line option](#default-command-line-option)
+  - [Reserved and constant variables](#reserved-and-constant-variables)
+  - [Default command line option (might remove for consistency)](#default-command-line-option-might-remove-for-consistency)
   - [Command line options](#command-line-options)
   - [Runtime variables](#runtime-variables)
 - [Python Expression with SoS variables](#python-expression-with-sos-variables)
 - [Creation of new variables](#creation-of-new-variables)
-- [Use of SoS variables and expressions](#use-of-sos-variables-and-expressions)
+- [Use of SoS variables and expressions (need reconsideration)](#use-of-sos-variables-and-expressions-need-reconsideration)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## SoS Variables
 
-SoS variables are python variables associated with the execution of SoS scripts. They are **case sensitive** and can only be **string** or **list of strings**. 
+SoS variables are python variables associated with the execution of SoS scripts. They are **case sensitive** and can only be **string** or **list of strings**. They can be defined almost anywhere in a SoS script.
 
-### Reserved variables
+### Reserved and constant variables
 
 * `home`: (string) home directory
 * `workflow_name`: (string) name of workflow being executed
 
-
-### Default command line option
+### Default command line option (might remove for consistency)
 
 * `cmd_input`: (list of strings) option to command line argument `--input`
 
@@ -38,14 +37,14 @@ var_name=default_value
 The default value can be string or list of string, which has to be returned as result of an expression. For example
 
 ```
-gatk_path=GATK
+gatk_path='GATK'
     path to tool gatk
 ```
 
 defines a variable `gatk_path` with default value `'GATK'`. 
 
 ```
-sample_names=${[]}
+sample_names=[]
     A list of sample names
 ```
 
@@ -63,7 +62,7 @@ The default values will be used if the parameters are not redefined from command
 
 For a SoS step in the following form
 
-```[workflow_step: input_alias=ia, output_alias=oa]
+```[workflow_step]
 #
 # description of step
 #
@@ -86,8 +85,8 @@ post-action-variable
 The following variables will be defined
 
 * Before entering the step:
-  * **workflow_step** (string): step of the current action 
-  * **input alias** (list of strings): if step option `input_alias` is set, tthis variable will include all input files of the step.
+  * **step_index** (string): step of the current action 
+  * **step_input** (list of strings): input from the last completed step, or `[]` if step option `no_input` is set.
 * Before the processing of input files
   * **pre-input variables** (string or list of strings): variables defined before `input:`.
 * After the processing of input files:
@@ -96,25 +95,24 @@ The following variables will be defined
   * **loop variables** (string): value of loop variables if `for_each` option is defined 
   * **pre-action variables** (string or list of string): variables defined after `input` and before `StepAction`. They will be evalulated with each `input`.
 * After the exeuction of `StepAction`
-  * **${output}** (list of strings). All output files (if `StepAction` is executed mutliple times) are collected to a variable **${output}**. 
-  * **post-action variables** (string or list of strings): variables defined after the execution of `StepAction`. **${input}** will not be available for use in this step. As a special case, **${output}** can be redefined to change the output of this step.
-	* **output alias** (list of strings): if step option `output_alias` is set, this variable will be set to `${output}`.
+  * **step_output** (list of strings). All output files (if `StepAction` is executed mutliple times) are collected to a variable **step_output**. 
+  * **post-action variables** (string or list of strings): variables defined after the execution of `StepAction`. **input** will not be available for use in this step. As a special case, **output** can be redefined to change the output of this step.
 
-`${output}` will become the default input of the next step.
+`step_output` will become the default input of the next step.
 
 
 ## Python Expression with SoS variables
 
-**Any python expression involving any SoS variables and defined functions can be used within `${}`**. A sequence result will be converted to list of strings and all other result will be converted to string. For example
+**Any python expression involving any SoS variables and defined functions can be used to define variables**, **expressions within `${}` will be evaluated in actions**. A sequence result will be converted to list of strings and all other result will be converted to string. For example
 
-* `${input[0]}` gets the first input file
-* `${os.path.basename(input[0])}` get the base name of input file
-* `${[x for x in input if '_R1_' in x]}` returns all files with `_R1_` in its names
-* `${output_dir + '/' + input[0] + '.bai'}` return a file under `output_dir` with `.bai` appended to filename.
-* `${os.path.getsize(input[0])}` return a string (converted from integer) of file size
-* `${os.path.getsize(input[0]) > 0}` return `True` (a string, converted from boolean True) if file is not empty.
-* `${os.environ['MY_VAR']}` return the value of environment `MY_VAR`.
-* `${glob.glob('*.txt')}` return a list of files with extension `.txt` under the current directory.
+* `input[0]` gets the first input file
+* `os.path.basename(input[0])` get the base name of input file
+* `[x for x in input if '_R1_' in x]` returns all files with `_R1_` in its names
+* `output_dir + '/' + input[0] + '.bai'` return a file under `output_dir` with `.bai` appended to filename.
+* `os.path.getsize(input[0])` return a string (converted from integer) of file size
+* `os.path.getsize(input[0]) > 0` return `True` (a string, converted from boolean True) if file is not empty.
+* `os.environ['MY_VAR']` return the value of environment `MY_VAR`.
+* `glob.glob('*.txt')` return a list of files with extension `.txt` under the current directory.
 
 Note that SoS makes available modules `glob`, `os`, `sys`, and more modules can be imported with workflow action `import_module`.
 
@@ -130,35 +128,26 @@ var=value
 
 For example
 ```python
-a=blah
+a='blah'
 ```
 
 assigns value `'blah'` to variable `a`,
 
 ```python
-a=${input[0] + '.bai'}
+a=input[0] + '.bai'
 ```
 
 assigns value of `input[0]` plus `'.bai'` to vaiable `a`.
 
-The only exception here is that `var` will be a list of string if `value` is an expression with list type. For example,
 
-```python
-a = ${input}
-b = ${[os.path.basename(x) for x in input]}
-c = ${[]}
-```
-will produce variables of list types.
-
-## Use of SoS variables and expressions
+## Use of SoS variables and expressions (need reconsideration)
 
 SoS variables (and their expressions) are used slightly differently in different places, but the rules are largely intuitive.
 
-1. In `input:` specification of SoS steps, the variables are treated as filenames or filenames with wildcard characters. An error will be generated if any of the resulting files do not exist.
-2. As mentioned above, direct variable assignment (`var_name=${expression}`) will keep the type of expression.
-3. In all other cases, `${expression}` will be converted to a string. List of strings will be joint by a space. 
+1. In `input:` constant strings (quoted) and variables can be used. Nested list will be flattened. 
+2. In step actions and other places, expressions within `${}` will be evaluated and replaced with its string representation. List of strings will be returned as string joint by a space. 
 
-Because of the third rule
+That is to say
 
 * `${variable}` will be quivalent to `${variable[0]}` if it is a list of length  1. 
 * `run('''process ${files}''')` will be translated to `run('''process file1.txt file2.txt''')` if variable `files` has value `['file1.txt', 'file2.txt']`. This works most of the time but might fail if filename contains special characters. This can be avoided by using expressions such as `run('''process '${files[0]}' '${files[1]}'''')`.

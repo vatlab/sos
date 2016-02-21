@@ -13,7 +13,7 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-**Script of Scripts (SoS)** is a lightweight workflow system that helps you turn your scripts in shell, R, Python, Perl, and other languages into readable pipelines that can be easily understood and modified by others. It is also an easy-to-use alternative to workflow systems such as [CWL](http://common-workflow-language.github.io/draft-3/) with an emphasis on readability.
+**Script of Scripts (SoS)** is a lightweight workflow system that helps you turn your scripts in shell, R, Python, Perl, and other languages into readable pipelines that can be easily understood and modified by others. It is also an easy-to-use alternative to workflow systems such as [CWL](http://common-workflow-language.github.io/draft-3/) with an emphasis on readability. 
 
 ## Design of SoS (in progress, comments welcome)
 The core of SoS has mostly been implemented in another project but we are re-designing and re-implementing it to make SoS more user-friendly and powerful. Your involvement and suggestions are very welcome.
@@ -236,23 +236,25 @@ be executed in parallel. You can tell SoS by modifying the script as follows
 # to the reference genome and compare the expression values
 # of the samples at genes A, B and C.
 
-[1: no_input, output_alias='ref_index']
+[1: no_input]
 # create a index for reference genome
 run('''
 STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_index
 ''', output='STAR_index/chrName.txt')
+
+ref_index=step_output
     
 [2]
-sample_type=${['control', 'mutated']}
+sample_type=['control', 'mutated']
 
 # align the reads to the reference genome
 input:
-	${cmd_input}
+	cmd_input
 	: group_by='single', for_each='sample_type'
 
 depends:
-   ${ref_index}
-   
+   ref_index
+
 run('''
 STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn ${input[0]}  \
     --quantMode GeneCounts --outFileNamePrefix aligned/${_sample_type}
@@ -271,7 +273,7 @@ dev.off()
 
 ```
 
-Here we define the output of the first step as `${ref_index}` and list it
+Here we save the output of the first step as `ref_index` and list it
 as a dependency of step 2. This will force step 2 to be executed after step
 1 during parallel execution mode. We also define a variable `sample_type` at the beginning of the step (you can also do this at
 the beginning of script) and specify an option `for_each` that runs the action for each of its

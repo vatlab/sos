@@ -110,6 +110,8 @@ Although most of the items are options, a complete SoS step follows the followin
 #
 # description of the step
 #
+key0=value0
+
 input:
     input files
     : emit options
