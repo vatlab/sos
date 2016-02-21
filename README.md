@@ -6,7 +6,8 @@
 - [Tutorial](#tutorial)
   - [Organize your scripts as a SoS script](#organize-your-scripts-as-a-sos-script)
   - [Make the script work for other input files](#make-the-script-work-for-other-input-files)
-  - [Convert the SoS script to a real pipeline](#convert-the-sos-script-to-a-real-pipeline)
+  - [Ignore steps that do not need to be rerun](#ignore-steps-that-do-not-need-to-be-rerun)
+  - [Execute steps in parallel](#execute-steps-in-parallel)
 - [Limitations](#limitations)
 - [Summary](#summary)
 
@@ -241,7 +242,7 @@ run('''
 STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_index
 ''', output='STAR_index/chrName.txt')
     
-[2: concurrent]
+[2]
 sample_type=${['control', 'mutated']}
 
 # align the reads to the reference genome
@@ -270,17 +271,20 @@ dev.off()
 
 ```
 
-Here we define a variable `sample_type` at the beginning of the step (you can also do this at
+Here we define the output of the first step as `${ref_index}` and list it
+as a dependency of step 2. This will force step 2 to be executed after step
+1 during parallel execution mode. We also define a variable `sample_type` at the beginning of the step (you can also do this at
 the beginning of script) and specify an option `for_each` that runs the action for each of its
-values (with a temporary variable `_sample_type`). You also tells SoS that these actions can be
-executed concurrently using step option `concurrent`. With these changes, you can execute this
-script with option
+values (with a temporary variable `_sample_type`). Now, if you execute the
+script with option `-j 2` (2 concurrent processes),
 
 ```bash
 sos run myanalysis.sos --input control1.fasta control2.fasta -j 2
 ```
 
-to run the second step in parallel.
+the second step would be run in parallel.
+
+We have showed you four versions of the same SoS script, each using more features of SoS. This actually demonstrates one of the advantages of the SoS system, namely you can start using SoS in minutes without knowing any of its advanced features, and can gradually improve your script when needs arise.
 
 ## Limitations
 

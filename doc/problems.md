@@ -3,35 +3,38 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [Problems and ideas](#problems-and-ideas)
-  - [Support for docker (still investigating)](#support-for-docker-still-investigating)
-  - [Runtime control (still investigating)](#runtime-control-still-investigating)
-  - [Resource control (still investigating)](#resource-control-still-investigating)
-  - [Libraries (still investigating)](#libraries-still-investigating)
-  - [Nested workflow (still investigating)](#nested-workflow-still-investigating)
+  - [Support for docker](#support-for-docker)
+  - [Runtime control](#runtime-control)
+  - [Resource control](#resource-control)
+  - [Libraries](#libraries)
+  - [Nested workflow](#nested-workflow)
   - [Requirement of steps (solved)](#requirement-of-steps-solved)
   - [Handling of filenames with spaces and other special characters (solved)](#handling-of-filenames-with-spaces-and-other-special-characters-solved)
+  - [Section option `concurrent`](#section-option-concurrent)
+  - [Default parameter `--input`](#default-parameter---input)
+  - [variable definition](#variable-definition)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Problems and ideas
 
-### Support for docker (still investigating)
+### Support for docker 
 
-### Runtime control (still investigating)
+### Runtime control
 
 Limiting the files that the directory can the step can write to??? 
 
 
-### Resource control (still investigating)
+### Resource control
 
 Limiting or monitoring the RAM and CPU (cores) the step uses???
 
 
-### Libraries (still investigating)
+### Libraries
 
 Libraries would be python modules with defined SoS actions, but how to maintain and import these modules require further investigation. Furthermore, extensive use of libraries somehow beats the purpose of SoS (readability) because libraries hide the details of actions.
 
-### Nested workflow (still investigating)
+### Nested workflow
 
 Not sure how this would work, but in SoS one can certainly define a step with
 
@@ -84,4 +87,46 @@ open("${input}")
 ```
 
 shoudl work correctly and it would be wrong if SoS mangles `${input}` during variable substitution.
+
+
+### Section option `concurrent`
+
+There are some other options to allow concurrent execution of step actions.
+
+1. Default to concurrent but allow option `nonconcurrent`, because the actions should be safe 
+  to execute in parallel most of the time (processing input files one by one or in pair, or
+  with different options).
+
+2. Do not use section option, but specify this in input parameters. E.g. `for_each` as
+  concurrent for each, and `nc_for_each` for nonconcurrent for each. Perhaps 
+  `for_all` as nonconcurrent?
+
+### Default parameter `--input`
+
+We do not have to allow a default parameter `--input`. It is easier to use 
+but the parameter itself is not documented like other command line parameters. It might  
+be better to force the definition of all parameters in the `[default]` section.
+
+### variable definition
+
+Right now we use
+
+```
+path=/default/path
+sample_names=${['a', 'b']}
+```
+
+without quotation marks. Which can be confusing because we sometimes require qutation marks
+(e.g. `group_by='single' in input options)` and sometimes do not. It might be easier to
+either require no qutation marks in these cases (but it is difficult to handle cases
+such as `for_each=['a1', 'a2']`), or requre qutation marks in all cases, e.g.
+
+```
+path='/default/path'
+sample_names=['a', 'b']
+```
+
+The latter has the advantage that the right hand side are always valid python expressions.
+
+
 
