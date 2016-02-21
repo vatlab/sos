@@ -64,6 +64,11 @@ The default values will be used if the parameters are not redefined from command
 For a SoS step in the following form
 
 ```[workflow_step: input_alias=ia, output_alias=oa]
+#
+# description of step
+#
+pre-input-variable
+
 input:
 	input_files
 	: emit options
@@ -80,10 +85,11 @@ post-action-variable
 
 The following variables will be defined
 
-
 * Before entering the step:
   * **workflow_step** (string): step of the current action 
   * **input alias** (list of strings): if step option `input_alias` is set, tthis variable will include all input files of the step.
+* Before the processing of input files
+  * **pre-input variables** (string or list of strings): variables defined before `input:`.
 * After the processing of input files:
   * **`${input}`** (list of strings): selected input files. Depending on emit options, `StepAction()` might be executed multiple times with different set of `input`. 
   * **file labels** (list of strings): Labels of files in `input` if `labels` option is defined.

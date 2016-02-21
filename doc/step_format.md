@@ -22,6 +22,8 @@ Although only a *step action* is required for a SoS step, a complete SoS step ca
 #
 # description of the step
 #
+key0=value0
+
 input:
     input files
     : input options
@@ -344,7 +346,15 @@ depends:
 Question: is there a need to test other requirements such as the value of environment variable, existence of other tools, content of file etc?
 
 
-### Pre-action and post-action variables
+### Pre-input, pre-action and post-action variables
+
+* Pre-input variables are defined before `input:` and evaluated before filenames are parsed. They are usually global variables that can be 
+  defined globally but are put within a step for readability purposes. 
+
+* Pre-action variables are defined between `input:` and step action and evaluated (probably repeatedly) before the executation of 
+  step action.
+
+* Post-action variables are defined after step action and are evaluated after the completion of all step actions.
 
 Please refer to [use of SoS variables](variables.md) for details
 
