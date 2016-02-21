@@ -85,12 +85,12 @@ values and descriptions. The variables are defined in the format of
 
 
 ```
-[default]
+[parameters]
+# comment 1
 par1=default1
-   comment1
    
+# comment2
 par2=default2
-   comment2
 ```
 
 where the default values determines the type of variable (string or list of strings). 

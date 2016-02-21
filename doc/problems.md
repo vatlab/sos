@@ -102,7 +102,7 @@ There are some other options to allow concurrent execution of step actions.
   concurrent for each, and `nc_for_each` for nonconcurrent for each. Perhaps 
   `for_all` as nonconcurrent?
 
-### Default parameter `--input`
+### Default parameter `--input` (decided to remove)
 
 We do not have to allow a default parameter `--input`. It is easier to use 
 but the parameter itself is not documented like other command line parameters. It might  

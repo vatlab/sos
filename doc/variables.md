@@ -22,9 +22,6 @@ SoS variables are python variables associated with the execution of SoS scripts.
 * `home`: (string) home directory
 * `workflow_name`: (string) name of workflow being executed
 
-### Default command line option (might remove for consistency)
-
-* `cmd_input`: (list of strings) option to command line argument `--input`
 
 ### Command line options
 
@@ -37,18 +34,19 @@ var_name=default_value
 The default value can be string or list of string, which has to be returned as result of an expression. For example
 
 ```
+# path to tool gatk
 gatk_path='GATK'
-    path to tool gatk
 ```
 
 defines a variable `gatk_path` with default value `'GATK'`. 
 
 ```
+# A list of sample names
 sample_names=[]
-    A list of sample names
 ```
 
-defines a variable `sample_name` with default value `[]`. 
+defines a variable `sample_name` with default value `[]`. The comments before variable definition is meaningful
+because they will appear in the help message of the script (`sos view script`).
 
 The values of these parameter can be input from command line with `gatk_path` accept a single value, and `sample_name` accept a list of values. E.g.
 

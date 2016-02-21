@@ -116,7 +116,10 @@ myanalysis.sos
 if you give `myanalyis.sos` executable permission (`chmod +x myanalysis.sos`). 
 
 ### Make the script work for other input files
-After a while, before you almost forgot about this analysis, you needed to analyze another pair of samples. You could copy ``myanalysis.sos`` to ``myanalysis2.sos``, change filenames and run it, but an easier way is to change your SoS file to accommodate other input files. This can be done by replacing input filenames in ``analysis.sos`` with a **SoS variable** `${cmd_input}` (command line input):
+After a while, before you almost forgot about this analysis, you needed to analyze another pair of samples.
+You could copy ``myanalysis.sos`` to ``myanalysis2.sos``, change filenames and run it, but an easier way is to
+change your SoS file to accommodate other input files. This can be done by
+defining a command line argument and passing files name to a **SoS variable**:
 
 ```python
 #!/usr/bin/env sos-runner
@@ -125,6 +128,11 @@ After a while, before you almost forgot about this analysis, you needed to analy
 # This script aligns raw reads of a control and a mutated sample 
 # to the reference genome and compare the expression values
 # of the samples at genes A, B and C.
+
+[parameters]
+# Two input files in .fasta formats. The first one for control sample
+# and the second one for mutated sample.
+fasta_files=['control.fasta', 'mutated.fasta']
 
 [1]
 # index reference genome
@@ -135,9 +143,9 @@ STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_i
 [2]
 # align reads to the reference genome
 run('''
-STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn ${cmd_input[0]}  \
+STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn ${fasta_files[0]}  \
     --quantMode GeneCounts --outFileNamePrefix aligned/control
-STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn ${cmd_input[1]}  \
+STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn ${fasta_files[1]}  \
     --quantMode GeneCounts --outFileNamePrefix aligned/mutated
 ''')
 
@@ -154,13 +162,16 @@ dev.off()
 
 ```
 
-and execute the script as
+A command line argument `fasta_files` is defined in the `[parameters]`
+section of the script. With this definition, you can pass two filenames to
+variable `fasta_files` from command line
 
 ```bash
-sos run myanalysis.sos --input control1.fasta control2.fasta
+sos run myanalysis.sos --fasta_files control1.fasta control2.fasta
 ```
 
-Basically, command line parameters are passed to SoS as variable `cmd_input`, which is a Python list with value `['control.fasta', 'control2.fasta']` in this example. Because these two files are processed separately, you use `${cmd_input[0])` and `${cmd_input[1]}` to return two filenames.
+`${fasta_files[0]}` and `${fasta_files[1]}` in command `STAR --genomeDir
+...`  are replaced with their values before the commands are executed.
 
 ### Ignore steps that do not need to be rerun
 
@@ -174,6 +185,13 @@ Although the SoS script now accepts command line arguments, it is still no more 
 # to the reference genome and compare the expression values
 # of the samples at genes A, B and C.
 
+
+[parameters]
+# Two input files in .fasta formats. The first one for control sample
+# and the second one for mutated sample.
+fasta_files=['control.fasta', 'mutated.fasta']
+
+
 [1: no_input]
 # create a index for reference genome
 run('''
@@ -183,7 +201,7 @@ STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_i
 [2]
 # align the reads to the reference genome
 input:
-	${cmd_input}
+	fasta_files
 
 run('''
 STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn ${input[0]}  \
@@ -236,6 +254,12 @@ be executed in parallel. You can tell SoS by modifying the script as follows
 # to the reference genome and compare the expression values
 # of the samples at genes A, B and C.
 
+
+[parameters]
+# Two input files in .fasta formats. The first one for control sample
+# and the second one for mutated sample.
+fasta_files=['control.fasta', 'mutated.fasta']
+
 [1: no_input]
 # create a index for reference genome
 run('''
@@ -249,7 +273,7 @@ sample_type=['control', 'mutated']
 
 # align the reads to the reference genome
 input:
-	cmd_input
+	fasta_files
 	: group_by='single', for_each='sample_type'
 
 depends:

@@ -36,7 +36,7 @@ to get detailed description of a particular subcommand.
 ### subcommand `run` (see also [`sos-runner`](#command-sos-runner))
 
 ```bash
-sos run script [workflow[:steps]] [--input FILE1 FILE2 ...] [workflow-options] [-j NUM_JOBS]
+sos run script [workflow[:steps]] [workflow-options] [-j NUM_JOBS]
 ```
 
 Execute specified `steps` of `workflow` defined in `script` with specified `workflow-options`.
@@ -44,7 +44,6 @@ Execute specified `steps` of `workflow` defined in `script` with specified `work
 * `script` is a SoS script in [this format](sos_format_v1.md)
 * `workflow` is one of the workflows defined in `script`. If left unspecified, the default (unnamed or with name `default`) workflow or the only workflow defined in `script` will be executed.
 * `steps` should be prefixed with `:` and can be a comma separated list of `n` (number, specific step), `-n` (up to and include step `n`), `n-` (from step `n`). This option effectively add option `skip` to unspecified steps.
-* `--input`: input files. Will be passed as variable `${cmd_input}` to the script.
 * `workflow-options`: Options defined in the `[default]` section of `script`. variables with a text default value accepts a string input. variables with a list default value (e.g. `names=${[]}`)  accepts a list of strings.
 * `-j`: Maximum number of concurrent jobs. A SoS script is by default executed sequentially (`-j 1`) but can have mutliple
   concurrent jobs if a positive number is specified. Please see [work flow control](workflow_control.md) in detail.
@@ -65,12 +64,11 @@ Display details of `workflow` defined in `script`, including command line option
 ### subcommand `export` 
 
 ```bash
-sos export script [workflow:steps] [--input FILE1 FILE2 ...] [workflow-options] [-d OUTPUT_DIR] [-f]
+sos export script [workflow:steps] [workflow-options] [-d OUTPUT_DIR] [-f]
 ```
 
 Export `steps` of `workflow` defined in `script` to `script_dir`. This command will write `workflow_step.ext` for each `step` exported with appropriate file extension `ext` (e.g. `.R` for [R](https://www.r-project.org/) script) and `workflow.sh` to execute all the steps. Options of this command include
 
-* `--input` and `workflow-options`: see command `sos run` for details.
 *  `-d` (output directory): directory to which scripts are written. Default to current directory.
 *  `-f` (force): overwrite existing files with different content silently. If unspecified, the command will fail with an error message in such cases. 
 
