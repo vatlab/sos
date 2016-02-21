@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# This file is part of Script of Scripts (sos), a workflow system
+# This file is part of Script of Scripts (SoS), a workflow system
 # for the execution of commands and scripts in different languages.
 # Please visit https://github.com/bpeng2000/SOS for more information.
 #
@@ -20,8 +20,165 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-## '''This module provides utility functions and a database engine for sqlite'''
-## 
+import logging
+import re
+
+class ColoredFormatter(logging.Formatter):
+    ''' A logging formatter that uses color to differntiate logging messages
+    and emphasize texts. Texts that would be empahsized are quoted with
+    double backslashes (`` ``).
+    '''
+    def __init__(self, msg):
+        logging.Formatter.__init__(self, msg)
+        #
+        # color for different logging levels. The current terminal color
+        # is used for INFO
+        self.LEVEL_COLOR = {
+            'TRACE': 'DARK_CYAN',
+            'DEBUG': 'BLUE',
+            'WARNING': 'PURPLE',
+            'ERROR': 'RED',
+            'CRITICAL': 'RED_BG',
+        }
+        self.COLOR_CODE={
+            'ENDC':0,  # RESET COLOR
+            'BOLD':1,
+            'UNDERLINE':4,
+            'BLINK':5,
+            'INVERT':7,
+            'CONCEALD':8,
+            'STRIKE':9,
+            'GREY30':90,
+            'GREY40':2,
+            'GREY65':37,
+            'GREY70':97,
+            'GREY20_BG':40,
+            'GREY33_BG':100,
+            'GREY80_BG':47,
+            'GREY93_BG':107,
+            'DARK_RED':31,
+            'RED':91,
+            'RED_BG':41,
+            'LIGHT_RED_BG':101,
+            'DARK_YELLOW':33,
+            'YELLOW':93,
+            'YELLOW_BG':43,
+            'LIGHT_YELLOW_BG':103,
+            'DARK_BLUE':34,
+            'BLUE':94,
+            'BLUE_BG':44,
+            'LIGHT_BLUE_BG':104,
+            'DARK_MAGENTA':35,
+            'PURPLE':95,
+            'MAGENTA_BG':45,
+            'LIGHT_PURPLE_BG':105,
+            'DARK_CYAN':36,
+            'AUQA':96,
+            'CYAN_BG':46,
+            'LIGHT_AUQA_BG':106,
+            'DARK_GREEN':32,
+            'GREEN':92,
+            'GREEN_BG':42,
+            'LIGHT_GREEN_BG':102,
+            'BLACK':30,
+        }
+
+    def colorstr(self, astr, color):
+        return '\033[{}m{}\033[{}m'.format(color, astr,
+            self.COLOR_CODE['ENDC'])
+
+    def emphasize(self, msg, level_color=0):
+        # display text within `` and `` in green
+        return re.sub(r'``([^`]*)``', '\033[32m\\1\033[{}m'.format(level_color), str(msg))
+
+    def format(self, record):
+        level_name = record.levelname
+        if level_name in self.LEVEL_COLOR:
+            level_color = self.COLOR_CODE[self.LEVEL_COLOR[level_name]]
+            record.color_levelname = self.colorstr(level_name, level_color)
+            record.color_name = self.colorstr(record.name, self.COLOR_CODE['BOLD'])
+            record.color_msg = self.colorstr(self.emphasize(record.msg, level_color), level_color)
+        else:
+            # for INFO, use default color
+            record.color_levelname = record.levelname
+            record.color_msg = self.emphasize(record.msg)
+        return logging.Formatter.format(self, record)
+
+class RuntimeEnvironments(object):
+    'A singleton object that provides runtime environment for SoS'
+    _instance = None
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(RuntimeEnvironments, cls).__new__(cls)
+        return cls._instance
+
+    def __init__(self):
+        # logger
+        self._logger = None
+        self._verbosity = '1'
+        self._logfile = None
+
+    #
+    # attribute logger
+    #
+    def _set_logger(self, unused=None):
+        if not hasattr(logging, 'TRACE'):
+            logging.TRACE = 5
+            logging.addLevelName(logging.TRACE, "TRACE")
+        # create a logger, but shutdown the previous one
+        if self._logger is not None:
+            self._logger.handlers = []
+        self._logger = logging.getLogger()
+        self._logger.setLevel(logging.DEBUG)
+        # output to standard output
+        cout = logging.StreamHandler()
+        levels = {
+            '0': logging.WARNING,
+            '1': logging.INFO,
+            '2': logging.DEBUG,
+            '3': logging.TRACE,
+            None: logging.INFO
+        }
+        #
+        cout.setLevel(levels[self._verbosity])
+        cout.setFormatter(ColoredFormatter('%(color_levelname)s: %(color_msg)s'))
+        self._logger.addHandler(cout)
+        self._logger.trace = lambda msg, *args: self._logger._log(logging.TRACE, msg, args)
+        # output to a log file
+        if self._logfile is not None:
+            ch = logging.FileHandler(self._logfile, mode = 'a')
+            # debug informaiton and time is always written to the log file
+            ch.setLevel(logging.DEBUG)
+            ch.setFormatter(logging.Formatter('%(asctime)s: %(levelname)s: %(message)s'))
+            self._logger.addHandler(ch)
+    #
+    logger = property(lambda self: self._logger, _set_logger)
+    #
+    # attribute verbosity
+    #
+    def _set_verbosity(self, v):
+        if v in ['0', '1', '2', '3']:
+            self._verbosity = v
+            # reset logger to appropriate logging level
+            self._set_logger()
+    #
+    verbosity = property(lambda self: self._verbosity, _set_verbosity)
+    #
+    # attribute logfile
+    #
+    def _set_logfile(self, f):
+        self._logfile = f
+        # reset logger to include log file
+        self._set_logger()
+    #
+    logfile = property(lambda self: self._logfile, _set_logfile)
+
+
+# set up environment variable and a default logger
+env = RuntimeEnvironments()
+env.logger = None
+
+
 ## import os
 ## import sys
 ## import glob
