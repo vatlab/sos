@@ -117,6 +117,7 @@ class RuntimeEnvironments(object):
         self._logger = None
         self._verbosity = '1'
         self._logfile = None
+        self._set_logger()
 
     #
     # attribute logger
@@ -152,7 +153,11 @@ class RuntimeEnvironments(object):
             ch.setFormatter(logging.Formatter('%(asctime)s: %(levelname)s: %(message)s'))
             self._logger.addHandler(ch)
     #
-    logger = property(lambda self: self._logger, _set_logger)
+    # atribute logger
+    #
+    @property
+    def logger(self):
+        return self._logger
     #
     # attribute verbosity
     #
@@ -176,7 +181,6 @@ class RuntimeEnvironments(object):
 
 # set up environment variable and a default logger
 env = RuntimeEnvironments()
-env.logger = None
 
 
 ## import os
