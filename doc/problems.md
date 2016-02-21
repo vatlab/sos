@@ -129,4 +129,48 @@ sample_names=['a', 'b']
 The latter has the advantage that the right hand side are always valid python expressions.
 
 
+### A more pythonic approach?
 
+How about this
+
+```
+
+#[1]
+step_input = None
+
+# create a index for reference genome
+run('''
+STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_index
+''', output='STAR_index/chrName.txt')
+
+ref_index=output
+
+#[2]
+sample_type=['control', 'mutated']
+
+# align the reads to the reference genome
+input=cmd_input
+
+input_options = { group_by='single', for_each='sample_type' }
+
+depends = ref_index
+
+run('''
+STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn {}  \
+    --quantMode GeneCounts --outFileNamePrefix aligned/{}
+'''.format(input[0], _sample_type), output=['aligned/control.out.tab', 'aligned/mutated.out.tab'])
+
+#[3]
+# compare expression values
+R('''
+control.count = read.table('{0}')
+mutated.count = read.table('{1}')
+# normalize, compare, output etc, ignored.
+pdf('myfigure.pdf')
+# plot results
+dev.off()
+'''.format(input[0], input[1]), output='myfigure.pdf')
+
+```
+
+Or we can make at least the variable assignments valid python expressions.
