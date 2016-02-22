@@ -9,7 +9,7 @@
   - [Passing files of allowed type (option `filetype`)](#passing-files-of-allowed-type-option-filetype)
   - [Passing files in groups (option `group_by`)](#passing-files-in-groups-option-group_by)
   - [Attaching variables to input filenames (option `labels`)](#attaching-variables-to-input-filenames-option-labels)
-  - [Looping through values of a SoS variable (Option `for_each` and `nc_for_each`)](#looping-through-values-of-a-sos-variable-option-for_each-and-nc_for_each)
+  - [Looping through values of a SoS variable (Option `for_each`)](#looping-through-values-of-a-sos-variable-option-for_each)
   - [Conditional skip of a step (option `skip`)](#conditional-skip-of-a-step-option-skip)
 - [Dependent files (`depends` (or called `dependent`?))](#dependent-files-depends-or-called-dependent)
 - [Pre-input, pre-action and post-action variables](#pre-input-pre-action-and-post-action-variables)
@@ -52,6 +52,8 @@ key4=value4
 * `terminal`: this step is one of the **terminals** or **leafs** of the execution tree. This allows the later steps to be
    executed before the completion of this step. The step can have output but no other step should depend on these output
    files.
+* `nonconcurrent`: if the step action will be repeated (using input options `group_by` or `for_each`), the loop actions are assumed to be parallel executable.
+  If for some reason this assumption is wrong, you can set option `nonconcurrent` to let the actions execute sequentially.  
 * `blocking`: the step can only be executed by one instance of SoS. All other SoS instances will wait until one instance complete this step. This option should be used for actions such as the creation of index and downloading of resources.
 
 ### Input files (`input:`)
@@ -247,7 +249,7 @@ run('process ${input} with variables ${_mutated} and ${_sample_name}')
 
 but it is cleaner because you do not have to do this each time when `bam_files` is used.
 
-#### Looping through values of a SoS variable (Option `for_each` and `nc_for_each`)
+#### Looping through values of a SoS variable (Option `for_each`)
 
 Option `for_each` allows you to repeat step actions for each value of a variable. For example, if
 
@@ -315,7 +317,7 @@ The action will then be executed twice with parameters
 Finally, option `for_each` assumes that the steps can be executed independently and concurrently and will
 try to execute the actions in parallel if the script is executed in parallel mode (option `-j`). If for some
 reason this assumption is wrong and the step needs to be executed sequentially, you should use the
-`nc_for_each` option, which stands for `non-concurrent for_each`.
+`nonconcurrent` section option to execute loop actions sequentially.
 
 
 #### Conditional skip of a step (option `skip`)

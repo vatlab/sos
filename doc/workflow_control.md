@@ -48,7 +48,7 @@ the step will only be started with the completion of the previous step, and will
 workflow until it is completed. For a SoS script to be executely safely in parallel mode, you should
 
 1. Use option `no_input` if the step does not rely on any input. (e.g. action `download`)
-2. Use option `nc_for_each` if the looped actions cannot be executed in parallel.
+2. Use option `nonconcurrent` if the looped actions cannot be executed in parallel.
 4. Specify `input` and `depends` files for each step so that they would not be executed
   without needed input or dependent files.
 5. Specify `output` files so that SoS knows what files to expect from a step and wait for the

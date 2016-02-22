@@ -13,7 +13,7 @@
 - [Nested workflow](#nested-workflow)
 - [Other requirements of steps (solved)](#other-requirements-of-steps-solved)
 - [Handling of filenames with spaces and other special characters (solved)](#handling-of-filenames-with-spaces-and-other-special-characters-solved)
-- [Section option `concurrent` (decided to use input option `nc_for_each`)](#section-option-concurrent-decided-to-use-input-option-nc_for_each)
+- [Section option `concurrent` (decided to use section option `nonconcurrent`)](#section-option-concurrent-decided-to-use-section-option-nonconcurrent)
 - [Default parameter `--input` (decided to remove)](#default-parameter---input-decided-to-remove)
 - [variable definition (decided to use Python syntax)](#variable-definition-decided-to-use-python-syntax)
 - [A more pythonic approach?](#a-more-pythonic-approach)
@@ -148,7 +148,7 @@ open("${input}")
 should work correctly and it would be wrong if SoS mangles `${input}` during variable substitution.
 
 
-### Section option `concurrent` (decided to use input option `nc_for_each`)
+### Section option `concurrent` (decided to use section option `nonconcurrent`)
 
 There are some options to allow concurrent execution of step actions.
 
@@ -158,7 +158,8 @@ There are some options to allow concurrent execution of step actions.
 
 2. Do not use section option, but specify this in input parameters. E.g. `for_each` as
   concurrent for each, and `nc_for_each` for nonconcurrent for each. Perhaps 
-  `for_all` as nonconcurrent?
+  `for_all` as nonconcurrent? The problem is that `group_by` would also generate
+  multiple actions so we might also need `nc_group_by`.
 
 
 ### Default parameter `--input` (decided to remove)

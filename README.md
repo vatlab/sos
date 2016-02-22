@@ -274,13 +274,13 @@ sample_type=['control', 'mutated']
 # align the reads to the reference genome
 input:
 	fasta_files,
-	group_by='single', for_each='sample_type'
+	group_by='single', labels='sample_type'
 
 depends:
    ref_index
 
 run('''
-STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn ${input[0]}  \
+STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn ${input}  \
     --quantMode GeneCounts --outFileNamePrefix aligned/${_sample_type}
 ''', output=['aligned/control.out.tab', 'aligned/mutated.out.tab'])
 
@@ -297,12 +297,19 @@ dev.off()
 
 ```
 
-Here we save the output of the first step as `ref_index` and list it
-as a dependency of step 2. This will force step 2 to be executed after step
-1 during parallel execution mode. We also define a variable `sample_type` at the beginning of the step (you can also do this at
-the beginning of script) and specify an option `for_each` that runs the action for each of its
-values (with a temporary variable `_sample_type`). Now, if you execute the
-script with option `-j 2` (2 concurrent processes),
+Here we 
+
+1. Save the output of the first step as `ref_index` and list it as a dependency of step 2. This will force step 2 to be executed after step
+1 during parallel execution mode.
+2. Use option `group_by='single'` to pass input one by one to action. The
+action will be executed twice with `input` set to the first and second
+input file respectively.
+3. Define a variable `sample_type` and mark it as the labels for input
+files (option `labels`). This will generate a variable `_sample_type` for
+each input file so `_sample_type` will be `control` for the first input
+file, and `mutated` for the second.
+
+Now, if you execute the script with option `-j 2` (2 concurrent processes),
 
 ```bash
 sos run myanalysis.sos --input control1.fasta control2.fasta -j 2

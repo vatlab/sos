@@ -88,7 +88,7 @@ The following variables will be defined
 * After the processing of input files:
   * **`input`** (list of strings): selected input files. Depending on input options, `StepAction()` might be executed multiple times with different set of `input`. 
   * **file label variables** (list of strings): Labels of files in `input` if `labels` option is defined.
-  * **loop variables** (string): value of loop variables if `for_each` or `nc_for_loop` option is defined 
+  * **loop variables** (string): value of loop variables if `for_each` option is defined 
   * **pre-action variables** (string or list of string): variables defined after `input` and before `StepAction`. They will be evalulated with each `input`.
 * After the exeuction of `StepAction`
   * **step_output** (list of strings). All output files (if `StepAction` is executed mutliple times) are collected to a variable **step_output**. 
