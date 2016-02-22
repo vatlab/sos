@@ -203,6 +203,9 @@ STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_i
 input:
 	fasta_files
 
+depends:
+	'STAR_index/chrName.txt'
+
 run('''
 STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn ${input[0]}  \
     --quantMode GeneCounts --outFileNamePrefix aligned/control
@@ -228,6 +231,7 @@ Here we
 - Use **step option** ``no_input`` to tell SoS the first step does not need any input.
 - Use `output='STAR_index/chrName.txt'` to specify the expected output of step 1.
 - Use **input directive** to specify the input of step 2.
+- Use **depends directive** to let step 2 depend on the output of step 1
 - Use `${input[0]}` and `${input[1]` to use whatever files specified by the input directive. This is not required for this particular example but it makes the script a bit more general.
 - Use `output=['aligned/control.out.tab', 'aligned/mutated.out.tab']` to indicate the expected output of step 2.
 - Use ``${input[0]}`` and ``${input[1]}`` to present the input of step 3, which is the output of step 2. This effectively *connects* step 2 and step 3.
@@ -299,8 +303,8 @@ dev.off()
 
 Here we 
 
-1. Save the output of the first step as `ref_index` and list it as a dependency of step 2. This will force step 2 to be executed after step
-1 during parallel execution mode.
+1. Although not needed, save the output of the first step as `ref_index`
+and use the variable instead of filename as a dependency of step 2. 
 2. Use option `group_by='single'` to pass input one by one to action. The
 action will be executed twice with `input` set to the first and second
 input file respectively.
