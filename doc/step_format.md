@@ -9,9 +9,11 @@
   - [Passing files of allowed type (option `filetype`)](#passing-files-of-allowed-type-option-filetype)
   - [Passing files in groups (option `group_by`)](#passing-files-in-groups-option-group_by)
   - [Attaching variables to input filenames (option `labels`)](#attaching-variables-to-input-filenames-option-labels)
-  - [Looping through values of a SoS variable (Option `for_each`)](#looping-through-values-of-a-sos-variable-option-for_each)
+  - [Looping through values of a SoS variable (Option `for_each` and `nc_for_each`)](#looping-through-values-of-a-sos-variable-option-for_each-and-nc_for_each)
   - [Conditional skip of a step (option `skip`)](#conditional-skip-of-a-step-option-skip)
-- [Dependent files (`depends:` (`dependent`? `requirements`?)](#dependent-files-depends-dependent-requirements)
+- [Dependent files (`depends` (or called `dependent`?))](#dependent-files-depends-or-called-dependent)
+- [Pre-input, pre-action and post-action variables](#pre-input-pre-action-and-post-action-variables)
+- [step actions](#step-actions)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -51,60 +53,55 @@ key4=value4
 * `terminal`: this step is one of the **terminals** or **leafs** of the execution tree. This allows the later steps to be
    executed before the completion of this step. The step can have output but no other step should depend on these output
    files.
-* `concurrent`: actions of this step can be executed concurrently if it executes step actions repeated (input option `for_each`).
-   By default these actions are executed one by one.
 * `blocking`: the step can only be executed by one instance of SoS. All other SoS instances will wait until one instance complete this step. This option should be used for actions such as the creation of index and downloading of resources.
-
-* `input_alias`: a variable will be defined as the input files of the step before the step is executed.
-* `output_alias`: a variable will be defined as the output files of the step after the step is executed.
 
 ### Input files (`input:`)
 
 The input of SoS step follows the following rules:
 
-1. **the input of a SoS step is by default `${cmd_input}` for the first step and the output of the previous step otherwise**.
+1. **the input of a SoS step is by default the output of the previous step**.
 3. **step option `no_input` specifies that no input file is needed for the current step**
-4. **Input of a step can be specified by item `input`**, which would be intepreted as filenames from command line. Wildcard characters (`*` and `?`) are always expanded. White space and other unusual characters in filenames need to be quoted.
+4. **Input of a step can be specified by item `input`**, which should be a list or tupe of either 
+    filenames (quoted strings) or SoS variables (use names of variables).  Wildcard characters
+	(`*` and `?`) are always expanded. 
 
 Examples of input specification are as follows:
 
 ```
 input:
-	file1.fasta file2.fasta
+	'file1.fasta', 'file2.fasta'
 
 input:
-    file*.fasta filename\ with\ space.fasta
+    'file*.fasta', 'filename with space.fasta'
     
 input:
-    file1.txt
-    directory/file2.txt
+    'file*.txt',
+    'directory/file2.txt'
    
 input:
-    ${aligned_reads}
+    aligned_reads
 
 input:
-    ${aligned_reads}
-    ${reference_genome}
+    aligned_reads, reference_genome
 
 input:
-    ${aligned_reads[2:]}
+    aligned_reads[2:]
 
 ```
 
-SoS variables such as `${aligned_reads}` and `${reference_genome}` will be expanded to strings and re-evaluated as input files. For example,
-
-* `'file1.txt file2.txt'` will be translated to `file1.txt file2.txt` and recognized as two files 	`file1.txt` and `file2.txt`.
-* `['file1.txt', 'file2 .txt']` will be expanded to `file1.txt file2\ .txt` and recognized as two files `file1.txt` and `file2 .txt`. (Note the space in filename).
-* `'file*.txt'` will be transted to `file*.txt` and recognized as all files match pattern `file*.txt`.
+It does not matter if `aligned_reads` and `reference_genome` are lists of filenames. SoS will expand wildcard characters and
+flatten the lists to a single list of filenames.
 
 
 ### Input options 
 
-The input options of a SoS step control how input files are passed to the step action.
+The input options of a SoS step control how input files are passed to the step action. To should be appended to list
+of input files (`input: : options` is allowed if default input files are used).
 
 #### Passing input files all at once (default)
 
-This is the default action for a SoS step. That is to say, action in the following step will get all ``input_files`` as its input (variable `${input}`.
+This is the default action for a SoS step. That is to say, action in the following step will get all 
+`input_files` as its input (variable `input`) to step action.
 
 ```
 [step]
@@ -162,14 +159,14 @@ Option `group_by` pass input files in groups. For example,
 ```
 [step]
 input:
-	file1 file2 file3 file4
+	'file1', 'file2', 'file3', 'file4'
 	: group_by='single'
 
 run('echo ${input}')
 
 ```
 
-will execute `run('echo ${input}')` four times, with `${input}` set to `['file1']`, `['file2']`, `['file3']` and `['file4']` respectively.
+will execute `run('echo ${input}')` four times, with `input` set to `['file1']`, `['file2']`, `['file3']` and `['file4']` respectively.
 
 Other values of `group_by` includes
 
@@ -182,15 +179,18 @@ for four input files. Obviously, the output of the `pairs` cases depends on the 
 ```
 [step]
 input:
-	${sorted([x for x in cmd_input if '_R1_' in x])}
-	${sorted([x for x in cmd_input if '_R2_' in x])}
+	sorted([x for x in fastq_files if '_R1_' in x]),
+	sorted([x for x in fastq_files if '_R2_' in x])
 	: group_by='pairs'
 
 run('echo ${input}')
 
 ```
 
-will take all input files and sort them by `_R1_` and `_R2_` and by filename. For example, four files `FEB_R1_1.txt FEB_R2_2.txt FEB_R1_2.txt FEB_R2_1.txt` will be sorted as `FEB_R1_1.txt FEB_R1_2.txt FEB_R2_1.txt FEB_R2_2.txt` and be sent to step action in two groups `['FEB_R1_1.txt', 'FEB_R2_1.txt']` and `['FEB_R1_2.txt', 'FEB_R2_2.txt']`.
+will take all input files and sort them by `_R1_` and `_R2_` and by filename. For example, four files
+`FEB_R1_1.txt FEB_R2_2.txt FEB_R1_2.txt FEB_R2_1.txt` will be sorted as
+`FEB_R1_1.txt FEB_R1_2.txt FEB_R2_1.txt FEB_R2_2.txt` and be sent to step
+action in two groups `['FEB_R1_1.txt', 'FEB_R2_1.txt']` and `['FEB_R1_2.txt', 'FEB_R2_2.txt']`.
 
 #### Attaching variables to input filenames (option `labels`)
 
@@ -203,8 +203,8 @@ bam_files = ['case/A1.bam', 'case/A2.bam', 'ctrl/A1.bam', 'ctrl/A2.bam']
 You might want to define some derived variables such as
 
 ```python
-mutated = ${[x.split('/')[0] for x in bam_files]}
-sample_name = ${[os.path.basename(x).split('.')[0] for x in bam_files]}
+mutated = [x.split('/')[0] for x in bam_files]
+sample_name = [os.path.basename(x).split('.')[0] for x in bam_files]
 ```
 
 with values
@@ -220,7 +220,7 @@ Then, if you are processing these files individually, or in pairs, you can attac
 ```
 [step]
 input:
-	${bam_files}
+	bam_files
 	: group_by='pairs', labels=['mutated', 'sample_name']
 
 run('process ${input} with variables ${_mutated} and ${_sample_name}')
@@ -229,27 +229,27 @@ run('process ${input} with variables ${_mutated} and ${_sample_name}')
 
 Here `bam_files` will be passed in pairs with file labels set to variables with `_` prefixed to their names. More specifically,
 
-* Group1: `${input} = ['case/A1.bam', 'ctrl/A1.bam']`, `${_mutated}=['case', 'ctrl']`, `${_sample_name}=['A1', 'A1']`
-* Group2: `${input} = ['case/A2.bam', 'ctrl/A2.bam']`, `${_mutated}=['case', 'ctrl']`, `${_sample_name}=['A2', 'A2']`
+* Group1: `input = ['case/A1.bam', 'ctrl/A1.bam']`, `_mutated=['case', 'ctrl']`, `_sample_name=['A1', 'A1']`
+* Group2: `input = ['case/A2.bam', 'ctrl/A2.bam']`, `_mutated=['case', 'ctrl']`, `_sample_name=['A2', 'A2']`
 
 This is equivalent to
 
 ```
 [step]
 input:
-	${bam_files}
+	bam_files
 	: group_by='pairs'
 
-_mutated = ${[x.split('/')[0] for x in input]}
-_sample_name = ${[os.path.basename(x).split('.')[0] for x in input]}
+_mutated = [x.split('/')[0] for x in input]
+_sample_name = [os.path.basename(x).split('.')[0] for x in input]
 
 run('process ${input} with variables ${_mutated} and ${_sample_name}')
 
 ```
 
-but it is cleaner because you do not have to do this each time when `$bam_files}` is used.
+but it is cleaner because you do not have to do this each time when `bam_files` is used.
 
-#### Looping through values of a SoS variable (Option `for_each`)
+#### Looping through values of a SoS variable (Option `for_each` and `nc_for_each`)
 
 Option `for_each` allows you to repeat step actions for each value of a variable. For example, if
 
@@ -262,14 +262,14 @@ You can repeat the analysis with each method using
 ```
 [step]
 input:
-	${bam_files}
+	bam_files
 	: for_each='method'
 
 run('Analyze ${input} with method ${_method}')
 
 ```
 
-The step action will be executed twice with value of parameter `${_method}` set to `'method1'` and `'method2'` respectively.
+The step action will be executed twice with value of parameter `_method` set to `'method1'` and `'method2'` respectively.
 
 Nested loops are also allowed. For example, if
 
@@ -283,7 +283,7 @@ You can execute
 ```
 [step]
 input:
-	${bam_files}
+	bam_files
 	: for_each=['method', 'parameter']
 
 run('Analyze ${input} with method ${_method} and parameter ${_parameter}')
@@ -297,12 +297,12 @@ with parameters
 * `_methods='method2', _parameter='-5'`
 * `_methods='method2', _parameter='-9'`
 
-Finally, if you would like to loop the action with several parameters, you can put them into a the same level using
+If you would like to loop the action with several parameters, you can put them into a the same level using
 
 ```
 [step]
 input:
-	${bam_files}
+	bam_files
 	: for_each='method,parameter'
 
 run('Analyze ${input} with method ${_method} and parameter ${_parameter}')
@@ -314,6 +314,12 @@ The action will then be executed twice with parameters
 * `_methods='method1', _parameter='-5'`
 * `_methods='method2', _parameter='-9'`
 
+Finally, option `for_each` assumes that the steps can be executed independently and concurrently and will
+try to execute the actions in parallel if the script is executed in parallel mode (option `-j`). If for some
+reason this assumption is wrong and the step needs to be executed sequentially, you should use the
+`nc_for_each` option, which stands for `non-concurrent for_each`.
+
+
 #### Conditional skip of a step (option `skip`)
 
 Option `skip=True` will make SoS skip the execution of the current step. Using `skip=True` is not very useful so this option is often used with a SoS variable. For example
@@ -321,35 +327,35 @@ Option `skip=True` will make SoS skip the execution of the current step. Using `
 ```python
 [10]
 input:
-	${fasta_files}
-	: skip=${len(fasta_failes) == 1}
+	fasta_files
+	: skip=len(fasta_failes) == 1
 	
 run('command to merge multiple fasta files.')
 ```
 
 Here the `skip` option gets the value of `True` if there is only one input file. The command to merge multiple input files would then be skipped.
 
-One important detail of this option is that the step is actually **executed with a null action** that passes input files to output files so this step still yields its `${output}`. In comparison, a step is completely ignored if it has step option `skip`. The consequence of this rule for this particular example is that its next step would get a merged file if there are multiple input files, or the original file if there is only a single input file.
+One important detail of this option is that the step is actually **executed with a null action** that passes input files to output files
+so this step still yields its `step_output`. In comparison, a step is completely ignored if it has step option `skip`. The consequence
+of this rule for this particular example is that its next step would get a merged file if there are multiple input files, or
+the original file if there is only a single input file.
 
-### Dependent files (`depends:` (`dependent`? `requirements`?)
+### Dependent files (`depends` (or called `dependent`?))
 
 This item specifies files that are required for the step. Although not required, it is a good practice to list resource files and other dependency files for a particular step. For example
 
-```
+```python
 [10]
 input:
-	${fasta_files}
+	fasta_files
 	
 depends:
-	${reference_seq}
-	
-Question: is there a need to test other requirements such as the value of environment variable, existence of other tools, content of file etc?
-
+	reference_seq
+```
 
 ### Pre-input, pre-action and post-action variables
 
-* Pre-input variables are defined before `input:` and evaluated before filenames are parsed. They are usually global variables that can be 
-  defined globally but are put within a step for readability purposes. 
+* Pre-input variables are defined before `input:` and evaluated before filenames are parsed.
 
 * Pre-action variables are defined between `input:` and step action and evaluated (probably repeatedly) before the executation of 
   step action.

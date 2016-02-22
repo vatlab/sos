@@ -2,16 +2,13 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [format of SoS scripts](#format-of-sos-scripts)
-  - [shebang and file format lines](#shebang-and-file-format-lines)
-  - [Workflow descriptions](#workflow-descriptions)
-  - [Global variables](#global-variables)
-  - [Command line arguments](#command-line-arguments)
-  - [SoS Steps](#sos-steps)
+- [shebang and file format lines](#shebang-and-file-format-lines)
+- [Workflow descriptions](#workflow-descriptions)
+- [Global variables](#global-variables)
+- [Command line arguments](#command-line-arguments)
+- [SoS Steps](#sos-steps)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
-## format of SoS scripts
 
 Although many items can be ignored, a typical SoS script has the following format:
 
@@ -19,7 +16,7 @@ Although many items can be ignored, a typical SoS script has the following forma
 #!/usr/bin/env sos-runner
 #fileformat=SOS1.0
 #
-# Other overal comments such as
+# Other overall comments such as
 #    License
 #    change log
 #
@@ -39,12 +36,12 @@ var1=value1
 var2=value2
 ...
 
-[default]
+[parameters]
+# comment 1
 par1=default1
-   comment1
    
+# comment 2
 par2=default2
-   comment2
 
 [step1]
 step1 input, variables, and actions
@@ -75,14 +72,14 @@ in the first line. These descriptions would be displayed in the output of comman
 ### Global variables
 
 Variables defined before the first section will be evaluated before the execution of the workflow,
-but after the determination of variables from command line arguments.
+but after the determination of variables from command line arguments. These are usually constant
+variables such as location of various files.
 
 ### Command line arguments
 
-Although sections can be arranged in any other, a secion named `[default]` is usually the first
+Although sections can be arranged in any other, a secion named `[parameters]` is usually the first
 section of a SoS script. This section defined command line arguments of the script, their default
 values and descriptions. The variables are defined in the format of
-
 
 ```
 [parameters]
@@ -103,7 +100,6 @@ The name of sections determines the workflow(s) they belong and the order at whi
 they are executed. Please refer to [workflow sections](workflow_sections.md) for details.
 
 Although most of the items are options, a complete SoS step follows the following format:
-
 
 ```
 [name_step: option1, option2, ...]
@@ -140,4 +136,4 @@ where
 * **pre-action variables** are defined before the action is executed.
 * **post-action variables** are defined after the action is executed
 
-Please refer to [step format](step_format.md) for details of these items.
+Please refer to [step format](step_format.md) for details about these items.

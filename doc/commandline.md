@@ -36,7 +36,7 @@ to get detailed description of a particular subcommand.
 ### subcommand `run` (see also [`sos-runner`](#command-sos-runner))
 
 ```bash
-sos run script [workflow[:steps]] [workflow-options] [-j NUM_JOBS]
+sos run script [workflow[:steps]] [workflow-options] [-h] [-j NUM_JOBS]
 ```
 
 Execute specified `steps` of `workflow` defined in `script` with specified `workflow-options`.
@@ -47,6 +47,7 @@ Execute specified `steps` of `workflow` defined in `script` with specified `work
 * `workflow-options`: Options defined in the `[default]` section of `script`. variables with a text default value accepts a string input. variables with a list default value (e.g. `names=${[]}`)  accepts a list of strings.
 * `-j`: Maximum number of concurrent jobs. A SoS script is by default executed sequentially (`-j 1`) but can have mutliple
   concurrent jobs if a positive number is specified. Please see [work flow control](workflow_control.md) in detail.
+* `-h`: Show usage of command `sos run`.
 
 The list of acceptable workflow options for `script` can be displayed using command
 
@@ -56,7 +57,7 @@ sos show script
 ### subcommand `show`
 
 ```bash
-sos show script [workflow:steps] 
+sos show script [workflow:steps] [-h]
 ```
 
 Display details of `workflow` defined in `script`, including command line options defined by the `[default]` section of `script`.
@@ -64,13 +65,14 @@ Display details of `workflow` defined in `script`, including command line option
 ### subcommand `export` 
 
 ```bash
-sos export script [workflow:steps] [workflow-options] [-d OUTPUT_DIR] [-f]
+sos export script [workflow:steps] [workflow-options] [-d OUTPUT_DIR] [-f] [-h]
 ```
 
 Export `steps` of `workflow` defined in `script` to `script_dir`. This command will write `workflow_step.ext` for each `step` exported with appropriate file extension `ext` (e.g. `.R` for [R](https://www.r-project.org/) script) and `workflow.sh` to execute all the steps. Options of this command include
 
 *  `-d` (output directory): directory to which scripts are written. Default to current directory.
 *  `-f` (force): overwrite existing files with different content silently. If unspecified, the command will fail with an error message in such cases. 
+* `-h` (help): display help message.
 
 Please refere to [the export feature](export.md) for detailed examples of this command.
 
@@ -99,11 +101,9 @@ is equivalent to
 sos run script
 ```
 
-This allows a SoS script to be executed directory if it has a shebang line
+This allows a SoS script to be executed directly if it is executable with shebang line
 
 ```
 #!/usr/bin/env sos-runner
 ```
-
-and has appropriate permissions.
 

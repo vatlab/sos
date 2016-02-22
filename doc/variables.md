@@ -4,18 +4,17 @@
 
 - [SoS Variables](#sos-variables)
   - [Reserved and constant variables](#reserved-and-constant-variables)
-  - [Default command line option (might remove for consistency)](#default-command-line-option-might-remove-for-consistency)
   - [Command line options](#command-line-options)
   - [Runtime variables](#runtime-variables)
 - [Python Expression with SoS variables](#python-expression-with-sos-variables)
-- [Creation of new variables](#creation-of-new-variables)
 - [Use of SoS variables and expressions (need reconsideration)](#use-of-sos-variables-and-expressions-need-reconsideration)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## SoS Variables
 
-SoS variables are python variables associated with the execution of SoS scripts. They are **case sensitive** and can only be **string** or **list of strings**. They can be defined almost anywhere in a SoS script.
+SoS variables are case-sensitive python variables associated with the execution of SoS scripts. For simplicity,
+they can only be **string** or **list of strings**. They can be defined almost anywhere in a SoS script.
 
 ### Reserved and constant variables
 
@@ -25,10 +24,10 @@ SoS variables are python variables associated with the execution of SoS scripts.
 
 ### Command line options
 
-SoS looks for a `[default]` section for command line options and their default arguments. The format of each variable is 
+SoS looks for a `[parameters]` section for command line options and their default arguments. The format of each variable is 
 ```
+# comment
 var_name=default_value
-    description
 ```
 
 The default value can be string or list of string, which has to be returned as result of an expression. For example
@@ -46,7 +45,7 @@ sample_names=[]
 ```
 
 defines a variable `sample_name` with default value `[]`. The comments before variable definition is meaningful
-because they will appear in the help message of the script (`sos view script`).
+because they will appear in the help message of the script (`sos show script`).
 
 The values of these parameter can be input from command line with `gatk_path` accept a single value, and `sample_name` accept a list of values. E.g.
 
@@ -88,9 +87,9 @@ The following variables will be defined
 * Before the processing of input files
   * **pre-input variables** (string or list of strings): variables defined before `input:`.
 * After the processing of input files:
-  * **`${input}`** (list of strings): selected input files. Depending on emit options, `StepAction()` might be executed multiple times with different set of `input`. 
-  * **file labels** (list of strings): Labels of files in `input` if `labels` option is defined.
-  * **loop variables** (string): value of loop variables if `for_each` option is defined 
+  * **`input`** (list of strings): selected input files. Depending on input options, `StepAction()` might be executed multiple times with different set of `input`. 
+  * **file label variables** (list of strings): Labels of files in `input` if `labels` option is defined.
+  * **loop variables** (string): value of loop variables if `for_each` or `nc_for_loop` option is defined 
   * **pre-action variables** (string or list of string): variables defined after `input` and before `StepAction`. They will be evalulated with each `input`.
 * After the exeuction of `StepAction`
   * **step_output** (list of strings). All output files (if `StepAction` is executed mutliple times) are collected to a variable **step_output**. 
@@ -101,7 +100,8 @@ The following variables will be defined
 
 ## Python Expression with SoS variables
 
-**Any python expression involving any SoS variables and defined functions can be used to define variables**, **expressions within `${}` will be evaluated in actions**. A sequence result will be converted to list of strings and all other result will be converted to string. For example
+**Any python expression involving any SoS variables and defined functions can be used to define variables**.
+A sequence result will be converted to list of strings and all other result will be converted to string. For example
 
 * `input[0]` gets the first input file
 * `os.path.basename(input[0])` get the base name of input file
@@ -114,9 +114,10 @@ The following variables will be defined
 
 Note that SoS makes available modules `glob`, `os`, `sys`, and more modules can be imported with workflow action `import_module`.
 
-Because Python expressions are very expressive, the possibility here is almost endless and provide SoS a great source of power and flexibility.
+Because Python expressions are very expressive, the possibility here is almost endless and provide SoS a great source of power
+and flexibility.
 
-## Creation of new variables
+## Use of SoS variables and expressions (need reconsideration)
 
 A new variable can be created with 
 
@@ -137,17 +138,29 @@ a=input[0] + '.bai'
 
 assigns value of `input[0]` plus `'.bai'` to vaiable `a`.
 
-
-## Use of SoS variables and expressions (need reconsideration)
-
-SoS variables (and their expressions) are used slightly differently in different places, but the rules are largely intuitive.
-
-1. In `input:` constant strings (quoted) and variables can be used. Nested list will be flattened. 
-2. In step actions and other places, expressions within `${}` will be evaluated and replaced with its string representation. List of strings will be returned as string joint by a space. 
-
-That is to say
+SoS variables and their expressions can also be used for text substitution in step actions. To differntiate 
+expressions from other parts of the text, the expression should be quoted between `${` and `}`. Also, if the 
+result of the expression is a list, it will be converted to a string by joining the strings with a single space.
+Therefore,
 
 * `${variable}` will be quivalent to `${variable[0]}` if it is a list of length  1. 
-* `run('''process ${files}''')` will be translated to `run('''process file1.txt file2.txt''')` if variable `files` has value `['file1.txt', 'file2.txt']`. This works most of the time but might fail if filename contains special characters. This can be avoided by using expressions such as `run('''process '${files[0]}' '${files[1]}'''')`.
+* `run('''process ${files}''')` will be translated to `run('''process file1.txt file2.txt''')` if variable 
+  `files` has value `['file1.txt', 'file2.txt']`. This works most of the time but might fail if filename contains
+  special characters. This can be avoided by using expressions such as `run('''process '${files[0]}' '${files[1]}'''')`.
 
 
+If your script is expected to have patterns of `${variable}` that should not be interpreted by SoS, you can
+define
+
+```python
+_sos_quotation=None
+```
+
+to disable variable intepretation or something like
+
+```python
+_sos_quotation=['[[', ']]']
+```
+
+to use an alternative quoting style ('[[expression]]' in this example). The setting is valid
+for the current step only.

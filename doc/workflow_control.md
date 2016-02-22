@@ -36,8 +36,7 @@ up to the specified number of concurrent processes. There are three sources of c
 	`no_input` and `starting`), these branches will be executed in parallel.
 
 2. **concurrent actions of single steps**: If a single SoS step executes actions repeatedly (with input option 
-	`for_each`) and can be executed concurrently (with step option `concurrent`), these actions will be 
-	executed in parallel.
+	`for_each`), these actions will be executed in parallel.
 
 3. **no wait** execution of sequential steps: If a step specifies output files, SoS will not wait for the
    completion of the step, execute steps with explicit input (or `no_input`) and proceed until the output file
@@ -49,9 +48,7 @@ the step will only be started with the completion of the previous step, and will
 workflow until it is completed. For a SoS script to be executely safely in parallel mode, you should
 
 1. Use option `no_input` if the step does not rely on any input. (e.g. action `download`)
-2. Use option `concurrent` if the step contains loop (input parameter `for_each`) and the looped
-  actions can be executed in parallel (e.g. processing each input files).
-3. Use option `blocking` if the step should not be run by multiple processes. (e.g. action `download`)
+2. Use option `nc_for_each` if the looped actions cannot be executed in parallel.
 4. Specify `input` and `depends` files for each step so that they would not be executed
   without needed input or dependent files.
 5. Specify `output` files so that SoS knows what files to expect from a step and wait for the

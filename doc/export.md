@@ -28,22 +28,34 @@ For example, for the SoS script defined in the [tutorial](../README.md),
 # to the reference genome and compare the expression values
 # of the samples at genes A, B and C.
 
+
+[parameters]
+# Two input files in .fasta formats. The first one for control sample
+# and the second one for mutated sample.
+fasta_files=['control.fasta', 'mutated.fasta']
+
 [1: no_input]
 # create a index for reference genome
 run('''
 STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_index
 ''', output='STAR_index/chrName.txt')
+
+ref_index=step_output
     
 [2]
+sample_type=['control', 'mutated']
+
 # align the reads to the reference genome
 input:
-	${cmd_input}
+	fasta_files
+	: group_by='single', for_each='sample_type'
+
+depends:
+   ref_index
 
 run('''
 STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn ${input[0]}  \
-    --quantMode GeneCounts --outFileNamePrefix aligned/control
-STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn ${input[1]}  \
-    --quantMode GeneCounts --outFileNamePrefix aligned/mutated
+    --quantMode GeneCounts --outFileNamePrefix aligned/${_sample_type}
 ''', output=['aligned/control.out.tab', 'aligned/mutated.out.tab'])
 
 [3]
@@ -56,7 +68,6 @@ pdf('myfigure.pdf')
 # plot results
 dev.off()
 ''', output='myfigure.pdf')
-
 ```
 
 Running command
@@ -75,12 +86,14 @@ export/myscript.sh
 ```
 with contents
 
+export/default_1.sh
 ```
 !/usr/bin/env bash
 # index reference genome
 STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_index
 ```
 
+export/default_2.sh
 ```
 !/usr/bin/env bash
 STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn case.fasta \
@@ -89,6 +102,7 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn ct
     --quantMode GeneCounts --outFileNamePrefix aligned/mutated
 ```
 
+export/default_3.R
 ```
 control.count = read.table('aligned/control.out.tab')
 mutated.count = read.table('aligned/mutated.out.tab')
@@ -100,6 +114,7 @@ dev.off()
 
 and
 
+export/myscript.sh
 ```
 #!/usr/bin/env bash
 
@@ -146,12 +161,14 @@ export/myscript.sh
 ```
 with contents
 
+export/default_1.sh
 ```
 !/usr/bin/env bash
 # index reference genome
 STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_index
 ```
 
+export/default_2.sh
 ```
 !/usr/bin/env bash
 
@@ -161,6 +178,7 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn $2
     --quantMode GeneCounts --outFileNamePrefix aligned/mutated
 ```
 
+export/default_3.R
 ```
 args <- commandArgs()
 
@@ -174,6 +192,7 @@ dev.off()
 
 and
 
+export/myscript.sh
 ```
 #!/usr/bin/env bash
 

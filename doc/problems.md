@@ -2,33 +2,32 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [Problems and ideas](#problems-and-ideas)
-  - [Support for docker](#support-for-docker)
-  - [Runtime control](#runtime-control)
-  - [Resource control](#resource-control)
-  - [Libraries](#libraries)
-  - [Nested workflow](#nested-workflow)
-  - [Requirement of steps (solved)](#requirement-of-steps-solved)
-  - [Handling of filenames with spaces and other special characters (solved)](#handling-of-filenames-with-spaces-and-other-special-characters-solved)
-  - [Section option `concurrent`](#section-option-concurrent)
-  - [Default parameter `--input`](#default-parameter---input)
-  - [variable definition (decided to use Python syntax)](#variable-definition-decided-to-use-python-syntax)
-  - [A more pythonic approach?](#a-more-pythonic-approach)
+- [Support for docker](#support-for-docker)
+- [Runtime control](#runtime-control)
+- [Resource control](#resource-control)
+- [Libraries](#libraries)
+- [Nested workflow](#nested-workflow)
+- [Requirement of steps (solved)](#requirement-of-steps-solved)
+- [Handling of filenames with spaces and other special characters (solved)](#handling-of-filenames-with-spaces-and-other-special-characters-solved)
+- [Section option `concurrent` (decided to use input option `nc_for_each`)](#section-option-concurrent-decided-to-use-input-option-nc_for_each)
+- [Default parameter `--input` (decided to remove)](#default-parameter---input-decided-to-remove)
+- [variable definition (decided to use Python syntax)](#variable-definition-decided-to-use-python-syntax)
+- [A more pythonic approach?](#a-more-pythonic-approach)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## Problems and ideas
 
 ### Support for docker 
 
+What sure what is involved/required to support docker.
+
 ### Runtime control
 
-Limiting the files that the directory can the step can write to??? 
-
+Limiting the files that the directory the step action can write to? 
 
 ### Resource control
 
-Limiting or monitoring the RAM and CPU (cores) the step uses???
+Limiting or monitoring the RAM and CPU (cores) the step uses?
 
 
 ### Libraries
@@ -76,6 +75,12 @@ Users should use
 run(''' cat '${input}' ''')
 ```
 
+or
+
+```python
+run(''' cat ${shlex.quote(input[0])} ''')
+```
+
 if they expect filenames with special characters.
 
 On the other hand,
@@ -87,20 +92,21 @@ open("${input}")
 ''')
 ```
 
-shoudl work correctly and it would be wrong if SoS mangles `${input}` during variable substitution.
+should work correctly and it would be wrong if SoS mangles `${input}` during variable substitution.
 
 
-### Section option `concurrent`
+### Section option `concurrent` (decided to use input option `nc_for_each`)
 
-There are some other options to allow concurrent execution of step actions.
+There are some options to allow concurrent execution of step actions.
 
-1. Default to concurrent but allow option `nonconcurrent`, because the actions should be safe 
+1. Default to concurrent but allow section option `nonconcurrent`, because the actions should be safe 
   to execute in parallel most of the time (processing input files one by one or in pair, or
   with different options).
 
 2. Do not use section option, but specify this in input parameters. E.g. `for_each` as
   concurrent for each, and `nc_for_each` for nonconcurrent for each. Perhaps 
   `for_all` as nonconcurrent?
+
 
 ### Default parameter `--input` (decided to remove)
 
@@ -132,5 +138,14 @@ which is more consistent because the right hand side are always valid python exp
 ### A more pythonic approach?
 
 Currently there are pices of the script that is not python, most notably the input
-specification. It might make sense to turn them all to python syntax.
+specification. It might make sense to turn them all to python syntax. Even wrap everything
+to huge function calls, such as
+
+```
+step(index=10,
+	input=...,
+	requires=...,
+	action=...,
+)
+```
 

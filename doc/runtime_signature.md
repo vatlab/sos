@@ -2,14 +2,12 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [Runtime signatures of SoS](#runtime-signatures-of-sos)
-  - [Content of runtime signature](#content-of-runtime-signature)
-  - [Storage of runtime signature](#storage-of-runtime-signature)
-  - [Portability of runtime signatures: discouraged](#portability-of-runtime-signatures-discouraged)
+- [Content of runtime signature](#content-of-runtime-signature)
+- [Storage of runtime signature](#storage-of-runtime-signature)
+- [Portability of runtime signatures: discouraged](#portability-of-runtime-signatures-discouraged)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## Runtime signatures of SoS
 
 ### Content of runtime signature
 
@@ -19,8 +17,6 @@ Runtime signature of a SoS step consists of
 2. MD5 signature of all input files
 3. MD5 signature of all dependent files
 4. MD5 signature of all output files
-5. (For information only): standard output from command execution
-6. (For information only): standard error output from command execution
 
 The completion of a SoS step will create a step signature. The step will be ignored if the signature is not changed, or re-run if the signature is changed when it is executed the second time.
 
