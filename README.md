@@ -273,8 +273,8 @@ sample_type=['control', 'mutated']
 
 # align the reads to the reference genome
 input:
-	fasta_files
-	: group_by='single', for_each='sample_type'
+	fasta_files,
+	group_by='single', for_each='sample_type'
 
 depends:
    ref_index

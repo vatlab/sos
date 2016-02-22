@@ -109,8 +109,7 @@ Although most of the items are options, a complete SoS step follows the followin
 key0=value0
 
 input:
-    input files
-    : emit options
+    input files, opt1=value1, opt2=value2
 
 depends:
     dependent files

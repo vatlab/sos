@@ -66,8 +66,7 @@ For a SoS step in the following form
 pre-input-variable
 
 input:
-	input_files
-	: emit options
+	input_files, opt1=value1, opt2=value2
 
 depends:
     dependent_files

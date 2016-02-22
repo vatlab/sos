@@ -27,8 +27,7 @@ Although only a *step action* is required for a SoS step, a complete SoS step ca
 key0=value0
 
 input:
-    input files
-    : input options
+    input files, opt1=value1, opt2=value2
 
 depends:
     dependent files
@@ -95,8 +94,8 @@ flatten the lists to a single list of filenames.
 
 ### Input options 
 
-The input options of a SoS step control how input files are passed to the step action. To should be appended to list
-of input files (`input: : options` is allowed if default input files are used).
+The input options of a SoS step control how input files are passed to the step action. To should be keyword arguments appended to list
+of input files.
 
 #### Passing input files all at once (default)
 
@@ -121,8 +120,7 @@ Option `filetype` accepts one or more filetypes (file extension with `.`) or a l
 ```
 [step]
 input:
-	input_files
-	: filetype='.fastq'
+	input_files, filetype='.fastq'
 	
 ```
 
@@ -132,8 +130,8 @@ passes only files with extension `.fastq`.
 ```
 [step]
 input:
-	input_files
-	: filetype=['.fastq', '.fastq.gz']
+	input_files,
+	filetype=['.fastq', '.fastq.gz']
 	
 ```
 
@@ -144,8 +142,8 @@ passes only files with extension `.fastq` or `.fastq.gz`.
 ```
 [step]
 input:
-	input_files
-	: filetype=lambda x: open(x).readline().startswith('##fileformat=VCF4.1')
+	input_files,
+	filetype=lambda x: open(x).readline().startswith('##fileformat=VCF4.1')
 	
 ```
 
@@ -159,8 +157,8 @@ Option `group_by` pass input files in groups. For example,
 ```
 [step]
 input:
-	'file1', 'file2', 'file3', 'file4'
-	: group_by='single'
+	'file1', 'file2', 'file3', 'file4',
+	group_by='single'
 
 run('echo ${input}')
 
@@ -180,8 +178,8 @@ for four input files. Obviously, the output of the `pairs` cases depends on the 
 [step]
 input:
 	sorted([x for x in fastq_files if '_R1_' in x]),
-	sorted([x for x in fastq_files if '_R2_' in x])
-	: group_by='pairs'
+	sorted([x for x in fastq_files if '_R2_' in x]),
+	group_by='pairs'
 
 run('echo ${input}')
 
@@ -220,8 +218,8 @@ Then, if you are processing these files individually, or in pairs, you can attac
 ```
 [step]
 input:
-	bam_files
-	: group_by='pairs', labels=['mutated', 'sample_name']
+	bam_files,
+	group_by='pairs', labels=['mutated', 'sample_name']
 
 run('process ${input} with variables ${_mutated} and ${_sample_name}')
 
@@ -237,8 +235,8 @@ This is equivalent to
 ```
 [step]
 input:
-	bam_files
-	: group_by='pairs'
+	bam_files,
+	group_by='pairs'
 
 _mutated = [x.split('/')[0] for x in input]
 _sample_name = [os.path.basename(x).split('.')[0] for x in input]
@@ -262,8 +260,8 @@ You can repeat the analysis with each method using
 ```
 [step]
 input:
-	bam_files
-	: for_each='method'
+	bam_files,
+	for_each='method'
 
 run('Analyze ${input} with method ${_method}')
 
@@ -283,8 +281,8 @@ You can execute
 ```
 [step]
 input:
-	bam_files
-	: for_each=['method', 'parameter']
+	bam_files,
+	for_each=['method', 'parameter']
 
 run('Analyze ${input} with method ${_method} and parameter ${_parameter}')
 
@@ -302,8 +300,8 @@ If you would like to loop the action with several parameters, you can put them i
 ```
 [step]
 input:
-	bam_files
-	: for_each='method,parameter'
+	bam_files,
+	for_each='method,parameter'
 
 run('Analyze ${input} with method ${_method} and parameter ${_parameter}')
 
@@ -327,8 +325,8 @@ Option `skip=True` will make SoS skip the execution of the current step. Using `
 ```python
 [10]
 input:
-	fasta_files
-	: skip=len(fasta_failes) == 1
+	fasta_files,
+	skip=len(fasta_failes) == 1
 	
 run('command to merge multiple fasta files.')
 ```
