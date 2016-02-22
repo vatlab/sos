@@ -321,10 +321,12 @@ We have showed you four versions of the same SoS script, each using more feature
 
 ## Limitations
 
-SoS is essentially a tool to compose and execute commands and scripts. It uses workflow variables (and their derived forms) and string substitution to create scripts (from user-provided templates) and and execute them with their own intepreters. Therefore, 
+SoS is essentially a tool to compose and execute commands and scripts. It uses workflow variables (and their derived forms) and string substitution to create scripts (from user-provided templates) and execute them with their own intepreters. Therefore, 
 
 * SoS only supports command line tools. There is no plan to extend it for interactive or GUI usages.
-* SoS does not understand the underlying tools and scripts and have no control over exactly what they do. Incorrect use of workflow variables can often result in non-executable scripts.
+* SoS does not understand the underlying tools and scripts and have no
+control over exactly what they do. Incorrect use of workflow variables
+might result in non-executable scripts.
 * SoS workflow system is largely file based (although you can check environments such as environmental variables through SoS variables). It does not support features such as piping between steps (neither do systems such as CWL support it).
 
 ## Summary
