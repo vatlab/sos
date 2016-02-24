@@ -223,25 +223,25 @@ There can be a need for dependency rules. For example, if a bam index file is ne
 the bam file exists, then `samtools index` would be automatically called. This does not sound like a good
 idea because `samtools index` can always be put as a regular part of the workflow. On the other hand, adding
 such rules can help if these common steps are not always needed, or needed for multiple steps of the pipeline.
-I am not sure how useful such magic is. Implementation wise it might not be too difficult, something syntax
+I am not sure how useful such magic is. Implementation wise it might not be too difficult, some syntax
 like the following could be used
 
 ```
-# name without index so this step would be called only if needed.
-
-# pattern of output is defined as section option
+# section name does not have index so it would be called if and only if the 
+# step is needed. pattern of output is defined as section option.
 [ index_bam : output=*.bam.bai]
 
 # input is defined from output
 input = output[0][:-4]
 
-# the action is defined as usual.
-run('samtools index ${input}', output=input[0] + '.bai')
+# the action is defined as usual, but output does not need to be defined
+# again.
+run('samtools index ${input}')
 
 ```
 
-could potentially work. This allows gnumake style definition of pipelines that seems to contradict 
-the design of SoS.
+could potentially work. This allows gnumake style definition of pipelines that can be used to construct complete workflows. It seems to contradict 
+the design of SoS though.
 
 ### Session info?
 
