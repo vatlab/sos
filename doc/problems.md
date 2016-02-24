@@ -247,3 +247,31 @@ the design of SoS though.
 
 There is a need to save the version of program or packages of R ...
 
+
+### Moving parameters of action to section level
+
+Currently we have
+
+```
+[step]
+
+action( ... 
+	output= ...,
+	wordir= ..., 
+	resource= ...,
+)
+```
+
+It might be easier to move them out side of the function
+
+[step]
+
+workdir:
+resource:
+output:
+
+action( ... 
+)
+```
+
+
