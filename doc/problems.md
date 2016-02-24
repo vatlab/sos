@@ -18,6 +18,8 @@
 - [Default parameter `--input` (decided to remove)](#default-parameter---input-decided-to-remove)
 - [variable definition (decided to use Python syntax)](#variable-definition-decided-to-use-python-syntax)
 - [A more pythonic approach?](#a-more-pythonic-approach)
+- [backward dependency rules?](#backward-dependency-rules)
+- [Session info?](#session-info)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
