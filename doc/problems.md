@@ -20,6 +20,7 @@
 - [A more pythonic approach?](#a-more-pythonic-approach)
 - [backward dependency rules?](#backward-dependency-rules)
 - [Session info?](#session-info)
+- [Moving parameters of action to section level](#moving-parameters-of-action-to-section-level)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -274,4 +275,20 @@ action( ...
 )
 ```
 
+The problem with `output` is that since `SoS` allows sequential execution of multiple steps or 
+repeated execution of the same step, it can be difficult to specify `output` globally in step.
+For example, currently we can do
+
+```
+run('command1', output='output1'), run('command2', output='output2')
+```
+
+with runtime signature kept for both actions. Although it is possible to write
+
+```
+output=['output1', 'output2']
+run('command1'), run('command2')
+```
+
+it is unclear how to record runtime signature. (Currently signature is saved at the action level, not step level).
 

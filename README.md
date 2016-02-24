@@ -8,7 +8,7 @@
   - [Make the script work for other input files](#make-the-script-work-for-other-input-files)
   - [Ignore steps that do not need to be rerun](#ignore-steps-that-do-not-need-to-be-rerun)
   - [Execute steps in parallel](#execute-steps-in-parallel)
-- [Limitations](#limitations)
+- [Unique features and limitations](#unique-features-and-limitations)
 - [Summary](#summary)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -323,7 +323,27 @@ the second step would be run in parallel.
 
 We have showed you four versions of the same SoS script, each using more features of SoS. This actually demonstrates one of the advantages of the SoS system, namely you can start using SoS in minutes without knowing any of its advanced features, and can gradually improve your script when needs arise.
 
-## Limitations
+
+## Unique features and limitations
+
+The biggest difference between SoS and GNU make style workflow systems such as
+[snakemake](https://bitbucket.org/johanneskoester/snakemake) is that SoS is
+`input driven` instead of `output driven`. SoS will execute all steps in a
+workflow even if some steps do not produce any output (but can for example
+check input files and stop the execution if an error occurs). It can also
+execute steps conditionally, repeatedly, or generate different outputs with
+different input files. In contrast, make-style systems focus on output files
+and ignore steps that are irrelevant to the final outcome.
+
+Compared to XML or system-specific workflow lanaguges such as
+[CWL](http://common-workflow-language.github.io/), SoS emphasizes greatly
+on readability. The workflow steps are logically arranged (although actual
+execution order might differ) and contain explict commands and scripts.
+Most comments are significant and provide usable information in output such
+as `sos show script`. This makes it easy for readers to read the workflow
+and modify it if needed. This is very useful for fields such as
+bioinformatics where workflows need to be frequently updated to accomodate
+new tools, reference genomes, and annotations.
 
 SoS is essentially a tool to compose and execute commands and scripts. It
 uses workflow variables (and their derived forms) and string substitution
