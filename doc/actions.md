@@ -13,7 +13,8 @@ Action(
     output=None,
 	stdout=None,
 	stderr=None,
-	interpreter=None
+	interpreter=None,
+	resource={'ncpu'=1, 'mem'=0},
   )
 
 where
@@ -25,6 +26,9 @@ where
 * `interpreter`: command to execute the script. Additional command line options and commands can be used
    to execute the script in background (e.g. `bash {} &`), with additional option (e.g. `python -m module {}`),
    submit jobs (e.g. `cat {} | qsub -N `) or execute the script on another node (e.g. `ssh another bash {}`).
+* `resource`: a parameter to specify the resource used by the action, which helps the scheduler how to 
+   execute the step. Without finer control of the resource, each action is assumed to use 1 cpu. If action sets
+   `ncpu=4` it will take 4 cpus from the specified `-j` value. 
 
 ### Execution of scripts
 
