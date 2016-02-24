@@ -6,6 +6,7 @@
 - [design of `for_each`](#design-of-for_each)
 - [Format of input options (decided to use `,` instead of `:`)](#format-of-input-options-decided-to-use--instead-of-)
 - [Use of dictionary variable](#use-of-dictionary-variable)
+- [Enforce naming convention?](#enforce-naming-convention)
 - [Support for docker](#support-for-docker)
 - [Runtime control](#runtime-control)
 - [Resource control](#resource-control)
@@ -69,6 +70,17 @@ and use the variable as
 ```python
 ${sample_name[input[0]]}
 ```
+
+### Enforce naming convention?
+
+Does it make sense to force some name conversion so that users immediately know the type and nature of variables? This might
+make the script a bit more readable. For example
+
+1. Constant being string and all captical letters. (e.g. `RESOURCE_DIR='/path/to/resource'`) 
+2. Derived or temporary variables having leading underscore. (e.g. `_loop_variable`, `_label`, `_input`, right now `input` is used)
+3. String and list of string having different name conversion? I hate perl's `$` and `@` symbols though.
+
+By 'enforce', I mean SoS can give warning even error if a variable's usage does not match its name convention.
 
 ### Support for docker 
 

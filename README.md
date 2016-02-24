@@ -325,7 +325,10 @@ We have showed you four versions of the same SoS script, each using more feature
 
 ## Limitations
 
-SoS is essentially a tool to compose and execute commands and scripts. It uses workflow variables (and their derived forms) and string substitution to create scripts (from user-provided templates) and execute them with their own intepreters. Therefore, 
+SoS is essentially a tool to compose and execute commands and scripts. It
+uses workflow variables (and their derived forms) and string substitution
+to create scripts (from user-provided templates) and execute them with
+their own interpreters. Therefore, 
 
 * SoS only supports command line tools. There is no plan to extend it for interactive or GUI usages.
 * SoS does not understand the underlying tools and scripts and have no
