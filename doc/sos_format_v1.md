@@ -2,17 +2,26 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [shebang and file format lines](#shebang-and-file-format-lines)
-- [Workflow descriptions](#workflow-descriptions)
+- [File header](#file-header)
+  - [shebang and file format lines](#shebang-and-file-format-lines)
+  - [Workflow descriptions](#workflow-descriptions)
+- [Literals and variables](#literals-and-variables)
+  - [String literal](#string-literal)
+  - [List literal](#list-literal)
+  - [SoS variables](#sos-variables)
+  - [Expressions with SoS variables](#expressions-with-sos-variables)
+  - [String interpolation](#string-interpolation)
 - [Global variables](#global-variables)
-- [Command line arguments](#command-line-arguments)
-- [Defining workflows](#defining-workflows)
+- [Command line options](#command-line-options)
+- [Workflow definitions](#workflow-definitions)
   - [Define single workflow](#define-single-workflow)
   - [Define multiple workflows](#define-multiple-workflows)
   - [Shared steps between workflows](#shared-steps-between-workflows)
   - [Execution of a subset of steps](#execution-of-a-subset-of-steps)
 - [Workflow step](#workflow-step)
   - [step options](#step-options)
+  - [Description of step](#description-of-step)
+  - [Runtime variables](#runtime-variables)
   - [Input files (`input:`)](#input-files-input)
   - [Input options](#input-options)
     - [Passing input files all at once (default)](#passing-input-files-all-at-once-default)
@@ -22,7 +31,6 @@
     - [Looping through values of a SoS variable (Option `for_each`)](#looping-through-values-of-a-sos-variable-option-for_each)
     - [Conditional skip of a step (option `skip`)](#conditional-skip-of-a-step-option-skip)
   - [Dependent files (`depends` (or called `dependent`?))](#dependent-files-depends-or-called-dependent)
-  - [Pre-input, pre-action and post-action variables](#pre-input-pre-action-and-post-action-variables)
   - [step actions](#step-actions)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -60,13 +68,14 @@ par1=default1
 # comment 2
 par2=default2
 
-[step1]
+[step1: options]
 step1 input, variables, and actions
 
-[step2]
+[step2: options]
 step2 input, variables, and actions
 ```
 
+## File header
 ### shebang and file format lines
 
 A SoS script usually starts with lines
@@ -80,41 +89,156 @@ The first line allows the script to be executed by command `sos-runner` if it is
 an executable script. The second line tells SoS the version of the script. The `#fileformat` 
 line does not have to be the first line but should be in the first comment block.
 
+Other lines in the first comment block are ignores.
+
 ### Workflow descriptions
 
 The following comment blocks are description of workflows defined in the script. The description
 is considered to be related to a particular workflow if it starts with only the name of the workflow
 in the first line. These descriptions would be displayed in the output of command `sos view script`.
 
-### Global variables
+## Literals and variables 
 
-Variables defined before the first section will be evaluated before the execution of the workflow,
-but after the determination of variables from command line arguments. These are usually constant
-variables such as location of various files.
+SoS uses [Python](http://www.python.org] syntax for literals and variables with some minor modifications. 
 
-### Command line arguments
+### String literal
 
-Although sections can be arranged in any other, a secion named `[parameters]` is usually the first
-section of a SoS script. This section defined command line arguments of the script, their default
-values and descriptions. The variables are defined in the format of
+* Strings are quoted text. You can use `' '`, `" "`, `''' '''`, and `""" """` to quote your text. Different quotation styles allows you to quote string with another string quotation character (e.g. `"Letter 'a'"`).
+* Backslash can be used to enter special characters (e.g. '\n'). Instead of using python raw string prefix (e.g. `r'raw \n'`), **SoS automatically treats string quoted by `' '` and `''' '''` as raw strings**. If you are uncertain what this means, using only single quotation marks.
+
+### List literal
+
+SoS only supports list of strings so a list literal would have form
 
 ```
-[parameters]
-# comment 1
-par1=default1
-   
-# comment2
-par2=default2
+['a', 'b']
 ```
 
-where the default values determines the type of variable (string or list of strings). 
-Please refer to [Command line options](variables#command-line-options) for more details.
+where comma separated strings are enclosed by `[` and `]`.
 
-### Defining workflows
+### SoS variables
+
+SoS variables are case-sensitive python variables associated with the execution of SoS scripts. For simplicity, they can only be **string** or **list of strings**. They can be defined almost anywhere in a SoS script.
+
+For example
+
+```python
+resource_path = '/path/to/resource'
+sample_names = ['sample1', 'sample2']
+```
+
+defines two variables `resource_path` (a string) and `sample_names` (a list).
+
+### Expressions with SoS variables
+
+Any python expressions involving any SoS variables and defined functions can be used in SoS script. For example
+
+* `input[0]` gets the first input file
+* `os.path.basename(input[0])` get the base name of input file
+* `[x for x in input if '_R1_' in x]` returns all files with `_R1_` in its names
+* `output_dir + '/' + input[0] + '.bai'` return a file under `output_dir` with `.bai` appended to filename.
+* `os.path.getsize(input[0])` return a string (converted from integer) of file size
+* `os.path.getsize(input[0]) > 0` return `True` (
+* `os.environ['MY_VAR']` return the value of environment `MY_VAR`.
+* `glob.glob('*.txt')` return a list of files with extension `.txt` under the current directory.
+
+Note that SoS makes available modules `glob`, `os`, `sys`, and more modules can be imported with workflow action.
+
+### String interpolation
+
+On top of python string manipulation functions and recently introduced (Python 3.6) format string, SoS uses string interpolation to replace variables and expressions within a string with their values. For example
+
+```python
+ref_genome = '${resource_path}/hg19/refGenome.fasta'
+title = 'Sample ${sample_names[0]) results'
+all_names = 'Samples ${sample_names}'
+```
+
+Here the value of variable `resource_path` and expression `sample_names[0]` are replaced with their values when they are quoted between `${` and `}` in a string literal. List of strings will be automatically conerted to a string by joining strings with a space so `${sample_names}` will be expanded to `sample1 sample2`.
+
+You can continue to use Python string functions such as
+
+```python
+ref_genome = resource_path + '/hg19/refGenome.fasta'
+title = 'Result for the first sample {} is invalid'.format(sample_names[0])
+```
+
+but string interpolation is recommended for large scripts because it is easier to use.
+
+Because a SoS script can include scripts in different languages with different sigils (special characters used to enclose expression), **SoS allows the use of different sigils** in the script. Whereas the default sigil (`${ }`) has to be used for global variables, other sigils can be used for different sections of the script. For example
+
+```python
+[step_10: sigil=`%( )`]
+title = 'Sample %(sample_names[0]) results'
+
+run('''
+for file in *.fastq
+do
+    echo Processing ${file} ...
+    echo %(title)
+done
+```
+
+uses a different sigil style because the shell script uses `${ }`.
+
+## Global variables 
+
+Before the definition of any section (in the format of `[section_name: options]`, you can define arbitary number of global variables. These are usually constant string variables such as pathes to various resources, but can also be derived values from command line options (see next section).
+
+In addition to user-defined global variables, SoS defines the following variables
+
+* `workflow_name`: name of the workflow being executed
+* `home`: home directory
+* `workdir`: full path to the current working directory
+
+## Command line options
+
+SoS looks for a `[parameters]` section for command line options and their default arguments. The format of each variable is 
+
+```
+# comment
+var_name=default_value
+```
+
+The default value can be string, list of string, or expressions that return string or list of string. For example
+
+```
+# path to tool gatk
+gatk_path='~/bin/GATK'
+```
+
+defines a variable `gatk_path` with default value `'~/bin/GATK'`. 
+
+```
+# A list of sample names
+sample_names=[]
+```
+
+defines a variable `sample_name` with default value `[]`. And
+
+```
+# A list of sample names
+gatk_path=config('gatk_path', config_file='~/.sos_config')
+```
+
+calls a function `config` to get the value of `gatk_path` from a configuration file.
+
+The comments before variable definition is meaningful because they will appear in the help message of the script (`sos show script`). The default value also determines the type of input these parameters accept.
+
+With these definition, you can pass values to these variables from command line, 
+
+```bash
+sos run myscript.sos --gatk_path /path/to/gatk --sample_names A1 A2 A3
+```
+
+The default values will be used if the parameter is not changed from command line.
+
+
+## Workflow definitions
 
 A SoS script can specify one or more workflows. Each workflow consists of one or more numbered steps. The numbers specify the **logical order** by which the steps are executed, but a later step might be executed before the completion of previous steps if it does not depend on the output of these steps.
 
-#### Define single workflow
+### Define single workflow
 
 A single pipeline can be specified without a name in a SoS script. For example, the following sections specify a pipeline with four steps `0`, `10`, `20`, and `100`. As you can see, the workflow steps can be specified in any order and do not have to be consecutive (which is actually preferred because it allows easy insertion of extra steps).
 
@@ -141,7 +265,7 @@ Because the SoS script defines only one workflow, yo do not have to specify the 
 sos run myscript.sos --input input1.fasta
 ```
 
-#### Define multiple workflows 
+### Define multiple workflows 
 
 A SoS script can define multiple workflows. For example, the following sections of SoS script defines two workflows named ``mouse`` and ``human``.
 
@@ -183,7 +307,7 @@ The `test` workflow will be executed if its name is specified from the command l
 sos run myscript.sos test --input input1.fasta
 ```
 
-#### Shared steps between workflows
+### Shared steps between workflows
 
 The most common motivation of defining multiple workflows in a single SoS script is that they share certain processing steps. If this is the case, you can define sections such as
 
@@ -215,7 +339,7 @@ or
 
 In the last case, step defined by `[*_30,fly_40]` will be expanded to ``mouse_30``, ``human_30``, ``fly_30``, and ``fly_50`` and will be executed twice for the `fly` workflow.
 
-#### Execution of a subset of steps
+### Execution of a subset of steps
 
 Although workflows are usually executed in its entirety, there are cases where you would like to execute only a subset of steps. For example, you can execute step 10 of the pipeline mouse using command
 
@@ -232,7 +356,7 @@ sos run myscript.sos mouse:10,20
 sos run myscript.sos mouse:20-
 ```
 
-### Workflow step
+## Workflow step
 
 Although only a *step action* is required for a SoS step, a complete SoS step can have the following form
 
@@ -259,7 +383,7 @@ key4=value4
 
 ```
 
-#### step options
+### step options
 
 **Step options** are specified after step name and controls how the step will be executed. SoS provides the following options
 
@@ -275,7 +399,60 @@ key4=value4
 * `sigil`: alternative sigil of the step, which should be a string with space. E.g. `sigil='[ ]'` allows the use of expressions such as
   `[input]` in this step.
 
-#### Input files (`input:`)
+### Description of step
+The first comment block after the section head (`[]`) is the description of the section and will be displayed in the output of command `sos show script`.
+
+### Runtime variables
+
+Variables can be defined and used freely in a step. Depending on the location where the variables are defined, they can be classified as
+
+* **Pre-input variables** (string or list of strings): variables defined before `input:`.
+* **Pre-action variables** (string or list of string): variables defined after `input:` and before action. They will be evalulated with each `input`.
+* **Post-action variables** (string or list of strings): variables defined after the execution of step action.
+
+Because variables pass information from one step to another and dictates how actions are executed. It is important to understand how variables are defined and used in a SoS step.
+
+* Before entering the step:
+  * **`step_index`** (string) is defined automatically to the index of the current step 
+  * **`step_input`** (list of strings): input from the last completed step, or `[]` if step option `no_input` is set.
+
+* **Pre-input varialbes** will be defined before the processing of input files. It is possible to redefine `step_input` here.
+ 
+* The `input:` specification generates the following variables:
+  * **`input`** (list of strings): selected input files. Depending on input options, step action might be executed multiple times with different set of `input` files. 
+  * **file label variables** (list of strings): Labels of files in `input` if `labels` option is defined.
+  * **loop variables** (string): value of loop variables if `for_each` option is defined 
+
+* **Pre-action variables** will be defined and used. They will be defined multiple times if the step action will be executed with different `input` etc.
+
+* Step action generates output files which will be collected as variable `step_output`
+
+* **Post-action variables** will be defined after the exeuction of step action. It can be used to redefine `step_output` (e.g. remove duplicate output files from action output).
+
+
+The following sections will provide plenty of examples on how to use these variables. As the two most frequently used cases, step variables can be used to give formal names to the input and output of the step so that they can be used in later steps with proper names.
+
+For example
+
+```python
+[100]
+raw_reads = step_input
+
+run(''' action to align fasta files''', output=...)
+
+aligned_reads = step_output
+
+[150]
+# do something else to raw reads (e.g. quality control report)
+input: raw_reads
+
+[200]
+# process aligned reads
+input: aligned_reads
+```
+
+
+### Input files (`input:`)
 
 The input of SoS step follows the following rules:
 
@@ -307,18 +484,21 @@ input:
 input:
     aligned_reads[2:]
 
+input:
+    glob.glob('*.fastq')
+
 ```
 
-It does not matter if `aligned_reads` and `reference_genome` are lists of filenames. SoS will expand wildcard characters and
-flatten the lists to a single list of filenames.
+It does not matter if `aligned_reads` and `reference_genome` are lists of filenames. SoS will expand wildcard characters and flatten the lists to a single list of filenames.
 
+Of special interest is the use of functions such as `glob.glob` to determine input files. This can be very useful for pipelines that, for example, regularly scan a directory and process unprocessed files. However, because the value of this step depends on availability of files, the output of `sos show script` and the executation path will be unpredictable, and even wrong if there is no available file during the execution of `sos show script`.
 
-#### Input options 
+### Input options 
 
 The input options of a SoS step control how input files are passed to the step action. To should be keyword arguments appended to list
 of input files.
 
-##### Passing input files all at once (default)
+#### Passing input files all at once (default)
 
 This is the default action for a SoS step. That is to say, action in the following step will get all 
 `input_files` as its input (variable `input`) to step action.
@@ -332,7 +512,7 @@ run('echo ${input}')
 
 ```
 
-##### Passing files of allowed type (option `filetype`)
+#### Passing files of allowed type (option `filetype`)
 
 Emission options are appended to input file list as comma separated lists. A python parameter syntax is required.
 
@@ -371,7 +551,7 @@ input:
 passes only files with the first line starting with string `##fileformat=VCF4.1``. Here the value of the parameter is a lambda function that will be passed to each input filename.
 
 
-##### Passing files in groups (option `group_by`)
+#### Passing files in groups (option `group_by`)
 
 Option `group_by` pass input files in groups. For example,
 
@@ -411,7 +591,7 @@ will take all input files and sort them by `_R1_` and `_R2_` and by filename. Fo
 `FEB_R1_1.txt FEB_R1_2.txt FEB_R2_1.txt FEB_R2_2.txt` and be sent to step
 action in two groups `['FEB_R1_1.txt', 'FEB_R2_1.txt']` and `['FEB_R1_2.txt', 'FEB_R2_2.txt']`.
 
-##### Attaching variables to input filenames (option `labels`)
+#### Attaching variables to input filenames (option `labels`)
 
 There are cases where the command line options or output directories depends on input filename. SoS allows you to label each filename with one or more variables so that they can be used accordingly. For example, if you have input files `bam_files` with values
 
@@ -468,7 +648,7 @@ run('process ${input} with variables ${_mutated} and ${_sample_name}')
 
 but it is cleaner because you do not have to do this each time when `bam_files` is used.
 
-##### Looping through values of a SoS variable (Option `for_each`)
+#### Looping through values of a SoS variable (Option `for_each`)
 
 Option `for_each` allows you to repeat step actions for each value of a variable. For example, if
 
@@ -539,7 +719,7 @@ reason this assumption is wrong and the step needs to be executed sequentially, 
 `nonconcurrent` section option to execute loop actions sequentially.
 
 
-##### Conditional skip of a step (option `skip`)
+#### Conditional skip of a step (option `skip`)
 
 Option `skip=True` will make SoS skip the execution of the current step. Using `skip=True` is not very useful so this option is often used with a SoS variable. For example
 
@@ -559,7 +739,7 @@ so this step still yields its `step_output`. In comparison, a step is completely
 of this rule for this particular example is that its next step would get a merged file if there are multiple input files, or
 the original file if there is only a single input file.
 
-#### Dependent files (`depends` (or called `dependent`?))
+### Dependent files (`depends` (or called `dependent`?))
 
 This item specifies files that are required for the step. Although not required, it is a good practice to list resource files and other dependency files for a particular step. For example
 
@@ -570,23 +750,9 @@ input:
 	
 depends:
 	reference_seq
+	
 ```
 
-#### Pre-input, pre-action and post-action variables
-
-* Pre-input variables are defined before `input:` and evaluated before filenames are parsed.
-
-* Pre-action variables are defined between `input:` and step action and evaluated (probably repeatedly) before the executation of 
-  step action.
-
-* Post-action variables are defined after step action and are evaluated after the completion of all step actions.
-
-Please refer to [use of SoS variables](variables.md) for details
-
-#### step actions
+### step actions
 
 Please refer to [step actions](actions.md) for details
-
-
-
-

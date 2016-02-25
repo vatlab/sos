@@ -2,18 +2,56 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [Sequential execution mode](#sequential-execution-mode)
-- [Parallel execution in sequential mode](#parallel-execution-in-sequential-mode)
-- [Parallel execution of SoS scripts](#parallel-execution-of-sos-scripts)
+- [Runtime signature](#runtime-signature)
+  - [Content of runtime signature](#content-of-runtime-signature)
+  - [Storage of runtime signature](#storage-of-runtime-signature)
+  - [Portability of runtime signatures: discouraged](#portability-of-runtime-signatures-discouraged)
+- [Execution of workflows](#execution-of-workflows)
+  - [Parallel execution in sequential mode](#parallel-execution-in-sequential-mode)
+  - [Parallel execution of SoS scripts](#parallel-execution-of-sos-scripts)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## Sequential execution mode
+## Runtime signature
+
+### Content of runtime signature
+
+Runtime signature of a SoS step consists of
+
+1. Exact command or script
+2. MD5 signature of all input files
+3. MD5 signature of all dependent files
+4. MD5 signature of all output files
+
+The completion of a SoS step will create a step signature. The step will be ignored if the signature is not changed, or re-run if the signature is changed when it is executed the second time.
+
+### Storage of runtime signature
+
+The name and location of a runtime signature is determined by the first output file of the step. 
+
+There are two types of output files
+
+1. If the output file is outside of the current working directory, it is a global output. Such output files are typically downloaded resource files and files (e.g. indexes) derived from them. These files are typically stored in a global resource directory.
+
+2. If the ouput file is under the current working directory, it a local project-specific output.
+
+The global signatures are stored under `$HOME/.sos/.runtime/absolute_path_to_file`. For example, if the output file is `/reference/hg18/wholegenome/STAR_index/chrname.txt`, the signature would be `$HOME/.sos/.runtime/reference/hg18/wholegenome/STAR_index/chrname.txt.exe_info`.
+
+The local signatures are stored under the current working directory with name `.sos/.runtime/relative_path_to_file`. For example, if the output file is `aligned/accepted_hits.bam`, the signature file would be `.sos/.runtime/aligned/accepted_hits.bam.exe_info`.
+
+### Portability of runtime signatures: discouraged
+
+Runtime signatures are usually not portable because filenames and pathes would change when the project is moved to another location. It is possible to make the signature more portable, e.g., try to use relative path but there is no guarantee of portability of runtimes signatures. I would suggest that not making the portability of runtime signatures one of the design goals.
+
+
+## Execution of workflows
+
+###Sequential execution mode
 
 By default, a SoS script is executed sequentially with steps executed on numeric order. This is the case when
 you use SoS as a container of scripts and do not inform SoS input or output of steps.
 
-## Parallel execution in sequential mode
+### Parallel execution in sequential mode
 
 Limited parallel execution is supported if a step explicitly runs its action in background or in another machine
 (e.g. through the submission of a job). The workflow still executes sequentially and proceed until the output of
@@ -27,7 +65,7 @@ step (e.g. `sh {} &`) to execute the actions in background.
 This technique is suited for time-consuming quality control steps that are not needed for the data analysis steps.
 
 
-## Parallel execution of SoS scripts
+### Parallel execution of SoS scripts
 
 If parameter `-j` (jobs) is specified with a number more than 1, the SoS script will be executed in parallel
 up to the specified number of concurrent processes. There are three sources of concurrent execution:

@@ -2,131 +2,36 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [trouble with sigil usage](#trouble-with-sigil-usage)
-- [design of `for_each`](#design-of-for_each)
-- [Use of dictionary variable](#use-of-dictionary-variable)
-- [Enforce naming convention?](#enforce-naming-convention)
-- [Support for docker](#support-for-docker)
-- [Runtime control](#runtime-control)
-- [Resource control](#resource-control)
-- [Libraries](#libraries)
-- [Nested workflow](#nested-workflow)
-- [backward dependency rules?](#backward-dependency-rules)
-- [Session info?](#session-info)
-- [Moving parameters of action to section level](#moving-parameters-of-action-to-section-level)
-- [Resoved: Other requirements of steps](#resoved-other-requirements-of-steps)
-- [Resoved: Handling of filenames with spaces and other special characters](#resoved-handling-of-filenames-with-spaces-and-other-special-characters)
-- [Resoved: Section option `concurrent`](#resoved-section-option-concurrent)
-- [Resoved: Default parameter `--input`](#resoved-default-parameter---input)
-- [Resoved: variable definition](#resoved-variable-definition)
-- [Resoved: A more pythonic approach?](#resoved-a-more-pythonic-approach)
-- [Resoved: Potential conflict of `${}` with other languages](#resoved-potential-conflict-of--with-other-languages)
-- [Resoved: Format of input options](#resoved-format-of-input-options)
-- [Resolved: Use of '${}' in places other than script string substitution](#resolved-use-of--in-places-other-than-script-string-substitution)
+- [File format](#file-format)
+  - [Moving parameters of action to section level](#moving-parameters-of-action-to-section-level)
+  - [design of `for_each`](#design-of-for_each)
+  - [Use of dictionary variable](#use-of-dictionary-variable)
+  - [Enforce naming convention?](#enforce-naming-convention)
+- [Workflow features](#workflow-features)
+  - [Runtime control](#runtime-control)
+  - [Resource control](#resource-control)
+  - [Nested workflow](#nested-workflow)
+  - [Libraries](#libraries)
+  - [backward dependency rules?](#backward-dependency-rules)
+- [Actions](#actions)
+  - [Session info?](#session-info)
+- [External support](#external-support)
+  - [Support for docker](#support-for-docker)
+- [Resolved](#resolved)
+  - [Other requirements of steps](#other-requirements-of-steps)
+  - [Handling of filenames with spaces and other special characters](#handling-of-filenames-with-spaces-and-other-special-characters)
+  - [Section option `concurrent`](#section-option-concurrent)
+  - [Default parameter `--input`](#default-parameter---input)
+  - [variable definition](#variable-definition)
+  - [A more pythonic approach?](#a-more-pythonic-approach)
+  - [Potential conflict of `${}` with other languages](#potential-conflict-of--with-other-languages)
+  - [Format of input options](#format-of-input-options)
+  - [Use of '${}' in places other than script string substitution](#use-of--in-places-other-than-script-string-substitution)
+  - [trouble with sigil usage](#trouble-with-sigil-usage)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-### trouble with sigil usage
-
-Python 3.6 introduced formated string, which uses `{}`. It also accepts expressions (with addition of conversion `!` and format specification `:`)
-but so I am very attempted to declear that all SoS string literals are python format string. However, the use of `{}` forces the doubling of regular
-`{` and `}`, which is disastrous for scripts such as shell and R.
-
-I guess I will have to specify that SoS string is different and has to be configurable sigil for different languages.
-
-Rules:
-
-1. Python string literals are acceptable (e.g. `'string'`, `"string"`, `'''string'''`, `"""string"""`.
-2. Single quote versions are automatically treated as `r` string literals. E.g. `'\n'` is `r'\n'` in Python form.
-  This format is generally recommended.
-3. String interpolation with configurable SoS sigil is handled before the underlying function. Further processing
-  by underlying Python expression is allowed.
-
-### design of `for_each`
-
-I am not sure the current design is intuitive. It requires the variables to be defined before and uses a derived variable (`_name` for variable `name`), but the usual `for_each` loop does not fit into the existing parameter structure.
-
-### Use of dictionary variable
-
-It is easy to implement and can be very useful, but I am not sure if we should complicate SoS with another dictionary type. A potentially useful user case is to replace `labels`, e.g.
-
-```python
-sample_name = {x:os.path.basename(y) for x in x in sam_files}
-```
-
-and use the variable as
-
-```python
-${sample_name[input[0]]}
-```
-
-### Enforce naming convention?
-
-Does it make sense to force some name conversion so that users immediately know the type and nature of variables? This might
-make the script a bit more readable. For example
-
-1. Constant being string and all captical letters. (e.g. `RESOURCE_DIR='/path/to/resource'`) 
-2. Derived or temporary variables having leading underscore. (e.g. `_loop_variable`, `_label`, `_input`, right now `input` is used)
-3. String and list of string having different name conversion? I hate perl's `$` and `@` symbols though.
-
-By 'enforce', I mean SoS can give warning even error if a variable's usage does not match its name convention.
-
-### Support for docker 
-
-What sure what is involved/required to support docker.
-
-### Runtime control
-
-Limiting the files that the directory the step action can write to? 
-
-### Resource control
-
-Limiting or monitoring the RAM and CPU (cores) the step uses?
-
-
-### Libraries
-
-Libraries would be python modules with defined SoS actions, but how to maintain and import these modules require further investigation. Furthermore, extensive use of libraries somehow beats the purpose of SoS (readability) because libraries hide the details of actions.
-
-### Nested workflow
-
-Not sure how this would work, but in SoS one can certainly define a step with
-
-```python
-run('sos-runner anotherworkflow ${input}'
-```
-
-to execute another workflow.
-
-### backward dependency rules?
-
-There can be a need for dependency rules. For example, if a bam index file is needed (dependent upon) and
-the bam file exists, then `samtools index` would be automatically called. This does not sound like a good
-idea because `samtools index` can always be put as a regular part of the workflow. On the other hand, adding
-such rules can help if these common steps are not always needed, or needed for multiple steps of the pipeline.
-I am not sure how useful such magic is. Implementation wise it might not be too difficult, some syntax
-like the following could be used
-
-```
-# section name does not have index so it would be called if and only if the 
-# step is needed. pattern of output is defined as section option.
-[ index_bam : output=*.bam.bai]
-
-# input is defined from output
-input = output[0][:-4]
-
-# the action is defined as usual, but output does not need to be defined
-# again.
-run('samtools index ${input}')
-
-```
-
-could potentially work. This allows gnumake style definition of pipelines that can be used to construct complete workflows. It seems to contradict 
-the design of SoS though.
-
-### Session info?
-
-There is a need to save the version of program or packages of R ...
+## File format
 
 
 ### Moving parameters of action to section level
@@ -173,15 +78,113 @@ run('command1'), run('command2')
 
 it is unclear how to record runtime signature. (Currently signature is saved at the action level, not step level).
 
+### design of `for_each`
 
-### Resoved: Other requirements of steps
+I am not sure the current design is intuitive. It requires the variables to be defined before and uses a derived variable (`_name` for variable `name`), but the usual `for_each` loop does not fit into the existing parameter structure.
+
+### Use of dictionary variable
+
+It is easy to implement and can be very useful, but I am not sure if we should complicate SoS with another dictionary type. A potentially useful user case is to replace `labels`, e.g.
+
+```python
+sample_name = {x:os.path.basename(y) for x in x in sam_files}
+```
+
+and use the variable as
+
+```python
+${sample_name[input[0]]}
+```
+
+### Enforce naming convention?
+
+Does it make sense to force some name conversion so that users immediately know the type and nature of variables? This might
+make the script a bit more readable. For example
+
+1. Constant being string and all captical letters. (e.g. `RESOURCE_DIR='/path/to/resource'`) 
+2. Derived or temporary variables having leading underscore. (e.g. `_loop_variable`, `_label`, `_input`, right now `input` is used)
+3. String and list of string having different name conversion? I hate perl's `$` and `@` symbols though.
+
+By 'enforce', I mean SoS can give warning even error if a variable's usage does not match its name convention.
+
+## Workflow features
+
+### Runtime control
+
+Limiting the files that the directory the step action can write to? 
+
+### Resource control
+
+Limiting or monitoring the RAM and CPU (cores) the step uses?
+
+
+
+### Nested workflow
+
+Not sure how this would work, but in SoS one can certainly define a step with
+
+```python
+run('sos-runner anotherworkflow ${input}'
+```
+
+to execute another workflow.
+
+
+### Libraries
+
+Libraries would be python modules with defined SoS actions, but how to maintain and import these modules require further investigation. Furthermore, extensive use of libraries somehow beats the purpose of SoS (readability) because libraries hide the details of actions.
+
+
+### backward dependency rules?
+
+There can be a need for dependency rules. For example, if a bam index file is needed (dependent upon) and
+the bam file exists, then `samtools index` would be automatically called. This does not sound like a good
+idea because `samtools index` can always be put as a regular part of the workflow. On the other hand, adding
+such rules can help if these common steps are not always needed, or needed for multiple steps of the pipeline.
+I am not sure how useful such magic is. Implementation wise it might not be too difficult, some syntax
+like the following could be used
+
+```
+# section name does not have index so it would be called if and only if the 
+# step is needed. pattern of output is defined as section option.
+[ index_bam : output=*.bam.bai]
+
+# input is defined from output
+input = output[0][:-4]
+
+# the action is defined as usual, but output does not need to be defined
+# again.
+run('samtools index ${input}')
+
+```
+
+could potentially work. This allows gnumake style definition of pipelines that can be used to construct complete workflows. It seems to contradict 
+the design of SoS though.
+
+## Actions
+
+### Session info?
+
+There is a need to save the version of program or packages of R ...
+
+
+
+## External support
+
+### Support for docker 
+
+What sure what is involved/required to support docker.
+
+## Resolved
+
+### Other requirements of steps
 
 CWL has the requirement keyword which handles all sorts of requirement. SoS solves this by
 
 * `depends:` item in pipeline step, which lists all dependent files that will go into step signature.
 * `fail_if()` action, which stops the workflow if the requirements are not satisfied.
 
-### Resoved: Handling of filenames with spaces and other special characters
+### Handling of filenames with spaces and other special characters
 
 Because there is no way SoS knows how individual scripts and commands handle filenames with spaces, SoS would need to
 
@@ -225,7 +228,7 @@ open("${input}")
 should work correctly and it would be wrong if SoS mangles `${input}` during variable substitution.
 
 
-### Resoved: Section option `concurrent`
+### Section option `concurrent`
 
 
 There are some options to allow concurrent execution of step actions.
@@ -241,7 +244,7 @@ There are some options to allow concurrent execution of step actions.
 
 Decided to use section option `nonconcurrent`)
 
-### Resoved: Default parameter `--input`
+### Default parameter `--input`
 
 We do not have to allow a default parameter `--input`. It is easier to use 
 but the parameter itself is not documented like other command line parameters. It might  
@@ -249,7 +252,7 @@ be better to force the definition of all parameters in the `[default]` section.
 
 Decided to remove `input`.
 
-### Resoved: variable definition
+### variable definition
 
 The original design uses
 
@@ -270,7 +273,7 @@ sample_names=['a', 'b']
 
 which is more consistent because the right hand side are always valid python expressions.
 
-### Resoved: A more pythonic approach?
+### A more pythonic approach?
 
 Currently there are pices of the script that is not python, most notably the input
 specification. It might make sense to turn them all to python syntax. Even wrap everything
@@ -286,7 +289,7 @@ step(index=10,
 
 This too ugly to adopt.
 
-### Resoved: Potential conflict of `${}` with other languages 
+### Potential conflict of `${}` with other languages 
 
 `${}` is used in shell, `` ` ` `` is used in python (Python 2 only) and perl, `{}` is commonly used in many languages, and the list goes on. 
 
@@ -306,7 +309,7 @@ Here the value to `quotation` should be a string with a single separting two pie
 
 
 
-### Resoved: Format of input options
+### Format of input options
 
 Currently input options are appended to input specification. Perhaps we can ignore the second `:` and use `,` all over. I mean, we can change
 
@@ -334,7 +337,7 @@ input: : group_by='single'
 
 Decided to use `,` instead of `:`
 
-### Resolved: Use of '${}' in places other than script string substitution 
+### Use of '${}' in places other than script string substitution 
 
 For example, replace `${resource_path}` with the string in `input` specification:
 
@@ -360,3 +363,20 @@ input:
 which can be less readable.
 
 Decision: it makes sense to allow this for consistency purposes.
+
+
+### trouble with sigil usage
+
+Python 3.6 introduced formated string, which uses `{}`. It also accepts expressions (with addition of conversion `!` and format specification `:`)
+but so I am very attempted to declear that all SoS string literals are python format string. However, the use of `{}` forces the doubling of regular
+`{` and `}`, which is disastrous for scripts such as shell and R.
+
+I guess I will have to specify that SoS string is different and has to be configurable sigil for different languages.
+
+Rules:
+
+1. Python string literals are acceptable (e.g. `'string'`, `"string"`, `'''string'''`, `"""string"""`.
+2. Single quote versions are automatically treated as `r` string literals. E.g. `'\n'` is `r'\n'` in Python form.
+  This format is generally recommended.
+3. String interpolation with configurable SoS sigil is handled before the underlying function. Further processing
+  by underlying Python expression is allowed.

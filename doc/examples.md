@@ -2,14 +2,42 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [Export a SoS script to a series of scripts](#export-a-sos-script-to-a-series-of-scripts)
-- [An example](#an-example)
-- [Export selected workflow and steps](#export-selected-workflow-and-steps)
-- [Export portable workflows (TBD feature)](#export-portable-workflows-tbd-feature)
+- [Input specification](#input-specification)
+  - [Process paired files one by one](#process-paired-files-one-by-one)
+  - [Arrange input files by filenames](#arrange-input-files-by-filenames)
+- [Command `sos export`](#command-sos-export)
+  - [Export a SoS script to a series of scripts](#export-a-sos-script-to-a-series-of-scripts)
+  - [Export selected workflow and steps](#export-selected-workflow-and-steps)
+  - [Export portable workflows (TBD feature)](#export-portable-workflows-tbd-feature)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## Export a SoS script to a series of scripts
+
+## Input specification
+### Process paired files one by one
+
+```
+input:
+    [x for x in bam_files if '_R1_' in x],
+    [x for x in bam_files if '_R2_' in x],
+    group_by='pairs'
+
+run('')
+```
+
+### Arrange input files by filenames
+
+```
+run('''STAR
+
+    INPUT ${','.join([x for x in bam_files if '_R1_' in x]}
+    ${','.join([x for x in bam_files if '_R2_' in x]}
+''')
+```
+
+## Command `sos export`
+
+### Export a SoS script to a series of scripts
 
 ```
 sos export script.sos [workflow:steps] [workflow options] [--portable] [--script_dir DIR]
@@ -17,7 +45,6 @@ sos export script.sos [workflow:steps] [workflow options] [--portable] [--script
 
 This command exports steps of a SoS script into a series of scripts, and a master shell script to call them. 
 
-## An example 
 For example, for the SoS script defined in the [tutorial](../README.md),
 
 ```python
@@ -86,14 +113,16 @@ export/myscript.sh
 ```
 with contents
 
-export/default_1.sh
+export/default_1.sh:
+
 ```
 !/usr/bin/env bash
 # index reference genome
 STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_index
 ```
 
-export/default_2.sh
+export/default_2.sh:
+
 ```
 !/usr/bin/env bash
 STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn case.fasta \
@@ -102,7 +131,8 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn ct
     --quantMode GeneCounts --outFileNamePrefix aligned/mutated
 ```
 
-export/default_3.R
+export/default_3.R:
+
 ```
 control.count = read.table('aligned/control.out.tab')
 mutated.count = read.table('aligned/mutated.out.tab')
@@ -114,7 +144,8 @@ dev.off()
 
 and
 
-export/myscript.sh
+export/myscript.sh:
+
 ```
 #!/usr/bin/env bash
 
@@ -133,7 +164,7 @@ bash export/myscript.sh
 
 although you will lose all the workflow control features of Sos.
 
-## Export selected workflow and steps
+### Export selected workflow and steps
 
 Similar to the execution of SoS workflows, you can specify the workflow and steps you would like to export, for example you can export up to step 50 of the mouse workflow defined in ``myscript1.sos`` using command
 
@@ -143,7 +174,7 @@ sos export myscript1.sos mouse:-50
 
 Please refer to [execution of SoS workflows](execution.md) for more details.
 
-## Export portable workflows (TBD feature)
+### Export portable workflows (TBD feature)
 
 The workflow exported by default expands all SoS variables with specified input files and parameters. The scripts are guaranteed to be executed correctly but are not flexible enough to work with, for example, other input files. The `--portable` option tries not to expand all parameters and add themm as language-specific variables. For example, 
 
@@ -161,14 +192,16 @@ export/myscript.sh
 ```
 with contents
 
-export/default_1.sh
+export/default_1.sh:
+
 ```
 !/usr/bin/env bash
 # index reference genome
 STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_index
 ```
 
-export/default_2.sh
+export/default_2.sh:
+
 ```
 !/usr/bin/env bash
 
@@ -178,7 +211,8 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn $2
     --quantMode GeneCounts --outFileNamePrefix aligned/mutated
 ```
 
-export/default_3.R
+export/default_3.R:
+
 ```
 args <- commandArgs()
 
@@ -192,7 +226,8 @@ dev.off()
 
 and
 
-export/myscript.sh
+export/myscript.sh:
+
 ```
 #!/usr/bin/env bash
 

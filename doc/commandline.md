@@ -3,7 +3,7 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [Command `sos`](#command-sos)
-  - [subcommand `run` (see also `sos-runner`)](#subcommand-run-see-also-sos-runner)
+  - [subcommand `run`](#subcommand-run)
   - [subcommand `show`](#subcommand-show)
   - [subcommand `export`](#subcommand-export)
   - [TBD Features](#tbd-features)
@@ -33,7 +33,7 @@ sos subcommand -h
 to get detailed description of a particular subcommand.
 
 
-### subcommand `run` (see also [`sos-runner`](#command-sos-runner))
+### subcommand `run`
 
 ```bash
 sos run script [workflow[:steps]] [workflow-options] [-h] [-j NUM_JOBS]
@@ -47,7 +47,7 @@ Execute specified `steps` of `workflow` defined in `script` with specified `work
 * `workflow-options`: Options defined in the `[default]` section of `script`. variables with a text default value accepts a string input. variables with a list default value (e.g. `names=${[]}`)  accepts a list of strings.
 * `-j`: Maximum number of concurrent jobs. A SoS script is by default executed sequentially (`-j 1`) but can have mutliple
   concurrent jobs if a positive number is specified. Please see [work flow control](workflow_control.md) in detail.
-* `-h`: Show usage of command `sos run`.
+* `-h`: Show usage of command `sos run` or `script` if a script is specified.
 
 The list of acceptable workflow options for `script` can be displayed using command
 
@@ -57,10 +57,12 @@ sos show script
 ### subcommand `show`
 
 ```bash
-sos show script [workflow:steps] [-h]
+sos show script [workflow:steps] [-d] [-h]
 ```
+* `-d`: produce processing steps as a directional graph that can be pipelined to [the dot command of graphviz](http://www.graphviz.org/) for plotting.
+* `-h`: display usage information
 
-Display details of `workflow` defined in `script`, including command line options defined by the `[default]` section of `script`.
+Display details of `workflow` defined in `script`, including command line options defined by the `[parameters]` section of `script`.
 
 ### subcommand `export` 
 
@@ -74,7 +76,6 @@ Export `steps` of `workflow` defined in `script` to `script_dir`. This command w
 *  `-f` (force): overwrite existing files with different content silently. If unspecified, the command will fail with an error message in such cases. 
 * `-h` (help): display help message.
 
-Please refere to [the export feature](export.md) for detailed examples of this command.
 
 ### TBD Features
 * subcommand **`convert`**:
