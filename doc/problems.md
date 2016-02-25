@@ -2,9 +2,8 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [Potential conflict of `${}` with other languages (solved using variable `sos_qutation`)](#potential-conflict-of--with-other-languages-solved-using-variable-sos_qutation)
+- [Use of '${}' in places other than script string substitution](#use-of--in-places-other-than-script-string-substitution)
 - [design of `for_each`](#design-of-for_each)
-- [Format of input options (decided to use `,` instead of `:`)](#format-of-input-options-decided-to-use--instead-of-)
 - [Use of dictionary variable](#use-of-dictionary-variable)
 - [Enforce naming convention?](#enforce-naming-convention)
 - [Support for docker](#support-for-docker)
@@ -12,53 +11,49 @@
 - [Resource control](#resource-control)
 - [Libraries](#libraries)
 - [Nested workflow](#nested-workflow)
-- [Other requirements of steps (solved)](#other-requirements-of-steps-solved)
-- [Handling of filenames with spaces and other special characters (solved)](#handling-of-filenames-with-spaces-and-other-special-characters-solved)
-- [Section option `concurrent` (decided to use section option `nonconcurrent`)](#section-option-concurrent-decided-to-use-section-option-nonconcurrent)
-- [Default parameter `--input` (decided to remove)](#default-parameter---input-decided-to-remove)
-- [variable definition (decided to use Python syntax)](#variable-definition-decided-to-use-python-syntax)
-- [A more pythonic approach?](#a-more-pythonic-approach)
 - [backward dependency rules?](#backward-dependency-rules)
 - [Session info?](#session-info)
 - [Moving parameters of action to section level](#moving-parameters-of-action-to-section-level)
+- [Resoved: Other requirements of steps](#resoved-other-requirements-of-steps)
+- [Resoved: Handling of filenames with spaces and other special characters](#resoved-handling-of-filenames-with-spaces-and-other-special-characters)
+- [Resoved: Section option `concurrent`](#resoved-section-option-concurrent)
+- [Resoved: Default parameter `--input`](#resoved-default-parameter---input)
+- [Resoved: variable definition](#resoved-variable-definition)
+- [Resoved: A more pythonic approach?](#resoved-a-more-pythonic-approach)
+- [Resoved: Potential conflict of `${}` with other languages](#resoved-potential-conflict-of--with-other-languages)
+- [Resoved: Format of input options](#resoved-format-of-input-options)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-### Potential conflict of `${}` with other languages (solved using variable `sos_qutation`)
+### Use of '${}' in places other than script string substitution
 
-`${}` is used in shell, `` ` ` `` is used in python (Python 2 only) and perl, `{}` is commonly used in many languages, and the list goes on. 
+For example, replace `${resource_path}` with the string in `input` specification:
 
-SoS uses regular expression to identify expressions and text sustitution to compose script so it should be flexible in which quotation style to use, we can use a varible `sos_qutation` to define qutations and use it within step or within a script.  
+```
+input:
+	'${resource_path}/hg19/wholeGenome.fasta'
+```
+
+Using proper python expression would require
+
+```
+input:
+	resource_path + '/hg19/wholeGenome.fasta'
+```
+
+or
+
+```
+input:
+	os.path.join(resource_path, '/hg19/wholeGenome.fasta')
+```
+
+which can be less readable.
+
 
 ### design of `for_each`
 
 I am not sure the current design is intuitive. It requires the variables to be defined before and uses a derived variable (`_name` for variable `name`), but the usual `for_each` loop does not fit into the existing parameter structure.
-
-### Format of input options (decided to use `,` instead of `:`)
-
-Currently input options are appended to input specification. Perhaps we can ignore the second `:` and use `,` all over. I mean, we can change
-
-```python
-input:  fasta_files: group_by='single'
-```
-
-to 
-
-```python
-input:  fasta_files, group_by='single'
-```
-
-because filenames usually do not have this form. This also make the parsing of `input:` easier because we input options can be parsed with input. In addition
-
-```python
-input: group_by='single'
-```
-
-is easier to understand than
-
-```python
-input: : group_by='single'
-```
 
 ### Use of dictionary variable
 
@@ -112,14 +107,90 @@ run('sos-runner anotherworkflow ${input}'
 
 to execute another workflow.
 
-### Other requirements of steps (solved)
+### backward dependency rules?
+
+There can be a need for dependency rules. For example, if a bam index file is needed (dependent upon) and
+the bam file exists, then `samtools index` would be automatically called. This does not sound like a good
+idea because `samtools index` can always be put as a regular part of the workflow. On the other hand, adding
+such rules can help if these common steps are not always needed, or needed for multiple steps of the pipeline.
+I am not sure how useful such magic is. Implementation wise it might not be too difficult, some syntax
+like the following could be used
+
+```
+# section name does not have index so it would be called if and only if the 
+# step is needed. pattern of output is defined as section option.
+[ index_bam : output=*.bam.bai]
+
+# input is defined from output
+input = output[0][:-4]
+
+# the action is defined as usual, but output does not need to be defined
+# again.
+run('samtools index ${input}')
+
+```
+
+could potentially work. This allows gnumake style definition of pipelines that can be used to construct complete workflows. It seems to contradict 
+the design of SoS though.
+
+### Session info?
+
+There is a need to save the version of program or packages of R ...
+
+
+### Moving parameters of action to section level
+
+Currently we have
+
+```python
+[step]
+
+action( ... 
+	output= ...,
+	wordir= ..., 
+	resource= ...,
+)
+```
+
+It might be easier to move them out side of the function
+
+```python
+[step]
+
+workdir:
+resource:
+output:
+
+action( ... 
+)
+```
+
+The problem with `output` is that since `SoS` allows sequential execution of multiple steps or 
+repeated execution of the same step, it can be difficult to specify `output` globally in step.
+For example, currently we can do
+
+```python
+run('command1', output='output1'), run('command2', output='output2')
+```
+
+with runtime signature kept for both actions. Although it is possible to write
+
+```python
+output=['output1', 'output2']
+run('command1'), run('command2')
+```
+
+it is unclear how to record runtime signature. (Currently signature is saved at the action level, not step level).
+
+
+### Resoved: Other requirements of steps
 
 CWL has the requirement keyword which handles all sorts of requirement. SoS solves this by
 
 * `depends:` item in pipeline step, which lists all dependent files that will go into step signature.
 * `fail_if()` action, which stops the workflow if the requirements are not satisfied.
 
-### Handling of filenames with spaces and other special characters (solved)
+### Resoved: Handling of filenames with spaces and other special characters
 
 Because there is no way SoS knows how individual scripts and commands handle filenames with spaces, SoS would need to
 
@@ -163,7 +234,8 @@ open("${input}")
 should work correctly and it would be wrong if SoS mangles `${input}` during variable substitution.
 
 
-### Section option `concurrent` (decided to use section option `nonconcurrent`)
+### Resoved: Section option `concurrent`
+
 
 There are some options to allow concurrent execution of step actions.
 
@@ -176,14 +248,17 @@ There are some options to allow concurrent execution of step actions.
   `for_all` as nonconcurrent? The problem is that `group_by` would also generate
   multiple actions so we might also need `nc_group_by`.
 
+Decided to use section option `nonconcurrent`)
 
-### Default parameter `--input` (decided to remove)
+### Resoved: Default parameter `--input`
 
 We do not have to allow a default parameter `--input`. It is easier to use 
 but the parameter itself is not documented like other command line parameters. It might  
 be better to force the definition of all parameters in the `[default]` section.
 
-### variable definition (decided to use Python syntax)
+Decided to remove `input`.
+
+### Resoved: variable definition
 
 The original design uses
 
@@ -204,7 +279,7 @@ sample_names=['a', 'b']
 
 which is more consistent because the right hand side are always valid python expressions.
 
-### A more pythonic approach?
+### Resoved: A more pythonic approach?
 
 Currently there are pices of the script that is not python, most notably the input
 specification. It might make sense to turn them all to python syntax. Even wrap everything
@@ -218,77 +293,52 @@ step(index=10,
 )
 ```
 
-### backward dependency rules?
+This too ugly to adopt.
 
-There can be a need for dependency rules. For example, if a bam index file is needed (dependent upon) and
-the bam file exists, then `samtools index` would be automatically called. This does not sound like a good
-idea because `samtools index` can always be put as a regular part of the workflow. On the other hand, adding
-such rules can help if these common steps are not always needed, or needed for multiple steps of the pipeline.
-I am not sure how useful such magic is. Implementation wise it might not be too difficult, some syntax
-like the following could be used
+### Resoved: Potential conflict of `${}` with other languages 
+
+`${}` is used in shell, `` ` ` `` is used in python (Python 2 only) and perl, `{}` is commonly used in many languages, and the list goes on. 
+
+SoS uses regular expression to identify expressions and text sustitution to compose script so it should be flexible
+in which quotation style to use, we can use a section option `qutation` to define qutations for a particular section.
+
+e.g.
 
 ```
-# section name does not have index so it would be called if and only if the 
-# step is needed. pattern of output is defined as section option.
-[ index_bam : output=*.bam.bai]
+[10: qutation='[[ ]]' ]
 
-# input is defined from output
-input = output[0][:-4]
-
-# the action is defined as usual, but output does not need to be defined
-# again.
-run('samtools index ${input}')
+run('command with [[input]]')
 
 ```
 
-could potentially work. This allows gnumake style definition of pipelines that can be used to construct complete workflows. It seems to contradict 
-the design of SoS though.
-
-### Session info?
-
-There is a need to save the version of program or packages of R ...
+Here the value to `quotation` should be a string with a single separting two pieces of quote.
 
 
-### Moving parameters of action to section level
 
-Currently we have
+### Resoved: Format of input options
 
-```
-[step]
+Currently input options are appended to input specification. Perhaps we can ignore the second `:` and use `,` all over. I mean, we can change
 
-action( ... 
-	output= ...,
-	wordir= ..., 
-	resource= ...,
-)
+```python
+input:  fasta_files: group_by='single'
 ```
 
-It might be easier to move them out side of the function
+to 
 
-[step]
-
-workdir:
-resource:
-output:
-
-action( ... 
-)
+```python
+input:  fasta_files, group_by='single'
 ```
 
-The problem with `output` is that since `SoS` allows sequential execution of multiple steps or 
-repeated execution of the same step, it can be difficult to specify `output` globally in step.
-For example, currently we can do
+because filenames usually do not have this form. This also make the parsing of `input:` easier because we input options can be parsed with input. In addition
 
-```
-run('command1', output='output1'), run('command2', output='output2')
+```python
+input: group_by='single'
 ```
 
-with runtime signature kept for both actions. Although it is possible to write
+is easier to understand than
 
+```python
+input: : group_by='single'
 ```
-output=['output1', 'output2']
-run('command1'), run('command2')
-```
 
-it is unclear how to record runtime signature. (Currently signature is saved at the action level, not step level).
-
+Decided to use `,` instead of `:`

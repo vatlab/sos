@@ -149,17 +149,16 @@ Therefore,
 
 
 If your script is expected to have patterns of `${variable}` that should not be interpreted by SoS, you can
-define
+use section option `quotation` to change it
 
 ```python
-_sos_quotation=None
+[100: quotation=None]
 ```
 
 to disable variable intepretation or something like
 
 ```python
-_sos_quotation=['[[', ']]']
+[100: quotation='[[ ]]']
 ```
 
-to use an alternative quoting style ('[[expression]]' in this example). The setting is valid
-for the current step only.
+to use an alternative quoting style ('[[expression]]' in this example).

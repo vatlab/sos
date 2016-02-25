@@ -19,9 +19,7 @@
 The core of SoS has mostly been implemented in another project but we are re-designing and re-implementing it to make SoS more user-friendly and powerful. Your involvement and suggestions are very welcome.
 
 * User interface: [commandline arguments](doc/commandline.md)
-* Format of SoS script: [overall format](doc/sos_format_v1.md)
-	* [workflow sections](doc/workflow_sections.md)
-	* [step specification](doc/step_format.md)
+* Format of SoS script: [format specification](doc/sos_format_v1.md)
 * Features:
 	* [proposed actions](doc/actions.md)
 	* [export SoS scripts](doc/export.md)
