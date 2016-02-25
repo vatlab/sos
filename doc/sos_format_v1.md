@@ -272,7 +272,7 @@ key4=value4
 * `nonconcurrent`: if the step action will be repeated (using input options `group_by` or `for_each`), the loop actions are assumed to be parallel executable.
   If for some reason this assumption is wrong, you can set option `nonconcurrent` to let the actions execute sequentially.  
 * `blocking`: the step can only be executed by one instance of SoS. All other SoS instances will wait until one instance complete this step. This option should be used for actions such as the creation of index and downloading of resources.
-* `quotation`: alternative qutation of the step, which should be a string with space. E.g. `quotation='[ ]'` allows the use of expressions such as
+* `sigil`: alternative sigil of the step, which should be a string with space. E.g. `sigil='[ ]'` allows the use of expressions such as
   `[input]` in this step.
 
 #### Input files (`input:`)

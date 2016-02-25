@@ -2,7 +2,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [Use of '${}' in places other than script string substitution](#use-of--in-places-other-than-script-string-substitution)
+- [trouble with sigil usage](#trouble-with-sigil-usage)
 - [design of `for_each`](#design-of-for_each)
 - [Use of dictionary variable](#use-of-dictionary-variable)
 - [Enforce naming convention?](#enforce-naming-convention)
@@ -22,34 +22,25 @@
 - [Resoved: A more pythonic approach?](#resoved-a-more-pythonic-approach)
 - [Resoved: Potential conflict of `${}` with other languages](#resoved-potential-conflict-of--with-other-languages)
 - [Resoved: Format of input options](#resoved-format-of-input-options)
+- [Resolved: Use of '${}' in places other than script string substitution](#resolved-use-of--in-places-other-than-script-string-substitution)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-### Use of '${}' in places other than script string substitution
+### trouble with sigil usage
 
-For example, replace `${resource_path}` with the string in `input` specification:
+Python 3.6 introduced formated string, which uses `{}`. It also accepts expressions (with addition of conversion `!` and format specification `:`)
+but so I am very attempted to declear that all SoS string literals are python format string. However, the use of `{}` forces the doubling of regular
+`{` and `}`, which is disastrous for scripts such as shell and R.
 
-```
-input:
-	'${resource_path}/hg19/wholeGenome.fasta'
-```
+I guess I will have to specify that SoS string is different and has to be configurable sigil for different languages.
 
-Using proper python expression would require
+Rules:
 
-```
-input:
-	resource_path + '/hg19/wholeGenome.fasta'
-```
-
-or
-
-```
-input:
-	os.path.join(resource_path, '/hg19/wholeGenome.fasta')
-```
-
-which can be less readable.
-
+1. Python string literals are acceptable (e.g. `'string'`, `"string"`, `'''string'''`, `"""string"""`.
+2. Single quote versions are automatically treated as `r` string literals. E.g. `'\n'` is `r'\n'` in Python form.
+  This format is generally recommended.
+3. String interpolation with configurable SoS sigil is handled before the underlying function. Further processing
+  by underlying Python expression is allowed.
 
 ### design of `for_each`
 
@@ -300,12 +291,12 @@ This too ugly to adopt.
 `${}` is used in shell, `` ` ` `` is used in python (Python 2 only) and perl, `{}` is commonly used in many languages, and the list goes on. 
 
 SoS uses regular expression to identify expressions and text sustitution to compose script so it should be flexible
-in which quotation style to use, we can use a section option `qutation` to define qutations for a particular section.
+in which quotation style to use, we can use a section option `sigil` to define qutations for a particular section.
 
 e.g.
 
 ```
-[10: qutation='[[ ]]' ]
+[10: sigil='[[ ]]' ]
 
 run('command with [[input]]')
 
@@ -342,3 +333,30 @@ input: : group_by='single'
 ```
 
 Decided to use `,` instead of `:`
+
+### Resolved: Use of '${}' in places other than script string substitution 
+
+For example, replace `${resource_path}` with the string in `input` specification:
+
+```
+input:
+	'${resource_path}/hg19/wholeGenome.fasta'
+```
+
+Using proper python expression would require
+
+```
+input:
+	resource_path + '/hg19/wholeGenome.fasta'
+```
+
+or
+
+```
+input:
+	os.path.join(resource_path, '/hg19/wholeGenome.fasta')
+```
+
+which can be less readable.
+
+Decision: it makes sense to allow this for consistency purposes.
