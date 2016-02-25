@@ -99,7 +99,7 @@ in the first line. These descriptions would be displayed in the output of comman
 
 ## Literals and variables 
 
-SoS uses [Python](http://www.python.org] syntax for literals and variables with some minor modifications. 
+SoS uses [Python](http://www.python.org) syntax for literals and variables with some minor modifications. 
 
 ### String literal
 
