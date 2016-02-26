@@ -380,6 +380,9 @@ input:
 depends:
     dependent files
 
+output:
+	output files
+
 key1=value1
 key2=value2
 
@@ -389,6 +392,11 @@ key3=value3
 key4=value4
 
 ```
+
+The following figure summarizes the effect of section option, input output directives and input options:
+
+![step options](step_options.jpg "step options")
+
 
 ### step options
 
@@ -433,7 +441,7 @@ Because variables pass information from one step to another and dictates how act
 
 * **Pre-action variables** will be defined and used. They will be defined multiple times if the step action will be executed with different `input` etc.
 
-* Step action generates output files which will be collected as variable **`step_output`**
+* Step action generates output files. The output files are specified by **`output`** and are saved as variable **`step_output`**
 
 * **Post-action variables** will be defined after the exeuction of step action. It can be used to redefine `step_output` (e.g. remove duplicate output files from action output).
 
@@ -762,6 +770,30 @@ depends:
 	reference_seq
 	
 ```
+
+Note that dependent files are processed after input files so variable `input` and others are available to use for `depends`. 
+
+### Step output
+
+Output files of a step can be specified by item `output`. Whereas `input` is a directive to overide or 
+change SoS provided variable `step_input` to produce one or more variable `input`, the `output` is a
+directive to specify `step_output` which should be the collection of all output files if step action is executed
+multiple times.
+
+
+```python
+[10]
+input:
+	fasta_files
+	
+depends:
+	reference_seq
+
+output:
+	'output/aligned.bam'
+
+```
+
 
 ### step actions
 
