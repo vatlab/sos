@@ -800,22 +800,26 @@ step_input = [x[:-4] for x in step_output]
 
 input: group_by='single'
 
-run('samtools index ${input}'
+# create ${input}.bai from ${input}
+run('samtools index ${input}')
+
 ```
 
-defines a step called `index_bam`. When another step is executed, for example when the following step
+defines a step called `index_bam`. When a file with extension `*.bam.bai` is required but does not exist,
+for example when the following step
 
 ```python
 [align_100]
 
-depends: input[0] + 'bai'
+depends: input[0] + '.bai'
 ...
 
 ```
 
-is executed with input `['A1.bam']` and a file with extension `*.bam.bai` is required, SoS will check if `A1.bam.bai` exists. If the file does not exists 
-and there is an auxillary step to produce it, it will call that step. In this case, the `index_bam` will be called with `step_output=['A1.bam.bai']` and
-no `step_input`. The `index_bam` step needs to figure out what the input file should be and execute the step as a regular SoS step.
+is executed with input `['A1.bam']`, SoS will check if there is an auxillary step to produce it and
+call that step with `step_output=['A1.bam.bai']` but no `step_input`. In this example the `index_bam` step
+will figure out what the input files are needed (`step_input=...`) and execute the step as a regular SoS step
+if files specified by `step_input` exist.
 
 You might have already realized that an auxiliary step is a makefile style step and you can use this technique to build completely 
 workflows in a way similar to [snakemake](https://bitbucket.org/johanneskoester/snakemake). That is to say, you can define multiple
