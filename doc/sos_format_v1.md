@@ -22,7 +22,7 @@
   - [step options](#step-options)
   - [Description of step](#description-of-step)
   - [Runtime variables](#runtime-variables)
-  - [Input files (`input:`)](#input-files-input)
+  - [Input files (`input` directive)](#input-files-input-directive)
   - [Input options](#input-options)
     - [Passing input files all at once (default)](#passing-input-files-all-at-once-default)
     - [Passing files of allowed type (option `filetype`)](#passing-files-of-allowed-type-option-filetype)
@@ -30,7 +30,8 @@
     - [Attaching variables to input filenames (option `labels`)](#attaching-variables-to-input-filenames-option-labels)
     - [Looping through values of a SoS variable (Option `for_each`)](#looping-through-values-of-a-sos-variable-option-for_each)
     - [Conditional skip of a step (option `skip`)](#conditional-skip-of-a-step-option-skip)
-  - [Dependent files (`depends` (or called `dependent`?))](#dependent-files-depends-or-called-dependent)
+  - [Dependent files (`depends` directive)](#dependent-files-depends-directive)
+  - [Step output files (`output` directive)](#step-output-files-output-directive)
   - [step actions](#step-actions)
 - [Auxiliary workflow steps and makefile style dependency rules](#auxiliary-workflow-steps-and-makefile-style-dependency-rules)
 
@@ -748,18 +749,21 @@ Option `skip=True` will make SoS skip the execution of the current step. Using `
 input:
 	fasta_files,
 	skip=len(fasta_failes) == 1
-	
+
+output: 'merged.fasta'
+
 run('command to merge multiple fasta files.')
+fasta_files = step_output
 ```
 
 Here the `skip` option gets the value of `True` if there is only one input file. The command to merge multiple input files would then be skipped.
 
-One important detail of this option is that the step is actually **executed with a null action** that passes input files to output files
-so this step still yields its `step_output`. In comparison, a step is completely ignored if it has step option `skip`. The consequence
-of this rule for this particular example is that its next step would get a merged file if there are multiple input files, or
-the original file if there is only a single input file.
+This example also shows a trick on providing consistent input for later steps. When there is only one file in `fasta_files`, the step will be ignored so
+`fasta_files` is unchanged. If there are multiple files in `fasta_files`, the step will be executed and generates a new fasta file
+called `merged.fasta`. The last line of the step save `step_output` to `fasta_files` so that the following steps will always
+get `fasta_files` with a single file.
 
-### Dependent files (`depends` (or called `dependent`?))
+### Dependent files (`depends` directive)
 
 This item specifies files that are required for the step. Although not required, it is a good practice to list resource files and other dependency files for a particular step. For example
 
