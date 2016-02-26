@@ -3,25 +3,25 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [General interface](#general-interface)
+- [Execution of scripts](#execution-of-scripts)
+- [Utility actions](#utility-actions)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 ### General interface
 
-```
+```python
 Action(
 	script,
-    output=None,
 	stdout=None,
 	stderr=None,
 	interpreter=None,
 	workdir=None,
 	resource={'ncpu'=1, 'mem'=0},
   )
+```
 
 where
 * `script`: the script to be executed
-* `output`: the expected output. If left unspecified (`None`), the script will have to be completed before
-   the next step is started.
 * `stdout` and `stderr`: standard output and standard error output of the script. These will be by default
    saved to the runtime directory.
 * `interpreter`: command to execute the script. Additional command line options and commands can be used
@@ -31,6 +31,8 @@ where
 * `resource`: a parameter to specify the resource used by the action, which helps the scheduler how to 
    execute the step. Without finer control of the resource, each action is assumed to use 1 cpu. If action sets
    `ncpu=4` it will take 4 cpus from the specified `-j` value. 
+
+Note that some options might be moved to the step level (e.g. resource).
 
 ### Execution of scripts
 

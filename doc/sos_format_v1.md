@@ -22,7 +22,7 @@
   - [step options](#step-options)
   - [Description of step](#description-of-step)
   - [Runtime variables](#runtime-variables)
-  - [Input files (`input:`)](#input-files-input)
+  - [Input files (`input` directive)](#input-files-input-directive)
   - [Input options](#input-options)
     - [Passing input files all at once (default)](#passing-input-files-all-at-once-default)
     - [Passing files of allowed type (option `filetype`)](#passing-files-of-allowed-type-option-filetype)
@@ -31,6 +31,7 @@
     - [Looping through values of a SoS variable (Option `for_each`)](#looping-through-values-of-a-sos-variable-option-for_each)
     - [Conditional skip of a step (option `skip`)](#conditional-skip-of-a-step-option-skip)
   - [Dependent files (`depends` (or called `dependent`?))](#dependent-files-depends-or-called-dependent)
+  - [Step output files (`output` directive)](#step-output-files-output-directive)
   - [step actions](#step-actions)
 - [Auxiliary workflow steps and makefile style dependency rules](#auxiliary-workflow-steps-and-makefile-style-dependency-rules)
 
