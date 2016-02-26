@@ -394,11 +394,6 @@ key4=value4
 
 ```
 
-The following figure summarizes the effect of section option `no_input`, `input`
-and `output` directives and input options `group_by` and `for_each` on the flow
-of input and output files and related variables:
-
-![step options](step_options.jpg "step options")
 
 
 ### step options
@@ -417,6 +412,8 @@ of input and output files and related variables:
 * **`sigil`**: alternative sigil of the step, which should be a string with space. E.g. `sigil='[ ]'` allows the use of expressions such as
   `[input]` in this step.
 * **`target`**: target filename that will trigger an [auxillary step](sos_format_v1.md#auxiliary-workflow-steps-and-makefile-style-dependency-rules).
+
+
 
 ### Description of step
 The first comment block after the section head (`[]`) is the description of the section and will be displayed in the output of command `sos show script`.
@@ -518,6 +515,12 @@ Of special interest is the use of functions such as `glob.glob` to determine inp
 
 The input options of a SoS step control how input files are passed to the step action. To should be keyword arguments appended to list
 of input files.
+
+The following figure summarizes the effect of section option `no_input`, `input`
+and `output` directives and input options `group_by` and `for_each` on the flow
+of input and output files and related variables:
+
+![step options](step_options.jpg "step options")
 
 #### Passing input files all at once (default)
 
@@ -868,4 +871,27 @@ designed to be helper steps that could be called multiple times during the execu
 to the makefile-like rule-based workflow system, make or snakemake should be better because they are specifically designed around
 that paradigm.
 
+
+## Execution of workflows
+
+Step actions and input output directives of SoS steps determines how a workflow will be executed. In the sequential execution mode (by default),
+all steps are executed one by one with auxillary steps called when necessary. If a script is written without any step option and 
+input and output files, it will be executed sequentially even in parallel execution mode (with `-j` option).
+
+If the steps are described with necessary input and output information, steps in SoS workflows can be executed in parallel. The 
+following figure illustrates the impact of section options and input/output directive on the execution order of workflows.
+
+Here is a summary of execution rules of workflows
+1. If a step does not specify any input, it is assumed to depend on all previous steps and will be executed only when 
+  all previous steps are completed. 
+2. If a step does not specify any output, all following steps are assumed to depend on its output and have to wait 
+  for its completion, except for steps with options `no_input` or `starting`.
+3. Option **`no_input`** and **`starting`** starts a few root of the execution tree with the difference that
+  no `input` directive is allowed for `no_input` steps.
+4. Option **`terminal`** stops a branch of the execution tree. Later steps can be executed in paralle with this step
+  (they will depend on its previous step if no input is specified).
+5. **`input`** directive will make the step movable and be executed whenever its dependent files are available.
+6. **`output`** directive will allow steps that depend on the output files be executed immediately after this step.
+
+![workflow execution](workflow.jpg "workflow execution modes")
 
