@@ -202,7 +202,6 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn ${
 
 [3]
 # compare expression values
-
 output: 'myfigure.pdf'
 
 R('''
@@ -264,15 +263,11 @@ ref_index=step_output
     
 [2]
 # align the reads to the reference genome
-
 sample_type=['control', 'mutated']
 
-input:    fasta_files,
-	group_by='single', labels='sample_type'
-
+input:    fasta_files, group_by='single', labels='sample_type'
 depends:  ref_index
 output:   ['aligned/control.out.tab', 'aligned/mutated.out.tab']
-
 
 run('''
 STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn ${input}  \
@@ -281,7 +276,6 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn $
 
 [3]
 # compare expression values
-
 output: 'myfigure.pdf'
 
 R('''
