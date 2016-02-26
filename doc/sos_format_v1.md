@@ -180,6 +180,7 @@ do
     echo Processing ${file} ...
     echo %(title)
 done
+''')
 ```
 
 uses a different sigil style because the shell script uses `${ }` so `${file}` keeps its meaning in the shell script while `%(sample_names[0])` and `%(title)` are replaced by SoS to their values.
@@ -225,7 +226,7 @@ defines a variable `sample_name` with default value `[]`. And
 gatk_path=config('gatk_path', config_file='~/.sos_config')
 ```
 
-calls a function `config` to get the value of `gatk_path` from a configuration file.
+calls a pre-defined Python function `config` to get the value of `gatk_path` from a configuration file.
 
 The comments before variable definition are meaningful because they will appear in the help message of the script (`sos show script`). 
 The default values not only determines the values of variable when they are not specified from command line, but also determines
@@ -435,7 +436,7 @@ Because variables pass information from one step to another and dictates how act
 
 * **Pre-input varialbes** will be defined before the processing of input files. It is possible to redefine `step_input` here.
  
-* The `input:` specification generates the following variables:
+* The `input` directive generates the following variables:
   * **`input`** (list of strings): selected input files. Depending on input options, step action might be executed multiple times with different set of `input` files. 
   * **file label variables** (list of strings): Labels of files in `input` if `labels` option is defined.
   * **loop variables** (string): value of loop variables if `for_each` option is defined 
@@ -477,8 +478,9 @@ The input of SoS step follows the following rules:
 
 1. **the input of a SoS step is by default the output of the previous step**.
 3. **step option `no_input` specifies that no input file is needed for the current step**
-4. **Input of a step can be specified by item `input`**, which should be a list or tupe of either 
-    filenames (quoted strings) or SoS variables (use names of variables).  Wildcard characters
+4. **Input of a step can be specified by directive `input`**, which should be a list or tupe of either 
+    filenames (quoted strings) or SoS variables (use names of variables), or expressions that return
+	filenames.  Wildcard characters
 	(`*` and `?`) are always expanded. 
 
 Examples of input specification are as follows:
@@ -504,24 +506,18 @@ input:
     aligned_reads[2:]
 
 input:
-    glob.glob('*.fastq')
+    glob.glob('data/*.fastq')
 
 ```
 
-It does not matter if `aligned_reads` and `reference_genome` are lists of filenames. SoS will expand wildcard characters and flatten the lists to a single list of filenames.
+It does not matter if `aligned_reads` and `reference_genome` are strings or lists of strings. SoS will expand wildcard characters and flatten the lists to a single list of filenames.
 
-Of special interest is the use of functions such as `glob.glob` to determine input files. This can be very useful for pipelines that, for example, regularly scan a directory and process unprocessed files. However, because the value of this step depends on availability of files, the output of `sos show script` and the executation path will be unpredictable, and even wrong if there is no available file during the execution of `sos show script`.
+Of special interest is the use of functions such as `glob.glob` to determine input files. This can be very useful for workflows that, for example, regularly scan a directory and process unprocessed files. However, because the value of this step depends on availability of files, the output of `sos show script` and the executation path will be unpredictable, and even wrong if there is no available file during the execution of `sos show script`.
 
 ### Input options 
 
-The input options of a SoS step control how input files are passed to the step action. To should be keyword arguments appended to list
+The input options of a SoS step control how input files are passed to the step action. They should be keyword arguments appended to list
 of input files.
-
-The following figure summarizes the effect of section option `no_input`, `input`
-and `output` directives and input options `group_by` and `for_each` on the flow
-of input and output files and related variables:
-
-![step options](step_options.jpg "step options")
 
 #### Passing input files all at once (default)
 
@@ -805,9 +801,16 @@ output:
 ```
 
 
+The following figure summarizes the effect of section option `no_input`, `input`
+and `output` directives and input options `group_by` and `for_each` on the flow
+of input and output files and related variables.
+
+![step options](step_options.jpg "step options")
+
+
 ### step actions
 
-Please refer to [step actions](actions.md) for details
+Please refer to [step actions](actions.md) for details.
 
 ## Auxiliary workflow steps and makefile style dependency rules
 
