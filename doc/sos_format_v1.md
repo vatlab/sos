@@ -858,9 +858,9 @@ depends: input[0] + '.bai'
 is executed with input `['A1.bam']`, SoS will check if there is an auxillary step to produce it and
 call that step with `step_output=['A1.bam.bai']` but no `step_input`. In this example the `index_bam` step
 will figure out what the input files are needed (`step_input=...`) and execute the step as a regular SoS step
-if files specified by `step_input` exist.
+if files specified by `step_input` exist, and execute other auxiliary steps to produce required files otherwise.
 
-You might have already realized that an auxiliary step is a makefile style step and you can use this technique to build completely 
+You might have already realized that an auxiliary step is a makefile style step and you can use this technique to build complete 
 workflows in a way similar to [snakemake](https://bitbucket.org/johanneskoester/snakemake). That is to say, you can define multiple
 auxiliary steps (rules in snakemake's term) and let SoS determine what steps to execute depending on what workflow target to produce.
 You can even mix the forward, input-oriented style with backward, output-oriented style in SoS. However, **auxiliary steps are
