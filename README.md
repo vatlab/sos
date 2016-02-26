@@ -255,9 +255,13 @@ STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_i
 ref_index=step_output
     
 [2]
-sample_type=['control', 'mutated']
 # align the reads to the reference genome
-input:    fasta_files, group_by='single', labels='sample_type'
+
+sample_type=['control', 'mutated']
+
+input:    fasta_files,
+	group_by='single', labels='sample_type'
+
 depends:  ref_index
 
 run('''
@@ -280,7 +284,7 @@ dev.off()
 
 Here we 
 
-1. Although not needed, save the output of the first step as `ref_index`
+1. Save the output of the first step (in variable `step_output`) as `ref_index`
 and use the variable instead of filename as a dependency of step 2. 
 2. Use option `group_by='single'` to pass input one by one to action. The
 action will be executed twice with `input` set to the first and second

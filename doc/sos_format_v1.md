@@ -14,7 +14,7 @@
 - [Global variables](#global-variables)
 - [Command line options](#command-line-options)
 - [Workflow definitions](#workflow-definitions)
-  - [Define single workflow](#define-single-workflow)
+  - [Define a single workflow](#define-a-single-workflow)
   - [Define multiple workflows](#define-multiple-workflows)
   - [Shared steps between workflows](#shared-steps-between-workflows)
   - [Execution of a subset of steps](#execution-of-a-subset-of-steps)
@@ -32,6 +32,7 @@
     - [Conditional skip of a step (option `skip`)](#conditional-skip-of-a-step-option-skip)
   - [Dependent files (`depends` (or called `dependent`?))](#dependent-files-depends-or-called-dependent)
   - [step actions](#step-actions)
+- [Auxiliary workflow steps and makefile style dependency rules](#auxiliary-workflow-steps-and-makefile-style-dependency-rules)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -104,7 +105,7 @@ SoS uses [Python](http://www.python.org) syntax for literals and variables with 
 ### String literal
 
 * Strings are quoted text. You can use `' '`, `" "`, `''' '''`, and `""" """` to quote your text. Different quotation styles allows you to quote string with another string quotation character (e.g. `"Letter 'a'"`).
-* Backslash can be used to enter special characters (e.g. '\n'). Instead of using python raw string prefix (e.g. `r'raw \n'`), **SoS automatically treats string quoted by `' '` and `''' '''` as raw strings**. If you are uncertain what this means, using only single quotation marks.
+* Backslash can be used to enter special characters (e.g. '\n'). Instead of using python raw string prefix (e.g. `r'raw \n'`), **SoS automatically treats string quoted by `' '` and `''' '''` as raw strings**. If you are uncertain what this means, always use single quotation marks.
 
 ### List literal
 
@@ -131,14 +132,14 @@ defines two variables `resource_path` (a string) and `sample_names` (a list).
 
 ### Expressions with SoS variables
 
-Any python expressions involving any SoS variables and defined functions can be used in SoS script. For example
+Any python expressions involving any SoS variables and defined functions can be used in SoS scripts. For example
 
 * `input[0]` gets the first input file
 * `os.path.basename(input[0])` get the base name of input file
 * `[x for x in input if '_R1_' in x]` returns all files with `_R1_` in its names
 * `output_dir + '/' + input[0] + '.bai'` return a file under `output_dir` with `.bai` appended to filename.
 * `os.path.getsize(input[0])` return a string (converted from integer) of file size
-* `os.path.getsize(input[0]) > 0` return `True` (
+* `os.path.getsize(input[0]) > 0` return `True`
 * `os.environ['MY_VAR']` return the value of environment `MY_VAR`.
 * `glob.glob('*.txt')` return a list of files with extension `.txt` under the current directory.
 
@@ -146,11 +147,11 @@ Note that SoS makes available modules `glob`, `os`, `sys`, and more modules can 
 
 ### String interpolation
 
-On top of python string manipulation functions and recently introduced (Python 3.6) format string, SoS uses string interpolation to replace variables and expressions within a string with their values. For example
+On top of python string manipulation functions and similar to recently introduced (Python 3.6) format string, SoS uses string interpolation to replace variables and expressions within a string with their values. For example
 
 ```python
 ref_genome = '${resource_path}/hg19/refGenome.fasta'
-title = 'Sample ${sample_names[0]) results'
+title = 'Sample ${sample_names[0]} results'
 all_names = 'Samples ${sample_names}'
 ```
 
@@ -179,7 +180,7 @@ do
 done
 ```
 
-uses a different sigil style because the shell script uses `${ }`.
+uses a different sigil style because the shell script uses `${ }` so `${file}` keeps its meaning in the shell script while `%(sample_names[0])` and `%(title)` are replaced by SoS to their values.
 
 ## Global variables 
 
@@ -187,9 +188,10 @@ Before the definition of any section (in the format of `[section_name: options]`
 
 In addition to user-defined global variables, SoS defines the following variables
 
-* `workflow_name`: name of the workflow being executed
-* `home`: home directory
-* `workdir`: full path to the current working directory
+* `workflow_name` (constant string): name of the workflow being executed
+* `sos_version` (constant string): version of sos
+* `home` (constant string): home directory
+* `workdir` (string): full path to the current working directory
 
 ## Command line options
 
@@ -223,22 +225,25 @@ gatk_path=config('gatk_path', config_file='~/.sos_config')
 
 calls a function `config` to get the value of `gatk_path` from a configuration file.
 
-The comments before variable definition is meaningful because they will appear in the help message of the script (`sos show script`). The default value also determines the type of input these parameters accept.
+The comments before variable definition are meaningful because they will appear in the help message of the script (`sos show script`). 
+The default values not only determines the values of variable when they are not specified from command line, but also determines
+the type of input these parameters accept.
 
-With these definition, you can pass values to these variables from command line, 
+For example, with the above definitions for command arguments `--gatk_path` and `sample_names`, you can pass values to 
+these variables from command line, 
 
 ```bash
 sos run myscript.sos --gatk_path /path/to/gatk --sample_names A1 A2 A3
 ```
 
-The default values will be used if the parameter is not changed from command line.
-
+A list will be passed to `sample_names` even if only a single value is provided (e.g. `sample_names=['A1']` for `--sample_name A1`).
+Attempts to pass more than one values (a list) to `gatk_path` (e.g. `--gatk_path /path1 /path2`) will trigger an error.
 
 ## Workflow definitions
 
 A SoS script can specify one or more workflows. Each workflow consists of one or more numbered steps. The numbers specify the **logical order** by which the steps are executed, but a later step might be executed before the completion of previous steps if it does not depend on the output of these steps.
 
-### Define single workflow
+### Define a single workflow
 
 A single pipeline can be specified without a name in a SoS script. For example, the following sections specify a pipeline with four steps `0`, `10`, `20`, and `100`. As you can see, the workflow steps can be specified in any order and do not have to be consecutive (which is actually preferred because it allows easy insertion of extra steps).
 
@@ -264,6 +269,8 @@ Because the SoS script defines only one workflow, yo do not have to specify the 
 ```bash
 sos run myscript.sos --input input1.fasta
 ```
+
+Unnumbered workflow steps such as `parameters` have their own uses and are not part of a workflow.
 
 ### Define multiple workflows 
 
@@ -425,12 +432,12 @@ Because variables pass information from one step to another and dictates how act
 
 * **Pre-action variables** will be defined and used. They will be defined multiple times if the step action will be executed with different `input` etc.
 
-* Step action generates output files which will be collected as variable `step_output`
+* Step action generates output files which will be collected as variable **`step_output`**
 
 * **Post-action variables** will be defined after the exeuction of step action. It can be used to redefine `step_output` (e.g. remove duplicate output files from action output).
 
 
-The following sections will provide plenty of examples on how to use these variables. As the two most frequently used cases, step variables can be used to give formal names to the input and output of the step so that they can be used in later steps with proper names.
+The following sections will provide plenty of examples on how to use these variables. As the two most frequently used cases, step variables can be used to give informative names (aliases) to the input and output of the step so that they can be used in later steps with proper names.
 
 For example
 
@@ -445,10 +452,12 @@ aligned_reads = step_output
 [150]
 # do something else to raw reads (e.g. quality control report)
 input: raw_reads
+run(''' ... ''')
 
 [200]
 # process aligned reads
 input: aligned_reads
+run(''' ... ''')
 ```
 
 
@@ -756,3 +765,63 @@ depends:
 ### step actions
 
 Please refer to [step actions](actions.md) for details
+
+## Auxiliary workflow steps and makefile style dependency rules
+
+Auxiliary steps are special steps that are used only when a target is needed but not available. Such steps are defined in the format of
+
+```python
+[step_name_without_index : target=pattern]
+
+step_input = expression involving step_output
+
+input:
+depends:
+action()
+
+```
+
+where
+
+* Step name should have no index.
+* There should be an option `target` that specifies that pattern of files that triggers the step.
+* `step_input` should be explicitly calculated from a SoS provided `step_output`
+
+For example,
+
+```python
+[index_bam : target='*.bam.bai']
+#
+# index bam file if its index is needed
+
+# input file should be filename.bam if the output is filename.bam.bai
+step_input = [x[:-4] for x in step_output]
+
+input: group_by='single'
+
+run('samtools index ${input}'
+```
+
+defines a step called `index_bam`. When another step is executed, for example when the following step
+
+```python
+[align_100]
+
+depends: input[0] + 'bai'
+...
+
+```
+
+is executed with input `['A1.bam']` and a file with extension `*.bam.bai` is required, SoS will check if `A1.bam.bai` exists. If the file does not exists 
+and there is an auxillary step to produce it, it will call that step. In this case, the `index_bam` will be called with `step_output=['A1.bam.bai']` and
+no `step_input`. The `index_bam` step needs to figure out what the input file should be and execute the step as a regular SoS step.
+
+You might have already realized that an auxiliary step is a makefile style step and you can use this technique to build completely 
+workflows in a way similar to [snakemake](https://bitbucket.org/johanneskoester/snakemake). That is to say, you can define multiple
+auxiliary steps (rules in snakemake's term) and let SoS determine what steps to execute depending on what workflow target to produce.
+You can even mix the forward, input-oriented style with backward, output-oriented style in SoS. However, **auxiliary steps are
+designed to be helper steps that could be called multiple times during the execution of a workflow**. If you are strongly inclined
+to the makefile-like rule-based workflow system, make or snakemake should be better because they are specifically designed around
+that paradigm.
+
+

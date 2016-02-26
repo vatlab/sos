@@ -12,7 +12,6 @@
   - [Resource control](#resource-control)
   - [Nested workflow](#nested-workflow)
   - [Libraries](#libraries)
-  - [backward dependency rules?](#backward-dependency-rules)
 - [Actions](#actions)
   - [Session info?](#session-info)
 - [External support](#external-support)
@@ -134,32 +133,6 @@ to execute another workflow.
 
 Libraries would be python modules with defined SoS actions, but how to maintain and import these modules require further investigation. Furthermore, extensive use of libraries somehow beats the purpose of SoS (readability) because libraries hide the details of actions.
 
-
-### backward dependency rules?
-
-There can be a need for dependency rules. For example, if a bam index file is needed (dependent upon) and
-the bam file exists, then `samtools index` would be automatically called. This does not sound like a good
-idea because `samtools index` can always be put as a regular part of the workflow. On the other hand, adding
-such rules can help if these common steps are not always needed, or needed for multiple steps of the pipeline.
-I am not sure how useful such magic is. Implementation wise it might not be too difficult, some syntax
-like the following could be used
-
-```
-# section name does not have index so it would be called if and only if the 
-# step is needed. pattern of output is defined as section option.
-[ index_bam : output=*.bam.bai]
-
-# input is defined from output
-input = output[0][:-4]
-
-# the action is defined as usual, but output does not need to be defined
-# again.
-run('samtools index ${input}')
-
-```
-
-could potentially work. This allows gnumake style definition of pipelines that can be used to construct complete workflows. It seems to contradict 
-the design of SoS though.
 
 ## Actions
 
@@ -380,3 +353,32 @@ Rules:
   This format is generally recommended.
 3. String interpolation with configurable SoS sigil is handled before the underlying function. Further processing
   by underlying Python expression is allowed.
+
+  
+### backward dependency rules?
+
+There can be a need for dependency rules. For example, if a bam index file is needed (dependent upon) and
+the bam file exists, then `samtools index` would be automatically called. This does not sound like a good
+idea because `samtools index` can always be put as a regular part of the workflow. On the other hand, adding
+such rules can help if these common steps are not always needed, or needed for multiple steps of the pipeline.
+I am not sure how useful such magic is. Implementation wise it might not be too difficult, some syntax
+like the following could be used
+
+```
+# section name does not have index so it would be called if and only if the 
+# step is needed. pattern of output is defined as section option.
+[ index_bam : output=*.bam.bai]
+
+# input is defined from output
+input = output[0][:-4]
+
+# the action is defined as usual, but output does not need to be defined
+# again.
+run('samtools index ${input}')
+
+```
+
+could potentially work. This allows gnumake style definition of pipelines that can be used to construct complete workflows. It seems to contradict 
+the design of SoS though.
+
+Decision: auxiliary steps.
