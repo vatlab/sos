@@ -80,13 +80,18 @@ input:
 depends:
    ref_index
 
+output:
+	['aligned/control.out.tab', 'aligned/mutated.out.tab']
+
 run('''
 STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn ${input[0]}  \
     --quantMode GeneCounts --outFileNamePrefix aligned/${_sample_type}
-''', output=['aligned/control.out.tab', 'aligned/mutated.out.tab'])
+''')
 
 [3]
 # compare expression values
+output:	'myfigure.pdf'
+
 R('''
 control.count = read.table('${input[0]}')
 mutated.count = read.table('${input[1]}')

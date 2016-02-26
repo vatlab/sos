@@ -393,7 +393,9 @@ key4=value4
 
 ```
 
-The following figure summarizes the effect of section option, input output directives and input options:
+The following figure summarizes the effect of section option `no_input`, `input`
+and `output` directives and input options `group_by` and `for_each` on the flow
+of input and output files and related variables:
 
 ![step options](step_options.jpg "step options")
 
@@ -402,18 +404,18 @@ The following figure summarizes the effect of section option, input output direc
 
 **Step options** are specified after step name and controls how the step will be executed. SoS provides the following options
 
-* `skip`: the whole step will be skipped as if it is not defined at all in the script. This option provides a quick method to disable a step.
-* `no_input`: this step does not need any input so it is a **root** of the execution tree. This option disconnects the current step with its previous steps so that it can be
+* **`skip`**: the whole step will be skipped as if it is not defined at all in the script. This option provides a quick method to disable a step.
+* **`no_input`**: this step does not need any input so it is a **root** of the execution tree. This option disconnects the current step with its previous steps so that it can be
     executed before the completion of previous steps. 
-* `terminal`: this step is one of the **terminals** or **leafs** of the execution tree. This allows the later steps to be
+* **`terminal`**: this step is one of the **terminals** or **leafs** of the execution tree. This allows the later steps to be
    executed before the completion of this step. The step can have output but no other step should depend on these output
    files.
-* `nonconcurrent`: if the step action will be repeated (using input options `group_by` or `for_each`), the loop actions are assumed to be parallel executable.
+* **`nonconcurrent`**: if the step action will be repeated (using input options `group_by` or `for_each`), the loop actions are assumed to be parallel executable.
   If for some reason this assumption is wrong, you can set option `nonconcurrent` to let the actions execute sequentially.  
-* `blocking`: the step can only be executed by one instance of SoS. All other SoS instances will wait until one instance complete this step. This option should be used for actions such as the creation of index and downloading of resources.
-* `sigil`: alternative sigil of the step, which should be a string with space. E.g. `sigil='[ ]'` allows the use of expressions such as
+* **`blocking`**: the step can only be executed by one instance of SoS. All other SoS instances will wait until one instance complete this step. This option should be used for actions such as the creation of index and downloading of resources.
+* **`sigil`**: alternative sigil of the step, which should be a string with space. E.g. `sigil='[ ]'` allows the use of expressions such as
   `[input]` in this step.
-* `target`: target filename that will trigger an [auxillary step](sos_format_v1.md#auxiliary-workflow-steps-and-makefile-style-dependency-rules).
+* **`target`**: target filename that will trigger an [auxillary step](sos_format_v1.md#auxiliary-workflow-steps-and-makefile-style-dependency-rules).
 
 ### Description of step
 The first comment block after the section head (`[]`) is the description of the section and will be displayed in the output of command `sos show script`.
@@ -470,7 +472,7 @@ run(''' ... ''')
 ```
 
 
-### Input files (`input:`)
+### Input files (`input` directive)
 
 The input of SoS step follows the following rules:
 
@@ -773,7 +775,7 @@ depends:
 
 Note that dependent files are processed after input files so variable `input` and others are available to use for `depends`. 
 
-### Step output
+### Step output files (`output` directive)
 
 Output files of a step can be specified by item `output`. Whereas `input` is a directive to overide or 
 change SoS provided variable `step_input` to produce one or more variable `input`, the `output` is a
@@ -816,8 +818,9 @@ action()
 
 where
 
-* Step name should have no index.
-* There should be an option `target` that specifies that pattern of files that triggers the step.
+* Step name does not have an index.
+* An option `target` specifies that pattern of files that triggers the step.
+* There is no `output` directive.
 * `step_input` should be explicitly calculated from a SoS provided `step_output`
 
 For example,
