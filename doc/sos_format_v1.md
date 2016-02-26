@@ -882,16 +882,17 @@ If the steps are described with necessary input and output information, steps in
 following figure illustrates the impact of section options and input/output directive on the execution order of workflows.
 
 Here is a summary of execution rules of workflows
-1. If a step does not specify any input, it is assumed to depend on all previous steps and will be executed only when 
+
+* If a step does not specify any input, it is assumed to depend on all previous steps and will be executed only when 
   all previous steps are completed. 
-2. If a step does not specify any output, all following steps are assumed to depend on its output and have to wait 
+* If a step does not specify any output, all following steps are assumed to depend on its output and have to wait 
   for its completion, except for steps with options `no_input` or `starting`.
-3. Option **`no_input`** and **`starting`** starts a few root of the execution tree with the difference that
+* Option **`no_input`** and **`starting`** starts a few root of the execution tree with the difference that
   no `input` directive is allowed for `no_input` steps.
-4. Option **`terminal`** stops a branch of the execution tree. Later steps can be executed in paralle with this step
+* Option **`terminal`** stops a branch of the execution tree. Later steps can be executed in paralle with this step
   (they will depend on its previous step if no input is specified).
-5. **`input`** directive will make the step movable and be executed whenever its dependent files are available.
-6. **`output`** directive will allow steps that depend on the output files be executed immediately after this step.
+* **`input`** directive will make the step movable and be executed whenever its dependent files are available.
+* **`output`** directive will allow steps that depend on the output files be executed immediately after this step.
 
 ![workflow execution](workflow.jpg "workflow execution modes")
 
