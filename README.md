@@ -47,8 +47,8 @@ The first command builds an index of the reference genome in prepration for the 
 These commands generate, among other files, two files named ``aligned/control.out.tab`` and ``aligned/mutated.out.tab`` with expression counts of all genes. You then wrote a [R](https://www.r-project.org/) script to analyze the results, something like
 
 ```R
-control.count = read.table('aligned/control.out.tab')
-mutated.count = read.table('aligned/mutated.out.tab')
+control.count <- read.table('aligned/control.out.tab')
+mutated.count <- read.table('aligned/mutated.out.tab')
 # normalize, compare, output etc, ignored.
 pdf('myfigure.pdf')
 # plot results
@@ -84,8 +84,8 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn mu
 [3]
 # compare expression values
 R('''
-control.count = read.table('aligned/control.out.tab')
-mutated.count = read.table('aligned/mutated.out.tab')
+control.count <- read.table('aligned/control.out.tab')
+mutated.count <- read.table('aligned/mutated.out.tab')
 # normalize, compare, output etc, ignored.
 pdf('myfigure.pdf')
 # plot results
@@ -143,8 +143,8 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn ${
 [3]
 # compare expression values
 R('''
-control.count = read.table('aligned/control.out.tab')
-mutated.count = read.table('aligned/mutated.out.tab')
+control.count <- read.table('aligned/control.out.tab')
+mutated.count <- read.table('aligned/mutated.out.tab')
 # normalize, compare, output etc, ignored.
 pdf('myfigure.pdf')
 # plot results
@@ -206,8 +206,8 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn ${
 output: 'myfigure.pdf'
 
 R('''
-control.count = read.table('${input[0]}')
-mutated.count = read.table('${input[1]}')
+control.count <- read.table('${input[0]}')
+mutated.count <- read.table('${input[1]}')
 # normalize, compare, output etc, ignored.
 pdf('myfigure.pdf')
 # plot results
@@ -285,8 +285,8 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn $
 output: 'myfigure.pdf'
 
 R('''
-control.count = read.table('${input[0]}')
-mutated.count = read.table('${input[1]}')
+control.count <- read.table('${input[0]}')
+mutated.count <- read.table('${input[1]}')
 # normalize, compare, output etc, ignored.
 pdf('myfigure.pdf')
 # plot results

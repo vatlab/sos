@@ -34,6 +34,7 @@
   - [Step output files (`output` directive)](#step-output-files-output-directive)
   - [step actions](#step-actions)
 - [Auxiliary workflow steps and makefile style dependency rules](#auxiliary-workflow-steps-and-makefile-style-dependency-rules)
+- [Execution of workflows](#execution-of-workflows)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 

@@ -93,8 +93,8 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate  --readFilesIn $
 output:	'myfigure.pdf'
 
 R('''
-control.count = read.table('${input[0]}')
-mutated.count = read.table('${input[1]}')
+control.count <- read.table('${input[0]}')
+mutated.count <- read.table('${input[1]}')
 # normalize, compare, output etc, ignored.
 pdf('myfigure.pdf')
 # plot results
@@ -139,8 +139,8 @@ STAR --genomeDir STAR_index --outSAMtype BAM SortedByCoordinate --readFilesIn ct
 export/default_3.R:
 
 ```
-control.count = read.table('aligned/control.out.tab')
-mutated.count = read.table('aligned/mutated.out.tab')
+control.count <- read.table('aligned/control.out.tab')
+mutated.count <- read.table('aligned/mutated.out.tab')
 # normalize, compare, output etc, ignored.
 pdf('myfigure.pdf')
 # plot results
@@ -221,8 +221,8 @@ export/default_3.R:
 ```
 args <- commandArgs()
 
-control.count = read.table(args[1])
-mutated.count = read.table(args[2])
+control.count <- read.table(args[1])
+mutated.count <- read.table(args[2])
 # normalize, compare, output etc, ignored.
 pdf('myfigure.pdf')
 # plot results

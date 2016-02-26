@@ -3,7 +3,6 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [File format](#file-format)
-  - [Moving parameters of action to section level](#moving-parameters-of-action-to-section-level)
   - [design of `for_each`](#design-of-for_each)
   - [Use of dictionary variable](#use-of-dictionary-variable)
   - [Enforce naming convention?](#enforce-naming-convention)
@@ -27,55 +26,12 @@
   - [Format of input options](#format-of-input-options)
   - [Use of '${}' in places other than script string substitution](#use-of--in-places-other-than-script-string-substitution)
   - [trouble with sigil usage](#trouble-with-sigil-usage)
+  - [Moving parameters of action to section level](#moving-parameters-of-action-to-section-level)
+  - [Alternative or configurable global sigil?](#alternative-or-configurable-global-sigil)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## File format
-
-
-### Moving parameters of action to section level
-
-Currently we have
-
-```python
-[step]
-
-action( ... 
-	output= ...,
-	wordir= ..., 
-	resource= ...,
-)
-```
-
-It might be easier to move them out side of the function
-
-```python
-[step]
-
-workdir:
-resource:
-output:
-
-action( ... 
-)
-```
-
-The problem with `output` is that since `SoS` allows sequential execution of multiple steps or 
-repeated execution of the same step, it can be difficult to specify `output` globally in step.
-For example, currently we can do
-
-```python
-run('command1', output='output1'), run('command2', output='output2')
-```
-
-with runtime signature kept for both actions. Although it is possible to write
-
-```python
-output=['output1', 'output2']
-run('command1'), run('command2')
-```
-
-it is unclear how to record runtime signature. (Currently signature is saved at the action level, not step level).
 
 ### design of `for_each`
 
@@ -139,8 +95,6 @@ Libraries would be python modules with defined SoS actions, but how to maintain 
 ### Session info?
 
 There is a need to save the version of program or packages of R ...
-
-
 
 ## External support
 
@@ -382,3 +336,53 @@ could potentially work. This allows gnumake style definition of pipelines that c
 the design of SoS though.
 
 Decision: auxiliary steps.
+
+
+### Moving parameters of action to section level
+
+Currently we have
+
+```python
+[step]
+
+action( ... 
+	wordir= ..., 
+	resource= ...,
+)
+```
+
+It might be easier to move them out side of the function
+
+```python
+[step]
+
+workdir:
+resource:
+
+action( ... 
+)
+```
+
+The major problem here is that a step can execute multiple actions, loop or sequential action
+but some options might be action specific (e.g. resource)
+
+```python
+run('command1'), run('command2')
+```
+
+Decided to move output to the step level. Other options will be added one by one to either action
+or step level.
+
+
+### Alternative or configurable global sigil?
+
+It is very tempting to use `{ }` as default sigil because this is what snakemake uses and what
+python format string uses. However, because SoS tends to include scripts in R etc, `{}` would
+be a bad choice.
+
+It is easy enough to allow a global variable `default_sigil` to change default sigil to a user
+specified one, but it seems to be an overkill.
+
+Decision: not worry about it now because default sigil should be good enough for most cases.
+
+
