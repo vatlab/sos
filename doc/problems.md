@@ -3,6 +3,9 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [File format](#file-format)
+  - [Section option `terminal` and `starting`](#section-option-terminal-and-starting)
+  - [Default input of step?](#default-input-of-step)
+  - [Section option `no_input`](#section-option-no_input)
   - [design of `for_each`](#design-of-for_each)
   - [Use of dictionary variable](#use-of-dictionary-variable)
   - [Enforce naming convention?](#enforce-naming-convention)
@@ -32,6 +35,27 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## File format
+
+
+### Section option `terminal` and `starting`
+
+These can be determined automatically if input and output files are specified, right? 
+These options are therefore not needed. In addition, adding the option `terminal` does not prevent
+other steps to depend on the ouput files of a step, leading to potential errors.
+
+### Default input of step?
+
+Would it clearer to require explicit input files? Right now the a step's `step_input` is 
+the output of previous step. The problem with no default input is that output alias are 
+almost always required and make the script a bit cumbersome.
+
+
+
+### Section option `no_input`
+
+This can be replaced by something like `input: None` so no separate option is needed.
+
+
 
 ### design of `for_each`
 
