@@ -12,6 +12,7 @@
   - [Runtime control](#runtime-control)
   - [Resource control](#resource-control)
   - [Nested workflow](#nested-workflow)
+  - [Portability of runtime signatures](#portability-of-runtime-signatures)
   - [Libraries](#libraries)
 - [Actions](#actions)
   - [Session info?](#session-info)
@@ -103,6 +104,33 @@ run('sos-runner anotherworkflow ${input}'
 
 to execute another workflow.
 
+
+### Portability of runtime signatures
+
+Runtime signatures are usually not portable because filenames and pathes would change when the project
+is moved to another location. However, because it is possible for a project to be archived, and restored
+for some further analysis, saving the runtime signatures with the project might be usable. In addition,
+if runtime signatures include standard and error output of the commands, it can be useful to keep them
+for later reference. The interface can be
+
+```bash
+sos admin --pack_runtime runtime.db
+```
+
+for packing runtime information to a file,
+
+
+```bash
+sos admin --unpack_runtime runtime.db
+```
+
+for unpacking runtime information of the current project, and
+
+```bash
+sos admin --unpack_runtime runtime.db
+```
+
+The `sos view` or `sos edit` commands might be used to show standard and error output of commands.
 
 ### Libraries
 
