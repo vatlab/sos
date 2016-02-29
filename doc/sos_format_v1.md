@@ -775,8 +775,8 @@ Note that dependent files are processed after input files so variable `input` an
 
 Output files of a step can be specified by item `output`. Whereas `input` is a directive to overide or 
 change SoS provided variable `step_input` to produce one or more variable `input`, the `output` is a
-directive to specify `step_output` which should be the collection of all output files if step action is executed
-multiple times.
+directive to specify `step_output` which should be `None` if no output is generated (or of interest), or output of the step, which
+should be the collection of all output files if step action is executed multiple times.
 
 
 ```python
