@@ -61,7 +61,7 @@ For example, for the SoS script defined in the [tutorial](../README.md),
 # and the second one for mutated sample.
 fasta_files=['control.fasta', 'mutated.fasta']
 
-[1: no_input]
+[1]
 # create a index for reference genome
 run('''
 STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_index

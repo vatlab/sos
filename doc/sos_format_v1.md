@@ -403,18 +403,11 @@ key4=value4
 **Step options** are specified after step name and controls how the step will be executed. SoS provides the following options
 
 * **`skip`**: the whole step will be skipped as if it is not defined at all in the script. This option provides a quick method to disable a step.
-* **`no_input`**: this step does not need any input so it is a **root** of the execution tree. This option disconnects the current step with its previous steps so that it can be
-    executed before the completion of previous steps. 
-* **`terminal`**: this step is one of the **terminals** or **leafs** of the execution tree. This allows the later steps to be
-   executed before the completion of this step. The step can have output but no other step should depend on these output
-   files.
-* **`nonconcurrent`**: if the step action will be repeated (using input options `group_by` or `for_each`), the loop actions are assumed to be parallel executable.
-  If for some reason this assumption is wrong, you can set option `nonconcurrent` to let the actions execute sequentially.  
+* **`nonconcurrent`**: if the step action will be repeated (using input options `group_by` or `for_each`), the loop actions are assumed to be parallel executable. If for some reason this assumption is wrong, you can set option `nonconcurrent` to let the actions execute sequentially.  
 * **`blocking`**: the step can only be executed by one instance of SoS. All other SoS instances will wait until one instance complete this step. This option should be used for actions such as the creation of index and downloading of resources.
 * **`sigil`**: alternative sigil of the step, which should be a string with space. E.g. `sigil='[ ]'` allows the use of expressions such as
   `[input]` in this step.
 * **`target`**: target filename that will trigger an [auxillary step](sos_format_v1.md#auxiliary-workflow-steps-and-makefile-style-dependency-rules).
-
 
 
 ### Description of step
@@ -432,7 +425,7 @@ Because variables pass information from one step to another and dictates how act
 
 * Before entering the step:
   * **`step_index`** (string) is defined automatically to the index of the current step 
-  * **`step_input`** (list of strings): input from the last completed step, or `[]` if step option `no_input` is set.
+  * **`step_input`** (list of strings): input from the last completed step, or `[]` for the first step.
 
 * **Pre-input varialbes** will be defined before the processing of input files. It is possible to redefine `step_input` here.
  
@@ -476,16 +469,14 @@ run(''' ... ''')
 
 The input of SoS step follows the following rules:
 
-1. **the input of a SoS step is by default the output of the previous step**.
-3. **step option `no_input` specifies that no input file is needed for the current step**
-4. **Input of a step can be specified by directive `input`**, which should be a list or tupe of either 
-    filenames (quoted strings) or SoS variables (use names of variables), or expressions that return
-	filenames.  Wildcard characters
-	(`*` and `?`) are always expanded. 
+* **the input of a SoS step is by default the output of the previous step**, or `None` for the first step.
+* **directive `input`**, which could be either **`None`** for no input, or **a list** of filenames (string literal, variables, or expressions that return filenames).  Wildcard characters (`*` and `?`) are always expanded. Nested lists are flattened.
 
 Examples of input specification are as follows:
 
 ```
+input: None
+
 input:
 	'file1.fasta', 'file2.fasta'
 
@@ -510,14 +501,15 @@ input:
 
 ```
 
-It does not matter if `aligned_reads` and `reference_genome` are strings or lists of strings. SoS will expand wildcard characters and flatten the lists to a single list of filenames.
+It is worth noting that
 
-Of special interest is the use of functions such as `glob.glob` to determine input files. This can be very useful for workflows that, for example, regularly scan a directory and process unprocessed files. However, because the value of this step depends on availability of files, the output of `sos show script` and the executation path will be unpredictable, and even wrong if there is no available file during the execution of `sos show script`.
+* The first examples shows that the step does not need any input file (so it does not depend on any other step). 
+* It does not matter if `aligned_reads` and `reference_genome` are strings or lists of strings because SoS will flatten nested lists to a single list of filenames.
+* The use of functions such as `glob.glob` to determine input files can be very useful for workflows that, for example, regularly scan a directory and process unprocessed files. However, because the value of this step depends on availability of files, the output of `sos show script` and the executation path will be unpredictable, and even wrong if there is no available file during the execution of `sos show script`.
 
 ### Input options 
 
-The input options of a SoS step control how input files are passed to the step action. They should be keyword arguments appended to list
-of input files.
+The input options of a SoS step control how input files are passed to the step action. They should be keyword arguments appended to list of input files.
 
 #### Passing input files all at once (default)
 
@@ -801,7 +793,7 @@ output:
 ```
 
 
-The following figure summarizes the effect of section option `no_input`, `input`
+The following figure summarizes the effect of `input`
 and `output` directives and input options `group_by` and `for_each` on the flow
 of input and output files and related variables.
 
@@ -890,11 +882,7 @@ Here is a summary of execution rules of workflows
 * If a step does not specify any input, it is assumed to depend on all previous steps and will be executed only when 
   all previous steps are completed. 
 * If a step does not specify any output, all following steps are assumed to depend on its output and have to wait 
-  for its completion, except for steps with options `no_input` or `starting`.
-* Option **`no_input`** and **`starting`** starts a few root of the execution tree with the difference that
-  no `input` directive is allowed for `no_input` steps.
-* Option **`terminal`** stops a branch of the execution tree. Later steps can be executed in paralle with this step
-  (they will depend on its previous step if no input is specified).
+  for its completion, except for steps with `None` input.
 * **`input`** directive will make the step movable and be executed whenever its dependent files are available.
 * **`output`** directive will allow steps that depend on the output files be executed immediately after this step.
 

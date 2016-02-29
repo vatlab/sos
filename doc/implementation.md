@@ -70,14 +70,14 @@ This technique is suited for time-consuming quality control steps that are not n
 If parameter `-j` (jobs) is specified with a number more than 1, the SoS script will be executed in parallel
 up to the specified number of concurrent processes. There are three sources of concurrent execution:
 
-1. **multiple branches of the execution tree**: If the SoS script has multiple starting points (defined by step options
-	`no_input` and `starting`), these branches will be executed in parallel.
+1. **multiple branches of the execution tree**: If the SoS script has multiple starting points (defined by steps with no input
+   or independent input files), these branches will be executed in parallel.
 
 2. **concurrent actions of single steps**: If a single SoS step executes actions repeatedly (with input option 
 	`for_each`), these actions will be executed in parallel.
 
 3. **no wait** execution of sequential steps: If a step specifies output files, SoS will not wait for the
-   completion of the step, execute steps with explicit input (or `no_input`) and proceed until the output file
+   completion of the step, execute steps with explicit input and proceed until the output file
    is needed, in which case SoS will have to wait till the output file is available.
 
 SoS takes an conservative approach and execute actions in parallel only when it is safe to do so. That is 
@@ -85,11 +85,10 @@ to say, if no step option, input, or output of a step is specified (e.g. using S
 the step will only be started with the completion of the previous step, and will block the execution of the
 workflow until it is completed. For a SoS script to be executely safely in parallel mode, you should
 
-1. Use option `no_input` if the step does not rely on any input. (e.g. action `download`)
-2. Use option `nonconcurrent` if the looped actions cannot be executed in parallel.
-4. Specify `input` and `depends` files for each step so that they would not be executed
+* Use option `nonconcurrent` if the looped actions cannot be executed in parallel.
+* Specify `input` and `depends` files for each step so that they would not be executed
   without needed input or dependent files.
-5. Specify `output` files so that SoS knows what files to expect from a step and wait for the
+* Specify `output` files so that SoS knows what files to expect from a step and wait for the
   completion of the step if necessary.
 
 Failure to specify these options correctly will make your script executed in sequential mode, or
