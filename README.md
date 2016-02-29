@@ -164,7 +164,7 @@ sos run myanalysis.sos --fasta_files control1.fasta control2.fasta
 
 ### Ignore steps that do not need to be rerun
 
-Although the SoS script now accepts command line arguments, it is still no more than a compilation of scripts and you immediately realized that it is a waste of time to execute the first command each time. To solve this problem, you can convert the SoS script to a real workflow by telling SoS some more details of the commands:
+Although the SoS script now accepts command line arguments, it is still no more than a compilation of scripts and you immediately realized that it is a waste of time to execute the first command each time. To solve this problem, you can convert the SoS script to a real workflow by telling SoS the input and output of each step:
 
 ```python
 #!/usr/bin/env sos-runner
@@ -179,7 +179,7 @@ Although the SoS script now accepts command line arguments, it is still no more 
 # and the second one for mutated sample.
 fasta_files=['control.fasta', 'mutated.fasta']
 
-[1: no_input]
+[1]
 # create a index for reference genome
 output: 'STAR_index/chrName.txt'
 
@@ -217,13 +217,10 @@ dev.off()
 
 Here we
  
-- Use **step option** ``no_input`` to tell SoS the first step does not need any input.
-- Use `output: 'STAR_index/chrName.txt'` to specify the expected output of step 1.
-- Use **input directive** to specify the input of step 2.
-- Use **depends directive** to let step 2 depend on the output of step 1
-- Use `${input[0]}` and `${input[1]` to use whatever files specified by the input directive. This is not required for this particular example but it makes the script a bit more general.
-- Use `output: ['aligned/control.out.tab', 'aligned/mutated.out.tab']` to indicate the expected output of step 2.
-- Use ``${input[0]}`` and ``${input[1]}`` to present the input of step 3, which is the output of step 2. This effectively *connects* step 2 and step 3.
+- Use **output directive** to specify the expected output of all steps2.
+- Use **input directive** to specify the input of step 2. The steps 1 has default of no input and step 3 has the default of output from its previous step.
+- Use **depends directive** to let step 2 depend on the output of step 1.
+- Use `${input[0]}` and `${input[1]` in step 2 and 3 because these steps have well-defined `input` now.
 
 With such information, when you run the same command
 
@@ -231,7 +228,7 @@ With such information, when you run the same command
 sos run myanalysis.sos --input control1.fasta control2.fasta
 ```
 
-SoS will ignore step 1 if this step has been run with output `STAR_index/chrName.txt`. The same happens to step 2 and 3 so all steps will be ignored if you run the script repeatedly with the same input and processing scripts. SoS uses **runtime signature** for each step and will re-run the step if and only if the content or filename of input files or the processing scripts are changed.
+SoS will ignore step 1 if this step has been run with output `STAR_index/chrName.txt`. The same happens to step 2 and 3 so all steps will be ignored if you run the script repeatedly with the same input and processing scripts. SoS uses **runtime signature** for each step and will re-run the step if and only if the content or filename of input, output files or the processing scripts are changed.
 
 ### Execute steps in parallel
 SoS allows execution of workflows in parallel. Although the three steps of this example has to be
@@ -251,7 +248,7 @@ be executed in parallel. You can tell SoS by modifying the script as follows
 # and the second one for mutated sample.
 fasta_files=['control.fasta', 'mutated.fasta']
 
-[1: no_input]
+[1]
 # create a index for reference genome
 output: 'STAR_index/chrName.txt'
 
