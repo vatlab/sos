@@ -469,13 +469,13 @@ run(''' ... ''')
 
 The input of SoS step follows the following rules:
 
-* **the input of a SoS step is by default the output of the previous step**, or `None` for the first step.
-* **directive `input`**, which could be either **`None`** for no input, or **a list** of filenames (string literal, variables, or expressions that return filenames).  Wildcard characters (`*` and `?`) are always expanded. Nested lists are flattened.
+* **the input of a SoS step is by default the output of the previous step**, which is `[]` for the first step.
+* **directive `input`**, which could be **a list** of filenames (string literal, variables, or expressions that return filenames).  Wildcard characters (`*` and `?`) are always expanded. Nested lists are flattened.
 
 Examples of input specification are as follows:
 
 ```
-input: None
+input: []
 
 input:
 	'file1.fasta', 'file2.fasta'
@@ -775,7 +775,7 @@ Note that dependent files are processed after input files so variable `input` an
 
 Output files of a step can be specified by item `output`. Whereas `input` is a directive to overide or 
 change SoS provided variable `step_input` to produce one or more variable `input`, the `output` is a
-directive to specify `step_output` which should be `None` if no output is generated (or of interest), or output of the step, which
+directive to specify `step_output` which should be `[]` if no output is generated (or of interest), or output of the step, which
 should be the collection of all output files if step action is executed multiple times.
 
 
@@ -875,16 +875,7 @@ all steps are executed one by one with auxillary steps called when necessary. If
 input and output files, it will be executed sequentially even in parallel execution mode (with `-j` option).
 
 If the steps are described with necessary input and output information, steps in SoS workflows can be executed in parallel. The 
-following figure illustrates the impact of section options and input/output directive on the execution order of workflows.
-
-Here is a summary of execution rules of workflows
-
-* If a step does not specify any input, it is assumed to depend on all previous steps and will be executed only when 
-  all previous steps are completed. 
-* If a step does not specify any output, all following steps are assumed to depend on its output and have to wait 
-  for its completion, except for steps with `None` input.
-* **`input`** directive will make the step movable and be executed whenever its dependent files are available.
-* **`output`** directive will allow steps that depend on the output files be executed immediately after this step.
+following figure illustrates the impact input/output directive on the execution order of workflows. 
 
 ![workflow execution](workflow.jpg "workflow execution modes")
 

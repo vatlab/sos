@@ -4,6 +4,7 @@
 
 - [File format](#file-format)
   - [Default input of step?](#default-input-of-step)
+  - [Use `None` instead of `[]` for no input or output](#use-none-instead-of--for-no-input-or-output)
   - [design of `for_each`](#design-of-for_each)
   - [Use of dictionary variable](#use-of-dictionary-variable)
   - [Enforce naming convention?](#enforce-naming-convention)
@@ -43,10 +44,17 @@ the output of previous step. The problem with no default input is that output al
 almost always required and make the script a bit cumbersome.
 
 
+### Use `None` instead of `[]` for no input or output
+
+Right now `input` and `output` directives can only accept a list of filenames so `[]` is used
+for no input. Using `input: None` can potentially be more readable.
 
 ### design of `for_each`
 
 I am not sure the current design is intuitive. It requires the variables to be defined before and uses a derived variable (`_name` for variable `name`), but the usual `for_each` loop does not fit into the existing parameter structure.
+
+Another concern is that we are using `input` for both regular and looped cases. It might
+make sense to use `_input` for the latter.
 
 ### Use of dictionary variable
 
