@@ -220,7 +220,7 @@ Here we
 - Use **output directive** to specify the expected output of all steps2.
 - Use **input directive** to specify the input of step 2. The steps 1 has default of no input and step 3 has the default of output from its previous step.
 - Use **depends directive** to let step 2 depend on the output of step 1.
-- Use `${input[0]}` and `${input[1]` in step 2 and 3 because these steps have well-defined `input` now.
+- Use `${input[0]}` and `${input[1]}` in step 2 and 3 because these steps have well-defined `input` now.
 
 With such information, when you run the same command
 
