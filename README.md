@@ -13,7 +13,7 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-**Script of Scripts (SoS)** is a lightweight workflow system that helps you turn your collections of commands and scripts into readable pipelines that can be easily understood and modified by others. It is also an easy-to-use alternative to specialized workflow systems such as [CWL](http://common-workflow-language.github.io/draft-3/) with an emphasis on readability. 
+**Script of Scripts (SoS)** is a lightweight workflow system that helps you oraganize your commands and scripts in different languages into readable workflows that can be easily understood and modified by others. It is an easy-to-use alternative to specialized workflow systems such as [CWL](http://common-workflow-language.github.io/draft-3/) which makes it an ideal tool for the creation and maintainance of workflows that need to be frequently updated and shared with others. 
 
 ## Design of SoS
 The core of SoS has mostly been implemented in another project but we are re-designing and re-implementing it to make SoS more user-friendly and powerful. Your involvement and suggestions are very welcome.
@@ -60,7 +60,7 @@ The project completed successfully and you needed to archive the scripts for lat
 
 ```python
 #!/usr/bin/env sos-runner
-##fileformat=SOS1.0
+#fileformat=SOS1.0
 
 # This script aligns raw reads of a control and a mutated sample 
 # to the reference genome and compare the expression values
@@ -114,7 +114,7 @@ defining a command line argument and passing files name to a **SoS variable**:
 
 ```python
 #!/usr/bin/env sos-runner
-##fileformat=SOS1.0
+#fileformat=SOS1.0
 
 # This script aligns raw reads of a control and a mutated sample 
 # to the reference genome and compare the expression values
@@ -168,7 +168,7 @@ Although the SoS script now accepts command line arguments, it is still no more 
 
 ```python
 #!/usr/bin/env sos-runner
-##fileformat=SOS1.0
+#fileformat=SOS1.0
 
 # This script aligns raw reads of a control and a mutated sample 
 # to the reference genome and compare the expression values
@@ -218,9 +218,9 @@ dev.off()
 Here we
  
 - Use **output directive** to specify the expected output of all steps2.
-- Use **input directive** to specify the input of step 2. The steps 1 has default of no input and step 3 has the default of output from its previous step.
+- Use **input directive** to specify the input of step 2. Step 1 by default has no input and step 3 by default has the output from its previous step.
 - Use **depends directive** to let step 2 depend on the output of step 1.
-- Use `${input[0]}` and `${input[1]}` in step 2 and 3 because these steps have well-defined `input` now.
+- Use `${input[0]}` and `${input[1]}` in step 2 and 3 because these steps now have properly-defined `input`.
 
 With such information, when you run the same command
 
@@ -231,13 +231,13 @@ sos run myanalysis.sos --input control1.fasta control2.fasta
 SoS will ignore step 1 if this step has been run with output `STAR_index/chrName.txt`. The same happens to step 2 and 3 so all steps will be ignored if you run the script repeatedly with the same input and processing scripts. SoS uses **runtime signature** for each step and will re-run the step if and only if the content or filename of input, output files or the processing scripts are changed.
 
 ### Execute steps in parallel
-SoS allows execution of workflows in parallel. Although the three steps of this example has to be
+SoS allows execution of workflows in parallel. Although the three steps of this example have to be
 executed sequentially, the second step runs the `STAR` command twice on two input files, and can
-be executed in parallel. You can tell SoS by modifying the script as follows
+be executed in parallel. You can tell this to SoS by modifying the script as follows
 
 ```python
 #!/usr/bin/env sos-runner
-##fileformat=SOS1.0
+#fileformat=SOS1.0
 
 # This script aligns raw reads of a control and a mutated sample 
 # to the reference genome and compare the expression values
@@ -288,15 +288,9 @@ dev.off()
 
 Here we 
 
-1. Save the output of the first step (in variable `step_output`) as `ref_index`
-and use the variable instead of filename as a dependency of step 2. 
-2. Use option `group_by='single'` to pass input one by one to action. The
-action will be executed twice with `input` set to the first and second
-input file respectively.
-3. Define a variable `sample_type` and mark it as the labels for input
-files (option `labels`). This will generate a variable `_sample_type` for
-each input file so `_sample_type` will be `control` for the first input
-file, and `mutated` for the second.
+1. Save the output of the first step (in variable `step_output`) as `ref_index` and use the variable instead of filename as a dependency of step 2. 
+2. Use option `group_by='single'` to pass input one by one to action. The action will be executed twice with `input` set to the first and second input file respectively.
+3. Define a variable `sample_type` and mark it as the labels for input files (option `labels`). This will generate a variable `_sample_type` for each input file so `_sample_type` will be `control` for the first input file, and `mutated` for the second.
 
 Now, if you execute the script with option `-j 2` (2 concurrent processes),
 
@@ -306,8 +300,7 @@ sos run myanalysis.sos --input control1.fasta control2.fasta -j 2
 
 the second step would be run in parallel.
 
-We have showed you four versions of the same SoS script, each using more features of SoS. This actually demonstrates one of the advantages of the SoS system, namely you can start using SoS in minutes without knowing any of its advanced features, and can gradually improve your script when needs arise.
-
+We have showed you four versions of the same SoS script, each using more features of SoS. This actually demonstrates one of the advantages of the SoS system, namely you can start using SoS in minutes without knowing any of its advanced features, and gradually improve your script if needed.
 
 ## Unique features and limitations
 

@@ -6,7 +6,6 @@
   - [Default input of step?](#default-input-of-step)
   - [Use `None` instead of `[]` for no input or output](#use-none-instead-of--for-no-input-or-output)
   - [design of `for_each`](#design-of-for_each)
-  - [Use of dictionary variable](#use-of-dictionary-variable)
   - [Enforce naming convention?](#enforce-naming-convention)
 - [Workflow features](#workflow-features)
   - [Runtime control](#runtime-control)
@@ -33,6 +32,7 @@
   - [Alternative or configurable global sigil?](#alternative-or-configurable-global-sigil)
   - [Section option `no_input`](#section-option-no_input)
   - [Section option `terminal` and `starting`](#section-option-terminal-and-starting)
+  - [Use of dictionary variable](#use-of-dictionary-variable)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -57,19 +57,6 @@ I am not sure the current design is intuitive. It requires the variables to be d
 Another concern is that we are using `input` for both regular and looped cases. It might
 make sense to use `_input` for the latter.
 
-### Use of dictionary variable
-
-It is easy to implement and can be very useful, but I am not sure if we should complicate SoS with another dictionary type. A potentially useful user case is to replace `labels`, e.g.
-
-```python
-sample_name = {x:os.path.basename(y) for x in x in sam_files}
-```
-
-and use the variable as
-
-```python
-${sample_name[input[0]]}
-```
 
 ### Enforce naming convention?
 
@@ -449,3 +436,19 @@ other steps to depend on the ouput files of a step, leading to potential errors.
 
 Decided to use no special option and rely on input and output specification of steps.
 
+
+### Use of dictionary variable
+
+It is easy to implement and can be very useful, but I am not sure if we should complicate SoS with another dictionary type. A potentially useful user case is to replace `labels`, e.g.
+
+```python
+sample_name = {x:os.path.basename(y) for x in x in sam_files}
+```
+
+and use the variable as
+
+```python
+${sample_name[input[0]]}
+```
+
+Decision: temporarily decided to add it because dictionary types can be really useful.

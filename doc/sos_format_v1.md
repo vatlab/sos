@@ -8,6 +8,7 @@
 - [Literals and variables](#literals-and-variables)
   - [String literal](#string-literal)
   - [List literal](#list-literal)
+  - [Dictionary literal (TBD)](#dictionary-literal-tbd)
   - [SoS variables](#sos-variables)
   - [Expressions with SoS variables](#expressions-with-sos-variables)
   - [String interpolation](#string-interpolation)
@@ -38,7 +39,7 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-Although many items can be ignored, a typical SoS script has the following format:
+Although most items are optional, a typical SoS script has the following format:
 
 ```python
 #!/usr/bin/env sos-runner
@@ -72,10 +73,12 @@ par1=default1
 par2=default2
 
 [step1: options]
-step1 input, variables, and actions
+# description 1
+step1 input, output, variables, and action
 
 [step2: options]
-step2 input, variables, and actions
+# description 2
+step2 input, output, variables, and action
 ```
 
 ## File header
@@ -89,8 +92,9 @@ A SoS script usually starts with lines
 ```
 
 The first line allows the script to be executed by command `sos-runner` if it is executed as
-an executable script. The second line tells SoS the version of the script. The `#fileformat` 
-line does not have to be the first line but should be in the first comment block.
+an executable script. The second line tells SoS the format of the script. The `#fileformat` 
+line does not have to be the first or second line but should be in the first comment block.
+SOS format 1.0 is assumed if no format line is present.
 
 Other lines in the first comment block are ignores.
 
@@ -111,17 +115,27 @@ SoS uses [Python](http://www.python.org) syntax for literals and variables with 
 
 ### List literal
 
-SoS only supports list of strings so a list literal would have form
+A SoS list can only be a list of strings. A list literal would have form
 
-```
+```python
 ['a', 'b']
 ```
 
-where comma separated strings are enclosed by `[` and `]`.
+where comma separated strings are enclosed by `[` and `]`. Items in a list are accessed by their indexes (starting from 0) or slices.
+
+### Dictionary literal (TBD)
+
+A SoS dictionary can only be a dictionary of string keys and string values. A dictionary literal would have form
+
+```python
+{'a': 'b', 'c':'d'}
+```
+
+where items `a` and `c` have values `b` and `d` respectively. Dictionary items are accessed by their keys.
 
 ### SoS variables
 
-SoS variables are case-sensitive python variables associated with the execution of SoS scripts. For simplicity, they can only be **string** or **list of strings**. They can be defined almost anywhere in a SoS script.
+SoS variables are case-sensitive python variables associated with the execution of SoS scripts. For simplicity, they can only be **string**, **list of strings**, or **dictionary of strings**. They can be defined almost anywhere in a SoS script.
 
 For example
 
@@ -139,6 +153,7 @@ Any python expressions involving any SoS variables and defined functions can be 
 * `input[0]` gets the first input file
 * `os.path.basename(input[0])` get the base name of input file
 * `[x for x in input if '_R1_' in x]` returns all files with `_R1_` in its names
+* `{x:os.path.basename(x) for x in input_files}` returns a dictionary with filenames as keys and basename of filenames as values.
 * `output_dir + '/' + input[0] + '.bai'` return a file under `output_dir` with `.bai` appended to filename.
 * `os.path.getsize(input[0])` return a string (converted from integer) of file size
 * `os.path.getsize(input[0]) > 0` return `True`
@@ -157,7 +172,10 @@ title = 'Sample ${sample_names[0]} results'
 all_names = 'Samples ${sample_names}'
 ```
 
-Here the value of variable `resource_path` and expression `sample_names[0]` are replaced with their values when they are quoted between `${` and `}` in a string literal. List of strings will be automatically conerted to a string by joining strings with a space so `${sample_names}` will be expanded to `sample1 sample2`.
+Here the value of variable `resource_path` and expression `sample_names[0]` are replaced with their values when they are quoted between `${` and `}` in a string literal. 
+List of strings will be automatically converted to a string by joining strings with a space so `${sample_names}` will be expanded to `sample1 sample2`. Dictionary of
+strings will be automatically converted to a astring by joining dictionary values with a space, with no guarantee on the order of values. That is to say, `${dict}`
+is equivalent to `${dict.values()}`.
 
 You can continue to use Python string functions such as
 
@@ -629,7 +647,7 @@ sample_name = ['A1', 'A2', 'A1', 'A2']
 Then, if you are processing these files individually, or in pairs, you can attach values of these derived variables as follows:
 
 
-```
+```python
 [step]
 input:
 	bam_files,
@@ -646,7 +664,7 @@ Here `bam_files` will be passed in pairs with file labels set to variables with 
 
 This is equivalent to
 
-```
+```python
 [step]
 input:
 	bam_files,
@@ -660,6 +678,7 @@ run('process ${input} with variables ${_mutated} and ${_sample_name}')
 ```
 
 but it is cleaner because you do not have to do this each time when `bam_files` is used.
+
 
 #### Looping through values of a SoS variable (Option `for_each`)
 
