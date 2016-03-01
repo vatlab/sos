@@ -9,7 +9,7 @@
   - [String literal](#string-literal)
   - [List literal](#list-literal)
   - [Dictionary literal (TBD)](#dictionary-literal-tbd)
-  - [SoS variables](#sos-variables)
+  - [SoS variables and their properties](#sos-variables-and-their-properties)
   - [Expressions with SoS variables](#expressions-with-sos-variables)
   - [String interpolation](#string-interpolation)
 - [Global variables](#global-variables)
@@ -134,7 +134,7 @@ A SoS dictionary can only be a dictionary of strings with string keys. Dictionar
 
 where items `a` and `c` have values `b` and `d` respectively. Dictionary items are accessed by their keys.
 
-### SoS variables
+### SoS variables and their properties
 
 SoS variables are case-sensitive python variables associated with the execution of SoS scripts. For simplicity, they can only be **string**, **list of strings**, or **dictionary of strings**. They can be defined almost anywhere in a SoS script.
 
@@ -146,6 +146,26 @@ sample_names = ['sample1', 'sample2']
 ```
 
 defines two variables `resource_path` (a string) and `sample_names` (a list).
+
+In addition to its Python properties (values, expressions etc), SoS variable can be associated with their **properties** that influence how they
+are used. These properties are assigned to SoS variables with special SoS functions. For example,
+
+```python
+bam_files = dynamic(glob.glob('results/*.bam'))
+```
+
+defines a python variable `bam_files` that is the result of scanning `*.bam` files under the `results` directory. The variable has
+a property `dynamic` so that steps involving `bam_files` will not be executed before the completion of the step where `bam_files`
+is defined. 
+
+You can also use these functions to existing variables (e.g. `bam_files = dynamic(another_file_list)`) or in `input`, `output`,
+or `depends` lists (e.g. `output: dynamic(glob.glob('results/*.bam'))`). In the latter case, `step_output` is assigned
+`dynamic` property and will influence its next steps when `step_output` is passed to its next step as `step_input`.
+
+SoS currently supports the following variable properties:
+
+* `dynamic()`: the value of the variable can be determined only when the step is completed.
+* `readonly()`: the value of the variable cannot be changed. 
 
 ### Expressions with SoS variables
 
@@ -162,6 +182,7 @@ Any python expressions involving any SoS variables and defined functions can be 
 * `glob.glob('*.txt')` return a list of files with extension `.txt` under the current directory.
 
 Note that SoS makes available modules `glob`, `os`, `sys`, and more modules can be imported with workflow action.
+
 
 ### String interpolation
 

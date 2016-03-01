@@ -4,7 +4,6 @@
 
 - [Data model](#data-model)
   - [Unifying SoS dictionary and list?](#unifying-sos-dictionary-and-list)
-  - [Read only SoS variable?](#read-only-sos-variable)
 - [File format](#file-format)
   - [Default input of step?](#default-input-of-step)
   - [design of `for_each`](#design-of-for_each)
@@ -12,7 +11,6 @@
 - [Workflow features](#workflow-features)
   - [Runtime control](#runtime-control)
   - [Resource control](#resource-control)
-  - [Dynamic output](#dynamic-output)
   - [Nested workflow](#nested-workflow)
   - [Portability of runtime signatures](#portability-of-runtime-signatures)
   - [Libraries](#libraries)
@@ -37,6 +35,8 @@
   - [Section option `terminal` and `starting`](#section-option-terminal-and-starting)
   - [Use of dictionary variable](#use-of-dictionary-variable)
   - [Use `None` instead of `[]` for no input or output](#use-none-instead-of--for-no-input-or-output)
+  - [Dynamic output](#dynamic-output)
+  - [Read only SoS variable?](#read-only-sos-variable)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -111,15 +111,6 @@ belongs to `depends`.
 
 For simplicity and mostly the last reason, I incline not to use complicated data structure.
 
-### Read only SoS variable?
-
-A SoS can be easier to understand if we make most SoS variables readonly. That is to say, a SoS variable can not be changed 
-after it has been initialized. Exceptions to this rule can be system variables and temporary looping variables. 
-
-
-A less stringent version of this rule is that variables can only be replaced in their entirety, which disallows
-changing part of the file list.
-
 ## File format
 ### Default input of step?
 
@@ -171,30 +162,6 @@ Limiting the files that the directory the step action can write to?
 ### Resource control
 
 Limiting or monitoring the RAM and CPU (cores) the step uses?
-
-### Dynamic output
-
-If the output of step is dynamically determined, for example, by running `glob.glob` from output directory, the output
-might be empty or wrong at the planning stage. For example
-
-```python
-[100]
-output: glob.glob('*.bam')
-
-[200]
-
-run('samtools sort')
-```
-
-Step 200 might get an empty list at the planning stage and will be treated as a leaf/starting step with no input, and 
-causes an error.
-
-Solution:
-
-* A `dynamic` section option to tell SoS that the output of step 100 is dynamic?
-* Holding off executing step 200 if it does not have explicit input instead of relying
-  on output of previous step?
-
 
 
 ### Nested workflow
@@ -577,3 +544,43 @@ Right now `input` and `output` directives can only accept a list of filenames so
 for no input. Using `input: None` can potentially be more readable.
 
 Decide: None is reserved for unknown input so `[]` should be used for no input.
+
+
+### Dynamic output
+
+If the output of step is dynamically determined, for example, by running `glob.glob` from output directory, the output
+might be empty or wrong at the planning stage. For example
+
+```python
+[100]
+output: glob.glob('*.bam')
+
+[200]
+
+run('samtools sort')
+```
+
+Step 200 might get an empty list at the planning stage and will be treated as a leaf/starting step with no input, and 
+causes an error.
+
+Solution:
+
+* A `dynamic` section option to tell SoS that the output of step 100 is dynamic?
+* Holding off executing step 200 if it does not have explicit input instead of relying
+  on output of previous step?
+* A `dynamic` property to related variables.
+
+Decision: a dynamic property is added to variables.
+
+
+### Read only SoS variable?
+
+A SoS can be easier to understand if we make most SoS variables readonly. That is to say, a SoS variable can not be changed 
+after it has been initialized. Exceptions to this rule can be system variables and temporary looping variables. 
+
+
+A less stringent version of this rule is that variables can only be replaced in their entirety, which disallows
+changing part of the file list.
+
+Decision: this can be achieved by adding readonly property to variables.
+
