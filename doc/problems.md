@@ -2,14 +2,17 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [Data model](#data-model)
+  - [Unifying SoS dictionary and list?](#unifying-sos-dictionary-and-list)
+  - [Read only SoS variable?](#read-only-sos-variable)
 - [File format](#file-format)
   - [Default input of step?](#default-input-of-step)
-  - [Use `None` instead of `[]` for no input or output](#use-none-instead-of--for-no-input-or-output)
   - [design of `for_each`](#design-of-for_each)
   - [Enforce naming convention?](#enforce-naming-convention)
 - [Workflow features](#workflow-features)
   - [Runtime control](#runtime-control)
   - [Resource control](#resource-control)
+  - [Dynamic output](#dynamic-output)
   - [Nested workflow](#nested-workflow)
   - [Portability of runtime signatures](#portability-of-runtime-signatures)
   - [Libraries](#libraries)
@@ -33,22 +36,112 @@
   - [Section option `no_input`](#section-option-no_input)
   - [Section option `terminal` and `starting`](#section-option-terminal-and-starting)
   - [Use of dictionary variable](#use-of-dictionary-variable)
+  - [Use `None` instead of `[]` for no input or output](#use-none-instead-of--for-no-input-or-output)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## File format
+## Data model
 
+### Unifying SoS dictionary and list?
+
+Snakemake has some magic that allows `input` to be accessed as both list and object with attributes. For example, 
+it allows
+
+```
+input:  reference='seq.fasta'
+        bamfiles=['a.bam', 'b.bam']
+```
+
+and expressions such as `input.reference`, `input.bamfile`, and `input`. This can be easily achieved with some Python magic
+but I am not sure if I should follow it and make SoS more difficult to understand.
+
+```Python
+class SoS_List(Collections.OrderedDict):
+    def __getitem__(self, key):
+	    # access as dictionary if key is a name
+		#
+		# input.rawfile
+		#
+		# access as a list if key is a number
+		#
+		# input[key]
+		#
+	
+	def __repr__(self):
+	    # connect all values() as a list ...
+		#
+		# ${input}
+		#
+	
+```
+
+In the end, we can claim that SoS list is 
+
+* A list of strings
+* Single or slice of the list can have a name
+* Items can be access by integer index, attribute, or dictionary key
+
+A SoS list can be initialized with
+
+* A list: `['seq.fasta', 'a.bam', 'b.bam']`
+* A dictionary: `{'reference': 'seq.fasta`, 'bamfiles': ['a.bam', 'b.bam']}`
+* Parameters: `reference='seq.fasta', bamfiles=['a.bam', 'b.bam']`
+
+Elements could be accessed as
+
+* `a[1]`, `a[2:]`
+* `a.reference`, `a.bamfiles` (if names are given)
+* `a['reference']`, `a['bamfiles']`
+
+Cons:
+* `a.reference` should be a string or list of strings (for consistency) 
+* It is difficult to change this datatype (we can make such variables readonly)
+* It does not work well with input options such as `group_by`.
+* Unlike snakemake, SoS already allows definition of variables, so users can do
+
+```python
+reference='seq.fasta'
+bamfiles=['a.bam', 'b.bam']
+
+input: reference, bamfiles
+
+```
+and use `input`, `reference`, and `bamfiles` separately. Here `reference` more likely 
+belongs to `depends`. 
+
+For simplicity and mostly the last reason, I incline not to use complicated data structure.
+
+### Read only SoS variable?
+
+A SoS can be easier to understand if we make most SoS variables readonly. That is to say, a SoS variable can not be changed 
+after it has been initialized. Exceptions to this rule can be system variables and temporary looping variables. 
+
+
+A less stringent version of this rule is that variables can only be replaced in their entirety, which disallows
+changing part of the file list.
+
+## File format
 ### Default input of step?
 
 Would it clearer to require explicit input files? Right now the a step's `step_input` is 
 the output of previous step. The problem with no default input is that output alias are 
 almost always required and make the script a bit cumbersome.
 
+Pros and cons of using default input:
 
-### Use `None` instead of `[]` for no input or output
+pro:
 
-Right now `input` and `output` directives can only accept a list of filenames so `[]` is used
-for no input. Using `input: None` can potentially be more readable.
+* Avoid specifying input repeated
+* Avoid using output alias. This could be avoided by adding runtime variables such as `input100`, but `input: output200` is not
+  a good idea because the current step will be broken if step indexes are changed. A properly named variable is much better 
+  for this purpose.
+
+cons:
+
+* Difficult to differentiate between 'No input' and 'None input' because SoS will have to look at its previous step
+  to determine the current status.
+
+
 
 ### design of `for_each`
 
@@ -78,6 +171,29 @@ Limiting the files that the directory the step action can write to?
 ### Resource control
 
 Limiting or monitoring the RAM and CPU (cores) the step uses?
+
+### Dynamic output
+
+If the output of step is dynamically determined, for example, by running `glob.glob` from output directory, the output
+might be empty or wrong at the planning stage. For example
+
+```python
+[100]
+output: glob.glob('*.bam')
+
+[200]
+
+run('samtools sort')
+```
+
+Step 200 might get an empty list at the planning stage and will be treated as a leaf/starting step with no input, and 
+causes an error.
+
+Solution:
+
+* A `dynamic` section option to tell SoS that the output of step 100 is dynamic?
+* Holding off executing step 200 if it does not have explicit input instead of relying
+  on output of previous step?
 
 
 
@@ -452,3 +568,12 @@ ${sample_name[input[0]]}
 ```
 
 Decision: temporarily decided to add it because dictionary types can be really useful.
+
+
+
+### Use `None` instead of `[]` for no input or output
+
+Right now `input` and `output` directives can only accept a list of filenames so `[]` is used
+for no input. Using `input: None` can potentially be more readable.
+
+Decide: None is reserved for unknown input so `[]` should be used for no input.

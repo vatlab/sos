@@ -96,7 +96,7 @@ an executable script. The second line tells SoS the format of the script. The `#
 line does not have to be the first or second line but should be in the first comment block.
 SOS format 1.0 is assumed if no format line is present.
 
-Other lines in the first comment block are ignores.
+Other lines in the first comment block are ignored.
 
 ### Workflow descriptions
 
@@ -107,6 +107,7 @@ in the first line. These descriptions would be displayed in the output of comman
 ## Literals and variables 
 
 SoS uses [Python](http://www.python.org) syntax for literals and variables with some minor modifications. 
+SoS allows three types of literals: string, list of strings, and dictionary of strings.
 
 ### String literal
 
@@ -115,17 +116,17 @@ SoS uses [Python](http://www.python.org) syntax for literals and variables with 
 
 ### List literal
 
-A SoS list can only be a list of strings. A list literal would have form
+A SoS list can only be a list of strings. List literals have format
 
 ```python
 ['a', 'b']
 ```
 
-where comma separated strings are enclosed by `[` and `]`. Items in a list are accessed by their indexes (starting from 0) or slices.
+where comma separated strings are enclosed by `[` and `]`. Items in a list can be accessed by their indexes (starting from 0) or slices.
 
 ### Dictionary literal (TBD)
 
-A SoS dictionary can only be a dictionary of string keys and string values. A dictionary literal would have form
+A SoS dictionary can only be a dictionary of strings with string keys. Dictionary literals have format
 
 ```python
 {'a': 'b', 'c':'d'}
@@ -184,7 +185,7 @@ ref_genome = resource_path + '/hg19/refGenome.fasta'
 title = 'Result for the first sample {} is invalid'.format(sample_names[0])
 ```
 
-but string interpolation is recommended for large scripts because it is easier to use.
+but string interpolation is recommended for multi-line scripts because it is easier to read.
 
 Because a SoS script can include scripts in different languages with different sigils (special characters used to enclose expression), **SoS allows the use of different sigils** in the script. Whereas the default sigil (`${ }`) has to be used for global variables, other sigils can be used for different sections of the script. For example
 
@@ -201,7 +202,7 @@ done
 ''')
 ```
 
-uses a different sigil style because the shell script uses `${ }` so `${file}` keeps its meaning in the shell script while `%(sample_names[0])` and `%(title)` are replaced by SoS to their values.
+uses a different sigil style because the embedded shell script uses `${ }`. In this example `${file}` keeps its meaning in the shell script while `%(sample_names[0])` and `%(title)` are replaced by SoS to their values.
 
 ## Global variables 
 
@@ -365,7 +366,19 @@ or
 [fly_40]
 ```
 
-In the last case, step defined by `[*_30,fly_40]` will be expanded to ``mouse_30``, ``human_30``, ``fly_30``, and ``fly_50`` and will be executed twice for the `fly` workflow.
+In the last case, step defined by `[*_30,fly_40]` will be expanded to ``mouse_30``, ``human_30``, ``fly_30``, and ``fly_50`` and will be executed twice for the `fly` workflow. Note that 
+workflow steps can use variable `workflow_name` to act (slightly) differently for different workflows. For example,
+
+```[mouse_20,human_20]
+reference = mouse_reference if workflow_name == 'mouse' else human_reference
+
+input: fasta_files
+depends: reference
+
+run('''... ${reference}... ''')
+```
+
+Here the expression `mouse_reference if workflow_name == 'mouse' else human_reference` returns `mouse_reference` if the workflow `mouse` is executed, and `human_reference` otherwise.
 
 ### Execution of a subset of steps
 
@@ -398,14 +411,15 @@ key0=value0
 input:
     input files, opt1=value1, opt2=value2
 
+
+key1=value1
+key2=value2
+
 depends:
     dependent files
 
 output:
 	output files
-
-key1=value1
-key2=value2
 
 step_action
 
@@ -436,7 +450,7 @@ The first comment block after the section head (`[]`) is the description of the 
 Variables can be defined and used freely in a step. Depending on the location where the variables are defined, they can be classified as
 
 * **Pre-input variables** (string or list of strings): variables defined before `input:`.
-* **Pre-action variables** (string or list of string): variables defined after `input:` and before action. They will be evalulated with each `input`.
+* **Pre-action variables** (string or list of string): variables defined after `input:` and before action. They will be evalulated with each `input` before `depends` and `output` directives.
 * **Post-action variables** (string or list of strings): variables defined after the execution of step action.
 
 Because variables pass information from one step to another and dictates how actions are executed. It is important to understand how variables are defined and used in a SoS step.
@@ -697,7 +711,6 @@ input:
 	for_each='method'
 
 run('Analyze ${input} with method ${_method}')
-
 ```
 
 The step action will be executed twice with value of parameter `_method` set to `'method1'` and `'method2'` respectively.
@@ -718,7 +731,6 @@ input:
 	for_each=['method', 'parameter']
 
 run('Analyze ${input} with method ${_method} and parameter ${_parameter}')
-
 ```
 
 with parameters
@@ -728,7 +740,7 @@ with parameters
 * `_methods='method2', _parameter='-5'`
 * `_methods='method2', _parameter='-9'`
 
-If you would like to loop the action with several parameters, you can put them into a the same level using
+If you would like to loop the action with several parameters, you can put them into the same level using
 
 ```
 [step]
@@ -737,7 +749,6 @@ input:
 	for_each='method,parameter'
 
 run('Analyze ${input} with method ${_method} and parameter ${_parameter}')
-
 ```
 
 The action will then be executed twice with parameters
@@ -894,7 +905,9 @@ all steps are executed one by one with auxillary steps called when necessary. If
 input and output files, it will be executed sequentially even in parallel execution mode (with `-j` option).
 
 If the steps are described with necessary input and output information, steps in SoS workflows can be executed in parallel. The 
-following figure illustrates the impact input/output directive on the execution order of workflows. 
+following figure illustrates the impact input/output directive on the execution order of workflows. Note that a step with
+unknown `input` (no `input` at present step and no `output` at previous step) can only be executed after all its previous steps 
+are completed can become bottlenecks of the workflow.
 
 ![workflow execution](workflow.jpg "workflow execution modes")
 
