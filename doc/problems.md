@@ -4,6 +4,7 @@
 
 - [Data model](#data-model)
   - [Unifying SoS dictionary and list?](#unifying-sos-dictionary-and-list)
+  - [Read only SoS variable?](#read-only-sos-variable)
 - [File format](#file-format)
   - [Default input of step?](#default-input-of-step)
   - [design of `for_each`](#design-of-for_each)
@@ -36,7 +37,6 @@
   - [Use of dictionary variable](#use-of-dictionary-variable)
   - [Use `None` instead of `[]` for no input or output](#use-none-instead-of--for-no-input-or-output)
   - [Dynamic output](#dynamic-output)
-  - [Read only SoS variable?](#read-only-sos-variable)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -110,6 +110,17 @@ and use `input`, `reference`, and `bamfiles` separately. Here `reference` more l
 belongs to `depends`. 
 
 For simplicity and mostly the last reason, I incline not to use complicated data structure.
+
+
+### Read only SoS variable?
+
+A SoS can be easier to understand if we make most SoS variables readonly. That is to say, a SoS variable can not be changed 
+after it has been initialized. Exceptions to this rule can be system variables and temporary looping variables. 
+
+
+A less stringent version of this rule is that variables can only be replaced in their entirety, which disallows
+changing part of the file list.
+
 
 ## File format
 ### Default input of step?
@@ -570,17 +581,23 @@ Solution:
   on output of previous step?
 * A `dynamic` property to related variables.
 
-Decision: a dynamic property is added to variables.
+Decision: a dynamic function is added to SoS expressions. This essentially converts
 
+```python
+dynamic(glob.glob('*.bam'))
+```
 
-### Read only SoS variable?
+to a DynamicExpression object with `expr="glob.glob('*.bam')"` with the following definition,
 
-A SoS can be easier to understand if we make most SoS variables readonly. That is to say, a SoS variable can not be changed 
-after it has been initialized. Exceptions to this rule can be system variables and temporary looping variables. 
+```
+class DynamicExpression:
+	def __init__(self, expr):
+		self.expr = expr
+	
+	def __repr__(self):
+		return __repr__(eval(self.expr))
 
+```
 
-A less stringent version of this rule is that variables can only be replaced in their entirety, which disallows
-changing part of the file list.
-
-Decision: this can be achieved by adding readonly property to variables.
+and will evaluate the result each time when it is used.
 
