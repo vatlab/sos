@@ -172,10 +172,10 @@ output: glob.glob('results/*.bam')
 ```
 
 SoS might think this step does not produce any output if there is currently no `*.bam` file under directory `results`. To address
-this problem, you can mark this expression as `**dynamic**` by surrounding it with `dynamic()`, namely,
+this problem, you can mark this expression as `**dynamic**` by passing its string form to `dynamic()`, namely,
 
 ```python
-output: dynamic(glob.glob('results/*.bam'))
+output: dynamic("glob.glob('results/*.bam')")
 ```
 
 This effectively makes the output of this step (`step_output`) and any step that depends on it dynamic and be treated differently

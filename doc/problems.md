@@ -584,7 +584,7 @@ Solution:
 Decision: a dynamic function is added to SoS expressions. This essentially converts
 
 ```python
-dynamic(glob.glob('*.bam'))
+dynamic("glob.glob('*.bam')")
 ```
 
 to a DynamicExpression object with `expr="glob.glob('*.bam')"` with the following definition,
@@ -600,4 +600,3 @@ class DynamicExpression:
 ```
 
 and will evaluate the result each time when it is used.
-
