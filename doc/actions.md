@@ -4,10 +4,12 @@
 
 - [General interface](#general-interface)
 - [Execution of scripts](#execution-of-scripts)
+  - [`python` and `python3`](#python-and-python3)
+  - [Other languages](#other-languages)
 - [Utility actions](#utility-actions)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
-### General interface
+## General interface
 
 ```python
 Action(
@@ -34,15 +36,40 @@ where
 
 Note that some options might be moved to the step level (e.g. resource).
 
-### Execution of scripts
+## Execution of scripts
 
-* ``run()``
-* ``bash()``
-* ``R()``
-* ``perl()``
-* ``python()``
+### `python` and `python3`
 
-### Utility actions
+* `python(script, vars='sos', *args, **kwargs)`
+* `python3(script, vars='sos', *args, **kwargs)`
+
+
+In `python()` and `python3()`, the sos variables are passed to the script as an object with default name `sos`. That is to say, the script can 
+access SoS variables as attribute to an object
+
+```python
+for infile in sos.input:
+    with open(infile) as data:
+	    # do something
+
+# assign a variable to the pipeline
+sos.blah = 'result'
+
+```
+
+The reason why the variables are not directly accessible (as variables `input` etc) is because a SoS workflow can contain
+many variables and accessing them directly might cause name conflict, it also makes it difficult to add variables to the
+sos namespace. The object name `sos` is configurable in case the script itself uses name `sos`.
+
+### Other languages
+
+* `run(script, *args, **kwargs)` for the execution of a single shell command
+* `bash(script, *args, **kwargs)` bash script
+* `R(script, *args, **kwargs)``
+* `perl(script, *args, **kwargs)`
+
+
+## Utility actions
 
 * ``fail_if()`` Terminate the execution of the pipeline if some condition is not met. This is SoS's version of  CWL's `requirements` feature.
 
@@ -52,4 +79,4 @@ Note that some options might be moved to the step level (e.g. resource).
 
 * ``check_cmd()`` check the output of command. Used to check the version and/or existence of command.
 
-
+* ``import_module()`` import system or user-provided module.
