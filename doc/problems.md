@@ -36,7 +36,7 @@
   - [Section option `terminal` and `starting`](#section-option-terminal-and-starting)
   - [Use of dictionary variable](#use-of-dictionary-variable)
   - [Use `None` instead of `[]` for no input or output](#use-none-instead-of--for-no-input-or-output)
-  - [Dynamic output](#dynamic-output)
+  - [Dynamic input and output](#dynamic-input-and-output)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -557,7 +557,7 @@ for no input. Using `input: None` can potentially be more readable.
 Decide: None is reserved for unknown input so `[]` should be used for no input.
 
 
-### Dynamic output
+### Dynamic input and output
 
 If the output of step is dynamically determined, for example, by running `glob.glob` from output directory, the output
 might be empty or wrong at the planning stage. For example
@@ -581,10 +581,10 @@ Solution:
   on output of previous step?
 * A `dynamic` property to related variables.
 
-Decision: a dynamic function is added to SoS expressions. This essentially converts
+Decision: a dynamic option to `input` and `output` directives. This essentially converts
 
 ```python
-dynamic("glob.glob('*.bam')")
+glob.glob('*.bam'), dynamic=True
 ```
 
 to a DynamicExpression object with `expr="glob.glob('*.bam')"` with the following definition,
@@ -600,3 +600,4 @@ class DynamicExpression:
 ```
 
 and will evaluate the result each time when it is used.
+

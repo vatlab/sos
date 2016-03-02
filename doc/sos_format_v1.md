@@ -29,10 +29,13 @@
     - [Passing files of allowed type (option `filetype`)](#passing-files-of-allowed-type-option-filetype)
     - [Passing files in groups (option `group_by`)](#passing-files-in-groups-option-group_by)
     - [Attaching variables to input filenames (option `labels`)](#attaching-variables-to-input-filenames-option-labels)
-    - [Looping through values of a SoS variable (Option `for_each`)](#looping-through-values-of-a-sos-variable-option-for_each)
+    - [Looping through values of a SoS variable (option `for_each`)](#looping-through-values-of-a-sos-variable-option-for_each)
     - [Conditional skip of a step (option `skip`)](#conditional-skip-of-a-step-option-skip)
+    - [Dynamically determined input files (option `dynamic`)](#dynamically-determined-input-files-option-dynamic)
   - [Dependent files (`depends` directive)](#dependent-files-depends-directive)
-  - [Step output files (`output` directive)](#step-output-files-output-directive)
+  - [Output files (`output` directive)](#output-files-output-directive)
+  - [Output options](#output-options)
+    - [Dynamically determined output files (option `dynamic`)](#dynamically-determined-output-files-option-dynamic)
   - [step actions](#step-actions)
 - [Auxiliary workflow steps and makefile style dependency rules](#auxiliary-workflow-steps-and-makefile-style-dependency-rules)
 - [Execution of workflows](#execution-of-workflows)
@@ -162,24 +165,6 @@ Any python expressions involving any SoS variables and defined functions can be 
 * `glob.glob('*.txt')` return a list of files with extension `.txt` under the current directory.
 
 Note that SoS makes available modules `glob`, `os`, `sys`, and more modules can be imported with workflow action.
-
-In order to determine the best execution strategy, SoS evaluates all expressions for all steps before the execution of a workflow to figure
-out input and output of steps. This works most of the time but sometimes the output of a step can only be determined at runtime. For example,
-if you have a step with 
-
-```python
-output: glob.glob('results/*.bam')
-```
-
-SoS might think this step does not produce any output if there is currently no `*.bam` file under directory `results`. To address
-this problem, you can mark this expression as `**dynamic**` by passing its string form to `dynamic()`, namely,
-
-```python
-output: dynamic("glob.glob('results/*.bam')")
-```
-
-This effectively makes the output of this step (`step_output`) and any step that depends on it dynamic and be treated differently
-during the execution of the workflow. 
 
 ### String interpolation
 
@@ -712,7 +697,7 @@ run('process ${input} with variables ${_mutated} and ${_sample_name}')
 but it is cleaner because you do not have to do this each time when `bam_files` is used.
 
 
-#### Looping through values of a SoS variable (Option `for_each`)
+#### Looping through values of a SoS variable (option `for_each`)
 
 Option `for_each` allows you to repeat step actions for each value of a variable. For example, if
 
@@ -803,6 +788,30 @@ This example also shows a trick on providing consistent input for later steps. W
 called `merged.fasta`. The last line of the step save `step_output` to `fasta_files` so that the following steps will always
 get `fasta_files` with a single file.
 
+
+#### Dynamically determined input files (option `dynamic`)
+
+In order to determine the best execution strategy, SoS evaluates all expressions for all steps before the execution of a workflow to figure
+out input and output of steps. This works most of the time but sometimes the input of a step can only be determined at runtime. For example,
+if you would like your workflow to automatically scan an input directory and process all fasta files under it, or if a previous step produces
+files that cannot be determined beforehand, you can specify input files as follows,
+
+```python
+input: glob.glob('input/*.fasta')
+```
+
+The problem is that no file or a wrong set files might exist during the plannng stage so SoS might skip this step or start the step
+with a wrong set of files. To address this problem, you can declare the input of this step as `**dynamic**` by passing option 
+`dynamic=True` to it,
+
+```python
+input: glob.glob('input/*.fasta'), dynamic=True
+```
+
+This tells SoS that the input of this step can only be determined at runtime and will execute the step only after all its previous
+steps have been completed.
+
+
 ### Dependent files (`depends` directive)
 
 This item specifies files that are required for the step. Although not required, it is a good practice to list resource files and other dependency files for a particular step. For example
@@ -819,7 +828,7 @@ depends:
 
 Note that dependent files are processed after input files so variable `input` and others are available to use for `depends`. 
 
-### Step output files (`output` directive)
+### Output files (`output` directive)
 
 Output files of a step can be specified by item `output`. Whereas `input` is a directive to overide or 
 change SoS provided variable `step_input` to produce one or more variable `input`, the `output` is a
@@ -845,10 +854,54 @@ The following figure summarizes the effect of `input`
 and `output` directives and input options `group_by` and `for_each` on the flow
 of input and output files and related variables.
 
+### Output options
+
+Similar to `input`, directive `output` also accept output options as `key=value` pair after the output files.
+
+#### Dynamically determined output files (option `dynamic`)
+
+Similar to the cases with [dynamic input files](#dynamically-determined-input-files-option-dynamic), the 
+output of some steps could also not be determined beforehand. For example, with
+
+```python
+output: glob.glob('results/*.bam')
+```
+
+SoS might think this step does not produce any output if there is currently no `*.bam` file under directory
+`results`. Subsequent steps that depend on this output might also fail. To address this problem, you can
+declare the output of this step as `**dynamic**` by adding option `dynamic=True` to the output files,
+
+```python
+output: glob.glob('results/*.bam'), dynamic=True
+```
+
+This effectively makes the output of this step (`step_output`) and any step that depends on it dynamic
+and be treated differently during the planning of the workflow.
+
 ![step options](step_options.jpg "step options")
 
-
 ### step actions
+
+Step action should be a valid Python function call in the format of 
+
+```python
+func(arguments)
+```
+
+or a tuple with multiple function calls in the format of
+
+```python
+func1(arguments), func2(arguments)
+```
+
+or an expression that result in one of the two previous forms, e.g.
+
+```python
+tuple([func(x) for x in some_list])
+```
+
+A step action can span multiple lines as long as it conforms to Python syntax. It should not contain
+empty line unless the empty line is within multi-line strings (''' ''' or """ """).
 
 Please refer to [step actions](actions.md) for details.
 
