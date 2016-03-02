@@ -10,6 +10,8 @@
   - [design of `for_each`](#design-of-for_each)
   - [Enforce naming convention?](#enforce-naming-convention)
 - [Workflow features](#workflow-features)
+  - [Allow failed execution?](#allow-failed-execution)
+  - [Complete python code as action?](#complete-python-code-as-action)
   - [Runtime control](#runtime-control)
   - [Resource control](#resource-control)
   - [Nested workflow](#nested-workflow)
@@ -165,6 +167,27 @@ make the script a bit more readable. For example
 By 'enforce', I mean SoS can give warning even error if a variable's usage does not match its name convention.
 
 ## Workflow features
+
+### Allow failed execution?
+
+Sometimes a command might fail because of certain properties of input data and that is acceptable to the workflow. An alternative command also might be run only if a step fails. How to accommodate this scenario?
+
+### Complete python code as action?
+
+Right now we only allow `func()` or `func1(),func2()` as action. It is
+actually possible to
+
+```python
+if run('command1') != 0:
+    run('command2')
+```
+
+to allow failed execution. We could even use this to replace the `for_each` feature with something like
+
+'''python
+for _method in method:
+    run('command1 {}'.format(_method))
+'''
 
 ### Runtime control
 
