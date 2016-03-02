@@ -8,6 +8,7 @@
 - [File format](#file-format)
   - [Default input of step?](#default-input-of-step)
   - [design of `for_each`](#design-of-for_each)
+  - [Remove pre-input, pre-action and post-action variables?](#remove-pre-input-pre-action-and-post-action-variables)
   - [Enforce naming convention?](#enforce-naming-convention)
 - [Workflow features](#workflow-features)
   - [Allow failed execution?](#allow-failed-execution)
@@ -154,6 +155,28 @@ I am not sure the current design is intuitive. It requires the variables to be d
 Another concern is that we are using `input` for both regular and looped cases. It might
 make sense to use `_input` for the latter.
 
+### Remove pre-input, pre-action and post-action variables?
+
+It might be clearer to clear all those features and put them all
+as part of the action. For example, we can specify the format as
+comment, directive, and all others are action.
+
+```python
+[step_index]
+# comment
+input:
+depends:
+output:
+
+var=value
+func1()
+func2()
+var2=value2
+```
+
+The format can be a lot easier to understand although we will lose some
+features, e.g. change of `step_intput` and `step_output`. I do not really
+miss them because they can be achieved by section options such as `input_alias=` and `output_alias=`.
 
 ### Enforce naming convention?
 
