@@ -823,37 +823,25 @@ and be treated differently during the planning of the workflow.
 
 ### step actions
 
-Step action should be defined **after** step directives. SoS considers any line before the next section head (`[]`) or the end of file as the action of the step. For each step action, SoS will
+Step action should be defined **after** step directives. SoS considers any line before the next section head (`[]`) or the end of file as the action of the step. 
+Although more python statements could be supported, SoS 1.0 only supports
 
-1. Parse the action as Python statements and
-  * convert `' '` and `''' '''` strings to raw string.
-  * perform variable interpolation (replace `${expr}` within string by their values.
-2. Execute the Python statements in a temporary namespace with all workflow variables and SoS defined functions. 
-3. Repeat steps 1 and 2 with different variables (`input` etc) if the action needs to be executed multiple times according to input options.
+* Variable assignment
+* Call to SoS function
 
-Although step actions in the majority of the cases are simply calls to SoS defined functions such as `run`, a lot more could be done using python statements, for example
+as step actions. For example, a step coud define action
 
 ```python
 run('command1')
 run('command2')
 ```
-execute multiple commands.
+
+to execute multiple commands, and define extra pipeline variables
 
 ```python
-if run('command1') != 0:
-    run('command2')
+basename = [os.path.basename(x) for x in input]
+run('command1 with ${basename}')
 ```
-
-executes command2 only if command1 fails to execute.
-
-```python
-for m in methods:
-    run('command with method {}'.format(m))
-```
-execute command multiple times with different method. 
-
-Note that
-* Variables created within step action are defined in the temporary namespae and are not seen outside of the step. 
 
 Please refer to [step actions](actions.md) for SoS defined functions.
 

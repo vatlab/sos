@@ -191,6 +191,9 @@ for _method in method:
     run('command1 {}'.format(_method))
 '''
 
+The problem with this design is that functions such as `run` could be very complicated (e.g.
+submit jobs to the cluster) so it is difficult to check the return value.
+
 ### Runtime control
 
 Limiting the files that the directory the step action can write to? 
