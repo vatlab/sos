@@ -22,14 +22,13 @@
 - [Workflow step](#workflow-step)
   - [step options](#step-options)
   - [Description of step](#description-of-step)
-  - [Runtime variables](#runtime-variables)
   - [Input files (`input` directive)](#input-files-input-directive)
   - [Input options](#input-options)
     - [Passing input files all at once (default)](#passing-input-files-all-at-once-default)
     - [Passing files of allowed type (option `filetype`)](#passing-files-of-allowed-type-option-filetype)
     - [Passing files in groups (option `group_by`)](#passing-files-in-groups-option-group_by)
-    - [Attaching variables to input filenames (option `labels`)](#attaching-variables-to-input-filenames-option-labels)
-    - [Looping through values of a SoS variable (option `for_each`)](#looping-through-values-of-a-sos-variable-option-for_each)
+    - [Attaching variables to input filenames (option `labels`, TBD)](#attaching-variables-to-input-filenames-option-labels-tbd)
+    - [Looping through values of a SoS variable (option `for_each`, TBD)](#looping-through-values-of-a-sos-variable-option-for_each-tbd)
     - [Conditional skip of a step (option `skip`)](#conditional-skip-of-a-step-option-skip)
     - [Dynamically determined input files (option `dynamic`)](#dynamically-determined-input-files-option-dynamic)
   - [Dependent files (`depends` directive)](#dependent-files-depends-directive)
@@ -77,11 +76,19 @@ par2=default2
 
 [step1: options]
 # description 1
-step1 input, output, variables, and action
+input:
+depends:
+output:
+
+action code
+
 
 [step2: options]
-# description 2
-step2 input, output, variables, and action
+input:
+depends:
+output:
+
+action code
 ```
 
 ## File header
@@ -409,29 +416,13 @@ Although only a *step action* is required for a SoS step, a complete SoS step ca
 #
 # description of the step
 #
-key0=value0
-
-input:
-    input files, opt1=value1, opt2=value2
-
-
-key1=value1
-key2=value2
-
-depends:
-    dependent files
-
-output:
-	output files
+input:    input files, opt1=value1, opt2=value2
+depends:  dependent files
+output:	output files, opt1=value1, opt2=value2
 
 step_action
 
-key3=value3
-key4=value4
-
 ```
-
-
 
 ### step options
 
@@ -442,63 +433,13 @@ key4=value4
 * **`blocking`**: the step can only be executed by one instance of SoS. All other SoS instances will wait until one instance complete this step. This option should be used for actions such as the creation of index and downloading of resources.
 * **`sigil`**: alternative sigil of the step, which should be a string with space. E.g. `sigil='[ ]'` allows the use of expressions such as
   `[input]` in this step.
+* **input_alias**: this option creates a variable with all input files of the step that allows them to be referred by later steps.
+* **output_alias**: this option creates a variable with all output files of ths step that allows them to be referred by later steps.
 * **`target`**: target filename that will trigger an [auxillary step](sos_format_v1.md#auxiliary-workflow-steps-and-makefile-style-dependency-rules).
 
 
 ### Description of step
 The first comment block after the section head (`[]`) is the description of the section and will be displayed in the output of command `sos show script`.
-
-### Runtime variables
-
-Variables can be defined and used freely in a step. Depending on the location where the variables are defined, they can be classified as
-
-* **Pre-input variables** (string or list of strings): variables defined before `input:`.
-* **Pre-action variables** (string or list of string): variables defined after `input:` and before action. They will be evalulated with each `input` before `depends` and `output` directives.
-* **Post-action variables** (string or list of strings): variables defined after the execution of step action.
-
-Because variables pass information from one step to another and dictates how actions are executed. It is important to understand how variables are defined and used in a SoS step.
-
-* Before entering the step:
-  * **`step_index`** (string) is defined automatically to the index of the current step 
-  * **`step_input`** (list of strings): input from the last completed step, or `[]` for the first step.
-
-* **Pre-input varialbes** will be defined before the processing of input files. It is possible to redefine `step_input` here.
- 
-* The `input` directive generates the following variables:
-  * **`input`** (list of strings): selected input files. Depending on input options, step action might be executed multiple times with different set of `input` files. 
-  * **file label variables** (list of strings): Labels of files in `input` if `labels` option is defined.
-  * **loop variables** (string): value of loop variables if `for_each` option is defined 
-
-* **Pre-action variables** will be defined and used. They will be defined multiple times if the step action will be executed with different `input` etc.
-
-* Step action generates output files. The output files are specified by **`output`** and are saved as variable **`step_output`**
-
-* **Post-action variables** will be defined after the exeuction of step action. It can be used to redefine `step_output` (e.g. remove duplicate output files from action output).
-
-
-The following sections will provide plenty of examples on how to use these variables. As the two most frequently used cases, step variables can be used to give informative names (aliases) to the input and output of the step so that they can be used in later steps with proper names.
-
-For example
-
-```python
-[100]
-raw_reads = step_input
-
-run(''' action to align fasta files''', output=...)
-
-aligned_reads = step_output
-
-[150]
-# do something else to raw reads (e.g. quality control report)
-input: raw_reads
-run(''' ... ''')
-
-[200]
-# process aligned reads
-input: aligned_reads
-run(''' ... ''')
-```
-
 
 ### Input files (`input` directive)
 
@@ -639,7 +580,7 @@ will take all input files and sort them by `_R1_` and `_R2_` and by filename. Fo
 `FEB_R1_1.txt FEB_R1_2.txt FEB_R2_1.txt FEB_R2_2.txt` and be sent to step
 action in two groups `['FEB_R1_1.txt', 'FEB_R2_1.txt']` and `['FEB_R1_2.txt', 'FEB_R2_2.txt']`.
 
-#### Attaching variables to input filenames (option `labels`)
+#### Attaching variables to input filenames (option `labels`, TBD)
 
 There are cases where the command line options or output directories depends on input filename. SoS allows you to label each filename with one or more variables so that they can be used accordingly. For example, if you have input files `bam_files` with values
 
@@ -697,7 +638,7 @@ run('process ${input} with variables ${_mutated} and ${_sample_name}')
 but it is cleaner because you do not have to do this each time when `bam_files` is used.
 
 
-#### Looping through values of a SoS variable (option `for_each`)
+#### Looping through values of a SoS variable (option `for_each`, TBD)
 
 Option `for_each` allows you to repeat step actions for each value of a variable. For example, if
 
@@ -882,28 +823,39 @@ and be treated differently during the planning of the workflow.
 
 ### step actions
 
-Step action should be a valid Python function call in the format of 
+Step action should be defined **after** step directives. SoS considers any line before the next section head (`[]`) or the end of file as the action of the step. For each step action, SoS will
+
+1. Parse the action as Python statements and
+  * convert `' '` and `''' '''` strings to raw string.
+  * perform variable interpolation (replace `${expr}` within string by their values.
+2. Execute the Python statements in a temporary namespace with all workflow variables and SoS defined functions. 
+3. Repeat steps 1 and 2 with different variables (`input` etc) if the action needs to be executed multiple times according to input options.
+
+Although step actions in the majority of the cases are simply calls to SoS defined functions such as `run`, a lot more could be done using python statements, for example
 
 ```python
-func(arguments)
+run('command1')
+run('command2')
 ```
-
-or a tuple with multiple function calls in the format of
+execute multiple commands.
 
 ```python
-func1(arguments), func2(arguments)
+if run('command1') != 0:
+    run('command2')
 ```
 
-or an expression that result in one of the two previous forms, e.g.
+executes command2 only if command1 fails to execute.
 
 ```python
-tuple([func(x) for x in some_list])
+for m in methods:
+    run('command with method {}'.format(m))
 ```
+execute command multiple times with different method. 
 
-A step action can span multiple lines as long as it conforms to Python syntax. It should not contain
-empty line unless the empty line is within multi-line strings (''' ''' or """ """).
+Note that
+* Variables created within step action are defined in the temporary namespae and are not seen outside of the step. 
 
-Please refer to [step actions](actions.md) for details.
+Please refer to [step actions](actions.md) for SoS defined functions.
 
 ## Auxiliary workflow steps and makefile style dependency rules
 
