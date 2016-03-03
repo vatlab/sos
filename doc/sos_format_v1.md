@@ -32,10 +32,10 @@
     - [Looping through values of a SoS variable (option `for_each`, TBD)](#looping-through-values-of-a-sos-variable-option-for_each-tbd)
     - [Conditional skip of a step (option `skip`)](#conditional-skip-of-a-step-option-skip)
     - [Dynamically determined input files (option `dynamic`)](#dynamically-determined-input-files-option-dynamic)
-  - [Dependent files (`depends` directive)](#dependent-files-depends-directive)
   - [Output files (`output` directive)](#output-files-output-directive)
   - [Output options](#output-options)
     - [Dynamically determined output files (option `dynamic`)](#dynamically-determined-output-files-option-dynamic)
+  - [Dependent files (`depends` directive and options)](#dependent-files-depends-directive-and-options)
   - [step actions](#step-actions)
 - [Auxiliary workflow steps and makefile style dependency rules](#auxiliary-workflow-steps-and-makefile-style-dependency-rules)
 - [Execution of workflows](#execution-of-workflows)
@@ -188,7 +188,7 @@ all_names = 'Samples ${sample_names}'
 
 Here the value of variable `resource_path` and expression `sample_names[0]` are replaced with their values when they are quoted between `${` and `}` in a string literal. 
 List of strings will be automatically converted to a string by joining strings with a space so `${sample_names}` will be expanded to `sample1 sample2`. Dictionary of
-strings will be automatically converted to a astring by joining dictionary values with a space, with no guarantee on the order of values. That is to say, `${dict}`
+strings will be automatically converted to a string by joining dictionary values with a space, with no guarantee on the order of values. That is to say, `${dict}`
 is equivalent to `${dict.values()}`.
 
 You can continue to use Python string functions such as
@@ -419,9 +419,12 @@ Although only a *step action* is required for a SoS step, a complete SoS step ca
 #
 # description of the step
 #
+
+step_variable=value
+
 input:    input files, opt1=value1, opt2=value2
 depends:  dependent files
-output:	output files, opt1=value1, opt2=value2
+output:	  output files, opt1=value1, opt2=value2
 
 step_action
 
@@ -449,55 +452,28 @@ The first comment block after the section head (`[]`) is the description of the 
 
 ### Runtime variables (TBD)
 
-Variables can be defined and used freely in a step. Depending on the location where the variables are defined, they can be classified as
-
-* **Pre-input variables** (string or list of strings): variables defined before `input:`.
-* **Pre-action variables** (string or list of string): variables defined after `input:` and before action. They will be evalulated with each `input` before `depends` and `output` directives.
-* **Post-action variables** (string or list of strings): variables defined after the execution of step action.
-
-Because variables pass information from one step to another and dictates how actions are executed. It is important to understand how variables are defined and used in a SoS step.
+**Variables can be defined before or after step directives (`input`, `output`, etc) but cannot be defined between them**. Variables defined before directivesare called
+step variable and are evalulated before step directives are interpreted. Variables defined after directives are considered part of the step action. More specifically,
 
 * Before entering the step:
-  * **`step_index`** (string) is defined automatically to the index of the current step 
-  * **`step_input`** (list of strings): input from the last completed step, or `[]` for the first step.
+  * **`step_index`** (string) is defined automatically as the index of the current step 
+  * **`step_input` (TBD)** (list of strings): input from the last completed step, or `[]` for the first step.
 
-* **Pre-input varialbes** will be defined before the processing of input files. It is possible to redefine `step_input` here.
+* Before step directives are interpreted:
+  * **step variables** are interpreted in preparation for the step. It is possible to redefine `step_input` here.
  
-* The `input` directive generates the following variables:
+* The `input` directive generates the following (temporary) variables:
   * **`input`** (list of strings): selected input files. Depending on input options, step action might be executed multiple times with different set of `input` files. 
   * **file label variables** (list of strings): Labels of files in `input` if `labels` option is defined.
   * **loop variables** (string): value of loop variables if `for_each` option is defined 
 
-* **Pre-action variables** will be defined and used. They will be defined multiple times if the step action will be executed with different `input` etc.
+* The `output` directive generates the following (temporary) variable:
+  * **`step_output` (TBD)** (list of strings): output from the step
 
-* Step action generates output files. The output files are specified by **`output`** and are saved as variable **`step_output`**
+* The `depends` directive generates the following (temporary) variable:
+  * **`step_dependents` (TBD)** (list of strings): dependent files
 
-* **Post-action variables** will be defined after the exeuction of step action. It can be used to redefine `step_output` (e.g. remove duplicate output files from action output).
-
-
-The following sections will provide plenty of examples on how to use these variables. As the two most frequently used cases, step variables can be used to give informative names (aliases) to the input and output of the step so that they can be used in later steps with proper names.
-
-For example
-
-```python
-[100]
-raw_reads = step_input
-
-run(''' action to align fasta files''', output=...)
-
-aligned_reads = step_output
-
-[150]
-# do something else to raw reads (e.g. quality control report)
-input: raw_reads
-run(''' ... ''')
-
-[200]
-# process aligned reads
-input: aligned_reads
-run(''' ... ''')
-```
-
+* **action variables** will be evaluated, possibley repeated with the execution of action step.
 
 ### Input files (`input` directive)
 
@@ -811,22 +787,6 @@ This tells SoS that the input of this step can only be determined at runtime and
 steps have been completed.
 
 
-### Dependent files (`depends` directive)
-
-This item specifies files that are required for the step. Although not required, it is a good practice to list resource files and other dependency files for a particular step. For example
-
-```python
-[10]
-input:
-	fasta_files
-	
-depends:
-	reference_seq
-	
-```
-
-Note that dependent files are processed after input files so variable `input` and others are available to use for `depends`. 
-
 ### Output files (`output` directive)
 
 Output files of a step can be specified by item `output`. Whereas `input` is a directive to overide or 
@@ -876,6 +836,23 @@ output: glob.glob('results/*.bam'), dynamic=True
 
 This effectively makes the output of this step (`step_output`) and any step that depends on it dynamic
 and be treated differently during the planning of the workflow.
+
+
+### Dependent files (`depends` directive and options)
+
+This item specifies files that are required for the step. Although not required, it is a good practice to list resource files and other dependency files for a particular step. For example
+
+```python
+[10]
+input:
+	fasta_files
+	
+depends:
+	reference_seq
+	
+```
+
+Option `dynamic` is also available for `depends` directive.
 
 ![step options](step_options.jpg "step options")
 
