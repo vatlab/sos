@@ -256,14 +256,13 @@ run('''
 STAR --runMode genomeGenerate --genomeFastaFile human38.fasta --genomeDir STAR_index
 ''')
 
-ref_index=step_output
     
 [2]
 # align the reads to the reference genome
 sample_type=['control', 'mutated']
 
 input:    fasta_files, group_by='single', labels='sample_type'
-depends:  ref_index
+depends:  'STAR_index/chrName.txt'
 output:   ['aligned/control.out.tab', 'aligned/mutated.out.tab']
 
 run('''
@@ -288,9 +287,8 @@ dev.off()
 
 Here we 
 
-1. Save the output of the first step (in variable `step_output`) as `ref_index` and use the variable instead of filename as a dependency of step 2. 
-2. Use option `group_by='single'` to pass input one by one to action. The action will be executed twice with `input` set to the first and second input file respectively.
-3. Define a variable `sample_type` and mark it as the labels for input files (option `labels`). This will generate a variable `_sample_type` for each input file so `_sample_type` will be `control` for the first input file, and `mutated` for the second.
+1. Use option `group_by='single'` to pass input one by one to action. The action will be executed twice with `input` set to the first and second input file respectively.
+2. Define a variable `sample_type` and mark it as the labels for input files (option `labels`). This will generate a variable `_sample_type` for each input file so `_sample_type` will be `control` for the first input file, and `mutated` for the second.
 
 Now, if you execute the script with option `-j 2` (2 concurrent processes),
 

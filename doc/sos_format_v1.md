@@ -452,12 +452,12 @@ The first comment block after the section head (`[]`) is the description of the 
 
 ### Runtime variables (TBD)
 
-**Variables can be defined before or after step directives (`input`, `output`, etc) but cannot be defined between them**. Variables defined before directivesare called
-step variable and are evalulated before step directives are interpreted. Variables defined after directives are considered part of the step action. More specifically,
+**Variables can be defined before or after step directives (`input`, `output`, etc) but cannot be defined between them**. Variables defined before directives 
+are evalulated before step directives are interpreted. Variables defined after directives are considered part of the step action. More specifically,
 
 * Before entering the step:
   * **`step_index`** (string) is defined automatically as the index of the current step 
-  * **`step_input` (TBD)** (list of strings): input from the last completed step, or `[]` for the first step.
+  * **`step_input (TBD)`** (list of strings): input from the last completed step, or `[]` for the first step.
 
 * Before step directives are interpreted:
   * **step variables** are interpreted in preparation for the step. It is possible to redefine `step_input` here.
@@ -468,10 +468,10 @@ step variable and are evalulated before step directives are interpreted. Variabl
   * **loop variables** (string): value of loop variables if `for_each` option is defined 
 
 * The `output` directive generates the following (temporary) variable:
-  * **`step_output` (TBD)** (list of strings): output from the step
+  * **`step_output (TBD)`** (list of strings): output from the step
 
 * The `depends` directive generates the following (temporary) variable:
-  * **`step_dependents` (TBD)** (list of strings): dependent files
+  * **`step_dependents (TBD)`** (list of strings): dependent files
 
 * **action variables** will be evaluated, possibley repeated with the execution of action step.
 
