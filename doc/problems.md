@@ -10,6 +10,8 @@
   - [design of `for_each`](#design-of-for_each)
   - [Enforce naming convention?](#enforce-naming-convention)
 - [Workflow features](#workflow-features)
+  - [Allow failed execution?](#allow-failed-execution)
+  - [Complete python code as action?](#complete-python-code-as-action)
   - [Runtime control](#runtime-control)
   - [Resource control](#resource-control)
   - [Nested workflow](#nested-workflow)
@@ -36,7 +38,8 @@
   - [Section option `terminal` and `starting`](#section-option-terminal-and-starting)
   - [Use of dictionary variable](#use-of-dictionary-variable)
   - [Use `None` instead of `[]` for no input or output](#use-none-instead-of--for-no-input-or-output)
-  - [Dynamic output](#dynamic-output)
+  - [Dynamic input and output](#dynamic-input-and-output)
+  - [Remove pre-input, pre-action and post-action variables?](#remove-pre-input-pre-action-and-post-action-variables)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -152,6 +155,7 @@ I am not sure the current design is intuitive. It requires the variables to be d
 Another concern is that we are using `input` for both regular and looped cases. It might
 make sense to use `_input` for the latter.
 
+We should perhaps remove this feature and use python for loop explicitly. 
 
 ### Enforce naming convention?
 
@@ -165,6 +169,30 @@ make the script a bit more readable. For example
 By 'enforce', I mean SoS can give warning even error if a variable's usage does not match its name convention.
 
 ## Workflow features
+
+### Allow failed execution?
+
+Sometimes a command might fail because of certain properties of input data and that is acceptable to the workflow. An alternative command also might be run only if a step fails. How to accommodate this scenario?
+
+### Complete python code as action?
+
+Right now we only allow `func()` or `func1(),func2()` as action. It is
+actually possible to
+
+```python
+if run('command1') != 0:
+    run('command2')
+```
+
+to allow failed execution. We could even use this to replace the `for_each` feature with something like
+
+'''python
+for _method in method:
+    run('command1 {}'.format(_method))
+'''
+
+The problem with this design is that functions such as `run` could be very complicated (e.g.
+submit jobs to the cluster) so it is difficult to check the return value.
 
 ### Runtime control
 
@@ -557,7 +585,7 @@ for no input. Using `input: None` can potentially be more readable.
 Decide: None is reserved for unknown input so `[]` should be used for no input.
 
 
-### Dynamic output
+### Dynamic input and output
 
 If the output of step is dynamically determined, for example, by running `glob.glob` from output directory, the output
 might be empty or wrong at the planning stage. For example
@@ -581,10 +609,10 @@ Solution:
   on output of previous step?
 * A `dynamic` property to related variables.
 
-Decision: a dynamic function is added to SoS expressions. This essentially converts
+Decision: a dynamic option to `input` and `output` directives. This essentially converts
 
 ```python
-dynamic("glob.glob('*.bam')")
+glob.glob('*.bam'), dynamic=True
 ```
 
 to a DynamicExpression object with `expr="glob.glob('*.bam')"` with the following definition,
@@ -600,3 +628,29 @@ class DynamicExpression:
 ```
 
 and will evaluate the result each time when it is used.
+
+
+### Remove pre-input, pre-action and post-action variables?
+
+It might be clearer to clear all those features and put them all
+as part of the action. For example, we can specify the format as
+comment, directive, and all others are action.
+
+```python
+[step_index]
+# comment
+input:
+depends:
+output:
+
+var=value
+func1()
+func2()
+var2=value2
+```
+
+The format can be a lot easier to understand although we will lose some
+features, e.g. change of `step_intput` and `step_output`. I do not really
+miss them because they can be achieved by section options such as `input_alias=` and `output_alias=`.
+
+Decision: remove these concepts to make SoS cleaner.

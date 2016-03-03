@@ -22,17 +22,19 @@
 - [Workflow step](#workflow-step)
   - [step options](#step-options)
   - [Description of step](#description-of-step)
-  - [Runtime variables](#runtime-variables)
   - [Input files (`input` directive)](#input-files-input-directive)
   - [Input options](#input-options)
     - [Passing input files all at once (default)](#passing-input-files-all-at-once-default)
     - [Passing files of allowed type (option `filetype`)](#passing-files-of-allowed-type-option-filetype)
     - [Passing files in groups (option `group_by`)](#passing-files-in-groups-option-group_by)
-    - [Attaching variables to input filenames (option `labels`)](#attaching-variables-to-input-filenames-option-labels)
-    - [Looping through values of a SoS variable (Option `for_each`)](#looping-through-values-of-a-sos-variable-option-for_each)
+    - [Attaching variables to input filenames (option `labels`, TBD)](#attaching-variables-to-input-filenames-option-labels-tbd)
+    - [Looping through values of a SoS variable (option `for_each`, TBD)](#looping-through-values-of-a-sos-variable-option-for_each-tbd)
     - [Conditional skip of a step (option `skip`)](#conditional-skip-of-a-step-option-skip)
+    - [Dynamically determined input files (option `dynamic`)](#dynamically-determined-input-files-option-dynamic)
   - [Dependent files (`depends` directive)](#dependent-files-depends-directive)
-  - [Step output files (`output` directive)](#step-output-files-output-directive)
+  - [Output files (`output` directive)](#output-files-output-directive)
+  - [Output options](#output-options)
+    - [Dynamically determined output files (option `dynamic`)](#dynamically-determined-output-files-option-dynamic)
   - [step actions](#step-actions)
 - [Auxiliary workflow steps and makefile style dependency rules](#auxiliary-workflow-steps-and-makefile-style-dependency-rules)
 - [Execution of workflows](#execution-of-workflows)
@@ -74,11 +76,19 @@ par2=default2
 
 [step1: options]
 # description 1
-step1 input, output, variables, and action
+input:
+depends:
+output:
+
+action code
+
 
 [step2: options]
-# description 2
-step2 input, output, variables, and action
+input:
+depends:
+output:
+
+action code
 ```
 
 ## File header
@@ -162,24 +172,6 @@ Any python expressions involving any SoS variables and defined functions can be 
 * `glob.glob('*.txt')` return a list of files with extension `.txt` under the current directory.
 
 Note that SoS makes available modules `glob`, `os`, `sys`, and more modules can be imported with workflow action.
-
-In order to determine the best execution strategy, SoS evaluates all expressions for all steps before the execution of a workflow to figure
-out input and output of steps. This works most of the time but sometimes the output of a step can only be determined at runtime. For example,
-if you have a step with 
-
-```python
-output: glob.glob('results/*.bam')
-```
-
-SoS might think this step does not produce any output if there is currently no `*.bam` file under directory `results`. To address
-this problem, you can mark this expression as `**dynamic**` by passing its string form to `dynamic()`, namely,
-
-```python
-output: dynamic("glob.glob('results/*.bam')")
-```
-
-This effectively makes the output of this step (`step_output`) and any step that depends on it dynamic and be treated differently
-during the execution of the workflow. 
 
 ### String interpolation
 
@@ -424,29 +416,13 @@ Although only a *step action* is required for a SoS step, a complete SoS step ca
 #
 # description of the step
 #
-key0=value0
-
-input:
-    input files, opt1=value1, opt2=value2
-
-
-key1=value1
-key2=value2
-
-depends:
-    dependent files
-
-output:
-	output files
+input:    input files, opt1=value1, opt2=value2
+depends:  dependent files
+output:	output files, opt1=value1, opt2=value2
 
 step_action
 
-key3=value3
-key4=value4
-
 ```
-
-
 
 ### step options
 
@@ -457,63 +433,13 @@ key4=value4
 * **`blocking`**: the step can only be executed by one instance of SoS. All other SoS instances will wait until one instance complete this step. This option should be used for actions such as the creation of index and downloading of resources.
 * **`sigil`**: alternative sigil of the step, which should be a string with space. E.g. `sigil='[ ]'` allows the use of expressions such as
   `[input]` in this step.
+* **input_alias**: this option creates a variable with all input files of the step that allows them to be referred by later steps.
+* **output_alias**: this option creates a variable with all output files of ths step that allows them to be referred by later steps.
 * **`target`**: target filename that will trigger an [auxillary step](sos_format_v1.md#auxiliary-workflow-steps-and-makefile-style-dependency-rules).
 
 
 ### Description of step
 The first comment block after the section head (`[]`) is the description of the section and will be displayed in the output of command `sos show script`.
-
-### Runtime variables
-
-Variables can be defined and used freely in a step. Depending on the location where the variables are defined, they can be classified as
-
-* **Pre-input variables** (string or list of strings): variables defined before `input:`.
-* **Pre-action variables** (string or list of string): variables defined after `input:` and before action. They will be evalulated with each `input` before `depends` and `output` directives.
-* **Post-action variables** (string or list of strings): variables defined after the execution of step action.
-
-Because variables pass information from one step to another and dictates how actions are executed. It is important to understand how variables are defined and used in a SoS step.
-
-* Before entering the step:
-  * **`step_index`** (string) is defined automatically to the index of the current step 
-  * **`step_input`** (list of strings): input from the last completed step, or `[]` for the first step.
-
-* **Pre-input varialbes** will be defined before the processing of input files. It is possible to redefine `step_input` here.
- 
-* The `input` directive generates the following variables:
-  * **`input`** (list of strings): selected input files. Depending on input options, step action might be executed multiple times with different set of `input` files. 
-  * **file label variables** (list of strings): Labels of files in `input` if `labels` option is defined.
-  * **loop variables** (string): value of loop variables if `for_each` option is defined 
-
-* **Pre-action variables** will be defined and used. They will be defined multiple times if the step action will be executed with different `input` etc.
-
-* Step action generates output files. The output files are specified by **`output`** and are saved as variable **`step_output`**
-
-* **Post-action variables** will be defined after the exeuction of step action. It can be used to redefine `step_output` (e.g. remove duplicate output files from action output).
-
-
-The following sections will provide plenty of examples on how to use these variables. As the two most frequently used cases, step variables can be used to give informative names (aliases) to the input and output of the step so that they can be used in later steps with proper names.
-
-For example
-
-```python
-[100]
-raw_reads = step_input
-
-run(''' action to align fasta files''', output=...)
-
-aligned_reads = step_output
-
-[150]
-# do something else to raw reads (e.g. quality control report)
-input: raw_reads
-run(''' ... ''')
-
-[200]
-# process aligned reads
-input: aligned_reads
-run(''' ... ''')
-```
-
 
 ### Input files (`input` directive)
 
@@ -654,7 +580,7 @@ will take all input files and sort them by `_R1_` and `_R2_` and by filename. Fo
 `FEB_R1_1.txt FEB_R1_2.txt FEB_R2_1.txt FEB_R2_2.txt` and be sent to step
 action in two groups `['FEB_R1_1.txt', 'FEB_R2_1.txt']` and `['FEB_R1_2.txt', 'FEB_R2_2.txt']`.
 
-#### Attaching variables to input filenames (option `labels`)
+#### Attaching variables to input filenames (option `labels`, TBD)
 
 There are cases where the command line options or output directories depends on input filename. SoS allows you to label each filename with one or more variables so that they can be used accordingly. For example, if you have input files `bam_files` with values
 
@@ -712,7 +638,7 @@ run('process ${input} with variables ${_mutated} and ${_sample_name}')
 but it is cleaner because you do not have to do this each time when `bam_files` is used.
 
 
-#### Looping through values of a SoS variable (Option `for_each`)
+#### Looping through values of a SoS variable (option `for_each`, TBD)
 
 Option `for_each` allows you to repeat step actions for each value of a variable. For example, if
 
@@ -803,6 +729,30 @@ This example also shows a trick on providing consistent input for later steps. W
 called `merged.fasta`. The last line of the step save `step_output` to `fasta_files` so that the following steps will always
 get `fasta_files` with a single file.
 
+
+#### Dynamically determined input files (option `dynamic`)
+
+In order to determine the best execution strategy, SoS evaluates all expressions for all steps before the execution of a workflow to figure
+out input and output of steps. This works most of the time but sometimes the input of a step can only be determined at runtime. For example,
+if you would like your workflow to automatically scan an input directory and process all fasta files under it, or if a previous step produces
+files that cannot be determined beforehand, you can specify input files as follows,
+
+```python
+input: glob.glob('input/*.fasta')
+```
+
+The problem is that no file or a wrong set files might exist during the plannng stage so SoS might skip this step or start the step
+with a wrong set of files. To address this problem, you can declare the input of this step as `**dynamic**` by passing option 
+`dynamic=True` to it,
+
+```python
+input: glob.glob('input/*.fasta'), dynamic=True
+```
+
+This tells SoS that the input of this step can only be determined at runtime and will execute the step only after all its previous
+steps have been completed.
+
+
 ### Dependent files (`depends` directive)
 
 This item specifies files that are required for the step. Although not required, it is a good practice to list resource files and other dependency files for a particular step. For example
@@ -819,7 +769,7 @@ depends:
 
 Note that dependent files are processed after input files so variable `input` and others are available to use for `depends`. 
 
-### Step output files (`output` directive)
+### Output files (`output` directive)
 
 Output files of a step can be specified by item `output`. Whereas `input` is a directive to overide or 
 change SoS provided variable `step_input` to produce one or more variable `input`, the `output` is a
@@ -845,12 +795,55 @@ The following figure summarizes the effect of `input`
 and `output` directives and input options `group_by` and `for_each` on the flow
 of input and output files and related variables.
 
-![step options](step_options.jpg "step options")
+### Output options
 
+Similar to `input`, directive `output` also accept output options as `key=value` pair after the output files.
+
+#### Dynamically determined output files (option `dynamic`)
+
+Similar to the cases with [dynamic input files](#dynamically-determined-input-files-option-dynamic), the 
+output of some steps could also not be determined beforehand. For example, with
+
+```python
+output: glob.glob('results/*.bam')
+```
+
+SoS might think this step does not produce any output if there is currently no `*.bam` file under directory
+`results`. Subsequent steps that depend on this output might also fail. To address this problem, you can
+declare the output of this step as `**dynamic**` by adding option `dynamic=True` to the output files,
+
+```python
+output: glob.glob('results/*.bam'), dynamic=True
+```
+
+This effectively makes the output of this step (`step_output`) and any step that depends on it dynamic
+and be treated differently during the planning of the workflow.
+
+![step options](step_options.jpg "step options")
 
 ### step actions
 
-Please refer to [step actions](actions.md) for details.
+Step action should be defined **after** step directives. SoS considers any line before the next section head (`[]`) or the end of file as the action of the step. 
+Although more python statements could be supported, SoS 1.0 only supports
+
+* Variable assignment
+* Call to SoS function
+
+as step actions. For example, a step coud define action
+
+```python
+run('command1')
+run('command2')
+```
+
+to execute multiple commands, and define extra pipeline variables
+
+```python
+basename = [os.path.basename(x) for x in input]
+run('command1 with ${basename}')
+```
+
+Please refer to [step actions](actions.md) for SoS defined functions.
 
 ## Auxiliary workflow steps and makefile style dependency rules
 
