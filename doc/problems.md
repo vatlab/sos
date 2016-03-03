@@ -5,7 +5,9 @@
 - [Data model](#data-model)
   - [Unifying SoS dictionary and list?](#unifying-sos-dictionary-and-list)
   - [Read only SoS variable?](#read-only-sos-variable)
+  - [Frequency of variable interpolation](#frequency-of-variable-interpolation)
 - [File format](#file-format)
+  - [Implementation of input and output alias](#implementation-of-input-and-output-alias)
   - [Default input of step?](#default-input-of-step)
   - [design of `for_each`](#design-of-for_each)
   - [Enforce naming convention?](#enforce-naming-convention)
@@ -18,6 +20,8 @@
   - [Portability of runtime signatures](#portability-of-runtime-signatures)
   - [Libraries](#libraries)
 - [Actions](#actions)
+  - [Runtime signature of actions](#runtime-signature-of-actions)
+  - [Multiple actions, conditional actions?](#multiple-actions-conditional-actions)
   - [Session info?](#session-info)
 - [External support](#external-support)
   - [Support for docker](#support-for-docker)
@@ -58,74 +62,98 @@ input:  reference='seq.fasta'
 and expressions such as `input.reference`, `input.bamfile`, and `input`. This can be easily achieved with some Python magic
 but I am not sure if I should follow it and make SoS more difficult to understand.
 
-```Python
-class SoS_List(Collections.OrderedDict):
-    def __getitem__(self, key):
-	    # access as dictionary if key is a name
-		#
-		# input.rawfile
-		#
-		# access as a list if key is a number
-		#
-		# input[key]
-		#
-	
-	def __repr__(self):
-	    # connect all values() as a list ...
-		#
-		# ${input}
-		#
-	
-```
-
-In the end, we can claim that SoS list is 
-
-* A list of strings
-* Single or slice of the list can have a name
-* Items can be access by integer index, attribute, or dictionary key
-
-A SoS list can be initialized with
-
-* A list: `['seq.fasta', 'a.bam', 'b.bam']`
-* A dictionary: `{'reference': 'seq.fasta`, 'bamfiles': ['a.bam', 'b.bam']}`
-* Parameters: `reference='seq.fasta', bamfiles=['a.bam', 'b.bam']`
-
-Elements could be accessed as
-
-* `a[1]`, `a[2:]`
-* `a.reference`, `a.bamfiles` (if names are given)
-* `a['reference']`, `a['bamfiles']`
+Pros:
+* It seems nice to name different types of input files.
 
 Cons:
-* `a.reference` should be a string or list of strings (for consistency) 
-* It is difficult to change this datatype (we can make such variables readonly)
 * It does not work well with input options such as `group_by`.
-* Unlike snakemake, SoS already allows definition of variables, so users can do
+* Unlike snakemake, SoS already allows definition of variables, so users can define
 
 ```python
 reference='seq.fasta'
 bamfiles=['a.bam', 'b.bam']
 
 input: reference, bamfiles
-
 ```
-and use `input`, `reference`, and `bamfiles` separately. Here `reference` more likely 
-belongs to `depends`. 
 
-For simplicity and mostly the last reason, I incline not to use complicated data structure.
+and use `input`, `reference`, and `bamfiles` separately. Here `reference` more likely 
+belongs to `depends`.
+
+For simplicity and mostly the last reason, I incline not to use complicated data structure here.
 
 
 ### Read only SoS variable?
 
 A SoS can be easier to understand if we make most SoS variables readonly. That is to say, a SoS variable can not be changed 
-after it has been initialized. Exceptions to this rule can be system variables and temporary looping variables. 
+after it has been initialized. Exceptions to this rule can be system variables and temporary looping variables. It is also
+possible to use _name for all non-readable variables.
 
+Pros:
+* This makes SoS less error prone.
 
-A less stringent version of this rule is that variables can only be replaced in their entirety, which disallows
-changing part of the file list.
+Cons:
+* It sometimes make sense to adjust existing variables. For example the `bam_files` in the option `skip` example.
+
+### Frequency of variable interpolation
+
+It seems that strings with variable interpolation should keep its original version in case that it will be 
+re-visited later. Therefore, all variable definitions and actions will keep their original version and
+be evalulated when they are used.
 
 
 ## File format
+
+### Implementation of input and output alias
+
+It is very useful to save input and output of a step to properly named variables so that later steps can refer to 
+them with their names. There can be three implementations
+
+```python
+[step_index: input_alias=name, output_alias=name]
+```
+
+Pros:
+
+* Easy to notice and emphasize the proper names of input and output of the step.
+* Make sure the variables are list of strings.
+
+Cons:
+
+* Special syntax (section option)
+* Cannot define multiple variables for different outputs.
+
+```python
+[step_index]
+name = step_input
+name = step_output
+```
+
+Pros:
+
+* Use existing variable assignment mechanism
+* Does not have to limit to `step_input` or `step_output`. For example, if there are two types of output files,
+  you can separate them into several variables.
+
+Cons:
+
+* If name a specific output file, the variable can be a string instead of list of string.
+* Users need to know `step_index` and `step_output`, and it is currently unclear where to put these statements.
+
+```python
+input: alias=name
+output: alias=name
+```
+
+Pros:
+
+* No special syntax and no need to know `step_input`
+
+Cons:
+
+* Cannot define multiple variables for difficult outputs.
+
+
+
 ### Default input of step?
 
 Would it clearer to require explicit input files? Right now the a step's `step_input` is 
@@ -176,15 +204,14 @@ Sometimes a command might fail because of certain properties of input data and t
 
 ### Complete python code as action?
 
-Right now we only allow `func()` or `func1(),func2()` as action. It is
-actually possible to
+Right now we only allow `func()` as action. Should we allow syntax such as
 
 ```python
 if run('command1') != 0:
     run('command2')
 ```
 
-to allow failed execution. We could even use this to replace the `for_each` feature with something like
+to allow failed execution? We could even use this to replace the `for_each` feature with something like
 
 '''python
 for _method in method:
@@ -193,6 +220,7 @@ for _method in method:
 
 The problem with this design is that functions such as `run` could be very complicated (e.g.
 submit jobs to the cluster) so it is difficult to check the return value.
+
 
 ### Runtime control
 
@@ -247,6 +275,24 @@ Libraries would be python modules with defined SoS actions, but how to maintain 
 
 
 ## Actions
+
+### Runtime signature of actions
+
+In the present VST implementation, actions take care of runtime signatures and a step collects output files from one or more actions.
+When an action needs to be executed multiple times with different outputs (`group_by` option), runtime signatures are saved for 
+each execution.
+
+SoS currently adopts a step-wise output specification so it does not care how many times an action is executed or how many actions are
+executed, and thus loses the fine control of action-level runtime signature.
+
+### Multiple actions, conditional actions?
+
+The VST implementation allows the execution of one actions, and a sequence of actions in the form of SequentialAction. 
+I am not sure if and how SoS allows for multiple actions.
+
+It is even possible to introduce if/else and for loop in SoS actions, but it is unclear what would be the best
+way to implement it.
+
 
 ### Session info?
 

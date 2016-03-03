@@ -22,6 +22,7 @@
 - [Workflow step](#workflow-step)
   - [step options](#step-options)
   - [Description of step](#description-of-step)
+  - [Runtime variables (TBD)](#runtime-variables-tbd)
   - [Input files (`input` directive)](#input-files-input-directive)
   - [Input options](#input-options)
     - [Passing input files all at once (default)](#passing-input-files-all-at-once-default)
@@ -76,6 +77,7 @@ par2=default2
 
 [step1: options]
 # description 1
+var1=value1
 input:
 depends:
 output:
@@ -84,6 +86,7 @@ action code
 
 
 [step2: options]
+var2=value2
 input:
 depends:
 output:
@@ -433,13 +436,68 @@ step_action
 * **`blocking`**: the step can only be executed by one instance of SoS. All other SoS instances will wait until one instance complete this step. This option should be used for actions such as the creation of index and downloading of resources.
 * **`sigil`**: alternative sigil of the step, which should be a string with space. E.g. `sigil='[ ]'` allows the use of expressions such as
   `[input]` in this step.
-* **input_alias**: this option creates a variable with all input files of the step that allows them to be referred by later steps.
-* **output_alias**: this option creates a variable with all output files of ths step that allows them to be referred by later steps.
 * **`target`**: target filename that will trigger an [auxillary step](sos_format_v1.md#auxiliary-workflow-steps-and-makefile-style-dependency-rules).
 
+TBD options:
+
+* **input_alias**: this option creates a variable with all input files of the step that allows them to be referred by later steps.
+* **output_alias**: this option creates a variable with all output files of ths step that allows them to be referred by later steps.
 
 ### Description of step
 The first comment block after the section head (`[]`) is the description of the section and will be displayed in the output of command `sos show script`.
+
+
+### Runtime variables (TBD)
+
+Variables can be defined and used freely in a step. Depending on the location where the variables are defined, they can be classified as
+
+* **Pre-input variables** (string or list of strings): variables defined before `input:`.
+* **Pre-action variables** (string or list of string): variables defined after `input:` and before action. They will be evalulated with each `input` before `depends` and `output` directives.
+* **Post-action variables** (string or list of strings): variables defined after the execution of step action.
+
+Because variables pass information from one step to another and dictates how actions are executed. It is important to understand how variables are defined and used in a SoS step.
+
+* Before entering the step:
+  * **`step_index`** (string) is defined automatically to the index of the current step 
+  * **`step_input`** (list of strings): input from the last completed step, or `[]` for the first step.
+
+* **Pre-input varialbes** will be defined before the processing of input files. It is possible to redefine `step_input` here.
+ 
+* The `input` directive generates the following variables:
+  * **`input`** (list of strings): selected input files. Depending on input options, step action might be executed multiple times with different set of `input` files. 
+  * **file label variables** (list of strings): Labels of files in `input` if `labels` option is defined.
+  * **loop variables** (string): value of loop variables if `for_each` option is defined 
+
+* **Pre-action variables** will be defined and used. They will be defined multiple times if the step action will be executed with different `input` etc.
+
+* Step action generates output files. The output files are specified by **`output`** and are saved as variable **`step_output`**
+
+* **Post-action variables** will be defined after the exeuction of step action. It can be used to redefine `step_output` (e.g. remove duplicate output files from action output).
+
+
+The following sections will provide plenty of examples on how to use these variables. As the two most frequently used cases, step variables can be used to give informative names (aliases) to the input and output of the step so that they can be used in later steps with proper names.
+
+For example
+
+```python
+[100]
+raw_reads = step_input
+
+run(''' action to align fasta files''', output=...)
+
+aligned_reads = step_output
+
+[150]
+# do something else to raw reads (e.g. quality control report)
+input: raw_reads
+run(''' ... ''')
+
+[200]
+# process aligned reads
+input: aligned_reads
+run(''' ... ''')
+```
+
 
 ### Input files (`input` directive)
 
