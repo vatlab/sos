@@ -20,6 +20,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+# passing string as unicode to python 2 version of SoS
+# to ensure compatibility
+from __future__ import unicode_literals
 
 import os
 import unittest
@@ -28,9 +31,15 @@ from sostestcase import SoS_TestCase
 
 from pysos import *
 
+
 class TestParser(unittest.TestCase): #SoSTestCase):
     def testFileFormat(self):
         '''Test recognizing the format of SoS script'''
+        # file format must be 'fileformat=SOSx.x'
+        script = SoS_Script_Parser()
+        self.assertRaises(ParsingError, script.parse,
+            '#fileformat=SS2')
+        #
         script = SoS_Script_Parser()
         script.read('scripts/section1.sos')
         # not the default value of 1.0
@@ -60,7 +69,9 @@ class TestParser(unittest.TestCase): #SoSTestCase):
 
     def testSectionDirectives(self):
         '''Test directives of sections'''
-        pass
+        script = SoS_Script_Parser()
+        self.assertRaises(ParsingError, script.parse,
+            '''input: 'filename' ''')
 
     def testSectionActions(self):
         '''Test actions of sections'''
