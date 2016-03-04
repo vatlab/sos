@@ -217,16 +217,43 @@ done
 
 uses a different sigil style because the embedded shell script uses `${ }`. In this example `${file}` keeps its meaning in the shell script while `%(sample_names[0])` and `%(title)` are replaced by SoS to their values.
 
+As a final note, string interpolation can only be used in string literals so usages such as
+
+```python
+action='run'
+
+${action}('command')
+```
+
+are not allowed.
+
 ## Global variables 
 
-Before the definition of any section (in the format of `[section_name: options]`, you can define arbitary number of global variables. These are usually constant string variables such as pathes to various resources, but can also be derived values from command line options (see next section).
+Before the definition of any section (in the format of `[section_name: options]`, you can define arbitary number of global variables. 
+These are usually constant string variables such as version and date of the script and pathes to various resources.
 
-In addition to user-defined global variables, SoS defines the following variables
+In addition to user-defined global variables, SoS defines the following variables before any variables are defined
 
 * `workflow_name` (constant string): name of the workflow being executed
 * `sos_version` (constant string): version of sos
 * `home` (constant string): home directory
 * `workdir` (string): full path to the current working directory
+
+The variables are evaluated in the order at which they are defined so variables used by others must be defined beforehand. For example
+
+```python
+resource_path = '~/.resource'
+ref_genome = '${resource_path}/hg19/reference'
+```
+
+is acceptable but
+
+```python
+ref_genome = '${resource_path}/hg19/reference'
+resource_path = '~/.resource'
+```
+
+is not.
 
 ## Command line options
 
@@ -276,24 +303,27 @@ Attempts to pass more than one values (a list) to `gatk_path` (e.g. `--gatk_path
 
 ## Workflow definitions
 
-A SoS script can specify one or more workflows. Each workflow consists of one or more numbered steps. The numbers specify the **logical order** by which the steps are executed, but a later step might be executed before the completion of previous steps if it does not depend on the output of these steps.
+A SoS script can specify one or more workflows. Each workflow consists of one or more numbered steps. The numbers (should be non-negative) specify the **logical order** by which the steps are executed, but a later step might be executed before the completion of previous steps if it does not depend on the output of these steps.
 
 ### Define a single workflow
 
-A single pipeline can be specified without a name in a SoS script. For example, the following sections specify a pipeline with four steps `0`, `10`, `20`, and `100`. As you can see, the workflow steps can be specified in any order and do not have to be consecutive (which is actually preferred because it allows easy insertion of extra steps).
+A single pipeline can be specified without a name in a SoS script. For example, the following sections specify a pipeline with four steps `5`, `10`, `20`, and `100`. 
+As you can see, the workflow steps can be specified in any order and do not have to be consecutive (which is actually preferred because it allows easy insertion of extra steps).
 
 ```
-[0]
+[5]
 [20]
 [10]
 [100]
 
 ```
 
+The workflow steps will be executed in the order of global variable definition, parameter definition, step `5`, `10`, `20`, and `100`.
+
 Workflows specified in this way is the `default` step and actually called `default` in SoS output. If you want to give it a meaningful name, you can specify the steps as 
 
 ```
-[mapping_0]
+[mapping_5]
 [mapping_20]
 [mapping_10]
 [mapping_100]

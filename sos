@@ -48,7 +48,8 @@ if __name__ == '__main__':
     subparsers = master_parser.add_subparsers(title='subcommands')
     #
 ##     # command execute
-##     parser = subparsers.add_parser('execute',
+    parser = subparsers.add_parser('run',
+        help='Execute a SoS script')
 ##         help='Execute a pipeline or a SQL query',
 ##         description='''Execute a pipeline that uses external commands to
 ##             process input files, usually to align raw reads to a reference
@@ -57,8 +58,9 @@ if __name__ == '__main__':
 ##             used to execute arbitrary SQL query against the project database.
 ##             Additional parameters will be passed to pipelines as pipeline 
 ##             parameters. ''')
-##     pipeline.executeArguments(parser)
-##     addCommonArgs(parser)
+    parser.add_argument('workflow', metavar='WORKFLOW:STEPS',
+        help='Name of the workflow to execute')
+    addCommonArgs(parser)
 ##     parser.set_defaults(func=pipeline.execute)
 ##     #
 ##     # getting args, some commands accept arbitrary arguments so we need to
