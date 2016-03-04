@@ -7,11 +7,13 @@
   - [Workflow descriptions](#workflow-descriptions)
 - [Literals and variables](#literals-and-variables)
   - [String literal](#string-literal)
-  - [List literal](#list-literal)
   - [Dictionary literal (TBD)](#dictionary-literal-tbd)
   - [SoS variables](#sos-variables)
   - [Expressions with SoS variables](#expressions-with-sos-variables)
   - [String interpolation](#string-interpolation)
+    - [Format specifier](#format-specifier)
+    - [String representation of non-SoS supported types](#string-representation-of-non-sos-supported-types)
+    - [Alternative sigil](#alternative-sigil)
 - [Global variables](#global-variables)
 - [Command line options](#command-line-options)
 - [Workflow definitions](#workflow-definitions)
@@ -127,6 +129,15 @@ SoS allows three types of literals: string, list of strings, and dictionary of s
 * Strings are quoted text. You can use `' '`, `" "`, `''' '''`, and `""" """` to quote your text. Different quotation styles allows you to quote string with another string quotation character (e.g. `"Letter 'a'"`).
 * Backslash can be used to enter special characters (e.g. '\n'). Instead of using python raw string prefix (e.g. `r'raw \n'`), **SoS automatically treats string quoted by `' '` and `''' '''` as raw strings**. If you are uncertain what this means, always use single quotation marks.
 
+Multi-line string literal should be quoted by triple quotes, for example,
+
+```python
+script = '''
+# a complete script
+for a in [a, b, c]:
+   process s
+'''
+
 ### List literal
 
 A SoS list can only be a list of strings. List literals have format
@@ -135,7 +146,7 @@ A SoS list can only be a list of strings. List literals have format
 ['a', 'b']
 ```
 
-where comma separated strings are enclosed by `[` and `]`. Items in a list can be accessed by their indexes (starting from 0) or slices.
+where comma separated strings are enclosed by `[` and `]`. Items in a list can be accessed by their indexes (starting from 0) or slices. 
 
 ### Dictionary literal (TBD)
 
@@ -160,16 +171,28 @@ sample_names = ['sample1', 'sample2']
 
 defines two variables `resource_path` (a string) and `sample_names` (a list).
 
+Variable assignment can expand several lines as long as there is no syntax error and no ambiguity. For example,
+
+```python
+name_map = {
+'A': 'aaa',
+'B': 'bbb'
+}
+```
+
+is allowed.
+
 ### Expressions with SoS variables
 
 Any python expressions involving any SoS variables and defined functions can be used in SoS scripts. For example
 
 * `input[0]` gets the first input file
+* `bamfiles[1:]` returns all but the first item in list `bamfiles`
 * `os.path.basename(input[0])` get the base name of input file
 * `[x for x in input if '_R1_' in x]` returns all files with `_R1_` in its names
 * `{x:os.path.basename(x) for x in input_files}` returns a dictionary with filenames as keys and basename of filenames as values.
 * `output_dir + '/' + input[0] + '.bai'` return a file under `output_dir` with `.bai` appended to filename.
-* `os.path.getsize(input[0])` return a string (converted from integer) of file size
+* `os.path.getsize(input[0])` return size of specified file
 * `os.path.getsize(input[0]) > 0` return `True`
 * `os.environ['MY_VAR']` return the value of environment `MY_VAR`.
 * `glob.glob('*.txt')` return a list of files with extension `.txt` under the current directory.
@@ -187,9 +210,14 @@ all_names = 'Samples ${sample_names}'
 ```
 
 Here the value of variable `resource_path` and expression `sample_names[0]` are replaced with their values when they are quoted between `${` and `}` in a string literal. 
-List of strings will be automatically converted to a string by joining strings with a space so `${sample_names}` will be expanded to `sample1 sample2`. Dictionary of
-strings will be automatically converted to a string by joining dictionary values with a space, with no guarantee on the order of values. That is to say, `${dict}`
-is equivalent to `${dict.values()}`.
+Depending on the return type of the expression
+
+* String values will be returned directly.
+* List of strings will be automatically converted to a string by joining strings with a space.
+  That is to say `${sample_names}` will be expanded to `sample1 sample2` if `sample_names=['sample1', 'sample2']`.
+* Dictionary of strings will be automatically converted to a string by joining dictionary values with a space,
+  with no guarantee on the order of values. For example, `${names}` will be expanded to `sample1 sample2` or
+ `sample2 sample1` if `names={'A':'sample1', 'B':'sample2'}`.
 
 You can continue to use Python string functions such as
 
@@ -198,7 +226,35 @@ ref_genome = resource_path + '/hg19/refGenome.fasta'
 title = 'Result for the first sample {} is invalid'.format(sample_names[0])
 ```
 
-but string interpolation is recommended for multi-line scripts because it is easier to read.
+but string interpolation is recommended for multi-line scripts because it is easier to read. Note that string interpolation can only be used in string literals so usages such as
+
+```python
+action='run'
+${action}('command')
+```
+
+are not allowed.
+
+#### Format specifier
+
+SoS interpolation also support all string format specification as in the [Python string format specifier](https://docs.python.org/2/library/string.html#formatspec),
+that is to say, you can use `: specifier` at the end of the expression to control the format of the output. For example `${1/3. :.2f}` would produce `0.33` 
+instead of the long representation of the number, and `${input:>20' would produce `            test.txt` if `input=['test.txt']`.
+
+#### String representation of non-SoS supported types
+
+Expressions that do not return the aforementioned SoS supported types can also be used in string interpolation but
+their string representation can be more complicated. Basically,
+
+* For objects with an iterator interface (e.g. Python `set`, `tuple`), SoS join the string representation of
+  each item by a space.
+* For all other non-iterable objects (e.g. True, False, None, numeric numbers), their string
+  representation will be returned (`repr(obj)`).
+
+That is to say, `'${set(1, 4, tuple('b', 1/3.), 3)}` could be `4 3 b 0.3333333333333333 1` where 
+string representations of items in a Python set object is joint in no particular order.
+
+#### Alternative sigil
 
 Because a SoS script can include scripts in different languages with different sigils (special characters used to enclose expression), **SoS allows the use of different sigils** in the script. Whereas the default sigil (`${ }`) has to be used for global variables, other sigils can be used for different sections of the script. For example
 
@@ -217,15 +273,6 @@ done
 
 uses a different sigil style because the embedded shell script uses `${ }`. In this example `${file}` keeps its meaning in the shell script while `%(sample_names[0])` and `%(title)` are replaced by SoS to their values.
 
-As a final note, string interpolation can only be used in string literals so usages such as
-
-```python
-action='run'
-
-${action}('command')
-```
-
-are not allowed.
 
 ## Global variables 
 
@@ -317,8 +364,6 @@ As you can see, the workflow steps can be specified in any order and do not have
 [100]
 
 ```
-
-The workflow steps will be executed in the order of global variable definition, parameter definition, step `5`, `10`, `20`, and `100`.
 
 Workflows specified in this way is the `default` step and actually called `default` in SoS output. If you want to give it a meaningful name, you can specify the steps as 
 
@@ -976,7 +1021,14 @@ that paradigm.
 
 ## Execution of workflows
 
-Step actions and input output directives of SoS steps determines how a workflow will be executed. In the sequential execution mode (by default),
+Logically speaking, for a given script and pipeline, SoS will 
+
+* Evaluate global variables in the order that they are specified (defined before the first section)
+* Evaluate parameters with either command line input or their default values
+* Evaluate the rest of steps in numeric order
+
+Actual execution order depends on step actions, input output directives of SoS steps, and option `-j`.
+In the sequential execution mode (by default),
 all steps are executed one by one with auxillary steps called when necessary. If a script is written without any step option and 
 input and output files, it will be executed sequentially even in parallel execution mode (with `-j` option).
 
