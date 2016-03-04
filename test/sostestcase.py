@@ -21,10 +21,11 @@
 #
 
 import os
-import unittest
-import shlex, subprocess
 import sys
+import unittest
 
-class SoSTestCase(unittest.TestCase):
+class SoS_TestCase(unittest.TestCase):
     'A subclass of unittest.TestCase to handle process output'
-    pass
+    def __init__(self):
+        print('here')
+        unittest.TestCase.__init__(self)

@@ -23,6 +23,9 @@
 import re
 from collections import OrderedDict
 
+from .utils import env
+import pprint
+
 class SoS_Step:
     #
     # A single sos step
@@ -40,21 +43,40 @@ class SoS_Workflow:
 
 class SoS_Script_Parser:
     # Regular expressions for parsing section headers and options
-    _SECT_TMPL = r'''
+    _SECTION_HEADER_TMPL = r'''
         \[                                 # [
-        (?P<header>[^]]+)                  # anything but ], can be accessed by name 'header'
+        (?P<section_name>[\d\w_,\s]+)      # digit, alphabet, _ and ,
+        (:\s*                           # optional Options
+        (?P<section_option>[^]]*)           # section options 
+        )?
         \]                                 # ]
         '''
-    _OPT_TMPL = r'''
-        (?P<option>.*?)                    # non-greedy
-        \s*(?P<vi>=)\s*                    # any number of space/tab,
-                                           # followed by any of the
-                                           # allowed delimiters,
-                                           # followed by any space/tab
-        (?P<value>.*)$                     # everything up to eol
+
+    _FORMAT_LINE_TMPL = r'''                   
+        ^                                  # from first column
+        \#fileformat=SOS                    # starts with #fileformat=SOS
+        (?P<format_version>[\d\.]+)        # any number and .
+        \s*$                               # till end of line
         '''
-    SECTCRE = re.compile(_SECT_TMPL, re.VERBOSE)
-    OPTCRE = re.compile(_OPT_TMPL, re.VERBOSE)
+
+    _DIRECTIVE_TMPL = r'''
+        ^                                   # from start of line
+        (?P<directive_name>input|output|depends)  # can be input, output or depends
+        \s*:\s*                             # followed by :
+        (?P<directive_value>.*)           # and values
+        '''
+
+    _ASSIGNMENT_TMPL = r'''
+        ^                                   # from start of line
+        (?P<var_name>[\w_][\d\w_]+)         # variable name
+        \s*=\s*                             # assignment
+        (?P<var_value>.*)                   # variable content
+        '''
+
+    SECTION_HEADER = re.compile(_SECTION_HEADER_TMPL, re.VERBOSE)
+    FORMAT_LINE = re.compile(_FORMAT_LINE_TMPL, re.VERBOSE)
+    DIRECTIVE = re.compile(_DIRECTIVE_TMPL, re.VERBOSE)
+    ASSIGNMENT = re.compile(_ASSIGNMENT_TMPL, re.VERBOSE)
 
     def __init__(self):
         """Parse a sectioned SoS script file.
@@ -76,16 +98,174 @@ class SoS_Script_Parser:
 
     def read(self, filename):
         with open(filename) as fp:
-            for lineno, line in enumerate(fp, start=1):
+            self._read(fp)
+
+    def _read(self, fp):
+        # a very crude parser
+        self.sections = {}
+        cursect = None
+        in_action = False
+        self.format_version = '1.0'
+
+        for lineno, line in enumerate(fp, start=1):
+            comment_block = 1
+            if line.startswith('#'):
+                if comment_block == 1:
+                    # look for format information
+                    mo = self.FORMAT_LINE.match(line)
+                    if mo:
+                        self.format_version = mo.group('format_version')
+            # a blank line
+            elif not line.strip():
+                comment_block += 1
+                if not in_action:
+                    curitem = None
+            # a continuation of previous item?
+            elif line[0].isspace() and cursect is not None and self.sections[cursect]:
+                value = line.strip()
+                if value:
+                    self.sections[cursect][-1][-1].append(value)
+            else:
+                # section header?
+                mo = self.SECTION_HEADER.match(line)
+                if mo:
+                    section_name = mo.group('section_name').strip()
+                    section_option = mo.group('section_option')
+                    cursect = (section_name, section_option)
+                    self.sections[cursect] = []
+                    continue
+                # assignment?
+                mo = self.ASSIGNMENT.match(line)
+                if mo:
+                    if cursect is None:
+                        cursect = '__global__'
+                        self.sections[cursect] = []
+                    var_name = mo.group('var_name')
+                    var_value = mo.group('var_value')
+                    if not self.sections[cursect] or self.sections[cursect][-1][0] == '=':
+                        self.sections[cursect].append(
+                            ['=', var_name, [var_value]])
+                    elif self.sections[cursect][-1][0] != '!':
+                        self.sections[cursect].append(
+                            ['!', ['{} = {}\n'.format(var_name, var_value)]])
+                    else:
+                        self.sections[cursect][-1][-1].append(
+                            '{} = {}\n'.format(var_name, var_value))
+
+                    continue
+                # directive?
+                mo = self.DIRECTIVE.match(line)
+                if mo:
+                    if cursect is None:
+                        raise RuntimeError('directives are not allowed in global section')
+                    if self.sections[cursect]:
+                        if self.sections[cursect][-1][0] == '!':
+                            raise RuntimeError('Cannot define a directive after action')
+                    directive_name = mo.group('directive_name')
+                    directive_value = mo.group('directive_value')
+                    self.sections[cursect].append(
+                        [':', directive_name, [directive_value]])
+                    continue
+                # all others?
+                if not cursect or cursect == '__global__':
+                    raise RuntimeError('Line not recognized: {}: cursect {}'.format(line, cursect))
+                #
+                if not self.sections[cursect]:
+                    raise RuntimeError('Line not recognized in section {}: {}'.format(cursect, line))
+                #
+                # It should be an action
+                if not self.sections[cursect] or self.sections[cursect][-1][0] != '!':
+                    self.sections[cursect].append( ['!', [line]])
+                else:
+                    self.sections[cursect][-1][-1].append(line)
+        #
+        # now, let us merge the multi-line strings and check if the syntax is correct
+        #
+        for header, content in self.sections.items():
+            for item in content:
+                # expression
+                if item[0] == '=':
+                    value = '\n'.join(item[2]).strip()
+                    try:
+                        compile(value, filename='<string>', mode='eval')
+                        item[2] = value
+                    except Exception as e:
+                        env.logger.error('Invalid assignment of "{}" to variable "{}": {}'
+                            .format(value, item[1], e))
+                if item[0] == ':':
+                    value = '({})'.format('\n'.join(item[2]).strip())
+                    try:
+                        compile(value, filename='<string>', mode='eval')
+                        item[2] = value
+                    except Exception as e:
+                        env.logger.error('Invalid directive {} with value "{}": {}'
+                            .format(item[1], ' '.join(item[2]).strip(), e))
+                if item[0] == '!':
+                    value = ''.join(item[1]).strip()
+                    try:
+                        compile(value, filename='<string>', mode='exec')
+                        item[1] = value
+                    except Exception as e:
+                        env.logger.error('Invalid step action with value "{}": {}'
+                            .format(value, e))
+        #pp = pprint.PrettyPrinter()
+        #pp.pprint(self.sections)
+        #
  
 
 class SoS_Script:
     #
     # A SoS script with multiple scripts
     #
-    def __init__(self, script_file):
-        pass
+    def __init__(self, script_file, args):
+        script = SoS_ScriptParser()
+        script.read(script_file)
+        # 
+        # this will update values in the default section with 
+        # values read from command line
+        self.parseCommandLineArgs(script, args)
+        #
+        # parse header and get a series of workflows
+        self.parseWorkflows(script)
 
-    def _parse(self, script_file):
-        pass
-        
+    def parseCommandLineArgs(self, script, args):
+        #
+        # look for parameters section
+        parameters = []
+        if 'parameters' in [x[0] for x in script.sections.keys()]:
+            parameter_section = [y for x,y in script.sections.items() if x[0] == 'parameters'][0]
+            for items in parameter_section:
+                try:
+                    parameters.append([items[1], eval(items[2])])
+                    # FIXME, check type
+                except Exception as e:
+                    raise RuntimeError('Incorrect initial value for parameter {}'.format(items[2]))
+        else:
+            return
+        parser = argparse.ArgumentParser()
+        for var, defvalue in parameters:
+            parser.add_argument('--{}'.format(var), 
+                nargs='1' if isinstance(defvalue, str) else '*', default=defvalue)
+        #
+        args = vars(parser.parse_args(args))
+        #
+        # now change the value with passed values
+        for items in parameter_section:
+            if items[1] in args:
+                items[2] = args[items[1]]
+            else:
+                items[2] = eval(items[2])
+            
+    def parseWorkflows(self, script):
+        headers = [x if isinstance(x, str) else x[0] for x in script.keys()]
+        # FIXME: process wild card characters
+        # FIXME: separate headers shared by multiple steps
+        # FIXME: parse header names
+
+        # we temporarily say the script defines a single default 
+        # pipeline and we do not worry about its order now
+        #workflow = [y for y 
+        self.workflows = {
+                'default': 
+                    script
+            }

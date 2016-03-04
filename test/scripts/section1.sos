@@ -1,4 +1,33 @@
 #!/usr/bin/env sos-runner
-#fileformat=SOS1.0
+#fileformat=SOS1.1
 
+var1='value1'
+var2 = 'value2'
+var3 = [var1,
+  var2]
+
+[parameters]
+par1 = 'var1'
+par2 = ['a', 'b', 'c']
+par3 = ['a',
+	'b']
+
+[section_1]
+var1 = 'a'
+
+[section_2 : opt1=value1]
+var2 = 'a'
+input: var1
+output: var2
+
+var3 = 'a'
+
+[section_3, section_4 : opt1=value1 ]
+output: 
+	var2,
+	var3
+
+action1()
+action2()
+var4= 'value4'
 

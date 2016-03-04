@@ -47,14 +47,16 @@ setup(name = "sos",
         'Intended Audience :: Science/Research',
         'Programming Language :: Python :: 3',
         ],
-    #packages = ['variant_tools'],
+    packages = ['pysos'],
     scripts = [
         'sos',
+        'sos-runner',
         ],
     cmdclass = {'build_py': build_py },
     py_modules = [
         'pysos.execute',
         'pysos.utils',
+        'pysos.sos_script',
         ]
 )
 

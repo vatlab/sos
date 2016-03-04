@@ -35,3 +35,4 @@ SOS_FULL_VERSION='{} for Python {}.{}.{}'.format(SOS_VERSION, ver.major, ver.min
 SOS_COPYRIGHT = '''SOS {} : Copyright (c) 2011 - 2016 Bo Peng'''.format(SOS_VERSION)
 SOS_CONTACT = '''Please visit http://varianttools.sourceforge.net for more information.'''
 
+from .sos_script import *

@@ -24,22 +24,31 @@
 import os
 import unittest
 
-from sostestcase import SoSTestCase
+from sostestcase import SoS_TestCase
 
-from pysos.utils import *
+from pysos import *
 
-class TestUtils(SoSTestCase):
+class TestParser(unittest.TestCase): #SoSTestCase):
     def testFileFormat(self):
         '''Test recognizing the format of SoS script'''
-        pass
+        script = SoS_Script_Parser()
+        script.read('scripts/section1.sos')
+        # not the default value of 1.0
+        self.assertEqual(script.format_version, '1.1')
 
     def testSections(self):
         '''Test section definitions'''
-        pass
+        script = SoS_Script_Parser()
+        script.read('scripts/section1.sos')
+        # not the default value of 1.0
+        for name in ('parameters', 'section_1', 'section_2', 'section_3, section_4'):
+            self.assertTrue('parameters' in [x[0] for x in script.sections.keys()])
 
-    def testGlovalVariables(self):
+    def testGlobalVariables(self):
         '''Test definition of variables'''
-        pass
+        script = SoS_Script_Parser()
+        script.read('scripts/section1.sos')
+        # not the default value of 1.0
 
     def testParameters(self):
         '''Test parameters section'''

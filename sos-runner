@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+#
+# This command (sos-runner) is a shortcut for command 'sos run'
+# so that a SoS script can be executed with shebang line
+#
+# #!/usr/bin/env sos-runner
+#
+sos run $*
