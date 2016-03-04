@@ -238,8 +238,8 @@ are not allowed.
 #### Format specifier
 
 SoS interpolation also support all string format specification as in the [Python string format specifier](https://docs.python.org/2/library/string.html#formatspec),
-that is to say, you can use `: specifier` at the end of the expression to control the format of the output. For example `${1/3. :.2f}` would produce `0.33` 
-instead of the long representation of the number, and `${input:>20' would produce `            test.txt` if `input=['test.txt']`.
+that is to say, you can use `: specifier` at the end of the expression to control the format of the output. For example `'${1/3. :.2f}'` would produce `0.33` 
+instead of its long representation `0.3333333333333333`, and `'${input:>20}'` would produce `            test.txt` if `input=['test.txt']`.
 
 #### String representation of non-SoS supported types
 
@@ -548,7 +548,7 @@ are evalulated before step directives are interpreted. Variables defined after d
 * The `depends` directive generates the following (temporary) variable:
   * **`step_dependents (TBD)`** (list of strings): dependent files
 
-* **action variables** will be evaluated, possibley repeated with the execution of action step.
+* **variables defined in step action** will be evaluated, possibley repeatedly with the execution of action step.
 
 ### Input files (`input` directive)
 
