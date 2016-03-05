@@ -116,10 +116,16 @@ class SoS_Script_Parser:
         \]                                 # ]
         '''
 
-    _FORMAT_LINE_TMPL = r'''                   
+    _FORMAT_LINE_TMPL = r'''
         ^                                  # from first column
         \#fileformat\s*=\s*                # starts with #fileformat=SOS
-        (?P<format_name>\w+)               # format name
+        (?P<format_name>.*)                # format name
+        \s*$                               # till end of line
+        '''
+
+    _FORMAT_VERSION_TMPL = r'''
+        ^                                  # from first column
+        (?P<format_name>[a-zA-Z]+)         # format name
         (?P<format_version>[\d\.]+)        # any number and .
         \s*$                               # till end of line
         '''
@@ -133,13 +139,14 @@ class SoS_Script_Parser:
 
     _ASSIGNMENT_TMPL = r'''
         ^                                   # from start of line
-        (?P<var_name>[\w_][\d\w_]+)         # variable name
+        (?P<var_name>[\w_][\d\w_]*)         # variable name
         \s*=\s*                             # assignment
         (?P<var_value>.*)                   # variable content
         '''
 
     SECTION_HEADER = re.compile(_SECTION_HEADER_TMPL, re.VERBOSE)
     FORMAT_LINE = re.compile(_FORMAT_LINE_TMPL, re.VERBOSE)
+    FORMAT_VERSION = re.compile(_FORMAT_VERSION_TMPL, re.VERBOSE)
     DIRECTIVE = re.compile(_DIRECTIVE_TMPL, re.VERBOSE)
     ASSIGNMENT = re.compile(_ASSIGNMENT_TMPL, re.VERBOSE)
 
@@ -171,6 +178,20 @@ class SoS_Script_Parser:
         with open(filename) as fp:
             self._read(fp, filename)
 
+    def _isValidExpr(self, expr):
+        try:
+            compile('(' + ''.join(expr) + ')', filename='<string>', mode='eval')
+            return True
+        except Exception as e:
+            return False
+
+    def _isValidStmt(self, stmt):
+        try:
+            compile(''.join(stmt), filename='<string>', mode='exec')
+            return True
+        except Exception as e:
+            return False
+
     def _read(self, fp, fpname):
         self.sections = {}
         self.format_version = '1.0'
@@ -178,6 +199,8 @@ class SoS_Script_Parser:
         #
         comment_block = 1
         cursect = None
+        last_expression = []
+        last_statement = []
         #
         # this ParsingError is a container for all parsing errors. It will be
         # raised after parsing if there is at least one parsing error.
@@ -193,16 +216,21 @@ class SoS_Script_Parser:
                         mo = self.FORMAT_LINE.match(line)
                         if mo:
                             format_name = mo.group('format_name')
-                            if format_name.upper() != 'SOS':
+                            if not format_name.upper().startswith('SOS'):
                                 parsing_errors.append(lineno, line,
-                                    'Unrecognized format name {}. Expecting SOS.'.format(format_name))
-                            self.format_version = mo.group('format_version')
+                                    'Unrecognized file format name {}. Expecting SOS.'.format(format_name))
+                            mo = self.FORMAT_VERSION.match(format_name)
+                            if mo:
+                                self.format_version = mo.group('format_version')
+                            else:
+                                parsing_errors.append(lineno, line,
+                                    'Unrecognized file format version in {}.'.format(format_name))
                     elif comment_block > 1:
                         # anything before the first section can be pipeline
                         # description.
                         self.workflow_descriptions[-1].append(line)
                 else:
-                    if cursect[0] == _PARAMETERS_SECTION:
+                    if cursect[0] == self._PARAMETERS_SECTION:
                         # in the parameter section, the comments are description
                         # of parameters
                         #
@@ -229,12 +257,17 @@ class SoS_Script_Parser:
                 else:
                     if self.sections[cursect] and self.sections[cursect][-1][0] == '#':
                         comment_block += 1
+                continue
             #
             # a continuation of previous item?
             if line[0].isspace() and cursect is not None and self.sections[cursect]:
                 value = line.strip()
                 if value:
                     self.sections[cursect][-1][-1].append(value)
+                    if last_expression:
+                        last_expression.append(value)
+                    if last_statement:
+                        last_statement.append(value)
                 continue
             #
             # a new line (start from first column)
@@ -242,64 +275,111 @@ class SoS_Script_Parser:
             # section header?
             mo = self.SECTION_HEADER.match(line)
             if mo:
+                # check previous expression before a new assignment
+                if last_expression and not self._isValidExpr(last_expression):
+                    parsing_errors.append(lineno -1 , ''.join(last_expression), 'Invalid expression')
+                if last_statement and not self._isValidStmt(last_statement):
+                    parsing_errors.append(lineno -1 , ''.join(last_statement), 'Invalid statement')
                 # start a new section
                 section_name = mo.group('section_name').strip()
                 section_option = mo.group('section_option')
                 cursect = (section_name, section_option)
                 self.sections[cursect] = []
+                last_statement = []
                 continue
             #
             # assignment?
             mo = self.ASSIGNMENT.match(line)
             if mo:
                 if cursect is None:
-                    cursect = '__global__'
+                    cursect = ('__global__', None)
                     self.sections[cursect] = []
+                # check previous expression before a new assignment
+                if last_expression and not self._isValidExpr(last_expression):
+                    parsing_errors.append(lineno -1 , ''.join(last_expression), 'Invalid expression')
+                #
                 var_name = mo.group('var_name')
                 var_value = mo.group('var_value')
                 # if first line of the section, or following another assignment
                 # this is assignment
                 if not self.sections[cursect] or self.sections[cursect][-1][0] == '=':
                     self.sections[cursect].append(['=', var_name, [var_value]])
+                    last_expression = [var_value]
                 # 
                 # if following a directive, this must be start of an action
                 elif self.sections[cursect][-1][0] == ':':
                     self.sections[cursect].append(
                         ['!', ['{} = {}\n'.format(var_name, var_value)]])
+                    last_expression = []
+                    last_statement = ['{} = {}\n'.format(var_name, var_value)]
                 else:
                     #
                     # otherwise it is an continuation of the existing action
                     self.sections[cursect][-1][-1].append(
                         '{} = {}\n'.format(var_name, var_value))
+                    last_expression = []
+                    last_statement.append('{} = {}\n'.format(var_name, var_value))
                 continue
             #
             # directive?
             mo = self.DIRECTIVE.match(line)
             if mo:
+                # check previous expression before a new directive
+                if last_expression and not self._isValidExpr(last_expression):
+                    parsing_errors.append(lineno -1 , ''.join(last_expression), 'Invalid expression')
+                #
                 directive_name = mo.group('directive_name')
                 directive_value = mo.group('directive_value')
                 if cursect is None:
-                    parsing_errors.append(lineno, line, 'Directive {} can only be defined in a section'.format(directive_name))
+                    parsing_errors.append(lineno, line, 'Directive {} is not allowed out side of a SoS step'.format(directive_name))
                     continue
-                if self.sections[cursect]:
-                    if self.sections[cursect][-1][0] == '!':
-                        raise RuntimeError('Cannot define a directive after action')
-                self.sections[cursect].append(
-                    [':', directive_name, [directive_value]])
+                if cursect[0] == self._PARAMETERS_SECTION:
+                    parsing_errors.append(lineno, line, 'Directive {} is not allowed in {} section'.format(directive_name, self._PARAMETERS_SECTION))
+                    continue
+                if self.sections[cursect] and self.sections[cursect][-1][0] == '!':
+                    parsing_errors.append(lineno, line, 'Directive {} should be be defined before step action'.format(directive_name))
+                    continue
+                self.sections[cursect].append([':', directive_name, [directive_value]])
+                last_expression = [directive_value]
                 continue
-            # all others?
-            if not cursect or cursect == '__global__':
-                raise RuntimeError('Line not recognized: {}: cursect {}'.format(line, cursect))
+            # 
+            # is it a continuation of uncompleted assignment or directive?
+            if last_expression and not self._isValidExpr(last_expression):
+                last_expression.append(line)
+                self.sections[cursect][-1][-1].append(line)
+                continue
+            if last_statement and not self._isValidStmt(last_statement):
+                last_statement.append(line)
+                self.sections[cursect][-1][-1].append(line)
+                continue                
             #
-            if not self.sections[cursect]:
-                raise RuntimeError('Line not recognized in section {}: {}'.format(cursect, line))
+            # all others?
+            if not cursect or cursect == ('__global__', None):
+                parsing_errors.append(lineno, line, 'Only variable assignment is allowed before section definitions.')
+                continue
             #
             # It should be an action
+            if cursect is None:
+                parsing_errors.append(lineno, line, 'Action statement is not allowed in global section')
+                continue
+            elif cursect[0] == self._PARAMETERS_SECTION:
+                parsing_errors.append(lineno, line, 'Action statement is not allowed in {} section'.format(self._PARAMETERS_SECTION))
+                continue
+
             if not self.sections[cursect] or self.sections[cursect][-1][0] != '!':
                 self.sections[cursect].append( ['!', [line]])
+                last_statement = [line]
             else:
                 self.sections[cursect][-1][-1].append(line)
+                last_statement.append(line)
+            last_expression = []
         #
+        # check the last expression before a new directive
+        if last_expression and not self._isValidExpr(last_expression):
+            parsing_errors.append(lineno -1 , ''.join(last_expression), 'Invalid expression')
+        # check the last statement before a new directive
+        if last_statement and not self._isValidStmt(last_statement):
+            parsing_errors.append(lineno -1 , ''.join(last_statement), 'Invalid statement')
         # if there is any parsing error, raise an exception
         if parsing_errors.errors:
             raise parsing_errors
@@ -310,33 +390,16 @@ class SoS_Script_Parser:
             for item in content:
                 # expression
                 if item[0] == '=':
-                    value = '\n'.join(item[2]).strip()
-                    try:
-                        compile(value, filename='<string>', mode='eval')
-                        item[2] = value
-                    except Exception as e:
-                        env.logger.error('Invalid assignment of "{}" to variable "{}": {}'
-                            .format(value, item[1], e))
+                    item[2] = '\n'.join(item[2]).strip()
                 if item[0] == ':':
-                    value = '({})'.format('\n'.join(item[2]).strip())
-                    try:
-                        compile(value, filename='<string>', mode='eval')
-                        item[2] = value
-                    except Exception as e:
-                        env.logger.error('Invalid directive {} with value "{}": {}'
-                            .format(item[1], ' '.join(item[2]).strip(), e))
+                    item[2] = '({})'.format('\n'.join(item[2]).strip())
                 if item[0] == '!':
-                    value = ''.join(item[1]).strip()
-                    try:
-                        compile(value, filename='<string>', mode='exec')
-                        item[1] = value
-                    except Exception as e:
-                        env.logger.error('Invalid step action with value "{}": {}'
-                            .format(value, e))
-        #pp = pprint.PrettyPrinter()
-        #pp.pprint(self.sections)
+                    item[1] = ''.join(item[1]).strip()
         #
- 
+        # pp = pprint.PrettyPrinter()
+        # pp.pprint(self.sections)
+        #
+
 
 class SoS_Script:
     #

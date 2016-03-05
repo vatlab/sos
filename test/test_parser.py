@@ -33,35 +33,74 @@ from pysos import *
 
 
 class TestParser(unittest.TestCase): #SoSTestCase):
+    def setUp(self):
+        self.script = SoS_Script_Parser()
+
     def testFileFormat(self):
         '''Test recognizing the format of SoS script'''
         # file format must be 'fileformat=SOSx.x'
-        script = SoS_Script_Parser()
-        self.assertRaises(ParsingError, script.parse,
+        self.assertRaises(ParsingError, self.script.parse,
             '#fileformat=SS2')
+        self.assertRaises(ParsingError, self.script.parse,
+            '#fileformat=SOS1.0beta')
         #
-        script = SoS_Script_Parser()
-        script.read('scripts/section1.sos')
+        # parse a larger script with gormat 1.1
+        self.script.read('scripts/section1.sos')
         # not the default value of 1.0
-        self.assertEqual(script.format_version, '1.1')
+        self.assertEqual(self.script.format_version, '1.1')
 
     def testSections(self):
         '''Test section definitions'''
-        script = SoS_Script_Parser()
-        script.read('scripts/section1.sos')
+        # glo
+        self.assertRaises(ParsingError, self.script.parse,
+            '''input: 'filename' ''')
+
+        self.script.read('scripts/section1.sos')
         # not the default value of 1.0
         for name in ('parameters', 'section_1', 'section_2', 'section_3, section_4'):
-            self.assertTrue('parameters' in [x[0] for x in script.sections.keys()])
+            self.assertTrue('parameters' in [x[0] for x in self.script.sections.keys()])
 
     def testGlobalVariables(self):
         '''Test definition of variables'''
-        script = SoS_Script_Parser()
-        script.read('scripts/section1.sos')
+        # global section cannot have directive
+        self.assertRaises(ParsingError, self.script.parse,
+            '''input: 'filename' ''')
+        # or unrecognized directive
+        self.assertRaises(ParsingError, self.script.parse,
+            '''inputs: 'filename' ''')
+        # or unrecoginzied varialbe
+        self.assertRaises(ParsingError, self.script.parse,
+            '''something ''')
+        # or function call
+        self.assertRaises(ParsingError, self.script.parse,
+            '''somefunc() ''')
+        # allow definition
+        self.script.parse('''a = '1' ''')
+        self.script.parse('''a = b''')
+        # but this one has incorrect syntax
+        self.assertRaises(ParsingError, self.script.parse,
+            '''a = 'b  ''')
+        #
+        self.script.parse('''a = """
+this is a multi line
+string """
+''')
+        #
+        self.script.read('scripts/section1.sos')
         # not the default value of 1.0
 
     def testParameters(self):
         '''Test parameters section'''
-        pass
+        self.assertRaises(ParsingError, self.script.parse,
+            '''
+[parameters]
+input: 'filename' 
+''')
+        self.assertRaises(ParsingError, self.script.parse,
+            '''
+[parameters]
+func()
+''')
 
     def testSectionVariables(self):
         '''Test variables in sections'''
@@ -69,13 +108,26 @@ class TestParser(unittest.TestCase): #SoSTestCase):
 
     def testSectionDirectives(self):
         '''Test directives of sections'''
-        script = SoS_Script_Parser()
-        self.assertRaises(ParsingError, script.parse,
+        self.assertRaises(ParsingError, self.script.parse,
             '''input: 'filename' ''')
 
     def testSectionActions(self):
         '''Test actions of sections'''
-        pass
+        self.assertRaises(ParsingError, self.script.parse,
+            '''func()''')
+        self.script.parse(
+            """
+[0]
+func('''
+multiline 
+string''', with_option=1
+)
+""")
+        self.assertRaises(ParsingError, self.script.parse,
+            '''
+[0]
+func(
+''')
 
 if __name__ == '__main__':
     unittest.main()
