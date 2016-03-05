@@ -102,6 +102,66 @@ class SoS_Workflow:
         pass
 
 
+class ExprStack:
+    '''This is a helper class that keeps track of partial expressions,
+    value of directives, and step actions. We use a stack because these
+    values can expand to several lines so we have to keep reading until
+    a valid expression is obtained.'''
+    def __init__(self):
+        # expression type can be DIRECTIVE, EXPRESSION, and STATEMENTS
+        # 
+        # EXPRESSION should be a valid Python expression
+        # STATEMENTS should be valid Python statements
+        # DIRECTIVE should be values plus optional keyword arguments, similar
+        #     to parameters to function calls.
+        self.category = None
+        self.values = []
+
+    def clear(self):
+        self.category = None
+        self.values = []
+
+    def set(self, expr, category):
+        # For safety, we require checking and clearing stack before setting a new one.
+        # This ensures all parsing error be checked.
+        if self.values:
+            raise ValueError('Please manually clear expression stack before setting a new one.')
+        self.values = [expr]
+        self.category = category
+
+    def push(self, value):
+        if self.category is None:
+            raise RuntimeError('Value cannot be added to ExprStack without being initialized')
+        self.values.append(value)
+
+    def isValid(self):
+        if not self.values:
+            return True
+        try:
+            if self.category == 'expression':
+                compile(''.join(self.values), filename='<string>', mode='eval')
+            elif self.category == 'directive':
+                # we add func() because the expression can be multi-line and
+                # can have keyword-argument like options
+                #
+                # However, python considers
+                #
+                #     func('value', )
+                #
+                # a valid syntax but we do want , to continue to the next line
+                if self.values[-1].strip().endswith(','):
+                    return False
+                compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
+            elif self.category == 'statements':
+                compile(''.join(self.values), filename='<string>', mode='exec')
+            else:
+                sys.exit('Invalid category {}'.format(self.category))
+            return True
+        except Exception as e:
+            return False
+
+
+
 class SoS_Script_Parser:
     _DIRECTIVES = ['input', 'output', 'depends']
     _PARAMETERS_SECTION = 'parameters'
@@ -178,19 +238,6 @@ class SoS_Script_Parser:
         with open(filename) as fp:
             self._read(fp, filename)
 
-    def _isValidExpr(self, expr):
-        try:
-            compile('(' + ''.join(expr) + ')', filename='<string>', mode='eval')
-            return True
-        except Exception as e:
-            return False
-
-    def _isValidStmt(self, stmt):
-        try:
-            compile(''.join(stmt), filename='<string>', mode='exec')
-            return True
-        except Exception as e:
-            return False
 
     def _read(self, fp, fpname):
         self.sections = {}
@@ -205,6 +252,7 @@ class SoS_Script_Parser:
         # this ParsingError is a container for all parsing errors. It will be
         # raised after parsing if there is at least one parsing error.
         parsing_errors = ParsingError(fpname)
+        stck = ExprStack()
         for lineno, line in enumerate(fp, start=1):
             #
             # comments in SoS scripts are mostly informative
@@ -264,10 +312,13 @@ class SoS_Script_Parser:
                 value = line.strip()
                 if value:
                     self.sections[cursect][-1][-1].append(value)
-                    if last_expression:
-                        last_expression.append(value)
-                    if last_statement:
-                        last_statement.append(value)
+                    stck.push(value)
+                continue
+            # 
+            # is it a continuation of uncompleted assignment or directive?
+            if not stck.isValid():
+                stck.push(line)
+                self.sections[cursect][-1][-1].append(line)
                 continue
             #
             # a new line (start from first column)
@@ -276,16 +327,14 @@ class SoS_Script_Parser:
             mo = self.SECTION_HEADER.match(line)
             if mo:
                 # check previous expression before a new assignment
-                if last_expression and not self._isValidExpr(last_expression):
-                    parsing_errors.append(lineno -1 , ''.join(last_expression), 'Invalid expression')
-                if last_statement and not self._isValidStmt(last_statement):
-                    parsing_errors.append(lineno -1 , ''.join(last_statement), 'Invalid statement')
+                if not stck.isValid():
+                    parsing_errors.append(lineno -1 , ''.join(stck.values), 'Invalid ' + stck.category)
+                stck.clear()
                 # start a new section
                 section_name = mo.group('section_name').strip()
                 section_option = mo.group('section_option')
                 cursect = (section_name, section_option)
                 self.sections[cursect] = []
-                last_statement = []
                 continue
             #
             # assignment?
@@ -295,8 +344,9 @@ class SoS_Script_Parser:
                     cursect = ('__global__', None)
                     self.sections[cursect] = []
                 # check previous expression before a new assignment
-                if last_expression and not self._isValidExpr(last_expression):
-                    parsing_errors.append(lineno -1 , ''.join(last_expression), 'Invalid expression')
+                if not stck.isValid():
+                    parsing_errors.append(lineno -1 , ''.join(stck.values), 'Invalid ' + stck.category)
+                stck.clear()
                 #
                 var_name = mo.group('var_name')
                 var_value = mo.group('var_value')
@@ -304,29 +354,28 @@ class SoS_Script_Parser:
                 # this is assignment
                 if not self.sections[cursect] or self.sections[cursect][-1][0] == '=':
                     self.sections[cursect].append(['=', var_name, [var_value]])
-                    last_expression = [var_value]
+                    stck.set(var_value, 'expression')
                 # 
                 # if following a directive, this must be start of an action
                 elif self.sections[cursect][-1][0] == ':':
                     self.sections[cursect].append(
                         ['!', ['{} = {}\n'.format(var_name, var_value)]])
-                    last_expression = []
-                    last_statement = ['{} = {}\n'.format(var_name, var_value)]
+                    stck.set('{} = {}\n'.format(var_name, var_value), 'statements')
                 else:
                     #
                     # otherwise it is an continuation of the existing action
                     self.sections[cursect][-1][-1].append(
                         '{} = {}\n'.format(var_name, var_value))
-                    last_expression = []
-                    last_statement.append('{} = {}\n'.format(var_name, var_value))
+                    stck.set('{} = {}\n'.format(var_name, var_value), 'statements')
                 continue
             #
             # directive?
             mo = self.DIRECTIVE.match(line)
             if mo:
                 # check previous expression before a new directive
-                if last_expression and not self._isValidExpr(last_expression):
-                    parsing_errors.append(lineno -1 , ''.join(last_expression), 'Invalid expression')
+                if not stck.isValid():
+                    parsing_errors.append(lineno -1 , ''.join(stck.values), 'Invalid ' + stck.category)
+                stck.clear()
                 #
                 directive_name = mo.group('directive_name')
                 directive_value = mo.group('directive_value')
@@ -340,18 +389,9 @@ class SoS_Script_Parser:
                     parsing_errors.append(lineno, line, 'Directive {} should be be defined before step action'.format(directive_name))
                     continue
                 self.sections[cursect].append([':', directive_name, [directive_value]])
-                last_expression = [directive_value]
+                stck.set(directive_value, 'directive')
                 continue
-            # 
-            # is it a continuation of uncompleted assignment or directive?
-            if last_expression and not self._isValidExpr(last_expression):
-                last_expression.append(line)
-                self.sections[cursect][-1][-1].append(line)
-                continue
-            if last_statement and not self._isValidStmt(last_statement):
-                last_statement.append(line)
-                self.sections[cursect][-1][-1].append(line)
-                continue                
+
             #
             # all others?
             if not cursect or cursect == ('__global__', None):
@@ -365,21 +405,22 @@ class SoS_Script_Parser:
             elif cursect[0] == self._PARAMETERS_SECTION:
                 parsing_errors.append(lineno, line, 'Action statement is not allowed in {} section'.format(self._PARAMETERS_SECTION))
                 continue
-
+            
+            #
             if not self.sections[cursect] or self.sections[cursect][-1][0] != '!':
+                # new statement
                 self.sections[cursect].append( ['!', [line]])
-                last_statement = [line]
+                stck.clear()
+                stck.set(line, 'statements')
             else:
+                # existing one
                 self.sections[cursect][-1][-1].append(line)
-                last_statement.append(line)
-            last_expression = []
+                stck.push(line)
         #
         # check the last expression before a new directive
-        if last_expression and not self._isValidExpr(last_expression):
-            parsing_errors.append(lineno -1 , ''.join(last_expression), 'Invalid expression')
-        # check the last statement before a new directive
-        if last_statement and not self._isValidStmt(last_statement):
-            parsing_errors.append(lineno -1 , ''.join(last_statement), 'Invalid statement')
+        if not stck.isValid():
+            parsing_errors.append(lineno -1 , ''.join(stck.values), 'Invalid ' + stck.category)
+        #
         # if there is any parsing error, raise an exception
         if parsing_errors.errors:
             raise parsing_errors
@@ -396,8 +437,8 @@ class SoS_Script_Parser:
                 if item[0] == '!':
                     item[1] = ''.join(item[1]).strip()
         #
-        # pp = pprint.PrettyPrinter()
-        # pp.pprint(self.sections)
+        #pp = pprint.PrettyPrinter()
+        #pp.pprint(self.sections)
         #
 
 

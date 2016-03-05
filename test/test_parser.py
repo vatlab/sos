@@ -80,10 +80,17 @@ class TestParser(unittest.TestCase): #SoSTestCase):
         # but this one has incorrect syntax
         self.assertRaises(ParsingError, self.script.parse,
             '''a = 'b  ''')
-        #
+        # multi-line string literal
         self.script.parse('''a = """
 this is a multi line
 string """
+''')
+        # multi-line list literal, even with newline in between
+        self.script.parse('''a = [
+'a',
+
+'b'
+]
 ''')
         #
         self.script.read('scripts/section1.sos')
@@ -108,8 +115,66 @@ func()
 
     def testSectionDirectives(self):
         '''Test directives of sections'''
+        # cannot be in the global section
         self.assertRaises(ParsingError, self.script.parse,
             '''input: 'filename' ''')
+        # multi-line OK
+        self.script.parse('''
+[0]
+input: 'filename',
+    'filename1'
+
+''')
+        # An abusive case with multi-line OK, from first column ok, blank line ok
+        self.script.parse('''
+[0]
+input: 'filename',
+'filename1',
+
+filename4,
+opt1=value
+output: 
+    blah
+
+depends:
+'something else'
+''')
+        # option with expression ok
+        self.script.parse('''
+[0]
+input: 'filename',  'filename2', opt=value==1
+
+''')
+        # unrecognized directive
+        self.assertRaises(ParsingError, self.script.parse, '''
+[0]
+something: 'filename',  filename2, opt=value==1
+''')
+        # need commma
+        self.assertRaises(ParsingError, self.script.parse, '''
+[0]
+input: 'filename'  filename2
+''')
+        # cannot be after action
+        self.assertRaises(ParsingError, self.script.parse, '''
+[0]
+func()        
+input: 'filename',  'filename2', opt=value==1
+''')
+        # cannot be assigned between directives
+        self.assertRaises(ParsingError, self.script.parse, '''
+[0]
+input: 'filename',  'filename2', opt=value==1
+a = 'some text'
+output: 'filename',  'filename2', opt=value==1
+''')
+        # cannot be action between directives
+        self.assertRaises(ParsingError, self.script.parse, '''
+[0]
+input: 'filename',  'filename2', opt=value==1
+abc
+output: 'filename',  'filename2', opt=value==1
+''')
 
     def testSectionActions(self):
         '''Test actions of sections'''
