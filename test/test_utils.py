@@ -25,6 +25,7 @@ import os
 import unittest
 
 from sostestcase import SoS_TestCase
+import shlex
 
 from pysos.utils import *
 
@@ -67,6 +68,9 @@ class TestUtils(SoS_TestCase):
             'e': set([1, 'a']),
             'var1': 1/2.,
             'var2': [1, 2, 3.1],
+            'file': 'a/b.txt',
+            'files2': ['a/b.txt', 'c.d.txt'],
+            'file_ws': ['d i r/f .txt']
             }
         for sigil in ('${ }', '{ }', '[ ]', '%( )', '[[ ]]', '%( )s'):
             l, r = sigil.split(' ')
@@ -95,13 +99,29 @@ class TestUtils(SoS_TestCase):
                 #
                 ('Newline {0}{{"a": "b", \n"c": "d"}}["a"]{1}', 'Newline b'),
                 #
-
+                # string literal within interpolated expression
+                ('Literal {0}"{0} {1}"{1}', 'Literal ' + sigil),
+                #
+                ("{0}' {{}} '.format(a){1}", ' 100 '),
+                #
+                ("{0}os.path.basename(file){1}", 'b.txt'),
+                ('{0}os.path.basename(file_ws[0]){1}', 'f .txt'),
+                #
+                # ! conversion
+                ('{0}file!r{1}', "'a/b.txt'"),
+                ('{0}file!s{1}', "a/b.txt"),
+                #
+                # !q conversion (added by SoS)
+                ('{0}file_ws[0]!q{1}', "'d i r/f .txt'"),
             ]:
                 #print('Interpolating "{}" with sigal "{}"'.format(expr.format(l, r).replace('\n', r'\n'), sigil))
                 if isinstance(result, str):
-                    self.assertEqual(interpolate(expr.format(l, r), lvar, globals(), sigil=sigil), result)
+                    self.assertEqual(interpolate(expr.format(l, r), globals(), lvar, sigil=sigil), result)
                 else:
-                    self.assertTrue(interpolate(expr.format(l, r), lvar, globals(), sigil=sigil) in result)
+                    self.assertTrue(interpolate(expr.format(l, r), globals(), lvar, sigil=sigil) in result)
+        #
+        # locals should be the one passed to the expression
+        self.assertTrue('file_ws' in interpolate('${locals().keys()}', globals(), lvar))
         #
         # the following would fail for sigil [] etc
 #        for sigil in ('${ }', '%( )'):
