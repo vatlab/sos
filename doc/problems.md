@@ -356,6 +356,8 @@ open("${input}")
 
 should work correctly and it would be wrong if SoS mangles `${input}` during variable substitution.
 
+Solution: Use string conversion during string interpolation to automatically handle these cases.
+Namely using `!r` for R script and `!q` for shell script.
 
 ### Section option `concurrent`
 
