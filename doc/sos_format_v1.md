@@ -249,6 +249,7 @@ is very useful because instead of using `'${input}'` in cases such as
 R('''
 read.csv("${input}")
 ''')
+```
 
 You can do 
 
@@ -256,6 +257,7 @@ You can do
 R('''
 read.csv(${input!r})
 ''')
+```
 
 because input file can in theory (although rare) contains quotation marks. So if `input=['filename.txt']`,
 `read.csv("${input}")` would be interpolated to `read.csv("filename".txt")` and fail,
