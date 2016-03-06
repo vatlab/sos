@@ -235,21 +235,6 @@ ${action}('command')
 
 are not allowed.
 
-#### Nested interpolation
-
-SoS supports nested interpolation, for example
-
-```python
-'${input[${index}]}'
-```
-
-would evalulate `${index}` first and evaluate `${input[?]}` where `?` is the result of `${index}`. 
-SoS is clever enough to handle cases such as
-
-```python
-"${'string literal with ${ }'}"
-```
-
 #### Format specifier and result conversion
 
 SoS interpolation also support all string format specification as in the [Python string format specifier](https://docs.python.org/2/library/string.html#formatspec),
@@ -257,7 +242,7 @@ that is to say, you can use `: specifier` at the end of the expression to contro
 instead of its long representation `0.3333333333333333`, and `'${input:>20}'` would produce `            test.txt` if `input=['test.txt']`.
 
 SoS also supports string conversion as specified in [Python string format specifier](https://docs.python.org/2/library/string.html#formatspec). 
-The '!r' is very useful in that it will return a properly quoted string so `${'string'!r}` would be `'string'` instead of `string`. This
+The `!r` conversion is very useful in that it will return a properly quoted string so `${'string'!r}` would be `'string'` instead of `string`. This
 is very useful because instead of using `'${input}'` in cases such as
 
 ```python
@@ -331,6 +316,21 @@ done
 
 uses a different sigil style because the embedded shell script uses `${ }`. In this example `${file}` keeps its meaning in the shell script while `%(sample_names[0])` and `%(title)` are replaced by SoS to their values.
 
+
+#### Nested interpolation
+
+SoS supports nested interpolation, for example
+
+```python
+'${input[${index}]}'
+```
+
+would evalulate `${index}` first and evaluate `${input[?]}` where `?` is the result of `${index}`.
+
+SoS will not interpolate a nested expression if it causes an error. For example, if `sigil=[ ]`, SoS will
+not interpolate `[1]` in `"[['a', 'b', 'c'][1]]"` because `['a', 'b', 'c']1` is not an valid expression. 
+It will instead keep `[1]`, evaluate `['a', 'b', 'c'][1]` and return `a` as the final result. It is 
+of course a bad idea to abuse this feature because of potential ambiguous results.
 
 ## Global variables 
 

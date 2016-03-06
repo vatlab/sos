@@ -84,8 +84,14 @@ class TestUtils(SoS_TestCase):
                 ('Pre {0}a+b*5{1} and {0}a{1} after', 'Pre 200 and 100 after'),
                 ('Nested {0}a+b*{0}b/2{1}{1}', 'Nested 300'),
                 ('Format {0}a:.5f{1}', 'Format 100.00000'),
+                # nested 
                 ('Nested {0}a:.{0}4+1{1}f{1}', 'Nested 100.00000'),
+                # deep nested
                 ('Triple Nested {0}a:.{0}4+{0}5/5{1}{1}f{1}', 'Triple Nested 100.00000'),
+                # nested invalid
+                ('Nested invalid {0}"{0}a-{1}"{1}', 'Nested invalid {}a-{}'.format(l, r)),
+                ('Nested valid {0}"{0}a{1}-"{1}', 'Nested valid 100-'),
+                # 
                 ('Dict {0}d{1}', ['Dict a b', 'Dict b a']),
                 ('set {0}e{1}', ['set 1 a', 'set a 1']),
                 ('Fmt {0}var1:.2f{1}', 'Fmt 0.50'),
@@ -110,6 +116,8 @@ class TestUtils(SoS_TestCase):
                 # ! conversion
                 ('{0}file!r{1}', "'a/b.txt'"),
                 ('{0}file!s{1}', "a/b.txt"),
+                ('''{0}"a'b"!r{1}''', '"a\'b"'),
+                ('''{0}'a"b'!r{1}''', "'a\"b'"),
                 #
                 # !q conversion (added by SoS)
                 ('{0}file_ws[0]!q{1}', "'d i r/f .txt'"),
