@@ -215,9 +215,9 @@ Depending on the return type of the expression
 * String values will be returned directly.
 * List of strings will be automatically converted to a string by joining strings with a space.
   That is to say `${sample_names}` will be expanded to `sample1 sample2` if `sample_names=['sample1', 'sample2']`.
-* Dictionary of strings will be automatically converted to a string by joining dictionary values with a space,
-  with no guarantee on the order of values. For example, `${names}` will be expanded to `sample1 sample2` or
- `sample2 sample1` if `names={'A':'sample1', 'B':'sample2'}`.
+* Dictionary of strings will be automatically converted to a string by joining dictionary keys with a space,
+  with no guarantee on the order of values. For example, `${names}` will be expanded to `A B` or
+ `B A` if `names={'A':'sample1', 'B':'sample2'}`.
 
 You can continue to use Python string functions such as
 

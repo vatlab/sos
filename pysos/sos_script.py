@@ -25,36 +25,9 @@ from collections import OrderedDict
 # Python 2.7 should also have this module
 from io import StringIO
 
-from .utils import env
+from .utils import env, Error
 import pprint
 
-# exception classes
-class Error(Exception):
-    '''Base class for SoS_ScriptParser exceptions.'''
-
-    def _get_message(self):
-        '''Getter for 'message'; needed only to override deprecation in
-        BaseException.'''
-        return self.__message
-
-    def _set_message(self, value):
-        '''Setter for 'message'; needed only to override deprecation in
-        BaseException.'''
-        self.__message = value
-
-    # BaseException.message has been deprecated since Python 2.6.  To prevent
-    # DeprecationWarning from popping up over this pre-existing attribute, use
-    # a new property that takes lookup precedence.
-    message = property(_get_message, _set_message)
-
-    def __init__(self, msg=''):
-        self.message = msg
-        Exception.__init__(self, msg)
-
-    def __repr__(self):
-        return self.message
-
-    __str__ = __repr__
 
 class DuplicateSectionError(Error):
     """Raised when a section is multiply-created."""
@@ -63,15 +36,6 @@ class DuplicateSectionError(Error):
         Error.__init__(self, "Section %r already exists" % section)
         self.section = section
         self.args = (section, )
-
-class InterpolationError(Error):
-    """Base class for interpolation-related exceptions."""
-
-    def __init__(self, option, section, msg):
-        Error.__init__(self, msg)
-        self.option = option
-        self.section = section
-        self.args = (option, section, msg)
 
 class ParsingError(Error):
     """Raised when a configuration file does not follow legal syntax."""

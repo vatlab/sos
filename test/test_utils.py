@@ -24,11 +24,11 @@
 import os
 import unittest
 
-from sostestcase import SoSTestCase
+from sostestcase import SoS_TestCase
 
 from pysos.utils import *
 
-class TestUtils(SoSTestCase):
+class TestUtils(SoS_TestCase):
     def testLogger(self):
         'Test logging level'
         for verbosity in ['0', '1', '2', '3']:
@@ -57,6 +57,42 @@ class TestUtils(SoSTestCase):
                 self.assertFalse('\033[' in line)
             # 4 lines for all logging level (logging level of logfile is fixed to DEBUG)
             self.assertEqual(line_count, 16)
+
+    def testInterpolation(self):
+        lvar = {
+            'a': 100,
+            'b': 20,
+            'c': ['file1', 'file2', 'file3'],
+            'd': {'a': 'file1', 'b':'file2'},
+            'e': set([1, 'a']),
+            'var1': 1/2.,
+            'var2': [1, 2, 3.1],
+            }
+        for sigil in ('${ }', '{ }', '[ ]', '%( )', '[[ ]]', '%( )s'):
+            l, r = sigil.split(' ')
+            for expr, result in [
+                ('{0}1{1}', '1'),
+                ('{0}a{1}', '100'),
+                ('{0}a+b{1}', '120'),
+                ('{0}a+b*5{1}', '200'),
+                ('{0}a+b*5{1} is 200', '200 is 200'),
+                ('{0}a+b*5{1} and {0}a{1}', '200 and 100'),
+                ('Pre {0}a+b*5{1} and {0}a{1} after', 'Pre 200 and 100 after'),
+                ('Nested {0}a+b*{0}b/2{1}{1}', 'Nested 300'),
+                ('Format {0}a:.5f{1}', 'Format 100.00000'),
+                ('Nested {0}a:.{0}4+1{1}f{1}', 'Nested 100.00000'),
+                ('Triple Nested {0}a:.{0}4+{0}5/5{1}{1}f{1}', 'Triple Nested 100.00000'),
+                ('Dict {0}d{1}', ['Dict a b', 'Dict b a']),
+                ('set {0}e{1}', ['set 1 a', 'set a 1']),
+                ('Fmt {0}var1:.2f{1}', 'Fmt 0.50'),
+                ('Fmt {0}var2:.2f{1}', 'Fmt 1.00 2.00 3.10'),
+                ('LC {0}[x*2 for x in var2]{1}', 'LC 2 4 6.2'),
+                ('LC {0}[x*2 for x in var2]:.2f{1}', 'LC 2.00 4.00 6.20'),
+            ]:
+                if isinstance(result, str):
+                    self.assertEqual(interpolate(expr.format(l, r), lvar, globals(), sigil=sigil), result)
+                else:
+                    self.assertTrue(interpolate(expr.format(l, r), lvar, globals(), sigil=sigil) in result)
 
 if __name__ == '__main__':
     unittest.main()

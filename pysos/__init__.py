@@ -36,3 +36,4 @@ SOS_COPYRIGHT = '''SOS {} : Copyright (c) 2011 - 2016 Bo Peng'''.format(SOS_VERS
 SOS_CONTACT = '''Please visit http://varianttools.sourceforge.net for more information.'''
 
 from .sos_script import *
+from .utils import *

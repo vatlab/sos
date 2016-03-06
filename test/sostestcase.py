@@ -26,6 +26,5 @@ import unittest
 
 class SoS_TestCase(unittest.TestCase):
     'A subclass of unittest.TestCase to handle process output'
-    def __init__(self):
-        print('here')
-        unittest.TestCase.__init__(self)
+    def __init__(self, *args, **kwargs):
+        unittest.TestCase.__init__(self, *args, **kwargs)

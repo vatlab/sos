@@ -22,6 +22,7 @@
 
 import logging
 import re
+import collections
 
 class ColoredFormatter(logging.Formatter):
     ''' A logging formatter that uses color to differntiate logging messages
@@ -182,7 +183,194 @@ class RuntimeEnvironments(object):
 # set up environment variable and a default logger
 env = RuntimeEnvironments()
 
+# exception classes
+class Error(Exception):
+    '''Base class for SoS_ScriptParser exceptions.'''
 
+    def _get_message(self):
+        '''Getter for 'message'; needed only to override deprecation in
+        BaseException.'''
+        return self.__message
+
+    def _set_message(self, value):
+        '''Setter for 'message'; needed only to override deprecation in
+        BaseException.'''
+        self.__message = value
+
+    # BaseException.message has been deprecated since Python 2.6.  To prevent
+    # DeprecationWarning from popping up over this pre-existing attribute, use
+    # a new property that takes lookup precedence.
+    message = property(_get_message, _set_message)
+
+    def __init__(self, msg=''):
+        self.message = msg
+        Exception.__init__(self, msg)
+
+    def __repr__(self):
+        return self.message
+
+    __str__ = __repr__
+
+
+class InterpolationError(Error):
+    """Base class for interpolation-related exceptions."""
+
+    def __init__(self, text, msg):
+        if len(text) > 20:
+            msg = '{}: {}...'.format(msg, text[:20])
+        else:
+            msg = '{}: {}'.format(msg, text)
+        Error.__init__(self, msg)
+        self.args = (text, msg)
+
+#
+# String intepolation
+#
+class SoS_String:
+    '''This class implements SoS string that support interpolation using 
+    a local and a global dictionary'''
+    _FORMAT_SPECIFIER_TMPL = r'''
+        ^                                   # start of expression
+        (?P<expr>.*)\s*                     # any expression
+        (?P<specifier>
+        :\s*                                # separate by :
+        (?P<fill>.)?                        # optional fill
+        (?P<align>[<>=^])?                  # optional fill
+        (?P<sign>[-+ ])?                    # optional sign
+        \#?                                 #
+        0?                                  #
+        (?P<width>\d+)?                     # optional width
+        (?P<precision>\.\d+)?               # optional precision
+        (?P<type>[bcdeEfFgGnosxX%])?        # optional type
+        )
+        \s*$                                # end of tring
+        '''
+    FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE)
+
+    def __init__(self, text, sigil = '${ }'):
+        self.text = text
+        if sigil.count(' ') != 1 or sigil.startswith(' ') or sigil.endswith(' '):
+            raise ValueError('Incorrect sigil "{}"'.format(sigl))
+        self.sigil = sigil.split(' ')
+        if self.sigil[0] == self.sigil[1]:
+            raise ValueError('Incorrect sigl "{}"'.format(sigil))
+
+    def interpolate(self, lvars, gvars):
+        '''Intepolate string with local and global dictionary'''
+        #
+        # We could potentially parse the text and find all interpolation text,
+        # but we cannot really do it because of possible nested interpolation
+        #
+        # split by left sigil
+        #
+        # '${a} part1 ${ expr2 ${ nested }} and another ${expr2 {}} and done'
+        #
+        # 'a} part1 ' ' expr2 ' 'nested }} and another' 'expr2 {}} and done'
+        #
+        pieces = self.text.split(self.sigil[0], 1)
+        if len(pieces) == 1:
+            # nothing to split, so we are done
+            return self.text
+        else:
+            # the first piece must be before sigil and be completed text
+            return pieces[0] + self._interpolate(pieces[1], lvars, gvars)
+
+    def _interpolate(self, text, lvars, gvars, start_nested=0):
+        # no matching }, must be wrong
+        if self.sigil[1] not in text:
+            raise InterpolationError(text[:20], "Missing {}".format(self.sigil[1]))
+        #
+        i = text.index(self.sigil[1])
+        #
+        # substr contains ${
+        if self.sigil[0] in text[start_nested:]:
+            k = text.index(self.sigil[0])
+        else:
+            # k is very far away
+            k = len(text) + 100
+        #
+        # nested 
+        if k < i:
+            #                     i
+            # something  ${ nested} }
+            #            k
+            #
+            try:
+                return self._interpolate(text[:k] + self._interpolate(text[k+len(self.sigil[0]):], lvars, gvars), lvars, gvars)
+            except Exception as e:
+                # This is for the case where inner sigil is actually part of the syntax. For example, if
+                # sigil = []
+                #
+                # [[x*2 x for x in [a, b]]]
+                #
+                # will first try to evaluate 
+                #
+                # x*2 x for x in [a, b]
+                #
+                # without success. This part will then try to evaluate
+                #
+                # [x*2 x for x in [a, b]]
+                #
+                # namely keeping [] as python expression
+                #
+                return self._interpolate(text, lvars, gvars, start_nested=k + len(self.sigil[0]))
+        else:
+            #            i
+            # something {} } ${ another }
+            #                k
+            j = i
+            while True:
+                try:
+                    # is syntax correct?
+                    mo = self.FORMAT_SPECIFIER.match(text[:j])
+                    if mo:
+                        expr = mo.group('expr')
+                    else:
+                        expr = text[:j]
+                    compile(expr, '<string>', 'eval')
+                    pieces = text[j+len(self.sigil[1]):].split(self.sigil[0], 1)
+                    if len(pieces) == 1:
+                        return self._evaluate(text[:j], lvars, gvars) + text[j+len(self.sigil[1]):]
+                    else:
+                        return self._evaluate(text[:j]) + pieces[0] + self._interpolate(pieces[1])
+                except Exception as e:
+                    if self.sigil[1] not in text[j+1:]:
+                        raise InterpolationError(text[:j], e)
+                    j = text.index(self.sigil[1], j+1)
+                    #                           j
+                    # something {} } ${ another }
+                    #                k
+                    if j > k:
+                        return self._interpolate(text[:k] + self._interpolate(text[k+len(self.sigil[0]):], lvars, gvars), lvars, gvars)
+
+    def _repr(self, obj, fmt=None):
+        if isinstance(obj, basestring):
+            return obj if fmt is None else fmt.format(obj)
+        elif isinstance(obj, collections.Iterable):
+            return ' '.join([self._repr(x, fmt) for x in obj])
+        elif isinstance(obj, collections.Callable):
+            raise InterpolationError(repr(obj), 'Cannot interpolate callable object.')
+        else:
+            return repr(obj) if fmt is None else fmt.format(obj)
+
+    def _evaluate(self, text, lvars, gvars):
+        try:
+            mo = self.FORMAT_SPECIFIER.match(text)
+            if mo:
+                expr = mo.group('expr')
+                fmt = '{' + mo.group('specifier') + '}'
+                result = eval(expr, lvars, gvars)
+            else:
+                result = eval(text, lvars, gvars)
+                fmt = None
+        except Exception as e:
+            raise InterpolationError(text, e)
+        return self._repr(result, fmt)
+
+def interpolate(text, lvars={}, gvars={}, sigil='${ }'):
+    return SoS_String(text, sigil).interpolate(lvars, gvars)
+
+#
 ## import os
 ## import sys
 ## import glob
