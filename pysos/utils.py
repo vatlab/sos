@@ -24,6 +24,13 @@ import logging
 import re
 import collections
 
+try:
+    # python 3.3
+    from shlex import quote
+except ImportError:
+    # python 2.7
+    from pipes import quote
+
 class ColoredFormatter(logging.Formatter):
     ''' A logging formatter that uses color to differntiate logging messages
     and emphasize texts. Texts that would be empahsized are quoted with
@@ -216,10 +223,10 @@ class InterpolationError(Error):
     """Base class for interpolation-related exceptions."""
 
     def __init__(self, text, msg):
-        if len(text) > 20:
-            msg = '{}: {}...'.format(msg, text[:20])
-        else:
-            msg = '{}: {}'.format(msg, text)
+        #if len(text) > 20:
+        #    msg = '{}: "{}..."'.format(msg, text[:20])
+        #else:
+        msg = '{}: "{}"'.format(msg, text)
         Error.__init__(self, msg)
         self.args = (text, msg)
 
@@ -231,9 +238,12 @@ class SoS_String:
     a local and a global dictionary'''
     _FORMAT_SPECIFIER_TMPL = r'''
         ^                                   # start of expression
-        (?P<expr>.*)\s*                     # any expression
+        (?P<expr>.*?)                       # any expression
         (?P<specifier>
-        :\s*                                # separate by :
+        (?P<conversion>!\s*                 # conversion starting with !
+        [s|r|q]                             # conversion, q is added by SoS                       
+        )?
+        (?P<format_spec>:\s*                # format_spec starting with :
         (?P<fill>.)?                        # optional fill
         (?P<align>[<>=^])?                  # optional fill
         (?P<sign>[-+ ])?                    # optional sign
@@ -242,10 +252,12 @@ class SoS_String:
         (?P<width>\d+)?                     # optional width
         (?P<precision>\.\d+)?               # optional precision
         (?P<type>[bcdeEfFgGnosxX%])?        # optional type
-        )
+        )?                                  # optional format_spec
+        )?                                  # optional specifier
         \s*$                                # end of tring
         '''
-    FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE)
+    # DOTALL makes . matchs also to newline so this supports multi-line expression
+    FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
 
     def __init__(self, text, sigil = '${ }'):
         self.text = text
@@ -255,7 +267,7 @@ class SoS_String:
         if self.sigil[0] == self.sigil[1]:
             raise ValueError('Incorrect sigl "{}"'.format(sigil))
 
-    def interpolate(self, lvars, gvars):
+    def interpolate(self, gvars, lvars):
         '''Intepolate string with local and global dictionary'''
         #
         # We could potentially parse the text and find all interpolation text,
@@ -273,9 +285,9 @@ class SoS_String:
             return self.text
         else:
             # the first piece must be before sigil and be completed text
-            return pieces[0] + self._interpolate(pieces[1], lvars, gvars)
+            return pieces[0] + self._interpolate(pieces[1], gvars, lvars)
 
-    def _interpolate(self, text, lvars, gvars, start_nested=0):
+    def _interpolate(self, text, gvars, lvars, start_nested=0):
         # no matching }, must be wrong
         if self.sigil[1] not in text:
             raise InterpolationError(text[:20], "Missing {}".format(self.sigil[1]))
@@ -296,7 +308,7 @@ class SoS_String:
             #            k
             #
             try:
-                return self._interpolate(text[:k] + self._interpolate(text[k+len(self.sigil[0]):], lvars, gvars), lvars, gvars)
+                return self._interpolate(text[:k] + self._interpolate(text[k+len(self.sigil[0]):], gvars, lvars), gvars, lvars)
             except Exception as e:
                 # This is for the case where inner sigil is actually part of the syntax. For example, if
                 # sigil = []
@@ -313,7 +325,7 @@ class SoS_String:
                 #
                 # namely keeping [] as python expression
                 #
-                return self._interpolate(text, lvars, gvars, start_nested=k + len(self.sigil[0]))
+                return self._interpolate(text, gvars, lvars, start_nested=k + len(self.sigil[0]))
         else:
             #            i
             # something {} } ${ another }
@@ -330,11 +342,10 @@ class SoS_String:
                     compile(expr, '<string>', 'eval')
                     pieces = text[j+len(self.sigil[1]):].split(self.sigil[0], 1)
                     if len(pieces) == 1:
-                        return self._evaluate(text[:j], lvars, gvars) + text[j+len(self.sigil[1]):]
+                        return self._evaluate(text[:j], gvars, lvars) + text[j+len(self.sigil[1]):]
                     else:
                         return self._evaluate(text[:j]) + pieces[0] + self._interpolate(pieces[1])
                 except Exception as e:
-                    #env.logger.error('{} tested'.format(expr))
                     if self.sigil[1] not in text[j+1:]:
                         raise InterpolationError(text[:j], e)
                     j = text.index(self.sigil[1], j+1)
@@ -342,34 +353,41 @@ class SoS_String:
                     # something {} } ${ another }
                     #                k
                     if j > k:
-                        return self._interpolate(text[:k] + self._interpolate(text[k+len(self.sigil[0]):], lvars, gvars), lvars, gvars)
+                        return self._interpolate(text[:k] + self._interpolate(text[k+len(self.sigil[0]):], gvars, lvars), gvars, lvars)
 
+    def _format(self, obj, fmt):
+        if fmt.startswith('!q'):
+            # special SoS conversion for shell quotation.
+            return self._format(quote(obj), fmt[2:])
+        else:
+            return ('{' + fmt + '}').format(obj)
+        
     def _repr(self, obj, fmt=None):
         if isinstance(obj, basestring):
-            return obj if fmt is None else fmt.format(obj)
+            return obj if fmt is None else self._format(obj, fmt)
         elif isinstance(obj, collections.Iterable):
             return ' '.join([self._repr(x, fmt) for x in obj])
         elif isinstance(obj, collections.Callable):
             raise InterpolationError(repr(obj), 'Cannot interpolate callable object.')
         else:
-            return repr(obj) if fmt is None else fmt.format(obj)
+            return repr(obj) if fmt is None else self._format(obj, fmt)
 
-    def _evaluate(self, text, lvars, gvars):
+    def _evaluate(self, text, gvars, lvars):
         try:
             mo = self.FORMAT_SPECIFIER.match(text)
             if mo:
                 expr = mo.group('expr')
-                fmt = '{' + mo.group('specifier') + '}'
-                result = eval(expr, lvars, gvars)
+                fmt = mo.group('specifier')
+                result = eval(expr, gvars, lvars)
             else:
-                result = eval(text, lvars, gvars)
+                result = eval(text, gvars, lvars)
                 fmt = None
         except Exception as e:
             raise InterpolationError(text, e)
         return self._repr(result, fmt)
 
-def interpolate(text, lvars={}, gvars={}, sigil='${ }'):
-    return SoS_String(text, sigil).interpolate(lvars, gvars)
+def interpolate(text, gvars={}, lvars={}, sigil='${ }'):
+    return SoS_String(text, sigil).interpolate(gvars, lvars)
 
 #
 ## import os

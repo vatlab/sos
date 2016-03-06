@@ -235,11 +235,67 @@ ${action}('command')
 
 are not allowed.
 
-#### Format specifier
+#### Nested interpolation
+
+SoS supports nested interpolation, for example
+
+```python
+'${input[${index}]}'
+```
+
+would evalulate `${index}` first and evaluate `${input[?]}` where `?` is the result of `${index}`. 
+SoS is clever enough to handle cases such as
+
+```python
+"${'string literal with ${ }'}"
+```
+
+#### Format specifier and result conversion
 
 SoS interpolation also support all string format specification as in the [Python string format specifier](https://docs.python.org/2/library/string.html#formatspec),
 that is to say, you can use `: specifier` at the end of the expression to control the format of the output. For example `'${1/3. :.2f}'` would produce `0.33` 
 instead of its long representation `0.3333333333333333`, and `'${input:>20}'` would produce `            test.txt` if `input=['test.txt']`.
+
+SoS also supports string conversion as specified in [Python string format specifier](https://docs.python.org/2/library/string.html#formatspec). 
+The '!r' is very useful in that it will return a properly quoted string so `${'string'!r}` would be `'string'` instead of `string`. This
+is very useful because instead of using `'${input}'` in cases such as
+
+```python
+R('''
+read.csv("${input}")
+''')
+
+You can do 
+
+```python
+R('''
+read.csv(${input!r})
+''')
+
+because input file can in theory (although rare) contains quotation marks. So if `input=['filename.txt']`,
+`read.csv("${input}")` would be interpolated to `read.csv("filename".txt")` and fail,
+and `read.csv(${input:r})` would be interpolated to `read.csv('filename".txt')` and run correctly.
+
+SoS supports a special `!q` (quoted) conversion that converts filenames to proper filenames that can be used in 
+shell command. For example, if the name of your input file contains space, e.g. `input=['result/Bon Jovi.txt']`,
+
+```python
+run('cat ${input}`)
+```
+
+would fail because file `result/Bon` does not exist. 
+
+```python
+run('cat ${input!q}`)
+```
+
+works because the command would be translated to shell-recognizable format such as `cat 'result/Bon Jovi.txt'`
+or `cat result/Bon\ Jovi.txt`.
+
+The conversion also works for list of filenames so `cat ${input!q}` would be translated to `cat A\ B.txt C\D.txt` or
+`cat 'A B.txt' 'C D.txt'` if `input=['A B.txt', 'C D.txt']`, which is easier than quoting filenames manually.
+In summary, **when filenames are used in SoS steps, it is strongly recommended that you use `!r` for R and 
+Python scripts, and `!q` for shell scripts.**
 
 #### String representation of non-SoS supported types
 
@@ -253,6 +309,8 @@ their string representation can be more complicated. Basically,
 
 That is to say, `'${set(1, 4, tuple('b', 1/3.), 3)}` could be `4 3 b 0.3333333333333333 1` where 
 string representations of items in a Python set object is joint in no particular order.
+
+Format specifier will be applied to each item of an object is the object is a list, dictionary etc.
 
 #### Alternative sigil
 
