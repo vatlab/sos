@@ -334,6 +334,7 @@ class SoS_String:
                     else:
                         return self._evaluate(text[:j]) + pieces[0] + self._interpolate(pieces[1])
                 except Exception as e:
+                    #env.logger.error('{} tested'.format(expr))
                     if self.sigil[1] not in text[j+1:]:
                         raise InterpolationError(text[:j], e)
                     j = text.index(self.sigil[1], j+1)

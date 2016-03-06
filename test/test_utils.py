@@ -88,11 +88,32 @@ class TestUtils(SoS_TestCase):
                 ('Fmt {0}var2:.2f{1}', 'Fmt 1.00 2.00 3.10'),
                 ('LC {0}[x*2 for x in var2]{1}', 'LC 2 4 6.2'),
                 ('LC {0}[x*2 for x in var2]:.2f{1}', 'LC 2.00 4.00 6.20'),
+                #
+                # [['a':'b', 'c':'d']['a']] works because
+                #     ['a':'b', 'c':'d']a 
+                # is invalid so SoS does not consider ['a'] as nested expression
+                #
+                ('Newline {0}{{"a": "b", \n"c": "d"}}["a"]{1}', 'Newline b'),
+                #
+
             ]:
+                #print('Interpolating "{}" with sigal "{}"'.format(expr.format(l, r).replace('\n', r'\n'), sigil))
                 if isinstance(result, str):
                     self.assertEqual(interpolate(expr.format(l, r), lvar, globals(), sigil=sigil), result)
                 else:
                     self.assertTrue(interpolate(expr.format(l, r), lvar, globals(), sigil=sigil) in result)
+        #
+        # the following would fail for sigil [] etc
+#        for sigil in ('${ }', '%( )'):
+#            l, r = sigil.split(' ')
+#            for expr, result in [
+#                ('Newline {0}{{"a": "b", \n"c": "d"}}["a"]{1}', 'Newline b'),
+#            ]:
+#                print(expr.format(l, r))
+#                if isinstance(result, str):
+#                    self.assertEqual(interpolate(expr.format(l, r), lvar, globals(), sigil=sigil), result)
+#                else:
+#                    self.assertTrue(interpolate(expr.format(l, r), lvar, globals(), sigil=sigil) in result)
 
 if __name__ == '__main__':
     unittest.main()
