@@ -20,9 +20,11 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import os
 import re
 import copy
-from collections import OrderedDict
+import argparse
+from collections import OrderedDict, defaultdict
 # Python 2.7 should also have this module
 from io import StringIO
 
@@ -30,9 +32,14 @@ from .utils import env, Error
 import pprint
 
 
+class ArgumentError(Error):
+    """Raised when an invalid argument is passed."""
+    def __init__(self, msg):
+        Error.__init__(self, msg)
+        self.args = (msg, )
+
 class DuplicateSectionError(Error):
     """Raised when a section is multiply-created."""
-
     def __init__(self, section):
         Error.__init__(self, "Section %r already exists" % section)
         self.section = section
@@ -56,6 +63,10 @@ class SoS_Step:
     # A single sos step
     #
     def __init__(self, names=[], options=[], is_global=False, is_parameters=False):
+        # A step will not have a name and index until it is copied to separate workflows
+        self.name = None
+        self.index = None
+        # it initially hold multiple names with/without wildcard characters
         self.names = names
         self.options = options
         self.comment = ''
@@ -63,13 +74,15 @@ class SoS_Step:
         self.assignments = []
         self.directives = []
         self.statements = []
+        # is it global section?
         self.is_global = is_global
+        # is it the parameters section?
         self.is_parameters = is_parameters
+        # indicate the type of input of the last line
         self.last_line = None
     
     def empty(self):
-        '''If there is no content. Adding comment
-        would not change that.'''
+        '''If there is no content (comment does not count)'''
         return self.last_line is None
 
     def extend(self, line):
@@ -87,23 +100,29 @@ class SoS_Step:
     def add_assignment(self, key, value):
         '''Assignments are items with '=' type '''
         if key is None:
+            # continuation of multi-line assignment
             if self.is_parameters:
                 self.parameters[-1][1] += value
             else:
                 self.assignments[-1][1] += value
         else:
+            # new assignment
             if self.is_parameters:
+                # in assignment section, comments belong to their following
+                # parameter definition
                 self.parameters.append([key, value, self.comment])
                 self.comment = ''
             else:
                 self.assignments.append([key, value])
-                self.last_line = '='
+            self.last_line = '='
 
     def add_directive(self, key, value):
         '''Assignments are items with ':' type '''
         if key is None:
+            # continuation of multi-line directive
             self.directives[-1][1] += value
         else:
+            # new directive
             self.directives.append([key, value])
             self.last_line = ':'
 
@@ -124,7 +143,8 @@ class SoS_Step:
                 ','.join('{}={}'.format(x,y) for x,y in self.options))
         result += self.comment + '\n'
         for key, value, comment in self.parameters:
-            result += '# ' + comment
+            # FIXME: proper line wrap
+            result += '# {}\n'.format(comment)
             result += '{} = {}\n'.format(key, value)
         for key, value in self.assignments:
             result += '{} = {}\n'.format(key, value)
@@ -140,12 +160,14 @@ class SoS_Workflow:
     #
     # A SoS workflow with multiple steps
     #
-    def __init__(self, workflow_name, sections):
-        '''create a workflow from name and a list of SoS_Sections (using name matching)'''
+    def __init__(self, workflow_name, sections, description):
+        '''create a workflow from its name and a list of SoS_Sections (using name matching)'''
+        self.description = description
         self.sections = []
         self.global_section = None
         self.parameters_section = None
         self.auxillary_sections = []
+        #
         for section in sections:
             if section.is_global:
                 self.global_section = copy.deepcopy(section)
@@ -156,20 +178,26 @@ class SoS_Workflow:
             for name, index in section.names:
                 if index is None:
                     self.auxillary_sections.append(copy.deepcopy(section))
-                    continue
-                if '*' in name:
-                    self.sections.append(copy.deepcopy(section))
-                    self.sections[-1].names = [(workflow_name, index)]
+                elif '*' in name:
+                    # check if name match. There should be no special character in section name
+                    # so no worry about invalid regular expression
+                    pattern = re.compile(name.replace('*', '.*'))
+                    if pattern.match(workflow_name):
+                        self.sections.append(copy.deepcopy(section))
+                        self.sections[-1].name = workflow_name
+                        self.sections[-1].index = int(index)
                 elif name == workflow_name:
                     self.sections.append(copy.deepcopy(section))
-                    self.sections[-1].names = [(workflow_name, index)]
+                    self.sections[-1].name = workflow_name
+                    self.sections[-1].index = int(index)
+        #
         # sort sections by index
-        self.sections.sort(key=lambda x: int(x.names[0][1]))
+        self.sections.sort(key=lambda x: x.index)
 
     def __repr__(self):
         result = '__WORKFLOW__\n'
-        # get all names
-        # get all non-wildcard-names
+        # FIXME: proper line wrap
+        result += '# ' + self.description
         if self.global_section:
             result += repr(self.global_section)
         if self.parameters_section:
@@ -177,7 +205,6 @@ class SoS_Workflow:
         for sect in self.sections:
             result += repr(sect)
         return result 
-
 
 
 class ExprStack:
@@ -239,10 +266,10 @@ class ExprStack:
             return False
 
 
-
-class SoS_Script_Parser:
+class SoS_Script:
     _DIRECTIVES = ['input', 'output', 'depends']
-    _SECTION_OPTIONS = ['input_alias', 'output_alias', 'nonconcurrent', 'skip', 'blocking', 'sigil', 'target']
+    _SECTION_OPTIONS = ['input_alias', 'output_alias', 'nonconcurrent', 
+        'skip', 'blocking', 'sigil', 'target']
     _PARAMETERS_SECTION_NAME = 'parameters'
 
     # Regular expressions for parsing section headers and options
@@ -313,34 +340,26 @@ class SoS_Script_Parser:
     DIRECTIVE = re.compile(_DIRECTIVE_TMPL, re.VERBOSE)
     ASSIGNMENT = re.compile(_ASSIGNMENT_TMPL, re.VERBOSE)
 
-    def __init__(self):
-        """Parse a sectioned SoS script file.
-
-        Each section in a SoS script contains a header in square brackets ('[]'). The
-        header contains a comma separated section name, followed by comma seperated
-        key=value options. Section name and options should be separated by a colon (':').
+    def __init__(self, content, args=[]):
+        '''Parse a sectioned SoS script file. Please refer to the SoS manual 
+        for detailed specification of this format.
         
-        Each section contains, in any order, either comments, a directive (name : values),
-        a expression (key = value), or an action (func(...)).
-
-        Values can span multiple lines, as long as they are indented deeper
-        than the first line of the value. The action can also span multiple lines
-        until it reaches a blank line. Newlines in triple quotes ('''  ''' and """ """)
-        are part of the string though. Because an action is a valid python function
-        call, it is actually parsed by a Python tokenizer.
-        """
-        pass
-
-    def parse(self, content):
-        '''Parse specified content as string for parsing specified text directly.'''
-        with StringIO(content) as fp:
-            self._read(fp, '<string>')
-
-    def read(self, filename):
-        '''Read a SoS script and parse it '''
-        with open(filename) as fp:
-            self._read(fp, filename)
-
+        Parameter `content` can be either a filename or a content of a 
+        SoS script in unicode.
+        '''
+        if os.path.isfile(content):
+            with open(content) as fp:
+                self._read(fp, content)
+        else:
+            with StringIO(content) as fp:
+                self._read(fp, '<string>')
+        # 
+        # this will update values in the default section with 
+        # values read from command line
+        self._parse_cla(args)
+        #
+        self._create_workflows()
+        
     def _read(self, fp, fpname):
         self.sections = []
         self.format_version = '1.0'
@@ -379,7 +398,7 @@ class SoS_Script_Parser:
                     elif comment_block > 1:
                         # anything before the first section can be pipeline
                         # description.
-                        self.workflow_descriptions[-1].append(line)
+                        self.workflow_descriptions[-1] += line.lstrip('#')
                 else:
                     if cursect.is_parameters:
                         # in the parameter section, the comments are description
@@ -394,7 +413,7 @@ class SoS_Script_Parser:
                 # in the front of the script
                 if cursect is None:
                     comment_block += 1
-                    self.workflow_descriptions.append([])
+                    self.workflow_descriptions.append('')
                 elif cursect.comment:
                     comment_block += 1
                 continue
@@ -529,76 +548,80 @@ class SoS_Script_Parser:
         # if there is any parsing error, raise an exception
         if parsing_errors.errors:
             raise parsing_errors
+
+    def _parse_error(self, msg):
+        raise ArgumentError(msg)
+
+    def _parse_cla(self, args):
+        '''Parse command line arguments and set values to parameters section'''
+        if not args:
+            return
+        # look for parameters section
+        sections = [x for x in self.sections if x.is_parameters]
+        if len(sections) == 0:
+            return
+        elif len(sections) > 1:
+            raise DuplicateSectionError(self._PARAMETERS_SECTION_NAME)
         #
+        parser = argparse.ArgumentParser()
+        for key, defvalue, _ in sections[0].parameters:
+            try:
+                # FIXME: proper evaluation
+                defvalue = eval(defvalue)
+            except Exception as e:
+                raise RuntimeError('Incorrect initial value {} for parameter {}: {}'.format(defvalue, key, e))
+            parser.add_argument('--{}'.format(key), 
+                nargs='?' if isinstance(defvalue, basestring) else '*', 
+                default=defvalue)
+        #
+        parser.error = self._parse_error
+        #
+        args = vars(parser.parse_args(args))
+        print(args)
+        # now change the value with passed values
+        for idx in range(len(sections[0].parameters)):
+            if sections[0].parameters[idx][0] in args:
+                # FIXME: proper passing
+                sections[0].parameters[idx][1] = repr(args[sections[0].parameters[idx][0]])
+
+    def _create_workflows(self):
+        #
+        self.script_description = ''
         # now, let check what workflows have been defined
         section_steps = sum([x.names for x in self.sections], [])
         # (name, None) is auxiliary steps
         workflow_names = set([x[0] for x in section_steps if x[1] is not None and '*' not in x[0]])
+        #
+        # separate descriptions by workflow names
+        cur_description = None
+        workflow_description = defaultdict(str)
+        for block in self.workflow_descriptions:
+            for name in workflow_names:
+                if block.lstrip().startswith(name):
+                    cur_description = name
+                    break
+            if cur_description is None:
+                self.script_description += block + '\n'
+            else:
+                workflow_description[cur_description] += block + '\n'
         # create workflows
-        self.workflows = {name: SoS_Workflow(name, self.sections) for name in workflow_names}
+        self.workflows = {name: SoS_Workflow(name, self.sections, workflow_description[name])
+            for name in workflow_names}
     
     def __repr__(self):
-        result = '__SECTIONS__\n'
-        # get all names
-        # get all non-wildcard-names
-        for sect in self.sections:
-            result += repr(sect)
+        result = 'SOS Script (version {}\n'.format(self.format_version)
+        result += 'workflows:\n    ' + '\n    '.join(self.workflows.keys())
         return result
 
-
-class SoS_Script:
     #
-    # A SoS script with multiple scripts
-    #
-    def __init__(self, script_file, args):
-        script = SoS_ScriptParser()
-        script.read(script_file)
-        # 
-        # this will update values in the default section with 
-        # values read from command line
-        self.parseCommandLineArgs(script, args)
-        #
-        # parse header and get a series of workflows
-        self.parseWorkflows(script)
-
-    def parseCommandLineArgs(self, script, args):
-        #
-        # look for parameters section
-        parameters = []
-        if 'parameters' in [x[0] for x in script.sections.keys()]:
-            parameter_section = [y for x,y in script.sections.items() if x[0] == 'parameters'][0]
-            for items in parameter_section:
-                try:
-                    parameters.append([items[1], eval(items[2])])
-                    # FIXME, check type
-                except Exception as e:
-                    raise RuntimeError('Incorrect initial value for parameter {}'.format(items[2]))
-        else:
-            return
-        parser = argparse.ArgumentParser()
-        for var, defvalue in parameters:
-            parser.add_argument('--{}'.format(var), 
-                nargs='1' if isinstance(defvalue, str) else '*', default=defvalue)
-        #
-        args = vars(parser.parse_args(args))
-        #
-        # now change the value with passed values
-        for items in parameter_section:
-            if items[1] in args:
-                items[2] = args[items[1]]
-            else:
-                items[2] = eval(items[2])
-            
-    def parseWorkflows(self, script):
-        headers = [x if isinstance(x, str) else x[0] for x in script.keys()]
-        # FIXME: process wild card characters
-        # FIXME: separate headers shared by multiple steps
-        # FIXME: parse header names
-
-        # we temporarily say the script defines a single default 
-        # pipeline and we do not worry about its order now
-        #workflow = [y for y 
-        self.workflows = {
-                'default': 
-                    script
-            }
+    # for testing purposes
+    # 
+    def parameter(self, name):
+        sections = [x for x in self.sections if x.is_parameters]
+        if len(sections) == 0:
+            return None
+        for key, value, _ in sections[0].parameters:
+            if key == name:
+                return eval(value)
+        return None
+        

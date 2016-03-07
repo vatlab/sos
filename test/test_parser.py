@@ -33,90 +33,95 @@ from pysos import *
 
 
 class TestParser(unittest.TestCase): #SoSTestCase):
-    def setUp(self):
-        self.script = SoS_Script_Parser()
-
     def testFileFormat(self):
         '''Test recognizing the format of SoS script'''
         # file format must be 'fileformat=SOSx.x'
-        self.assertRaises(ParsingError, self.script.parse,
+        self.assertRaises(ParsingError, SoS_Script,
             '#fileformat=SS2')
-        self.assertRaises(ParsingError, self.script.parse,
+        self.assertRaises(ParsingError, SoS_Script,
             '#fileformat=SOS1.0beta')
         #
         # parse a larger script with gormat 1.1
-        self.script.read('scripts/section1.sos')
+        script = SoS_Script('scripts/section1.sos')
         # not the default value of 1.0
-        self.assertEqual(self.script.format_version, '1.1')
+        self.assertEqual(script.format_version, '1.1')
 
     def testSections(self):
         '''Test section definitions'''
         # bad names
         for badname in ['56_1', '_a', 'a_', '1x']:
-            self.assertRaises(ParsingError, self.script.parse, '[{}]'.format(badname))
+            self.assertRaises(ParsingError, SoS_Script, '[{}]'.format(badname))
         # bad options
         for badoption in ['ss', 'skip a', 'skip:_']:
-            self.assertRaises(ParsingError, self.script.parse, '[0:{}]'.format(badoption))
+            self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # allowed names
         for name in ['a5', 'a_5', '*_0', '*1_100']:
-            self.script.parse('[{}]'.format(name))
+            SoS_Script('[{}]'.format(name))
         # glo
-        self.assertRaises(ParsingError, self.script.parse,
+        self.assertRaises(ParsingError, SoS_Script,
             '''input: 'filename' ''')
 
-        self.script.read('scripts/section1.sos')
-        self.assertTrue('section' in self.script.workflows.keys())
-        self.assertTrue('chapter' in self.script.workflows.keys())
+        script = SoS_Script('scripts/section1.sos')
+        self.assertTrue('section' in script.workflows.keys())
+        self.assertTrue('chapter' in script.workflows.keys())
 
     def testGlobalVariables(self):
         '''Test definition of variables'''
         # global section cannot have directive
-        self.assertRaises(ParsingError, self.script.parse,
+        self.assertRaises(ParsingError, SoS_Script,
             '''input: 'filename' ''')
         # or unrecognized directive
-        self.assertRaises(ParsingError, self.script.parse,
+        self.assertRaises(ParsingError, SoS_Script,
             '''inputs: 'filename' ''')
         # or unrecoginzied varialbe
-        self.assertRaises(ParsingError, self.script.parse,
+        self.assertRaises(ParsingError, SoS_Script,
             '''something ''')
         # or function call
-        self.assertRaises(ParsingError, self.script.parse,
+        self.assertRaises(ParsingError, SoS_Script,
             '''somefunc() ''')
         # allow definition
-        self.script.parse('''a = '1' ''')
-        self.script.parse('''a = b''')
+        SoS_Script('''a = '1' ''')
+        SoS_Script('''a = b''')
         # but this one has incorrect syntax
-        self.assertRaises(ParsingError, self.script.parse,
+        self.assertRaises(ParsingError, SoS_Script,
             '''a = 'b  ''')
         # multi-line string literal
-        self.script.parse('''a = """
+        SoS_Script('''a = """
 this is a multi line
 string """
 ''')
         # multi-line list literal, even with newline in between
-        self.script.parse('''a = [
+        SoS_Script('''a = [
 'a',
 
 'b'
 ]
 ''')
         #
-        self.script.read('scripts/section1.sos')
+        script = SoS_Script('scripts/section1.sos')
         # not the default value of 1.0
 
     def testParameters(self):
         '''Test parameters section'''
         # directive not allowed in parameters
-        self.assertRaises(ParsingError, self.script.parse,
+        self.assertRaises(ParsingError, SoS_Script,
             '''
 [parameters]
 input: 'filename' 
 ''')
-        self.assertRaises(ParsingError, self.script.parse,
+        self.assertRaises(ParsingError, SoS_Script,
             '''
 [parameters]
 func()
-''')
+''')    
+        self.assertRaises(ArgumentError, SoS_Script,
+            'scripts/section1.sos', args=['--not_exist'])
+        self.assertRaises(ArgumentError, SoS_Script,
+            'scripts/section1.sos', args=['--par1', 'a', 'b'])
+        script = SoS_Script('scripts/section1.sos', args=['--par1', 'var2'])
+        # need to check if par1 is set to correct value
+        self.assertEqual(script.parameter('par1'), "var2")
+
 
     def testSectionVariables(self):
         '''Test variables in sections'''
@@ -125,17 +130,17 @@ func()
     def testSectionDirectives(self):
         '''Test directives of sections'''
         # cannot be in the global section
-        self.assertRaises(ParsingError, self.script.parse,
+        self.assertRaises(ParsingError, SoS_Script,
             '''input: 'filename' ''')
         # multi-line OK
-        self.script.parse('''
+        SoS_Script('''
 [0]
 input: 'filename',
     'filename1'
 
 ''')
         # An abusive case with multi-line OK, from first column ok, blank line ok
-        self.script.parse('''
+        SoS_Script('''
 [0]
 input: 'filename',
 'filename1',
@@ -149,36 +154,36 @@ depends:
 'something else'
 ''')
         # option with expression ok
-        self.script.parse('''
+        SoS_Script('''
 [0]
 input: 'filename',  'filename2', opt=value==1
 
 ''')
         # unrecognized directive
-        self.assertRaises(ParsingError, self.script.parse, '''
+        self.assertRaises(ParsingError, SoS_Script, '''
 [0]
 something: 'filename',  filename2, opt=value==1
 ''')
         # need commma
-        self.assertRaises(ParsingError, self.script.parse, '''
+        self.assertRaises(ParsingError, SoS_Script, '''
 [0]
 input: 'filename'  filename2
 ''')
         # cannot be after action
-        self.assertRaises(ParsingError, self.script.parse, '''
+        self.assertRaises(ParsingError, SoS_Script, '''
 [0]
 func()        
 input: 'filename',  'filename2', opt=value==1
 ''')
         # cannot be assigned between directives
-        self.assertRaises(ParsingError, self.script.parse, '''
+        self.assertRaises(ParsingError, SoS_Script, '''
 [0]
 input: 'filename',  'filename2', opt=value==1
 a = 'some text'
 output: 'filename',  'filename2', opt=value==1
 ''')
         # cannot be action between directives
-        self.assertRaises(ParsingError, self.script.parse, '''
+        self.assertRaises(ParsingError, SoS_Script, '''
 [0]
 input: 'filename',  'filename2', opt=value==1
 abc
@@ -187,9 +192,9 @@ output: 'filename',  'filename2', opt=value==1
 
     def testSectionActions(self):
         '''Test actions of sections'''
-        self.assertRaises(ParsingError, self.script.parse,
+        self.assertRaises(ParsingError, SoS_Script,
             '''func()''')
-        self.script.parse(
+        SoS_Script(
             """
 [0]
 func('''
@@ -197,7 +202,7 @@ multiline
 string''', with_option=1
 )
 """)
-        self.assertRaises(ParsingError, self.script.parse,
+        self.assertRaises(ParsingError, SoS_Script,
             '''
 [0]
 func(

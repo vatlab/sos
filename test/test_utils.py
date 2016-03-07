@@ -130,18 +130,6 @@ class TestUtils(SoS_TestCase):
         #
         # locals should be the one passed to the expression
         self.assertTrue('file_ws' in interpolate('${locals().keys()}', globals(), lvar))
-        #
-        # the following would fail for sigil [] etc
-#        for sigil in ('${ }', '%( )'):
-#            l, r = sigil.split(' ')
-#            for expr, result in [
-#                ('Newline {0}{{"a": "b", \n"c": "d"}}["a"]{1}', 'Newline b'),
-#            ]:
-#                print(expr.format(l, r))
-#                if isinstance(result, str):
-#                    self.assertEqual(interpolate(expr.format(l, r), lvar, globals(), sigil=sigil), result)
-#                else:
-#                    self.assertTrue(interpolate(expr.format(l, r), lvar, globals(), sigil=sigil) in result)
 
 if __name__ == '__main__':
     unittest.main()
