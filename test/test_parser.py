@@ -51,14 +51,22 @@ class TestParser(unittest.TestCase): #SoSTestCase):
 
     def testSections(self):
         '''Test section definitions'''
+        # bad names
+        for badname in ['56_1', '_a', 'a_', '1x']:
+            self.assertRaises(ParsingError, self.script.parse, '[{}]'.format(badname))
+        # bad options
+        for badoption in ['ss', 'skip a', 'skip:_']:
+            self.assertRaises(ParsingError, self.script.parse, '[0:{}]'.format(badoption))
+        # allowed names
+        for name in ['a5', 'a_5', '*_0', '*1_100']:
+            self.script.parse('[{}]'.format(name))
         # glo
         self.assertRaises(ParsingError, self.script.parse,
             '''input: 'filename' ''')
 
         self.script.read('scripts/section1.sos')
-        # not the default value of 1.0
-        for name in ('parameters', 'section_1', 'section_2', 'section_3, section_4'):
-            self.assertTrue('parameters' in [x[0] for x in self.script.sections.keys()])
+        self.assertTrue('section' in self.script.workflows.keys())
+        self.assertTrue('chapter' in self.script.workflows.keys())
 
     def testGlobalVariables(self):
         '''Test definition of variables'''
@@ -98,6 +106,7 @@ string """
 
     def testParameters(self):
         '''Test parameters section'''
+        # directive not allowed in parameters
         self.assertRaises(ParsingError, self.script.parse,
             '''
 [parameters]

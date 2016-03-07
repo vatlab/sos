@@ -21,6 +21,7 @@
 #
 
 import re
+import copy
 from collections import OrderedDict
 # Python 2.7 should also have this module
 from io import StringIO
@@ -54,16 +55,129 @@ class SoS_Step:
     #
     # A single sos step
     #
-    def __init__(self, action):
-        self.action = action
+    def __init__(self, names=[], options=[], is_global=False, is_parameters=False):
+        self.names = names
+        self.options = options
+        self.comment = ''
+        self.parameters = []
+        self.assignments = []
+        self.directives = []
+        self.statements = []
+        self.is_global = is_global
+        self.is_parameters = is_parameters
+        self.last_line = None
+    
+    def empty(self):
+        '''If there is no content. Adding comment
+        would not change that.'''
+        return self.last_line is None
+
+    def extend(self, line):
+        if self.last_line == ':':
+            self.add_directive(None, line)
+        elif self.last_line == '=':
+            self.add_assignment(None, line)
+        else:
+            self.add_statement(line)
+
+    def add_comment(self, line):
+        '''Add comment line'''
+        self.comment += ' ' + line.lstrip('#').strip()
+
+    def add_assignment(self, key, value):
+        '''Assignments are items with '=' type '''
+        if key is None:
+            if self.is_parameters:
+                self.parameters[-1][1] += value
+            else:
+                self.assignments[-1][1] += value
+        else:
+            if self.is_parameters:
+                self.parameters.append([key, value, self.comment])
+                self.comment = ''
+            else:
+                self.assignments.append([key, value])
+                self.last_line = '='
+
+    def add_directive(self, key, value):
+        '''Assignments are items with ':' type '''
+        if key is None:
+            self.directives[-1][1] += value
+        else:
+            self.directives.append([key, value])
+            self.last_line = ':'
+
+    def add_statement(self, line):
+        '''Assignments are items with ':' type '''
+        # there can be only one statement block
+        self.statements.append(line)
+        self.last_line = '!'
+
+    def __repr__(self):
+        result = ''
+        if self.is_global:
+            result += '## global definitions ##\n'
+        elif self.is_parameters:
+            result += '[parameters]\n'
+        else:
+            result += '[{}:{}]'.format(','.join('{}_{}'.format(x,y) if y else x for x,y in self.names),
+                ','.join('{}={}'.format(x,y) for x,y in self.options))
+        result += self.comment + '\n'
+        for key, value, comment in self.parameters:
+            result += '# ' + comment
+            result += '{} = {}\n'.format(key, value)
+        for key, value in self.assignments:
+            result += '{} = {}\n'.format(key, value)
+        for key, value in self.directives:
+            result += '{} = {}\n'.format(key, value)
+        for line in self.statements:
+            result += line
+        result += '\n'
+        return result
 
 
 class SoS_Workflow:
     #
     # A SoS workflow with multiple steps
     #
-    def __init__(self):
-        pass
+    def __init__(self, workflow_name, sections):
+        '''create a workflow from name and a list of SoS_Sections (using name matching)'''
+        self.sections = []
+        self.global_section = None
+        self.parameters_section = None
+        self.auxillary_sections = []
+        for section in sections:
+            if section.is_global:
+                self.global_section = copy.deepcopy(section)
+                continue
+            elif section.is_parameters:
+                self.parameters_section = copy.deepcopy(section)
+                continue
+            for name, index in section.names:
+                if index is None:
+                    self.auxillary_sections.append(copy.deepcopy(section))
+                    continue
+                if '*' in name:
+                    self.sections.append(copy.deepcopy(section))
+                    self.sections[-1].names = [(workflow_name, index)]
+                elif name == workflow_name:
+                    self.sections.append(copy.deepcopy(section))
+                    self.sections[-1].names = [(workflow_name, index)]
+        # sort sections by index
+        self.sections.sort(key=lambda x: int(x.names[0][1]))
+
+    def __repr__(self):
+        result = '__WORKFLOW__\n'
+        # get all names
+        # get all non-wildcard-names
+        if self.global_section:
+            result += repr(self.global_section)
+        if self.parameters_section:
+            result += repr(self.parameters_section)
+        for sect in self.sections:
+            result += repr(sect)
+        return result 
+
 
 
 class ExprStack:
@@ -128,17 +242,40 @@ class ExprStack:
 
 class SoS_Script_Parser:
     _DIRECTIVES = ['input', 'output', 'depends']
-    _PARAMETERS_SECTION = 'parameters'
+    _SECTION_OPTIONS = ['input_alias', 'output_alias', 'nonconcurrent', 'skip', 'blocking', 'sigil', 'target']
+    _PARAMETERS_SECTION_NAME = 'parameters'
 
     # Regular expressions for parsing section headers and options
     _SECTION_HEADER_TMPL = r'''
         \[                                 # [
-        (?P<section_name>[\d\w_,\s]+)      # digit, alphabet, _ and ,
+        (?P<section_name>[\d\w_,*\s]+)     # digit, alphabet, _ and ,
         (:\s*                              # :
         (?P<section_option>[^]]*)          # section options 
         )?                                 # optional 
         \]                                 # ]
         '''
+
+    _SECTION_NAME_TMPL = '''
+        ^\s*                               # start
+        (?P<name>                          # optional name
+        [a-zA-Z*]                          # alphabet or '*'
+        ([\w\d_*]*?                        # followed by alpha numeric or '*'
+        [a-zA-Z\d*])?                      # but last character cannot be _
+        )?                                 # name is optional
+        (?(name)                           # if there is name
+        (_(?P<index>\d+))?                 #   optional _index
+        |(?P<default_index>\d+))           # no name, then index
+        \s*$                                  
+        '''
+    
+    _SECTION_OPTION_TMPL = '''
+        ^\s*                               # start
+        (?P<name>{})                       # one of the option names
+        (\s*=\s*                           # =
+        (?P<value>.+)                      # value
+        )?                                 # value is optional
+        \s*$                                  
+        '''.format('|'.join(_SECTION_OPTIONS))
 
     _FORMAT_LINE_TMPL = r'''
         ^                                  # from first column
@@ -169,6 +306,8 @@ class SoS_Script_Parser:
         '''
 
     SECTION_HEADER = re.compile(_SECTION_HEADER_TMPL, re.VERBOSE)
+    SECTION_NAME = re.compile(_SECTION_NAME_TMPL, re.VERBOSE)
+    SECTION_OPTION = re.compile(_SECTION_OPTION_TMPL, re.VERBOSE)
     FORMAT_LINE = re.compile(_FORMAT_LINE_TMPL, re.VERBOSE)
     FORMAT_VERSION = re.compile(_FORMAT_VERSION_TMPL, re.VERBOSE)
     DIRECTIVE = re.compile(_DIRECTIVE_TMPL, re.VERBOSE)
@@ -202,13 +341,13 @@ class SoS_Script_Parser:
         with open(filename) as fp:
             self._read(fp, filename)
 
-
     def _read(self, fp, fpname):
-        self.sections = {}
+        self.sections = []
         self.format_version = '1.0'
         self.workflow_descriptions = []
         #
         comment_block = 1
+        # cursect always point to the last section
         cursect = None
         last_expression = []
         last_statement = []
@@ -242,23 +381,13 @@ class SoS_Script_Parser:
                         # description.
                         self.workflow_descriptions[-1].append(line)
                 else:
-                    if cursect[0] == self._PARAMETERS_SECTION:
+                    if cursect.is_parameters:
                         # in the parameter section, the comments are description
-                        # of parameters
-                        #
-                        # multi-line comment
-                        if self.sections[cursect] and self.sections[cursect][-1][0] == '#':
-                            self.sections[cursect][-1][-1] += ' ' + line.strip()
-                        else:
-                            # first line of the comment
-                            self.sections[cursect].append(['#', line.strip()])
-                    elif comment_block == 1:
+                        # of parameters and are all significant
+                        cursect.add_comment(line)
+                    elif comment_block == 1 and cursect.empty():
                         # in a regular section, we only record the first comment block
-                        if self.sections[cursect] and self.sections[cursect][-1][0] == '#':
-                            self.sections[cursect][-1][-1] += ' ' + line.strip()
-                        else:
-                            # first line of the comment
-                            self.sections[cursect].append(['#', line.strip()])
+                        cursect.add_comment(line)
                 continue
             elif not line.strip():
                 # a blank line start a new comment block if we are still
@@ -266,23 +395,21 @@ class SoS_Script_Parser:
                 if cursect is None:
                     comment_block += 1
                     self.workflow_descriptions.append([])
-                else:
-                    if self.sections[cursect] and self.sections[cursect][-1][0] == '#':
-                        comment_block += 1
+                elif cursect.comment:
+                    comment_block += 1
                 continue
             #
             # a continuation of previous item?
-            if line[0].isspace() and cursect is not None and self.sections[cursect]:
-                value = line.strip()
-                if value:
-                    self.sections[cursect][-1][-1].append(value)
-                    stck.push(value)
+            if line[0].isspace() and cursect is not None and not cursect.empty():
+                if line.strip():
+                    cursect.extend(line)
+                    stck.push(line)
                 continue
             # 
             # is it a continuation of uncompleted assignment or directive?
             if not stck.isValid():
                 stck.push(line)
-                self.sections[cursect][-1][-1].append(line)
+                cursect.extend(line)
                 continue
             #
             # a new line (start from first column)
@@ -297,16 +424,35 @@ class SoS_Script_Parser:
                 # start a new section
                 section_name = mo.group('section_name').strip()
                 section_option = mo.group('section_option')
-                cursect = (section_name, section_option)
-                self.sections[cursect] = []
+                step_names = []
+                step_options = []
+                for name in section_name.split(','):
+                    mo = self.SECTION_NAME.match(name)
+                    if mo:
+                        n, i, di = mo.group('name', 'index', 'default_index')
+                        if n:
+                            step_names.append((n, i))
+                        if di:
+                            step_names.append(('default', di))
+                    else:
+                        parsing_errors.append(lineno - 1, line, 'Invalid section name')
+                if section_option is not None:
+                    for option in section_option.split(','):
+                        mo = self.SECTION_OPTION.match(option)
+                        if mo:
+                            step_options.append(mo.group('name', 'value'))
+                        else:
+                            parsing_errors.append(lineno - 1, line, 'Invalid section option')
+                self.sections.append(SoS_Step(step_names, step_options, is_parameters= step_names and step_names[0][0] == self._PARAMETERS_SECTION_NAME))
+                cursect = self.sections[-1]
                 continue
             #
             # assignment?
             mo = self.ASSIGNMENT.match(line)
             if mo:
                 if cursect is None:
-                    cursect = ('__global__', None)
-                    self.sections[cursect] = []
+                    self.sections.append(SoS_Step(is_global=True))
+                    cursect = self.sections[-1]
                 # check previous expression before a new assignment
                 if not stck.isValid():
                     parsing_errors.append(lineno -1 , ''.join(stck.values), 'Invalid ' + stck.category)
@@ -316,20 +462,17 @@ class SoS_Script_Parser:
                 var_value = mo.group('var_value')
                 # if first line of the section, or following another assignment
                 # this is assignment
-                if not self.sections[cursect] or self.sections[cursect][-1][0] == '=':
-                    self.sections[cursect].append(['=', var_name, [var_value]])
+                if cursect.empty() or cursect.last_line == '=':
+                    cursect.add_assignment(var_name, var_value)
                     stck.set(var_value, 'expression')
                 # 
                 # if following a directive, this must be start of an action
-                elif self.sections[cursect][-1][0] == ':':
-                    self.sections[cursect].append(
-                        ['!', ['{} = {}\n'.format(var_name, var_value)]])
+                elif cursect.last_line == ':':
+                    cursect.add_statement('{} = {}\n'.format(var_name, var_value))
                     stck.set('{} = {}\n'.format(var_name, var_value), 'statements')
                 else:
-                    #
                     # otherwise it is an continuation of the existing action
-                    self.sections[cursect][-1][-1].append(
-                        '{} = {}\n'.format(var_name, var_value))
+                    cursect.extend('{} = {}\n'.format(var_name, var_value))
                     stck.set('{} = {}\n'.format(var_name, var_value), 'statements')
                 continue
             #
@@ -346,19 +489,18 @@ class SoS_Script_Parser:
                 if cursect is None:
                     parsing_errors.append(lineno, line, 'Directive {} is not allowed out side of a SoS step'.format(directive_name))
                     continue
-                if cursect[0] == self._PARAMETERS_SECTION:
-                    parsing_errors.append(lineno, line, 'Directive {} is not allowed in {} section'.format(directive_name, self._PARAMETERS_SECTION))
+                if cursect.is_parameters:
+                    parsing_errors.append(lineno, line, 'Directive {} is not allowed in {} section'.format(directive_name, self._PARAMETERS_SECTION_NAME))
                     continue
-                if self.sections[cursect] and self.sections[cursect][-1][0] == '!':
+                if not cursect.empty() and cursect.last_line == '!':
                     parsing_errors.append(lineno, line, 'Directive {} should be be defined before step action'.format(directive_name))
                     continue
-                self.sections[cursect].append([':', directive_name, [directive_value]])
+                cursect.add_directive(directive_name, directive_value)
                 stck.set(directive_value, 'directive')
                 continue
-
             #
             # all others?
-            if not cursect or cursect == ('__global__', None):
+            if not cursect or cursect.is_global:
                 parsing_errors.append(lineno, line, 'Only variable assignment is allowed before section definitions.')
                 continue
             #
@@ -366,19 +508,18 @@ class SoS_Script_Parser:
             if cursect is None:
                 parsing_errors.append(lineno, line, 'Action statement is not allowed in global section')
                 continue
-            elif cursect[0] == self._PARAMETERS_SECTION:
-                parsing_errors.append(lineno, line, 'Action statement is not allowed in {} section'.format(self._PARAMETERS_SECTION))
+            elif cursect.is_parameters:
+                parsing_errors.append(lineno, line, 'Action statement is not allowed in {} section'.format(self._PARAMETERS_SECTION_NAME))
                 continue
-            
             #
-            if not self.sections[cursect] or self.sections[cursect][-1][0] != '!':
+            if cursect.empty() or cursect.last_line != '!':
                 # new statement
-                self.sections[cursect].append( ['!', [line]])
+                cursect.add_statement(line)
                 stck.clear()
                 stck.set(line, 'statements')
             else:
                 # existing one
-                self.sections[cursect][-1][-1].append(line)
+                cursect.extend(line)
                 stck.push(line)
         #
         # check the last expression before a new directive
@@ -389,21 +530,20 @@ class SoS_Script_Parser:
         if parsing_errors.errors:
             raise parsing_errors
         #
-        # now, let us merge the multi-line strings and check if the syntax is correct
-        #
-        for header, content in self.sections.items():
-            for item in content:
-                # expression
-                if item[0] == '=':
-                    item[2] = '\n'.join(item[2]).strip()
-                if item[0] == ':':
-                    item[2] = '({})'.format('\n'.join(item[2]).strip())
-                if item[0] == '!':
-                    item[1] = ''.join(item[1]).strip()
-        #
-        #pp = pprint.PrettyPrinter()
-        #pp.pprint(self.sections)
-        #
+        # now, let check what workflows have been defined
+        section_steps = sum([x.names for x in self.sections], [])
+        # (name, None) is auxiliary steps
+        workflow_names = set([x[0] for x in section_steps if x[1] is not None and '*' not in x[0]])
+        # create workflows
+        self.workflows = {name: SoS_Workflow(name, self.sections) for name in workflow_names}
+    
+    def __repr__(self):
+        result = '__SECTIONS__\n'
+        # get all names
+        # get all non-wildcard-names
+        for sect in self.sections:
+            result += repr(sect)
+        return result
 
 
 class SoS_Script:

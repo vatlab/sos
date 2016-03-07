@@ -12,17 +12,20 @@ par2 = ['a', 'b', 'c']
 par3 = ['a',
 	'b']
 
-[section_1]
+[*_0]
+var0 = '0'
+
+[section_10]
 var1 = 'a'
 
-[section_2 : opt1=value1]
+[section_2 : input_alias=value1]
 var2 = 'a'
 input: var1
 output: var2
 
 var3 = 'a'
 
-[section_3, section_4 : opt1=value1 ]
+[section_3, *_4 : output_alias=value1, skip ]
 output: 
 	var2,
 	var3
@@ -31,3 +34,5 @@ action1()
 action2()
 var4= 'value4'
 
+[chapter_5]
+var4='5'
