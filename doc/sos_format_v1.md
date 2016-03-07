@@ -239,11 +239,11 @@ are not allowed.
 
 SoS interpolation also support all string format specification as in the [Python string format specifier](https://docs.python.org/2/library/string.html#formatspec),
 that is to say, you can use `: specifier` at the end of the expression to control the format of the output. For example `'${1/3. :.2f}'` would produce `0.33` 
-instead of its long representation `0.3333333333333333`, and `'${input:>20}'` would produce `            test.txt` if `input=['test.txt']`.
+instead of its long representation `0.3333333333333333`, and `'|${input:>20}|'` would produce `|            test.txt|` if `input=['test.txt']`.
 
 SoS also supports string conversion as specified in [Python string format specifier](https://docs.python.org/2/library/string.html#formatspec). 
-The `!r` conversion is very useful in that it will return a properly quoted string so `${'string'!r}` would be `'string'` instead of `string`. This
-is very useful because instead of using `'${input}'` in cases such as
+For example, the `!r` conversion return a properly quoted string so `${'string'!r}` would be `'string'` instead of `string`. This
+is very useful because instead of using `"${input}"` in cases such as
 
 ```python
 R('''
@@ -259,7 +259,7 @@ read.csv(${input!r})
 ''')
 ```
 
-because input file can in theory (although rare) contains quotation marks. So if `input=['filename.txt']`,
+because input file can in theory (although rare) contains quotation marks. So if `input=['filename".txt']`,
 `read.csv("${input}")` would be interpolated to `read.csv("filename".txt")` and fail,
 and `read.csv(${input:r})` would be interpolated to `read.csv('filename".txt')` and run correctly.
 
@@ -281,8 +281,6 @@ or `cat result/Bon\ Jovi.txt`.
 
 The conversion also works for list of filenames so `cat ${input!q}` would be translated to `cat A\ B.txt C\D.txt` or
 `cat 'A B.txt' 'C D.txt'` if `input=['A B.txt', 'C D.txt']`, which is easier than quoting filenames manually.
-In summary, **when filenames are used in SoS steps, it is strongly recommended that you use `!r` for R and 
-Python scripts, and `!q` for shell scripts.**
 
 #### String representation of non-SoS supported types
 

@@ -28,7 +28,7 @@ from collections import OrderedDict, defaultdict
 # Python 2.7 should also have this module
 from io import StringIO
 
-from .utils import env, Error
+from .utils import env, Error, _WorkflowDict
 import pprint
 
 
@@ -132,6 +132,20 @@ class SoS_Step:
         self.statements.append(line)
         self.last_line = '!'
 
+    def run(self, GVARS, VARS):
+        # handle assignment
+        if self.is_parameters:
+            for key, value, _ in self.parameters:
+                VARS[key] = eval(value, GVARS, VARS)
+        else:
+            for key, value in self.assignments:
+                VARS[key] = eval(value, GVARS, VARS)
+        #
+        # directives
+        #
+        # action
+        exec('\n'.join(self.statements))
+
     def __repr__(self):
         result = ''
         if self.is_global:
@@ -160,7 +174,7 @@ class SoS_Workflow:
     #
     # A SoS workflow with multiple steps
     #
-    def __init__(self, workflow_name, sections, description):
+    def __init__(self, workflow_name, allowed_steps, sections, description):
         '''create a workflow from its name and a list of SoS_Sections (using name matching)'''
         self.description = description
         self.sections = []
@@ -193,6 +207,45 @@ class SoS_Workflow:
         #
         # sort sections by index
         self.sections.sort(key=lambda x: x.index)
+        #
+        if allowed_steps:
+            all_steps = {x.index:False for x in self.sections}
+            #
+            for item in allowed_steps.split(','):
+                # remove space
+                item = ''.join([x for x in item if x != ' '])
+                if item.isdigit():
+                    # pipeline:100
+                    all_steps[int(item)] = True
+                elif '-' in item and item.count('-') == 1:
+                    l, u = item.split('-')
+                    if (l and not l.isdigit()) or (u and not u.isdigit()) or \
+                        (l and u and int(l) > int(u)):
+                        raise ValueError('Invalid pipeline step item {}'.format(item))
+                    # pipeline:-100, pipeline:100+ or pipeline:10-100
+                    if not l:
+                        l = min(all_steps.keys())
+                    if not u:
+                        u = max(all_steps.keys())
+                    #
+                    for key in all_steps.keys():
+                        if key >= int(l) and key <= int(u):
+                            all_steps[key] = True
+                else:
+                    raise ValueError('Invalid pipeline step item {}'.format(item))
+            # keep only selected steps
+            self.sections = [x for x in self.sections if all_steps[x.index]]
+
+    def run(self):
+        'Very preliminary run function'
+        GVARS = {}
+        VARS = _WorkflowDict()
+        if self.global_section:
+            global_section.run(GVARS, VARS)
+        if self.parameters_section:
+            parameters_section.run(GVARS, VARS)
+        for section in self.sections:
+            section.run(GVARS, VARS)
 
     def __repr__(self):
         result = '__WORKFLOW__\n'
@@ -357,8 +410,6 @@ class SoS_Script:
         # this will update values in the default section with 
         # values read from command line
         self._parse_cla(args)
-        #
-        self._create_workflows()
         
     def _read(self, fp, fpname):
         self.sections = []
@@ -577,36 +628,48 @@ class SoS_Script:
         parser.error = self._parse_error
         #
         args = vars(parser.parse_args(args))
-        print(args)
         # now change the value with passed values
         for idx in range(len(sections[0].parameters)):
             if sections[0].parameters[idx][0] in args:
                 # FIXME: proper passing
                 sections[0].parameters[idx][1] = repr(args[sections[0].parameters[idx][0]])
 
-    def _create_workflows(self):
+    def get_workflow(self, wf_name):
         #
-        self.script_description = ''
-        # now, let check what workflows have been defined
         section_steps = sum([x.names for x in self.sections], [])
         # (name, None) is auxiliary steps
         workflow_names = set([x[0] for x in section_steps if x[1] is not None and '*' not in x[0]])
+
+        allowed_steps = None
+        if not wf_name:
+            wf_name = ''
+        else:
+            if ':' in wf_name:
+                wf_name, allowed_steps = wf_name.split(':', 1)
+        if not wf_name:
+            if len(workflow_names) == 1:
+                wf_name = workflow_names[0]
+            elif 'default' in workflow_names:
+                wf_name = 'default'
+            else:
+                raise ValueError('Name of workflow should be specified because '
+                    'the script defines more than one pipelines without a default one. '
+                    'Available pipelines are: {}.'.format(', '.join(workflow_names)))
+        elif wf_name not in workflow_names:
+            raise ValueError('Workflow {} is undefined. Available workflows are: {}'.format(wf_name,
+                ', '.join(workflow_names)))
         #
-        # separate descriptions by workflow names
         cur_description = None
-        workflow_description = defaultdict(str)
+        description = ''
         for block in self.workflow_descriptions:
             for name in workflow_names:
                 if block.lstrip().startswith(name):
                     cur_description = name
                     break
-            if cur_description is None:
-                self.script_description += block + '\n'
-            else:
-                workflow_description[cur_description] += block + '\n'
+            if cur_description == wf_name:
+                description += block + '\n'
         # create workflows
-        self.workflows = {name: SoS_Workflow(name, self.sections, workflow_description[name])
-            for name in workflow_names}
+        return SoS_Workflow(name, allowed_steps, self.sections, description)
     
     def __repr__(self):
         result = 'SOS Script (version {}\n'.format(self.format_version)

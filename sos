@@ -30,6 +30,8 @@ from pysos import SOS_VERSION, SOS_FULL_VERSION
 ## # save the command line that has been processed by the shell.
 ## env.command_line = subprocess.list2cmdline(sys.argv[1:])
 ## 
+from pysos.execute import sos_run, sos_show
+
 def addCommonArgs(parser):
     parser.add_argument('-v', '--verbosity', choices=['0', '1', '2', '3'],
         help='''Output error and warning (0), info (1), debug (2) and trace (3) 
@@ -47,7 +49,7 @@ if __name__ == '__main__':
         version='%(prog)s {}'.format(SOS_FULL_VERSION))
     subparsers = master_parser.add_subparsers(title='subcommands')
     #
-##     # command execute
+    # command run
     parser = subparsers.add_parser('run',
         help='Execute a SoS script')
 ##         help='Execute a pipeline or a SQL query',
@@ -58,10 +60,32 @@ if __name__ == '__main__':
 ##             used to execute arbitrary SQL query against the project database.
 ##             Additional parameters will be passed to pipelines as pipeline 
 ##             parameters. ''')
-    parser.add_argument('workflow', metavar='WORKFLOW:STEPS',
+    parser.add_argument('script', metavar='SCRIPT',
+        help='A SoS script')
+
+    parser.add_argument('workflow', metavar='WORKFLOW:STEPS', nargs='?',
         help='Name of the workflow to execute')
     addCommonArgs(parser)
-##     parser.set_defaults(func=pipeline.execute)
+    parser.set_defaults(func=sos_run)
+    #
+    # command show
+    parser = subparsers.add_parser('show',
+        help='Show a SoS script')
+##         help='Execute a pipeline or a SQL query',
+##         description='''Execute a pipeline that uses external commands to
+##             process input files, usually to align raw reads to a reference
+##             genome and call variants from aligned reads. The pipelines are
+##             controlled by pipeline description files. This command can also be
+##             used to execute arbitrary SQL query against the project database.
+##             Additional parameters will be passed to pipelines as pipeline 
+##             parameters. ''')
+    parser.add_argument('script', metavar='SCRIPT',
+        help='A SoS script')
+
+    parser.add_argument('workflow', metavar='WORKFLOW:STEPS', nargs='?',
+        help='Name of the workflow to execute')
+    addCommonArgs(parser)
+    parser.set_defaults(func=sos_show)
 ##     #
 ##     # getting args, some commands accept arbitrary arguments so we need to
 ##     # separate them into argv
@@ -91,4 +115,4 @@ if __name__ == '__main__':
 ##         master_parser.print_usage(sys.stderr)
 ##         sys.exit('sos: error: unrecognized arguments: ' + ' '.join(argv))
     # calling the associated functions
-    args.func(args)
+    args.func(args, argv)
