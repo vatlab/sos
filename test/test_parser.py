@@ -64,7 +64,7 @@ class TestParser(SoS_TestCase):
     def testSections(self):
         '''Test section definitions'''
         # bad names
-        for badname in ['56_1', '_a', 'a_', '1x']:
+        for badname in ['56_1', '_a', 'a_', '1x', '*', '?']:
             self.assertRaises(ParsingError, SoS_Script, '[{}]'.format(badname))
         # bad options
         for badoption in ['ss', 'skip a', 'skip:_']:
@@ -75,6 +75,15 @@ class TestParser(SoS_TestCase):
         # no directive in global section
         self.assertRaises(ParsingError, SoS_Script,
             '''input: 'filename' ''')
+        # duplicate sections
+        self.assertRaises(ParsingError, SoS_Script,
+            '''[1]\n[1]''')
+        self.assertRaises(ParsingError, SoS_Script,
+            '''[1]\n[3]\n[2,1]''')
+        self.assertRaises(ParsingError, SoS_Script,
+            '''[a_1]\n[a_3]\n[*_1]''')
+        # no duplicated section header
+        SoS_Script('''[a_1]\n[a_3]\n[b*_1]''')
 
     def testGlobalVariables(self):
         '''Test definition of variables'''

@@ -37,13 +37,6 @@ class ArgumentError(Error):
         Error.__init__(self, msg)
         self.args = (msg, )
 
-class DuplicateSectionError(Error):
-    """Raised when a section is multiply-created."""
-    def __init__(self, section):
-        Error.__init__(self, "Section %r already exists" % section)
-        self.section = section
-        self.args = (section, )
-
 class ParsingError(Error):
     """Raised when a configuration file does not follow legal syntax."""
 
@@ -166,22 +159,22 @@ class SoS_Step:
         except Exception as e:
             return False
             
-    def run(self, GVARS, VARS):
+    def run(self, globals, locals):
         if isinstance(self.index, int):
-            VARS['workflow_index'] = str(self.index)
+            locals['workflow_index'] = str(self.index)
         #
         # assignment
         # 
         if self.is_parameters:
             for key, value, _ in self.parameters:
                 try:
-                    VARS[key] = SoS_eval(value, GVARS, VARS)
+                    locals[key] = SoS_eval(value, globals, locals)
                 except Exception as e:
                     raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
         else:
             for key, value in self.assignments:
                 try:
-                    VARS[key] = SoS_eval(value, GVARS, VARS)
+                    locals[key] = SoS_eval(value, globals, locals)
                 except Exception as e:
                     raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
         #
@@ -189,13 +182,13 @@ class SoS_Step:
         #
         for key, value in self.directives:
             try:
-                ret = SoS_eval('_directive_{}({})'.format(key, value), GVARS, VARS)
+                ret = SoS_eval('_directive_{}({})'.format(key, value), globals, locals)
             except Exception as e:
                 raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
         #
         # action
         try:
-            SoS_exec('\n'.join(self.statements), GVARS, VARS)
+            SoS_exec('\n'.join(self.statements), globals, locals)
         except Exception as e:
             raise RuntimeError('Failed to execute statement\n\n{}\n\n{}'.format('\n'.join(self.statements), e))
 
@@ -303,35 +296,35 @@ class SoS_Workflow:
 
     def prepareVars(self):
         '''Prepare global variables '''
-        self.GVARS = globals()
-        self.VARS = _WorkflowDict()
+        self.globals = globals()
+        self.locals = _WorkflowDict()
         # initial values
         try:
-            self.VARS['home'] = os.environ['HOME']
+            self.locals['home'] = os.environ['HOME']
         except:
-            self.VARS['home'] = '.'
+            self.locals['home'] = '.'
         #
-        self.VARS['workflow_name'] = self.name
-        self.VARS['workdir'] = os.path.abspath('.')
+        self.locals['workflow_name'] = self.name
+        self.locals['workdir'] = os.path.abspath('.')
         #
         if self.global_section:
-            self.global_section.run(self.GVARS, self.VARS)
+            self.global_section.run(self.globals, self.locals)
 
     def run(self):
         '''Very preliminary run function
         '''
         self.prepareVars()
         # There is no input initially
-        self.VARS['step_input'] = []
+        self.locals['step_input'] = []
         #
         if self.parameters_section:
-            self.parameters_section.run(self.GVARS, self.VARS)
+            self.parameters_section.run(self.globals, self.locals)
         for section in self.sections:
-            section.run(self.GVARS, self.VARS)
-            if 'step_output' in self.VARS:
+            section.run(self.globals, self.locals)
+            if 'step_output' in self.locals:
                 # passing step output to step_input of next step
-                self.VARS['step_input'] = self.VARS['step_output']
-                self.VARS.pop('step_output')
+                self.locals['step_input'] = self.locals['step_output']
+                self.locals.pop('step_output')
 
     def __repr__(self):
         result = '__WORKFLOW__\n'
@@ -366,7 +359,7 @@ class SoS_Script:
         (?P<name>                          # optional name
         [a-zA-Z*]                          # alphabet or '*'
         ([\w\d_*]*?                        # followed by alpha numeric or '*'
-        [a-zA-Z\d*])?                      # but last character cannot be _
+        [a-zA-Z\d*])??                     # but last character cannot be _
         )?                                 # name is optional
         (?(name)                           # if there is name
         (_(?P<index>\d+))?                 #   optional _index
@@ -453,6 +446,7 @@ class SoS_Script:
         cursect = None
         last_expression = []
         last_statement = []
+        all_step_names = []
         #
         # this ParsingError is a container for all parsing errors. It will be
         # raised after parsing if there is at least one parsing error.
@@ -532,6 +526,8 @@ class SoS_Script:
                     if mo:
                         n, i, di = mo.group('name', 'index', 'default_index')
                         if n:
+                            if i is None and '*' in n:
+                                parsing_errors.append(lineno - 1, line, 'Auxillary section name cannot contain wildcard character (*).')
                             step_names.append((n, i))
                         if di:
                             step_names.append(('default', di))
@@ -544,6 +540,27 @@ class SoS_Script:
                             step_options.append(mo.group('name', 'value'))
                         else:
                             parsing_errors.append(lineno - 1, line, 'Invalid section option')
+                for name in step_names:
+                    prev_workflows = [x[0] for x in all_step_names if '*' not in x[0]]
+                    for prev_name in all_step_names:
+                        # auxillary step 
+                        if name[1] is None and prev_name[1] is None and name[0] != prev_name[0]:
+                            continue
+                        # index not euqal (one of them can be None)
+                        if name[1] != prev_name[1]:
+                            continue
+                        # index equal and one of them have wild card character
+                        if '*' in name[0]:
+                            names = [x for x in prev_workflows if re.match(name[0].replace('*', '.*'), x)]
+                        else:
+                            names = [name[0]]
+                        if '*' in prev_name:
+                            prev_names = [x for x in prev_workflows if re.match(prev_name[0].replace('*', '.*'), x)]
+                        else:
+                            prev_names = [prev_name[0]]
+                        if len(set(prev_names) & set(names)):
+                            parsing_errors.append(lineno - 1, line, 'Duplicate section names')
+                all_step_names.extend(step_names)
                 self.sections.append(SoS_Step(step_names, step_options, is_parameters= step_names and step_names[0][0] == self._PARAMETERS_SECTION_NAME))
                 cursect = self.sections[-1]
                 continue
@@ -645,7 +662,7 @@ class SoS_Script:
         for key, defvalue, _ in wf.parameters_section.parameters:
             try:
                 # FIXME: proper evaluation
-                defvalue = SoS_eval(defvalue, wf.GVARS, wf.VARS)
+                defvalue = SoS_eval(defvalue, wf.globals, wf.locals)
             except Exception as e:
                 raise RuntimeError('Incorrect initial value {} for parameter {}: {}'.format(defvalue, key, e))
             parser.add_argument('--{}'.format(key), 
