@@ -78,16 +78,17 @@ class SoS_Step:
         # is it the parameters section?
         self.is_parameters = is_parameters
         # indicate the type of input of the last line
-        self.last_line = None
+        self.category = None
+        self.values = []
     
     def empty(self):
         '''If there is no content (comment does not count)'''
-        return self.last_line is None
+        return self.category is None
 
     def extend(self, line):
-        if self.last_line == ':':
+        if self.category == 'directive':
             self.add_directive(None, line)
-        elif self.last_line == '=':
+        elif self.category == 'expression':
             self.add_assignment(None, line)
         else:
             self.add_statement(line)
@@ -104,6 +105,7 @@ class SoS_Step:
                 self.parameters[-1][1] += value
             else:
                 self.assignments[-1][1] += value
+            self.values.append(value)
         else:
             # new assignment
             if self.is_parameters:
@@ -113,24 +115,57 @@ class SoS_Step:
                 self.comment = ''
             else:
                 self.assignments.append([key, value])
-            self.last_line = '='
+            self.category = 'expression'
+            self.values = [value]
 
     def add_directive(self, key, value):
         '''Assignments are items with ':' type '''
         if key is None:
             # continuation of multi-line directive
             self.directives[-1][1] += value
+            self.values.append(value)
         else:
             # new directive
             self.directives.append([key, value])
-            self.last_line = ':'
+            self.category = 'directive'
+            self.values = [value]
 
     def add_statement(self, line):
         '''Assignments are items with ':' type '''
         # there can be only one statement block
         self.statements.append(line)
-        self.last_line = '!'
+        if self.category != 'statements':
+            self.values = [line]
+        else:
+            self.values.append(line)
+        self.category = 'statements'
 
+    def isValid(self):
+        if not self.values:
+            return True
+        try:
+            if self.category == 'expression':
+                compile(''.join(self.values), filename='<string>', mode='eval')
+            elif self.category == 'directive':
+                # we add func() because the expression can be multi-line and
+                # can have keyword-argument like options
+                #
+                # However, python considers
+                #
+                #     func('value', )
+                #
+                # a valid syntax but we do want , to continue to the next line
+                if self.values[-1].strip().endswith(','):
+                    return False
+                compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
+            elif self.category == 'statements':
+                compile(''.join(self.values), filename='<string>', mode='exec')
+            else:
+                raise RuntimeError('Unrecognized expression type {}'.format(self.category))
+            return True
+        except Exception as e:
+            return False
+            
     def run(self, GVARS, VARS):
         if isinstance(self.index, int):
             VARS['workflow_index'] = str(self.index)
@@ -310,66 +345,6 @@ class SoS_Workflow:
             result += repr(sect)
         return result 
 
-
-class ExprStack:
-    '''This is a helper class that keeps track of partial expressions,
-    value of directives, and step actions. We use a stack because these
-    values can expand to several lines so we have to keep reading until
-    a valid expression is obtained.'''
-    def __init__(self):
-        # expression type can be DIRECTIVE, EXPRESSION, and STATEMENTS
-        # 
-        # EXPRESSION should be a valid Python expression
-        # STATEMENTS should be valid Python statements
-        # DIRECTIVE should be values plus optional keyword arguments, similar
-        #     to parameters to function calls.
-        self.category = None
-        self.values = []
-
-    def clear(self):
-        self.category = None
-        self.values = []
-
-    def set(self, expr, category):
-        # For safety, we require checking and clearing stack before setting a new one.
-        # This ensures all parsing error be checked.
-        if self.values:
-            raise ValueError('Please manually clear expression stack before setting a new one.')
-        self.values = [expr]
-        self.category = category
-
-    def push(self, value):
-        if self.category is None:
-            raise RuntimeError('Value cannot be added to ExprStack without being initialized')
-        self.values.append(value)
-
-    def isValid(self):
-        if not self.values:
-            return True
-        try:
-            if self.category == 'expression':
-                compile(''.join(self.values), filename='<string>', mode='eval')
-            elif self.category == 'directive':
-                # we add func() because the expression can be multi-line and
-                # can have keyword-argument like options
-                #
-                # However, python considers
-                #
-                #     func('value', )
-                #
-                # a valid syntax but we do want , to continue to the next line
-                if self.values[-1].strip().endswith(','):
-                    return False
-                compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
-            elif self.category == 'statements':
-                compile(''.join(self.values), filename='<string>', mode='exec')
-            else:
-                sys.exit('Invalid category {}'.format(self.category))
-            return True
-        except Exception as e:
-            return False
-
-
 class SoS_Script:
     _DIRECTIVES = ['input', 'output', 'depends']
     _SECTION_OPTIONS = ['input_alias', 'output_alias', 'nonconcurrent', 
@@ -482,7 +457,6 @@ class SoS_Script:
         # this ParsingError is a container for all parsing errors. It will be
         # raised after parsing if there is at least one parsing error.
         parsing_errors = ParsingError(fpname)
-        stck = ExprStack()
         for lineno, line in enumerate(fp, start=1):
             #
             # comments in SoS scripts are mostly informative
@@ -530,12 +504,10 @@ class SoS_Script:
             if line[0].isspace() and cursect is not None and not cursect.empty():
                 if line.strip():
                     cursect.extend(line)
-                    stck.push(line)
                 continue
             # 
             # is it a continuation of uncompleted assignment or directive?
-            if not stck.isValid():
-                stck.push(line)
+            if cursect and not cursect.isValid():
                 cursect.extend(line)
                 continue
             #
@@ -545,9 +517,11 @@ class SoS_Script:
             mo = self.SECTION_HEADER.match(line)
             if mo:
                 # check previous expression before a new assignment
-                if not stck.isValid():
-                    parsing_errors.append(lineno -1 , ''.join(stck.values), 'Invalid ' + stck.category)
-                stck.clear()
+                if cursect:
+                    if not cursect.isValid():
+                        parsing_errors.append(lineno -1 , ''.join(cursect.values), 'Invalid ' + cursect.category)
+                    cursect.category = None
+                    cursect.values = []
                 # start a new section
                 section_name = mo.group('section_name').strip()
                 section_option = mo.group('section_option')
@@ -581,36 +555,34 @@ class SoS_Script:
                     self.sections.append(SoS_Step(is_global=True))
                     cursect = self.sections[-1]
                 # check previous expression before a new assignment
-                if not stck.isValid():
-                    parsing_errors.append(lineno -1 , ''.join(stck.values), 'Invalid ' + stck.category)
-                stck.clear()
+                if not cursect.isValid():
+                    parsing_errors.append(lineno -1 , ''.join(cursect.values), 'Invalid ' + cursect.category)
+                cursect.values = []
                 #
                 var_name = mo.group('var_name')
                 # newline should be kept for multi-line assignment
                 var_value = mo.group('var_value') + '\n'
                 # if first line of the section, or following another assignment
                 # this is assignment
-                if cursect.empty() or cursect.last_line == '=':
+                if cursect.empty() or cursect.category == 'expression':
                     cursect.add_assignment(var_name, var_value)
-                    stck.set(var_value, 'expression')
                 # 
                 # if following a directive, this must be start of an action
-                elif cursect.last_line == ':':
+                elif cursect.category == 'directive':
                     cursect.add_statement('{} = {}\n'.format(var_name, var_value))
-                    stck.set('{} = {}\n'.format(var_name, var_value), 'statements')
                 else:
                     # otherwise it is an continuation of the existing action
                     cursect.extend('{} = {}\n'.format(var_name, var_value))
-                    stck.set('{} = {}\n'.format(var_name, var_value), 'statements')
                 continue
             #
             # directive?
             mo = self.DIRECTIVE.match(line)
             if mo:
                 # check previous expression before a new directive
-                if not stck.isValid():
-                    parsing_errors.append(lineno -1 , ''.join(stck.values), 'Invalid ' + stck.category)
-                stck.clear()
+                if cursect:
+                    if not cursect.isValid():
+                        parsing_errors.append(lineno -1 , ''.join(cursect.values), 'Invalid ' + cursect.category)
+                    cursect.values = []
                 #
                 directive_name = mo.group('directive_name')
                 # newline should be kept in case of multi-line directive
@@ -621,11 +593,10 @@ class SoS_Script:
                 if cursect.is_parameters:
                     parsing_errors.append(lineno, line, 'Directive {} is not allowed in {} section'.format(directive_name, self._PARAMETERS_SECTION_NAME))
                     continue
-                if not cursect.empty() and cursect.last_line == '!':
+                if not cursect.empty() and cursect.category == 'statements':
                     parsing_errors.append(lineno, line, 'Directive {} should be be defined before step action'.format(directive_name))
                     continue
                 cursect.add_directive(directive_name, directive_value)
-                stck.set(directive_value, 'directive')
                 continue
             #
             # all others?
@@ -641,19 +612,16 @@ class SoS_Script:
                 parsing_errors.append(lineno, line, 'Action statement is not allowed in {} section'.format(self._PARAMETERS_SECTION_NAME))
                 continue
             #
-            if cursect.empty() or cursect.last_line != '!':
+            if cursect.empty() or cursect.category != 'statements':
                 # new statement
                 cursect.add_statement(line)
-                stck.clear()
-                stck.set(line, 'statements')
             else:
                 # existing one
                 cursect.extend(line)
-                stck.push(line)
         #
         # check the last expression before a new directive
-        if not stck.isValid():
-            parsing_errors.append(lineno -1 , ''.join(stck.values), 'Invalid ' + stck.category)
+        if cursect and not cursect.isValid():
+            parsing_errors.append(lineno -1 , ''.join(cursect.values), 'Invalid ' + cursect.category)
         #
         # if there is any parsing error, raise an exception
         if parsing_errors.errors:
@@ -671,6 +639,7 @@ class SoS_Script:
         wf = self.workflow(self.workflows[0] + ':0')
         if not wf.parameters_section:
             return
+        wf.prepareVars()
         #
         parser = argparse.ArgumentParser()
         for key, defvalue, _ in wf.parameters_section.parameters:
@@ -687,9 +656,9 @@ class SoS_Script:
         #
         args = vars(parser.parse_args(args))
         # now change the value with passed values
-        for idx in range(len(self.parameters_section.parameters)):
-            if self.parameters_section.parameters[idx][0] in args:
-                self.parameters_section.parameters[idx][1] = repr(args[sections[0].parameters[idx][0]])
+        for idx in range(len(wf.parameters_section.parameters)):
+            if wf.parameters_section.parameters[idx][0] in args:
+                wf.parameters_section.parameters[idx][1] = repr(args[wf.parameters_section.parameters[idx][0]])
 
     def workflow(self, wf_name):
         '''Return a workflow with name:step specified in wf_name'''

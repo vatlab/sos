@@ -113,11 +113,57 @@ SOS format 1.0 is assumed if no format line is present.
 
 Other lines in the first comment block are ignored.
 
-### Workflow descriptions
+### Script and workflow descriptions
 
-The following comment blocks are description of workflows defined in the script. The description
-is considered to be related to a particular workflow if it starts with only the name of the workflow
-in the first line. These descriptions would be displayed in the output of command `sos view script`.
+Comment blocks after the first comment block and before any workflow description and
+any SoS statement are considered description of the entire SoS script.
+
+Comment blocks after a comment line with only workflow name and before any SoS statement
+are considered workflow descriptions. Workflow descriptions can be put at the front
+of the script or between sections.
+
+For example
+
+```python
+#fileformat=SOS1.0
+
+# overall description
+# ...
+
+# overall description
+# ...
+
+# workflow1
+# description of workflow 1
+# ...
+# ...
+
+# still belong to workflow 1
+# ...
+
+# workflow2
+# description of workflow 2
+# ...
+
+# still description of workflow 2
+
+[workflow1_1]
+[workflow2_1]
+
+# ignored comment because it does not start with workflow name
+#
+
+[section2_1]
+
+
+# workflow2
+# description
+[workflow2_0]
+
+# ignored comment
+
+[workflow2_10]
+```
 
 ## Literals and variables 
 
