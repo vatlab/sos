@@ -154,7 +154,7 @@ class SoS_Step:
         #
         for key, value in self.directives:
             try:
-                ret = evaluate('_directive_{}({})'.format(key, value), GVARS, VARS)
+                ret = SoS_eval('_directive_{}({})'.format(key, value), GVARS, VARS)
             except Exception as e:
                 raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
         #
@@ -162,7 +162,7 @@ class SoS_Step:
         try:
             SoS_exec('\n'.join(self.statements), GVARS, VARS)
         except Exception as e:
-            raise RuntimeError('Failed to execute statement {}: {}'.format('\n'.join(self.statements), e))
+            raise RuntimeError('Failed to execute statement\n\n{}\n\n{}'.format('\n'.join(self.statements), e))
 
     def __repr__(self):
         result = ''
@@ -212,10 +212,12 @@ class SoS_Workflow:
         #
         for section in sections:
             if section.is_global:
-                self.global_section = copy.deepcopy(section)
+                # section global is shared by all workflows
+                self.global_section = section
                 continue
             elif section.is_parameters:
-                self.parameters_section = copy.deepcopy(section)
+                # section parameters is shared by all workflows
+                self.parameters_section = section
                 continue
             for name, index in section.names:
                 if index is None:
@@ -264,32 +266,37 @@ class SoS_Workflow:
             # keep only selected steps
             self.sections = [x for x in self.sections if all_steps[x.index]]
 
-    def run(self):
-        'Very preliminary run function'
-        GVARS = {}
-        VARS = _WorkflowDict()
+    def prepareVars(self):
+        '''Prepare global variables '''
+        self.GVARS = globals()
+        self.VARS = _WorkflowDict()
         # initial values
         try:
-            VARS['home'] = os.environ['HOME']
+            self.VARS['home'] = os.environ['HOME']
         except:
-            VARS['home'] = '.'
+            self.VARS['home'] = '.'
         #
-        VARS['workflow_name'] = self.name
-        VARS['workdir'] = os.path.abspath('.')
-        #
-        # There is no input initially
-        VARS['step_input'] = []
+        self.VARS['workflow_name'] = self.name
+        self.VARS['workdir'] = os.path.abspath('.')
         #
         if self.global_section:
-            self.global_section.run(GVARS, VARS)
+            self.global_section.run(self.GVARS, self.VARS)
+
+    def run(self):
+        '''Very preliminary run function
+        '''
+        self.prepareVars()
+        # There is no input initially
+        self.VARS['step_input'] = []
+        #
         if self.parameters_section:
-            self.parameters_section.run(GVARS, VARS)
+            self.parameters_section.run(self.GVARS, self.VARS)
         for section in self.sections:
-            section.run(GVARS, VARS)
-            if 'step_output' in VARS:
+            section.run(self.GVARS, self.VARS)
+            if 'step_output' in self.VARS:
                 # passing step output to step_input of next step
-                VARS['step_input'] = VARS['step_output']
-                VARS.pop('step_output')
+                self.VARS['step_input'] = self.VARS['step_output']
+                self.VARS.pop('step_output')
 
     def __repr__(self):
         result = '__WORKFLOW__\n'
@@ -451,9 +458,15 @@ class SoS_Script:
             with StringIO(content) as fp:
                 self._read(fp, '<string>')
         # 
+        # workflows in this script
+        section_steps = sum([x.names for x in self.sections], [])
+        # (name, None) is auxiliary steps
+        self.workflows = list(set([x[0] for x in section_steps if x[1] is not None and '*' not in x[0]]))
+        if not self.workflows:
+            self.workflows = ['default']
         # this will update values in the default section with 
         # values read from command line
-        self._parse_cla(args)
+        self._parse_args(args)
         
     def _read(self, fp, fpname):
         self.sections = []
@@ -649,22 +662,21 @@ class SoS_Script:
     def _parse_error(self, msg):
         raise ArgumentError(msg)
 
-    def _parse_cla(self, args):
+    def _parse_args(self, args):
         '''Parse command line arguments and set values to parameters section'''
         if not args:
             return
-        # look for parameters section
-        sections = [x for x in self.sections if x.is_parameters]
-        if len(sections) == 0:
+        # first, we need to look for the global section and evaluate it because
+        # the parameter section might use variables defined in it.
+        wf = self.workflow(self.workflows[0] + ':0')
+        if not wf.parameters_section:
             return
-        elif len(sections) > 1:
-            raise DuplicateSectionError(self._PARAMETERS_SECTION_NAME)
         #
         parser = argparse.ArgumentParser()
-        for key, defvalue, _ in sections[0].parameters:
+        for key, defvalue, _ in wf.parameters_section.parameters:
             try:
                 # FIXME: proper evaluation
-                defvalue = SoS_eval(defvalue)
+                defvalue = SoS_eval(defvalue, wf.GVARS, wf.VARS)
             except Exception as e:
                 raise RuntimeError('Incorrect initial value {} for parameter {}: {}'.format(defvalue, key, e))
             parser.add_argument('--{}'.format(key), 
@@ -675,17 +687,12 @@ class SoS_Script:
         #
         args = vars(parser.parse_args(args))
         # now change the value with passed values
-        for idx in range(len(sections[0].parameters)):
-            if sections[0].parameters[idx][0] in args:
-                # FIXME: proper passing
-                sections[0].parameters[idx][1] = repr(args[sections[0].parameters[idx][0]])
+        for idx in range(len(self.parameters_section.parameters)):
+            if self.parameters_section.parameters[idx][0] in args:
+                self.parameters_section.parameters[idx][1] = repr(args[sections[0].parameters[idx][0]])
 
-    def get_workflow(self, wf_name):
-        #
-        section_steps = sum([x.names for x in self.sections], [])
-        # (name, None) is auxiliary steps
-        workflow_names = set([x[0] for x in section_steps if x[1] is not None and '*' not in x[0]])
-
+    def workflow(self, wf_name):
+        '''Return a workflow with name:step specified in wf_name'''
         allowed_steps = None
         if not wf_name:
             wf_name = ''
@@ -693,22 +700,22 @@ class SoS_Script:
             if ':' in wf_name:
                 wf_name, allowed_steps = wf_name.split(':', 1)
         if not wf_name:
-            if len(workflow_names) == 1:
-                wf_name = list(workflow_names)[0]
-            elif 'default' in workflow_names:
+            if len(self.workflows) == 1:
+                wf_name = list(self.workflows)[0]
+            elif 'default' in self.workflows:
                 wf_name = 'default'
             else:
                 raise ValueError('Name of workflow should be specified because '
                     'the script defines more than one pipelines without a default one. '
-                    'Available pipelines are: {}.'.format(', '.join(workflow_names)))
-        elif wf_name not in workflow_names:
+                    'Available pipelines are: {}.'.format(', '.join(self.workflows)))
+        elif wf_name not in self.workflows:
             raise ValueError('Workflow {} is undefined. Available workflows are: {}'.format(wf_name,
-                ', '.join(workflow_names)))
+                ', '.join(self.workflows)))
         #
         cur_description = None
         description = ''
         for block in self.workflow_descriptions:
-            for name in workflow_names:
+            for name in self.workflows:
                 if block.lstrip().startswith(name):
                     cur_description = name
                     break
@@ -719,7 +726,7 @@ class SoS_Script:
     
     def __repr__(self):
         result = 'SOS Script (version {}\n'.format(self.format_version)
-        result += 'workflows:\n    ' + '\n    '.join(self.workflows.keys())
+        result += 'workflows:\n    ' + '\n    '.join(self.workflows)
         return result
 
     #

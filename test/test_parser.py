@@ -31,8 +31,7 @@ from sostestcase import SoS_TestCase
 
 from pysos import *
 
-
-class TestParser(unittest.TestCase): #SoSTestCase):
+class TestParser(SoS_TestCase):
     def testFileFormat(self):
         '''Test recognizing the format of SoS script'''
         # file format must be 'fileformat=SOSx.x'
@@ -46,6 +45,22 @@ class TestParser(unittest.TestCase): #SoSTestCase):
         # not the default value of 1.0
         self.assertEqual(script.format_version, '1.1')
 
+    def testWorkflows(self):
+        script = SoS_Script('''[0]''')
+        self.assertEqual(sorted(script.workflows), ['default'])
+        script = SoS_Script('''[0]\n[1]''')
+        self.assertEqual(sorted(script.workflows), ['default'])
+        script = SoS_Script('''[0]\n[*_1]''')
+        self.assertEqual(sorted(script.workflows), ['default'])
+        script = SoS_Script('''[0]\n[*_1]\n[auxillary]''')
+        self.assertEqual(sorted(script.workflows), ['default'])
+        script = SoS_Script('''[0]\n[*_1]\n[human_1]''')
+        self.assertEqual(sorted(script.workflows), ['default', 'human'])
+        script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2]''')
+        self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
+        script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2]\n[s*_2]''')
+        self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
+
     def testSections(self):
         '''Test section definitions'''
         # bad names
@@ -55,15 +70,11 @@ class TestParser(unittest.TestCase): #SoSTestCase):
         for badoption in ['ss', 'skip a', 'skip:_']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # allowed names
-        for name in ['a5', 'a_5', '*_0', '*1_100']:
+        for name in ['a5', 'a_5', '*_0', 'a*1_100']:
             SoS_Script('[{}]'.format(name))
-        # glo
+        # no directive in global section
         self.assertRaises(ParsingError, SoS_Script,
             '''input: 'filename' ''')
-
-        script = SoS_Script('scripts/section1.sos')
-        self.assertTrue('section' in script.workflows.keys())
-        self.assertTrue('chapter' in script.workflows.keys())
 
     def testGlobalVariables(self):
         '''Test definition of variables'''

@@ -27,7 +27,7 @@ from .utils import env
 def sos_show(args, argv):
     try:
         script = SoS_Script(args.script, argv)
-        workflow = script.get_workflow(args.workflow)
+        workflow = script.workflow(args.workflow)
         print(workflow)
     except Exception as e:
         env.logger.error(e)
@@ -36,7 +36,7 @@ def sos_show(args, argv):
 def sos_run(args, argv):
     try:
         script = SoS_Script(args.script, argv)
-        workflow = script.get_workflow(args.workflow)
+        workflow = script.workflow(args.workflow)
         workflow.run()
     except Exception as e:
         env.logger.error(e)

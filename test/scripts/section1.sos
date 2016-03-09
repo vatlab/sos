@@ -30,8 +30,7 @@ output:
 	var2,
 	var3
 
-action1()
-action2()
+print()
 var4= 'value4'
 
 [chapter_5]

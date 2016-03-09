@@ -126,6 +126,7 @@ class TestUtils(SoS_TestCase):
                 if isinstance(result, str):
                     self.assertEqual(interpolate(expr.format(l, r), globals(), lvar, sigil=sigil), result)
                 else:
+                    # for cases when the order of output is not guaranteed
                     self.assertTrue(interpolate(expr.format(l, r), globals(), lvar, sigil=sigil) in result)
         #
         # locals should be the one passed to the expression
