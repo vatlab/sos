@@ -62,6 +62,8 @@ class SoS_Step:
         self.names = names
         self.options = options
         self.comment = ''
+        # comment at the end of a section that could be a workflow description
+        self.back_comment = ''
         self.parameters = []
         self.assignments = []
         self.directives = []
@@ -85,10 +87,15 @@ class SoS_Step:
             self.add_assignment(None, line)
         else:
             self.add_statement(line)
+        self.back_comment = ''
 
     def add_comment(self, line):
         '''Add comment line'''
-        self.comment += ' ' + line.lstrip('#').strip()
+        # in parameter section, comments will always be kept
+        if self.is_parameters or self.empty():
+            self.comment += line.lstrip('#').lstrip()
+        else:
+            self.back_comment += line.lstrip('#').lstrip()
 
     def add_assignment(self, key, value):
         '''Assignments are items with '=' type '''
@@ -110,6 +117,7 @@ class SoS_Step:
                 self.assignments.append([key, value])
             self.category = 'expression'
             self.values = [value]
+        self.back_comment = ''
 
     def add_directive(self, key, value):
         '''Assignments are items with ':' type '''
@@ -122,6 +130,7 @@ class SoS_Step:
             self.directives.append([key, value])
             self.category = 'directive'
             self.values = [value]
+        self.back_comment = ''
 
     def add_statement(self, line):
         '''Assignments are items with ':' type '''
@@ -132,6 +141,7 @@ class SoS_Step:
         else:
             self.values.append(line)
         self.category = 'statements'
+        self.back_comment = ''
 
     def isValid(self):
         if not self.values:
@@ -439,6 +449,7 @@ class SoS_Script:
     def _read(self, fp, fpname):
         self.sections = []
         self.format_version = '1.0'
+        self.description = ''
         self.workflow_descriptions = []
         #
         comment_block = 1
@@ -474,15 +485,11 @@ class SoS_Script:
                     elif comment_block > 1:
                         # anything before the first section can be pipeline
                         # description.
-                        self.workflow_descriptions[-1] += line.lstrip('#')
+                        self.workflow_descriptions[-1] += line.lstrip('#').lstrip()
                 else:
-                    if cursect.is_parameters:
-                        # in the parameter section, the comments are description
-                        # of parameters and are all significant
-                        cursect.add_comment(line)
-                    elif comment_block == 1 and cursect.empty():
-                        # in a regular section, we only record the first comment block
-                        cursect.add_comment(line)
+                    # in the parameter section, the comments are description
+                    # of parameters and are all significant
+                    cursect.add_comment(line)
                 continue
             elif not line.strip():
                 # a blank line start a new comment block if we are still
@@ -702,12 +709,21 @@ class SoS_Script:
         cur_description = None
         description = ''
         for block in self.workflow_descriptions:
+            lines = [x for x in block.split('\n') if x.strip()]
+            if not lines:
+                continue
             for name in self.workflows:
-                if block.lstrip().startswith(name):
+                if lines[0].strip() == name:
                     cur_description = name
                     break
             if cur_description == wf_name:
-                description += block + '\n'
+                description += '\n'.join(lines[1:] if lines[0].strip() == wf_name else lines) + '\n'
+            elif cur_description is None:
+                self.description += block + '\n'
+        for section in self.sections:
+            lines = [x for x in section.back_comment.split('\n') if x.strip()]
+            if lines and lines[0].strip() == wf_name:
+                description += '\n'.join(lines[1:]) + '\n'
         # create workflows
         return SoS_Workflow(wf_name, allowed_steps, self.sections, description)
     

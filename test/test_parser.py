@@ -240,5 +240,30 @@ string''', with_option=1
 func(
 ''')
 
+    def testDescriptions(self):
+        script = SoS_Script('''# first block
+
+# global
+# description
+
+# human
+# description of human
+
+# description of human continued
+
+[human_1]
+
+a = '1'
+
+# mouse
+# mouse description
+#
+
+[mouse_1]
+''')
+        self.assertEqual(script.description, 'global\ndescription\n\n')
+        self.assertEqual(script.workflow('human').description, 'description of human\ndescription of human continued\n')
+        self.assertEqual(script.workflow('mouse').description, 'mouse description\n')
+
 if __name__ == '__main__':
     unittest.main()
