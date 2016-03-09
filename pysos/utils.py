@@ -19,12 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-from __future__ import unicode_literals
-
-import logging
 import re
-import parser
-import ast
+import logging
 import collections
 
 import token
@@ -120,7 +116,19 @@ class ColoredFormatter(logging.Formatter):
         return logging.Formatter.format(self, record)
 
 class RuntimeEnvironments(object):
-    'A singleton object that provides runtime environment for SoS'
+    '''A singleton object that provides runtime environment for SoS.
+    Atributes of this object include:
+
+    logger: 
+        a logging object 
+
+    verbosity:
+        a verbosity level object that sets the verbosity level of the logger
+    
+    logfile:
+        name of logfile for the logger. default to no logfile.
+
+    '''
     _instance = None
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
@@ -242,7 +250,15 @@ class InterpolationError(Error):
 #
 class SoS_String:
     '''This class implements SoS string that support interpolation using 
-    a local and a global dictionary'''
+    a local and a global dictionary. It is similar to format string of
+    Python 3.6 with configurable sigil (default to ${ }) and allows the
+    resulting object of types other than simple int, None etc. It also supports
+    a special conversion flag !q that properly quote a filename so that
+    it can be used safely within a shell script. '''
+
+    # Format specifier that can be used at the end of the string to convert
+    # result (!s|r|q) and control output format (:.2f etc). The pattern
+    # is constructed according to Python format mini language.
     _FORMAT_SPECIFIER_TMPL = r'''
         ^                                   # start of expression
         (?P<expr>.*?)                       # any expression
@@ -251,8 +267,7 @@ class SoS_String:
         [s|r|q]                             # conversion, q is added by SoS                       
         )?
         (?P<format_spec>:\s*                # format_spec starting with :
-        (?P<fill>.)?                        # optional fill
-        (?P<align>[<>=^])?                  # optional fill
+        (?P<fill>.?[<>=^])?                 # optional fill|align
         (?P<sign>[-+ ])?                    # optional sign
         \#?                                 #
         0?                                  #
@@ -263,18 +278,21 @@ class SoS_String:
         )?                                  # optional specifier
         \s*$                                # end of tring
         '''
+    
     # DOTALL makes . matchs also to newline so this supports multi-line expression
     FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
 
-    def __init__(self, text, sigil = '${ }'):
-        self.text = text
+    def __init__(self, globals, locals, sigil = '${ }'):
         if sigil.count(' ') != 1 or sigil.startswith(' ') or sigil.endswith(' '):
             raise ValueError('Incorrect sigil "{}"'.format(sigl))
         self.sigil = sigil.split(' ')
         if self.sigil[0] == self.sigil[1]:
             raise ValueError('Incorrect sigl "{}"'.format(sigil))
+        #
+        self.globals = globals
+        self.locals = locals
 
-    def interpolate(self, gvars, lvars):
+    def interpolate(self, text):
         '''Intepolate string with local and global dictionary'''
         #
         # We could potentially parse the text and find all interpolation text,
@@ -284,21 +302,26 @@ class SoS_String:
         #
         # '${a} part1 ${ expr2 ${ nested }} and another ${expr2 {}} and done'
         #
-        # 'a} part1 ' ' expr2 ' 'nested }} and another' 'expr2 {}} and done'
+        # '' 'a} part1 ' ' expr2 ' 'nested }} and another' 'expr2 {}} and done'
         #
-        pieces = self.text.split(self.sigil[0], 1)
+        pieces = text.split(self.sigil[0], 1)
         if len(pieces) == 1:
             # nothing to split, so we are done
-            return self.text
+            return text
         else:
             # the first piece must be before sigil and be completed text
-            return pieces[0] + self._interpolate(pieces[1], gvars, lvars)
+            return pieces[0] + self._interpolate(pieces[1])
 
-    def _interpolate(self, text, gvars, lvars, start_nested=0):
+    def _interpolate(self, text, start_nested=0):
+        '''Intepolate an expression with unknown ending location. We cannot split
+        the string because of potentially nested expression. start_nested indicates
+        that the location of nested expression can only happen after this point.
+        '''
         # no matching }, must be wrong
         if self.sigil[1] not in text:
             raise InterpolationError(text[:20], "Missing {}".format(self.sigil[1]))
-        #
+        # 
+        # location of first ending sigil
         i = text.index(self.sigil[1])
         #
         # substr contains ${
@@ -315,16 +338,17 @@ class SoS_String:
             #            k
             #
             try:
-                return self._interpolate(text[:k] + self._interpolate(text[k+len(self.sigil[0]):], gvars, lvars), gvars, lvars)
+                # expolate string recursively.
+                return self._interpolate(text[:k] + self._interpolate(text[k + len(self.sigil[0]):]))
             except Exception as e:
                 # This is for the case where inner sigil is actually part of the syntax. For example, if
                 # sigil = []
                 #
-                # [[x*2 x for x in [a, b]]]
+                # [[x*2 for x in [a, b]]]
                 #
                 # will first try to evaluate 
                 #
-                # x*2 x for x in [a, b]
+                # x*2 for x in [a, b]
                 #
                 # without success. This part will then try to evaluate
                 #
@@ -332,8 +356,10 @@ class SoS_String:
                 #
                 # namely keeping [] as python expression
                 #
-                return self._interpolate(text, gvars, lvars, start_nested=k + len(self.sigil[0]))
+                return self._interpolate(text, start_nested=k + len(self.sigil[0]))
         else:
+            # non-nested case, proceed from left to right
+            #
             #            i
             # something {} } ${ another }
             #                k
@@ -344,14 +370,18 @@ class SoS_String:
                     mo = self.FORMAT_SPECIFIER.match(text[:j])
                     if mo:
                         expr = mo.group('expr')
+                        fmt = mo.group('specifier')
                     else:
                         expr = text[:j]
+                        fmt = None
+                    # if the syntax is correct
                     compile(expr, '<string>', 'eval')
-                    pieces = text[j+len(self.sigil[1]):].split(self.sigil[0], 1)
-                    if len(pieces) == 1:
-                        return self._evaluate(text[:j], gvars, lvars) + text[j+len(self.sigil[1]):]
-                    else:
-                        return self._evaluate(text[:j]) + pieces[0] + self._interpolate(pieces[1])
+                    try:
+                        result = eval(expr, self.globals, self.locals)
+                    except Exception as e:
+                        raise InterpolationError(expr, e)
+                    # evaluate the expression and interpolate the next expression
+                    return self._repr(result, fmt) + self.interpolate(text[j+len(self.sigil[1]):])
                 except Exception as e:
                     if self.sigil[1] not in text[j+1:]:
                         raise InterpolationError(text[:j], e)
@@ -360,46 +390,43 @@ class SoS_String:
                     # something {} } ${ another }
                     #                k
                     if j > k:
-                        return self._interpolate(text[:k] + self._interpolate(text[k+len(self.sigil[0]):], gvars, lvars), gvars, lvars)
+                        return self._interpolate(text[:k] + self._interpolate(text[k+len(self.sigil[0]):]))
 
     def _format(self, obj, fmt):
+        '''Format an object in basic type (not list etc)
+        '''
+        # handling special !q conversion flag
         if fmt.startswith('!q'):
             # special SoS conversion for shell quotation.
             return self._format(quote(obj), fmt[2:])
         else:
+            # use 
             return ('{' + fmt + '}').format(obj)
         
     def _repr(self, obj, fmt=None):
+        '''Format an object. fmt will be applied to all elements if obj is not
+        in a basic type. Callable object cannot be outputed (an InterpolationError
+        will be raised).
+        '''
         if isinstance(obj, basestring):
             return obj if fmt is None else self._format(obj, fmt)
         elif isinstance(obj, collections.Iterable):
+            # the object might be nested...
             return ' '.join([self._repr(x, fmt) for x in obj])
         elif isinstance(obj, collections.Callable):
             raise InterpolationError(repr(obj), 'Cannot interpolate callable object.')
         else:
             return repr(obj) if fmt is None else self._format(obj, fmt)
 
-    def _evaluate(self, text, gvars, lvars):
-        try:
-            mo = self.FORMAT_SPECIFIER.match(text)
-            if mo:
-                expr = mo.group('expr')
-                fmt = mo.group('specifier')
-                result = eval(expr, gvars, lvars)
-            else:
-                result = eval(text, gvars, lvars)
-                fmt = None
-        except Exception as e:
-            raise InterpolationError(text, e)
-        return self._repr(result, fmt)
-
-def interpolate(text, gvars={}, lvars={}, sigil='${ }'):
+def interpolate(text, globals={}, locals={}, sigil='${ }'):
     # all string is raw string....
-    return SoS_String(text, sigil).interpolate(gvars, lvars)
+    return SoS_String(globals, locals, sigil).interpolate(text)
 
 
 class _WorkflowDict(dict):
-    """
+    """A dictionary object that
+    1. Generate logging message for debugging purposes.
+    2. Allow access of values from attributes.
     """
     def __init__(self):
         dict.__init__(self)
@@ -424,63 +451,34 @@ class _WorkflowDict(dict):
         return self.__dict__[key]
 
 
-class SoS_String_Converter(ast.NodeTransformer):
-    '''This string converter vists a Python AST tree
-    and process string literals in it. It
-    1. interpolate expressions in the string literals.
-    2. make sure all string literals are treated as raw literals. 
-
-    What happens is that
-
-    1. The parser reads multi-line literals as
-
-    """This is \n in first line
-    This is the second line.
-    """
-
-    2. If we evaluate the expression directly, we would get
-
-    "This is \n in the first line\nThis is the second line"
-
-    3. We should treat the input to be raw string so that the
-    string is evaluated to
-
-    "This is \\n in the first line\nThis is the second line"
-
-    The problem is that when we hit the Str node, the string is already
-    processed ans there is no way we can know the original form.
-
-    '''
-    def __init__(self, globals, locals, sigil='${ }'):
-        ast.NodeTransformer.__init__(self)
-        self.globals = globals
-        self.locals = locals
-        self.sigil = sigil
-    
-    def visit_Str(self, node):
-        #env.logger.error(ast.dump(node))
-        #env.logger.error('PASSED "{}"'.format(node.s))
-        return ast.copy_location(
-            ast.Str(interpolate(node.s, self.globals, self.locals, self.sigil)), node)
-
 def ConvertString(s, globals, locals, sigil):
+    '''Convert a unicode string to a raw string and interpolate expressions
+    within it by parsing the python expression and statement BEFORE they are
+    evaluated (or executed).
+    '''
     result = []
-    g = generate_tokens(StringIO(s).readline)   # tokenize the string
+    # tokenize the input syntax.
+    g = generate_tokens(StringIO(s.decode()).readline)
     for toknum, tokval, _, _, _  in g:
         if toknum == token.STRING:
-            # if this item is a strong
+            # if this item is a string that uses single or triple single quote
             if tokval.startswith("'"):
-                # we first convert it to a raw string if it starts with ' or '''
+                # we convert it to a raw string
                 tokval = u'r' + tokval 
             # we then perform interpolation on the string and put it back to expression
             tokval = repr(interpolate(eval(tokval), globals, locals, sigil))
+        # the resusting string is put back to the expression (or statement)
         result.append((toknum, tokval))
     return untokenize(result)
 
 def SoS_eval(expr, globals, locals, sigil='${ }'):
-    expr = ConvertString(expr.decode(), globals, locals, sigil)
+    '''Evaluate an expression after modifying (convert ' ' string to raw string,
+    interpolate expressions) strings.'''
+    expr = ConvertString(expr, globals, locals, sigil)
     return eval(expr, globals, locals)
 
 def SoS_exec(stmts, globals, locals, sigil='${ }'):
-    stmts = ConvertString(stmts.decode(), globals, locals, sigil)
+    '''Execute a statement after modifying (convert ' ' string to raw string,
+    interpolate expressions) strings.'''
+    stmts = ConvertString(stmts, globals, locals, sigil)
     exec(stmts, globals, locals)

@@ -60,7 +60,7 @@ class TestUtils(SoS_TestCase):
             self.assertEqual(line_count, 16)
 
     def testInterpolation(self):
-        lvar = {
+        locals = {
             'a': 100,
             'b': 20,
             'c': ['file1', 'file2', 'file3'],
@@ -84,6 +84,8 @@ class TestUtils(SoS_TestCase):
                 ('Pre {0}a+b*5{1} and {0}a{1} after', 'Pre 200 and 100 after'),
                 ('Nested {0}a+b*{0}b/2{1}{1}', 'Nested 300'),
                 ('Format {0}a:.5f{1}', 'Format 100.00000'),
+                ('{0}var2[:2]{1}', '1 2'),
+                ('{0}var2[1:]{1}', '2 3.1'),
                 # nested 
                 ('Nested {0}a:.{0}4+1{1}f{1}', 'Nested 100.00000'),
                 # deep nested
@@ -124,13 +126,39 @@ class TestUtils(SoS_TestCase):
             ]:
                 #print('Interpolating "{}" with sigal "{}"'.format(expr.format(l, r).replace('\n', r'\n'), sigil))
                 if isinstance(result, str):
-                    self.assertEqual(interpolate(expr.format(l, r), globals(), lvar, sigil=sigil), result)
+                    self.assertEqual(interpolate(expr.format(l, r), globals(), locals, sigil=sigil), result)
                 else:
                     # for cases when the order of output is not guaranteed
-                    self.assertTrue(interpolate(expr.format(l, r), globals(), lvar, sigil=sigil) in result)
+                    self.assertTrue(interpolate(expr.format(l, r), globals(), locals, sigil=sigil) in result)
         #
         # locals should be the one passed to the expression
-        self.assertTrue('file_ws' in interpolate('${locals().keys()}', globals(), lvar))
+        self.assertTrue('file_ws' in interpolate('${locals().keys()}', globals(), locals))
 
+    def testEval(self):
+        '''Test the evaluation of SoS expression'''
+        locals = {
+            'a': 100,
+            'b': 'file name',
+            'c': ['file1', 'file2', 'file 3'],
+            'd': {'a': 'file1', 'b':'file2'},
+        }
+        for expression, result in [
+            ('''"This is ${a+100}"''', 'This is 200'),
+            ('''"${a+100}" + "${a/100}"''', "2001"),
+            ('''"${c[1]}"''', 'file2'),
+            ('''"${c[1:]}"''', 'file2 file 3'),
+            ('''"${d}"''', 'a b'),
+            ('''"${d}"*2''', 'a ba b'),
+            ('''"${d['a']}"''', 'file1'),
+            ('''"${b!q}"''', "'file name'"),
+            ('''"${b!r}"''', "'file name'"),
+            ('''"${c!q}"''', "file1 file2 'file 3'"),
+            ]:
+            self.assertEqual(SoS_eval(expression, globals(), locals), result)
+        #
+        # interpolation will only happen in string
+        self.assertRaises(SyntaxError, SoS_eval, '''${a}''', globals(), locals)
+
+        
 if __name__ == '__main__':
     unittest.main()
