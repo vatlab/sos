@@ -101,10 +101,13 @@ class TestParser(SoS_TestCase):
             '''somefunc() ''')
         # allow definition
         SoS_Script('''a = '1' ''')
-        SoS_Script('''a = b''')
+        SoS_Script('''a = ['a', 'b'] ''')
         # but this one has incorrect syntax
         self.assertRaises(ParsingError, SoS_Script,
             '''a = 'b  ''')
+        # This one also does not work because b is not defined.
+        self.assertRaises(RuntimeError, SoS_Script,
+            '''a = b  ''')
         # multi-line string literal
         SoS_Script('''a = """
 this is a multi line
@@ -141,6 +144,15 @@ func()
         script = SoS_Script('scripts/section1.sos', args=['--par1', 'var2'])
         # need to check if par1 is set to correct value
         self.assertEqual(script.parameter('par1'), "var2")
+        # 
+        # test parameter using global definition
+        script = SoS_Script('''
+a="100"
+
+[parameters]
+b=str(int(a)+1)
+''')
+        self.assertEqual(script.parameter('b'), '101')
 
 
     def testSectionVariables(self):

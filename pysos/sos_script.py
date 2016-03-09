@@ -649,14 +649,15 @@ class SoS_Script:
 
     def _parse_args(self, args):
         '''Parse command line arguments and set values to parameters section'''
-        if not args:
-            return
         # first, we need to look for the global section and evaluate it because
         # the parameter section might use variables defined in it.
         wf = self.workflow(self.workflows[0] + ':0')
+        wf.prepareVars()
         if not wf.parameters_section:
             return
-        wf.prepareVars()
+        # 
+        if not args:
+            return
         #
         parser = argparse.ArgumentParser()
         for key, defvalue, _ in wf.parameters_section.parameters:
@@ -708,7 +709,7 @@ class SoS_Script:
             if cur_description == wf_name:
                 description += block + '\n'
         # create workflows
-        return SoS_Workflow(name, allowed_steps, self.sections, description)
+        return SoS_Workflow(wf_name, allowed_steps, self.sections, description)
     
     def __repr__(self):
         result = 'SOS Script (version {}\n'.format(self.format_version)
@@ -719,11 +720,12 @@ class SoS_Script:
     # for testing purposes
     # 
     def parameter(self, name):
-        sections = [x for x in self.sections if x.is_parameters]
-        if len(sections) == 0:
-            return None
-        for key, value, _ in sections[0].parameters:
+        wf = self.workflow(self.workflows[0] + ':0')
+        if not wf.parameters_section:
+            return
+        wf.prepareVars()
+        for key, value, _ in wf.parameters_section.parameters:
             if key == name:
-                return eval(value)
+                return SoS_eval(value, wf.globals, wf.locals)
         return None
         

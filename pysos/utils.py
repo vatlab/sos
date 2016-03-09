@@ -425,8 +425,9 @@ def interpolate(text, globals={}, locals={}, sigil='${ }'):
 
 class _WorkflowDict(dict):
     """A dictionary object that
-    1. Generate logging message for debugging purposes.
-    2. Allow access of values from attributes.
+    1. restrict data type to string, list of string, or dictionary of string.
+    2. Generate logging message for debugging purposes.
+    3. Allow access of values from attributes.
     """
     def __init__(self):
         dict.__init__(self)
