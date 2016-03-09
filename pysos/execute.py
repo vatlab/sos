@@ -20,14 +20,24 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import sys
 from .sos_script import SoS_Script
+from .utils import env
 
 def sos_show(args, argv):
-    script = SoS_Script(args.script, argv)
-    workflow = script.get_workflow(args.workflow)
-    print(workflow)
+    try:
+        script = SoS_Script(args.script, argv)
+        workflow = script.get_workflow(args.workflow)
+        print(workflow)
+    except Exception as e:
+        env.logger.error(e)
+        sys.exit(1)
     
 def sos_run(args, argv):
-    script = SoS_Script(args.script, argv)
-    workflow = script.get_workflow(args.workflow)
-    workflow.run()
+    try:
+        script = SoS_Script(args.script, argv)
+        workflow = script.get_workflow(args.workflow)
+        workflow.run()
+    except Exception as e:
+        env.logger.error(e)
+        sys.exit(1)

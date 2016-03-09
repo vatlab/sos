@@ -19,10 +19,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
+from __future__ import unicode_literals
 
 import logging
 import re
+import parser
+import ast
 import collections
+
+import token
+from tokenize import generate_tokens, untokenize
+from io import StringIO
 
 try:
     # python 3.3
@@ -387,30 +394,28 @@ class SoS_String:
         return self._repr(result, fmt)
 
 def interpolate(text, gvars={}, lvars={}, sigil='${ }'):
+    # all string is raw string....
     return SoS_String(text, sigil).interpolate(gvars, lvars)
 
 
-class _WorkflowDict(collections.MutableMapping):
+class _WorkflowDict(dict):
     """
     """
     def __init__(self):
-        MutableMapping.__init__(self)
+        dict.__init__(self)
 
     def __setitem__(self, key, value):
-        # Use the uppercased key for lookups, but store the actual
-        # key alongside the value.
-        reset = 'reset' if key in self.__dict__ else 'set' # and value != self._store[key.upper()][1] else 'set'
-        if not isinstance(value, (str, list, tuple)):
-            value = str(value)
-            env.logger.warning('Pipeline variable {} is converted to "{}"'.format(key, value))
-        if isinstance(value, (list, tuple)) and not all([isinstance(x, str) for x in value]):
-            raise ValueError('Only string or list of strings are allowed for pipeline variables: {} for key {}'.format(value, key))
-        self.__dict__[key] = value
+        if not (isinstance(value, basestring) or  \
+            (isinstance(value, list) and all(isinstance(x, basestring) for x in value)) or \
+            (isinstance(value, dict) and all(isinstance(x, basestring) for x in value.keys()) and 
+                all(isinstance(x, basestring) for x in value.values())) ):
+            raise ValueError('SoS variable can only be string or list or dictionary of strings.')
+        dict.__setitem__(self, key, value)
         if isinstance(value, str) or len(value) <= 2 or len(str(value)) < 50:
-            env.logger.debug('Workflow variable ``{}`` is {} to ``{}``'.format(key, reset, str(value)))
+            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, str(value)))
         else: # should be a list or tuple
             val = str(value).split(' ')[0] + ' ...] ({} items)'.format(len(value))
-            env.logger.debug('Workflow variable ``{}`` is {} to ``{}``'.format(key, reset, val))
+            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, val))
 
     def __setattr__(self, key, value):
         self.__dict__[key] = value
@@ -418,3 +423,64 @@ class _WorkflowDict(collections.MutableMapping):
     def __getattr__(self, key):
         return self.__dict__[key]
 
+
+class SoS_String_Converter(ast.NodeTransformer):
+    '''This string converter vists a Python AST tree
+    and process string literals in it. It
+    1. interpolate expressions in the string literals.
+    2. make sure all string literals are treated as raw literals. 
+
+    What happens is that
+
+    1. The parser reads multi-line literals as
+
+    """This is \n in first line
+    This is the second line.
+    """
+
+    2. If we evaluate the expression directly, we would get
+
+    "This is \n in the first line\nThis is the second line"
+
+    3. We should treat the input to be raw string so that the
+    string is evaluated to
+
+    "This is \\n in the first line\nThis is the second line"
+
+    The problem is that when we hit the Str node, the string is already
+    processed ans there is no way we can know the original form.
+
+    '''
+    def __init__(self, globals, locals, sigil='${ }'):
+        ast.NodeTransformer.__init__(self)
+        self.globals = globals
+        self.locals = locals
+        self.sigil = sigil
+    
+    def visit_Str(self, node):
+        #env.logger.error(ast.dump(node))
+        #env.logger.error('PASSED "{}"'.format(node.s))
+        return ast.copy_location(
+            ast.Str(interpolate(node.s, self.globals, self.locals, self.sigil)), node)
+
+def ConvertString(s, globals, locals, sigil):
+    result = []
+    g = generate_tokens(StringIO(s).readline)   # tokenize the string
+    for toknum, tokval, _, _, _  in g:
+        if toknum == token.STRING:
+            # if this item is a strong
+            if tokval.startswith("'"):
+                # we first convert it to a raw string if it starts with ' or '''
+                tokval = u'r' + tokval 
+            # we then perform interpolation on the string and put it back to expression
+            tokval = repr(interpolate(eval(tokval), globals, locals, sigil))
+        result.append((toknum, tokval))
+    return untokenize(result)
+
+def SoS_eval(expr, globals, locals, sigil='${ }'):
+    expr = ConvertString(expr.decode(), globals, locals, sigil)
+    return eval(expr, globals, locals)
+
+def SoS_exec(stmts, globals, locals, sigil='${ }'):
+    stmts = ConvertString(stmts.decode(), globals, locals, sigil)
+    exec(stmts, globals, locals)

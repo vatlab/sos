@@ -23,7 +23,7 @@
 import sys
 import argparse
 
-from pysos import SOS_VERSION, SOS_FULL_VERSION
+from pysos import SOS_VERSION, SOS_FULL_VERSION, env
 
 ## from pysos.utils import env
 ## import subprocess
@@ -100,6 +100,7 @@ if __name__ == '__main__':
 ##                 sys.argv[idx] = ' '
 ##     #
     args, argv = master_parser.parse_known_args()
+    env.verbosity = args.verbosity
 ##     # python3 does not raise an error "too few arguments" when no argument is
 ##     # provided so we have to explicitly handle this case. The output of command
 ##     # vtools is therefore different in python 2 (error message) and 3 (help message).

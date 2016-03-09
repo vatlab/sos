@@ -28,9 +28,8 @@ from collections import OrderedDict, defaultdict
 # Python 2.7 should also have this module
 from io import StringIO
 
-from .utils import env, Error, _WorkflowDict
-import pprint
-
+from .utils import env, Error, _WorkflowDict, SoS_eval, SoS_exec
+from .actions import *
 
 class ArgumentError(Error):
     """Raised when an invalid argument is passed."""
@@ -133,18 +132,37 @@ class SoS_Step:
         self.last_line = '!'
 
     def run(self, GVARS, VARS):
-        # handle assignment
+        if isinstance(self.index, int):
+            VARS['workflow_index'] = str(self.index)
+        #
+        # assignment
+        # 
         if self.is_parameters:
             for key, value, _ in self.parameters:
-                VARS[key] = eval(value, GVARS, VARS)
+                try:
+                    VARS[key] = SoS_eval(value, GVARS, VARS)
+                except Exception as e:
+                    raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
         else:
             for key, value in self.assignments:
-                VARS[key] = eval(value, GVARS, VARS)
+                try:
+                    VARS[key] = SoS_eval(value, GVARS, VARS)
+                except Exception as e:
+                    raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
         #
         # directives
         #
+        for key, value in self.directives:
+            try:
+                ret = evaluate('_directive_{}({})'.format(key, value), GVARS, VARS)
+            except Exception as e:
+                raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
+        #
         # action
-        exec('\n'.join(self.statements))
+        try:
+            SoS_exec('\n'.join(self.statements), GVARS, VARS)
+        except Exception as e:
+            raise RuntimeError('Failed to execute statement {}: {}'.format('\n'.join(self.statements), e))
 
     def __repr__(self):
         result = ''
@@ -169,6 +187,15 @@ class SoS_Step:
         result += '\n'
         return result
 
+# directive functions
+def _directive_input(*args, **kwargs):
+    pass
+
+def _directive_depends(*args, **kwargs):
+    pass
+
+def _directive_output(*args, **kwargs):
+    pass
 
 class SoS_Workflow:
     #
@@ -176,6 +203,7 @@ class SoS_Workflow:
     #
     def __init__(self, workflow_name, allowed_steps, sections, description):
         '''create a workflow from its name and a list of SoS_Sections (using name matching)'''
+        self.name = workflow_name
         self.description = description
         self.sections = []
         self.global_section = None
@@ -240,12 +268,28 @@ class SoS_Workflow:
         'Very preliminary run function'
         GVARS = {}
         VARS = _WorkflowDict()
+        # initial values
+        try:
+            VARS['home'] = os.environ['HOME']
+        except:
+            VARS['home'] = '.'
+        #
+        VARS['workflow_name'] = self.name
+        VARS['workdir'] = os.path.abspath('.')
+        #
+        # There is no input initially
+        VARS['step_input'] = []
+        #
         if self.global_section:
-            global_section.run(GVARS, VARS)
+            self.global_section.run(GVARS, VARS)
         if self.parameters_section:
-            parameters_section.run(GVARS, VARS)
+            self.parameters_section.run(GVARS, VARS)
         for section in self.sections:
             section.run(GVARS, VARS)
+            if 'step_output' in VARS:
+                # passing step output to step_input of next step
+                VARS['step_input'] = VARS['step_output']
+                VARS.pop('step_output')
 
     def __repr__(self):
         result = '__WORKFLOW__\n'
@@ -529,7 +573,8 @@ class SoS_Script:
                 stck.clear()
                 #
                 var_name = mo.group('var_name')
-                var_value = mo.group('var_value')
+                # newline should be kept for multi-line assignment
+                var_value = mo.group('var_value') + '\n'
                 # if first line of the section, or following another assignment
                 # this is assignment
                 if cursect.empty() or cursect.last_line == '=':
@@ -555,7 +600,8 @@ class SoS_Script:
                 stck.clear()
                 #
                 directive_name = mo.group('directive_name')
-                directive_value = mo.group('directive_value')
+                # newline should be kept in case of multi-line directive
+                directive_value = mo.group('directive_value') + '\n'
                 if cursect is None:
                     parsing_errors.append(lineno, line, 'Directive {} is not allowed out side of a SoS step'.format(directive_name))
                     continue
@@ -618,7 +664,7 @@ class SoS_Script:
         for key, defvalue, _ in sections[0].parameters:
             try:
                 # FIXME: proper evaluation
-                defvalue = eval(defvalue)
+                defvalue = SoS_eval(defvalue)
             except Exception as e:
                 raise RuntimeError('Incorrect initial value {} for parameter {}: {}'.format(defvalue, key, e))
             parser.add_argument('--{}'.format(key), 
@@ -648,7 +694,7 @@ class SoS_Script:
                 wf_name, allowed_steps = wf_name.split(':', 1)
         if not wf_name:
             if len(workflow_names) == 1:
-                wf_name = workflow_names[0]
+                wf_name = list(workflow_names)[0]
             elif 'default' in workflow_names:
                 wf_name = 'default'
             else:
