@@ -24,12 +24,11 @@
 import os
 import unittest
 
-from sostestcase import SoS_TestCase
 import shlex
 
 from pysos.utils import *
 
-class TestUtils(SoS_TestCase):
+class TestUtils(unittest.TestCase):
     def testLogger(self):
         'Test logging level'
         for verbosity in ['0', '1', '2', '3']:

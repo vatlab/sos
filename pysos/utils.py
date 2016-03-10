@@ -19,9 +19,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
+import os
 import re
 import logging
 import collections
+import hashlib
+import shutil
 
 import token
 from tokenize import generate_tokens, untokenize
@@ -434,10 +437,10 @@ class _WorkflowDict(dict):
 
     def __setitem__(self, key, value):
         if not (isinstance(value, basestring) or  \
-            (isinstance(value, list) and all(isinstance(x, basestring) for x in value)) or \
+            (isinstance(value, (tuple, list)) and all(isinstance(x, basestring) for x in value)) or \
             (isinstance(value, dict) and all(isinstance(x, basestring) for x in value.keys()) and 
                 all(isinstance(x, basestring) for x in value.values())) ):
-            raise ValueError('SoS variable can only be string or list or dictionary of strings.')
+            raise ValueError('SoS variable can only be string or list or dictionary of strings. "{}" for variable "{}" is provided.'.format(value, key))
         dict.__setitem__(self, key, value)
         if isinstance(value, str) or len(value) <= 2 or len(str(value)) < 50:
             env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, str(value)))
@@ -483,3 +486,157 @@ def SoS_exec(stmts, globals, locals, sigil='${ }'):
     interpolate expressions) strings.'''
     stmts = ConvertString(stmts, globals, locals, sigil)
     exec(stmts, globals, locals)
+
+
+
+def textMD5(text):
+    '''Get md5 of a piece of text'''
+    m = hashlib.md5()
+    m.update(text)
+    return m.hexdigest()
+
+def partialMD5(filename):
+    filesize = os.path.getsize(filename)
+    # calculate md5 for specified file
+    md5 = hashlib.md5()
+    block_size = 2**20  # buffer of 1M
+    try:
+        if filesize < 2**26:
+            with open(filename, 'rb') as f:
+                while True:
+                    data = f.read(block_size)
+                    if not data:
+                        break
+                    md5.update(data)
+        else:
+            count = 64
+            # otherwise, use the first and last 500M
+            with open(filename, 'rb') as f:
+                while True:
+                    data = f.read(block_size)
+                    count -= 1
+                    if count == 32:
+                        f.seek(-2**25, 2)
+                    if not data or count == 0:
+                        break
+                    md5.update(data)
+    except IOError as e:
+        sys.exit('Failed to read {}: {}'.format(filename, e))
+    return md5.hexdigest()
+
+
+class RuntimeInfo:
+    def __init__(self, output_files=[], pid=None):
+        if not output_files:
+            self.sig_file = None
+            self.proc_out = None
+            self.proc_err = None
+            self.proc_lck = None
+            self.proc_info = None
+            self.proc_cmd = None
+            self.proc_prog = None
+            self.proc_done = None
+            self.manifest = None
+        else:
+            if isinstance(output_files, list):
+                output_file = output_files[0]
+            elif isinstance(output_files, str):
+                output_file = output_files
+            else:
+                raise ValueError('Invalid output file specification: {}'.format(output_files))
+            #
+            # what is the relative 
+            #
+            # is the file relative to this cache_parent?
+            rel_path = os.path.relpath(os.path.realpath(os.path.expanduser(output_file)), os.path.realpath('.'))
+            # if this file is not relative to cache, use global signature file
+            if rel_path.startswith('../'):
+                self.sig_file = os.path.join(os.path.expanduser('~/.runtime'),
+                    os.path.realpath(os.path.expanduser(output_file)).lstrip(os.sep))
+            else:
+                # if this file is relative to cache, use cache to store signature file
+                self.sig_file = os.path.join('.sos', rel_path)
+            # path to file
+            sig_path = os.path.split(self.sig_file)[0]
+            if not os.path.isdir(sig_path):
+                try:
+                    os.makedirs(sig_path)
+                except Exception as e:
+                    raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
+            env.logger.trace('Using signature file {} for output {}'.format(self.sig_file, output_file))
+            if pid is None:
+                self.pid = os.getpid()
+            else:
+                self.pid = pid
+            self.proc_out = '{}.out_{}'.format(self.sig_file, self.pid)
+            self.proc_err = '{}.err_{}'.format(self.sig_file, self.pid)
+            self.proc_lck = '{}.lck'.format(self.sig_file)
+            self.proc_info = '{}.exe_info'.format(self.sig_file)
+            self.proc_cmd = '{}.cmd'.format(self.sig_file)
+            self.proc_done = '{}.done_{}'.format(self.sig_file, self.pid)
+            self.proc_prog = '{}.working_{}'.format(self.sig_file, self.pid)
+            self.manifest = '{}.manifest'.format(self.sig_file)
+            #
+            # now if there is an old signature file, let us move it to the new location
+            if os.path.isfile('{}.exe_info'.format(output_file)):
+                env.logger.info('Moving {}.exe_info from older version of variant tools to local cache'.format(output_file))
+                shutil.move('{}.exe_info'.format(output_file), self.proc_info)
+            
+    def write(self, cmd, ifiles, ofiles, dfiles):
+        if not self.proc_info:
+            return
+        with open(self.proc_info, 'w') as md5:
+            md5.write('{}\n'.format(textMD5(cmd)))
+            for f in ifiles + ofiles + dfiles:
+                md5.write('{}\t{}\n'.format(f, partialMD5(f)))
+
+    def validate(self, cmd, ifiles, ofiles, dfiles):
+        '''Check if ofiles and ifiles match signatures recorded in md5file'''
+        if not self.proc_info or not os.path.isfile(self.proc_info):
+            return False
+
+        _ifiles = [ifiles] if not isinstance(ifiles, list) else ifiles
+        _ofiles = [ofiles] if not isinstance(ofiles, list) else ofiles
+        _dfiles = [dfiles] if not isinstance(dfiles, list) else dfiles
+        #
+        # file not exist?
+        if not all(os.path.isfile(x) for x in _ifiles + _ofiles + _dfiles):
+            return False
+        #
+        # compare timestamp of input and output files
+        files_checked = {os.path.realpath(x):False for x in _ifiles + _ofiles + _dfiles}
+        with open(self.proc_info) as md5:
+            cmdMD5 = md5.readline().strip()   # command
+            if textMD5(cmd) != cmdMD5:
+                return False
+            for line in md5:
+                try:
+                    f, m = line.rsplit('\t', 1)
+                except Exception as e:
+                    env.logger.error('Wrong md5 line {} in {}: {}'.format(line, md5file, e))
+                    continue
+                if os.path.realpath(f) not in files_checked:
+                    env.logger.waring('{} not need to be checked'.format(f))
+                    continue
+                if partialMD5(f) != m.strip():
+                    env.logger.warning('MD5 mismatch {}'.format(f))
+                    return False
+                files_checked[os.path.realpath(f)] = True
+        #
+        if not all(files_checked.values()):
+            env.logger.warning('No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y)))
+            return False
+        return True
+
+
+    def clear(self, types=['out', 'err', 'done']):
+        if self.sig_file is None:
+            return
+        for filename in sum([glob.glob(self.sig_file + '.{}_*'.format(x)) for x in types], []):
+            try:
+                os.remove(filename)
+            except Exception as e:
+                env.logger.warning('Fail to remove {}: {}'.format(filename, e))
+
+
+

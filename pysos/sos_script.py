@@ -30,7 +30,7 @@ from itertools import tee, izip, combinations
 # Python 2.7 should also have this module
 from io import StringIO
 
-from .utils import env, Error, _WorkflowDict, SoS_eval, SoS_exec
+from .utils import env, Error, _WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo
 from .actions import *
 
 class ArgumentError(Error):
@@ -182,7 +182,6 @@ class SoS_Step:
                 raise ValueError('Length of variable {} (length {}) should match the number of input files (length {}).'
                     .format(wv, len(values), len(ifiles)))
             file_map = {x:y for x,y in zip(ifiles, values)}
-            #env.logger.error('Paring {}'.format(file_map))
             for idx,val in enumerate(values):
                 set_vars[idx]['_' + wv] = [file_map[x] for x in self._groups[idx]]
         return set_vars
@@ -318,20 +317,44 @@ class SoS_Step:
         globals['self'] = self
         self.locals = locals
         self.globals = globals
+        locals['step_output'] = []
+        locals['step_depends'] = []
+        self._groups = [[]]
+        self._vars = [[]]
         for key, value in self.directives:
             try:
                 ret = SoS_eval('self._directive_{}({})'.format(key, value), globals, locals)
             except Exception as e:
                 raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
         #
+        if locals['step_output']:
+            signature = RuntimeInfo(locals['step_output'])
+            for ofile in locals['step_output']:
+                if not os.path.isdir(os.path.split(ofile)[0]):
+                    os.makedirs(os.path.split(ofile)[0])
+            if signature.validate(''.join(self.statements),
+                locals['step_input'], locals['step_output'], locals['step_depends']):
+                # everything matches
+                env.logger.info('Reusing existing output files {}'.format(', '.join(locals['step_output'])))
+                return
+        else:
+            signature = None
+        #
         for g, v in zip(self._groups, self._vars):
             locals.update(v)
             locals['input'] = g
             # action
             try:
-                SoS_exec('\n'.join(self.statements), globals, locals)
+                env.logger.debug('Running \n{}'.format(''.join(self.statements)))
+                SoS_exec(''.join(self.statements), globals, locals)
             except Exception as e:
-                raise RuntimeError('Failed to execute statement\n\n{}\n\n{}'.format('\n'.join(self.statements), e))
+                raise RuntimeError('Failed to execute statement\n\n{}\n\n{}'.format(''.join(self.statements), e))
+        for ofile in locals['step_output']:
+            if not os.path.isfile(ofile):
+                raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
+        if signature:
+            signature.write(''.join(self.statements), 
+                locals['step_input'], locals['step_output'], locals['step_depends'])
 
     def __repr__(self):
         result = ''
@@ -704,9 +727,13 @@ class SoS_Script:
                 # check previous expression before a new assignment
                 if not cursect.isValid():
                     parsing_errors.append(lineno -1 , ''.join(cursect.values), 'Invalid ' + cursect.category)
+                    continue
                 cursect.values = []
                 #
                 var_name = mo.group('var_name')
+                if var_name in self._DIRECTIVES:
+                    parsing_errors.append(lineno - 1, line, 'directive name cannot be used as variables')
+                    continue
                 # newline should be kept for multi-line assignment
                 var_value = mo.group('var_value') + '\n'
                 # if first line of the section, or following another assignment
@@ -809,6 +836,10 @@ class SoS_Script:
         for idx in range(len(wf.parameters_section.parameters)):
             if wf.parameters_section.parameters[idx][0] in args:
                 wf.parameters_section.parameters[idx][1] = repr(args[wf.parameters_section.parameters[idx][0]])
+
+    def run(self, wf_name=None):
+        wf = self.workflow(wf_name)
+        wf.run()
 
     def workflow(self, wf_name):
         '''Return a workflow with name:step specified in wf_name'''

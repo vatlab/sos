@@ -27,11 +27,9 @@ from __future__ import unicode_literals
 import os
 import unittest
 
-from sostestcase import SoS_TestCase
-
 from pysos import *
 
-class TestParser(SoS_TestCase):
+class TestParser(unittest.TestCase):
     def testFileFormat(self):
         '''Test recognizing the format of SoS script'''
         # file format must be 'fileformat=SOSx.x'
@@ -157,7 +155,16 @@ b=str(int(a)+1)
 
     def testSectionVariables(self):
         '''Test variables in sections'''
-        pass
+        # directive name cannot be used as variable
+        self.assertRaises(ParsingError, SoS_Script,
+            '''[0]
+input='a.txt' ''')
+        self.assertRaises(ParsingError, SoS_Script,
+            '''[0]
+output='a.txt' ''')
+        self.assertRaises(ParsingError, SoS_Script,
+            '''[0]
+depends='a.txt' ''')
 
     def testSectionDirectives(self):
         '''Test directives of sections'''
