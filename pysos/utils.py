@@ -43,67 +43,9 @@ except ImportError:
     # python 2.7
     from HTMLParser import HTMLParser
 
-
-from array import array
-try:
-    from fcntl import ioctl
-    import termios
-except ImportError:
-    pass
-
-def getTermWidth():
-    try:
-        h, w = array('h', ioctl(sys.stderr, termios.TIOCGWINSZ, '\0' * 8))[:2]
-        return w
-    except:
-        return 78
-
-
-class _DeHTMLParser(HTMLParser):
-    def __init__(self):
-        HTMLParser.__init__(self)
-        self.__text = []
-
-    def handle_data(self, data):
-        text = data.strip()
-        if len(text) > 0:
-            text = re.sub('[ \t\r\n]+', ' ', text)
-            self.__text.append(text + ' ')
-
-    def handle_starttag(self, tag, attrs):
-        if tag == 'p':
-            self.__text.append('\n\n\n\n')
-        elif tag == 'br':
-            self.__text.append('\n\n')
-        elif tag == 'ul':
-            self.__text.append('')
-        elif tag == 'li':
-            self.__text.append('\n\n  * ')
-
-    def handle_endtag(self, tag):
-        if tag == 'ul':
-            self.__text.append('\n\n')
-        if tag == 'li':
-            self.__text.append('\n\n')
-
-    def handle_startendtag(self, tag, attrs):
-        if tag == 'br':
-            self.__text.append('\n\n')
-
-    def text(self):
-        return ''.join(self.__text).strip()
-
-
-def dehtml(text):
-    try:
-        parser = _DeHTMLParser()
-        parser.feed(text)
-        parser.close()
-        return parser.text()
-    except Exception as e:
-        env.logger.warning('Failed to dehtml text: {}'.format(e))
-        return text
-
+#
+# Logging and runtime environment
+# 
 
 class ColoredFormatter(logging.Formatter):
     ''' A logging formatter that uses color to differntiate logging messages
@@ -276,6 +218,82 @@ class RuntimeEnvironments(object):
 # set up environment variable and a default logger
 env = RuntimeEnvironments()
 
+
+#
+# String formatting 
+#
+
+
+from array import array
+try:
+    from fcntl import ioctl
+    import termios
+except ImportError:
+    pass
+
+def getTermWidth():
+    '''Get the width of current user terminal to properly wrap SoS 
+    output when well-formatted output is required.
+    '''
+    try:
+        h, w = array('h', ioctl(sys.stderr, termios.TIOCGWINSZ, '\0' * 8))[:2]
+        return w
+    except:
+        return 78
+
+class _DeHTMLParser(HTMLParser):
+    '''This parser analyzes input text, removes HTML tags such as
+    <p>, <br>, <ul>, <li> etc and returns properly formatted texts.
+    '''
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.__text = []
+
+    def handle_data(self, data):
+        text = data.strip()
+        if len(text) > 0:
+            text = re.sub('[ \t\r\n]+', ' ', text)
+            self.__text.append(text + ' ')
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'p':
+            self.__text.append('\n\n\n\n')
+        elif tag == 'br':
+            self.__text.append('\n\n')
+        elif tag == 'ul':
+            self.__text.append('')
+        elif tag == 'li':
+            self.__text.append('\n\n  * ')
+
+    def handle_endtag(self, tag):
+        if tag == 'ul':
+            self.__text.append('\n\n')
+        if tag == 'li':
+            self.__text.append('\n\n')
+
+    def handle_startendtag(self, tag, attrs):
+        if tag == 'br':
+            self.__text.append('\n\n')
+
+    def text(self):
+        return ''.join(self.__text).strip()
+
+def dehtml(text):
+    '''Remove HTML tag in input text and format the texts
+    accordingly. '''
+    try:
+        parser = _DeHTMLParser()
+        parser.feed(text)
+        parser.close()
+        return parser.text()
+    except Exception as e:
+        env.logger.warning('Failed to dehtml text: {}'.format(e))
+        return text
+
+#
+# String interpolation and expression evluation
+#
+
 # exception classes
 class Error(Exception):
     '''Base class for SoS_ScriptParser exceptions.'''
@@ -306,13 +324,14 @@ class Error(Exception):
 
 
 class InterpolationError(Error):
-    """Base class for interpolation-related exceptions."""
-
+    '''Exception raised for interpolation related errors'''
     def __init__(self, text, msg):
-        #if len(text) > 20:
-        #    msg = '{}: "{}..."'.format(msg, text[:20])
-        #else:
-        msg = '{}: "{}"'.format(msg, text)
+        if '\n' in text:
+            # if there is newline in original text, output it in separate
+            # lines
+            msg = '{}:\n{}\n'.format(msg, text)
+        else:
+            msg = '{}: {}'.format(msg, text)
         Error.__init__(self, msg)
         self.args = (text, msg)
 
@@ -415,15 +434,15 @@ class SoS_String:
                 # This is for the case where inner sigil is actually part of the syntax. For example, if
                 # sigil = []
                 #
-                # [[x*2 for x in [a, b]]]
+                #     [[x*2 for x in [a, b]]]
                 #
                 # will first try to evaluate
                 #
-                # x*2 for x in [a, b]
+                #     x*2 for x in [a, b]
                 #
                 # without success. This part will then try to evaluate
                 #
-                # [x*2 x for x in [a, b]]
+                #     [x*2 x for x in [a, b]]
                 #
                 # namely keeping [] as python expression
                 #
@@ -490,45 +509,17 @@ class SoS_String:
             return repr(obj) if fmt is None else self._format(obj, fmt)
 
 def interpolate(text, globals={}, locals={}, sigil='${ }'):
-    # all string is raw string....
+    '''Evaluate expressions in `text` marked by specified `sigil` using provided
+    global and local dictionaries, and replace the expressions with their formatted strings.'''
     return SoS_String(globals, locals, sigil).interpolate(text)
-
-
-class _WorkflowDict(dict):
-    """A dictionary object that
-    1. restrict data type to string, list of string, or dictionary of string.
-    2. Generate logging message for debugging purposes.
-    3. Allow access of values from attributes.
-    """
-    def __init__(self):
-        dict.__init__(self)
-
-    def __setitem__(self, key, value):
-        #if not (isinstance(value, basestring) or  \
-        #    (isinstance(value, (tuple, list)) and all(isinstance(x, basestring) for x in value)) or \
-        #    (isinstance(value, dict) and all(isinstance(x, basestring) for x in value.keys()) and
-        #        all(isinstance(x, basestring) for x in value.values())) ):
-        #    raise ValueError('SoS variable can only be string or list or dictionary of strings. "{}" for variable "{}" is provided.'.format(value, key))
-        dict.__setitem__(self, key, value)
-        if isinstance(value, (str, int, float, bool)) or (isinstance(value, collections.Sequence) and len(value) <= 2) or len(str(value)) < 50:
-            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, str(value)))
-        elif isinstance(value, collections.Sequence): # should be a list or tuple
-            val = str(value).split(' ')[0] + ' ...] ({} items)'.format(len(value))
-            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, val))
-        else:
-            env.logger.debug('Workflow variable ``{}`` is set to ``{}...``'.format(key, str(val)[:40]))
-
-    def __setattr__(self, key, value):
-        self.__dict__[key] = value
-
-    def __getattr__(self, key):
-        return self.__dict__[key]
-
 
 def ConvertString(s, globals, locals, sigil):
     '''Convert a unicode string to a raw string and interpolate expressions
     within it by parsing the python expression and statement BEFORE they are
     evaluated (or executed).
+
+    FIXME: the expression might have a dynamic option which should prevent
+    string interpolation. Not sure how to handle this option right now.
     '''
     result = []
     # tokenize the input syntax.
@@ -557,7 +548,44 @@ def SoS_exec(stmts, globals, locals, sigil='${ }'):
     stmts = ConvertString(stmts, globals, locals, sigil)
     exec(stmts, globals, locals)
 
+#
+# SoS Workflow dictionary
+#
+class WorkflowDict(dict):
+    """A dictionary object that
+    1. Generate logging message for debugging purposes.
+    2. Allow access of values from attributes. As a trick to reduce logging messages, the
+       attribute interface does not trigger logging message.
 
+    Potential future expansion of this dictionary include
+    1. Read only item. An error will be raised if a readonly item is changed.
+    2. Temporary items. A function might be provided to remove all temporary items.
+    """
+    def __init__(self):
+        dict.__init__(self)
+
+    def __setitem__(self, key, value):
+        dict.__setitem__(self, key, value)
+        if isinstance(value, (str, int, float, bool)) or (isinstance(value, collections.Sequence) \
+            and len(value) <= 2) or len(str(value)) < 50:
+            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, str(value)))
+        elif isinstance(value, collections.Sequence): # should be a list or tuple
+            val = str(value).split(' ')[0] + ' ...] ({} items)'.format(len(value))
+            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, val))
+        else:
+            env.logger.debug('Workflow variable ``{}`` is set to ``{}...``'.format(key, repr(val)[:40]))
+
+    def __setattr__(self, key, value):
+        '''a.key = value is equivalent to a['key'] = value'''
+        dict.__setitem__(self, key, value)
+
+    def __getattr__(self, key):
+        '''a.key is equivalent to a['key']'''
+        return dict.__getitem__(self, key)
+
+#
+# Runtime signature
+#
 
 def textMD5(text):
     '''Get md5 of a piece of text'''
@@ -566,6 +594,10 @@ def textMD5(text):
     return m.hexdigest()
 
 def partialMD5(filename):
+    '''Calculate partial MD5, basically the first and last 32M
+    of the file for large files. This should signicicantly reduce
+    the time spent on the creation and comparison of file signature
+    when dealing with large bioinformatics datasets. '''
     filesize = os.path.getsize(filename)
     # calculate md5 for specified file
     md5 = hashlib.md5()
@@ -580,7 +612,7 @@ def partialMD5(filename):
                     md5.update(data)
         else:
             count = 64
-            # otherwise, use the first and last 500M
+            # otherwise, use the first and last 32M
             with open(filename, 'rb') as f:
                 while True:
                     data = f.read(block_size)
@@ -596,7 +628,20 @@ def partialMD5(filename):
 
 
 class RuntimeInfo:
-    def __init__(self, output_files=[], pid=None):
+    '''Record run time information related to a number of output files. Right now only the
+    .exe_info files are used.
+    '''
+    def __init__(self, output_files=[], pid=None, workdir='.'):
+        '''Runtime information for specified output files
+        output_files:
+            intended output file
+
+        pid:
+            process id.
+
+        workdir:
+            Current working directory.
+        '''
         if not output_files:
             self.sig_file = None
             self.proc_out = None
@@ -610,22 +655,20 @@ class RuntimeInfo:
         else:
             if isinstance(output_files, list):
                 output_file = output_files[0]
-            elif isinstance(output_files, str):
+            elif isinstance(output_files, basestring):
                 output_file = output_files
             else:
                 raise ValueError('Invalid output file specification: {}'.format(output_files))
             #
-            # what is the relative
-            #
-            # is the file relative to this cache_parent?
-            rel_path = os.path.relpath(os.path.realpath(os.path.expanduser(output_file)), os.path.realpath('.'))
+            # If the output path is outside of the current working directory
+            rel_path = os.path.relpath(os.path.realpath(os.path.expanduser(output_file)), os.path.realpath(workdir))
             # if this file is not relative to cache, use global signature file
             if rel_path.startswith('../'):
-                self.sig_file = os.path.join(os.path.expanduser('~/.runtime'),
+                self.sig_file = os.path.join(os.path.expanduser('~/.sos/.runtime'),
                     os.path.realpath(os.path.expanduser(output_file)).lstrip(os.sep))
             else:
-                # if this file is relative to cache, use cache to store signature file
-                self.sig_file = os.path.join('.sos', rel_path)
+                # if this file is relative to cache, use local directory
+                self.sig_file = os.path.join('.sos/.runtime', rel_path)
             # path to file
             sig_path = os.path.split(self.sig_file)[0]
             if not os.path.isdir(sig_path):
@@ -646,38 +689,33 @@ class RuntimeInfo:
             self.proc_done = '{}.done_{}'.format(self.sig_file, self.pid)
             self.proc_prog = '{}.working_{}'.format(self.sig_file, self.pid)
             self.manifest = '{}.manifest'.format(self.sig_file)
-            #
-            # now if there is an old signature file, let us move it to the new location
-            if os.path.isfile('{}.exe_info'.format(output_file)):
-                env.logger.info('Moving existing {}.exe_info to local cache'.format(output_file))
-                shutil.move('{}.exe_info'.format(output_file), self.proc_info)
 
-    def write(self, cmd, ifiles, ofiles, dfiles):
+    def write(self, script, ifiles, ofiles, dfiles):
+        '''Write .exe_info file with signature of script, input, output and dependent files.'''
         if not self.proc_info:
             return
         with open(self.proc_info, 'w') as md5:
-            md5.write('{}\n'.format(textMD5(cmd)))
+            md5.write('{}\n'.format(textMD5(script)))
             for f in ifiles + ofiles + dfiles:
                 md5.write('{}\t{}\n'.format(f, partialMD5(f)))
 
-    def validate(self, cmd, ifiles, ofiles, dfiles):
+    def validate(self, script, ifiles, ofiles, dfiles):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
         if not self.proc_info or not os.path.isfile(self.proc_info):
             return False
 
-        _ifiles = [ifiles] if not isinstance(ifiles, list) else ifiles
-        _ofiles = [ofiles] if not isinstance(ofiles, list) else ofiles
-        _dfiles = [dfiles] if not isinstance(dfiles, list) else dfiles
+        _ifiles = [ifiles] if isinstance(ifiles, basestring) else ifiles
+        _ofiles = [ofiles] if isinstance(ofiles, basestring) else ofiles
+        _dfiles = [dfiles] if isinstance(dfiles, basestring) else dfiles
         #
         # file not exist?
         if not all(os.path.isfile(x) for x in _ifiles + _ofiles + _dfiles):
             return False
         #
-        # compare timestamp of input and output files
         files_checked = {os.path.realpath(x):False for x in _ifiles + _ofiles + _dfiles}
         with open(self.proc_info) as md5:
             cmdMD5 = md5.readline().strip()   # command
-            if textMD5(cmd) != cmdMD5:
+            if textMD5(script) != cmdMD5:
                 return False
             for line in md5:
                 try:
@@ -689,7 +727,7 @@ class RuntimeInfo:
                     env.logger.waring('{} not need to be checked'.format(f))
                     continue
                 if partialMD5(f) != m.strip():
-                    env.logger.warning('MD5 mismatch {}'.format(f))
+                    env.logger.error('MD5 mismatch {}'.format(f))
                     return False
                 files_checked[os.path.realpath(f)] = True
         #
@@ -697,7 +735,6 @@ class RuntimeInfo:
             env.logger.warning('No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y)))
             return False
         return True
-
 
     def clear(self, types=['out', 'err', 'done']):
         if self.sig_file is None:

@@ -89,6 +89,7 @@ counter = counter + 1
         self.assertEqual(wf.locals['all_loop'], "1 1 1 2 2 2 ")
 
     def testAlias(self):
+        '''Test option output_alias'''
         script = SoS_Script(r"""
 [0: input_alias=ia, output_alias=oa]
 files = ['a.txt', 'b.txt']

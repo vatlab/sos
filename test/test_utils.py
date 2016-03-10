@@ -30,7 +30,7 @@ from pysos.utils import *
 
 class TestUtils(unittest.TestCase):
     def testLogger(self):
-        'Test logging level'
+        '''Test logging level'''
         for verbosity in ['0', '1', '2', '3']:
             env.verbosity = verbosity
             env.logger.trace('Verbosity {}:trace message with ``empahsized text`` in between'.format(env.verbosity))
@@ -59,6 +59,7 @@ class TestUtils(unittest.TestCase):
             self.assertEqual(line_count, 16)
 
     def testInterpolation(self):
+        '''Test string interpolation'''
         locals = {
             'a': 100,
             'b': 20,
@@ -158,6 +159,14 @@ class TestUtils(unittest.TestCase):
         # interpolation will only happen in string
         self.assertRaises(SyntaxError, SoS_eval, '''${a}''', globals(), locals)
 
+    def testWorkflowDict(self):
+        '''Test workflow dict with attribute access'''
+        d = WorkflowDict()
+        d['a'] = 1
+        self.assertEqual(d.a, 1)
+        #
+        d.a += 1
+        self.assertEqual(d['a'], 2)
         
 if __name__ == '__main__':
     unittest.main()

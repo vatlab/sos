@@ -44,6 +44,7 @@ class TestParser(unittest.TestCase):
         self.assertEqual(script.format_version, '1.1')
 
     def testWorkflows(self):
+        '''Test workflows defined in SoS script'''
         script = SoS_Script('''[0]''')
         self.assertEqual(sorted(script.workflows), ['default'])
         script = SoS_Script('''[0]\n[1]''')
@@ -250,6 +251,7 @@ output: 'filename',  'filename2', opt=value==1
 ''')
 
     def testInput(self):
+        '''Test input directive'''
         script = SoS_Script('''
 [0]
 files = ['a.txt', 'b.txt']
@@ -278,6 +280,7 @@ func(
 ''')
 
     def testDescriptions(self):
+        '''Test script and workflow descriptions'''
         script = SoS_Script('''# first block
 
 # global

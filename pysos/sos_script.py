@@ -38,7 +38,7 @@ except ImportError:
 # Python 2.7 should also have this module
 from io import StringIO
 
-from .utils import env, Error, _WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, dehtml, getTermWidth
+from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, dehtml, getTermWidth
 from .actions import *
 
 class ArgumentError(Error):
@@ -86,6 +86,9 @@ class SoS_Step:
         self.category = None
         self.values = []
 
+    #
+    # Parsing input
+    #
     def empty(self):
         '''If there is no content (comment does not count)'''
         return self.category is None
@@ -153,6 +156,35 @@ class SoS_Step:
         self.category = 'statements'
         self.back_comment = ''
 
+    def isValid(self):
+        if not self.values:
+            return True
+        try:
+            if self.category == 'expression':
+                compile(''.join(self.values), filename='<string>', mode='eval')
+            elif self.category == 'directive':
+                # we add func() because the expression can be multi-line and
+                # can have keyword-argument like options
+                #
+                # However, python considers
+                #
+                #     func('value', )
+                #
+                # a valid syntax but we do want , to continue to the next line
+                if self.values[-1].strip().endswith(','):
+                    return False
+                compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
+            elif self.category == 'statements':
+                compile(''.join(self.values), filename='<string>', mode='exec')
+            else:
+                raise RuntimeError('Unrecognized expression type {}'.format(self.category))
+            return True
+        except Exception as e:
+            return False
+
+    #
+    # Execution: input options
+    #
     def _get_groups(self, ifiles, group_by):
         # for this special case, the step is skipped
         if group_by == 'single':
@@ -225,7 +257,9 @@ class SoS_Step:
                 tmp.extend(copy.deepcopy(self._vars))
             self._vars = tmp
 
-    # directive functions
+    #
+    # Execution; directives
+    #
     def _directive_input(self, *args, **kwargs):
         # first *args are filenames
         if args:
@@ -278,32 +312,9 @@ class SoS_Step:
                 ofiles.extend(arg)
         self.locals['step_output'] = ofiles
 
-    def isValid(self):
-        if not self.values:
-            return True
-        try:
-            if self.category == 'expression':
-                compile(''.join(self.values), filename='<string>', mode='eval')
-            elif self.category == 'directive':
-                # we add func() because the expression can be multi-line and
-                # can have keyword-argument like options
-                #
-                # However, python considers
-                #
-                #     func('value', )
-                #
-                # a valid syntax but we do want , to continue to the next line
-                if self.values[-1].strip().endswith(','):
-                    return False
-                compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
-            elif self.category == 'statements':
-                compile(''.join(self.values), filename='<string>', mode='exec')
-            else:
-                raise RuntimeError('Unrecognized expression type {}'.format(self.category))
-            return True
-        except Exception as e:
-            return False
-
+    #
+    # Execution
+    #
     def run(self, globals, locals):
         if isinstance(self.index, int):
             locals['workflow_index'] = str(self.index)
@@ -325,12 +336,19 @@ class SoS_Step:
         #
         # directives
         #
+        # the following is a quick hack to allow _directive_input function etc to access 
+        # the workflow dictionary
         globals['self'] = self
         self.locals = locals
         self.globals = globals
         locals['step_output'] = []
         locals['step_depends'] = []
-        self._groups = [[]]
+        #
+        # default input groups and vars
+        if 'step_input' in locals:
+            self._groups = [locals['step_input']]
+        else:
+            self._groups = [[]]
         self._vars = [[]]
         for key, value in self.directives:
             try:
@@ -364,7 +382,7 @@ class SoS_Step:
                 env.logger.debug('Running \n{}'.format(''.join(self.statements)))
                 SoS_exec(''.join(self.statements), globals, locals)
             except Exception as e:
-                raise RuntimeError('Failed to execute statement\n\n{}\n\n{}'.format(''.join(self.statements), e))
+                raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
         for ofile in locals['step_output']:
             if not os.path.isfile(ofile):
                 raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
@@ -394,7 +412,6 @@ class SoS_Step:
             result += line
         result += '\n'
         return result
-
 
 
 class SoS_Workflow:
@@ -469,7 +486,7 @@ class SoS_Workflow:
     def prepareVars(self):
         '''Prepare global variables '''
         self.globals = globals()
-        self.locals = _WorkflowDict()
+        self.locals = WorkflowDict()
         # initial values
         try:
             self.locals['home'] = os.environ['HOME']
@@ -483,20 +500,26 @@ class SoS_Workflow:
             self.global_section.run(self.globals, self.locals)
 
     def run(self):
-        '''Very preliminary run function
+        '''Very preliminary implementation of sequential execution function
         '''
+        # process global variables
         self.prepareVars()
-        # There is no input initially
-        self.locals['step_input'] = []
-        #
+        # process parameter section
         if self.parameters_section:
             self.parameters_section.run(self.globals, self.locals)
+        #
+        # process step of the pipeline
+        # There is no input initially
+        self.locals['step_input'] = []
         for section in self.sections:
             section.run(self.globals, self.locals)
+            # set the output to the input of the next step
             if 'step_output' in self.locals:
                 # passing step output to step_input of next step
                 self.locals['step_input'] = self.locals['step_output']
+                # step_output and depends are temporary
                 self.locals.pop('step_output')
+                self.locals.pop('step_depends')
 
     def show(self, parameters=True):
         textWidth = max(60, getTermWidth())
@@ -593,10 +616,10 @@ class SoS_Script:
         '''.format('|'.join(_DIRECTIVES))
 
     _ASSIGNMENT_TMPL = r'''
-        ^                                   # from start of line
-        (?P<var_name>[\w_][\d\w_]*)         # variable name
-        \s*=\s*                             # assignment
-        (?P<var_value>.*)                   # variable content
+        ^                                  # from start of line
+        (?P<var_name>[\w_][\d\w_]*)        # variable name
+        \s*=\s*                            # assignment
+        (?P<var_value>.*)                  # variable content
         '''
 
     SECTION_HEADER = re.compile(_SECTION_HEADER_TMPL, re.VERBOSE)
@@ -863,10 +886,9 @@ class SoS_Script:
         parser = argparse.ArgumentParser()
         for key, defvalue, _ in wf.parameters_section.parameters:
             try:
-                # FIXME: proper evaluation
                 defvalue = SoS_eval(defvalue, wf.globals, wf.locals)
             except Exception as e:
-                raise RuntimeError('Incorrect initial value {} for parameter {}: {}'.format(defvalue, key, e))
+                raise RuntimeError('Incorrect default value {} for parameter {}: {}'.format(defvalue, key, e))
             parser.add_argument('--{}'.format(key), type=type(defvalue),
                 nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, basestring) else '?',
                 default=defvalue)
@@ -939,13 +961,13 @@ class SoS_Script:
         #
         text = 'Available workflows: {}'.format(', '.join(sorted(self.workflows)))
         print('\n' + '\n'.join(textwrap.wrap(text, width=textWidth, subsequent_indent=' '*8)))
-        #
-        # parameters
+        # details of each workflow
         for wf_name in self.workflows:
             #print('\n{}:'.format(wf_name))
             wf = self.workflow(wf_name)
             wf.show(parameters=False)
         #
+        # parameters
         if wf.parameters_section:
             print('\nParameters:')
             for k,v,c in wf.parameters_section.parameters:
@@ -969,6 +991,9 @@ class SoS_Script:
                 return SoS_eval(value, wf.globals, wf.locals)
         return None
 
+#
+# subcommmand show
+#
 def sos_show(args, argv):
     try:
         script = SoS_Script(args.script, argv)
@@ -981,6 +1006,9 @@ def sos_show(args, argv):
         env.logger.error(e)
         sys.exit(1)
 
+#
+# subcommand run
+#
 def sos_run(args, argv):
     try:
         script = SoS_Script(args.script, argv)
