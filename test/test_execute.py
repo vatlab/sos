@@ -39,26 +39,29 @@ output: 'temp/a.txt', 'temp/b.txt'
 run('''echo "a.txt" > 'temp/a.txt' ''')
 run('''echo "b.txt" > 'temp/b.txt' ''')
 
-[1]
+[1: output_alias=oa]
 dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', labels='dest'
 output: dest
 
 run(''' cp ${input} ${_dest} ''')
 """)
-        script.workflow('default:0').run()
+        wf = script.workflow('default:0')
+        wf.run()
         # not the default value of 1.0
         self.assertTrue(os.path.isfile('temp/a.txt'))
         self.assertTrue(os.path.isfile('temp/b.txt'))
         self.assertTrue(open('temp/a.txt').read(), 'a.txt')
         self.assertTrue(open('temp/b.txt').read(), 'b.txt')
         #
-        script.workflow('default').run()
+        wf = script.workflow('default')
+        wf.run()
         # not the default value of 1.0
         self.assertTrue(os.path.isfile('temp/c.txt'))
         self.assertTrue(os.path.isfile('temp/d.txt'))
         self.assertTrue(open('temp/c.txt').read(), 'a.txt')
         self.assertTrue(open('temp/d.txt').read(), 'b.txt')
+        self.assertEqual(wf.locals['oa'], ['temp/c.txt', 'temp/d.txt'])
         
 
     def testForEach(self):
@@ -74,7 +77,7 @@ all_loop = ''
 
 input: 'a.pdf', files, group_by='single', labels='names', for_each='c'
 
-all_names += _name + " "
+all_names += _names[0] + " "
 all_loop += _c + " "
 
 counter = str(int(counter) + 1)
@@ -82,7 +85,24 @@ counter = str(int(counter) + 1)
         wf = script.workflow('default')
         wf.run()
         self.assertEqual(wf.locals['counter'], "6")
+        self.assertEqual(wf.locals['all_names'], "a b c a b c ")
+        self.assertEqual(wf.locals['all_loop'], "1 1 1 2 2 2 ")
 
+    def testAlias(self):
+        script = SoS_Script(r"""
+[0: input_alias=ia, output_alias=oa]
+files = ['a.txt', 'b.txt']
+names = ['a', 'b', 'c']
+c = ['1', '2']
+counter = "0"
+
+input: 'a.pdf', files, group_by='single', labels='names', for_each='c'
+
+counter = str(int(counter) + 1)
+""")
+        wf = script.workflow('default')
+        wf.run()
+        self.assertEqual(wf.locals['ia'], ["a.pdf", 'a.txt', 'b.txt'])
 
 if __name__ == '__main__':
     unittest.main()

@@ -65,7 +65,7 @@ class TestParser(unittest.TestCase):
         for badname in ['56_1', '_a', 'a_', '1x', '*', '?']:
             self.assertRaises(ParsingError, SoS_Script, '[{}]'.format(badname))
         # bad options
-        for badoption in ['ss', 'skip a', 'skip:_']:
+        for badoption in ['ss', 'skip a', 'skip:_', 'skip, skip']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # allowed names
         for name in ['a5', 'a_5', '*_0', 'a*1_100']:

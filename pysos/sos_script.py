@@ -329,7 +329,12 @@ class SoS_Step:
                 ret = SoS_eval('self._directive_{}({})'.format(key, value), globals, locals)
             except Exception as e:
                 raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
-        #
+        # input alias
+        if 'input_alias' in self.options:
+            locals[self.options['input_alias']] = locals['step_input']
+        if 'output_alias' in self.options:
+            locals[self.options['output_alias']] = locals['step_output']
+
         if locals['step_output']:
             signature = RuntimeInfo(locals['step_output'])
             for ofile in locals['step_output']:
@@ -676,7 +681,7 @@ class SoS_Script:
                 section_name = mo.group('section_name').strip()
                 section_option = mo.group('section_option')
                 step_names = []
-                step_options = []
+                step_options = {}
                 for name in section_name.split(','):
                     mo = self.SECTION_NAME.match(name)
                     if mo:
@@ -693,7 +698,10 @@ class SoS_Script:
                     for option in section_option.split(','):
                         mo = self.SECTION_OPTION.match(option)
                         if mo:
-                            step_options.append(mo.group('name', 'value'))
+                            opt_name, opt_value = mo.group('name', 'value')
+                            if opt_name in step_options:
+                                parsing_errors.append(lineno - 1, line, 'Duplicate options')
+                            step_options[opt_name] = opt_value
                         else:
                             parsing_errors.append(lineno - 1, line, 'Invalid section option')
                 for name in step_names:
