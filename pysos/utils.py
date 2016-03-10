@@ -25,7 +25,6 @@ import logging
 import collections
 import hashlib
 import shutil
-from HTMLParser import HTMLParser
 import token
 from tokenize import generate_tokens, untokenize
 from io import StringIO
@@ -36,6 +35,14 @@ try:
 except ImportError:
     # python 2.7
     from pipes import quote
+
+try:
+    # python 3.x
+    from html.parser import HTMLParser
+except ImportError:
+    # python 2.7
+    from HTMLParser import HTMLParser
+
 
 from array import array
 try:

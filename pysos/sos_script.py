@@ -27,7 +27,13 @@ import copy
 import argparse
 import textwrap
 from collections import OrderedDict, defaultdict, Sequence
-from itertools import tee, izip, combinations
+from itertools import tee, combinations
+try:
+    # python 2.7
+    import izip
+except ImportError:
+    # python 3.x
+    izip = zip
 
 # Python 2.7 should also have this module
 from io import StringIO
@@ -79,7 +85,7 @@ class SoS_Step:
         # indicate the type of input of the last line
         self.category = None
         self.values = []
-    
+
     def empty(self):
         '''If there is no content (comment does not count)'''
         return self.category is None
@@ -172,7 +178,7 @@ class SoS_Step:
         elif isinstance(labels, list):
             labels = labels
         else:
-            raise ValueError('Unacceptable value for parameter labels: {}'.format(labels)) 
+            raise ValueError('Unacceptable value for parameter labels: {}'.format(labels))
         #
         ifiles = self.locals['step_input']
         set_vars = [{} for x in self._groups]
@@ -297,13 +303,13 @@ class SoS_Step:
             return True
         except Exception as e:
             return False
-            
+
     def run(self, globals, locals):
         if isinstance(self.index, int):
             locals['workflow_index'] = str(self.index)
         #
         # assignment
-        # 
+        #
         if self.is_parameters:
             for key, value, _ in self.parameters:
                 try:
@@ -363,7 +369,7 @@ class SoS_Step:
             if not os.path.isfile(ofile):
                 raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
         if signature:
-            signature.write(''.join(self.statements), 
+            signature.write(''.join(self.statements),
                 locals['step_input'], locals['step_output'], locals['step_depends'])
 
     def __repr__(self):
@@ -525,11 +531,11 @@ class SoS_Workflow:
             result += repr(self.parameters_section)
         for sect in self.sections:
             result += repr(sect)
-        return result 
+        return result
 
 class SoS_Script:
     _DIRECTIVES = ['input', 'output', 'depends']
-    _SECTION_OPTIONS = ['input_alias', 'output_alias', 'nonconcurrent', 
+    _SECTION_OPTIONS = ['input_alias', 'output_alias', 'nonconcurrent',
         'skip', 'blocking', 'sigil', 'target']
     _PARAMETERS_SECTION_NAME = 'parameters'
 
@@ -538,8 +544,8 @@ class SoS_Script:
         \[                                 # [
         (?P<section_name>[\d\w_,*\s]+)     # digit, alphabet, _ and ,
         (:\s*                              # :
-        (?P<section_option>[^]]*)          # section options 
-        )?                                 # optional 
+        (?P<section_option>[^]]*)          # section options
+        )?                                 # optional
         \]                                 # ]
         '''
 
@@ -553,16 +559,16 @@ class SoS_Script:
         (?(name)                           # if there is name
         (_(?P<index>\d+))?                 #   optional _index
         |(?P<default_index>\d+))           # no name, then index
-        \s*$                                  
+        \s*$
         '''
-    
+
     _SECTION_OPTION_TMPL = '''
         ^\s*                               # start
         (?P<name>{})                       # one of the option names
         (\s*=\s*                           # =
         (?P<value>.+)                      # value
         )?                                 # value is optional
-        \s*$                                  
+        \s*$
         '''.format('|'.join(_SECTION_OPTIONS))
 
     _FORMAT_LINE_TMPL = r'''
@@ -602,10 +608,10 @@ class SoS_Script:
     ASSIGNMENT = re.compile(_ASSIGNMENT_TMPL, re.VERBOSE)
 
     def __init__(self, content, args=[]):
-        '''Parse a sectioned SoS script file. Please refer to the SoS manual 
+        '''Parse a sectioned SoS script file. Please refer to the SoS manual
         for detailed specification of this format.
-        
-        Parameter `content` can be either a filename or a content of a 
+
+        Parameter `content` can be either a filename or a content of a
         SoS script in unicode.
         '''
         if os.path.isfile(content):
@@ -614,17 +620,17 @@ class SoS_Script:
         else:
             with StringIO(content) as fp:
                 self._read(fp, '<string>')
-        # 
+        #
         # workflows in this script
         section_steps = sum([x.names for x in self.sections], [])
         # (name, None) is auxiliary steps
         self.workflows = list(set([x[0] for x in section_steps if x[1] is not None and '*' not in x[0]]))
         if not self.workflows:
             self.workflows = ['default']
-        # this will update values in the default section with 
+        # this will update values in the default section with
         # values read from command line
         self._parse_args(args)
-        
+
     def _read(self, fp, fpname):
         self.sections = []
         self.format_version = '1.0'
@@ -685,14 +691,14 @@ class SoS_Script:
                 if line.strip():
                     cursect.extend(line)
                 continue
-            # 
+            #
             # is it a continuation of uncompleted assignment or directive?
             if cursect and not cursect.isValid():
                 cursect.extend(line)
                 continue
             #
             # a new line (start from first column)
-            # 
+            #
             # section header?
             mo = self.SECTION_HEADER.match(line)
             if mo:
@@ -732,7 +738,7 @@ class SoS_Script:
                 for name in step_names:
                     prev_workflows = [x[0] for x in all_step_names if '*' not in x[0]]
                     for prev_name in all_step_names:
-                        # auxillary step 
+                        # auxillary step
                         if name[1] is None and prev_name[1] is None and name[0] != prev_name[0]:
                             continue
                         # index not euqal (one of them can be None)
@@ -776,7 +782,7 @@ class SoS_Script:
                 # this is assignment
                 if cursect.empty() or cursect.category == 'expression':
                     cursect.add_assignment(var_name, var_value)
-                # 
+                #
                 # if following a directive, this must be start of an action
                 elif cursect.category == 'directive':
                     cursect.add_statement('{} = {}\n'.format(var_name, var_value))
@@ -850,7 +856,7 @@ class SoS_Script:
         wf.prepareVars()
         if not wf.parameters_section:
             return
-        # 
+        #
         if not args:
             return
         #
@@ -862,7 +868,7 @@ class SoS_Script:
             except Exception as e:
                 raise RuntimeError('Incorrect initial value {} for parameter {}: {}'.format(defvalue, key, e))
             parser.add_argument('--{}'.format(key), type=type(defvalue),
-                nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, basestring) else '?', 
+                nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, basestring) else '?',
                 default=defvalue)
         #
         parser.error = self._parse_error
@@ -918,7 +924,7 @@ class SoS_Script:
                 description += '\n'.join(lines[1:]) + '\n'
         # create workflows
         return SoS_Workflow(wf_name, allowed_steps, self.sections, description)
-    
+
     def __repr__(self):
         result = 'SOS Script (version {}\n'.format(self.format_version)
         result += 'workflows:\n    ' + '\n    '.join(self.workflows)
@@ -927,7 +933,7 @@ class SoS_Script:
     def show(self):
         textWidth = max(60, getTermWidth())
         if self.description:
-            # separate \n\n 
+            # separate \n\n
             for paragraph in dehtml(self.description).split('\n\n'):
                 print('\n'.join(textwrap.wrap(paragraph, width=textWidth)))
         #
@@ -952,7 +958,7 @@ class SoS_Script:
                     width=textWidth)))
     #
     # for testing purposes
-    # 
+    #
     def parameter(self, name):
         wf = self.workflow(self.workflows[0] + ':0')
         if not wf.parameters_section:
@@ -962,7 +968,7 @@ class SoS_Script:
             if key == name:
                 return SoS_eval(value, wf.globals, wf.locals)
         return None
-        
+
 def sos_show(args, argv):
     try:
         script = SoS_Script(args.script, argv)
@@ -974,7 +980,7 @@ def sos_show(args, argv):
     except Exception as e:
         env.logger.error(e)
         sys.exit(1)
-    
+
 def sos_run(args, argv):
     try:
         script = SoS_Script(args.script, argv)
