@@ -39,7 +39,7 @@ output: 'temp/a.txt', 'temp/b.txt'
 run('''echo "a.txt" > 'temp/a.txt' ''')
 run('''echo "b.txt" > 'temp/b.txt' ''')
 
-[1: output_alias=oa]
+[1: output_alias='oa']
 dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', labels='dest'
 output: dest
@@ -91,7 +91,7 @@ counter = counter + 1
     def testAlias(self):
         '''Test option output_alias'''
         script = SoS_Script(r"""
-[0: input_alias=ia, output_alias=oa]
+[0: input_alias='ia', output_alias='oa']
 files = ['a.txt', 'b.txt']
 names = ['a', 'b', 'c']
 c = ['1', '2']

@@ -64,7 +64,7 @@ class SoS_Step:
     #
     # A single sos step
     #
-    def __init__(self, names=[], options=[], is_global=False, is_parameters=False):
+    def __init__(self, names=[], options={}, is_global=False, is_parameters=False):
         # A step will not have a name and index until it is copied to separate workflows
         self.name = None
         self.index = None
@@ -85,6 +85,10 @@ class SoS_Step:
         # indicate the type of input of the last line
         self.category = None
         self.values = []
+        if 'sigil' in self.options:
+            self.sigil = self.options['sigil']
+        else:
+            self.sigil = '${ }'
 
     #
     # Parsing input
@@ -324,13 +328,13 @@ class SoS_Step:
         if self.is_parameters:
             for key, value, _ in self.parameters:
                 try:
-                    locals[key] = SoS_eval(value, globals, locals)
+                    locals[key] = SoS_eval(value, globals, locals, self.sigil)
                 except Exception as e:
                     raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
         else:
             for key, value in self.assignments:
                 try:
-                    locals[key] = SoS_eval(value, globals, locals)
+                    locals[key] = SoS_eval(value, globals, locals, self.sigil)
                 except Exception as e:
                     raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
         #
@@ -352,7 +356,7 @@ class SoS_Step:
         self._vars = [[]]
         for key, value in self.directives:
             try:
-                ret = SoS_eval('self._directive_{}({})'.format(key, value), globals, locals)
+                ret = SoS_eval('self._directive_{}({})'.format(key, value), globals, locals, self.sigil)
             except Exception as e:
                 raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
         # input alias
@@ -380,7 +384,7 @@ class SoS_Step:
             # action
             try:
                 env.logger.debug('Running \n{}'.format(''.join(self.statements)))
-                SoS_exec(''.join(self.statements), globals, locals)
+                SoS_exec(''.join(self.statements), globals, locals, self.sigil)
             except Exception as e:
                 raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
         for ofile in locals['step_output']:
@@ -564,12 +568,12 @@ class SoS_Script:
 
     # Regular expressions for parsing section headers and options
     _SECTION_HEADER_TMPL = r'''
-        \[                                 # [
+        ^\[\s*                             # [
         (?P<section_name>[\d\w_,*\s]+)     # digit, alphabet, _ and ,
         (:\s*                              # :
-        (?P<section_option>[^]]*)          # section options
+        (?P<section_option>.*)             # section options
         )?                                 # optional
-        \]                                 # ]
+        \]\s*$                             # ]
         '''
 
     _SECTION_NAME_TMPL = '''
@@ -753,6 +757,14 @@ class SoS_Script:
                         mo = self.SECTION_OPTION.match(option)
                         if mo:
                             opt_name, opt_value = mo.group('name', 'value')
+                            #
+                            #opt_value should also be a valid Python expression (with quote etc)
+                            #which is most likely a string.
+                            if opt_value:
+                                try:
+                                    opt_value = eval(opt_value)
+                                except Exception as e:
+                                    parsing_errors.append(lineno-1, line, e)
                             if opt_name in step_options:
                                 parsing_errors.append(lineno - 1, line, 'Duplicate options')
                             step_options[opt_name] = opt_value
@@ -886,7 +898,7 @@ class SoS_Script:
         parser = argparse.ArgumentParser()
         for key, defvalue, _ in wf.parameters_section.parameters:
             try:
-                defvalue = SoS_eval(defvalue, wf.globals, wf.locals)
+                defvalue = SoS_eval(defvalue, wf.globals, wf.locals, wf.parameters_section.sigil)
             except Exception as e:
                 raise RuntimeError('Incorrect default value {} for parameter {}: {}'.format(defvalue, key, e))
             parser.add_argument('--{}'.format(key), type=type(defvalue),
@@ -988,7 +1000,7 @@ class SoS_Script:
         wf.prepareVars()
         for key, value, _ in wf.parameters_section.parameters:
             if key == name:
-                return SoS_eval(value, wf.globals, wf.locals)
+                return SoS_eval(value, wf.globals, wf.locals, wf.parameters_section.sigil)
         return None
 
 #

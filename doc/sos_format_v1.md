@@ -183,6 +183,7 @@ script = '''
 for a in [a, b, c]:
    process s
 '''
+```
 
 ### List literal
 
@@ -271,11 +272,11 @@ ${action}('command')
 
 are not allowed.
 
-#### Format specifier and result conversion
+#### Conversion and format specification 
 
 SoS interpolation also support all string format specification as in the [Python string format specifier](https://docs.python.org/2/library/string.html#formatspec),
 that is to say, you can use `: specifier` at the end of the expression to control the format of the output. For example `'${1/3. :.2f}'` would produce `0.33` 
-instead of its long representation `0.3333333333333333`, and `'|${input:>20}|'` would produce `|            test.txt|` if `input=['test.txt']`.
+instead of its long representation `0.3333333333333333`.
 
 SoS also supports string conversion as specified in [Python string format specifier](https://docs.python.org/2/library/string.html#formatspec). 
 For example, the `!r` conversion return a properly quoted string so `${'string'!r}` would be `'string'` instead of `string`. This
@@ -315,21 +316,22 @@ run('cat ${input!q}`)
 works because the command would be translated to shell-recognizable format such as `cat 'result/Bon Jovi.txt'`
 or `cat result/Bon\ Jovi.txt`.
 
-The conversion also works for list of filenames so `cat ${input!q}` would be translated to `cat A\ B.txt C\D.txt` or
-`cat 'A B.txt' 'C D.txt'` if `input=['A B.txt', 'C D.txt']`, which is easier than quoting filenames manually.
+The conversion also works for list of filenames so `cat ${input!q}` would be translated to `cat AB.txt C\D.txt` or
+`cat AB.txt 'C D.txt'` if `input=['AB.txt', 'C D.txt']`, which is easier than quoting filenames manually.
 
 #### String representation of complex types
 
 Expressions that do not return simple types such as integer and string can also be used in string interpolation but their string representation can be more complicated. Basically,
 
-* For objects with an iterator interface (e.g. Python `set`, `tuple`), SoS join the string representation of each item by a space.
+* For objects with an iterator interface (e.g. Python `list`, `tuple`, `dict`, `set`), SoS join the string representation of each item by a space.
+  For dictinaries, their keys instead of values are returned.
 * For all other non-iterable objects (e.g. True, False, None, numeric numbers), their string
   representation will be returned (`repr(obj)`).
 
 That is to say, `'${set(1, 4, tuple('b', 1/3.), 3)}` could be `4 3 b 0.3333333333333333 1` where 
 string representations of items in a Python set object is joint in no particular order.
 
-Format specifier will be applied to each item of an object is the object is a list, dictionary etc.
+Format specifier will be applied to each item of an object if the object is an iteratable object such as list and dictionary.
 
 #### Alternative sigil
 

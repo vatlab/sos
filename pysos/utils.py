@@ -374,7 +374,7 @@ class SoS_String:
 
     def __init__(self, globals, locals, sigil = '${ }'):
         if sigil.count(' ') != 1 or sigil.startswith(' ') or sigil.endswith(' '):
-            raise ValueError('Incorrect sigil "{}"'.format(sigl))
+            raise ValueError('Incorrect sigil "{}"'.format(sigil))
         self.sigil = sigil.split(' ')
         if self.sigil[0] == self.sigil[1]:
             raise ValueError('Incorrect sigl "{}"'.format(sigil))
