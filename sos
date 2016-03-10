@@ -23,14 +23,7 @@
 import sys
 import argparse
 
-from pysos import SOS_VERSION, SOS_FULL_VERSION, env
-
-## from pysos.utils import env
-## import subprocess
-## # save the command line that has been processed by the shell.
-## env.command_line = subprocess.list2cmdline(sys.argv[1:])
-## 
-from pysos.execute import sos_run, sos_show
+from pysos import SOS_VERSION, SOS_FULL_VERSION, env, sos_run, sos_show
 
 def addCommonArgs(parser):
     parser.add_argument('-v', '--verbosity', choices=['0', '1', '2', '3'],

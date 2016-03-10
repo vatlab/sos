@@ -222,6 +222,16 @@ abc
 output: 'filename',  'filename2', opt=value==1
 ''')
 
+    def testInput(self):
+        script = SoS_Script('''
+[0]
+files = ['a.txt', 'b.txt']
+
+input: 'a.pdf', files, skip=False
+
+''')
+        script.workflow('default').run()
+
     def testSectionActions(self):
         '''Test actions of sections'''
         self.assertRaises(ParsingError, SoS_Script,

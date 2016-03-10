@@ -170,6 +170,8 @@ For example
 SoS uses [Python](http://www.python.org) syntax for literals and variables with some minor modifications. 
 SoS allows three types of literals: string, list of strings, and dictionary of strings.
 
+**TBD:** Technically speaking, there is no need to restrict the type of variables.
+
 ### String literal
 
 * Strings are quoted text. You can use `' '`, `" "`, `''' '''`, and `""" """` to quote your text. Different quotation styles allows you to quote string with another string quotation character (e.g. `"Letter 'a'"`).

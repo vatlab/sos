@@ -25,6 +25,8 @@ import re
 import copy
 import argparse
 from collections import OrderedDict, defaultdict
+from itertools import tee, izip, combinations
+
 # Python 2.7 should also have this module
 from io import StringIO
 
@@ -143,6 +145,129 @@ class SoS_Step:
         self.category = 'statements'
         self.back_comment = ''
 
+    def _get_groups(self, ifiles, group_by):
+        # for this special case, the step is skipped
+        if group_by == 'single':
+            return [[x] for x in ifiles]
+        elif group_by == 'all':
+            return [ifiles]
+        elif group_by == 'paired':
+            if len(ifiles) // 2 != 0:
+                raise ValueError('Paired group_by has to have even number of input files')
+            return list(zip(ifiles[:len(ifiles)//2], ifiles[len(ifiles)//2:]))
+        elif group_by == 'pairwise':
+            f1, f2 = tee(ifiles)
+            next(f2, None)
+            return [list(x) for x in izip(f1, f2)]
+        elif group_by == 'combinations':
+            return [list(x) for x in combinations(ifiles, 2)]
+
+    def _get_labels(self, labels):
+        if labels is None or not labels:
+            labels = []
+        elif isinstance(labels, str):
+            labels = [labels]
+        elif isinstance(labels, list):
+            labels = labels
+        else:
+            raise ValueError('Unacceptable value for parameter labels: {}'.format(labels)) 
+        #
+        ifiles = self.locals['step_input']
+        set_vars = [{} for x in self._groups]
+        for wv in labels:
+            values = self.locals[wv]
+            if not isinstance(values, list):
+                raise ValueError('with_var variable {} is not a list ("{}")'.format(wv, values))
+            if len(values) != len(ifiles):
+                raise ValueError('Length of variable {} (length {}) should match the number of input files (length {}).'
+                    .format(wv, len(values), len(ifiles)))
+            file_map = {x:y for x,y in zip(ifiles, values)}
+            #env.logger.error('Paring {}'.format(file_map))
+            for idx,val in enumerate(values):
+                set_vars[idx]['_' + wv] = [file_map[x] for x in self._groups[idx]]
+        return set_vars
+
+    def _get_for_each(self, for_each):
+        if for_each is None or not for_each:
+            for_each = []
+        elif isinstance(for_each, str):
+            for_each = [for_each]
+        elif isinstance(for_each, list):
+            for_each = for_each
+        else:
+            raise ValueError('Unacceptable value for parameter for_each: {}'.format(for_each))
+        #
+        for fe_all in for_each:
+            loop_size = None
+            for fe in fe_all.split(','):
+                values = self.locals[fe]
+                if not isinstance(values, list):
+                    raise ValueError('for_each variable {} is not a list ("{}")'.format(fe, values))
+                if loop_size is None:
+                    loop_size = len(values)
+                elif loop_size != len(values):
+                    raise ValueError('Length of variable {} (length {}) should match the length of variable {} (length {}).'
+                        .format(fe, len(values), fe_all.split(',')[0], loop_size))
+            # expand
+            self._groups = self._groups * loop_size
+            tmp = []
+            for vidx in range(loop_size):
+                for idx in range(len(self._vars)):
+                    for fe in fe_all.split(','):
+                        self._vars[idx]['_' + fe] = self.locals[fe][vidx]
+                tmp.extend(copy.deepcopy(self._vars))
+            self._vars = tmp
+
+    # directive functions
+    def _directive_input(self, *args, **kwargs):
+        # first *args are filenames
+        ifiles = []
+        for arg in args:
+            if isinstance(arg, basestring):
+                ifiles.append(arg)
+            elif isinstance(arg, list):
+                if not all(isinstance(x, basestring) for x in arg):
+                    raise RuntimeError('Invalid input file: {}'.format(arg))
+                ifiles.extend(arg)
+        self.locals['step_input'] = ifiles
+        #
+        # handle group_by
+        if 'group_by' in kwargs:
+            self._groups = self._get_groups(ifiles, kwargs['group_by'])
+        else:
+            self._groups = [ifiles]
+        # handle labels
+        if 'labels' in kwargs:
+            self._vars = self._get_labels(kwargs['labels'])
+        else:
+            self._vars = [{} for x in self._groups]
+        # handle for_each
+        if 'for_each' in kwargs:
+            self._get_for_each(kwargs['for_each'])
+
+
+    def _directive_depends(self, *args, **kwargs):
+        dfiles = []
+        for arg in args:
+            if isinstance(arg, basestring):
+                dfiles.append(arg)
+            elif isinstance(arg, list):
+                if not all(isinstance(x, basestring) for x in arg):
+                    raise RuntimeError('Invalid input file: {}'.format(arg))
+                dfiles.extend(arg)
+        self.locals['step_depends'] = dfiles
+
+    def _directive_output(self, *args, **kwargs):
+        ofiles = []
+        for arg in args:
+            if isinstance(arg, basestring):
+                ofiles.append(arg)
+            elif isinstance(arg, list):
+                if not all(isinstance(x, basestring) for x in arg):
+                    raise RuntimeError('Invalid input file: {}'.format(arg))
+                ofiles.extend(arg)
+        self.locals['step_output'] = ofiles
+
     def isValid(self):
         if not self.values:
             return True
@@ -190,17 +315,23 @@ class SoS_Step:
         #
         # directives
         #
+        globals['self'] = self
+        self.locals = locals
+        self.globals = globals
         for key, value in self.directives:
             try:
-                ret = SoS_eval('_directive_{}({})'.format(key, value), globals, locals)
+                ret = SoS_eval('self._directive_{}({})'.format(key, value), globals, locals)
             except Exception as e:
                 raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
         #
-        # action
-        try:
-            SoS_exec('\n'.join(self.statements), globals, locals)
-        except Exception as e:
-            raise RuntimeError('Failed to execute statement\n\n{}\n\n{}'.format('\n'.join(self.statements), e))
+        for g, v in zip(self._groups, self._vars):
+            locals.update(v)
+            locals['input'] = g
+            # action
+            try:
+                SoS_exec('\n'.join(self.statements), globals, locals)
+            except Exception as e:
+                raise RuntimeError('Failed to execute statement\n\n{}\n\n{}'.format('\n'.join(self.statements), e))
 
     def __repr__(self):
         result = ''
@@ -225,15 +356,7 @@ class SoS_Step:
         result += '\n'
         return result
 
-# directive functions
-def _directive_input(*args, **kwargs):
-    pass
 
-def _directive_depends(*args, **kwargs):
-    pass
-
-def _directive_output(*args, **kwargs):
-    pass
 
 class SoS_Workflow:
     #
@@ -652,6 +775,8 @@ class SoS_Script:
             raise parsing_errors
 
     def _parse_error(self, msg):
+        '''This function will replace error() function in argparse module so that SoS
+        can hijack errors raised from it.'''
         raise ArgumentError(msg)
 
     def _parse_args(self, args):
@@ -745,3 +870,22 @@ class SoS_Script:
                 return SoS_eval(value, wf.globals, wf.locals)
         return None
         
+
+
+def sos_show(args, argv):
+    #try:
+        script = SoS_Script(args.script, argv)
+        workflow = script.workflow(args.workflow)
+        print(workflow)
+    #except Exception as e:
+    #    env.logger.error(e)
+    #    sys.exit(1)
+    
+def sos_run(args, argv):
+    #try:
+        script = SoS_Script(args.script, argv)
+        workflow = script.workflow(args.workflow)
+        workflow.run()
+    #except Exception as e:
+    #    env.logger.error(e)
+    #    sys.exit(1)
