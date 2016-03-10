@@ -87,6 +87,8 @@ class SoS_Step:
         # indicate the type of input of the last line
         self.category = None
         self.values = []
+        self.lineno = None
+        #
         if 'sigil' in self.options:
             self.sigil = self.options['sigil']
         else:
@@ -116,7 +118,7 @@ class SoS_Step:
         else:
             self.back_comment += line.lstrip('#').lstrip()
 
-    def add_assignment(self, key, value):
+    def add_assignment(self, key, value, lineno=None):
         '''Assignments are items with '=' type '''
         if key is None:
             # continuation of multi-line assignment
@@ -137,8 +139,10 @@ class SoS_Step:
             self.category = 'expression'
             self.values = [value]
         self.back_comment = ''
+        if lineno:
+            self.lineno = lineno
 
-    def add_directive(self, key, value):
+    def add_directive(self, key, value, lineno=None):
         '''Assignments are items with ':' type '''
         if key is None:
             # continuation of multi-line directive
@@ -150,8 +154,10 @@ class SoS_Step:
             self.category = 'directive'
             self.values = [value]
         self.back_comment = ''
+        if lineno:
+            self.lineno = lineno
 
-    def add_statement(self, line):
+    def add_statement(self, line, lineno=None):
         '''Assignments are items with ':' type '''
         # there can be only one statement block
         self.statements.append(line)
@@ -161,6 +167,8 @@ class SoS_Step:
             self.values.append(line)
         self.category = 'statements'
         self.back_comment = ''
+        if lineno:
+            self.lineno = lineno
 
     def isValid(self):
         if not self.values:
@@ -402,8 +410,9 @@ class SoS_Step:
             signature = RuntimeInfo(locals['step_output'])
             if not dryrun:
                 for ofile in locals['step_output']:
-                    if not os.path.isdir(os.path.split(ofile)[0]):
-                        os.makedirs(os.path.split(ofile)[0])
+                    parent_dir = os.path.split(ofile)[0]
+                    if parent_dir and not os.path.isdir(parent_dir):
+                        os.makedirs(parent_dir)
                 if signature.validate(''.join(self.statements),
                     locals['step_input'], locals['step_output'], locals['step_depends']):
                     # everything matches
@@ -417,14 +426,13 @@ class SoS_Step:
             locals['input'] = g
             # action
             try:
-                env.logger.debug('Running \n{}'.format(''.join(self.statements)))
                 if not dryrun:
                     SoS_exec(''.join(self.statements), globals, locals, self.sigil)
             except Exception as e:
                 raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
         if not dryrun:
             for ofile in locals['step_output']:
-                if not os.path.isfile(ofile):
+                if not os.path.isfile(os.path.expanduser(ofile)):
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
         if signature and not dryrun:
             signature.write(''.join(self.statements),
@@ -774,7 +782,7 @@ class SoS_Script:
                 # check previous expression before a new assignment
                 if cursect:
                     if not cursect.isValid():
-                        parsing_errors.append(lineno -1 , ''.join(cursect.values), 'Invalid ' + cursect.category)
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values), 'Invalid ' + cursect.category)
                     cursect.category = None
                     cursect.values = []
                 # start a new section
@@ -845,7 +853,7 @@ class SoS_Script:
                     cursect = self.sections[-1]
                 # check previous expression before a new assignment
                 if not cursect.isValid():
-                    parsing_errors.append(lineno -1 , ''.join(cursect.values), 'Invalid ' + cursect.category)
+                    parsing_errors.append(cursect.lineno, ''.join(cursect.values), 'Invalid ' + cursect.category)
                     continue
                 cursect.values = []
                 #
@@ -858,11 +866,11 @@ class SoS_Script:
                 # if first line of the section, or following another assignment
                 # this is assignment
                 if cursect.empty() or cursect.category == 'expression':
-                    cursect.add_assignment(var_name, var_value)
+                    cursect.add_assignment(var_name, var_value, lineno)
                 #
                 # if following a directive, this must be start of an action
                 elif cursect.category == 'directive':
-                    cursect.add_statement('{} = {}\n'.format(var_name, var_value))
+                    cursect.add_statement('{} = {}\n'.format(var_name, var_value), lineno)
                 else:
                     # otherwise it is an continuation of the existing action
                     cursect.extend('{} = {}\n'.format(var_name, var_value))
@@ -874,7 +882,7 @@ class SoS_Script:
                 # check previous expression before a new directive
                 if cursect:
                     if not cursect.isValid():
-                        parsing_errors.append(lineno -1 , ''.join(cursect.values), 'Invalid ' + cursect.category)
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values), 'Invalid ' + cursect.category)
                     cursect.values = []
                 #
                 directive_name = mo.group('directive_name')
@@ -889,7 +897,7 @@ class SoS_Script:
                 if not cursect.empty() and cursect.category == 'statements':
                     parsing_errors.append(lineno, line, 'Directive {} should be be defined before step action'.format(directive_name))
                     continue
-                cursect.add_directive(directive_name, directive_value)
+                cursect.add_directive(directive_name, directive_value, lineno)
                 continue
             #
             # all others?
@@ -907,14 +915,14 @@ class SoS_Script:
             #
             if cursect.empty() or cursect.category != 'statements':
                 # new statement
-                cursect.add_statement(line)
+                cursect.add_statement(line, lineno)
             else:
                 # existing one
                 cursect.extend(line)
         #
         # check the last expression before a new directive
         if cursect and not cursect.isValid():
-            parsing_errors.append(lineno -1 , ''.join(cursect.values), 'Invalid ' + cursect.category)
+            parsing_errors.append(cursect.lineno, ''.join(cursect.values), 'Invalid ' + cursect.category)
         #
         # if there is any parsing error, raise an exception
         if parsing_errors.errors:
@@ -1064,10 +1072,10 @@ def sos_show(args, argv):
 # subcommand run
 #
 def sos_run(args, argv):
-    try:
+    #try:
         script = SoS_Script(args.script, argv)
         workflow = script.workflow(args.workflow)
         workflow.run()
-    except Exception as e:
-        env.logger.error(e)
-        sys.exit(1)
+    #except Exception as e:
+    #    env.logger.error(e)
+    #    sys.exit(1)

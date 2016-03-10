@@ -546,6 +546,7 @@ def SoS_exec(stmts, globals, locals, sigil='${ }'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
     stmts = ConvertString(stmts, globals, locals, sigil)
+    env.logger.debug('Running \n``{}``'.format(stmts))
     exec(stmts, globals, locals)
 
 #
@@ -572,8 +573,12 @@ class WorkflowDict(dict):
         elif isinstance(value, collections.Sequence): # should be a list or tuple
             val = str(value).split(' ')[0] + ' ...] ({} items)'.format(len(value))
             env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, val))
+        elif isinstance(value, dict):
+            first_key = value.keys()[0]
+            env.logger.debug('Workflow variable ``{}`` is set to ``{{{}:{}, ...}} ({} items)``'
+                .format(key, first_key, value[first_key], len(value)))
         else:
-            env.logger.debug('Workflow variable ``{}`` is set to ``{}...``'.format(key, repr(val)[:40]))
+            env.logger.debug('Workflow variable ``{}`` is set to ``{}...``'.format(key, repr(value)[:40]))
 
     def __setattr__(self, key, value):
         '''a.key = value is equivalent to a['key'] = value'''
@@ -697,6 +702,7 @@ class RuntimeInfo:
         with open(self.proc_info, 'w') as md5:
             md5.write('{}\n'.format(textMD5(script)))
             for f in ifiles + ofiles + dfiles:
+                f = os.path.realpath(os.path.expanduser(f))
                 md5.write('{}\t{}\n'.format(f, partialMD5(f)))
 
     def validate(self, script, ifiles, ofiles, dfiles):
@@ -709,12 +715,12 @@ class RuntimeInfo:
         _dfiles = [dfiles] if isinstance(dfiles, basestring) else dfiles
         #
         # duplicated files are only tested once.
-        all_files = set(_ifiles + _ofiles + _dfiles)
+        all_files = [os.path.realpath(os.path.expanduser(x)) for x in set(_ifiles + _ofiles + _dfiles)]
         # file not exist?
         if not all(os.path.isfile(x) for x in all_files):
             return False
         #
-        files_checked = {os.path.realpath(x):False for x in all_files}
+        files_checked = {x:False for x in all_files}
         with open(self.proc_info) as md5:
             cmdMD5 = md5.readline().strip()   # command
             if textMD5(script) != cmdMD5:
@@ -722,16 +728,17 @@ class RuntimeInfo:
             for line in md5:
                 try:
                     f, m = line.rsplit('\t', 1)
+                    f = os.path.realpath(os.path.expanduser(f))
                 except Exception as e:
                     env.logger.error('Wrong md5 line {} in {}: {}'.format(line, md5file, e))
                     continue
-                if os.path.realpath(f) not in files_checked:
+                if f not in files_checked:
                     env.logger.waring('{} not need to be checked'.format(f))
                     continue
                 if partialMD5(f) != m.strip():
                     env.logger.error('MD5 mismatch {}'.format(f))
                     return False
-                files_checked[os.path.realpath(f)] = True
+                files_checked[f] = True
         #
         if not all(files_checked.values()):
             env.logger.warning('No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y)))
