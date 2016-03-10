@@ -151,6 +151,26 @@ a="100"
 b=str(int(a)+1)
 ''')
         self.assertEqual(script.parameter('b'), '101')
+        script = SoS_Script('''
+a=100
+
+[parameters]
+b=a+1
+''')
+        self.assertEqual(script.parameter('b'), 101)
+        self.assertRaises(ArgumentError, SoS_Script, '''
+a=100
+
+[parameters]
+b=a+1
+''', args=['--b', 'a'])
+        script = SoS_Script('''
+a=100
+
+[parameters]
+b=a+1.
+''', args=['--b', '1000'])
+        self.assertEqual(script.parameter('b'), 1000)
 
 
     def testSectionVariables(self):

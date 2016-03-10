@@ -24,7 +24,7 @@ import os
 import re
 import copy
 import argparse
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict, Sequence
 from itertools import tee, izip, combinations
 
 # Python 2.7 should also have this module
@@ -836,8 +836,8 @@ class SoS_Script:
                 defvalue = SoS_eval(defvalue, wf.globals, wf.locals)
             except Exception as e:
                 raise RuntimeError('Incorrect initial value {} for parameter {}: {}'.format(defvalue, key, e))
-            parser.add_argument('--{}'.format(key), 
-                nargs='?' if isinstance(defvalue, basestring) else '*', 
+            parser.add_argument('--{}'.format(key), type=type(defvalue),
+                nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, basestring) else '?', 
                 default=defvalue)
         #
         parser.error = self._parse_error

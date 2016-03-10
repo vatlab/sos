@@ -318,13 +318,11 @@ or `cat result/Bon\ Jovi.txt`.
 The conversion also works for list of filenames so `cat ${input!q}` would be translated to `cat A\ B.txt C\D.txt` or
 `cat 'A B.txt' 'C D.txt'` if `input=['A B.txt', 'C D.txt']`, which is easier than quoting filenames manually.
 
-#### String representation of non-SoS supported types
+#### String representation of complex types
 
-Expressions that do not return the aforementioned SoS supported types can also be used in string interpolation but
-their string representation can be more complicated. Basically,
+Expressions that do not return simple types such as integer and string can also be used in string interpolation but their string representation can be more complicated. Basically,
 
-* For objects with an iterator interface (e.g. Python `set`, `tuple`), SoS join the string representation of
-  each item by a space.
+* For objects with an iterator interface (e.g. Python `set`, `tuple`), SoS join the string representation of each item by a space.
 * For all other non-iterable objects (e.g. True, False, None, numeric numbers), their string
   representation will be returned (`repr(obj)`).
 
@@ -405,7 +403,7 @@ SoS looks for a `[parameters]` section for command line options and their defaul
 var_name=default_value
 ```
 
-The default value can be string, list of string, or expressions that return string or list of string. For example
+The default value can be number, string, list of string, or expressions that return these types. Other types can be used but there is no guarantee that they can be converted from command line arguments sucessfully. For example
 
 ```
 # path to tool gatk
@@ -429,11 +427,9 @@ gatk_path=config('gatk_path', config_file='~/.sos_config')
 calls a pre-defined Python function `config` to get the value of `gatk_path` from a configuration file.
 
 The comments before variable definition are meaningful because they will appear in the help message of the script (`sos show script`). 
-The default values not only determines the values of variable when they are not specified from command line, but also determines
-the type of input these parameters accept.
+The default values not only determines the values of variable when they are not specified from command line, but also determines the type of input these parameters accept.
 
-For example, with the above definitions for command arguments `--gatk_path` and `sample_names`, you can pass values to 
-these variables from command line, 
+For example, with the above definitions for command arguments `--gatk_path` and `sample_names`, you can pass values to these variables from command line, 
 
 ```bash
 sos run myscript.sos --gatk_path /path/to/gatk --sample_names A1 A2 A3
