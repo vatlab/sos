@@ -59,6 +59,10 @@ class TestParser(unittest.TestCase):
         self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2]\n[s*_2]''')
         self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
+        #
+        # skip option
+        script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2:skip]\n[s*_2]''')
+        self.assertEqual(sorted(script.workflows), ['default', 'human'])
 
     def testSections(self):
         '''Test section definitions'''

@@ -432,6 +432,9 @@ class SoS_Workflow:
         self.auxillary_sections = []
         #
         for section in sections:
+            # skip, skip=True, skip=1 etc are all allowed.
+            if 'skip' in section.options and (section.options['skip'] is None or section.options['skip']):
+                continue
             if section.is_global:
                 # section global is shared by all workflows
                 self.global_section = section
@@ -648,8 +651,10 @@ class SoS_Script:
             with StringIO(content) as fp:
                 self._read(fp, '<string>')
         #
-        # workflows in this script
-        section_steps = sum([x.names for x in self.sections], [])
+        # workflows in this script, from sections that are not skipped.
+        section_steps = sum([x.names for x in self.sections if not \
+            ('skip' in x.options and \
+                (x.options['skip'] is None or x.options['skip']))], [])
         # (name, None) is auxiliary steps
         self.workflows = list(set([x[0] for x in section_steps if x[1] is not None and '*' not in x[0]]))
         if not self.workflows:
