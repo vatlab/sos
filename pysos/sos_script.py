@@ -279,6 +279,18 @@ class SoS_Step:
         else:
             ifiles = self.locals['step_input']
         #
+        if 'skip' in kwargs and kwargs['skip']:
+            self._groups = []
+            self._vars = []
+            return
+        if 'filetype' in kwargs:
+            if isinstance(kwargs['filetype'], basestring):
+                ifiles = [x for x in ifiles if x.lower().endswith(kwargs['filetype'].lower())]
+            elif isinstance(kwargs['filetype'], (list, tuple)):
+                ifiles = [x for x in ifiles if any(x.lower().endswith(y.lower()) for y in kwargs['filetype'])]
+            elif callable(kwargs['filetype']):
+                ifiles = [x for x in ifiles if kwargs['filetype'](x)]
+        #             
         # handle group_by
         if 'group_by' in kwargs:
             self._groups = self._get_groups(ifiles, kwargs['group_by'])
@@ -362,9 +374,12 @@ class SoS_Step:
         # input alias
         if 'input_alias' in self.options:
             locals[self.options['input_alias']] = locals['step_input']
+        # if the step is ignored
+        if not self._groups:
+            env.logger.info('Step {} is skipped'.format(self.index))
+            return
         if 'output_alias' in self.options:
             locals[self.options['output_alias']] = locals['step_output']
-
         if locals['step_output']:
             signature = RuntimeInfo(locals['step_output'])
             for ofile in locals['step_output']:

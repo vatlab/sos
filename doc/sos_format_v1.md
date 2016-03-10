@@ -562,13 +562,13 @@ Here the expression `mouse_reference if workflow_name == 'mouse' else human_refe
 
 ### Execution of a subset of steps
 
-Although workflows are usually executed in its entirety, there are cases where you would like to execute only a subset of steps. For example, you can execute step 10 of the pipeline mouse using command
+Although workflows are usually executed in their entirety, there are cases where you might want to execute only a subset of steps. For example, you can execute step 10 of the pipeline mouse using command
 
 ```bash
 sos run myscript.sos mouse:0
 ```
 
-Similarly, you can execute step 10 of the default workflow, up to step 20 of workflow `mouse``, steps 10 and 20 of workflow `mouse`, and step 20 and later of workflow `mouse`, respectively, using the following comands
+Similarly, you can execute step 10 of the default workflow, up to step 20 of workflow `mouse`, steps 10 and 20 of workflow `mouse`, and step 20 and later of workflow `mouse`, respectively, using the following comands
 
 ```bash
 sos run myscript.sos :10
@@ -607,11 +607,8 @@ step_action
 * **`sigil`**: alternative sigil of the step, which should be a string with space. E.g. `sigil='[ ]'` allows the use of expressions such as
   `[input]` in this step.
 * **`target`**: target filename that will trigger an [auxillary step](sos_format_v1.md#auxiliary-workflow-steps-and-makefile-style-dependency-rules).
-
-TBD options:
-
-* **input_alias**: this option creates a variable with all input files of the step that allows them to be referred by later steps.
-* **output_alias**: this option creates a variable with all output files of ths step that allows them to be referred by later steps.
+* **input_alias**: this option creates a variable with all input files of the step that allows them to be referred by later steps. The value of this option should be a quoted string (e.g. input_alias='raw_reads').
+* **output_alias**: this option creates a variable with all output files of ths step that allows them to be referred by later steps. The value of this option should be a quoted string (e.g. outpu_alias='aligned').
 
 ### Description of step
 The first comment block after the section head (`[]`) is the description of the section and will be displayed in the output of command `sos show script`.
@@ -912,7 +909,7 @@ reason this assumption is wrong and the step needs to be executed sequentially, 
 Option `skip=True` will make SoS skip the execution of the current step. Using `skip=True` is not very useful so this option is often used with a SoS variable. For example
 
 ```python
-[10]
+[10: output_alias='fasta_files']
 input:
 	fasta_files,
 	skip=len(fasta_failes) == 1
@@ -920,15 +917,14 @@ input:
 output: 'merged.fasta'
 
 run('command to merge multiple fasta files.')
-fasta_files = step_output
 ```
 
 Here the `skip` option gets the value of `True` if there is only one input file. The command to merge multiple input files would then be skipped.
 
 This example also shows a trick on providing consistent input for later steps. When there is only one file in `fasta_files`, the step will be ignored so
 `fasta_files` is unchanged. If there are multiple files in `fasta_files`, the step will be executed and generates a new fasta file
-called `merged.fasta`. The last line of the step save `step_output` to `fasta_files` so that the following steps will always
-get `fasta_files` with a single file.
+called `merged.fasta`. The step option `output_alias='fasta_files'` will save output to vaiable `fasta_files` so that the following
+steps will always get `fasta_files` with a single file.
 
 
 #### Dynamically determined input files (option `dynamic`)

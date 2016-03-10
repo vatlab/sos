@@ -105,5 +105,61 @@ counter = str(int(counter) + 1)
         wf.run()
         self.assertEqual(wf.locals['ia'], ["a.pdf", 'a.txt', 'b.txt'])
 
+    def testFileType(self):
+        '''Test input option filetype'''
+        script = SoS_Script(r"""
+[0]
+files = ['a.txt', 'b.txt']
+counter = 0
+
+input: 'a.pdf', files, filetype='.txt', group_by='single'
+
+counter += 1
+""")
+        wf = script.workflow('default')
+        wf.run()
+        self.assertEqual(wf.locals.counter, 2)
+        #
+        script = SoS_Script(r"""
+[0]
+files = ['a.txt', 'b.txt']
+counter = 0
+
+input: 'a.pdf', 'b.html', files, filetype=('.txt', '.pdf'), group_by='single'
+
+counter += 1
+""")
+        wf = script.workflow('default')
+        wf.run()
+        self.assertEqual(wf.locals.counter, 3)
+        #
+        script = SoS_Script(r"""
+[0]
+files = ['a.txt', 'b.txt']
+counter = 0
+
+input: 'a.pdf', 'b.html', files, filetype=lambda x: 'a' in x, group_by='single'
+
+counter += 1
+""")
+        wf = script.workflow('default')
+        wf.run()
+        self.assertEqual(wf.locals.counter, 2)
+
+    def testSkip(self):
+        '''Test input option skip'''
+        script = SoS_Script(r"""
+[0]
+files = ['a.txt', 'b.txt']
+counter = 0
+
+input: 'a.pdf', 'b.html', files, skip=counter == 0
+
+counter += 1
+""")
+        wf = script.workflow('default')
+        wf.run()
+        self.assertEqual(wf.locals.counter, 0) 
+
 if __name__ == '__main__':
     unittest.main()
