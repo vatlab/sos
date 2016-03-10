@@ -708,11 +708,13 @@ class RuntimeInfo:
         _ofiles = [ofiles] if isinstance(ofiles, basestring) else ofiles
         _dfiles = [dfiles] if isinstance(dfiles, basestring) else dfiles
         #
+        # duplicated files are only tested once.
+        all_files = set(_ifiles + _ofiles + _dfiles)
         # file not exist?
-        if not all(os.path.isfile(x) for x in _ifiles + _ofiles + _dfiles):
+        if not all(os.path.isfile(x) for x in all_files):
             return False
         #
-        files_checked = {os.path.realpath(x):False for x in _ifiles + _ofiles + _dfiles}
+        files_checked = {os.path.realpath(x):False for x in all_files}
         with open(self.proc_info) as md5:
             cmdMD5 = md5.readline().strip()   # command
             if textMD5(script) != cmdMD5:

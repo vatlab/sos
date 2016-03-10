@@ -28,6 +28,8 @@ import argparse
 import textwrap
 from collections import OrderedDict, defaultdict, Sequence
 from itertools import tee, combinations
+from collections import OrderedDict
+
 try:
     # python 2.7
     import izip
@@ -313,9 +315,9 @@ class SoS_Step:
                 dfiles.append(arg)
             elif isinstance(arg, list):
                 if not all(isinstance(x, basestring) for x in arg):
-                    raise RuntimeError('Invalid input file: {}'.format(arg))
+                    raise RuntimeError('Invalid dependent file: {}'.format(arg))
                 dfiles.extend(arg)
-        self.locals['step_depends'] = dfiles
+        self.locals['step_depends'] += dfiles
 
     def _directive_output(self, *args, **kwargs):
         ofiles = []
@@ -324,14 +326,14 @@ class SoS_Step:
                 ofiles.append(arg)
             elif isinstance(arg, list):
                 if not all(isinstance(x, basestring) for x in arg):
-                    raise RuntimeError('Invalid input file: {}'.format(arg))
+                    raise RuntimeError('Invalid output file: {}'.format(arg))
                 ofiles.extend(arg)
-        self.locals['step_output'] = ofiles
+        self.locals['step_output'] += ofiles
 
     #
     # Execution
     #
-    def run(self, globals, locals):
+    def run(self, globals, locals, dryrun=False):
         if isinstance(self.index, int):
             locals['workflow_index'] = str(self.index)
         #
@@ -367,10 +369,26 @@ class SoS_Step:
             self._groups = [[]]
         self._vars = [[]]
         for key, value in self.directives:
-            try:
-                ret = SoS_eval('self._directive_{}({})'.format(key, value), globals, locals, self.sigil)
-            except Exception as e:
-                raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
+            # input is processed only once
+            if key == 'input':
+                try:
+                    SoS_eval('self._directive_{}({})'.format(key, value), globals, locals, self.sigil)
+                except Exception as e:
+                    raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
+            # output processed multiple times for each input group
+            else: # input is processed once
+                for g, v in zip(self._groups, self._vars):
+                    locals.update(v)
+                    locals['input'] = g
+                    try:
+                        SoS_eval('self._directive_{}({})'.format(key, value), globals, locals, self.sigil)
+                    except Exception as e:
+                        raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
+        #
+        # we need to reduce output files in case they have been processed multiple times.
+        locals['step_output'] = list(OrderedDict.fromkeys(locals['step_output']))
+        locals['step_depends'] = list(OrderedDict.fromkeys(locals['step_depends']))
+        #
         # input alias
         if 'input_alias' in self.options:
             locals[self.options['input_alias']] = locals['step_input']
@@ -382,14 +400,15 @@ class SoS_Step:
             locals[self.options['output_alias']] = locals['step_output']
         if locals['step_output']:
             signature = RuntimeInfo(locals['step_output'])
-            for ofile in locals['step_output']:
-                if not os.path.isdir(os.path.split(ofile)[0]):
-                    os.makedirs(os.path.split(ofile)[0])
-            if signature.validate(''.join(self.statements),
-                locals['step_input'], locals['step_output'], locals['step_depends']):
-                # everything matches
-                env.logger.info('Reusing existing output files {}'.format(', '.join(locals['step_output'])))
-                return
+            if not dryrun:
+                for ofile in locals['step_output']:
+                    if not os.path.isdir(os.path.split(ofile)[0]):
+                        os.makedirs(os.path.split(ofile)[0])
+                if signature.validate(''.join(self.statements),
+                    locals['step_input'], locals['step_output'], locals['step_depends']):
+                    # everything matches
+                    env.logger.info('Reusing existing output files {}'.format(', '.join(locals['step_output'])))
+                    return
         else:
             signature = None
         #
@@ -399,13 +418,15 @@ class SoS_Step:
             # action
             try:
                 env.logger.debug('Running \n{}'.format(''.join(self.statements)))
-                SoS_exec(''.join(self.statements), globals, locals, self.sigil)
+                if not dryrun:
+                    SoS_exec(''.join(self.statements), globals, locals, self.sigil)
             except Exception as e:
                 raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
-        for ofile in locals['step_output']:
-            if not os.path.isfile(ofile):
-                raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
-        if signature:
+        if not dryrun:
+            for ofile in locals['step_output']:
+                if not os.path.isfile(ofile):
+                    raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
+        if signature and not dryrun:
             signature.write(''.join(self.statements),
                 locals['step_input'], locals['step_output'], locals['step_depends'])
 
@@ -521,7 +542,7 @@ class SoS_Workflow:
         if self.global_section:
             self.global_section.run(self.globals, self.locals)
 
-    def run(self):
+    def run(self, dryrun=False):
         '''Very preliminary implementation of sequential execution function
         '''
         # process global variables
@@ -534,14 +555,15 @@ class SoS_Workflow:
         # There is no input initially
         self.locals['step_input'] = []
         for section in self.sections:
-            section.run(self.globals, self.locals)
             # set the output to the input of the next step
             if 'step_output' in self.locals:
                 # passing step output to step_input of next step
                 self.locals['step_input'] = self.locals['step_output']
                 # step_output and depends are temporary
                 self.locals.pop('step_output')
+            if 'step_depends' in self.locals:
                 self.locals.pop('step_depends')
+            section.run(self.globals, self.locals, dryrun=dryrun)
 
     def show(self, parameters=True):
         textWidth = max(60, getTermWidth())

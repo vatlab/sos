@@ -955,7 +955,8 @@ steps have been completed.
 Output files of a step can be specified by item `output`. Whereas `input` is a directive to overide or 
 change SoS provided variable `step_input` to produce one or more variable `input`, the `output` is a
 directive to specify `step_output` which should be `[]` if no output is generated (or of interest), or output of the step, which
-should be the collection of all output files if step action is executed multiple times.
+should be the collection of all output files if step action is executed multiple times. **duplicated output files will 
+be automatically discarded**.
 
 
 ```python
@@ -971,6 +972,36 @@ output:
 
 ```
 
+The `output` and `input` directives are usually independently specified. However, if the output is derived from
+groups of input files, it can be easier for `output` to be derived from `input` files. For example, the following
+step accepts one or more bam files and index them using command `samtools index`. The input files are passed one
+by one so generate multiple `output` files (`'${input}.bai'`). The output of this step is then the collection of
+all such output files.
+
+```python
+[10]
+input:
+	bamfiles, group_by='single'
+	
+output:
+	'${input}.bai'
+
+run('''samtools index ${input} ''')
+
+```
+
+Note that label and loop variables (options `labels` and `for_each`) can also be used, and 
+
+```python
+output: '${input}.bai'
+```
+
+is equivalent to 
+
+```python
+output: [x + '.bai' for x in bamfiles]
+```
+for this particular example.
 
 The following figure summarizes the effect of `input`
 and `output` directives and input options `group_by` and `for_each` on the flow
@@ -1015,7 +1046,8 @@ depends:
 	
 ```
 
-Option `dynamic` is also available for `depends` directive.
+Similar to directive `output`, dependent files can also be defined after `input` directive and consist of
+dependent files determined from loop variables. Option `dynamic` is also available for `depends` directive.
 
 ![step options](step_options.jpg "step options")
 

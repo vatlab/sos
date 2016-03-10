@@ -159,7 +159,25 @@ counter += 1
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(wf.locals.counter, 0) 
+        self.assertEqual(wf.locals.counter, 0)
+
+    def testOutputFromInput(self):
+        '''Test deriving output files from input files'''
+        script = SoS_Script(r"""
+[0]
+files = ['a.txt', 'b.txt']
+counter = 0
+
+input: files, group_by='single'
+output: input[0] + '.bak'
+
+counter += 1
+""")
+        wf = script.workflow('default')
+        wf.run(dryrun=True)
+        # because of dryrun mode
+        self.assertEqual(wf.locals.counter, 0)
+        self.assertEqual(wf.locals.step_output, ['a.txt.bak', 'b.txt.bak'])
 
 if __name__ == '__main__':
     unittest.main()
