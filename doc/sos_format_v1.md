@@ -1028,12 +1028,9 @@ Option `dynamic` is also available for `depends` directive.
 ### step actions
 
 Step action should be defined **after** step directives. SoS considers any line before the next section head (`[]`) or the end of file as the action of the step. 
-Although more python statements could be supported, SoS 1.0 only supports
+**Any python statements and SoS variables can be used**. 
 
-* Variable assignment
-* Call to SoS function
-
-as step actions. For example, a step coud define action
+For example, a step coud define action
 
 ```python
 run('command1')
@@ -1046,6 +1043,15 @@ to execute multiple commands, and define extra pipeline variables
 basename = [os.path.basename(x) for x in input]
 run('command1 with ${basename}')
 ```
+
+and use
+
+```python
+for k, v in locals().items:
+    print('{}={!r}'.format(k,v))
+```
+
+to print out all SoS variables.
 
 Please refer to [step actions](actions.md) for SoS defined functions.
 
