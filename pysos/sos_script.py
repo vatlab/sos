@@ -21,16 +21,18 @@
 #
 
 import os
+import sys
 import re
 import copy
 import argparse
+import textwrap
 from collections import OrderedDict, defaultdict, Sequence
 from itertools import tee, izip, combinations
 
 # Python 2.7 should also have this module
 from io import StringIO
 
-from .utils import env, Error, _WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo
+from .utils import env, Error, _WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, dehtml, getTermWidth
 from .actions import *
 
 class ArgumentError(Error):
@@ -490,6 +492,29 @@ class SoS_Workflow:
                 self.locals['step_input'] = self.locals['step_output']
                 self.locals.pop('step_output')
 
+    def show(self, parameters=True):
+        textWidth = max(60, getTermWidth())
+        paragraphs = dehtml(self.description).split('\n\n')
+        print('\n' + '\n'.join(textwrap.wrap('{}:  {}'
+            .format(self.name, paragraphs[0]), width=textWidth)))
+        for paragraph in paragraphs[1:]:
+            print('\n'.join(textwrap.wrap(paragraph, width=textWidth)))
+        for step in self.sections:
+            # hide a step if there is no comment
+            text = '{:<22}'.format('  {}_{}:'.format(step.name, step.index)) + step.comment
+            print('\n'.join(textwrap.wrap(text, width=textWidth, subsequent_indent=' '*22)))
+        if parameters and self.parameters_section:
+            print('\nParameters:')
+            for k,v,c in self.parameters_section.parameters:
+                #
+                text = '  ' + k + \
+                    (' '*(22-len(k)-2) if len(k)<20 else ' ') + \
+                    (c + ' ' if c else '') + \
+                    ('(default: {})'.format(v) if v else '')
+                print('\n'.join(textwrap.wrap(text, subsequent_indent=' '*22,
+                    width=textWidth)))
+
+
     def __repr__(self):
         result = '__WORKFLOW__\n'
         # FIXME: proper line wrap
@@ -899,6 +924,32 @@ class SoS_Script:
         result += 'workflows:\n    ' + '\n    '.join(self.workflows)
         return result
 
+    def show(self):
+        textWidth = max(60, getTermWidth())
+        if self.description:
+            # separate \n\n 
+            for paragraph in dehtml(self.description).split('\n\n'):
+                print('\n'.join(textwrap.wrap(paragraph, width=textWidth)))
+        #
+        text = 'Available workflows: {}'.format(', '.join(sorted(self.workflows)))
+        print('\n' + '\n'.join(textwrap.wrap(text, width=textWidth, subsequent_indent=' '*8)))
+        #
+        # parameters
+        for wf_name in self.workflows:
+            #print('\n{}:'.format(wf_name))
+            wf = self.workflow(wf_name)
+            wf.show(parameters=False)
+        #
+        if wf.parameters_section:
+            print('\nParameters:')
+            for k,v,c in wf.parameters_section.parameters:
+                #
+                text = '  ' + k + \
+                    (' '*(22-len(k)-2) if len(k)<20 else ' ') + \
+                    (c + ' ' if c else '') + \
+                    ('(default: {})'.format(v) if v else '')
+                print('\n'.join(textwrap.wrap(text, subsequent_indent=' '*22,
+                    width=textWidth)))
     #
     # for testing purposes
     # 
@@ -912,22 +963,23 @@ class SoS_Script:
                 return SoS_eval(value, wf.globals, wf.locals)
         return None
         
-
-
 def sos_show(args, argv):
-    #try:
+    try:
         script = SoS_Script(args.script, argv)
-        workflow = script.workflow(args.workflow)
-        print(workflow)
-    #except Exception as e:
-    #    env.logger.error(e)
-    #    sys.exit(1)
+        if args.workflow:
+            workflow = script.workflow(args.workflow)
+            workflow.show()
+        else:
+            script.show()
+    except Exception as e:
+        env.logger.error(e)
+        sys.exit(1)
     
 def sos_run(args, argv):
-    #try:
+    try:
         script = SoS_Script(args.script, argv)
         workflow = script.workflow(args.workflow)
         workflow.run()
-    #except Exception as e:
-    #    env.logger.error(e)
-    #    sys.exit(1)
+    except Exception as e:
+        env.logger.error(e)
+        sys.exit(1)

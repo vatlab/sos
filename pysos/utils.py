@@ -25,7 +25,7 @@ import logging
 import collections
 import hashlib
 import shutil
-
+from HTMLParser import HTMLParser
 import token
 from tokenize import generate_tokens, untokenize
 from io import StringIO
@@ -36,6 +36,67 @@ try:
 except ImportError:
     # python 2.7
     from pipes import quote
+
+from array import array
+try:
+    from fcntl import ioctl
+    import termios
+except ImportError:
+    pass
+
+def getTermWidth():
+    try:
+        h, w = array('h', ioctl(sys.stderr, termios.TIOCGWINSZ, '\0' * 8))[:2]
+        return w
+    except:
+        return 78
+
+
+class _DeHTMLParser(HTMLParser):
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.__text = []
+
+    def handle_data(self, data):
+        text = data.strip()
+        if len(text) > 0:
+            text = re.sub('[ \t\r\n]+', ' ', text)
+            self.__text.append(text + ' ')
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'p':
+            self.__text.append('\n\n\n\n')
+        elif tag == 'br':
+            self.__text.append('\n\n')
+        elif tag == 'ul':
+            self.__text.append('')
+        elif tag == 'li':
+            self.__text.append('\n\n  * ')
+            
+    def handle_endtag(self, tag):
+        if tag == 'ul':
+            self.__text.append('\n\n')
+        if tag == 'li':
+            self.__text.append('\n\n')
+
+    def handle_startendtag(self, tag, attrs):
+        if tag == 'br':
+            self.__text.append('\n\n')
+
+    def text(self):
+        return ''.join(self.__text).strip()
+
+
+def dehtml(text):
+    try:
+        parser = _DeHTMLParser()
+        parser.feed(text)
+        parser.close()
+        return parser.text()
+    except Exception as e:
+        env.logger.warning('Failed to dehtml text: {}'.format(e))
+        return text
+
 
 class ColoredFormatter(logging.Formatter):
     ''' A logging formatter that uses color to differntiate logging messages
