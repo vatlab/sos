@@ -25,7 +25,6 @@ import logging
 import collections
 import hashlib
 import shutil
-from HTMLParser import HTMLParser
 import token
 from tokenize import generate_tokens, untokenize
 from io import StringIO
@@ -36,6 +35,14 @@ try:
 except ImportError:
     # python 2.7
     from pipes import quote
+
+try:
+    # python 3.x
+    from html.parser import HTMLParser
+except ImportError:
+    # python 2.7
+    from HTMLParser import HTMLParser
+
 
 from array import array
 try:
@@ -72,7 +79,7 @@ class _DeHTMLParser(HTMLParser):
             self.__text.append('')
         elif tag == 'li':
             self.__text.append('\n\n  * ')
-            
+
     def handle_endtag(self, tag):
         if tag == 'ul':
             self.__text.append('\n\n')
@@ -183,12 +190,12 @@ class RuntimeEnvironments(object):
     '''A singleton object that provides runtime environment for SoS.
     Atributes of this object include:
 
-    logger: 
-        a logging object 
+    logger:
+        a logging object
 
     verbosity:
         a verbosity level object that sets the verbosity level of the logger
-    
+
     logfile:
         name of logfile for the logger. default to no logfile.
 
@@ -313,7 +320,7 @@ class InterpolationError(Error):
 # String intepolation
 #
 class SoS_String:
-    '''This class implements SoS string that support interpolation using 
+    '''This class implements SoS string that support interpolation using
     a local and a global dictionary. It is similar to format string of
     Python 3.6 with configurable sigil (default to ${ }) and allows the
     resulting object of types other than simple int, None etc. It also supports
@@ -328,7 +335,7 @@ class SoS_String:
         (?P<expr>.*?)                       # any expression
         (?P<specifier>
         (?P<conversion>!\s*                 # conversion starting with !
-        [s|r|q]                             # conversion, q is added by SoS                       
+        [s|r|q]                             # conversion, q is added by SoS
         )?
         (?P<format_spec>:\s*                # format_spec starting with :
         (?P<fill>.?[<>=^])?                 # optional fill|align
@@ -342,7 +349,7 @@ class SoS_String:
         )?                                  # optional specifier
         \s*$                                # end of tring
         '''
-    
+
     # DOTALL makes . matchs also to newline so this supports multi-line expression
     FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
 
@@ -384,7 +391,7 @@ class SoS_String:
         # no matching }, must be wrong
         if self.sigil[1] not in text:
             raise InterpolationError(text[:20], "Missing {}".format(self.sigil[1]))
-        # 
+        #
         # location of first ending sigil
         i = text.index(self.sigil[1])
         #
@@ -395,7 +402,7 @@ class SoS_String:
             # k is very far away
             k = len(text) + 100
         #
-        # nested 
+        # nested
         if k < i:
             #                     i
             # something  ${ nested} }
@@ -410,7 +417,7 @@ class SoS_String:
                 #
                 # [[x*2 for x in [a, b]]]
                 #
-                # will first try to evaluate 
+                # will first try to evaluate
                 #
                 # x*2 for x in [a, b]
                 #
@@ -464,9 +471,9 @@ class SoS_String:
             # special SoS conversion for shell quotation.
             return self._format(quote(obj), fmt[2:])
         else:
-            # use 
+            # use
             return ('{' + fmt + '}').format(obj)
-        
+
     def _repr(self, obj, fmt=None):
         '''Format an object. fmt will be applied to all elements if obj is not
         in a basic type. Callable object cannot be outputed (an InterpolationError
@@ -499,7 +506,7 @@ class _WorkflowDict(dict):
     def __setitem__(self, key, value):
         #if not (isinstance(value, basestring) or  \
         #    (isinstance(value, (tuple, list)) and all(isinstance(x, basestring) for x in value)) or \
-        #    (isinstance(value, dict) and all(isinstance(x, basestring) for x in value.keys()) and 
+        #    (isinstance(value, dict) and all(isinstance(x, basestring) for x in value.keys()) and
         #        all(isinstance(x, basestring) for x in value.values())) ):
         #    raise ValueError('SoS variable can only be string or list or dictionary of strings. "{}" for variable "{}" is provided.'.format(value, key))
         dict.__setitem__(self, key, value)
@@ -531,7 +538,7 @@ def ConvertString(s, globals, locals, sigil):
             # if this item is a string that uses single or triple single quote
             if tokval.startswith("'"):
                 # we convert it to a raw string
-                tokval = u'r' + tokval 
+                tokval = u'r' + tokval
             # we then perform interpolation on the string and put it back to expression
             tokval = repr(interpolate(eval(tokval), globals, locals, sigil))
         # the resusting string is put back to the expression (or statement)
@@ -608,7 +615,7 @@ class RuntimeInfo:
             else:
                 raise ValueError('Invalid output file specification: {}'.format(output_files))
             #
-            # what is the relative 
+            # what is the relative
             #
             # is the file relative to this cache_parent?
             rel_path = os.path.relpath(os.path.realpath(os.path.expanduser(output_file)), os.path.realpath('.'))
@@ -642,9 +649,9 @@ class RuntimeInfo:
             #
             # now if there is an old signature file, let us move it to the new location
             if os.path.isfile('{}.exe_info'.format(output_file)):
-                env.logger.info('Moving {}.exe_info from older version of variant tools to local cache'.format(output_file))
+                env.logger.info('Moving existing {}.exe_info to local cache'.format(output_file))
                 shutil.move('{}.exe_info'.format(output_file), self.proc_info)
-            
+
     def write(self, cmd, ifiles, ofiles, dfiles):
         if not self.proc_info:
             return
@@ -700,6 +707,3 @@ class RuntimeInfo:
                 os.remove(filename)
             except Exception as e:
                 env.logger.warning('Fail to remove {}: {}'.format(filename, e))
-
-
-
