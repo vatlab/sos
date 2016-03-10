@@ -220,15 +220,18 @@ class SoS_Step:
     # directive functions
     def _directive_input(self, *args, **kwargs):
         # first *args are filenames
-        ifiles = []
-        for arg in args:
-            if isinstance(arg, basestring):
-                ifiles.append(arg)
-            elif isinstance(arg, list):
-                if not all(isinstance(x, basestring) for x in arg):
-                    raise RuntimeError('Invalid input file: {}'.format(arg))
-                ifiles.extend(arg)
-        self.locals['step_input'] = ifiles
+        if args:
+            ifiles = []
+            for arg in args:
+                if isinstance(arg, basestring):
+                    ifiles.append(arg)
+                elif isinstance(arg, list):
+                    if not all(isinstance(x, basestring) for x in arg):
+                        raise RuntimeError('Invalid input file: {}'.format(arg))
+                    ifiles.extend(arg)
+            self.locals['step_input'] = ifiles
+        else:
+            ifiles = self.locals['step_input']
         #
         # handle group_by
         if 'group_by' in kwargs:
