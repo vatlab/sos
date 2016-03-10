@@ -168,9 +168,7 @@ For example
 ## Literals and variables 
 
 SoS uses [Python](http://www.python.org) syntax for literals and variables with some minor modifications. 
-SoS allows three types of literals: string, list of strings, and dictionary of strings.
-
-**TBD:** Technically speaking, there is no need to restrict the type of variables.
+Although **any types of Python objects can be used in SoS**, the most commonly used ones are strings and lists.
 
 ### String literal
 
@@ -196,19 +194,9 @@ A SoS list can only be a list of strings. List literals have format
 
 where comma separated strings are enclosed by `[` and `]`. Items in a list can be accessed by their indexes (starting from 0) or slices. 
 
-### Dictionary literal (TBD)
-
-A SoS dictionary can only be a dictionary of strings with string keys. Dictionary literals have format
-
-```python
-{'a': 'b', 'c':'d'}
-```
-
-where items `a` and `c` have values `b` and `d` respectively. Dictionary items are accessed by their keys.
-
 ### SoS variables 
 
-SoS variables are case-sensitive python variables associated with the execution of SoS scripts. For simplicity, they can only be **string**, **list of strings**, or **dictionary of strings**. They can be defined almost anywhere in a SoS script.
+SoS variables are case-sensitive python variables associated with the execution of SoS scripts. They can be of any Python types and be defined almost anywhere in a SoS script.
 
 For example
 

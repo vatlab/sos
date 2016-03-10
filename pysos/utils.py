@@ -436,17 +436,19 @@ class _WorkflowDict(dict):
         dict.__init__(self)
 
     def __setitem__(self, key, value):
-        if not (isinstance(value, basestring) or  \
-            (isinstance(value, (tuple, list)) and all(isinstance(x, basestring) for x in value)) or \
-            (isinstance(value, dict) and all(isinstance(x, basestring) for x in value.keys()) and 
-                all(isinstance(x, basestring) for x in value.values())) ):
-            raise ValueError('SoS variable can only be string or list or dictionary of strings. "{}" for variable "{}" is provided.'.format(value, key))
+        #if not (isinstance(value, basestring) or  \
+        #    (isinstance(value, (tuple, list)) and all(isinstance(x, basestring) for x in value)) or \
+        #    (isinstance(value, dict) and all(isinstance(x, basestring) for x in value.keys()) and 
+        #        all(isinstance(x, basestring) for x in value.values())) ):
+        #    raise ValueError('SoS variable can only be string or list or dictionary of strings. "{}" for variable "{}" is provided.'.format(value, key))
         dict.__setitem__(self, key, value)
-        if isinstance(value, str) or len(value) <= 2 or len(str(value)) < 50:
+        if isinstance(value, (str, int, float, bool)) or (isinstance(value, collections.Sequence) and len(value) <= 2) or len(str(value)) < 50:
             env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, str(value)))
-        else: # should be a list or tuple
+        elif isinstance(value, collections.Sequence): # should be a list or tuple
             val = str(value).split(' ')[0] + ' ...] ({} items)'.format(len(value))
             env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, val))
+        else:
+            env.logger.debug('Workflow variable ``{}`` is set to ``{}...``'.format(key, str(val)[:40]))
 
     def __setattr__(self, key, value):
         self.__dict__[key] = value

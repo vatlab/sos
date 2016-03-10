@@ -71,7 +71,7 @@ run(''' cp ${input} ${_dest} ''')
 files = ['a.txt', 'b.txt']
 names = ['a', 'b', 'c']
 c = ['1', '2']
-counter = "0"
+counter = 0
 all_names = ''
 all_loop = ''
 
@@ -80,11 +80,11 @@ input: 'a.pdf', files, group_by='single', labels='names', for_each='c'
 all_names += _names[0] + " "
 all_loop += _c + " "
 
-counter = str(int(counter) + 1)
+counter = counter + 1
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(wf.locals['counter'], "6")
+        self.assertEqual(wf.locals['counter'], 6)
         self.assertEqual(wf.locals['all_names'], "a b c a b c ")
         self.assertEqual(wf.locals['all_loop'], "1 1 1 2 2 2 ")
 
