@@ -1003,10 +1003,6 @@ output: [x + '.bai' for x in bamfiles]
 ```
 for this particular example.
 
-The following figure summarizes the effect of `input`
-and `output` directives and input options `group_by` and `for_each` on the flow
-of input and output files and related variables.
-
 ### Output options
 
 Similar to `input`, directive `output` also accept output options as `key=value` pair after the output files.
@@ -1048,6 +1044,10 @@ depends:
 
 Similar to directive `output`, dependent files can also be defined after `input` directive and consist of
 dependent files determined from loop variables. Option `dynamic` is also available for `depends` directive.
+
+The following figure summarizes the effect of `input`
+and `output` directives and input options `group_by` and `for_each` on the flow
+of input and output files and related variables.
 
 ![step options](step_options.jpg "step options")
 
