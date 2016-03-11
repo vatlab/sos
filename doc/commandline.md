@@ -49,6 +49,7 @@ Execute specified `steps` of `workflow` defined in `script` with specified `work
 * `-j`: Maximum number of concurrent jobs. A SoS script is by default executed sequentially (`-j 1`) but can have mutliple
   concurrent jobs if a positive number is specified. Please see [work flow control](workflow_control.md) in detail.
 * `-f` (fresh or force): ignore runtime signatures and re-execute the workflow even if the workflow has been executed before. This is useful for gathering runtime statistics by executing a workflow repeatedly.
+* '-d' (dryrun): execute script in dryrun mode.
 * `-h`: Show usage of command `sos run` or `script` if a script is specified.
 
 The list of acceptable workflow options for `script` can be displayed using command

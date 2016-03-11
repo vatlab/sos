@@ -45,19 +45,22 @@ if __name__ == '__main__':
     # command run
     parser = subparsers.add_parser('run',
         help='Execute a SoS script')
-##         help='Execute a pipeline or a SQL query',
-##         description='''Execute a pipeline that uses external commands to
-##             process input files, usually to align raw reads to a reference
-##             genome and call variants from aligned reads. The pipelines are
-##             controlled by pipeline description files. This command can also be
-##             used to execute arbitrary SQL query against the project database.
-##             Additional parameters will be passed to pipelines as pipeline
-##             parameters. ''')
     parser.add_argument('script', metavar='SCRIPT',
-        help='A SoS script')
-
+        help='A SoS script that defines one or more workflows.')
     parser.add_argument('workflow', metavar='WORKFLOW:STEPS', nargs='?',
-        help='Name of the workflow to execute')
+        help='''Name of the workflow to execute. This option can be ignored if
+            the script defines a default workflow (with no name or with name
+            `default`) or defines only a single workflow. A comma separated
+            list of steps (`n` for step `n`, `-n` for up to `n`, `n-` for `n`
+            and later, `n-m` for `n` to `m`) can be appended to workflow name
+            (separated by `:`) to list steps of workflow to execute. ''')
+    parser.add_argument('-d', action='store_true',
+        help='''Execute the workflow in dryrun mode. SoS executes the
+            specified workflow one by one, evaluate all expressions and
+            statements but skip any function call and do not raise any
+            error for missing input or output files. Running a script
+            in dryrun mode, especially in verbosity mode 3 can help you
+            trace the input, output of steps and definition of variables.''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_run)
     #

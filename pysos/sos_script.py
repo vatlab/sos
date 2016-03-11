@@ -1114,7 +1114,7 @@ def sos_run(args, argv):
     #try:
         script = SoS_Script(args.script, argv)
         workflow = script.workflow(args.workflow)
-        workflow.run()
+        workflow.run(mode='dryrun' if args.d else 'run')
     #except Exception as e:
     #    env.logger.error(e)
     #    sys.exit(1)

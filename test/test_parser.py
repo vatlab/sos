@@ -288,7 +288,7 @@ files = ['a.txt', 'b.txt']
 input: 'a.pdf', files, skip=False
 
 ''')
-        script.workflow('default').run()
+        script.workflow('default').run(mode='dryrun')
 
     def testSectionActions(self):
         '''Test actions of sections'''

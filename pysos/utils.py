@@ -552,16 +552,18 @@ class DryrunTransformer(ast.NodeTransformer):
     def visit_Call(self, node):
         #return None
         return ast.copy_location(
-            ast.Str(s=''), node)
+            ast.Num(n=0), node)
 
 def SoS_exec(stmts, globals, locals, sigil='${ }', mode='run'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.
     
-    In the dryrun mode (mode='dryrun'), SoS will remove any function calls,
-    but will perform regular variable assignment etc. This is more or less a hack
-    and will be further investigated.
-    '''
+    In the dryrun mode (mode='dryrun'), SoS will replace any function call with
+    value 0. The idea is that SoS functions should return 0 after successful
+    execution so the statement should still be correct as long as the script
+    does not call other python functions. Further improvement of this dryrun
+    mode can make the exec code clever enough to only replace functions that
+    are defined by SoS. '''
     # the trouble here is that we have to execute the statements line by line
     # because the variables defined
     #
@@ -584,8 +586,11 @@ def SoS_exec(stmts, globals, locals, sigil='${ }', mode='run'):
             executed += stmts + '\n'
         else:
             transformer = DryrunTransformer()
+            # parse the statement.
             stmts = ast.parse(stmts)
+            # replace all function calls with numeric number 0
             transformer.visit(stmts)
+            # and execute the modified statements.
             exec(compile(stmts, '<string>', 'exec'), globals, locals)
     env.logger.trace('Executed\n{}'.format(executed))
     return executed
