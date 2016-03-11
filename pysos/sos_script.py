@@ -24,6 +24,7 @@ import os
 import sys
 import re
 import copy
+import glob
 import argparse
 import textwrap
 from collections import OrderedDict, defaultdict, Sequence
@@ -288,6 +289,26 @@ class SoS_Step:
             self.locals['step_input'] = ifiles
         else:
             ifiles = self.locals['step_input']
+        # expand files with wildcard characters and check if files exist
+        tmp = []
+        for ifile in ifiles:
+            if os.path.isfile(ifile):
+                tmp.append(ifile)
+            elif self.mode == 'run':
+                # in this mode file must exist
+                expanded = glob.glob(ifile)
+                if not expanded:
+                    raise RuntimeError('{} not exist.'.format(ifile))
+                tmp.extend(expanded)
+            elif self.mode == 'dryrun':
+                # FIXME: this should be the 'dynamic' mode
+                expanded = glob.glob(ifile)
+                if expanded:
+                    tmp.extend(expanded)
+                else:
+                    tmp.append(ifile)
+        #
+        ifiles = tmp
         #
         if 'skip' in kwargs and kwargs['skip']:
             self._groups = []
@@ -341,7 +362,7 @@ class SoS_Step:
     #
     # Execution
     #
-    def run(self, globals, locals, dryrun=False):
+    def run(self, globals, locals, mode='run'):
         if isinstance(self.index, int):
             locals['workflow_index'] = str(self.index)
         #
@@ -360,6 +381,7 @@ class SoS_Step:
                 except Exception as e:
                     raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
         #
+        self.mode = mode
         # directives
         #
         # the following is a quick hack to allow _directive_input function etc to access 
@@ -416,7 +438,7 @@ class SoS_Step:
         if locals['step_output']:
             signature = RuntimeInfo(self.statements, 
                 locals['step_input'], locals['step_output'], locals['step_depends'])
-            if not dryrun:
+            if self.mode == 'run':
                 for ofile in locals['step_output']:
                     parent_dir = os.path.split(ofile)[0]
                     if parent_dir and not os.path.isdir(parent_dir):
@@ -435,26 +457,24 @@ class SoS_Step:
             # If the users specifies output files for each loop (using ${input} etc, we
             # can try to see if we can create partial signature. This would help if the
             # step is interrupted in the middle.
-            if o and o != locals['step_output']:
+            if o and o != locals['step_output'] and self.mode == 'run':
                 partial_signature = RuntimeInfo(self.statements, g, o, d)
-                if not dryrun:
-                    if partial_signature.validate():
-                        # everything matches
-                        env.logger.info('Reusing existing output files {}'.format(', '.join(o)))
-                        continue
+                if partial_signature.validate():
+                    # everything matches
+                    env.logger.info('Reusing existing output files {}'.format(', '.join(o)))
+                    continue
             # action
             try:
-                if not dryrun:
-                    SoS_exec(''.join(self.statements), globals, locals, self.sigil)
+                SoS_exec(''.join(self.statements), globals, locals, self.sigil, mode=self.mode)
             except Exception as e:
                 raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
-            if o and o != locals['step_output']:
+            if o and o != locals['step_output'] and self.mode == 'run':
                 partial_signature.write()
-        if not dryrun:
+        if self.mode == 'run':
             for ofile in locals['step_output']:
                 if not os.path.isfile(os.path.expanduser(ofile)):
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
-        if signature and not dryrun:
+        if signature and self.mode == 'run':
             signature.write()
 
     def __repr__(self):
@@ -569,7 +589,7 @@ class SoS_Workflow:
         if self.global_section:
             self.global_section.run(self.globals, self.locals)
 
-    def run(self, dryrun=False):
+    def run(self, mode='run'):
         '''Very preliminary implementation of sequential execution function
         '''
         # process global variables
@@ -590,7 +610,7 @@ class SoS_Workflow:
                 self.locals.pop('step_output')
             if 'step_depends' in self.locals:
                 self.locals.pop('step_depends')
-            section.run(self.globals, self.locals, dryrun=dryrun)
+            section.run(self.globals, self.locals, mode=mode)
 
     def show(self, parameters=True):
         textWidth = max(60, getTermWidth())

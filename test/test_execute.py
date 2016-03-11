@@ -64,6 +64,17 @@ run(''' cp ${input} ${_dest} ''')
         self.assertEqual(wf.locals['oa'], ['temp/c.txt', 'temp/d.txt'])
         
 
+    def testInput(self):
+        '''Test input specification'''
+        script = SoS_Script(r"""
+[0]
+input: '*.py'
+output: input
+""")
+        wf = script.workflow('default')
+        wf.run(mode='dryrun')
+        self.assertTrue('test_execute.py' in wf.locals['step_output'])
+
     def testForEach(self):
         '''Test for_each option of input'''
         script = SoS_Script(r"""
@@ -83,7 +94,7 @@ all_loop += _c + " "
 counter = counter + 1
 """)
         wf = script.workflow('default')
-        wf.run()
+        wf.run(mode='dryrun')
         self.assertEqual(wf.locals['counter'], 6)
         self.assertEqual(wf.locals['all_names'], "a b c a b c ")
         self.assertEqual(wf.locals['all_loop'], "1 1 1 2 2 2 ")
@@ -102,7 +113,7 @@ input: 'a.pdf', files, group_by='single', labels='names', for_each='c'
 counter = str(int(counter) + 1)
 """)
         wf = script.workflow('default')
-        wf.run()
+        wf.run(mode='dryrun')
         self.assertEqual(wf.locals['ia'], ["a.pdf", 'a.txt', 'b.txt'])
 
     def testFileType(self):
@@ -114,11 +125,12 @@ counter = 0
 
 input: 'a.pdf', files, filetype='.txt', group_by='single'
 
-counter += 1
+output:input
+
 """)
         wf = script.workflow('default')
-        wf.run()
-        self.assertEqual(wf.locals.counter, 2)
+        wf.run(mode='dryrun')
+        self.assertEqual(wf.locals.step_output, ['a.txt', 'b.txt'])
         #
         script = SoS_Script(r"""
 [0]
@@ -130,7 +142,7 @@ input: 'a.pdf', 'b.html', files, filetype=('.txt', '.pdf'), group_by='single'
 counter += 1
 """)
         wf = script.workflow('default')
-        wf.run()
+        wf.run(mode='dryrun')
         self.assertEqual(wf.locals.counter, 3)
         #
         script = SoS_Script(r"""
@@ -143,7 +155,7 @@ input: 'a.pdf', 'b.html', files, filetype=lambda x: 'a' in x, group_by='single'
 counter += 1
 """)
         wf = script.workflow('default')
-        wf.run()
+        wf.run(mode='dryrun')
         self.assertEqual(wf.locals.counter, 2)
 
     def testSkip(self):
@@ -158,7 +170,7 @@ input: 'a.pdf', 'b.html', files, skip=counter == 0
 counter += 1
 """)
         wf = script.workflow('default')
-        wf.run()
+        wf.run(mode='dryrun')
         self.assertEqual(wf.locals.counter, 0)
 
     def testOutputFromInput(self):
@@ -174,9 +186,8 @@ output: input[0] + '.bak'
 counter += 1
 """)
         wf = script.workflow('default')
-        wf.run(dryrun=True)
-        # because of dryrun mode
-        self.assertEqual(wf.locals.counter, 0)
+        wf.run(mode='dryrun')
+        self.assertEqual(wf.locals.counter, 2)
         self.assertEqual(wf.locals.step_output, ['a.txt.bak', 'b.txt.bak'])
 
 if __name__ == '__main__':

@@ -26,6 +26,7 @@ import collections
 import hashlib
 import shutil
 import token
+import ast
 from tokenize import generate_tokens, untokenize
 from io import StringIO
 
@@ -543,9 +544,24 @@ def SoS_eval(expr, globals, locals, sigil='${ }'):
     expr = ConvertString(expr, globals, locals, sigil)
     return eval(expr, globals, locals)
 
-def SoS_exec(stmts, globals, locals, sigil='${ }'):
+class DryrunTransformer(ast.NodeTransformer):
+    '''This class will remove all function calls in stmts for it to be executed
+    in dryrun mode. We are not quite sure what SoS would do in dryrun mode so
+    this might be revised later.    
+    '''
+    def visit_Call(self, node):
+        #return None
+        return ast.copy_location(
+            ast.Str(s=''), node)
+
+def SoS_exec(stmts, globals, locals, sigil='${ }', mode='run'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
-    interpolate expressions) strings.'''
+    interpolate expressions) strings.
+    
+    In the dryrun mode (mode='dryrun'), SoS will remove any function calls,
+    but will perform regular variable assignment etc. This is more or less a hack
+    and will be further investigated.
+    '''
     # the trouble here is that we have to execute the statements line by line
     # because the variables defined
     #
@@ -563,8 +579,14 @@ def SoS_exec(stmts, globals, locals, sigil='${ }'):
         # if it is ok, execute and reset code
         stmts = ConvertString('\n'.join(code), globals, locals, sigil)
         code = []
-        exec(stmts, globals, locals)
-        executed += stmts + '\n'
+        if mode == 'run':
+            exec(stmts, globals, locals)
+            executed += stmts + '\n'
+        else:
+            transformer = DryrunTransformer()
+            stmts = ast.parse(stmts)
+            transformer.visit(stmts)
+            exec(compile(stmts, '<string>', 'exec'), globals, locals)
     env.logger.trace('Executed\n{}'.format(executed))
     return executed
 
@@ -581,8 +603,8 @@ class WorkflowDict(dict):
     1. Read only item. An error will be raised if a readonly item is changed.
     2. Temporary items. A function might be provided to remove all temporary items.
     """
-    def __init__(self):
-        dict.__init__(self)
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
 
     def __setitem__(self, key, value):
         dict.__setitem__(self, key, value)
