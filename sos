@@ -26,9 +26,9 @@ import argparse
 from pysos import SOS_VERSION, SOS_FULL_VERSION, env, sos_run, sos_show
 
 def addCommonArgs(parser):
-    parser.add_argument('-v', '--verbosity', choices=['0', '1', '2', '3'],
-        help='''Output error and warning (0), info (1), debug (2) and trace (3) 
-            information to standard output (default to 1).'''),
+    parser.add_argument('-v', '--verbosity', choices=['0', '1', '2', '3', '4'],
+            help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).'''),
 
 if __name__ == '__main__':
     master_parser = argparse.ArgumentParser(description='''A workflow system
@@ -51,7 +51,7 @@ if __name__ == '__main__':
 ##             genome and call variants from aligned reads. The pipelines are
 ##             controlled by pipeline description files. This command can also be
 ##             used to execute arbitrary SQL query against the project database.
-##             Additional parameters will be passed to pipelines as pipeline 
+##             Additional parameters will be passed to pipelines as pipeline
 ##             parameters. ''')
     parser.add_argument('script', metavar='SCRIPT',
         help='A SoS script')
@@ -70,7 +70,7 @@ if __name__ == '__main__':
 ##             genome and call variants from aligned reads. The pipelines are
 ##             controlled by pipeline description files. This command can also be
 ##             used to execute arbitrary SQL query against the project database.
-##             Additional parameters will be passed to pipelines as pipeline 
+##             Additional parameters will be passed to pipelines as pipeline
 ##             parameters. ''')
     parser.add_argument('script', metavar='SCRIPT',
         help='A SoS script')

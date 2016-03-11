@@ -20,7 +20,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-
 import os
 import unittest
 
@@ -31,7 +30,7 @@ from pysos.utils import *
 class TestUtils(unittest.TestCase):
     def testLogger(self):
         '''Test logging level'''
-        for verbosity in ['0', '1', '2', '3']:
+        for verbosity in ['0', '1', '2', '3', '4']:
             env.verbosity = verbosity
             env.logger.trace('Verbosity {}:trace message with ``empahsized text`` in between'.format(env.verbosity))
             env.logger.debug('Verbosity {}:debug message with ``empahsized text`` in between'.format(env.verbosity))
@@ -42,7 +41,7 @@ class TestUtils(unittest.TestCase):
         if os.path.isfile('test.log'):
             os.remove('test.log')
         env.logfile = 'test.log'
-        for verbosity in ['0', '1', '2', '3']:
+        for verbosity in ['0', '1', '2', '3', '4']:
             env.verbosity = verbosity
             env.logger.trace('Verbosity {}:trace message with ``empahsized text`` in between'.format(env.verbosity))
             env.logger.debug('Verbosity {}:debug message with ``empahsized text`` in between'.format(env.verbosity))
@@ -56,7 +55,7 @@ class TestUtils(unittest.TestCase):
                 line_count += 1
                 self.assertFalse('\033[' in line)
             # 4 lines for all logging level (logging level of logfile is fixed to DEBUG)
-            self.assertEqual(line_count, 16)
+            self.assertEqual(line_count, 20)
 
     def testInterpolation(self):
         '''Test string interpolation'''
@@ -86,14 +85,14 @@ class TestUtils(unittest.TestCase):
                 ('Format {0}a:.5f{1}', 'Format 100.00000'),
                 ('{0}var2[:2]{1}', '1 2'),
                 ('{0}var2[1:]{1}', '2 3.1'),
-                # nested 
+                # nested
                 ('Nested {0}a:.{0}4+1{1}f{1}', 'Nested 100.00000'),
                 # deep nested
                 ('Triple Nested {0}a:.{0}4+{0}5/5{1}{1}f{1}', 'Triple Nested 100.00000'),
                 # nested invalid
                 ('Nested invalid {0}"{0}a-{1}"{1}', 'Nested invalid {}a-{}'.format(l, r)),
                 ('Nested valid {0}"{0}a{1}-"{1}', 'Nested valid 100-'),
-                # 
+                #
                 ('Dict {0}d{1}', ['Dict a b', 'Dict b a']),
                 ('set {0}e{1}', ['set 1 a', 'set a 1']),
                 ('Fmt {0}var1:.2f{1}', 'Fmt 0.50'),
@@ -102,7 +101,7 @@ class TestUtils(unittest.TestCase):
                 ('LC {0}[x*2 for x in var2]:.2f{1}', 'LC 2.00 4.00 6.20'),
                 #
                 # [['a':'b', 'c':'d']['a']] works because
-                #     ['a':'b', 'c':'d']a 
+                #     ['a':'b', 'c':'d']a
                 # is invalid so SoS does not consider ['a'] as nested expression
                 #
                 ('Newline {0}{{"a": "b", \n"c": "d"}}["a"]{1}', 'Newline b'),
@@ -167,6 +166,6 @@ class TestUtils(unittest.TestCase):
         #
         d.a += 1
         self.assertEqual(d['a'], 2)
-        
+
 if __name__ == '__main__':
     unittest.main()
