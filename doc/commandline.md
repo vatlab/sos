@@ -6,6 +6,7 @@
   - [subcommand `run`](#subcommand-run)
   - [subcommand `show`](#subcommand-show)
   - [subcommand `export`](#subcommand-export)
+  - [subcommand `analyze` (or `summarize`)](#subcommand-analyze-or-summarize)
   - [TBD Features](#tbd-features)
 - [Command `sos-runner`](#command-sos-runner)
 
@@ -36,7 +37,7 @@ to get detailed description of a particular subcommand.
 ### subcommand `run`
 
 ```bash
-sos run script [workflow[:steps]] [workflow-options] [-h] [-j NUM_JOBS]
+sos run script [workflow[:steps]] [-f] [-h] [-j NUM_JOBS] [workflow-options]
 ```
 
 Execute specified `steps` of `workflow` defined in `script` with specified `workflow-options`.
@@ -47,6 +48,7 @@ Execute specified `steps` of `workflow` defined in `script` with specified `work
 * `workflow-options`: Options defined in the `[default]` section of `script`. variables with a text default value accepts a string input. variables with a list default value (e.g. `names=${[]}`)  accepts a list of strings.
 * `-j`: Maximum number of concurrent jobs. A SoS script is by default executed sequentially (`-j 1`) but can have mutliple
   concurrent jobs if a positive number is specified. Please see [work flow control](workflow_control.md) in detail.
+* `-f` (fresh or force): ignore runtime signatures and re-execute the workflow even if the workflow has been executed before. This is useful for gathering runtime statistics by executing a workflow repeatedly.
 * `-h`: Show usage of command `sos run` or `script` if a script is specified.
 
 The list of acceptable workflow options for `script` can be displayed using command
@@ -76,6 +78,32 @@ Export `steps` of `workflow` defined in `script` to `script_dir`. This command w
 *  `-f` (force): overwrite existing files with different content silently. If unspecified, the command will fail with an error message in such cases. 
 * `-h` (help): display help message.
 
+### subcommand `analyze` (or `summarize`)
+
+SoS saves runtime information during the execution of SoS script. Such information includes the start and end time of each step, CPU and memory usage, and the size of the current working directory. Users can learn the details of a previous run by running command
+
+```bash
+sos analyze
+```
+
+from the directory where the script was excuted. If the script has been executed multiple times, you can use option `-l` (list) to list all available runtime IDs,
+
+```bash
+sos analyze -l 
+```
+
+and use command
+
+```bash
+sos analyze ID
+```
+
+to display details of that particular run.
+
+Other options include
+
+* `-s`: summarize runtime information of all previous runs.
+* `-o`: write a report to specified file
 
 ### TBD Features
 * subcommand **`convert`**:
