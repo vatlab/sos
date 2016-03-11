@@ -63,6 +63,14 @@ class SoS_ExecutePythonScript(SoS_ExecuteScript):
             suffix='.py')
 
 
+class SoS_ExecutePython3Script(SoS_ExecuteScript):
+    '''SoS_Execute in-line python script using python as interpreter. Please
+    check action SoS_ExecuteScript for more details.
+    '''
+    def __init__(self, script=''):
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='python3',
+            suffix='.py')
+
 @SoS_Action
 def run(script):
     SoS_ExecuteShellScript(script).run()
@@ -70,6 +78,10 @@ def run(script):
 @SoS_Action
 def python(script):
     SoS_ExecutePythonScript(script).run()
+
+@SoS_Action
+def python3(script):
+    SoS_ExecutePython3Script(script).run()
 
 @SoS_Action
 def R(script):
