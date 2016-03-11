@@ -366,6 +366,9 @@ class SoS_Step:
         if isinstance(self.index, int):
             locals['workflow_index'] = str(self.index)
         #
+        if self.name is not None:
+            env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment))
+        #
         # assignment
         #
         if self.is_parameters:
