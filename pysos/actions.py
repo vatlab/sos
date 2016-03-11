@@ -5,12 +5,21 @@ import pipes
 
 from .utils import env
 
-class SoS_Action:
-    def __init__(self):
-        pass
+
+#
+# A decoration function that allows SoS to replace all SoS actions
+# with a null action.
+#
+def SoS_Action(func):
+    def action(*args, **kwargs):
+        if env.run_mode == 'dryrun':
+            return 0
+        else:
+            return func(*args, **kwargs)
+    return action
 
 
-class SoS_ExecuteScript(SoS_Action):
+class SoS_ExecuteScript:
     def __init__(self, script, interpreter, suffix):
         self.script = script
         self.interpreter = interpreter
@@ -54,12 +63,15 @@ class SoS_ExecutePythonScript(SoS_ExecuteScript):
             suffix='.py')
 
 
+@SoS_Action
 def run(script):
     SoS_ExecuteShellScript(script).run()
 
+@SoS_Action
 def python(script):
     SoS_ExecutePythonScript(script).run()
 
+@SoS_Action
 def R(script):
     SoS_ExecuteRScript(script).run()
 

@@ -158,28 +158,6 @@ class TestUtils(unittest.TestCase):
         # interpolation will only happen in string
         self.assertRaises(SyntaxError, SoS_eval, '''${a}''', globals(), locals)
 
-    def testDryrun(self):
-        '''Test execution of statements in dryrun mode'''
-        def func(a):
-            a[0] = 100
-
-        locals = WorkflowDict({
-            'a': 100,
-            'b': 'file name',
-            'c': ['file1', 'file2', 'file 3'],
-            'd': {'a': 'file1', 'b':'file2'},
-            'func': func
-        })
-        for stmts, result, dryrun_result in [
-            ('''result = a''', 100, 100),
-            ('''func(c)\nresult = c[0]''', 100, 'file1')
-            ]:
-            # in the dryrun mode, c is not changed by function 'func'
-            SoS_exec(stmts, globals(), locals, mode='dryrun')
-            self.assertEqual(locals.result, dryrun_result)
-            SoS_exec(stmts, globals(), locals, mode='run')
-            self.assertEqual(locals.result, result)
-
     def testWorkflowDict(self):
         '''Test workflow dict with attribute access'''
         d = WorkflowDict()

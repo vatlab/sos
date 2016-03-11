@@ -26,7 +26,6 @@ import collections
 import hashlib
 import shutil
 import token
-import ast
 from tokenize import generate_tokens, untokenize
 from io import StringIO
 
@@ -155,6 +154,10 @@ class RuntimeEnvironments(object):
         self._verbosity = '2'
         self._logfile = None
         self._set_logger()
+        #
+        # run mode, this mode controls how SoS actions behave
+        #
+        self.run_mode = 'run'
 
     #
     # attribute logger
@@ -544,26 +547,9 @@ def SoS_eval(expr, globals, locals, sigil='${ }'):
     expr = ConvertString(expr, globals, locals, sigil)
     return eval(expr, globals, locals)
 
-class DryrunTransformer(ast.NodeTransformer):
-    '''This class will remove all function calls in stmts for it to be executed
-    in dryrun mode. We are not quite sure what SoS would do in dryrun mode so
-    this might be revised later.    
-    '''
-    def visit_Call(self, node):
-        #return None
-        return ast.copy_location(
-            ast.Num(n=0), node)
-
-def SoS_exec(stmts, globals, locals, sigil='${ }', mode='run'):
+def SoS_exec(stmts, globals, locals, sigil='${ }'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
-    interpolate expressions) strings.
-    
-    In the dryrun mode (mode='dryrun'), SoS will replace any function call with
-    value 0. The idea is that SoS functions should return 0 after successful
-    execution so the statement should still be correct as long as the script
-    does not call other python functions. Further improvement of this dryrun
-    mode can make the exec code clever enough to only replace functions that
-    are defined by SoS. '''
+    interpolate expressions) strings.'''
     # the trouble here is that we have to execute the statements line by line
     # because the variables defined
     #
@@ -581,17 +567,8 @@ def SoS_exec(stmts, globals, locals, sigil='${ }', mode='run'):
         # if it is ok, execute and reset code
         stmts = ConvertString('\n'.join(code), globals, locals, sigil)
         code = []
-        if mode == 'run':
-            exec(stmts, globals, locals)
-            executed += stmts + '\n'
-        else:
-            transformer = DryrunTransformer()
-            # parse the statement.
-            stmts = ast.parse(stmts)
-            # replace all function calls with numeric number 0
-            transformer.visit(stmts)
-            # and execute the modified statements.
-            exec(compile(stmts, '<string>', 'exec'), globals, locals)
+        exec(stmts, globals, locals)
+        executed += stmts + '\n'
     env.logger.trace('Executed\n{}'.format(executed))
     return executed
 

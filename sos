@@ -54,7 +54,7 @@ if __name__ == '__main__':
             list of steps (`n` for step `n`, `-n` for up to `n`, `n-` for `n`
             and later, `n-m` for `n` to `m`) can be appended to workflow name
             (separated by `:`) to list steps of workflow to execute. ''')
-    parser.add_argument('-d', action='store_true',
+    parser.add_argument('-d', action='store_true', dest='__dryrun__',
         help='''Execute the workflow in dryrun mode. SoS executes the
             specified workflow one by one, evaluate all expressions and
             statements but skip any function call and do not raise any
