@@ -406,7 +406,8 @@ class SoS_String:
         (?P<expr>.*?)                       # any expression
         (?P<specifier>
         (?P<conversion>!\s*                 # conversion starting with !
-        [s|r|q]                             # conversion, q is added by SoS
+        [s|r|q]?                            # conversion, q is added by SoS
+        (?P<sep>,)?                         # optional character to join sequences
         )?
         (?P<format_spec>:\s*                # format_spec starting with :
         (?P<fill>.?[<>=^])?                 # optional fill|align
@@ -508,11 +509,18 @@ class SoS_String:
                     # is syntax correct?
                     mo = self.FORMAT_SPECIFIER.match(text[:j])
                     if mo:
-                        expr = mo.group('expr')
-                        fmt = mo.group('specifier')
+                        expr, fmt, sep = mo.group('expr', 'specifier', 'sep')
+                        if sep:
+                            if fmt.startswith('!,'):
+                                fmt = fmt[2:]
+                            else:
+                                fmt = fmt[:2] + fmt[3:]
+                        else:
+                            sep = ' '
                     else:
                         expr = text[:j]
                         fmt = None
+                        sep = None
                     # if the syntax is correct
                     compile(expr, '<string>', 'eval')
                     try:
@@ -520,7 +528,7 @@ class SoS_String:
                     except Exception as e:
                         raise InterpolationError(expr, e)
                     # evaluate the expression and interpolate the next expression
-                    return self._repr(result, fmt) + self.interpolate(text[j+len(self.sigil[1]):])
+                    return self._repr(result, fmt, sep) + self.interpolate(text[j+len(self.sigil[1]):])
                 except Exception as e:
                     if self.sigil[1] not in text[j+1:]:
                         raise InterpolationError(text[:j], e)
@@ -542,7 +550,7 @@ class SoS_String:
             # use
             return ('{' + fmt + '}').format(obj)
 
-    def _repr(self, obj, fmt=None):
+    def _repr(self, obj, fmt=None, sep=' '):
         '''Format an object. fmt will be applied to all elements if obj is not
         in a basic type. Callable object cannot be outputed (an InterpolationError
         will be raised).
@@ -551,7 +559,7 @@ class SoS_String:
             return obj if fmt is None else self._format(obj, fmt)
         elif isinstance(obj, collections.Iterable):
             # the object might be nested...
-            return ' '.join([self._repr(x, fmt) for x in obj])
+            return sep.join([self._repr(x, fmt, sep) for x in obj])
         elif isinstance(obj, collections.Callable):
             raise InterpolationError(repr(obj), 'Cannot interpolate callable object.')
         else:
