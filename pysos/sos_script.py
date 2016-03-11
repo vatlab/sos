@@ -25,6 +25,7 @@ import sys
 import re
 import copy
 import glob
+import fnmatch
 import argparse
 import textwrap
 from collections import OrderedDict, defaultdict, Sequence
@@ -316,9 +317,9 @@ class SoS_Step:
             return
         if 'filetype' in kwargs:
             if isinstance(kwargs['filetype'], basestring):
-                ifiles = [x for x in ifiles if x.lower().endswith(kwargs['filetype'].lower())]
+                ifiles = fnmatch.filter(ifiles, kwargs['filetype'])
             elif isinstance(kwargs['filetype'], (list, tuple)):
-                ifiles = [x for x in ifiles if any(x.lower().endswith(y.lower()) for y in kwargs['filetype'])]
+                ifiles = [x for x in ifiles if any(fnmatch.fnmatch(x, y) for y in kwargs['filetype'])]
             elif callable(kwargs['filetype']):
                 ifiles = [x for x in ifiles if kwargs['filetype'](x)]
         #             

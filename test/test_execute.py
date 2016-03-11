@@ -30,11 +30,10 @@ import unittest
 from pysos import *
 
 class TestRun(unittest.TestCase):
-    def setUp(self):
-        env.run_mode = 'dryrun'
 
     def testSignature(self):
         '''Test recognizing the format of SoS script'''
+        env.run_mode = 'run'
         script = SoS_Script(r"""
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
@@ -69,6 +68,7 @@ run(''' cp ${input} ${_dest} ''')
 
     def testInput(self):
         '''Test input specification'''
+        env.run_mode = 'dryrun'
         script = SoS_Script(r"""
 [0]
 input: '*.py'
@@ -80,6 +80,7 @@ output: input
 
     def testForEach(self):
         '''Test for_each option of input'''
+        env.run_mode = 'dryrun'
         script = SoS_Script(r"""
 [0]
 files = ['a.txt', 'b.txt']
@@ -104,6 +105,7 @@ counter = counter + 1
 
     def testAlias(self):
         '''Test option output_alias'''
+        env.run_mode = 'dryrun'
         script = SoS_Script(r"""
 [0: input_alias='ia', output_alias='oa']
 files = ['a.txt', 'b.txt']
@@ -121,12 +123,13 @@ counter = str(int(counter) + 1)
 
     def testFileType(self):
         '''Test input option filetype'''
+        env.run_mode = 'dryrun'
         script = SoS_Script(r"""
 [0]
 files = ['a.txt', 'b.txt']
 counter = 0
 
-input: 'a.pdf', files, filetype='.txt', group_by='single'
+input: 'a.pdf', files, filetype='*.txt', group_by='single'
 
 output:input
 
@@ -140,7 +143,7 @@ output:input
 files = ['a.txt', 'b.txt']
 counter = 0
 
-input: 'a.pdf', 'b.html', files, filetype=('.txt', '.pdf'), group_by='single'
+input: 'a.pdf', 'b.html', files, filetype=('*.txt', '*.pdf'), group_by='single'
 
 counter += 1
 """)
@@ -163,6 +166,7 @@ counter += 1
 
     def testSkip(self):
         '''Test input option skip'''
+        env.run_mode = 'dryrun'
         script = SoS_Script(r"""
 [0]
 files = ['a.txt', 'b.txt']
@@ -178,6 +182,7 @@ counter += 1
 
     def testOutputFromInput(self):
         '''Test deriving output files from input files'''
+        env.run_mode = 'dryrun'
         script = SoS_Script(r"""
 [0]
 files = ['a.txt', 'b.txt']
