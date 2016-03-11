@@ -59,7 +59,7 @@ class TestUtils(unittest.TestCase):
 
     def testInterpolation(self):
         '''Test string interpolation'''
-        locals = {
+        env.locals = {
             'a': 100,
             'b': 20,
             'c': ['file1', 'file2', 'file3'],
@@ -125,17 +125,17 @@ class TestUtils(unittest.TestCase):
             ]:
                 #print('Interpolating "{}" with sigal "{}"'.format(expr.format(l, r).replace('\n', r'\n'), sigil))
                 if isinstance(result, str):
-                    self.assertEqual(interpolate(expr.format(l, r), globals(), locals, sigil=sigil), result)
+                    self.assertEqual(interpolate(expr.format(l, r), sigil=sigil), result)
                 else:
                     # for cases when the order of output is not guaranteed
-                    self.assertTrue(interpolate(expr.format(l, r), globals(), locals, sigil=sigil) in result)
+                    self.assertTrue(interpolate(expr.format(l, r), sigil=sigil) in result)
         #
         # locals should be the one passed to the expression
-        self.assertTrue('file_ws' in interpolate('${locals().keys()}', globals(), locals))
+        self.assertTrue('file_ws' in interpolate('${locals().keys()}'))
 
     def testEval(self):
         '''Test the evaluation of SoS expression'''
-        locals = {
+        env.locals = {
             'a': 100,
             'b': 'file name',
             'c': ['file1', 'file2', 'file 3'],
@@ -153,10 +153,10 @@ class TestUtils(unittest.TestCase):
             ('''"${b!r}"''', "'file name'"),
             ('''"${c!q}"''', "file1 file2 'file 3'"),
             ]:
-            self.assertEqual(SoS_eval(expression, globals(), locals), result)
+            self.assertEqual(SoS_eval(expression), result)
         #
         # interpolation will only happen in string
-        self.assertRaises(SyntaxError, SoS_eval, '''${a}''', globals(), locals)
+        self.assertRaises(SyntaxError, SoS_eval, '''${a}''')
 
     def testWorkflowDict(self):
         '''Test workflow dict with attribute access'''

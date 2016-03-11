@@ -44,7 +44,7 @@ except ImportError:
     from HTMLParser import HTMLParser
 
 #
-# Logging and runtime environment
+# Logging 
 #
 
 class ColoredFormatter(logging.Formatter):
@@ -128,6 +128,48 @@ class ColoredFormatter(logging.Formatter):
             record.color_msg = self.emphasize(record.msg)
         return logging.Formatter.format(self, record)
 
+#
+# SoS Workflow dictionary
+#
+class WorkflowDict(dict):
+    """A dictionary object that
+    1. Generate logging message for debugging purposes.
+    2. Allow access of values from attributes. As a trick to reduce logging messages, the
+       attribute interface does not trigger logging message.
+
+    Potential future expansion of this dictionary include
+    1. Read only item. An error will be raised if a readonly item is changed.
+    2. Temporary items. A function might be provided to remove all temporary items.
+    """
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+
+    def __setitem__(self, key, value):
+        dict.__setitem__(self, key, value)
+        if isinstance(value, (str, int, float, bool)) or (isinstance(value, collections.Sequence) \
+            and len(value) <= 2) or len(str(value)) < 50:
+            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, str(value)))
+        elif isinstance(value, collections.Sequence): # should be a list or tuple
+            val = str(value).split(' ')[0] + ' ...] ({} items)'.format(len(value))
+            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, val))
+        elif isinstance(value, dict):
+            first_key = value.keys()[0]
+            env.logger.debug('Workflow variable ``{}`` is set to ``{{{}:{}, ...}} ({} items)``'
+                .format(key, first_key, value[first_key], len(value)))
+        else:
+            env.logger.debug('Workflow variable ``{}`` is set to ``{}...``'.format(key, repr(value)[:40]))
+
+    def __setattr__(self, key, value):
+        '''a.key = value is equivalent to a['key'] = value'''
+        dict.__setitem__(self, key, value)
+
+    def __getattr__(self, key):
+        '''a.key is equivalent to a['key']'''
+        return dict.__getitem__(self, key)
+
+#
+# Runtime environment
+#
 class RuntimeEnvironments(object):
     '''A singleton object that provides runtime environment for SoS.
     Atributes of this object include:
@@ -158,6 +200,11 @@ class RuntimeEnvironments(object):
         # run mode, this mode controls how SoS actions behave
         #
         self.run_mode = 'run'
+        #
+        # local and global dictionaries used by SoS during the
+        # execution of SoS workflows
+        self.locals = WorkflowDict()
+        self.globals = {}
 
     #
     # attribute logger
@@ -377,15 +424,12 @@ class SoS_String:
     # DOTALL makes . matchs also to newline so this supports multi-line expression
     FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
 
-    def __init__(self, globals, locals, sigil = '${ }'):
+    def __init__(self, sigil = '${ }'):
         if sigil.count(' ') != 1 or sigil.startswith(' ') or sigil.endswith(' '):
             raise ValueError('Incorrect sigil "{}"'.format(sigil))
         self.sigil = sigil.split(' ')
         if self.sigil[0] == self.sigil[1]:
             raise ValueError('Incorrect sigl "{}"'.format(sigil))
-        #
-        self.globals = globals
-        self.locals = locals
 
     def interpolate(self, text):
         '''Intepolate string with local and global dictionary'''
@@ -472,7 +516,7 @@ class SoS_String:
                     # if the syntax is correct
                     compile(expr, '<string>', 'eval')
                     try:
-                        result = eval(expr, self.globals, self.locals)
+                        result = eval(expr, env.globals, env.locals)
                     except Exception as e:
                         raise InterpolationError(expr, e)
                     # evaluate the expression and interpolate the next expression
@@ -513,12 +557,12 @@ class SoS_String:
         else:
             return repr(obj) if fmt is None else self._format(obj, fmt)
 
-def interpolate(text, globals={}, locals={}, sigil='${ }'):
+def interpolate(text, sigil='${ }'):
     '''Evaluate expressions in `text` marked by specified `sigil` using provided
     global and local dictionaries, and replace the expressions with their formatted strings.'''
-    return SoS_String(globals, locals, sigil).interpolate(text)
+    return SoS_String(sigil).interpolate(text)
 
-def ConvertString(s, globals, locals, sigil):
+def ConvertString(s, sigil):
     '''Convert a unicode string to a raw string and interpolate expressions
     within it by parsing the python expression and statement BEFORE they are
     evaluated (or executed).
@@ -536,18 +580,18 @@ def ConvertString(s, globals, locals, sigil):
                 # we convert it to a raw string
                 tokval = u'r' + tokval
             # we then perform interpolation on the string and put it back to expression
-            tokval = repr(interpolate(eval(tokval), globals, locals, sigil))
+            tokval = repr(interpolate(eval(tokval), sigil))
         # the resusting string is put back to the expression (or statement)
         result.append((toknum, tokval))
     return untokenize(result)
 
-def SoS_eval(expr, globals, locals, sigil='${ }'):
+def SoS_eval(expr, sigil='${ }'):
     '''Evaluate an expression after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
-    expr = ConvertString(expr, globals, locals, sigil)
-    return eval(expr, globals, locals)
+    expr = ConvertString(expr, sigil)
+    return eval(expr, env.globals, env.locals)
 
-def SoS_exec(stmts, globals, locals, sigil='${ }'):
+def SoS_exec(stmts, sigil='${ }'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
     # the trouble here is that we have to execute the statements line by line
@@ -565,51 +609,14 @@ def SoS_exec(stmts, globals, locals, sigil='${ }'):
             continue
         #
         # if it is ok, execute and reset code
-        stmts = ConvertString('\n'.join(code), globals, locals, sigil)
+        stmts = ConvertString('\n'.join(code), sigil)
         code = []
-        exec(stmts, globals, locals)
+        exec(stmts, env.globals, env.locals)
         executed += stmts + '\n'
     env.logger.trace('Executed\n{}'.format(executed))
     return executed
 
-#
-# SoS Workflow dictionary
-#
-class WorkflowDict(dict):
-    """A dictionary object that
-    1. Generate logging message for debugging purposes.
-    2. Allow access of values from attributes. As a trick to reduce logging messages, the
-       attribute interface does not trigger logging message.
 
-    Potential future expansion of this dictionary include
-    1. Read only item. An error will be raised if a readonly item is changed.
-    2. Temporary items. A function might be provided to remove all temporary items.
-    """
-    def __init__(self, *args, **kwargs):
-        dict.__init__(self, *args, **kwargs)
-
-    def __setitem__(self, key, value):
-        dict.__setitem__(self, key, value)
-        if isinstance(value, (str, int, float, bool)) or (isinstance(value, collections.Sequence) \
-            and len(value) <= 2) or len(str(value)) < 50:
-            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, str(value)))
-        elif isinstance(value, collections.Sequence): # should be a list or tuple
-            val = str(value).split(' ')[0] + ' ...] ({} items)'.format(len(value))
-            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, val))
-        elif isinstance(value, dict):
-            first_key = value.keys()[0]
-            env.logger.debug('Workflow variable ``{}`` is set to ``{{{}:{}, ...}} ({} items)``'
-                .format(key, first_key, value[first_key], len(value)))
-        else:
-            env.logger.debug('Workflow variable ``{}`` is set to ``{}...``'.format(key, repr(value)[:40]))
-
-    def __setattr__(self, key, value):
-        '''a.key = value is equivalent to a['key'] = value'''
-        dict.__setitem__(self, key, value)
-
-    def __getattr__(self, key):
-        '''a.key is equivalent to a['key']'''
-        return dict.__getitem__(self, key)
 
 #
 # Runtime signature

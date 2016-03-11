@@ -64,7 +64,7 @@ run(''' cp ${input} ${_dest} ''')
         self.assertTrue(os.path.isfile('temp/d.txt'))
         self.assertTrue(open('temp/c.txt').read(), 'a.txt')
         self.assertTrue(open('temp/d.txt').read(), 'b.txt')
-        self.assertEqual(wf.locals['oa'], ['temp/c.txt', 'temp/d.txt'])
+        self.assertEqual(env.locals['oa'], ['temp/c.txt', 'temp/d.txt'])
         
 
     def testInput(self):
@@ -76,7 +76,7 @@ output: input
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertTrue('test_execute.py' in wf.locals['step_output'])
+        self.assertTrue('test_execute.py' in env.locals['step_output'])
 
     def testForEach(self):
         '''Test for_each option of input'''
@@ -98,9 +98,9 @@ counter = counter + 1
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(wf.locals['counter'], 6)
-        self.assertEqual(wf.locals['all_names'], "a b c a b c ")
-        self.assertEqual(wf.locals['all_loop'], "1 1 1 2 2 2 ")
+        self.assertEqual(env.locals['counter'], 6)
+        self.assertEqual(env.locals['all_names'], "a b c a b c ")
+        self.assertEqual(env.locals['all_loop'], "1 1 1 2 2 2 ")
 
     def testAlias(self):
         '''Test option output_alias'''
@@ -117,7 +117,7 @@ counter = str(int(counter) + 1)
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(wf.locals['ia'], ["a.pdf", 'a.txt', 'b.txt'])
+        self.assertEqual(env.locals['ia'], ["a.pdf", 'a.txt', 'b.txt'])
 
     def testFileType(self):
         '''Test input option filetype'''
@@ -133,7 +133,7 @@ output:input
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(wf.locals.step_output, ['a.txt', 'b.txt'])
+        self.assertEqual(env.locals.step_output, ['a.txt', 'b.txt'])
         #
         script = SoS_Script(r"""
 [0]
@@ -146,7 +146,7 @@ counter += 1
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(wf.locals.counter, 3)
+        self.assertEqual(env.locals.counter, 3)
         #
         script = SoS_Script(r"""
 [0]
@@ -159,7 +159,7 @@ counter += 1
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(wf.locals.counter, 2)
+        self.assertEqual(env.locals.counter, 2)
 
     def testSkip(self):
         '''Test input option skip'''
@@ -174,7 +174,7 @@ counter += 1
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(wf.locals.counter, 0)
+        self.assertEqual(env.locals.counter, 0)
 
     def testOutputFromInput(self):
         '''Test deriving output files from input files'''
@@ -190,8 +190,8 @@ counter += 1
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(wf.locals.counter, 2)
-        self.assertEqual(wf.locals.step_output, ['a.txt.bak', 'b.txt.bak'])
+        self.assertEqual(env.locals.counter, 2)
+        self.assertEqual(env.locals.step_output, ['a.txt.bak', 'b.txt.bak'])
 
 if __name__ == '__main__':
     unittest.main()
