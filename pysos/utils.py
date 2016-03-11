@@ -45,7 +45,7 @@ except ImportError:
 
 #
 # Logging and runtime environment
-# 
+#
 
 class ColoredFormatter(logging.Formatter):
     ''' A logging formatter that uses color to differntiate logging messages
@@ -151,7 +151,7 @@ class RuntimeEnvironments(object):
     def __init__(self):
         # logger
         self._logger = None
-        self._verbosity = '1'
+        self._verbosity = '2'
         self._logfile = None
         self._set_logger()
 
@@ -170,10 +170,11 @@ class RuntimeEnvironments(object):
         # output to standard output
         cout = logging.StreamHandler()
         levels = {
-            '0': logging.WARNING,
-            '1': logging.INFO,
-            '2': logging.DEBUG,
-            '3': logging.TRACE,
+            '0': logging.ERROR,
+            '1': logging.WARNING,
+            '2': logging.INFO,
+            '3': logging.DEBUG,
+            '4': logging.TRACE,
             None: logging.INFO
         }
         #
@@ -198,7 +199,7 @@ class RuntimeEnvironments(object):
     # attribute verbosity
     #
     def _set_verbosity(self, v):
-        if v in ['0', '1', '2', '3']:
+        if v in ['0', '1', '2', '3', '4']:
             self._verbosity = v
             # reset logger to appropriate logging level
             self._set_logger()
@@ -220,7 +221,7 @@ env = RuntimeEnvironments()
 
 
 #
-# String formatting 
+# String formatting
 #
 
 
@@ -232,7 +233,7 @@ except ImportError:
     pass
 
 def getTermWidth():
-    '''Get the width of current user terminal to properly wrap SoS 
+    '''Get the width of current user terminal to properly wrap SoS
     output when well-formatted output is required.
     '''
     try:
@@ -546,8 +547,8 @@ def SoS_exec(stmts, globals, locals, sigil='${ }'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
     # the trouble here is that we have to execute the statements line by line
-    # because the variables defined 
-    # 
+    # because the variables defined
+    #
     executed = ''
     code = []
     for line in stmts.split('\n'):
