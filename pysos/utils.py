@@ -545,9 +545,27 @@ def SoS_eval(expr, globals, locals, sigil='${ }'):
 def SoS_exec(stmts, globals, locals, sigil='${ }'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
-    stmts = ConvertString(stmts, globals, locals, sigil)
-    env.logger.debug('Running \n``{}``'.format(stmts))
-    exec(stmts, globals, locals)
+    # the trouble here is that we have to execute the statements line by line
+    # because the variables defined 
+    # 
+    executed = ''
+    code = []
+    for line in stmts.split('\n'):
+        code.append(line)
+        # try to compile the code
+        try:
+            compile('\n'.join(code), filename='<string>', mode='exec')
+        except:
+            # otherwise add one more line
+            continue
+        #
+        # if it is ok, execute and reset code
+        stmts = ConvertString('\n'.join(code), globals, locals, sigil)
+        code = []
+        exec(stmts, globals, locals)
+        executed += stmts + '\n'
+    env.logger.trace('Executed\n{}'.format(executed))
+    return executed
 
 #
 # SoS Workflow dictionary
@@ -602,7 +620,7 @@ def partialMD5(filename):
     '''Calculate partial MD5, basically the first and last 32M
     of the file for large files. This should signicicantly reduce
     the time spent on the creation and comparison of file signature
-    when dealing with large bioinformatics datasets. '''
+    when dealing with large bioinformat ics datasets. '''
     filesize = os.path.getsize(filename)
     # calculate md5 for specified file
     md5 = hashlib.md5()
@@ -636,7 +654,7 @@ class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.
     '''
-    def __init__(self, output_files=[], pid=None, workdir='.'):
+    def __init__(self, script, input_files=[], output_files=[], dependent_files = [], pid=None, workdir='.'):
         '''Runtime information for specified output files
         output_files:
             intended output file
@@ -645,8 +663,15 @@ class RuntimeInfo:
             process id.
 
         workdir:
-            Current working directory.
+            Current working directory.,
         '''
+        self.script = script if isinstance(script, basestring) else ''.join(script)
+        self.input_files = [input_files] if isinstance(input_files, basestring) else input_files
+        self.output_files = [output_files] if isinstance(output_files, basestring) else output_files
+        self.dependent_files = dependent_files if isinstance(dependent_files, basestring) else dependent_files
+        #
+        sig_name = os.path.realpath(os.path.expanduser(self.output_files[0])) + textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
+        #
         if not output_files:
             self.sig_file = None
             self.proc_out = None
@@ -658,19 +683,12 @@ class RuntimeInfo:
             self.proc_done = None
             self.manifest = None
         else:
-            if isinstance(output_files, list):
-                output_file = output_files[0]
-            elif isinstance(output_files, basestring):
-                output_file = output_files
-            else:
-                raise ValueError('Invalid output file specification: {}'.format(output_files))
             #
             # If the output path is outside of the current working directory
-            rel_path = os.path.relpath(os.path.realpath(os.path.expanduser(output_file)), os.path.realpath(workdir))
+            rel_path = os.path.relpath(sig_name, os.path.realpath(workdir))
             # if this file is not relative to cache, use global signature file
             if rel_path.startswith('../'):
-                self.sig_file = os.path.join(os.path.expanduser('~/.sos/.runtime'),
-                    os.path.realpath(os.path.expanduser(output_file)).lstrip(os.sep))
+                self.sig_file = os.path.join(os.path.expanduser('~/.sos/.runtime'), sig_name.lstrip(os.sep))
             else:
                 # if this file is relative to cache, use local directory
                 self.sig_file = os.path.join('.sos/.runtime', rel_path)
@@ -681,7 +699,7 @@ class RuntimeInfo:
                     os.makedirs(sig_path)
                 except Exception as e:
                     raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
-            env.logger.trace('Using signature file {} for output {}'.format(self.sig_file, output_file))
+            env.logger.trace('Using signature file {} for output {}'.format(self.sig_file, output_files))
             if pid is None:
                 self.pid = os.getpid()
             else:
@@ -695,27 +713,23 @@ class RuntimeInfo:
             self.proc_prog = '{}.working_{}'.format(self.sig_file, self.pid)
             self.manifest = '{}.manifest'.format(self.sig_file)
 
-    def write(self, script, ifiles, ofiles, dfiles):
+    def write(self):
         '''Write .exe_info file with signature of script, input, output and dependent files.'''
         if not self.proc_info:
             return
         with open(self.proc_info, 'w') as md5:
-            md5.write('{}\n'.format(textMD5(script)))
-            for f in ifiles + ofiles + dfiles:
+            md5.write('{}\n'.format(textMD5(self.script)))
+            for f in self.input_files + self.output_files + self.dependent_files:
                 f = os.path.realpath(os.path.expanduser(f))
                 md5.write('{}\t{}\n'.format(f, partialMD5(f)))
 
-    def validate(self, script, ifiles, ofiles, dfiles):
+    def validate(self):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
         if not self.proc_info or not os.path.isfile(self.proc_info):
             return False
-
-        _ifiles = [ifiles] if isinstance(ifiles, basestring) else ifiles
-        _ofiles = [ofiles] if isinstance(ofiles, basestring) else ofiles
-        _dfiles = [dfiles] if isinstance(dfiles, basestring) else dfiles
         #
         # duplicated files are only tested once.
-        all_files = [os.path.realpath(os.path.expanduser(x)) for x in set(_ifiles + _ofiles + _dfiles)]
+        all_files = [os.path.realpath(os.path.expanduser(x)) for x in set(self.input_files + self.output_files + self.dependent_files)]
         # file not exist?
         if not all(os.path.isfile(x) for x in all_files):
             return False
@@ -723,7 +737,7 @@ class RuntimeInfo:
         files_checked = {x:False for x in all_files}
         with open(self.proc_info) as md5:
             cmdMD5 = md5.readline().strip()   # command
-            if textMD5(script) != cmdMD5:
+            if textMD5(self.script) != cmdMD5:
                 return False
             for line in md5:
                 try:

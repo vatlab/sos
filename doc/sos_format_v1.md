@@ -111,7 +111,14 @@ an executable script. The second line tells SoS the format of the script. The `#
 line does not have to be the first or second line but should be in the first comment block.
 SOS format 1.0 is assumed if no format line is present.
 
-Other lines in the first comment block are ignored.
+Other lines in the first comment block are ignored. If you are a vi/vim user, it can be a good
+idea to add
+
+```python
+# vim: set filetype=python: set expandtab : ts=4:
+```
+
+so that vim can highlight your script as a Python script.
 
 ### Script and workflow descriptions
 

@@ -325,7 +325,7 @@ class SoS_Step:
                 if not all(isinstance(x, basestring) for x in arg):
                     raise RuntimeError('Invalid dependent file: {}'.format(arg))
                 dfiles.extend(arg)
-        self.locals['step_depends'] += dfiles
+        self._depends.append(dfiles)
 
     def _directive_output(self, *args, **kwargs):
         ofiles = []
@@ -336,7 +336,7 @@ class SoS_Step:
                 if not all(isinstance(x, basestring) for x in arg):
                     raise RuntimeError('Invalid output file: {}'.format(arg))
                 ofiles.extend(arg)
-        self.locals['step_output'] += ofiles
+        self._outputs.append(ofiles)
 
     #
     # Execution
@@ -376,6 +376,8 @@ class SoS_Step:
         else:
             self._groups = [[]]
         self._vars = [[]]
+        self._outputs = []
+        self._depends = []
         for key, value in self.directives:
             # input is processed only once
             if key == 'input':
@@ -392,10 +394,15 @@ class SoS_Step:
                         SoS_eval('self._directive_{}({})'.format(key, value), globals, locals, self.sigil)
                     except Exception as e:
                         raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
-        #
+        # if no output directive, assuming no output for each step
+        if not self._outputs:
+            self._outputs = [[] for x in self._groups]
+        # if no depends directive, assuming no dependent files for each step
+        if not self._depends:
+            self._depends = [[] for x in self._groups]
         # we need to reduce output files in case they have been processed multiple times.
-        locals['step_output'] = list(OrderedDict.fromkeys(locals['step_output']))
-        locals['step_depends'] = list(OrderedDict.fromkeys(locals['step_depends']))
+        locals['step_output'] = list(OrderedDict.fromkeys(sum(self._outputs, [])))
+        locals['step_depends'] = list(OrderedDict.fromkeys(sum(self._depends, [])))
         #
         # input alias
         if 'input_alias' in self.options:
@@ -407,36 +414,48 @@ class SoS_Step:
         if 'output_alias' in self.options:
             locals[self.options['output_alias']] = locals['step_output']
         if locals['step_output']:
-            signature = RuntimeInfo(locals['step_output'])
+            signature = RuntimeInfo(self.statements, 
+                locals['step_input'], locals['step_output'], locals['step_depends'])
             if not dryrun:
                 for ofile in locals['step_output']:
                     parent_dir = os.path.split(ofile)[0]
                     if parent_dir and not os.path.isdir(parent_dir):
                         os.makedirs(parent_dir)
-                if signature.validate(''.join(self.statements),
-                    locals['step_input'], locals['step_output'], locals['step_depends']):
+                if signature.validate():
                     # everything matches
                     env.logger.info('Reusing existing output files {}'.format(', '.join(locals['step_output'])))
                     return
         else:
             signature = None
         #
-        for g, v in zip(self._groups, self._vars):
+        for g, v, o, d in zip(self._groups, self._vars, self._outputs, self._depends):
             locals.update(v)
             locals['input'] = g
+            #
+            # If the users specifies output files for each loop (using ${input} etc, we
+            # can try to see if we can create partial signature. This would help if the
+            # step is interrupted in the middle.
+            if o and o != locals['step_output']:
+                partial_signature = RuntimeInfo(self.statements, g, o, d)
+                if not dryrun:
+                    if partial_signature.validate():
+                        # everything matches
+                        env.logger.info('Reusing existing output files {}'.format(', '.join(o)))
+                        continue
             # action
             try:
                 if not dryrun:
                     SoS_exec(''.join(self.statements), globals, locals, self.sigil)
             except Exception as e:
                 raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
+            if o and o != locals['step_output']:
+                partial_signature.write()
         if not dryrun:
             for ofile in locals['step_output']:
                 if not os.path.isfile(os.path.expanduser(ofile)):
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
         if signature and not dryrun:
-            signature.write(''.join(self.statements),
-                locals['step_input'], locals['step_output'], locals['step_depends'])
+            signature.write()
 
     def __repr__(self):
         result = ''
