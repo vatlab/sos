@@ -977,6 +977,8 @@ class SoS_Script:
         wf = self.workflow(self.workflows[0] + ':0')
         wf.prepareVars()
         if not wf.parameters_section:
+            if args:
+                raise ArgumentError('Unrecognized command line argument {}'.format(' '.join(args)))
             return
         #
         def str2bool(v):

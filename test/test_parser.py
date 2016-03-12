@@ -245,6 +245,15 @@ b = True
 b = bool
 ''', args=['--b', 'no'])
         self.assertEqual(script.parameter('b'), False)
+        #
+        # should fail for undefined variables
+        self.assertRaises(ArgumentError, SoS_Script, '''
+[parameters]
+a = 5
+''', args=['--b', 'file'])
+        # and for cases without parameter section
+        self.assertRaises(ArgumentError, SoS_Script, '''
+''', args=['--b', 'file'])
 
     def testSectionVariables(self):
         '''Test variables in sections'''
