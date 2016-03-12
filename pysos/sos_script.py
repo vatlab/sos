@@ -42,7 +42,7 @@ except ImportError:
 # Python 2.7 should also have this module
 from io import StringIO
 
-from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, dehtml, getTermWidth
+from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, dehtml, getTermWidth, interpolate
 from .actions import *
 
 class ArgumentError(Error):

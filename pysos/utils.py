@@ -426,7 +426,7 @@ class SoS_String:
     FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
 
     def __init__(self, sigil = '${ }'):
-        if sigil.count(' ') != 1 or sigil.startswith(' ') or sigil.endswith(' '):
+        if sigil.count(' ') != 1 or sigil[0] in (' ', "'") or sigil[-1] in (' ', "'"):
             raise ValueError('Incorrect sigil "{}"'.format(sigil))
         self.sigil = sigil.split(' ')
         if self.sigil[0] == self.sigil[1]:
@@ -588,7 +588,7 @@ def ConvertString(s, sigil):
                 # we convert it to a raw string
                 tokval = u'r' + tokval
             # we then perform interpolation on the string and put it back to expression
-            tokval = repr(interpolate(eval(tokval), sigil))
+            tokval = 'interpolate(' + tokval + ", \'" + sigil + "')"
         # the resusting string is put back to the expression (or statement)
         result.append((toknum, tokval))
     return untokenize(result)

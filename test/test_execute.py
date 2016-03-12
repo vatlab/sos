@@ -31,6 +31,26 @@ from pysos import *
 
 class TestRun(unittest.TestCase):
 
+    def testInterpolation(self):
+        '''Test string interpolation during execution'''
+        script = SoS_Script(r"""
+res = ''
+b = 200
+res += '${b}'
+""")
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals.res, '200')
+        #
+        script = SoS_Script(r"""
+res = ''
+for b in range(5):
+    res += '${b}'
+""")
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals.res, '01234')
+        
     def testSignature(self):
         '''Test recognizing the format of SoS script'''
         env.run_mode = 'run'
