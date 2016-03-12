@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-
 import os
 import sys
 import re
@@ -28,6 +27,7 @@ import glob
 import fnmatch
 import argparse
 import textwrap
+import traceback
 from collections import OrderedDict, defaultdict, Sequence
 from itertools import tee, combinations
 from collections import OrderedDict
@@ -719,19 +719,29 @@ class SoS_Script:
     DIRECTIVE = re.compile(_DIRECTIVE_TMPL, re.VERBOSE)
     ASSIGNMENT = re.compile(_ASSIGNMENT_TMPL, re.VERBOSE)
 
-    def __init__(self, content, args=[]):
+    def __init__(self, content='', filename=None, args=[]):
         '''Parse a sectioned SoS script file. Please refer to the SoS manual
         for detailed specification of this format.
 
         Parameter `content` can be either a filename or a content of a
-        SoS script in unicode.
+        SoS script in unicode, which is convenient for passing scripts for
+        testing purposes.
+
+        Parameter `filename` should be used if the content should be read 
+        from a file.
         '''
-        if os.path.isfile(content):
-            with open(content) as fp:
-                self._read(fp, content)
+        if filename:
+            if not os.path.isfile(filename):
+                raise ValueError('{} does not exist'.format(filename))
+            with open(filename) as fp:
+                self._read(fp, filename)
         else:
-            with StringIO(content) as fp:
-                self._read(fp, '<string>')
+            if os.path.isfile(content):
+                with open(content) as fp:
+                    self._read(fp, content)
+            else:
+                with StringIO(content) as fp:
+                    self._read(fp, '<string>')
         #
         # workflows in this script, from sections that are not skipped.
         section_steps = sum([x.names for x in self.sections if not \
@@ -1113,15 +1123,39 @@ class SoS_Script:
 #
 # subcommmand show
 #
+def print_traceback():
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    #print "*** print_tb:"
+    traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
+    #print "*** print_exception:"
+    traceback.print_exception(exc_type, exc_value, exc_traceback,
+                              limit=5, file=sys.stdout)
+    #print "*** print_exc:"
+    #traceback.print_exc()
+    #print "*** format_exc, first and last line:"
+    #formatted_lines = traceback.format_exc().splitlines()
+    #print formatted_lines[0]
+    #print formatted_lines[-1]
+    #print "*** format_exception:"
+    #print repr(traceback.format_exception(exc_type, exc_value,
+    #                                      exc_traceback))
+    #print "*** extract_tb:"
+    #print repr(traceback.extract_tb(exc_traceback))
+    #print "*** format_tb:"
+    #print repr(traceback.format_tb(exc_traceback))
+    #print "*** tb_lineno:", exc_traceback.tb_lineno
+
 def sos_show(args, argv):
     try:
-        script = SoS_Script(args.script, argv)
+        script = SoS_Script(filename=args.script, args=argv)
         if args.workflow:
             workflow = script.workflow(args.workflow)
             workflow.show()
         else:
             script.show()
     except Exception as e:
+        if args.verbosity and int(args.verbosity) > 2:
+            print_traceback()
         env.logger.error(e)
         sys.exit(1)
 
@@ -1129,12 +1163,14 @@ def sos_show(args, argv):
 # subcommand run
 #
 def sos_run(args, argv):
-    #try:
-        script = SoS_Script(args.script, argv)
+    try:
+        script = SoS_Script(filename=args.script, args=argv)
         workflow = script.workflow(args.workflow)
         if args.__dryrun__:
             env.run_mode == 'dryrun'
         workflow.run()
-    #except Exception as e:
-    #    env.logger.error(e)
-    #    sys.exit(1)
+    except Exception as e:
+        if args.verbosity and int(args.verbosity) > 2:
+            print_traceback()
+        env.logger.error(e)
+        sys.exit(1)
