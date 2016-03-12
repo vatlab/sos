@@ -102,12 +102,6 @@ class TestParser(unittest.TestCase):
         # or unrecognized directive
         self.assertRaises(ParsingError, SoS_Script,
             '''inputs: 'filename' ''')
-        # or unrecoginzied varialbe
-        self.assertRaises(ParsingError, SoS_Script,
-            '''something ''')
-        # or function call
-        self.assertRaises(ParsingError, SoS_Script,
-            '''somefunc() ''')
         # allow definition
         SoS_Script('''a = '1' ''')
         SoS_Script('''a = ['a', 'b'] ''')
@@ -342,8 +336,6 @@ input: 'a.pdf', files, skip=False
 
     def testSectionActions(self):
         '''Test actions of sections'''
-        self.assertRaises(ParsingError, SoS_Script,
-            '''func()''')
         SoS_Script(
             """
 [0]

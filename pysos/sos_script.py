@@ -941,13 +941,10 @@ class SoS_Script:
                 continue
             #
             # all others?
-            if not cursect or cursect.is_global:
-                parsing_errors.append(lineno, line, 'Only variable assignment is allowed before section definitions.')
-                continue
-            #
-            # It should be an action
-            if cursect is None:
-                parsing_errors.append(lineno, line, 'Action statement is not allowed in global section')
+            if not cursect:
+                self.sections.append(SoS_Step(is_global=True))
+                cursect = self.sections[-1]
+                cursect.add_statement(line, lineno)
                 continue
             elif cursect.is_parameters:
                 parsing_errors.append(lineno, line, 'Action statement is not allowed in {} section'.format(self._PARAMETERS_SECTION_NAME))
