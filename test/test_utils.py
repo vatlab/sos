@@ -122,6 +122,11 @@ class TestUtils(unittest.TestCase):
                 #
                 # !q conversion (added by SoS)
                 ('{0}file_ws[0]!q{1}', "'d i r/f .txt'"),
+                #
+                # !, joined by ,
+                ('{0}var2!r,{1}', "1,2,3.1"),
+                ('{0}c!r,{1}', "'file1','file2','file3'"),
+                ('{0}c!,{1}', "file1,file2,file3"),
             ]:
                 #print('Interpolating "{}" with sigal "{}"'.format(expr.format(l, r).replace('\n', r'\n'), sigil))
                 if isinstance(result, str):
