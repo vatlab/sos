@@ -796,8 +796,11 @@ class SoS_Script:
                 if cursect is None:
                     comment_block += 1
                     self.workflow_descriptions.append('')
-                elif cursect.comment:
-                    comment_block += 1
+                else:
+                    if cursect.category == 'statements':
+                        cursect.extend(line)
+                    elif cursect.comment:
+                        comment_block += 1
                 continue
             #
             # a continuation of previous item?
@@ -1022,7 +1025,7 @@ class SoS_Script:
         wf = self.workflow(wf_name)
         wf.run()
 
-    def workflow(self, wf_name):
+    def workflow(self, wf_name=None):
         '''Return a workflow with name:step specified in wf_name'''
         allowed_steps = None
         if not wf_name:

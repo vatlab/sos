@@ -603,24 +603,53 @@ def SoS_exec(stmts, sigil='${ }'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
     # the trouble here is that we have to execute the statements line by line
-    # because the variables defined
+    # because the variables defined. The trouble is in cases such as class
+    # definition
     #
-    executed = ''
-    code = []
-    for line in stmts.split('\n'):
-        code.append(line)
-        # try to compile the code
+    # class A:
+    #     def __init__(self):
+    #         pass
+    # # this is already correct syntax but the remaining piece is not.
+    #     def another_one(self):
+    #         pass
+    # 
+    # We therefore has to be a bit more clever on this.
+    #
+    # we first group all lines by their own group
+    # we then try to find syntaxly valid groups
+    code_group = [x for x in stmts.split('\n')]
+    idx = 0
+    while True:
         try:
-            compile('\n'.join(code), filename='<string>', mode='exec')
+            # test current group
+            compile(code_group[idx], filename = '<string>', mode='exec')
+            # if it is ok, go next
+            idx += 1
+            if idx == len(code_group):
+                break
         except:
-            # otherwise add one more line
-            continue
-        #
-        # if it is ok, execute and reset code
-        stmts = ConvertString('\n'.join(code), sigil)
-        code = []
+            # error happens merge the next line
+            if idx < len(code_group) - 1:
+                code_group[idx] += '\n' + code_group[idx + 1]
+                code_group.pop(idx + 1)
+            else:
+                # if no next group, expand previously correct one
+                if idx == 0:
+                    raise RuntimeError('Failed to find syntax correct group')
+                # break myself again
+                code_group = code_group[: idx] + code_group[idx].split('\n') + code_group[idx+1:]
+                # go back
+                idx -= 1
+                code_group[idx] += '\n' + code_group[idx + 1]
+                code_group.pop(idx+1)
+    #
+    # execute statements one by one
+    executed = ''
+    for code in code_group:
+        stmts = ConvertString(code, sigil)
         exec(stmts, env.globals, env.locals)
         executed += stmts + '\n'
+    #
     env.logger.trace('Executed\n{}'.format(executed))
     return executed
 

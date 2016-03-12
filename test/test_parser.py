@@ -384,5 +384,26 @@ a = '1'
         self.assertEqual(script.workflow('human').description, 'description of human\ndescription of human continued\n')
         self.assertEqual(script.workflow('mouse').description, 'mouse description\n')
 
+    def testLongerCode(self):
+        '''Test definition of classes (with intermediate newlines) in step.'''
+        script = SoS_Script('''# first block
+
+[0]
+class A:
+    def __init__(self):
+        pass
+
+    # the newline above should be fine because SoS treat this as
+    # regular lines
+    def __call__(self):
+        return 0
+
+b = A()()
+
+''')
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals.b, 0)
+
 if __name__ == '__main__':
     unittest.main()
