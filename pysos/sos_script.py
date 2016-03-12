@@ -978,18 +978,36 @@ class SoS_Script:
         if not wf.parameters_section:
             return
         #
-        if not args:
-            return
-        #
+        def str2bool(v):
+            if v.lower() in ('yes', 'true', 't', '1'):
+                return True
+            elif v.lower() in ('no', 'false', 'f', '0'):
+                return False
+            else:
+                raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
+
         parser = argparse.ArgumentParser()
-        for key, defvalue, _ in wf.parameters_section.parameters:
+        parser.register('type', 'bool', str2bool)
+        for key, defvalue, comment in wf.parameters_section.parameters:
             try:
                 defvalue = SoS_eval(defvalue, wf.parameters_section.sigil)
             except Exception as e:
                 raise RuntimeError('Incorrect default value {} for parameter {}: {}'.format(defvalue, key, e))
-            parser.add_argument('--{}'.format(key), type=type(defvalue),
-                nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, basestring) else '?',
-                default=defvalue)
+            if isinstance(defvalue, type):
+                if defvalue == bool:
+                    parser.add_argument('--{}'.format(key), type='bool', help=comment, required=True, nargs='?') 
+                else:
+                    # if only a type is specified, it is a required document of required type
+                    parser.add_argument('--{}'.format(key), type=str if hasattr(defvalue, '__iter__') else defvalue,
+                        help=comment, required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
+            else:
+                if isinstance(defvalue, bool):
+                    parser.add_argument('--{}'.format(key), type='bool', help=comment,
+                        nargs='?', default=defvalue)
+                else:
+                    parser.add_argument('--{}'.format(key), type=type(defvalue), help=comment,
+                        nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, basestring) else '?',
+                        default=defvalue)
         #
         parser.error = self._parse_error
         #

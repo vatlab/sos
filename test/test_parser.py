@@ -199,9 +199,58 @@ a=100
 b='[a+1]'
 ''')
         self.assertEqual(script.parameter('b'), '101')
-
-
-
+        #
+        # argument has hve a value
+        self.assertRaises(ParsingError, SoS_Script, '''
+[parameters]
+b=
+''')
+        # if it is a type, must provide value
+        self.assertRaises(ArgumentError, SoS_Script, '''
+[parameters]
+b = int
+''')
+        self.assertRaises(ArgumentError, SoS_Script, '''
+[parameters]
+b = list
+''')
+        # also require the type
+        self.assertRaises(ArgumentError, SoS_Script, '''
+[parameters]
+b = int
+''', args=['--b', 'file'])
+        script = SoS_Script('''
+[parameters]
+b = int
+''', args=['--b', '5'])
+        self.assertEqual(script.parameter('b'), 5)
+        # list is ok
+        script = SoS_Script('''
+[parameters]
+b = list
+''', args=['--b', '5'])
+        self.assertEqual(script.parameter('b'), ['5'])
+        # bool
+        script = SoS_Script('''
+[parameters]
+b = bool
+''', args=['--b', 't'])
+        self.assertEqual(script.parameter('b'), True)
+        script = SoS_Script('''
+[parameters]
+b = True
+''', args=['--b', 'False'])
+        self.assertEqual(script.parameter('b'), False)
+        script = SoS_Script('''
+[parameters]
+b = True
+''', args=['--b', '1'])
+        self.assertEqual(script.parameter('b'), True)
+        script = SoS_Script('''
+[parameters]
+b = bool
+''', args=['--b', 'no'])
+        self.assertEqual(script.parameter('b'), False)
 
     def testSectionVariables(self):
         '''Test variables in sections'''
