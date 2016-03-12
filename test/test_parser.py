@@ -73,7 +73,7 @@ class TestParser(unittest.TestCase):
         for badoption in ['ss', 'skip a', 'skip:_', 'skip, skip']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # option value should be a valid python expression
-        for badoption in ['sigil=a', 'input_alias=a']:
+        for badoption in ['sigil=a', 'input_alias=a', 'sigil="[]"', 'sigil="| |"']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # good options
         for goodoption in ['sigil="[ ]"', 'input_alias="a"']:

@@ -846,12 +846,12 @@ class SoS_Script:
                         n, i, di = mo.group('name', 'index', 'default_index')
                         if n:
                             if i is None and '*' in n:
-                                parsing_errors.append(lineno - 1, line, 'Auxillary section name cannot contain wildcard character (*).')
+                                parsing_errors.append(lineno, line, 'Auxillary section name cannot contain wildcard character (*).')
                             step_names.append((n, i))
                         if di:
                             step_names.append(('default', di))
                     else:
-                        parsing_errors.append(lineno - 1, line, 'Invalid section name')
+                        parsing_errors.append(lineno, line, 'Invalid section name')
                 if section_option is not None:
                     for option in section_option.split(','):
                         mo = self.SECTION_OPTION.match(option)
@@ -864,12 +864,17 @@ class SoS_Script:
                                 try:
                                     opt_value = eval(opt_value)
                                 except Exception as e:
-                                    parsing_errors.append(lineno-1, line, e)
+                                    parsing_errors.append(lineno, line, e)
+                            if opt_name == 'sigil':
+                                if opt_value.count(' ') != 1 or opt_value[0] in (' ', "'") or \
+                                    opt_value[-1] in (' ', "'") or \
+                                    opt_value.split(' ')[0] == opt_value.split(' ')[1]:
+                                    parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(opt_value))
                             if opt_name in step_options:
-                                parsing_errors.append(lineno - 1, line, 'Duplicate options')
+                                parsing_errors.append(lineno, line, 'Duplicate options')
                             step_options[opt_name] = opt_value
                         else:
-                            parsing_errors.append(lineno - 1, line, 'Invalid section option')
+                            parsing_errors.append(lineno, line, 'Invalid section option')
                 for name in step_names:
                     prev_workflows = [x[0] for x in all_step_names if '*' not in x[0]]
                     for prev_name in all_step_names:
@@ -889,7 +894,7 @@ class SoS_Script:
                         else:
                             prev_names = [prev_name[0]]
                         if len(set(prev_names) & set(names)):
-                            parsing_errors.append(lineno - 1, line, 'Duplicate section names')
+                            parsing_errors.append(lineno, line, 'Duplicate section names')
                 all_step_names.extend(step_names)
                 self.sections.append(SoS_Step(step_names, step_options, is_parameters= step_names and step_names[0][0] == self._PARAMETERS_SECTION_NAME))
                 cursect = self.sections[-1]
@@ -909,7 +914,7 @@ class SoS_Script:
                 #
                 var_name = mo.group('var_name')
                 if var_name in self._DIRECTIVES:
-                    parsing_errors.append(lineno - 1, line, 'directive name cannot be used as variables')
+                    parsing_errors.append(lineno, line, 'directive name cannot be used as variables')
                     continue
                 # newline should be kept for multi-line assignment
                 var_value = mo.group('var_value') + '\n'

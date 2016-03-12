@@ -426,11 +426,9 @@ class SoS_String:
     FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
 
     def __init__(self, sigil = '${ }'):
-        if sigil.count(' ') != 1 or sigil[0] in (' ', "'") or sigil[-1] in (' ', "'"):
-            raise ValueError('Incorrect sigil "{}"'.format(sigil))
+        # do not check sigil here because the function will be called quite frequently
+        # the sigil will be checked when it is entered in SoS script.
         self.sigil = sigil.split(' ')
-        if self.sigil[0] == self.sigil[1]:
-            raise ValueError('Incorrect sigl "{}"'.format(sigil))
 
     def interpolate(self, text):
         '''Intepolate string with local and global dictionary'''
