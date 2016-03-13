@@ -404,7 +404,7 @@ b = A()()
 ''')
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals.b, 0)
+        self.assertEqual(env.locals['b'], 0)
 
 if __name__ == '__main__':
     unittest.main()

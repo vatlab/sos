@@ -136,16 +136,18 @@ class WorkflowDict(dict):
     1. Generate logging message for debugging purposes.
     2. Allow access of values from attributes. As a trick to reduce logging messages, the
        attribute interface does not trigger logging message.
-
-    Potential future expansion of this dictionary include
-    1. Read only item. An error will be raised if a readonly item is changed.
-    2. Temporary items. A function might be provided to remove all temporary items.
     """
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)
 
     def __setitem__(self, key, value):
+        if env.verbosity > 2:
+            self._log(key, value)
+        if env.run_mode == 'dryrun':
+            self._warn(key, value)
         dict.__setitem__(self, key, value)
+
+    def _log(self, key, value):
         if isinstance(value, (str, int, float, bool)) or (isinstance(value, collections.Sequence) \
             and len(value) <= 2) or len(str(value)) < 50:
             env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, str(value)))
@@ -159,13 +161,10 @@ class WorkflowDict(dict):
         else:
             env.logger.debug('Workflow variable ``{}`` is set to ``{}...``'.format(key, repr(value)[:40]))
 
-    def __setattr__(self, key, value):
-        '''a.key = value is equivalent to a['key'] = value'''
-        dict.__setitem__(self, key, value)
-
-    def __getattr__(self, key):
-        '''a.key is equivalent to a['key']'''
-        return dict.__getitem__(self, key)
+    def _warn(self, key, value):
+        if key.isupper() and dict.__contains__(self, key) and dict.__getitem__(self, key) != value:
+            env.logger.warning('Changing readonly variable {} from {} to {}'
+                .format(key, dict.__getitem__(self, key), value))
 
 #
 # Runtime environment
@@ -204,7 +203,7 @@ class RuntimeEnvironments(object):
         # local and global dictionaries used by SoS during the
         # execution of SoS workflows
         self.locals = WorkflowDict()
-        self.globals = {}
+        self.globals = globals()
 
     #
     # attribute logger
@@ -428,7 +427,7 @@ class SoS_String:
     def __init__(self, sigil = '${ }'):
         # do not check sigil here because the function will be called quite frequently
         # the sigil will be checked when it is entered in SoS script.
-        self.sigil = sigil.split(' ')
+        self.l, self.r = sigil.split(' ')
 
     def interpolate(self, text):
         '''Intepolate string with local and global dictionary'''
@@ -442,13 +441,12 @@ class SoS_String:
         #
         # '' 'a} part1 ' ' expr2 ' 'nested }} and another' 'expr2 {}} and done'
         #
-        pieces = text.split(self.sigil[0], 1)
-        if len(pieces) == 1:
-            # nothing to split, so we are done
+        # 'in' test is 10 times faster than split so we do this test first.
+        if self.l not in text:
             return text
-        else:
-            # the first piece must be before sigil and be completed text
-            return pieces[0] + self._interpolate(pieces[1])
+        pieces = text.split(self.l, 1)
+        # the first piece must be before sigil and be completed text
+        return pieces[0] + self._interpolate(pieces[1])
 
     def _interpolate(self, text, start_nested=0):
         '''Intepolate an expression with unknown ending location. We cannot split
@@ -456,15 +454,15 @@ class SoS_String:
         that the location of nested expression can only happen after this point.
         '''
         # no matching }, must be wrong
-        if self.sigil[1] not in text:
-            raise InterpolationError(text[:20], "Missing {}".format(self.sigil[1]))
+        if self.r not in text:
+            raise InterpolationError(text[:20], "Missing {}".format(self.r))
         #
         # location of first ending sigil
-        i = text.index(self.sigil[1])
+        i = text.index(self.r)
         #
         # substr contains ${
-        if self.sigil[0] in text[start_nested:]:
-            k = text.index(self.sigil[0])
+        if self.l in text[start_nested:]:
+            k = text.index(self.l)
         else:
             # k is very far away
             k = len(text) + 100
@@ -477,7 +475,7 @@ class SoS_String:
             #
             try:
                 # expolate string recursively.
-                return self._interpolate(text[:k] + self._interpolate(text[k + len(self.sigil[0]):]))
+                return self._interpolate(text[:k] + self._interpolate(text[k + len(self.l):]))
             except Exception as e:
                 # This is for the case where inner sigil is actually part of the syntax. For example, if
                 # sigil = []
@@ -494,7 +492,7 @@ class SoS_String:
                 #
                 # namely keeping [] as python expression
                 #
-                return self._interpolate(text, start_nested=k + len(self.sigil[0]))
+                return self._interpolate(text, start_nested=k + len(self.l))
         else:
             # non-nested case, proceed from left to right
             #
@@ -526,16 +524,16 @@ class SoS_String:
                     except Exception as e:
                         raise InterpolationError(expr, e)
                     # evaluate the expression and interpolate the next expression
-                    return self._repr(result, fmt, sep) + self.interpolate(text[j+len(self.sigil[1]):])
+                    return self._repr(result, fmt, sep) + self.interpolate(text[j+len(self.r):])
                 except Exception as e:
-                    if self.sigil[1] not in text[j+1:]:
+                    if self.r not in text[j+1:]:
                         raise InterpolationError(text[:j], e)
-                    j = text.index(self.sigil[1], j+1)
+                    j = text.index(self.r, j+1)
                     #                           j
                     # something {} } ${ another }
                     #                k
                     if j > k:
-                        return self._interpolate(text[:k] + self._interpolate(text[k+len(self.sigil[0]):]))
+                        return self._interpolate(text[:k] + self._interpolate(text[k+len(self.l):]))
 
     def _format(self, obj, fmt):
         '''Format an object in basic type (not list etc)

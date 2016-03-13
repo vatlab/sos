@@ -40,7 +40,7 @@ res += '${b}'
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals.res, '200')
+        self.assertEqual(env.locals['res'], '200')
         #
         script = SoS_Script(r"""
 res = ''
@@ -49,7 +49,7 @@ for b in range(5):
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals.res, '01234')
+        self.assertEqual(env.locals['res'], '01234')
         
     def testGlobalVars(self):
         '''Test SoS defined variables'''
@@ -57,7 +57,7 @@ for b in range(5):
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals.HOME, os.environ['HOME'])
+        self.assertEqual(env.locals['HOME'], os.environ['HOME'])
 
     def testSignature(self):
         '''Test recognizing the format of SoS script'''
@@ -164,7 +164,7 @@ output:input
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(env.locals.step_output, ['a.txt', 'b.txt'])
+        self.assertEqual(env.locals['step_output'], ['a.txt', 'b.txt'])
         #
         script = SoS_Script(r"""
 [0]
@@ -177,7 +177,7 @@ counter += 1
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(env.locals.counter, 3)
+        self.assertEqual(env.locals['counter'], 3)
         #
         script = SoS_Script(r"""
 [0]
@@ -190,7 +190,7 @@ counter += 1
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(env.locals.counter, 2)
+        self.assertEqual(env.locals['counter'], 2)
 
     def testSkip(self):
         '''Test input option skip'''
@@ -206,7 +206,7 @@ counter += 1
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(env.locals.counter, 0)
+        self.assertEqual(env.locals['counter'], 0)
 
     def testOutputFromInput(self):
         '''Test deriving output files from input files'''
@@ -223,8 +223,8 @@ counter += 1
 """)
         wf = script.workflow('default')
         wf.run()
-        self.assertEqual(env.locals.counter, 2)
-        self.assertEqual(env.locals.step_output, ['a.txt.bak', 'b.txt.bak'])
+        self.assertEqual(env.locals['counter'], 2)
+        self.assertEqual(env.locals['step_output'], ['a.txt.bak', 'b.txt.bak'])
 
 if __name__ == '__main__':
     unittest.main()

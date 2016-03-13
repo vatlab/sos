@@ -1172,7 +1172,7 @@ def sos_run(args, argv):
         script = SoS_Script(filename=args.script, args=argv)
         workflow = script.workflow(args.workflow)
         if args.__dryrun__:
-            env.run_mode == 'dryrun'
+            env.run_mode = 'dryrun'
         workflow.run()
     except Exception as e:
         if args.verbosity and args.verbosity > 2:

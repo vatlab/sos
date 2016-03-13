@@ -167,9 +167,9 @@ class TestUtils(unittest.TestCase):
         '''Test workflow dict with attribute access'''
         d = WorkflowDict()
         d['a'] = 1
-        self.assertEqual(d.a, 1)
+        self.assertEqual(d['a'], 1)
         #
-        d.a += 1
+        d['a'] += 1
         self.assertEqual(d['a'], 2)
 
 if __name__ == '__main__':
