@@ -98,7 +98,7 @@ b"""
         for badoption in ['ss', 'skip a', 'skip:_', 'skip, skip']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # option value should be a valid python expression
-        for badoption in ['sigil=a', 'input_alias=a', 'output_alias=a']:
+        for badoption in ['sigil=a', 'input_alias=a', 'outputalias=a', 'sigil="[]"', 'sigil="| |"']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # good options
         for goodoption in ['sigil="[ ]"', 'input_alias="a"', 'output_alias="a"']:
@@ -429,7 +429,7 @@ b = A()()
 ''')
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals.b, 0)
+        self.assertEqual(env.locals['b'], 0)
 
 if __name__ == '__main__':
     unittest.main()
