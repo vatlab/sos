@@ -226,5 +226,20 @@ counter += 1
         self.assertEqual(env.locals['counter'], 2)
         self.assertEqual(env.locals['step_output'], ['a.txt.bak', 'b.txt.bak'])
 
+    def testWorkdir(self):
+        '''Test workdir option for runtime environment'''
+        script =  SoS_Script(r"""
+[0]
+
+runtime: workdir='..'
+
+files = os.listdir('test')
+
+""")
+        wf = script.workflow()
+        wf.run()
+        self.assertTrue('test_execute.py' in env.locals['files'])
+
+
 if __name__ == '__main__':
     unittest.main()

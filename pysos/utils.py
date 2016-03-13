@@ -134,8 +134,7 @@ class ColoredFormatter(logging.Formatter):
 class WorkflowDict(dict):
     """A dictionary object that
     1. Generate logging message for debugging purposes.
-    2. Allow access of values from attributes. As a trick to reduce logging messages, the
-       attribute interface does not trigger logging message.
+    2. Generate warning message if ALLCAP variables are changed.
     """
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)

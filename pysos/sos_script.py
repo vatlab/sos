@@ -64,10 +64,32 @@ class ParsingError(Error):
         self.errors.append((lineno, line))
         self.message += '\n\t[line %2d]: %s\n%s' % (lineno, line, msg)
 
+class RuntimeEnvironment:
+    """Context manager for changing the current working directory"""
+    def __init__(self, runtime={}):
+        self.runtime = runtime
+        if 'workdir' in runtime:
+            self.workdir = os.path.expanduser(runtime['workdir'])
+        else:
+            self.workdir = None
+
+    def __enter__(self):
+        if self.workdir:
+            self.saved_dir = os.getcwd()
+            os.chdir(self.workdir)
+
+    def __exit__(self, etype, value, traceback):
+        if self.workdir:
+            os.chdir(self.saved_dir)
+
 class SoS_Step:
     #
     # A single sos step
     #
+    _INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'labels', 'for_each', 'dynamic']
+    _OUTPUT_OPTIONS = ['dynamic']
+    _DEPENDS_OPTIONS = ['dynamic']
+    _RUNTIME_OPTIONS = ['workdir']
     def __init__(self, names=[], options={}, is_global=False, is_parameters=False):
         # A step will not have a name and index until it is copied to separate workflows
         self.name = None
@@ -91,6 +113,7 @@ class SoS_Step:
         self.values = []
         self.lineno = None
         #
+        self.runtime = RuntimeEnvironment()
         if 'sigil' in self.options:
             self.sigil = self.options['sigil']
         else:
@@ -278,6 +301,10 @@ class SoS_Step:
     #
     def _directive_input(self, *args, **kwargs):
         # first *args are filenames
+        for k in kwargs.keys():
+            if k not in self._INPUT_OPTIONS:
+                raise RuntimeError('Unrecognized input option {}'.format(k))
+        #
         if args:
             ifiles = []
             for arg in args:
@@ -339,6 +366,11 @@ class SoS_Step:
 
 
     def _directive_depends(self, *args, **kwargs):
+        '''handle directive depends'''
+        for k in kwargs.keys():
+            if k not in self._DEPENDS_OPTIONS:
+                raise RuntimeError('Unrecognized depends option {}'.format(k))
+        # first *args are filenames
         dfiles = []
         for arg in args:
             if isinstance(arg, basestring):
@@ -350,6 +382,9 @@ class SoS_Step:
         self._depends.append(dfiles)
 
     def _directive_output(self, *args, **kwargs):
+        for k in kwargs.keys():
+            if k not in self._OUTPUT_OPTIONS:
+                raise RuntimeError('Unrecognized output option {}'.format(k))
         ofiles = []
         for arg in args:
             if isinstance(arg, basestring):
@@ -359,6 +394,13 @@ class SoS_Step:
                     raise RuntimeError('Invalid output file: {}'.format(arg))
                 ofiles.extend(arg)
         self._outputs.append(ofiles)
+
+    def _directive_runtime(self, **kwargs):
+        for k in kwargs.keys():
+            if k not in self._RUNTIME_OPTIONS:
+                raise RuntimeError('Unrecognized runtime option {}'.format(k))
+        #
+        self.runtime = RuntimeEnvironment(kwargs)
 
     #
     # Execution
@@ -400,7 +442,7 @@ class SoS_Step:
         self._depends = []
         for key, value in self.directives:
             # input is processed only once
-            if key == 'input':
+            if key in ('input', 'runtime'):
                 try:
                     SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
                 except Exception as e:
@@ -462,10 +504,11 @@ class SoS_Step:
                     env.logger.info('Reusing existing output files {}'.format(', '.join(o)))
                     continue
             # action
-            try:
-                SoS_exec(''.join(self.statements), self.sigil)
-            except Exception as e:
-                raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
+            with self.runtime:
+                try:
+                    SoS_exec(''.join(self.statements), self.sigil)
+                except Exception as e:
+                    raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
             if o and o != env.locals['step_output'] and env.run_mode == 'run':
                 partial_signature.write()
         if env.run_mode == 'run':
@@ -646,7 +689,7 @@ class SoS_Workflow:
         return result
 
 class SoS_Script:
-    _DIRECTIVES = ['input', 'output', 'depends']
+    _DIRECTIVES = ['input', 'output', 'depends', 'runtime']
     _SECTION_OPTIONS = ['input_alias', 'output_alias', 'nonconcurrent',
         'skip', 'blocking', 'sigil', 'target']
     _PARAMETERS_SECTION_NAME = 'parameters'
@@ -699,7 +742,7 @@ class SoS_Script:
 
     _DIRECTIVE_TMPL = r'''
         ^                                  # from start of line
-        (?P<directive_name>{})             # can be input, output or depends
+        (?P<directive_name>{})             # name of directive
         \s*:\s*                            # followed by :
         (?P<directive_value>.*)            # and values
         '''.format('|'.join(_DIRECTIVES))
