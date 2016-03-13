@@ -54,10 +54,10 @@ b'''
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals.a, 'a\n')
-        self.assertEqual(env.locals.b, 'a\n')
+        self.assertEqual(env.locals['a'], 'a\n')
+        self.assertEqual(env.locals['b'], 'a\n')
         # MAYJOR difference
-        self.assertEqual(env.locals.c, 'a\\n\nb')
+        self.assertEqual(env.locals['c'], 'a\\n\nb')
         script = SoS_Script(r'''
 c = """a\n
 
@@ -66,7 +66,7 @@ b"""
         wf = script.workflow()
         wf.run()
         # Note the difference between """ and ''' quotes
-        self.assertEqual(env.locals.c, 'a\n\nb')
+        self.assertEqual(env.locals['c'], 'a\n\nb')
 
     def testWorkflows(self):
         '''Test workflows defined in SoS script'''

@@ -624,8 +624,7 @@ class SoS_Workflow:
         except:
             env.locals['HOME'] = '.'
         #
-        env.locals['workflow_name'] = self.name
-        env.locals['workdir'] = os.path.abspath('.')
+        env.locals['WORKFLOW'] = self.name
         #
         if self.global_section:
             self.global_section.run()
