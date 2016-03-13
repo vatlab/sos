@@ -577,9 +577,9 @@ class SoS_Workflow:
         env.locals = WorkflowDict()
         # initial values
         try:
-            env.locals['home'] = os.environ['HOME']
+            env.locals['HOME'] = os.environ['HOME']
         except:
-            env.locals['home'] = '.'
+            env.locals['HOME'] = '.'
         #
         env.locals['workflow_name'] = self.name
         env.locals['workdir'] = os.path.abspath('.')
@@ -1159,7 +1159,7 @@ def sos_show(args, argv):
         else:
             script.show()
     except Exception as e:
-        if args.verbosity and int(args.verbosity) > 2:
+        if args.verbosity and args.verbosity > 2:
             print_traceback()
         env.logger.error(e)
         sys.exit(1)
@@ -1175,7 +1175,7 @@ def sos_run(args, argv):
             env.run_mode == 'dryrun'
         workflow.run()
     except Exception as e:
-        if args.verbosity and int(args.verbosity) > 2:
+        if args.verbosity and args.verbosity > 2:
             print_traceback()
         env.logger.error(e)
         sys.exit(1)

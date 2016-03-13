@@ -51,6 +51,14 @@ for b in range(5):
         wf.run()
         self.assertEqual(env.locals.res, '01234')
         
+    def testGlobalVars(self):
+        '''Test SoS defined variables'''
+        script = SoS_Script(r"""
+""")
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals.HOME, os.environ['HOME'])
+
     def testSignature(self):
         '''Test recognizing the format of SoS script'''
         env.run_mode = 'run'

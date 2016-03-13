@@ -26,7 +26,7 @@ import argparse
 from pysos import SOS_VERSION, SOS_FULL_VERSION, env, sos_run, sos_show
 
 def addCommonArgs(parser):
-    parser.add_argument('-v', '--verbosity', choices=['0', '1', '2', '3', '4'],
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5),
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).'''),
 

@@ -193,7 +193,7 @@ class RuntimeEnvironments(object):
     def __init__(self):
         # logger
         self._logger = None
-        self._verbosity = '2'
+        self._verbosity = 2
         self._logfile = None
         self._set_logger()
         #
@@ -221,11 +221,11 @@ class RuntimeEnvironments(object):
         # output to standard output
         cout = logging.StreamHandler()
         levels = {
-            '0': logging.ERROR,
-            '1': logging.WARNING,
-            '2': logging.INFO,
-            '3': logging.DEBUG,
-            '4': logging.TRACE,
+            0: logging.ERROR,
+            1: logging.WARNING,
+            2: logging.INFO,
+            3: logging.DEBUG,
+            4: logging.TRACE,
             None: logging.INFO
         }
         #
@@ -250,7 +250,7 @@ class RuntimeEnvironments(object):
     # attribute verbosity
     #
     def _set_verbosity(self, v):
-        if v in ['0', '1', '2', '3', '4']:
+        if v in [0, 1, 2, 3, 4]:
             self._verbosity = v
             # reset logger to appropriate logging level
             self._set_logger()
