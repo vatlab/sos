@@ -43,6 +43,31 @@ class TestParser(unittest.TestCase):
         # not the default value of 1.0
         self.assertEqual(script.format_version, '1.1')
 
+    def testStringLiteral(self):
+        '''Test string literals of SoS'''
+        script = SoS_Script(r"""
+a = 'a\n'
+b = "a\n"
+c = '''a\n
+
+b'''
+""")
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals.a, 'a\n')
+        self.assertEqual(env.locals.b, 'a\n')
+        # MAYJOR difference
+        self.assertEqual(env.locals.c, 'a\\n\nb')
+        script = SoS_Script(r'''
+c = """a\n
+
+b"""
+''')
+        wf = script.workflow()
+        wf.run()
+        # Note the difference between """ and ''' quotes
+        self.assertEqual(env.locals.c, 'a\n\nb')
+
     def testWorkflows(self):
         '''Test workflows defined in SoS script'''
         script = SoS_Script('''[0]''')
@@ -73,10 +98,10 @@ class TestParser(unittest.TestCase):
         for badoption in ['ss', 'skip a', 'skip:_', 'skip, skip']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # option value should be a valid python expression
-        for badoption in ['sigil=a', 'input_alias=a']:
+        for badoption in ['sigil=a', 'input_alias=a', 'output_alias=a']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # good options
-        for goodoption in ['sigil="[ ]"', 'input_alias="a"']:
+        for goodoption in ['sigil="[ ]"', 'input_alias="a"', 'output_alias="a"']:
             SoS_Script('[0:{}]'.format(goodoption))
         # allowed names
         for name in ['a5', 'a_5', '*_0', 'a*1_100']:
