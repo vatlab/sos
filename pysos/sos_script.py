@@ -437,6 +437,7 @@ class SoS_Step:
         # the following is a quick hack to allow _directive_input function etc to access 
         # the workflow dictionary
         env.globals['self'] = self
+        env.locals['_step'].name = '{}_{}'.format(self.name, self.index)
         env.locals['_step'].index = self.index
         env.locals['_step'].output = []
         env.locals['_step'].depends = []
@@ -622,6 +623,10 @@ class SoS_Workflow:
                     raise ValueError('Invalid pipeline step item {}'.format(item))
             # keep only selected steps
             self.sections = [x for x in self.sections if all_steps[x.index]]
+
+    def extend(self, workflow):
+        '''Extend another workflow to existing one, essentailly creating a nested workflow.'''
+        self.sections.extend(workflow.sections)
 
     def _parse_error(self, msg):
         '''This function will replace error() function in argparse module so that SoS
@@ -1114,6 +1119,17 @@ class SoS_Script:
         if not wf_name:
             wf_name = ''
         else:
+            if '+' in wf_name:
+                combined_wf = None
+                for wf in wf_name.split('+'):
+                    if not wf:
+                        raise ValueError('Incorrect workflow name {}'.format(wf_name))
+                    subworkflow = self.workflow(wf)
+                    if combined_wf is None:
+                        combined_wf = subworkflow
+                    else:
+                        combined_wf.extend(subworkflow)
+                return combined_wf
             if ':' in wf_name:
                 wf_name, allowed_steps = wf_name.split(':', 1)
         if not wf_name:
