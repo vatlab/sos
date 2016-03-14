@@ -84,7 +84,7 @@ run(''' cp ${input} ${_dest} ''')
         self.assertTrue(open('temp/a.txt').read(), 'a.txt')
         self.assertTrue(open('temp/b.txt').read(), 'b.txt')
         #
-        wf = script.workflow('default')
+        wf = script.workflow()
         wf.run()
         # not the default value of 1.0
         self.assertTrue(os.path.isfile('temp/c.txt'))
@@ -102,7 +102,7 @@ run(''' cp ${input} ${_dest} ''')
 input: '*.py'
 output: input
 """)
-        wf = script.workflow('default')
+        wf = script.workflow()
         wf.run()
         self.assertTrue('test_execute.py' in env.locals['step_output'])
 
@@ -125,7 +125,7 @@ all_loop += _c + " "
 
 counter = counter + 1
 """)
-        wf = script.workflow('default')
+        wf = script.workflow()
         wf.run()
         self.assertEqual(env.locals['counter'], 6)
         self.assertEqual(env.locals['all_names'], "a b c a b c ")
@@ -145,7 +145,7 @@ input: 'a.pdf', files, group_by='single', labels='names', for_each='c'
 
 counter = str(int(counter) + 1)
 """)
-        wf = script.workflow('default')
+        wf = script.workflow()
         wf.run()
         self.assertEqual(env.locals['ia'], ["a.pdf", 'a.txt', 'b.txt'])
 
@@ -162,7 +162,7 @@ input: 'a.pdf', files, filetype='*.txt', group_by='single'
 output:input
 
 """)
-        wf = script.workflow('default')
+        wf = script.workflow()
         wf.run()
         self.assertEqual(env.locals['step_output'], ['a.txt', 'b.txt'])
         #
@@ -175,7 +175,7 @@ input: 'a.pdf', 'b.html', files, filetype=('*.txt', '*.pdf'), group_by='single'
 
 counter += 1
 """)
-        wf = script.workflow('default')
+        wf = script.workflow()
         wf.run()
         self.assertEqual(env.locals['counter'], 3)
         #
@@ -188,7 +188,7 @@ input: 'a.pdf', 'b.html', files, filetype=lambda x: 'a' in x, group_by='single'
 
 counter += 1
 """)
-        wf = script.workflow('default')
+        wf = script.workflow()
         wf.run()
         self.assertEqual(env.locals['counter'], 2)
 
@@ -204,7 +204,7 @@ input: 'a.pdf', 'b.html', files, skip=counter == 0
 
 counter += 1
 """)
-        wf = script.workflow('default')
+        wf = script.workflow()
         wf.run()
         self.assertEqual(env.locals['counter'], 0)
 
@@ -221,7 +221,7 @@ output: input[0] + '.bak'
 
 counter += 1
 """)
-        wf = script.workflow('default')
+        wf = script.workflow()
         wf.run()
         self.assertEqual(env.locals['counter'], 2)
         self.assertEqual(env.locals['step_output'], ['a.txt.bak', 'b.txt.bak'])
@@ -239,6 +239,52 @@ files = os.listdir('test')
         wf = script.workflow()
         wf.run()
         self.assertTrue('test_execute.py' in env.locals['files'])
+
+    def testCheckCommand(self):
+        '''Test action check_command'''
+        script = SoS_Script(r"""
+[0]
+check_command('cat')
+""")
+        wf = script.workflow()
+        # should be ok
+        wf.run()
+        #
+        script = SoS_Script(r"""
+[0]
+check_command('catmouse')
+""")
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        # should fail in dryrun mode
+        self.assertRaises(RuntimeError, wf.run)
+        #
+        env.run_mode = 'run'
+        wf = script.workflow()
+        # should fail also in run mode
+        self.assertRaises(RuntimeError, wf.run)
+
+    def testRunmode(self):
+        '''Test the runmode decoration'''
+        script = SoS_Script(r"""
+from pysos import SoS_Action
+
+@SoS_Action(run_mode='run')
+def fail():
+    return 1
+
+a = fail()
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        wf.run()
+        # should return 0 in dryrun mode
+        self.assertEqual(env.locals['a'], 0)
+        #
+        env.run_mode = 'run'
+        wf.run()
+        # shoulw return 1 in run mode
+        self.assertEqual(env.locals['a'], 1)
 
 
 if __name__ == '__main__':
