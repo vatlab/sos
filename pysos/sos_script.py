@@ -256,7 +256,7 @@ class SoS_Step:
         else:
             raise ValueError('Unacceptable value for parameter labels: {}'.format(labels))
         #
-        ifiles = env.locals['_step_input']
+        ifiles = env.locals['_step'].input
         set_vars = [{} for x in self._groups]
         for wv in labels:
             values = env.locals[wv]
@@ -319,9 +319,9 @@ class SoS_Step:
                     if not all(isinstance(x, basestring) for x in arg):
                         raise RuntimeError('Invalid input file: {}'.format(arg))
                     ifiles.extend(arg)
-            env.locals.set('_step_input', ifiles)
+            env.locals['_step'].input = ifiles
         else:
-            ifiles = env.locals['_step_input']
+            ifiles = env.locals['_step'].input
         # expand files with wildcard characters and check if files exist
         tmp = []
         for ifile in ifiles:
@@ -434,15 +434,14 @@ class SoS_Step:
         # the following is a quick hack to allow _directive_input function etc to access 
         # the workflow dictionary
         env.globals['self'] = self
-        env.locals.set('_step_output', [])
-        env.locals.set('_step_depends', [])
-        if 'alias' in self.options:
-            env.locals.set(self.options['alias'], StepInfo())
-            env.locals[self.options['alias']].index = self.index
+        env.locals['_step'].index = self.index
+        env.locals['_step'].output = []
+        env.locals['_step'].depends = []
+
         #
         # default input groups and vars
-        if '_step_input' in env.locals:
-            self._groups = [env.locals['_step_input']]
+        if hasattr(env.locals['_step'], 'input'):
+            self._groups = [env.locals['_step'].input]
         else:
             self._groups = [[]]
         self._vars = [[]]
@@ -471,29 +470,28 @@ class SoS_Step:
         if not self._depends:
             self._depends = [[] for x in self._groups]
         # we need to reduce output files in case they have been processed multiple times.
-        env.locals.set('_step_output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
-        env.locals.set('_step_depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
+        env.locals['_step'].output = list(OrderedDict.fromkeys(sum(self._outputs, [])))
+        env.locals['_step'].depends = list(OrderedDict.fromkeys(sum(self._depends, [])))
         #
         # input alias
-        if 'alias' in self.options:
-            env.locals[self.options['alias']].input = env.locals['_step_input']
         # if the step is ignored
         if not self._groups:
             env.logger.info('Step {} is skipped'.format(self.index))
             return
         if 'alias' in self.options:
-            env.locals[self.options['alias']].output = env.locals['_step_output']
-        if env.locals['_step_output']:
+            env.locals[self.options['alias']] = copy.deepcopy(env.locals['_step'])
+        #
+        if env.locals['_step'].output:
             signature = RuntimeInfo(self.statements, 
-                env.locals['_step_input'], env.locals['_step_output'], env.locals['_step_depends'])
+                env.locals['_step'].input, env.locals['_step'].output, env.locals['_step'].depends)
             if env.run_mode == 'run':
-                for ofile in env.locals['_step_output']:
+                for ofile in env.locals['_step'].output:
                     parent_dir = os.path.split(ofile)[0]
                     if parent_dir and not os.path.isdir(parent_dir):
                         os.makedirs(parent_dir)
                 if signature.validate():
                     # everything matches
-                    env.logger.info('Reusing existing output files {}'.format(', '.join(env.locals['_step_output'])))
+                    env.logger.info('Reusing existing output files {}'.format(', '.join(env.locals['_step'].output)))
                     return
         else:
             signature = None
@@ -505,7 +503,7 @@ class SoS_Step:
             # If the users specifies output files for each loop (using ${input} etc, we
             # can try to see if we can create partial signature. This would help if the
             # step is interrupted in the middle.
-            if o and o != env.locals['_step_output'] and env.run_mode == 'run':
+            if o and o != env.locals['_step'].output and env.run_mode == 'run':
                 partial_signature = RuntimeInfo(self.statements, g, o, d)
                 if partial_signature.validate():
                     # everything matches
@@ -517,10 +515,10 @@ class SoS_Step:
                     SoS_exec(''.join(self.statements), self.sigil)
                 except Exception as e:
                     raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
-            if o and o != env.locals['_step_output'] and env.run_mode == 'run':
+            if o and o != env.locals['_step'].output and env.run_mode == 'run':
                 partial_signature.write()
         if env.run_mode == 'run':
-            for ofile in env.locals['_step_output']:
+            for ofile in env.locals['_step'].output:
                 if not os.path.isfile(os.path.expanduser(ofile)):
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
         if signature and env.run_mode == 'run':
@@ -633,6 +631,11 @@ class SoS_Workflow:
             env.locals['HOME'] = '.'
         #
         env.locals['WORKFLOW_NAME'] = self.name
+        env.locals.set('_step', StepInfo())
+        # initially there is no input, output, or depends
+        env.locals['_step'].input = []
+        env.locals['_step'].output = []
+        env.locals['_step'].depends = []
         #
         if self.global_section:
             self.global_section.run()
@@ -648,16 +651,18 @@ class SoS_Workflow:
         #
         # process step of the pipeline
         # There is no input initially
-        env.locals.set('_step_input', [])
         for section in self.sections:
             # set the output to the input of the next step
-            if '_step_output' in env.locals:
-                # passing step output to step_input of next step
-                env.locals.set('_step_input', env.locals['_step_output'])
+            if hasattr(env.locals['_step'], 'output'):
+                # passing step output to _step.input of next step
+                env.locals['_step'].input = env.locals['_step'].output
                 # step_output and depends are temporary
-                env.locals.pop('_step_output')
-            if '_step_depends' in env.locals:
-                env.locals.pop('_step_depends')
+            else:
+                env.locals['_step'].input = []
+            #
+            env.locals['_step'].output = []
+            env.locals['_step'].depends = []
+            #
             section.run()
 
     def show(self, parameters=True):

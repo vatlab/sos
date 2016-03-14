@@ -108,7 +108,7 @@ output: _input
 """)
         wf = script.workflow()
         wf.run()
-        self.assertTrue('test_execute.py' in env.locals['_step_output'])
+        self.assertTrue('test_execute.py' in env.locals['_step'].output)
 
     def testForEach(self):
         '''Test for_each option of input'''
@@ -187,7 +187,7 @@ output: _input
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['_step_output'], ['a.txt', 'b.txt'])
+        self.assertEqual(env.locals['_step'].output, ['a.txt', 'b.txt'])
         #
         script = SoS_Script(r"""
 [0]
@@ -247,7 +247,7 @@ counter += 1
         wf = script.workflow()
         wf.run()
         self.assertEqual(env.locals['counter'], 2)
-        self.assertEqual(env.locals['_step_output'], ['a.txt.bak', 'b.txt.bak'])
+        self.assertEqual(env.locals['_step'].output, ['a.txt.bak', 'b.txt.bak'])
 
     def testWorkdir(self):
         '''Test workdir option for runtime environment'''
