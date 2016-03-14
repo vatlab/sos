@@ -166,7 +166,7 @@ def warn_if(expr, msg=''):
 def check_output(cmd, pattern):
     '''Raise an exception if output of `cmd` does not match specified `pattern`.
     Multiple patterns can be specified as a list of patterns.'''
-    output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+    output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode()
     env.logger.trace('Output of command "{}" is "{}"'.format(cmd, output))
     #
     pattern = [pattern] if isinstance(pattern, basestring) else pattern
