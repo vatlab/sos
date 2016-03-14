@@ -1,8 +1,9 @@
 
+import os
+import re
 import subprocess
 import tempfile
 import pipes
-import os
 
 from .utils import env
 
@@ -146,4 +147,30 @@ def check_command(cmds):
             raise RuntimeError('Command {} not find.'.format(cmd))
         env.logger.info('Command {} is located as {}.'.format(cmd, name))
     return 0
+
+
+@SoS_Action(run_mode=['dryrun', 'run'])
+def fail_if(expr, msg=''):
+    '''Raise an exception with `msg` if condition `expr` is False'''
+    if expr:
+        raise RuntimeError(msg)
+
+
+@SoS_Action(run_mode=['dryrun', 'run'])
+def warn_if(expr, msg=''):
+    '''Yield an warning message `msg` if `expr` is False '''
+    if expr:
+        env.logger.warning(msg)
+
+@SoS_Action(run_mode=['dryrun', 'run'])
+def check_output(cmd, pattern):
+    '''Raise an exception if output of `cmd` does not match specified `pattern`.
+    Multiple patterns can be specified as a list of patterns.'''
+    output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+    env.logger.trace('Output of command "{}" is "{}"'.format(cmd, output))
+    #
+    pattern = [pattern] if isinstance(pattern, basestring) else pattern
+    if all([re.search(x, output, re.MULTILINE) is None for x in pattern]):
+        raise RuntimeError('Output of command "{}" does not match specified regular expression {}.'
+            .format(cmd, ' or '.join(pattern)))
 

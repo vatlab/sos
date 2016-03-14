@@ -263,30 +263,6 @@ files = os.listdir('test')
         wf.run()
         self.assertTrue('test_execute.py' in env.locals['files'])
 
-    def testCheckCommand(self):
-        '''Test action check_command'''
-        script = SoS_Script(r"""
-[0]
-check_command('cat')
-""")
-        wf = script.workflow()
-        # should be ok
-        wf.run()
-        #
-        script = SoS_Script(r"""
-[0]
-check_command('catmouse')
-""")
-        env.run_mode = 'dryrun'
-        wf = script.workflow()
-        # should fail in dryrun mode
-        self.assertRaises(RuntimeError, wf.run)
-        #
-        env.run_mode = 'run'
-        wf = script.workflow()
-        # should fail also in run mode
-        self.assertRaises(RuntimeError, wf.run)
-
     def testRunmode(self):
         '''Test the runmode decoration'''
         script = SoS_Script(r"""
