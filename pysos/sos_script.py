@@ -86,7 +86,7 @@ class SoS_Step:
     #
     # A single sos step
     #
-    _INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'labels', 'for_each', 'dynamic']
+    _INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'paired_with', 'for_each', 'dynamic']
     _OUTPUT_OPTIONS = ['dynamic']
     _DEPENDS_OPTIONS = ['dynamic']
     _RUNTIME_OPTIONS = ['workdir']
@@ -241,19 +241,19 @@ class SoS_Step:
         elif group_by == 'combinations':
             return [list(x) for x in combinations(ifiles, 2)]
 
-    def _get_labels(self, labels):
-        if labels is None or not labels:
-            labels = []
-        elif isinstance(labels, str):
-            labels = [labels]
-        elif isinstance(labels, list):
-            labels = labels
+    def _get_paired_with(self, paired_with):
+        if paired_with is None or not paired_with:
+            paired_with = []
+        elif isinstance(paired_with, str):
+            paired_with = [paired_with]
+        elif isinstance(paired_with, list):
+            paired_with = paired_with
         else:
-            raise ValueError('Unacceptable value for parameter labels: {}'.format(labels))
+            raise ValueError('Unacceptable value for parameter paired_with: {}'.format(paired_with))
         #
         ifiles = env.locals['_step_input']
         set_vars = [{} for x in self._groups]
-        for wv in labels:
+        for wv in paired_with:
             values = env.locals[wv]
             if not isinstance(values, list):
                 raise ValueError('with_var variable {} is not a list ("{}")'.format(wv, values))
@@ -355,9 +355,9 @@ class SoS_Step:
             self._groups = self._get_groups(ifiles, kwargs['group_by'])
         else:
             self._groups = [ifiles]
-        # handle labels
-        if 'labels' in kwargs:
-            self._vars = self._get_labels(kwargs['labels'])
+        # handle paired_with
+        if 'paired_with' in kwargs:
+            self._vars = self._get_paired_with(kwargs['paired_with'])
         else:
             self._vars = [{} for x in self._groups]
         # handle for_each

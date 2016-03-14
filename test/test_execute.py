@@ -71,7 +71,7 @@ run('''echo "b.txt" > 'temp/b.txt' ''')
 
 [1: output_alias='oa']
 dest = ['temp/c.txt', 'temp/d.txt']
-input: group_by='single', labels='dest'
+input: group_by='single', paired_with='dest'
 output: dest
 
 run(''' cp ${input} ${_dest} ''')
@@ -118,7 +118,7 @@ counter = 0
 all_names = ''
 all_loop = ''
 
-input: 'a.pdf', files, group_by='single', labels='names', for_each='c'
+input: 'a.pdf', files, group_by='single', paired_with='names', for_each='c'
 
 all_names += _names[0] + " "
 all_loop += _c + " "
@@ -160,7 +160,7 @@ names = ['a', 'b', 'c']
 c = ['1', '2']
 counter = "0"
 
-input: 'a.pdf', files, group_by='single', labels='names', for_each='c'
+input: 'a.pdf', files, group_by='single', paired_with='names', for_each='c'
 
 counter = str(int(counter) + 1)
 """)
