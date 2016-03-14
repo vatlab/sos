@@ -130,6 +130,25 @@ counter = counter + 1
         self.assertEqual(env.locals['counter'], 6)
         self.assertEqual(env.locals['all_names'], "a b c a b c ")
         self.assertEqual(env.locals['all_loop'], "1 1 1 2 2 2 ")
+        #
+        # test same-level for loop and parameter with nested list
+        script = SoS_Script(r"""
+[0]
+files = ['a.txt', 'b.txt']
+par = [(1, 2), (1, 3), (2, 3)]
+res = ['p1.txt', 'p2.txt', 'p3.txt']
+processed = []
+
+input: files, for_each='par,res'
+output: res
+
+processed.append((_par, _res))
+""")
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals['processed'], [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
+
+
 
     def testAlias(self):
         '''Test option output_alias'''
