@@ -137,6 +137,8 @@ class TestUtils(unittest.TestCase):
         #
         # locals should be the one passed to the expression
         self.assertTrue('file_ws' in interpolate('${locals().keys()}'))
+        # 5:.5.0f does not work.
+        self.assertRaises(InterpolationError, interpolate, '${5:.${4/2.}f}')
 
     def testEval(self):
         '''Test the evaluation of SoS expression'''
