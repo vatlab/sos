@@ -100,11 +100,11 @@ run(''' cp ${input} ${_dest} ''')
         script = SoS_Script(r"""
 [0]
 input: '*.py'
-output: input
+output: _input
 """)
         wf = script.workflow()
         wf.run()
-        self.assertTrue('test_execute.py' in env.locals['step_output'])
+        self.assertTrue('test_execute.py' in env.locals['_step_output'])
 
     def testForEach(self):
         '''Test for_each option of input'''
@@ -159,12 +159,12 @@ counter = 0
 
 input: 'a.pdf', files, filetype='*.txt', group_by='single'
 
-output:input
+output: _input
 
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['step_output'], ['a.txt', 'b.txt'])
+        self.assertEqual(env.locals['_step_output'], ['a.txt', 'b.txt'])
         #
         script = SoS_Script(r"""
 [0]
@@ -217,14 +217,14 @@ files = ['a.txt', 'b.txt']
 counter = 0
 
 input: files, group_by='single'
-output: input[0] + '.bak'
+output: _input[0] + '.bak'
 
 counter += 1
 """)
         wf = script.workflow()
         wf.run()
         self.assertEqual(env.locals['counter'], 2)
-        self.assertEqual(env.locals['step_output'], ['a.txt.bak', 'b.txt.bak'])
+        self.assertEqual(env.locals['_step_output'], ['a.txt.bak', 'b.txt.bak'])
 
     def testWorkdir(self):
         '''Test workdir option for runtime environment'''
