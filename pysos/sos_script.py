@@ -623,6 +623,53 @@ class SoS_Workflow:
             # keep only selected steps
             self.sections = [x for x in self.sections if all_steps[x.index]]
 
+    def _parse_error(self, msg):
+        '''This function will replace error() function in argparse module so that SoS
+        can hijack errors raised from it.'''
+        raise ArgumentError(msg)
+
+    def parse_args(self, args):
+        '''Parse command line arguments and set values to parameters section'''
+        def str2bool(v):
+            if v.lower() in ('yes', 'true', 't', '1'):
+                return True
+            elif v.lower() in ('no', 'false', 'f', '0'):
+                return False
+            else:
+                raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
+        #
+        parser = argparse.ArgumentParser()
+        parser.register('type', 'bool', str2bool)
+        arguments = {}
+        for key, defvalue, comment in self.parameters_section.parameters:
+            try:
+                defvalue = SoS_eval(defvalue, self.parameters_section.sigil)
+                arguments[key] = defvalue
+            except Exception as e:
+                raise RuntimeError('Incorrect default value {} for parameter {}: {}'.format(defvalue, key, e))
+            if isinstance(defvalue, type):
+                if defvalue == bool:
+                    parser.add_argument('--{}'.format(key), type='bool', help=comment, required=True, nargs='?') 
+                else:
+                    # if only a type is specified, it is a required document of required type
+                    parser.add_argument('--{}'.format(key), type=str if hasattr(defvalue, '__iter__') else defvalue,
+                        help=comment, required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
+            else:
+                if isinstance(defvalue, bool):
+                    parser.add_argument('--{}'.format(key), type='bool', help=comment,
+                        nargs='?', default=defvalue)
+                else:
+                    parser.add_argument('--{}'.format(key), type=type(defvalue), help=comment,
+                        nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, basestring) else '?',
+                        default=defvalue)
+        #
+        parser.error = self._parse_error
+        #
+        arguments.update(vars(parser.parse_args(args)))
+        # now change the value with passed values
+        for k, v in arguments.items():
+            env.locals[k] = v
+
     def prepareVars(self):
         '''Prepare global variables '''
         env.globals = globals()
@@ -643,14 +690,16 @@ class SoS_Workflow:
         if self.global_section:
             self.global_section.run()
 
-    def run(self):
+    def run(self, args=[]):
         '''Very preliminary implementation of sequential execution function
         '''
         # process global variables
         self.prepareVars()
         # process parameter section
         if self.parameters_section:
-            self.parameters_section.run()
+            self.parse_args(args)
+        elif args:
+            raise ArgumentError('Unrecognized command line argument {}'.format(' '.join(args)))
         #
         # process step of the pipeline
         # There is no input initially
@@ -777,7 +826,7 @@ class SoS_Script:
     DIRECTIVE = re.compile(_DIRECTIVE_TMPL, re.VERBOSE)
     ASSIGNMENT = re.compile(_ASSIGNMENT_TMPL, re.VERBOSE)
 
-    def __init__(self, content='', filename=None, args=[]):
+    def __init__(self, content='', filename=None):
         '''Parse a sectioned SoS script file. Please refer to the SoS manual
         for detailed specification of this format.
 
@@ -809,15 +858,35 @@ class SoS_Script:
         self.workflows = list(set([x[0] for x in section_steps if x[1] is not None and '*' not in x[0]]))
         if not self.workflows:
             self.workflows = ['default']
-        # this will update values in the default section with
-        # values read from command line
-        self._parse_args(args)
+        #
+        # get script descriptions
+        cur_description = None
+        self.description = ''
+        self.workflow_descriptions = defaultdict(str)
+        for block in self.descriptions:
+            lines = [x for x in block.split('\n') if x.strip()]
+            if not lines:
+                continue
+            for name in self.workflows:
+                if lines[0].strip() == name:
+                    cur_description = name
+                    break
+            if cur_description:
+                self.workflow_descriptions[cur_description] += '\n'.join(lines[1:] if lines[0].strip() == cur_description else lines) + '\n'
+            else:
+                self.description += block + '\n'
+
+        for section in self.sections:
+            lines = [x for x in section.back_comment.split('\n') if x.strip()]
+            for name in self.workflows:
+                if lines and lines[0].strip() == name:
+                    self.workflow_descriptions[name] += '\n'.join(lines[1:]) + '\n'
+
 
     def _read(self, fp, fpname):
         self.sections = []
         self.format_version = '1.0'
-        self.description = ''
-        self.workflow_descriptions = []
+        self.descriptions = []
         #
         comment_block = 1
         # cursect always point to the last section
@@ -852,7 +921,7 @@ class SoS_Script:
                     elif comment_block > 1:
                         # anything before the first section can be pipeline
                         # description.
-                        self.workflow_descriptions[-1] += line.lstrip('#').lstrip()
+                        self.descriptions[-1] += line.lstrip('#').lstrip()
                 else:
                     # in the parameter section, the comments are description
                     # of parameters and are all significant
@@ -863,7 +932,7 @@ class SoS_Script:
                 # in the front of the script
                 if cursect is None:
                     comment_block += 1
-                    self.workflow_descriptions.append('')
+                    self.descriptions.append('')
                 else:
                     if cursect.category == 'statements':
                         cursect.extend(line)
@@ -1038,64 +1107,6 @@ class SoS_Script:
         if parsing_errors.errors:
             raise parsing_errors
 
-    def _parse_error(self, msg):
-        '''This function will replace error() function in argparse module so that SoS
-        can hijack errors raised from it.'''
-        raise ArgumentError(msg)
-
-    def _parse_args(self, args):
-        '''Parse command line arguments and set values to parameters section'''
-        # first, we need to look for the global section and evaluate it because
-        # the parameter section might use variables defined in it.
-        wf = self.workflow(self.workflows[0] + ':0')
-        wf.prepareVars()
-        if not wf.parameters_section:
-            if args:
-                raise ArgumentError('Unrecognized command line argument {}'.format(' '.join(args)))
-            return
-        #
-        def str2bool(v):
-            if v.lower() in ('yes', 'true', 't', '1'):
-                return True
-            elif v.lower() in ('no', 'false', 'f', '0'):
-                return False
-            else:
-                raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
-
-        parser = argparse.ArgumentParser()
-        parser.register('type', 'bool', str2bool)
-        for key, defvalue, comment in wf.parameters_section.parameters:
-            try:
-                defvalue = SoS_eval(defvalue, wf.parameters_section.sigil)
-            except Exception as e:
-                raise RuntimeError('Incorrect default value {} for parameter {}: {}'.format(defvalue, key, e))
-            if isinstance(defvalue, type):
-                if defvalue == bool:
-                    parser.add_argument('--{}'.format(key), type='bool', help=comment, required=True, nargs='?') 
-                else:
-                    # if only a type is specified, it is a required document of required type
-                    parser.add_argument('--{}'.format(key), type=str if hasattr(defvalue, '__iter__') else defvalue,
-                        help=comment, required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
-            else:
-                if isinstance(defvalue, bool):
-                    parser.add_argument('--{}'.format(key), type='bool', help=comment,
-                        nargs='?', default=defvalue)
-                else:
-                    parser.add_argument('--{}'.format(key), type=type(defvalue), help=comment,
-                        nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, basestring) else '?',
-                        default=defvalue)
-        #
-        parser.error = self._parse_error
-        #
-        args = vars(parser.parse_args(args))
-        # now change the value with passed values
-        for idx in range(len(wf.parameters_section.parameters)):
-            if wf.parameters_section.parameters[idx][0] in args:
-                wf.parameters_section.parameters[idx][1] = repr(args[wf.parameters_section.parameters[idx][0]])
-
-    def run(self, wf_name=None):
-        wf = self.workflow(wf_name)
-        wf.run()
 
     def workflow(self, wf_name=None):
         '''Return a workflow with name:step specified in wf_name'''
@@ -1118,26 +1129,7 @@ class SoS_Script:
             raise ValueError('Workflow {} is undefined. Available workflows are: {}'.format(wf_name,
                 ', '.join(self.workflows)))
         #
-        cur_description = None
-        description = ''
-        for block in self.workflow_descriptions:
-            lines = [x for x in block.split('\n') if x.strip()]
-            if not lines:
-                continue
-            for name in self.workflows:
-                if lines[0].strip() == name:
-                    cur_description = name
-                    break
-            if cur_description == wf_name:
-                description += '\n'.join(lines[1:] if lines[0].strip() == wf_name else lines) + '\n'
-            elif cur_description is None:
-                self.description += block + '\n'
-        for section in self.sections:
-            lines = [x for x in section.back_comment.split('\n') if x.strip()]
-            if lines and lines[0].strip() == wf_name:
-                description += '\n'.join(lines[1:]) + '\n'
-        # create workflows
-        return SoS_Workflow(wf_name, allowed_steps, self.sections, description)
+        return SoS_Workflow(wf_name, allowed_steps, self.sections, self.workflow_descriptions[wf_name])
 
     def __repr__(self):
         result = 'SOS Script (version {}\n'.format(self.format_version)
@@ -1170,18 +1162,6 @@ class SoS_Script:
                     ('(default: {})'.format(v) if v else '')
                 print('\n'.join(textwrap.wrap(text, subsequent_indent=' '*22,
                     width=textWidth)))
-    #
-    # for testing purposes
-    #
-    def parameter(self, name):
-        wf = self.workflow(self.workflows[0] + ':0')
-        if not wf.parameters_section:
-            return
-        wf.prepareVars()
-        for key, value, _ in wf.parameters_section.parameters:
-            if key == name:
-                return SoS_eval(value, wf.parameters_section.sigil)
-        return None
 
 #
 # subcommmand show
@@ -1211,6 +1191,7 @@ def print_traceback():
 def sos_show(args, argv):
     try:
         script = SoS_Script(filename=args.script, args=argv)
+        # do not parse args
         if args.workflow:
             workflow = script.workflow(args.workflow)
             workflow.show()
@@ -1227,11 +1208,11 @@ def sos_show(args, argv):
 #
 def sos_run(args, argv):
     try:
-        script = SoS_Script(filename=args.script, args=argv)
+        script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
         if args.__dryrun__:
             env.run_mode = 'dryrun'
-        workflow.run()
+        workflow.run(args=argv)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             print_traceback()
