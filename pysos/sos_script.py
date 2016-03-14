@@ -314,7 +314,7 @@ class SoS_Step:
                     if not all(isinstance(x, basestring) for x in arg):
                         raise RuntimeError('Invalid input file: {}'.format(arg))
                     ifiles.extend(arg)
-            env.locals['_step_input'] = ifiles
+            env.locals.set('_step_input', ifiles)
         else:
             ifiles = env.locals['_step_input']
         # expand files with wildcard characters and check if files exist
@@ -407,7 +407,7 @@ class SoS_Step:
     #
     def run(self):
         if isinstance(self.index, int):
-            env.locals['workflow_index'] = self.index
+            env.locals.set('_workflow_index', self.index)
         #
         # assignment
         #
@@ -429,8 +429,8 @@ class SoS_Step:
         # the following is a quick hack to allow _directive_input function etc to access 
         # the workflow dictionary
         env.globals['self'] = self
-        env.locals['_step_output'] = []
-        env.locals['_step_depends'] = []
+        env.locals.set('_step_output', [])
+        env.locals.set('_step_depends', [])
         #
         # default input groups and vars
         if '_step_input' in env.locals:
@@ -451,7 +451,7 @@ class SoS_Step:
             else: # input is processed once
                 for g, v in zip(self._groups, self._vars):
                     env.locals.update(v)
-                    env.locals['_input'] = g
+                    env.locals.set('_input', g)
                     try:
                         SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
                     except Exception as e:
@@ -463,8 +463,8 @@ class SoS_Step:
         if not self._depends:
             self._depends = [[] for x in self._groups]
         # we need to reduce output files in case they have been processed multiple times.
-        env.locals['_step_output'] = list(OrderedDict.fromkeys(sum(self._outputs, [])))
-        env.locals['_step_depends'] = list(OrderedDict.fromkeys(sum(self._depends, [])))
+        env.locals.set('_step_output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
+        env.locals.set('_step_depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
         #
         # input alias
         if 'input_alias' in self.options:
@@ -624,7 +624,7 @@ class SoS_Workflow:
         except:
             env.locals['HOME'] = '.'
         #
-        env.locals['WORKFLOW'] = self.name
+        env.locals['WORKFLOW_NAME'] = self.name
         #
         if self.global_section:
             self.global_section.run()
@@ -640,12 +640,12 @@ class SoS_Workflow:
         #
         # process step of the pipeline
         # There is no input initially
-        env.locals['_step_input'] = []
+        env.locals.set('_step_input', [])
         for section in self.sections:
             # set the output to the input of the next step
             if '_step_output' in env.locals:
                 # passing step output to step_input of next step
-                env.locals['_step_input'] = env.locals['_step_output']
+                env.locals.set('_step_input', env.locals['_step_output'])
                 # step_output and depends are temporary
                 env.locals.pop('_step_output')
             if '_step_depends' in env.locals:

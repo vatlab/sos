@@ -139,7 +139,13 @@ class WorkflowDict(dict):
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)
 
+    def set(self, key, value):
+        '''A short cut to set value to key without triggering any logging
+        or warning message.'''
+        dict.__setitem__(self, key, value)
+
     def __setitem__(self, key, value):
+        '''Set value to key, trigger logging and warning messages if needed'''
         if env.verbosity > 2:
             self._log(key, value)
         if env.run_mode == 'dryrun':
@@ -164,6 +170,8 @@ class WorkflowDict(dict):
         if key.isupper() and dict.__contains__(self, key) and dict.__getitem__(self, key) != value:
             env.logger.warning('Changing readonly variable {} from {} to {}'
                 .format(key, dict.__getitem__(self, key), value))
+        if key.startswith('_') and key != '_input':
+            env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
 #
 # Runtime environment
