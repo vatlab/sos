@@ -82,6 +82,11 @@ class RuntimeEnvironment:
         if self.workdir:
             os.chdir(self.saved_dir)
 
+class StepInfo:
+    '''A simple class to hold input, output, and index of step'''
+    def __init__(self):
+        pass
+
 class SoS_Step:
     #
     # A single sos step
@@ -431,6 +436,9 @@ class SoS_Step:
         env.globals['self'] = self
         env.locals.set('_step_output', [])
         env.locals.set('_step_depends', [])
+        if 'alias' in self.options:
+            env.locals.set(self.options['alias'], StepInfo())
+            env.locals[self.options['alias']].index = self.index
         #
         # default input groups and vars
         if '_step_input' in env.locals:
@@ -467,14 +475,14 @@ class SoS_Step:
         env.locals.set('_step_depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
         #
         # input alias
-        if 'input_alias' in self.options:
-            env.locals[self.options['input_alias']] = env.locals['_step_input']
+        if 'alias' in self.options:
+            env.locals[self.options['alias']].input = env.locals['_step_input']
         # if the step is ignored
         if not self._groups:
             env.logger.info('Step {} is skipped'.format(self.index))
             return
-        if 'output_alias' in self.options:
-            env.locals[self.options['output_alias']] = env.locals['_step_output']
+        if 'alias' in self.options:
+            env.locals[self.options['alias']].output = env.locals['_step_output']
         if env.locals['_step_output']:
             signature = RuntimeInfo(self.statements, 
                 env.locals['_step_input'], env.locals['_step_output'], env.locals['_step_depends'])
@@ -689,7 +697,7 @@ class SoS_Workflow:
 
 class SoS_Script:
     _DIRECTIVES = ['input', 'output', 'depends', 'runtime']
-    _SECTION_OPTIONS = ['input_alias', 'output_alias', 'nonconcurrent',
+    _SECTION_OPTIONS = ['alias', 'nonconcurrent',
         'skip', 'blocking', 'sigil', 'target']
     _PARAMETERS_SECTION_NAME = 'parameters'
 

@@ -69,29 +69,33 @@ output: 'temp/a.txt', 'temp/b.txt'
 run('''echo "a.txt" > 'temp/a.txt' ''')
 run('''echo "b.txt" > 'temp/b.txt' ''')
 
-[1: output_alias='oa']
+[1: alias='oa']
 dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', labels='dest'
 output: dest
 
-run(''' cp ${input} ${_dest} ''')
+run(''' cp ${_input} ${_dest} ''')
 """)
         wf = script.workflow('default:0')
         wf.run()
         # not the default value of 1.0
         self.assertTrue(os.path.isfile('temp/a.txt'))
         self.assertTrue(os.path.isfile('temp/b.txt'))
-        self.assertTrue(open('temp/a.txt').read(), 'a.txt')
-        self.assertTrue(open('temp/b.txt').read(), 'b.txt')
+        with open('temp/a.txt') as ta:
+            self.assertTrue(ta.read(), 'a.txt')
+        with open('temp/b.txt') as tb:
+            self.assertTrue(tb.read(), 'b.txt')
         #
         wf = script.workflow()
         wf.run()
         # not the default value of 1.0
         self.assertTrue(os.path.isfile('temp/c.txt'))
         self.assertTrue(os.path.isfile('temp/d.txt'))
-        self.assertTrue(open('temp/c.txt').read(), 'a.txt')
-        self.assertTrue(open('temp/d.txt').read(), 'b.txt')
-        self.assertEqual(env.locals['oa'], ['temp/c.txt', 'temp/d.txt'])
+        with open('temp/c.txt') as tc:
+            self.assertTrue(tc.read(), 'a.txt')
+        with open('temp/d.txt') as td:
+            self.assertTrue(td.read(), 'b.txt')
+        self.assertEqual(env.locals['oa'].output, ['temp/c.txt', 'temp/d.txt'])
         
 
     def testInput(self):
@@ -151,10 +155,10 @@ processed.append((_par, _res))
 
 
     def testAlias(self):
-        '''Test option output_alias'''
+        '''Test option alias'''
         env.run_mode = 'dryrun'
         script = SoS_Script(r"""
-[0: input_alias='ia', output_alias='oa']
+[0: alias='oa']
 files = ['a.txt', 'b.txt']
 names = ['a', 'b', 'c']
 c = ['1', '2']
@@ -166,7 +170,7 @@ counter = str(int(counter) + 1)
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['ia'], ["a.pdf", 'a.txt', 'b.txt'])
+        self.assertEqual(env.locals['oa'].input, ["a.pdf", 'a.txt', 'b.txt'])
 
     def testFileType(self):
         '''Test input option filetype'''

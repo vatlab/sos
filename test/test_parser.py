@@ -98,10 +98,10 @@ b"""
         for badoption in ['ss', 'skip a', 'skip:_', 'skip, skip']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # option value should be a valid python expression
-        for badoption in ['sigil=a', 'input_alias=a', 'outputalias=a', 'sigil="[]"', 'sigil="| |"']:
+        for badoption in ['sigil=a', 'alias=a', 'sigil="[]"', 'sigil="| |"']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # good options
-        for goodoption in ['sigil="[ ]"', 'input_alias="a"', 'output_alias="a"']:
+        for goodoption in ['sigil="[ ]"', 'alias="a"']:
             SoS_Script('[0:{}]'.format(goodoption))
         # allowed names
         for name in ['a5', 'a_5', '*_0', 'a*1_100']:
