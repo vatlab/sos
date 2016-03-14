@@ -43,6 +43,31 @@ class TestParser(unittest.TestCase):
         # not the default value of 1.0
         self.assertEqual(script.format_version, '1.1')
 
+    def testStringLiteral(self):
+        '''Test string literals of SoS'''
+        script = SoS_Script(r"""
+a = 'a\n'
+b = "a\n"
+c = '''a\n
+
+b'''
+""")
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals['a'], 'a\n')
+        self.assertEqual(env.locals['b'], 'a\n')
+        # MAYJOR difference
+        self.assertEqual(env.locals['c'], 'a\\n\nb')
+        script = SoS_Script(r'''
+c = """a\n
+
+b"""
+''')
+        wf = script.workflow()
+        wf.run()
+        # Note the difference between """ and ''' quotes
+        self.assertEqual(env.locals['c'], 'a\n\nb')
+
     def testWorkflows(self):
         '''Test workflows defined in SoS script'''
         script = SoS_Script('''[0]''')
@@ -73,10 +98,10 @@ class TestParser(unittest.TestCase):
         for badoption in ['ss', 'skip a', 'skip:_', 'skip, skip']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # option value should be a valid python expression
-        for badoption in ['sigil=a', 'input_alias=a']:
+        for badoption in ['sigil=a', 'alias=a', 'sigil="[]"', 'sigil="| |"']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # good options
-        for goodoption in ['sigil="[ ]"', 'input_alias="a"']:
+        for goodoption in ['sigil="[ ]"', 'alias="a"']:
             SoS_Script('[0:{}]'.format(goodoption))
         # allowed names
         for name in ['a5', 'a_5', '*_0', 'a*1_100']:
@@ -102,12 +127,6 @@ class TestParser(unittest.TestCase):
         # or unrecognized directive
         self.assertRaises(ParsingError, SoS_Script,
             '''inputs: 'filename' ''')
-        # or unrecoginzied varialbe
-        self.assertRaises(ParsingError, SoS_Script,
-            '''something ''')
-        # or function call
-        self.assertRaises(ParsingError, SoS_Script,
-            '''somefunc() ''')
         # allow definition
         SoS_Script('''a = '1' ''')
         SoS_Script('''a = ['a', 'b'] ''')
@@ -199,9 +218,67 @@ a=100
 b='[a+1]'
 ''')
         self.assertEqual(script.parameter('b'), '101')
-
-
-
+        #
+        # argument has hve a value
+        self.assertRaises(ParsingError, SoS_Script, '''
+[parameters]
+b=
+''')
+        # if it is a type, must provide value
+        self.assertRaises(ArgumentError, SoS_Script, '''
+[parameters]
+b = int
+''')
+        self.assertRaises(ArgumentError, SoS_Script, '''
+[parameters]
+b = list
+''')
+        # also require the type
+        self.assertRaises(ArgumentError, SoS_Script, '''
+[parameters]
+b = int
+''', args=['--b', 'file'])
+        script = SoS_Script('''
+[parameters]
+b = int
+''', args=['--b', '5'])
+        self.assertEqual(script.parameter('b'), 5)
+        # list is ok
+        script = SoS_Script('''
+[parameters]
+b = list
+''', args=['--b', '5'])
+        self.assertEqual(script.parameter('b'), ['5'])
+        # bool
+        script = SoS_Script('''
+[parameters]
+b = bool
+''', args=['--b', 't'])
+        self.assertEqual(script.parameter('b'), True)
+        script = SoS_Script('''
+[parameters]
+b = True
+''', args=['--b', 'False'])
+        self.assertEqual(script.parameter('b'), False)
+        script = SoS_Script('''
+[parameters]
+b = True
+''', args=['--b', '1'])
+        self.assertEqual(script.parameter('b'), True)
+        script = SoS_Script('''
+[parameters]
+b = bool
+''', args=['--b', 'no'])
+        self.assertEqual(script.parameter('b'), False)
+        #
+        # should fail for undefined variables
+        self.assertRaises(ArgumentError, SoS_Script, '''
+[parameters]
+a = 5
+''', args=['--b', 'file'])
+        # and for cases without parameter section
+        self.assertRaises(ArgumentError, SoS_Script, '''
+''', args=['--b', 'file'])
 
     def testSectionVariables(self):
         '''Test variables in sections'''
@@ -288,12 +365,11 @@ files = ['a.txt', 'b.txt']
 input: 'a.pdf', files, skip=False
 
 ''')
-        script.workflow('default').run(mode='dryrun')
+        env.run_mode = 'dryrun'
+        script.workflow('default').run()
 
     def testSectionActions(self):
         '''Test actions of sections'''
-        self.assertRaises(ParsingError, SoS_Script,
-            '''func()''')
         SoS_Script(
             """
 [0]
@@ -333,6 +409,27 @@ a = '1'
         self.assertEqual(script.description, 'global\ndescription\n\n')
         self.assertEqual(script.workflow('human').description, 'description of human\ndescription of human continued\n')
         self.assertEqual(script.workflow('mouse').description, 'mouse description\n')
+
+    def testLongerCode(self):
+        '''Test definition of classes (with intermediate newlines) in step.'''
+        script = SoS_Script('''# first block
+
+[0]
+class A:
+    def __init__(self):
+        pass
+
+    # the newline above should be fine because SoS treat this as
+    # regular lines
+    def __call__(self):
+        return 0
+
+b = A()()
+
+''')
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals['b'], 0)
 
 if __name__ == '__main__':
     unittest.main()

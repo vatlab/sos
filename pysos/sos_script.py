@@ -19,14 +19,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-
 import os
 import sys
 import re
 import copy
 import glob
+import fnmatch
 import argparse
 import textwrap
+import traceback
 from collections import OrderedDict, defaultdict, Sequence
 from itertools import tee, combinations
 from collections import OrderedDict
@@ -41,7 +42,7 @@ except ImportError:
 # Python 2.7 should also have this module
 from io import StringIO
 
-from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, dehtml, getTermWidth
+from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, dehtml, getTermWidth, interpolate
 from .actions import *
 
 class ArgumentError(Error):
@@ -63,10 +64,37 @@ class ParsingError(Error):
         self.errors.append((lineno, line))
         self.message += '\n\t[line %2d]: %s\n%s' % (lineno, line, msg)
 
+class RuntimeEnvironment:
+    """Context manager for changing the current working directory"""
+    def __init__(self, runtime={}):
+        self.runtime = runtime
+        if 'workdir' in runtime:
+            self.workdir = os.path.expanduser(runtime['workdir'])
+        else:
+            self.workdir = None
+
+    def __enter__(self):
+        if self.workdir:
+            self.saved_dir = os.getcwd()
+            os.chdir(self.workdir)
+
+    def __exit__(self, etype, value, traceback):
+        if self.workdir:
+            os.chdir(self.saved_dir)
+
+class StepInfo:
+    '''A simple class to hold input, output, and index of step'''
+    def __init__(self):
+        pass
+
 class SoS_Step:
     #
     # A single sos step
     #
+    _INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'labels', 'for_each', 'dynamic']
+    _OUTPUT_OPTIONS = ['dynamic']
+    _DEPENDS_OPTIONS = ['dynamic']
+    _RUNTIME_OPTIONS = ['workdir']
     def __init__(self, names=[], options={}, is_global=False, is_parameters=False):
         # A step will not have a name and index until it is copied to separate workflows
         self.name = None
@@ -90,6 +118,7 @@ class SoS_Step:
         self.values = []
         self.lineno = None
         #
+        self.runtime = RuntimeEnvironment()
         if 'sigil' in self.options:
             self.sigil = self.options['sigil']
         else:
@@ -227,10 +256,10 @@ class SoS_Step:
         else:
             raise ValueError('Unacceptable value for parameter labels: {}'.format(labels))
         #
-        ifiles = self.locals['step_input']
+        ifiles = env.locals['_step'].input
         set_vars = [{} for x in self._groups]
         for wv in labels:
-            values = self.locals[wv]
+            values = env.locals[wv]
             if not isinstance(values, list):
                 raise ValueError('with_var variable {} is not a list ("{}")'.format(wv, values))
             if len(values) != len(ifiles):
@@ -254,7 +283,7 @@ class SoS_Step:
         for fe_all in for_each:
             loop_size = None
             for fe in fe_all.split(','):
-                values = self.locals[fe]
+                values = env.locals[fe]
                 if not isinstance(values, list):
                     raise ValueError('for_each variable {} is not a list ("{}")'.format(fe, values))
                 if loop_size is None:
@@ -268,7 +297,7 @@ class SoS_Step:
             for vidx in range(loop_size):
                 for idx in range(len(self._vars)):
                     for fe in fe_all.split(','):
-                        self._vars[idx]['_' + fe] = self.locals[fe][vidx]
+                        self._vars[idx]['_' + fe] = env.locals[fe][vidx]
                 tmp.extend(copy.deepcopy(self._vars))
             self._vars = tmp
 
@@ -277,6 +306,10 @@ class SoS_Step:
     #
     def _directive_input(self, *args, **kwargs):
         # first *args are filenames
+        for k in kwargs.keys():
+            if k not in self._INPUT_OPTIONS:
+                raise RuntimeError('Unrecognized input option {}'.format(k))
+        #
         if args:
             ifiles = []
             for arg in args:
@@ -286,21 +319,21 @@ class SoS_Step:
                     if not all(isinstance(x, basestring) for x in arg):
                         raise RuntimeError('Invalid input file: {}'.format(arg))
                     ifiles.extend(arg)
-            self.locals['step_input'] = ifiles
+            env.locals['_step'].input = ifiles
         else:
-            ifiles = self.locals['step_input']
+            ifiles = env.locals['_step'].input
         # expand files with wildcard characters and check if files exist
         tmp = []
         for ifile in ifiles:
             if os.path.isfile(ifile):
                 tmp.append(ifile)
-            elif self.mode == 'run':
+            elif env.run_mode == 'run':
                 # in this mode file must exist
                 expanded = glob.glob(ifile)
                 if not expanded:
                     raise RuntimeError('{} not exist.'.format(ifile))
                 tmp.extend(expanded)
-            elif self.mode == 'dryrun':
+            elif env.run_mode == 'dryrun':
                 # FIXME: this should be the 'dynamic' mode
                 expanded = glob.glob(ifile)
                 if expanded:
@@ -316,9 +349,9 @@ class SoS_Step:
             return
         if 'filetype' in kwargs:
             if isinstance(kwargs['filetype'], basestring):
-                ifiles = [x for x in ifiles if x.lower().endswith(kwargs['filetype'].lower())]
+                ifiles = fnmatch.filter(ifiles, kwargs['filetype'])
             elif isinstance(kwargs['filetype'], (list, tuple)):
-                ifiles = [x for x in ifiles if any(x.lower().endswith(y.lower()) for y in kwargs['filetype'])]
+                ifiles = [x for x in ifiles if any(fnmatch.fnmatch(x, y) for y in kwargs['filetype'])]
             elif callable(kwargs['filetype']):
                 ifiles = [x for x in ifiles if kwargs['filetype'](x)]
         #             
@@ -338,6 +371,11 @@ class SoS_Step:
 
 
     def _directive_depends(self, *args, **kwargs):
+        '''handle directive depends'''
+        for k in kwargs.keys():
+            if k not in self._DEPENDS_OPTIONS:
+                raise RuntimeError('Unrecognized depends option {}'.format(k))
+        # first *args are filenames
         dfiles = []
         for arg in args:
             if isinstance(arg, basestring):
@@ -349,6 +387,9 @@ class SoS_Step:
         self._depends.append(dfiles)
 
     def _directive_output(self, *args, **kwargs):
+        for k in kwargs.keys():
+            if k not in self._OUTPUT_OPTIONS:
+                raise RuntimeError('Unrecognized output option {}'.format(k))
         ofiles = []
         for arg in args:
             if isinstance(arg, basestring):
@@ -359,12 +400,19 @@ class SoS_Step:
                 ofiles.extend(arg)
         self._outputs.append(ofiles)
 
+    def _directive_runtime(self, **kwargs):
+        for k in kwargs.keys():
+            if k not in self._RUNTIME_OPTIONS:
+                raise RuntimeError('Unrecognized runtime option {}'.format(k))
+        #
+        self.runtime = RuntimeEnvironment(kwargs)
+
     #
     # Execution
     #
-    def run(self, globals, locals, mode='run'):
+    def run(self):
         if isinstance(self.index, int):
-            locals['workflow_index'] = str(self.index)
+            env.locals.set('_workflow_index', self.index)
         #
         if self.name is not None:
             env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment))
@@ -374,30 +422,29 @@ class SoS_Step:
         if self.is_parameters:
             for key, value, _ in self.parameters:
                 try:
-                    locals[key] = SoS_eval(value, globals, locals, self.sigil)
+                    env.locals[key] = SoS_eval(value, self.sigil)
                 except Exception as e:
                     raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
         else:
             for key, value in self.assignments:
                 try:
-                    locals[key] = SoS_eval(value, globals, locals, self.sigil)
+                    env.locals[key] = SoS_eval(value, self.sigil)
                 except Exception as e:
                     raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
         #
-        self.mode = mode
         # directives
         #
         # the following is a quick hack to allow _directive_input function etc to access 
         # the workflow dictionary
-        globals['self'] = self
-        self.locals = locals
-        self.globals = globals
-        locals['step_output'] = []
-        locals['step_depends'] = []
+        env.globals['self'] = self
+        env.locals['_step'].index = self.index
+        env.locals['_step'].output = []
+        env.locals['_step'].depends = []
+
         #
         # default input groups and vars
-        if 'step_input' in locals:
-            self._groups = [locals['step_input']]
+        if hasattr(env.locals['_step'], 'input'):
+            self._groups = [env.locals['_step'].input]
         else:
             self._groups = [[]]
         self._vars = [[]]
@@ -405,18 +452,18 @@ class SoS_Step:
         self._depends = []
         for key, value in self.directives:
             # input is processed only once
-            if key == 'input':
+            if key in ('input', 'runtime'):
                 try:
-                    SoS_eval('self._directive_{}({})'.format(key, value), globals, locals, self.sigil)
+                    SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
                 except Exception as e:
                     raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
             # output processed multiple times for each input group
             else: # input is processed once
                 for g, v in zip(self._groups, self._vars):
-                    locals.update(v)
-                    locals['input'] = g
+                    env.locals.update(v)
+                    env.locals.set('_input', g)
                     try:
-                        SoS_eval('self._directive_{}({})'.format(key, value), globals, locals, self.sigil)
+                        SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
                     except Exception as e:
                         raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
         # if no output directive, assuming no output for each step
@@ -426,58 +473,58 @@ class SoS_Step:
         if not self._depends:
             self._depends = [[] for x in self._groups]
         # we need to reduce output files in case they have been processed multiple times.
-        locals['step_output'] = list(OrderedDict.fromkeys(sum(self._outputs, [])))
-        locals['step_depends'] = list(OrderedDict.fromkeys(sum(self._depends, [])))
+        env.locals['_step'].output = list(OrderedDict.fromkeys(sum(self._outputs, [])))
+        env.locals['_step'].depends = list(OrderedDict.fromkeys(sum(self._depends, [])))
         #
         # input alias
-        if 'input_alias' in self.options:
-            locals[self.options['input_alias']] = locals['step_input']
         # if the step is ignored
         if not self._groups:
             env.logger.info('Step {} is skipped'.format(self.index))
             return
-        if 'output_alias' in self.options:
-            locals[self.options['output_alias']] = locals['step_output']
-        if locals['step_output']:
+        if 'alias' in self.options:
+            env.locals[self.options['alias']] = copy.deepcopy(env.locals['_step'])
+        #
+        if env.locals['_step'].output:
             signature = RuntimeInfo(self.statements, 
-                locals['step_input'], locals['step_output'], locals['step_depends'])
-            if self.mode == 'run':
-                for ofile in locals['step_output']:
+                env.locals['_step'].input, env.locals['_step'].output, env.locals['_step'].depends)
+            if env.run_mode == 'run':
+                for ofile in env.locals['_step'].output:
                     parent_dir = os.path.split(ofile)[0]
                     if parent_dir and not os.path.isdir(parent_dir):
                         os.makedirs(parent_dir)
                 if signature.validate():
                     # everything matches
-                    env.logger.info('Reusing existing output files {}'.format(', '.join(locals['step_output'])))
+                    env.logger.info('Reusing existing output files {}'.format(', '.join(env.locals['_step'].output)))
                     return
         else:
             signature = None
         #
         for g, v, o, d in zip(self._groups, self._vars, self._outputs, self._depends):
-            locals.update(v)
-            locals['input'] = g
+            env.locals.update(v)
+            env.locals['_input'] = g
             #
             # If the users specifies output files for each loop (using ${input} etc, we
             # can try to see if we can create partial signature. This would help if the
             # step is interrupted in the middle.
-            if o and o != locals['step_output'] and self.mode == 'run':
+            if o and o != env.locals['_step'].output and env.run_mode == 'run':
                 partial_signature = RuntimeInfo(self.statements, g, o, d)
                 if partial_signature.validate():
                     # everything matches
                     env.logger.info('Reusing existing output files {}'.format(', '.join(o)))
                     continue
             # action
-            try:
-                SoS_exec(''.join(self.statements), globals, locals, self.sigil, mode=self.mode)
-            except Exception as e:
-                raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
-            if o and o != locals['step_output'] and self.mode == 'run':
+            with self.runtime:
+                try:
+                    SoS_exec(''.join(self.statements), self.sigil)
+                except Exception as e:
+                    raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
+            if o and o != env.locals['_step'].output and env.run_mode == 'run':
                 partial_signature.write()
-        if self.mode == 'run':
-            for ofile in locals['step_output']:
+        if env.run_mode == 'run':
+            for ofile in env.locals['_step'].output:
                 if not os.path.isfile(os.path.expanduser(ofile)):
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
-        if signature and self.mode == 'run':
+        if signature and env.run_mode == 'run':
             signature.write()
 
     def __repr__(self):
@@ -578,42 +625,48 @@ class SoS_Workflow:
 
     def prepareVars(self):
         '''Prepare global variables '''
-        self.globals = globals()
-        self.locals = WorkflowDict()
+        env.globals = globals()
+        env.locals = WorkflowDict()
         # initial values
         try:
-            self.locals['home'] = os.environ['HOME']
+            env.locals['HOME'] = os.environ['HOME']
         except:
-            self.locals['home'] = '.'
+            env.locals['HOME'] = '.'
         #
-        self.locals['workflow_name'] = self.name
-        self.locals['workdir'] = os.path.abspath('.')
+        env.locals['WORKFLOW_NAME'] = self.name
+        env.locals.set('_step', StepInfo())
+        # initially there is no input, output, or depends
+        env.locals['_step'].input = []
+        env.locals['_step'].output = []
+        env.locals['_step'].depends = []
         #
         if self.global_section:
-            self.global_section.run(self.globals, self.locals)
+            self.global_section.run()
 
-    def run(self, mode='run'):
+    def run(self):
         '''Very preliminary implementation of sequential execution function
         '''
         # process global variables
         self.prepareVars()
         # process parameter section
         if self.parameters_section:
-            self.parameters_section.run(self.globals, self.locals)
+            self.parameters_section.run()
         #
         # process step of the pipeline
         # There is no input initially
-        self.locals['step_input'] = []
         for section in self.sections:
             # set the output to the input of the next step
-            if 'step_output' in self.locals:
-                # passing step output to step_input of next step
-                self.locals['step_input'] = self.locals['step_output']
+            if hasattr(env.locals['_step'], 'output'):
+                # passing step output to _step.input of next step
+                env.locals['_step'].input = env.locals['_step'].output
                 # step_output and depends are temporary
-                self.locals.pop('step_output')
-            if 'step_depends' in self.locals:
-                self.locals.pop('step_depends')
-            section.run(self.globals, self.locals, mode=mode)
+            else:
+                env.locals['_step'].input = []
+            #
+            env.locals['_step'].output = []
+            env.locals['_step'].depends = []
+            #
+            section.run()
 
     def show(self, parameters=True):
         textWidth = max(60, getTermWidth())
@@ -651,8 +704,8 @@ class SoS_Workflow:
         return result
 
 class SoS_Script:
-    _DIRECTIVES = ['input', 'output', 'depends']
-    _SECTION_OPTIONS = ['input_alias', 'output_alias', 'nonconcurrent',
+    _DIRECTIVES = ['input', 'output', 'depends', 'runtime']
+    _SECTION_OPTIONS = ['alias', 'nonconcurrent',
         'skip', 'blocking', 'sigil', 'target']
     _PARAMETERS_SECTION_NAME = 'parameters'
 
@@ -704,7 +757,7 @@ class SoS_Script:
 
     _DIRECTIVE_TMPL = r'''
         ^                                  # from start of line
-        (?P<directive_name>{})             # can be input, output or depends
+        (?P<directive_name>{})             # name of directive
         \s*:\s*                            # followed by :
         (?P<directive_value>.*)            # and values
         '''.format('|'.join(_DIRECTIVES))
@@ -724,19 +777,29 @@ class SoS_Script:
     DIRECTIVE = re.compile(_DIRECTIVE_TMPL, re.VERBOSE)
     ASSIGNMENT = re.compile(_ASSIGNMENT_TMPL, re.VERBOSE)
 
-    def __init__(self, content, args=[]):
+    def __init__(self, content='', filename=None, args=[]):
         '''Parse a sectioned SoS script file. Please refer to the SoS manual
         for detailed specification of this format.
 
         Parameter `content` can be either a filename or a content of a
-        SoS script in unicode.
+        SoS script in unicode, which is convenient for passing scripts for
+        testing purposes.
+
+        Parameter `filename` should be used if the content should be read 
+        from a file.
         '''
-        if os.path.isfile(content):
-            with open(content) as fp:
-                self._read(fp, content)
+        if filename:
+            if not os.path.isfile(filename):
+                raise ValueError('{} does not exist'.format(filename))
+            with open(filename) as fp:
+                self._read(fp, filename)
         else:
-            with StringIO(content) as fp:
-                self._read(fp, '<string>')
+            if os.path.isfile(content):
+                with open(content) as fp:
+                    self._read(fp, content)
+            else:
+                with StringIO(content) as fp:
+                    self._read(fp, '<string>')
         #
         # workflows in this script, from sections that are not skipped.
         section_steps = sum([x.names for x in self.sections if not \
@@ -801,8 +864,11 @@ class SoS_Script:
                 if cursect is None:
                     comment_block += 1
                     self.workflow_descriptions.append('')
-                elif cursect.comment:
-                    comment_block += 1
+                else:
+                    if cursect.category == 'statements':
+                        cursect.extend(line)
+                    elif cursect.comment:
+                        comment_block += 1
                 continue
             #
             # a continuation of previous item?
@@ -838,12 +904,12 @@ class SoS_Script:
                         n, i, di = mo.group('name', 'index', 'default_index')
                         if n:
                             if i is None and '*' in n:
-                                parsing_errors.append(lineno - 1, line, 'Auxillary section name cannot contain wildcard character (*).')
+                                parsing_errors.append(lineno, line, 'Auxillary section name cannot contain wildcard character (*).')
                             step_names.append((n, i))
                         if di:
                             step_names.append(('default', di))
                     else:
-                        parsing_errors.append(lineno - 1, line, 'Invalid section name')
+                        parsing_errors.append(lineno, line, 'Invalid section name')
                 if section_option is not None:
                     for option in section_option.split(','):
                         mo = self.SECTION_OPTION.match(option)
@@ -856,12 +922,17 @@ class SoS_Script:
                                 try:
                                     opt_value = eval(opt_value)
                                 except Exception as e:
-                                    parsing_errors.append(lineno-1, line, e)
+                                    parsing_errors.append(lineno, line, e)
+                            if opt_name == 'sigil':
+                                if opt_value.count(' ') != 1 or opt_value[0] in (' ', "'") or \
+                                    opt_value[-1] in (' ', "'") or \
+                                    opt_value.split(' ')[0] == opt_value.split(' ')[1]:
+                                    parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(opt_value))
                             if opt_name in step_options:
-                                parsing_errors.append(lineno - 1, line, 'Duplicate options')
+                                parsing_errors.append(lineno, line, 'Duplicate options')
                             step_options[opt_name] = opt_value
                         else:
-                            parsing_errors.append(lineno - 1, line, 'Invalid section option')
+                            parsing_errors.append(lineno, line, 'Invalid section option')
                 for name in step_names:
                     prev_workflows = [x[0] for x in all_step_names if '*' not in x[0]]
                     for prev_name in all_step_names:
@@ -881,7 +952,7 @@ class SoS_Script:
                         else:
                             prev_names = [prev_name[0]]
                         if len(set(prev_names) & set(names)):
-                            parsing_errors.append(lineno - 1, line, 'Duplicate section names')
+                            parsing_errors.append(lineno, line, 'Duplicate section names')
                 all_step_names.extend(step_names)
                 self.sections.append(SoS_Step(step_names, step_options, is_parameters= step_names and step_names[0][0] == self._PARAMETERS_SECTION_NAME))
                 cursect = self.sections[-1]
@@ -901,7 +972,7 @@ class SoS_Script:
                 #
                 var_name = mo.group('var_name')
                 if var_name in self._DIRECTIVES:
-                    parsing_errors.append(lineno - 1, line, 'directive name cannot be used as variables')
+                    parsing_errors.append(lineno, line, 'directive name cannot be used as variables')
                     continue
                 # newline should be kept for multi-line assignment
                 var_value = mo.group('var_value') + '\n'
@@ -943,13 +1014,10 @@ class SoS_Script:
                 continue
             #
             # all others?
-            if not cursect or cursect.is_global:
-                parsing_errors.append(lineno, line, 'Only variable assignment is allowed before section definitions.')
-                continue
-            #
-            # It should be an action
-            if cursect is None:
-                parsing_errors.append(lineno, line, 'Action statement is not allowed in global section')
+            if not cursect:
+                self.sections.append(SoS_Step(is_global=True))
+                cursect = self.sections[-1]
+                cursect.add_statement(line, lineno)
                 continue
             elif cursect.is_parameters:
                 parsing_errors.append(lineno, line, 'Action statement is not allowed in {} section'.format(self._PARAMETERS_SECTION_NAME))
@@ -982,20 +1050,40 @@ class SoS_Script:
         wf = self.workflow(self.workflows[0] + ':0')
         wf.prepareVars()
         if not wf.parameters_section:
+            if args:
+                raise ArgumentError('Unrecognized command line argument {}'.format(' '.join(args)))
             return
         #
-        if not args:
-            return
-        #
+        def str2bool(v):
+            if v.lower() in ('yes', 'true', 't', '1'):
+                return True
+            elif v.lower() in ('no', 'false', 'f', '0'):
+                return False
+            else:
+                raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
+
         parser = argparse.ArgumentParser()
-        for key, defvalue, _ in wf.parameters_section.parameters:
+        parser.register('type', 'bool', str2bool)
+        for key, defvalue, comment in wf.parameters_section.parameters:
             try:
-                defvalue = SoS_eval(defvalue, wf.globals, wf.locals, wf.parameters_section.sigil)
+                defvalue = SoS_eval(defvalue, wf.parameters_section.sigil)
             except Exception as e:
                 raise RuntimeError('Incorrect default value {} for parameter {}: {}'.format(defvalue, key, e))
-            parser.add_argument('--{}'.format(key), type=type(defvalue),
-                nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, basestring) else '?',
-                default=defvalue)
+            if isinstance(defvalue, type):
+                if defvalue == bool:
+                    parser.add_argument('--{}'.format(key), type='bool', help=comment, required=True, nargs='?') 
+                else:
+                    # if only a type is specified, it is a required document of required type
+                    parser.add_argument('--{}'.format(key), type=str if hasattr(defvalue, '__iter__') else defvalue,
+                        help=comment, required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
+            else:
+                if isinstance(defvalue, bool):
+                    parser.add_argument('--{}'.format(key), type='bool', help=comment,
+                        nargs='?', default=defvalue)
+                else:
+                    parser.add_argument('--{}'.format(key), type=type(defvalue), help=comment,
+                        nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, basestring) else '?',
+                        default=defvalue)
         #
         parser.error = self._parse_error
         #
@@ -1009,7 +1097,7 @@ class SoS_Script:
         wf = self.workflow(wf_name)
         wf.run()
 
-    def workflow(self, wf_name):
+    def workflow(self, wf_name=None):
         '''Return a workflow with name:step specified in wf_name'''
         allowed_steps = None
         if not wf_name:
@@ -1092,21 +1180,45 @@ class SoS_Script:
         wf.prepareVars()
         for key, value, _ in wf.parameters_section.parameters:
             if key == name:
-                return SoS_eval(value, wf.globals, wf.locals, wf.parameters_section.sigil)
+                return SoS_eval(value, wf.parameters_section.sigil)
         return None
 
 #
 # subcommmand show
 #
+def print_traceback():
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    #print "*** print_tb:"
+    traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
+    #print "*** print_exception:"
+    traceback.print_exception(exc_type, exc_value, exc_traceback,
+                              limit=5, file=sys.stdout)
+    #print "*** print_exc:"
+    #traceback.print_exc()
+    #print "*** format_exc, first and last line:"
+    #formatted_lines = traceback.format_exc().splitlines()
+    #print formatted_lines[0]
+    #print formatted_lines[-1]
+    #print "*** format_exception:"
+    #print repr(traceback.format_exception(exc_type, exc_value,
+    #                                      exc_traceback))
+    #print "*** extract_tb:"
+    #print repr(traceback.extract_tb(exc_traceback))
+    #print "*** format_tb:"
+    #print repr(traceback.format_tb(exc_traceback))
+    #print "*** tb_lineno:", exc_traceback.tb_lineno
+
 def sos_show(args, argv):
     try:
-        script = SoS_Script(args.script, argv)
+        script = SoS_Script(filename=args.script, args=argv)
         if args.workflow:
             workflow = script.workflow(args.workflow)
             workflow.show()
         else:
             script.show()
     except Exception as e:
+        if args.verbosity and args.verbosity > 2:
+            print_traceback()
         env.logger.error(e)
         sys.exit(1)
 
@@ -1114,10 +1226,14 @@ def sos_show(args, argv):
 # subcommand run
 #
 def sos_run(args, argv):
-    #try:
-        script = SoS_Script(args.script, argv)
+    try:
+        script = SoS_Script(filename=args.script, args=argv)
         workflow = script.workflow(args.workflow)
-        workflow.run(mode='dryrun' if args.d else 'run')
-    #except Exception as e:
-    #    env.logger.error(e)
-    #    sys.exit(1)
+        if args.__dryrun__:
+            env.run_mode = 'dryrun'
+        workflow.run()
+    except Exception as e:
+        if args.verbosity and args.verbosity > 2:
+            print_traceback()
+        env.logger.error(e)
+        sys.exit(1)

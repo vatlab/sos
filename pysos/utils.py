@@ -20,13 +20,13 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 import os
+import sys
 import re
 import logging
 import collections
 import hashlib
 import shutil
 import token
-import ast
 from tokenize import generate_tokens, untokenize
 from io import StringIO
 
@@ -45,7 +45,7 @@ except ImportError:
     from HTMLParser import HTMLParser
 
 #
-# Logging and runtime environment
+# Logging 
 #
 
 class ColoredFormatter(logging.Formatter):
@@ -129,6 +129,54 @@ class ColoredFormatter(logging.Formatter):
             record.color_msg = self.emphasize(record.msg)
         return logging.Formatter.format(self, record)
 
+#
+# SoS Workflow dictionary
+#
+class WorkflowDict(dict):
+    """A dictionary object that
+    1. Generate logging message for debugging purposes.
+    2. Generate warning message if ALLCAP variables are changed.
+    """
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+
+    def set(self, key, value):
+        '''A short cut to set value to key without triggering any logging
+        or warning message.'''
+        dict.__setitem__(self, key, value)
+
+    def __setitem__(self, key, value):
+        '''Set value to key, trigger logging and warning messages if needed'''
+        if env.verbosity > 2:
+            self._log(key, value)
+        if env.run_mode == 'dryrun':
+            self._warn(key, value)
+        dict.__setitem__(self, key, value)
+
+    def _log(self, key, value):
+        if isinstance(value, (str, int, float, bool)) or (isinstance(value, collections.Sequence) \
+            and len(value) <= 2) or len(str(value)) < 50:
+            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, str(value)))
+        elif isinstance(value, collections.Sequence): # should be a list or tuple
+            val = str(value).split(' ')[0] + ' ...] ({} items)'.format(len(value))
+            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, val))
+        elif isinstance(value, dict):
+            first_key = value.keys()[0]
+            env.logger.debug('Workflow variable ``{}`` is set to ``{{{}:{}, ...}} ({} items)``'
+                .format(key, first_key, value[first_key], len(value)))
+        else:
+            env.logger.debug('Workflow variable ``{}`` is set to ``{}...``'.format(key, repr(value)[:40]))
+
+    def _warn(self, key, value):
+        if key.isupper() and dict.__contains__(self, key) and dict.__getitem__(self, key) != value:
+            env.logger.warning('Changing readonly variable {} from {} to {}'
+                .format(key, dict.__getitem__(self, key), value))
+        if key.startswith('_') and key != '_input':
+            env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
+
+#
+# Runtime environment
+#
 class RuntimeEnvironments(object):
     '''A singleton object that provides runtime environment for SoS.
     Atributes of this object include:
@@ -152,9 +200,18 @@ class RuntimeEnvironments(object):
     def __init__(self):
         # logger
         self._logger = None
-        self._verbosity = '2'
+        self._verbosity = 2
         self._logfile = None
         self._set_logger()
+        #
+        # run mode, this mode controls how SoS actions behave
+        #
+        self.run_mode = 'run'
+        #
+        # local and global dictionaries used by SoS during the
+        # execution of SoS workflows
+        self.locals = WorkflowDict()
+        self.globals = globals()
 
     #
     # attribute logger
@@ -171,11 +228,11 @@ class RuntimeEnvironments(object):
         # output to standard output
         cout = logging.StreamHandler()
         levels = {
-            '0': logging.ERROR,
-            '1': logging.WARNING,
-            '2': logging.INFO,
-            '3': logging.DEBUG,
-            '4': logging.TRACE,
+            0: logging.ERROR,
+            1: logging.WARNING,
+            2: logging.INFO,
+            3: logging.DEBUG,
+            4: logging.TRACE,
             None: logging.INFO
         }
         #
@@ -200,7 +257,7 @@ class RuntimeEnvironments(object):
     # attribute verbosity
     #
     def _set_verbosity(self, v):
-        if v in ['0', '1', '2', '3', '4']:
+        if v in [0, 1, 2, 3, 4]:
             self._verbosity = v
             # reset logger to appropriate logging level
             self._set_logger()
@@ -356,7 +413,8 @@ class SoS_String:
         (?P<expr>.*?)                       # any expression
         (?P<specifier>
         (?P<conversion>!\s*                 # conversion starting with !
-        [s|r|q]                             # conversion, q is added by SoS
+        [s|r|q]?                            # conversion, q is added by SoS
+        (?P<sep>,)?                         # optional character to join sequences
         )?
         (?P<format_spec>:\s*                # format_spec starting with :
         (?P<fill>.?[<>=^])?                 # optional fill|align
@@ -374,15 +432,11 @@ class SoS_String:
     # DOTALL makes . matchs also to newline so this supports multi-line expression
     FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
 
-    def __init__(self, globals, locals, sigil = '${ }'):
-        if sigil.count(' ') != 1 or sigil.startswith(' ') or sigil.endswith(' '):
-            raise ValueError('Incorrect sigil "{}"'.format(sigil))
-        self.sigil = sigil.split(' ')
-        if self.sigil[0] == self.sigil[1]:
-            raise ValueError('Incorrect sigl "{}"'.format(sigil))
-        #
-        self.globals = globals
-        self.locals = locals
+    def __init__(self, sigil = '${ }'):
+        # do not check sigil here because the function will be called quite frequently
+        # the sigil will be checked when it is entered in SoS script.
+        self.l, self.r = sigil.split(' ')
+        self.error_count = 0
 
     def interpolate(self, text):
         '''Intepolate string with local and global dictionary'''
@@ -396,13 +450,12 @@ class SoS_String:
         #
         # '' 'a} part1 ' ' expr2 ' 'nested }} and another' 'expr2 {}} and done'
         #
-        pieces = text.split(self.sigil[0], 1)
-        if len(pieces) == 1:
-            # nothing to split, so we are done
+        # 'in' test is 10 times faster than split so we do this test first.
+        if self.l not in text:
             return text
-        else:
-            # the first piece must be before sigil and be completed text
-            return pieces[0] + self._interpolate(pieces[1])
+        pieces = text.split(self.l, 1)
+        # the first piece must be before sigil and be completed text
+        return pieces[0] + self._interpolate(pieces[1])
 
     def _interpolate(self, text, start_nested=0):
         '''Intepolate an expression with unknown ending location. We cannot split
@@ -410,15 +463,15 @@ class SoS_String:
         that the location of nested expression can only happen after this point.
         '''
         # no matching }, must be wrong
-        if self.sigil[1] not in text:
-            raise InterpolationError(text[:20], "Missing {}".format(self.sigil[1]))
+        if self.r not in text:
+            raise InterpolationError(text[:20], "Missing {}".format(self.r))
         #
         # location of first ending sigil
-        i = text.index(self.sigil[1])
+        i = text.index(self.r)
         #
         # substr contains ${
-        if self.sigil[0] in text[start_nested:]:
-            k = text.index(self.sigil[0])
+        if self.l in text[start_nested:]:
+            k = text.index(self.l)
         else:
             # k is very far away
             k = len(text) + 100
@@ -431,8 +484,11 @@ class SoS_String:
             #
             try:
                 # expolate string recursively.
-                return self._interpolate(text[:k] + self._interpolate(text[k + len(self.sigil[0]):]))
+                return self._interpolate(text[:k] + self._interpolate(text[k + len(self.l):]))
             except Exception as e:
+                self.error_count += 1
+                if self.error_count > 10:
+                    raise
                 # This is for the case where inner sigil is actually part of the syntax. For example, if
                 # sigil = []
                 #
@@ -448,7 +504,7 @@ class SoS_String:
                 #
                 # namely keeping [] as python expression
                 #
-                return self._interpolate(text, start_nested=k + len(self.sigil[0]))
+                return self._interpolate(text, start_nested=k + len(self.l))
         else:
             # non-nested case, proceed from left to right
             #
@@ -461,28 +517,36 @@ class SoS_String:
                     # is syntax correct?
                     mo = self.FORMAT_SPECIFIER.match(text[:j])
                     if mo:
-                        expr = mo.group('expr')
-                        fmt = mo.group('specifier')
+                        expr, fmt, sep = mo.group('expr', 'specifier', 'sep')
+                        if sep:
+                            if fmt.startswith('!,'):
+                                fmt = fmt[2:]
+                            else:
+                                fmt = fmt[:2] + fmt[3:]
+                        else:
+                            sep = ' '
                     else:
                         expr = text[:j]
                         fmt = None
+                        sep = None
                     # if the syntax is correct
                     compile(expr, '<string>', 'eval')
                     try:
-                        result = eval(expr, self.globals, self.locals)
+                        result = eval(expr, env.globals, env.locals)
                     except Exception as e:
                         raise InterpolationError(expr, e)
                     # evaluate the expression and interpolate the next expression
-                    return self._repr(result, fmt) + self.interpolate(text[j+len(self.sigil[1]):])
+                    return self._repr(result, fmt, sep) + self.interpolate(text[j+len(self.r):])
                 except Exception as e:
-                    if self.sigil[1] not in text[j+1:]:
+                    self.error_count += 1
+                    if self.r not in text[j+1:]:
                         raise InterpolationError(text[:j], e)
-                    j = text.index(self.sigil[1], j+1)
+                    j = text.index(self.r, j+1)
                     #                           j
                     # something {} } ${ another }
                     #                k
                     if j > k:
-                        return self._interpolate(text[:k] + self._interpolate(text[k+len(self.sigil[0]):]))
+                        return self._interpolate(text[:k] + self._interpolate(text[k+len(self.l):]))
 
     def _format(self, obj, fmt):
         '''Format an object in basic type (not list etc)
@@ -495,7 +559,7 @@ class SoS_String:
             # use
             return ('{' + fmt + '}').format(obj)
 
-    def _repr(self, obj, fmt=None):
+    def _repr(self, obj, fmt=None, sep=' '):
         '''Format an object. fmt will be applied to all elements if obj is not
         in a basic type. Callable object cannot be outputed (an InterpolationError
         will be raised).
@@ -504,18 +568,18 @@ class SoS_String:
             return obj if fmt is None else self._format(obj, fmt)
         elif isinstance(obj, collections.Iterable):
             # the object might be nested...
-            return ' '.join([self._repr(x, fmt) for x in obj])
+            return sep.join([self._repr(x, fmt, sep) for x in obj])
         elif isinstance(obj, collections.Callable):
             raise InterpolationError(repr(obj), 'Cannot interpolate callable object.')
         else:
             return repr(obj) if fmt is None else self._format(obj, fmt)
 
-def interpolate(text, globals={}, locals={}, sigil='${ }'):
+def interpolate(text, sigil='${ }'):
     '''Evaluate expressions in `text` marked by specified `sigil` using provided
     global and local dictionaries, and replace the expressions with their formatted strings.'''
-    return SoS_String(globals, locals, sigil).interpolate(text)
+    return SoS_String(sigil).interpolate(text)
 
-def ConvertString(s, globals, locals, sigil):
+def ConvertString(s, sigil):
     '''Convert a unicode string to a raw string and interpolate expressions
     within it by parsing the python expression and statement BEFORE they are
     evaluated (or executed).
@@ -525,114 +589,84 @@ def ConvertString(s, globals, locals, sigil):
     '''
     result = []
     # tokenize the input syntax.
-    g = generate_tokens(StringIO(s.decode()).readline)
+    if sys.version_info.major == 2:
+        g = generate_tokens(StringIO(s.decode()).readline)
+    else:
+        # python 3 string is already unicode string
+        g = generate_tokens(StringIO(s).readline)
     for toknum, tokval, _, _, _  in g:
         if toknum == token.STRING:
-            # if this item is a string that uses single or triple single quote
-            if tokval.startswith("'"):
+            # if this item is a string that uses triple single quote
+            if tokval.startswith("'''"):
                 # we convert it to a raw string
                 tokval = u'r' + tokval
             # we then perform interpolation on the string and put it back to expression
-            tokval = repr(interpolate(eval(tokval), globals, locals, sigil))
+            tokval = 'interpolate(' + tokval + ", \'" + sigil + "')"
         # the resusting string is put back to the expression (or statement)
         result.append((toknum, tokval))
     return untokenize(result)
 
-def SoS_eval(expr, globals, locals, sigil='${ }'):
+def SoS_eval(expr, sigil='${ }'):
     '''Evaluate an expression after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
-    expr = ConvertString(expr, globals, locals, sigil)
-    return eval(expr, globals, locals)
+    expr = ConvertString(expr, sigil)
+    return eval(expr, env.globals, env.locals)
 
-class DryrunTransformer(ast.NodeTransformer):
-    '''This class will remove all function calls in stmts for it to be executed
-    in dryrun mode. We are not quite sure what SoS would do in dryrun mode so
-    this might be revised later.    
-    '''
-    def visit_Call(self, node):
-        #return None
-        return ast.copy_location(
-            ast.Num(n=0), node)
-
-def SoS_exec(stmts, globals, locals, sigil='${ }', mode='run'):
+def SoS_exec(stmts, sigil='${ }'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
-    interpolate expressions) strings.
-    
-    In the dryrun mode (mode='dryrun'), SoS will replace any function call with
-    value 0. The idea is that SoS functions should return 0 after successful
-    execution so the statement should still be correct as long as the script
-    does not call other python functions. Further improvement of this dryrun
-    mode can make the exec code clever enough to only replace functions that
-    are defined by SoS. '''
+    interpolate expressions) strings.'''
     # the trouble here is that we have to execute the statements line by line
-    # because the variables defined
+    # because the variables defined. The trouble is in cases such as class
+    # definition
     #
-    executed = ''
-    code = []
-    for line in stmts.split('\n'):
-        code.append(line)
-        # try to compile the code
+    # class A:
+    #     def __init__(self):
+    #         pass
+    # # this is already correct syntax but the remaining piece is not.
+    #     def another_one(self):
+    #         pass
+    # 
+    # We therefore has to be a bit more clever on this.
+    #
+    # we first group all lines by their own group
+    # we then try to find syntaxly valid groups
+    code_group = [x for x in stmts.split('\n')]
+    idx = 0
+    while True:
         try:
-            compile('\n'.join(code), filename='<string>', mode='exec')
+            # test current group
+            compile(code_group[idx], filename = '<string>', mode='exec')
+            # if it is ok, go next
+            idx += 1
+            if idx == len(code_group):
+                break
         except:
-            # otherwise add one more line
-            continue
-        #
-        # if it is ok, execute and reset code
-        stmts = ConvertString('\n'.join(code), globals, locals, sigil)
-        code = []
-        if mode == 'run':
-            exec(stmts, globals, locals)
-            executed += stmts + '\n'
-        else:
-            transformer = DryrunTransformer()
-            # parse the statement.
-            stmts = ast.parse(stmts)
-            # replace all function calls with numeric number 0
-            transformer.visit(stmts)
-            # and execute the modified statements.
-            exec(compile(stmts, '<string>', 'exec'), globals, locals)
+            # error happens merge the next line
+            if idx < len(code_group) - 1:
+                code_group[idx] += '\n' + code_group[idx + 1]
+                code_group.pop(idx + 1)
+            else:
+                # if no next group, expand previously correct one
+                if idx == 0:
+                    raise RuntimeError('Failed to find syntax correct group')
+                # break myself again
+                code_group = code_group[: idx] + code_group[idx].split('\n') + code_group[idx+1:]
+                # go back
+                idx -= 1
+                code_group[idx] += '\n' + code_group[idx + 1]
+                code_group.pop(idx+1)
+    #
+    # execute statements one by one
+    executed = ''
+    for code in code_group:
+        stmts = ConvertString(code, sigil)
+        exec(stmts, env.globals, env.locals)
+        executed += stmts + '\n'
+    #
     env.logger.trace('Executed\n{}'.format(executed))
     return executed
 
-#
-# SoS Workflow dictionary
-#
-class WorkflowDict(dict):
-    """A dictionary object that
-    1. Generate logging message for debugging purposes.
-    2. Allow access of values from attributes. As a trick to reduce logging messages, the
-       attribute interface does not trigger logging message.
 
-    Potential future expansion of this dictionary include
-    1. Read only item. An error will be raised if a readonly item is changed.
-    2. Temporary items. A function might be provided to remove all temporary items.
-    """
-    def __init__(self, *args, **kwargs):
-        dict.__init__(self, *args, **kwargs)
-
-    def __setitem__(self, key, value):
-        dict.__setitem__(self, key, value)
-        if isinstance(value, (str, int, float, bool)) or (isinstance(value, collections.Sequence) \
-            and len(value) <= 2) or len(str(value)) < 50:
-            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, str(value)))
-        elif isinstance(value, collections.Sequence): # should be a list or tuple
-            val = str(value).split(' ')[0] + ' ...] ({} items)'.format(len(value))
-            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, val))
-        elif isinstance(value, dict):
-            first_key = value.keys()[0]
-            env.logger.debug('Workflow variable ``{}`` is set to ``{{{}:{}, ...}} ({} items)``'
-                .format(key, first_key, value[first_key], len(value)))
-        else:
-            env.logger.debug('Workflow variable ``{}`` is set to ``{}...``'.format(key, repr(value)[:40]))
-
-    def __setattr__(self, key, value):
-        '''a.key = value is equivalent to a['key'] = value'''
-        dict.__setitem__(self, key, value)
-
-    def __getattr__(self, key):
-        '''a.key is equivalent to a['key']'''
-        return dict.__getitem__(self, key)
 
 #
 # Runtime signature
@@ -641,7 +675,7 @@ class WorkflowDict(dict):
 def textMD5(text):
     '''Get md5 of a piece of text'''
     m = hashlib.md5()
-    m.update(text)
+    m.update(text.encode())
     return m.hexdigest()
 
 def partialMD5(filename):

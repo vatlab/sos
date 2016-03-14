@@ -54,9 +54,8 @@ setup(name = "sos",
         ],
     cmdclass = {'build_py': build_py },
     py_modules = [
-        'pysos.execute',
+        'pysos.actions',
         'pysos.utils',
         'pysos.sos_script',
         ]
 )
-

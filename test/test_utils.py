@@ -59,7 +59,7 @@ class TestUtils(unittest.TestCase):
 
     def testInterpolation(self):
         '''Test string interpolation'''
-        locals = {
+        env.locals = {
             'a': 100,
             'b': 20,
             'c': ['file1', 'file2', 'file3'],
@@ -81,14 +81,14 @@ class TestUtils(unittest.TestCase):
                 ('{0}a+b*5{1} is 200', '200 is 200'),
                 ('{0}a+b*5{1} and {0}a{1}', '200 and 100'),
                 ('Pre {0}a+b*5{1} and {0}a{1} after', 'Pre 200 and 100 after'),
-                ('Nested {0}a+b*{0}b/2{1}{1}', 'Nested 300'),
+                ('Nested {0}a+b*{0}b//2{1}{1}', 'Nested 300'),
                 ('Format {0}a:.5f{1}', 'Format 100.00000'),
                 ('{0}var2[:2]{1}', '1 2'),
                 ('{0}var2[1:]{1}', '2 3.1'),
                 # nested
                 ('Nested {0}a:.{0}4+1{1}f{1}', 'Nested 100.00000'),
                 # deep nested
-                ('Triple Nested {0}a:.{0}4+{0}5/5{1}{1}f{1}', 'Triple Nested 100.00000'),
+                ('Triple Nested {0}a:.{0}4+{0}5//5{1}{1}f{1}', 'Triple Nested 100.00000'),
                 # nested invalid
                 ('Nested invalid {0}"{0}a-{1}"{1}', 'Nested invalid {}a-{}'.format(l, r)),
                 ('Nested valid {0}"{0}a{1}-"{1}', 'Nested valid 100-'),
@@ -122,20 +122,25 @@ class TestUtils(unittest.TestCase):
                 #
                 # !q conversion (added by SoS)
                 ('{0}file_ws[0]!q{1}', "'d i r/f .txt'"),
+                #
+                # !, joined by ,
+                ('{0}var2!r,{1}', "1,2,3.1"),
+                ('{0}c!r,{1}', "'file1','file2','file3'"),
+                ('{0}c!,{1}', "file1,file2,file3"),
             ]:
                 #print('Interpolating "{}" with sigal "{}"'.format(expr.format(l, r).replace('\n', r'\n'), sigil))
                 if isinstance(result, str):
-                    self.assertEqual(interpolate(expr.format(l, r), globals(), locals, sigil=sigil), result)
+                    self.assertEqual(interpolate(expr.format(l, r), sigil=sigil), result)
                 else:
                     # for cases when the order of output is not guaranteed
-                    self.assertTrue(interpolate(expr.format(l, r), globals(), locals, sigil=sigil) in result)
+                    self.assertTrue(interpolate(expr.format(l, r), sigil=sigil) in result)
         #
         # locals should be the one passed to the expression
-        self.assertTrue('file_ws' in interpolate('${locals().keys()}', globals(), locals))
+        self.assertTrue('file_ws' in interpolate('${locals().keys()}'))
 
     def testEval(self):
         '''Test the evaluation of SoS expression'''
-        locals = {
+        env.locals = {
             'a': 100,
             'b': 'file name',
             'c': ['file1', 'file2', 'file 3'],
@@ -143,50 +148,31 @@ class TestUtils(unittest.TestCase):
         }
         for expression, result in [
             ('''"This is ${a+100}"''', 'This is 200'),
-            ('''"${a+100}" + "${a/100}"''', "2001"),
+            ('''"${a+100}" + "${a//100}"''', "2001"),
             ('''"${c[1]}"''', 'file2'),
             ('''"${c[1:]}"''', 'file2 file 3'),
-            ('''"${d}"''', 'a b'),
-            ('''"${d}"*2''', 'a ba b'),
+            ('''"${d}"''', ['a b', 'b a']),
+            ('''"${d}"*2''', ['a ba b', 'b ab a']),
             ('''"${d['a']}"''', 'file1'),
             ('''"${b!q}"''', "'file name'"),
             ('''"${b!r}"''', "'file name'"),
             ('''"${c!q}"''', "file1 file2 'file 3'"),
             ]:
-            self.assertEqual(SoS_eval(expression, globals(), locals), result)
+            if isinstance(result, str):
+                self.assertEqual(SoS_eval(expression), result)
+            else:
+                self.assertTrue(SoS_eval(expression) in result)
         #
         # interpolation will only happen in string
-        self.assertRaises(SyntaxError, SoS_eval, '''${a}''', globals(), locals)
-
-    def testDryrun(self):
-        '''Test execution of statements in dryrun mode'''
-        def func(a):
-            a[0] = 100
-
-        locals = WorkflowDict({
-            'a': 100,
-            'b': 'file name',
-            'c': ['file1', 'file2', 'file 3'],
-            'd': {'a': 'file1', 'b':'file2'},
-            'func': func
-        })
-        for stmts, result, dryrun_result in [
-            ('''result = a''', 100, 100),
-            ('''func(c)\nresult = c[0]''', 100, 'file1')
-            ]:
-            # in the dryrun mode, c is not changed by function 'func'
-            SoS_exec(stmts, globals(), locals, mode='dryrun')
-            self.assertEqual(locals.result, dryrun_result)
-            SoS_exec(stmts, globals(), locals, mode='run')
-            self.assertEqual(locals.result, result)
+        self.assertRaises(SyntaxError, SoS_eval, '''${a}''')
 
     def testWorkflowDict(self):
         '''Test workflow dict with attribute access'''
         d = WorkflowDict()
         d['a'] = 1
-        self.assertEqual(d.a, 1)
+        self.assertEqual(d['a'], 1)
         #
-        d.a += 1
+        d['a'] += 1
         self.assertEqual(d['a'], 2)
 
 if __name__ == '__main__':
