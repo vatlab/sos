@@ -98,10 +98,10 @@ b"""
         for badoption in ['ss', 'skip a', 'skip:_', 'skip, skip']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # option value should be a valid python expression
-        for badoption in ['sigil=a', 'input_alias=a', 'outputalias=a', 'sigil="[]"', 'sigil="| |"']:
+        for badoption in ['sigil=a', 'alias=a', 'sigil="[]"', 'sigil="| |"']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # good options
-        for goodoption in ['sigil="[ ]"', 'input_alias="a"', 'output_alias="a"']:
+        for goodoption in ['sigil="[ ]"', 'alias="a"']:
             SoS_Script('[0:{}]'.format(goodoption))
         # allowed names
         for name in ['a5', 'a_5', '*_0', 'a*1_100']:
@@ -134,8 +134,9 @@ b"""
         self.assertRaises(ParsingError, SoS_Script,
             '''a = 'b  ''')
         # This one also does not work because b is not defined.
-        self.assertRaises(RuntimeError, SoS_Script,
-            '''a = b  ''')
+        script = SoS_Script('''a = b  ''')
+        wf = script.workflow()
+        self.assertRaises(RuntimeError, wf.run)
         # multi-line string literal
         SoS_Script('''a = """
 this is a multi line
@@ -165,13 +166,11 @@ input: 'filename'
 [parameters]
 func()
 ''')    
-        self.assertRaises(ArgumentError, SoS_Script,
-            'scripts/section1.sos', args=['--not_exist'])
-        self.assertRaises(ArgumentError, SoS_Script,
-            'scripts/section1.sos', args=['--par1', 'a', 'b'])
-        script = SoS_Script('scripts/section1.sos', args=['--par1', 'var2'])
-        # need to check if par1 is set to correct value
-        self.assertEqual(script.parameter('par1'), "var2")
+        script = SoS_Script('scripts/section1.sos')
+        self.assertRaises(ArgumentError, script.workflow('chapter:0').run,
+            args=['--not_exist'])
+        self.assertRaises(ArgumentError, script.workflow('chapter:0').run,
+            args=['--par1', 'a', 'b'])
         # 
         # test parameter using global definition
         script = SoS_Script('''
@@ -180,27 +179,36 @@ a="100"
 [parameters]
 b=str(int(a)+1)
 ''')
-        self.assertEqual(script.parameter('b'), '101')
+        script.workflow().run()
+        self.assertEqual(env.locals['b'], '101')
         script = SoS_Script('''
 a=100
 
 [parameters]
 b=a+1
 ''')
-        self.assertEqual(script.parameter('b'), 101)
-        self.assertRaises(ArgumentError, SoS_Script, '''
+        script.workflow().run()
+        self.assertEqual(env.locals['b'], 101)
+        #
+        script = SoS_Script('''
 a=100
 
 [parameters]
 b=a+1
-''', args=['--b', 'a'])
+''')
+        wf = script.workflow()
+        self.assertRaises(ArgumentError, wf.run, args=['--b', 'a'])
+        #
         script = SoS_Script('''
 a=100
 
 [parameters]
 b=a+1.
-''', args=['--b', '1000'])
-        self.assertEqual(script.parameter('b'), 1000)
+''')
+        wf = script.workflow()
+        wf.run(args=['--b', '1000'])
+        #
+        self.assertEqual(env.locals['b'], 1000)
         #
         # test string interpolation of the parameter section
         script = SoS_Script('''
@@ -209,7 +217,9 @@ a=100
 [parameters]
 b='${a+1}'
 ''')
-        self.assertEqual(script.parameter('b'), '101')
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals['b'], '101')
         # test alternative sigil
         script = SoS_Script('''
 a=100
@@ -217,7 +227,9 @@ a=100
 [parameters: sigil='[ ]']
 b='[a+1]'
 ''')
-        self.assertEqual(script.parameter('b'), '101')
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals['b'], '101')
         #
         # argument has hve a value
         self.assertRaises(ParsingError, SoS_Script, '''
@@ -225,60 +237,81 @@ b='[a+1]'
 b=
 ''')
         # if it is a type, must provide value
-        self.assertRaises(ArgumentError, SoS_Script, '''
-[parameters]
-b = int
-''')
-        self.assertRaises(ArgumentError, SoS_Script, '''
-[parameters]
-b = list
-''')
-        # also require the type
-        self.assertRaises(ArgumentError, SoS_Script, '''
-[parameters]
-b = int
-''', args=['--b', 'file'])
         script = SoS_Script('''
 [parameters]
 b = int
-''', args=['--b', '5'])
-        self.assertEqual(script.parameter('b'), 5)
+''')
+        self.assertRaises(ArgumentError, script.workflow().run)
+        #
+        script = SoS_Script('''
+[parameters]
+b = list
+''')
+        self.assertRaises(ArgumentError, script.workflow().run)
+        # also require the type
+        script = SoS_Script('''
+[parameters]
+b = int
+''')
+        self.assertRaises(ArgumentError, script.workflow().run, args=['--b', 'file'])
+        #
+        script = SoS_Script('''
+[parameters]
+b = int
+''')
+        wf = script.workflow()
+        wf.run(args=['--b', '5'])
+        self.assertEqual(env.locals['b'], 5)
         # list is ok
         script = SoS_Script('''
 [parameters]
 b = list
-''', args=['--b', '5'])
-        self.assertEqual(script.parameter('b'), ['5'])
+''')
+        wf = script.workflow()
+        wf.run(args=['--b', '5'])
+        self.assertEqual(env.locals['b'], ['5'])
         # bool
         script = SoS_Script('''
 [parameters]
 b = bool
-''', args=['--b', 't'])
-        self.assertEqual(script.parameter('b'), True)
+''')
+        wf = script.workflow()
+        wf.run(args=['--b', 't'])
+        self.assertEqual(env.locals['b'], True)
         script = SoS_Script('''
 [parameters]
 b = True
-''', args=['--b', 'False'])
-        self.assertEqual(script.parameter('b'), False)
+''')
+        wf = script.workflow()
+        wf.run(args=['--b', 'False'])
+        self.assertEqual(env.locals['b'], False)
         script = SoS_Script('''
 [parameters]
 b = True
-''', args=['--b', '1'])
-        self.assertEqual(script.parameter('b'), True)
+''')
+        wf = script.workflow()
+        wf.run(args=['--b', '1'])
+        self.assertEqual(env.locals['b'], True)
         script = SoS_Script('''
 [parameters]
 b = bool
-''', args=['--b', 'no'])
-        self.assertEqual(script.parameter('b'), False)
+''')
+        wf = script.workflow()
+        wf.run(args=['--b', 'no'])
+        self.assertEqual(env.locals['b'], False)
         #
         # should fail for undefined variables
-        self.assertRaises(ArgumentError, SoS_Script, '''
+        script = SoS_Script('''
 [parameters]
 a = 5
-''', args=['--b', 'file'])
+''')
+        self.assertRaises(ArgumentError, script.workflow().run,
+            args=['--b', 'file'])
         # and for cases without parameter section
-        self.assertRaises(ArgumentError, SoS_Script, '''
-''', args=['--b', 'file'])
+        script = SoS_Script('''
+''')        
+        self.assertRaises(ArgumentError, script.workflow().run,
+            args=['--b', 'file'])
 
     def testSectionVariables(self):
         '''Test variables in sections'''

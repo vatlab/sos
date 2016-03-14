@@ -20,6 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 import os
+import sys
 import re
 import logging
 import collections
@@ -435,6 +436,7 @@ class SoS_String:
         # do not check sigil here because the function will be called quite frequently
         # the sigil will be checked when it is entered in SoS script.
         self.l, self.r = sigil.split(' ')
+        self.error_count = 0
 
     def interpolate(self, text):
         '''Intepolate string with local and global dictionary'''
@@ -484,6 +486,9 @@ class SoS_String:
                 # expolate string recursively.
                 return self._interpolate(text[:k] + self._interpolate(text[k + len(self.l):]))
             except Exception as e:
+                self.error_count += 1
+                if self.error_count > 10:
+                    raise
                 # This is for the case where inner sigil is actually part of the syntax. For example, if
                 # sigil = []
                 #
@@ -533,6 +538,7 @@ class SoS_String:
                     # evaluate the expression and interpolate the next expression
                     return self._repr(result, fmt, sep) + self.interpolate(text[j+len(self.r):])
                 except Exception as e:
+                    self.error_count += 1
                     if self.r not in text[j+1:]:
                         raise InterpolationError(text[:j], e)
                     j = text.index(self.r, j+1)
@@ -583,7 +589,11 @@ def ConvertString(s, sigil):
     '''
     result = []
     # tokenize the input syntax.
-    g = generate_tokens(StringIO(s.decode()).readline)
+    if sys.version_info.major == 2:
+        g = generate_tokens(StringIO(s.decode()).readline)
+    else:
+        # python 3 string is already unicode string
+        g = generate_tokens(StringIO(s).readline)
     for toknum, tokval, _, _, _  in g:
         if toknum == token.STRING:
             # if this item is a string that uses triple single quote
@@ -665,7 +675,7 @@ def SoS_exec(stmts, sigil='${ }'):
 def textMD5(text):
     '''Get md5 of a piece of text'''
     m = hashlib.md5()
-    m.update(text)
+    m.update(text.encode())
     return m.hexdigest()
 
 def partialMD5(filename):
