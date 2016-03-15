@@ -163,7 +163,7 @@ def warn_if(expr, msg=''):
         env.logger.warning(msg)
 
 @SoS_Action(run_mode=['dryrun', 'run'])
-def check_output(cmd, pattern):
+def search_output(cmd, pattern):
     '''Raise an exception if output of `cmd` does not match specified `pattern`.
     Multiple patterns can be specified as a list of patterns.'''
     output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode()
