@@ -508,29 +508,44 @@ executed.append(_step.name)
         '''Test the creation and execution of combined workfow'''
         script = SoS_Script('''
 executed = []
+inputs = []
 [a_1]
+inputs.append(_step.input)
 executed.append(_step.name)
 [a_2]
+inputs.append(_step.input)
 executed.append(_step.name)
 [a_3]
+inputs.append(_step.input)
 executed.append(_step.name)
 [a_4]
+output: 'a.done'
+inputs.append(_step.input)
 executed.append(_step.name)
 [b_1]
+input: 'b.begin'
+inputs.append(_step.input)
 executed.append(_step.name)
 [b_2]
+inputs.append(_step.input)
 executed.append(_step.name)
 [b_3]
+inputs.append(_step.input)
 executed.append(_step.name)
 [b_4]
+output: 'b.txt'
+inputs.append(_step.input)
 executed.append(_step.name)
 [c=a+b]
+input: 'a.txt'
+output: 'b.txt'
+inputs.append(_step.input)
 executed.append(_step.name)
 ''')
         wf = script.workflow('c')
         wf.run()
         self.assertEqual(env.locals['executed'], ['c_0', 'a_1', 'a_2', 'a_3', 'a_4', 'b_1', 'b_2', 'b_3', 'b_4'])
-        #
+        self.assertEqual(env.locals['inputs'], [['a.txt'], ['a.txt'], [], [], [], ['b.begin'], [], [], []])
 
 if __name__ == '__main__':
     unittest.main()
