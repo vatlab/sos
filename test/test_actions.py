@@ -97,18 +97,18 @@ warn_if(len(_step.input) == 1)
         # should be silent
         wf.run()
 
-    def testCheckOutput(self):
-        '''Test action check_output'''
+    def testSearchOutput(self):
+        '''Test action search_output'''
         script = SoS_Script(r"""
 [0]
-check_output('cat test_actions.py', 'abcde' + 'fgh')
+search_output('cat test_actions.py', 'abcde' + 'fgh')
 """)
         wf = script.workflow()
         # should raise an error
         self.assertRaises(RuntimeError, wf.run)
         #
         script = SoS_Script(r"""
-check_output('cat test_actions.py', 'testCheckOutput')
+search_output('cat test_actions.py', 'testSearchOutput')
 """)
         wf = script.workflow()
         wf.run()

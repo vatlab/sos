@@ -542,10 +542,33 @@ output: 'b.txt'
 inputs.append(_step.input)
 executed.append(_step.name)
 ''')
+        env.run_mode = 'dryrun'
         wf = script.workflow('c')
         wf.run()
         self.assertEqual(env.locals['executed'], ['c_0', 'a_1', 'a_2', 'a_3', 'a_4', 'b_1', 'b_2', 'b_3', 'b_4'])
         self.assertEqual(env.locals['inputs'], [['a.txt'], ['a.txt'], [], [], [], ['b.begin'], [], [], []])
+        # step will be looped
+        script = SoS_Script('''
+executed = []
+inputs = []
+[a_1]
+output: _input[0] + '.a1'
+inputs.append(_step.input)
+executed.append(_step.name)
+[a_2]
+output: _input[0] + '.a2'
+inputs.append(_step.input)
+executed.append(_step.name)
+[c=a]
+input: 'a.txt', 'b.txt', group_by='single'
+inputs.append(_input)
+executed.append(_step.name)
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow('c')
+        wf.run()
+        self.assertEqual(env.locals['executed'], ['c_0', 'a_1', 'a_2', 'c_0', 'a_1', 'a_2'])
+        self.assertEqual(env.locals['inputs'], [['a.txt'], ['a.txt'], ['a.txt.a1'], ['b.txt'], ['b.txt'], ['b.txt.a1']])
 
 if __name__ == '__main__':
     unittest.main()

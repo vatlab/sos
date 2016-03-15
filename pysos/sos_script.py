@@ -517,7 +517,17 @@ class SoS_Step:
             # action
             with self.runtime:
                 try:
+                    # in case of nested workflow, these names might be changed and need to be reset
+                    env.locals['_step'].name = '{}_{}'.format(self.name, self.index)
+                    env.locals['_step'].index = self.index
+                    #
                     SoS_exec(''.join(self.statements), self.sigil)
+                    #
+                    # if there is subworkflow, the subworkflow is considered part of the process
+                    # and will be executed mutliple times if necessary. The partial signature 
+                    # stuff works for these though
+                    if self.subworkflow:
+                        self.subworkflow.run(sub=True)
                 except Exception as e:
                     raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
             if o and o != env.locals['_step'].output and env.run_mode == 'run':
@@ -528,10 +538,6 @@ class SoS_Step:
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
         if signature and env.run_mode == 'run':
             signature.write()
-        #
-        # if there is subworkflow
-        if self.subworkflow:
-            self.subworkflow.run(sub=True)
 
     def __repr__(self):
         result = ''
@@ -713,7 +719,12 @@ class SoS_Workflow:
     def run(self, args=[], sub=False):
         '''Very preliminary implementation of sequential execution function
         '''
-        if not sub:
+        if sub:
+            # if this is a subworkflow, we do not execute global
+            # and parameter section and we use _input as input of 
+            # the workflow
+            env.locals['_step'].input = env.locals['_input']
+        else:
             # process global variables
             self.prepareVars()
             # process parameter section
@@ -721,22 +732,26 @@ class SoS_Workflow:
                 self.parse_args(args)
             elif args:
                 raise ArgumentError('Unrecognized command line argument {}'.format(' '.join(args)))
-        else:
-            env.locals['_step'].output = env.locals['_step'].input
         # process step of the pipeline
         # There is no input initially
-        for section in self.sections:
-            # set the output to the input of the next step
-            if hasattr(env.locals['_step'], 'output'):
-                # passing step output to _step.input of next step
-                env.locals['_step'].input = env.locals['_step'].output
-                # step_output and depends are temporary
-            else:
-                env.locals['_step'].input = []
+        for idx, section in enumerate(self.sections):
             #
-            env.locals['_step'].output = []
-            env.locals['_step'].depends = []
-            #
+            # execute section with specified input
+            # 1. for first step of workflow, _step.input=[]
+            # 2. for subworkflow, _step.input = _input
+            # 3. for second to later step, _step.input = _step.output
+            if idx > 0:
+                # set the output to the input of the next step
+                if hasattr(env.locals['_step'], 'output'):
+                    # passing step output to _step.input of next step
+                    env.locals['_step'].input = env.locals['_step'].output
+                    # step_output and depends are temporary
+                else:
+                    env.locals['_step'].input = []
+                #
+                env.locals['_step'].output = []
+                env.locals['_step'].depends = []
+                #
             section.run()
 
     def show(self, parameters=True):
@@ -1170,6 +1185,8 @@ class SoS_Script:
         for section in self.sections:
             # expand subworkflow if needed
             for i in range(len(section.names)):
+                # FIXME: this is a very crube way to avoid indefinite loop. Need some thought on
+                # better implementation.
                 if section.names[i][2] and section.names[i][2] != workflow_name and workflow_name not in section.names[i][2].split('+'):
                     section.names[i] = (section.names[i][0], section.names[i][1], self.workflow(section.names[i][2]))
         return SoS_Workflow(wf_name, allowed_steps, self.sections, self.workflow_descriptions[wf_name])
