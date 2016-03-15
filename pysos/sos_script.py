@@ -577,35 +577,22 @@ class SoS_Workflow:
         self.auxillary_sections = []
         #
         for section in sections:
-            # skip, skip=True, skip=1 etc are all allowed.
-            if 'skip' in section.options and (section.options['skip'] is None or section.options['skip']):
-                continue
             if section.is_global:
                 # section global is shared by all workflows
-                self.global_section = section
+                self.global_section = copy.deepcopy(section)
                 continue
             elif section.is_parameters:
                 # section parameters is shared by all workflows
-                self.parameters_section = section
+                self.parameters_section = copy.deepcopy(section)
                 continue
             for name, index, subworkflow in section.names:
                 if 'target' in section.options:
-                    self.auxillary_sections.append(copy.deepcopy(section))
-                    continue
-                elif '*' in name:
-                    # check if name match. There should be no special character in section name
-                    # so no worry about invalid regular expression
-                    pattern = re.compile(name.replace('*', '.*'))
-                    if pattern.match(workflow_name):
-                        self.sections.append(copy.deepcopy(section))
-                        self.sections[-1].name = workflow_name
-                        self.sections[-1].index = int(index)
-                        self.sections[-1].subworkflow = copy.deepcopy(subworkflow)
-                elif name == workflow_name:
+                    self.auxillary_sections.append(section)
+                elif fnmatch.fnmatch(workflow_name, name):
                     self.sections.append(copy.deepcopy(section))
                     self.sections[-1].name = workflow_name
                     self.sections[-1].index = None if index is None else int(index)
-                    self.sections[-1].subworkflow = copy.deepcopy(subworkflow)
+                    self.sections[-1].subworkflow = subworkflow
         #
         if any(x.index is None for x in self.sections):
             if len(self.sections) > 1:
@@ -644,6 +631,7 @@ class SoS_Workflow:
                     raise ValueError('Invalid pipeline step item {}'.format(item))
             # keep only selected steps
             self.sections = [x for x in self.sections if all_steps[x.index]]
+        #
         for section in self.sections:
             if section.subworkflow is not None and isinstance(section.subworkflow, basestring):
                 raise RuntimeError('Subworkflow {} not executable most likely because of recursice expansion.'.format(section.subworkflow))
@@ -1152,8 +1140,10 @@ class SoS_Script:
             raise parsing_errors
 
 
-    def workflow(self, workflow_name=None):
-        '''Return a workflow with name:step specified in wf_name'''
+    def workflow(self, workflow_name=None, nested=False):
+        '''Return a workflow with name:step specified in wf_name
+        If the workflow is a nested workflow, ignore parameters section.
+        '''
         allowed_steps = None
         if not workflow_name:
             wf_name = ''
@@ -1174,7 +1164,6 @@ class SoS_Script:
             # else if a single step (workflow_15)
             elif '_' in workflow_name and workflow_name.rsplit('_', 1)[-1].isdigit():
                 wf_name, allowed_steps = workflow_name.rsplit('_', 1)
-                env.logger.error('HERE {} {}'.format(wf_name, allowed_steps))
             else:
                 wf_name = workflow_name
         if not wf_name:
@@ -1190,25 +1179,40 @@ class SoS_Script:
             raise ValueError('Workflow {} is undefined. Available workflows are: {}'.format(wf_name,
                 ', '.join(self.workflows)))
         #
+        sections = []
+        # look for relevant sections in self.sections
         for section in self.sections:
-            # expand subworkflow if needed
-            for i in range(len(section.names)):
-                if section.names[i][2] and isinstance(section.names[i][2], basestring):
-                    # need to expand the workflow, but it is possible that it is nested ...
-                    # so let us figure out what workflows we are expanding
-                    expanded = []
-                    for tmp in section.names[i][2].split('+'):
-                        if ':' in tmp:
-                            tmp = tmp.split(':')[0]
-                        if '_' in tmp and tmp.rsplit('_')[-1].isdigit():
-                            tmp = tmp.rsplit('_')[0]
-                        expanded.append(tmp)
-                    if wf_name in expanded:
-                        env.logger.debug('NOT expanding {} because of potential loop'.format(section.names[i][2]))
-                    else:
-                        env.logger.debug('Expanding subworkflow {}'.format(section.names[i][2]))
-                        section.names[i] = (section.names[i][0], section.names[i][1], self.workflow(section.names[i][2]))
-        return SoS_Workflow(wf_name, allowed_steps, self.sections, self.workflow_descriptions[wf_name])
+            # skip, skip=True, skip=1 etc are all allowed.
+            if 'skip' in section.options and (section.options['skip'] is None or section.options['skip']):
+                continue
+            if section.is_global or section.is_parameters or 'target' in section.options:
+                # section global is shared by all workflows
+                sections.append(section)
+                continue
+            for name, index, subworkflow in section.names:
+                if fnmatch.fnmatch(wf_name, name):
+                    # expand subworkflow if needed
+                    for i in range(len(section.names)):
+                        if section.names[i][2] and isinstance(section.names[i][2], basestring):
+                            # need to expand the workflow, but it is possible that it is nested ...
+                            # so let us figure out what workflows we are expanding
+                            expanded = []
+                            for tmp in section.names[i][2].split('+'):
+                                if ':' in tmp:
+                                    tmp = tmp.split(':')[0]
+                                if '_' in tmp and tmp.rsplit('_')[-1].isdigit():
+                                    tmp = tmp.rsplit('_')[0]
+                                expanded.append(tmp)
+                            if wf_name in expanded:
+                                env.logger.debug('NOT expanding {} because of potential loop'.format(section.names[i][2]))
+                            else:
+                                env.logger.debug('Expanding subworkflow {}'.format(section.names[i][2]))
+                                section.names[i] = (section.names[i][0], section.names[i][1], 
+                                    self.workflow(section.names[i][2]))
+                    # now copy the step over
+                    sections.append(section)
+                    break
+        return SoS_Workflow(wf_name, allowed_steps, sections, self.workflow_descriptions[wf_name])
 
     def __repr__(self):
         result = 'SOS Script (version {}\n'.format(self.format_version)
