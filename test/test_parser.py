@@ -170,9 +170,9 @@ input: 'filename'
 func()
 ''')    
         script = SoS_Script('scripts/section1.sos')
-        self.assertRaises(ArgumentError, script.workflow('chapter:0').run,
+        self.assertRaises(ArgumentError, script.workflow('chapter_0').run,
             args=['--not_exist'])
-        self.assertRaises(ArgumentError, script.workflow('chapter:0').run,
+        self.assertRaises(ArgumentError, script.workflow('chapter_0').run,
             args=['--par1', 'a', 'b'])
         # 
         # test parameter using global definition
@@ -471,6 +471,9 @@ b = A()()
         '''Test the creation and execution of combined workfow'''
         script = SoS_Script('''
 executed = []
+a = 0
+[parameters]
+a = a + 1
 [a_1]
 executed.append(_step.name)
 [a_2]
@@ -495,8 +498,9 @@ executed.append(_step.name)
         wf = script.workflow('a+b')
         wf.run()
         self.assertEqual(env.locals['executed'], ['a_1', 'a_2', 'a_3', 'a_4', 'b_1', 'b_2', 'b_3', 'b_4'])
+        self.assertEqual(env.locals['a'], 1)
         #
-        wf = script.workflow('a:1,2,4+b:3-')
+        wf = script.workflow('a_1,2,4+b_3-')
         wf.run()
         self.assertEqual(env.locals['executed'], ['a_1', 'a_2', 'a_4', 'b_3', 'b_4'])
         #
@@ -572,7 +576,6 @@ executed.append(_step.name)
         #
         # allow specifying a single step
         # step will be looped
-        env.verbosity=4
         script = SoS_Script('''
 executed = []
 [a_1]

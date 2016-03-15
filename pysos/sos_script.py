@@ -638,6 +638,26 @@ class SoS_Workflow:
 
     def extend(self, workflow):
         '''Extend another workflow to existing one, essentailly creating a concatennated workflow.'''
+        # The global sections are prepended to each workflow, that is ok
+        # the parameter section need to be combined...
+        if self.parameters_section is None:
+            if workflow.parameters_section is not None:
+                self.parameters_section = workflow.parameters_section
+        else:
+            if workflow.parameters_section is not None:
+                new_parameters = []
+                for k, v, c in workflow.parameters_section.parameters:
+                    found = False
+                    for k1, v1, _ in self.parameters_section.parameters:
+                        if k == k1:
+                            if v != v1:
+                                raise ValueError('Conflicting definition for parameter {} with values {} and {}'.format(k, v, v1))
+                            found = True
+                            break
+                    if not found:
+                        new_parameters.append((k, v, c))
+                self.parameters_section.parameters.extend(new_parameters)
+        #
         self.sections.extend(workflow.sections)
 
     def _parse_error(self, msg):
@@ -813,6 +833,16 @@ class SoS_Script:
         \s*$
         '''
 
+    _SUBWORKFLOW_TMPL = '''
+        ^\s*                               # leading space
+        (?P<name>                          # name
+        [a-zA-Z*]                          # cannot start with _ etc
+        ([\w\d_]*?))                       # can have _ and digit
+        (_(?P<steps>                       # index start from _
+        [\d,-]+))?                         # with , and - and digit
+        \s*$                               # end
+        '''
+
     _SECTION_OPTION_TMPL = '''
         ^\s*                               # start
         (?P<name>{})                       # one of the option names
@@ -821,6 +851,7 @@ class SoS_Script:
         )?                                 # value is optional
         \s*$
         '''.format('|'.join(_SECTION_OPTIONS))
+
 
     _FORMAT_LINE_TMPL = r'''
         ^                                  # from first column
@@ -852,6 +883,7 @@ class SoS_Script:
 
     SECTION_HEADER = re.compile(_SECTION_HEADER_TMPL, re.VERBOSE)
     SECTION_NAME = re.compile(_SECTION_NAME_TMPL, re.VERBOSE)
+    SUBWORKFLOW = re.compile(_SUBWORKFLOW_TMPL, re.VERBOSE)
     SECTION_OPTION = re.compile(_SECTION_OPTION_TMPL, re.VERBOSE)
     FORMAT_LINE = re.compile(_FORMAT_LINE_TMPL, re.VERBOSE)
     FORMAT_VERSION = re.compile(_FORMAT_VERSION_TMPL, re.VERBOSE)
@@ -1151,21 +1183,18 @@ class SoS_Script:
             if '+' in workflow_name:
                 wfs = []
                 for wf in workflow_name.split('+'):
-                    if not wf:
-                        raise ValueError('Incorrect workflow name {}'.format(wf_name))
+                    if not self.SUBWORKFLOW.match(wf):
+                        raise ValueError('Incorrect workflow name {}'.format(workflow_name))
                     wfs.append(self.workflow(wf))
                 combined_wf = wfs[0]
                 for wf in wfs[1:]:
                     combined_wf.extend(wf)
                 return combined_wf
             # workflow:15,-10 etc
-            if ':' in workflow_name:
-                wf_name, allowed_steps = workflow_name.split(':', 1)
-            # else if a single step (workflow_15)
-            elif '_' in workflow_name and workflow_name.rsplit('_', 1)[-1].isdigit():
-                wf_name, allowed_steps = workflow_name.rsplit('_', 1)
-            else:
-                wf_name = workflow_name
+            mo = self.SUBWORKFLOW.match(workflow_name)
+            if not mo:
+                raise ValueError('Incorrect workflow name {}'.format(workflow_name))
+            wf_name, allowed_steps = mo.group('name', 'steps')
         if not wf_name:
             if len(self.workflows) == 1:
                 wf_name = list(self.workflows)[0]
@@ -1184,6 +1213,9 @@ class SoS_Script:
         for section in self.sections:
             # skip, skip=True, skip=1 etc are all allowed.
             if 'skip' in section.options and (section.options['skip'] is None or section.options['skip']):
+                continue
+            # nested section do not have parameters section
+            if nested and section.is_parameters:
                 continue
             if section.is_global or section.is_parameters or 'target' in section.options:
                 # section global is shared by all workflows
