@@ -109,6 +109,7 @@ class SoS_Step:
         self.assignments = []
         self.directives = []
         self.statements = []
+        self.subworkflow = None
         # is it global section?
         self.is_global = is_global
         # is it the parameters section?
@@ -527,6 +528,10 @@ class SoS_Step:
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
         if signature and env.run_mode == 'run':
             signature.write()
+        #
+        # if there is subworkflow
+        if self.subworkflow:
+            self.subworkflow.run(sub=True)
 
     def __repr__(self):
         result = ''
@@ -577,9 +582,10 @@ class SoS_Workflow:
                 # section parameters is shared by all workflows
                 self.parameters_section = section
                 continue
-            for name, index in section.names:
-                if index is None:
+            for name, index, subworkflow in section.names:
+                if 'target' in section.options:
                     self.auxillary_sections.append(copy.deepcopy(section))
+                    continue
                 elif '*' in name:
                     # check if name match. There should be no special character in section name
                     # so no worry about invalid regular expression
@@ -588,13 +594,22 @@ class SoS_Workflow:
                         self.sections.append(copy.deepcopy(section))
                         self.sections[-1].name = workflow_name
                         self.sections[-1].index = int(index)
+                        self.sections[-1].subworkflow = copy.deepcopy(subworkflow)
                 elif name == workflow_name:
                     self.sections.append(copy.deepcopy(section))
                     self.sections[-1].name = workflow_name
-                    self.sections[-1].index = int(index)
+                    self.sections[-1].index = None if index is None else int(index)
+                    self.sections[-1].subworkflow = copy.deepcopy(subworkflow)
         #
-        # sort sections by index
-        self.sections.sort(key=lambda x: x.index)
+        if any(x.index is None for x in self.sections):
+            if len(self.sections) > 1:
+                raise RuntimeError('A workflow cannot have both indexed and unindexed steps: {}'
+                    .format(','.join('{}_{}'.format(x.name, x.index) for x in self.sections)))
+            else:
+                self.sections[0].index = 0
+        else:
+            # sort sections by index
+            self.sections.sort(key=lambda x: x.index)
         #
         if allowed_steps:
             all_steps = {x.index:False for x in self.sections}
@@ -625,7 +640,7 @@ class SoS_Workflow:
             self.sections = [x for x in self.sections if all_steps[x.index]]
 
     def extend(self, workflow):
-        '''Extend another workflow to existing one, essentailly creating a nested workflow.'''
+        '''Extend another workflow to existing one, essentailly creating a concatennated workflow.'''
         self.sections.extend(workflow.sections)
 
     def _parse_error(self, msg):
@@ -695,17 +710,19 @@ class SoS_Workflow:
         if self.global_section:
             self.global_section.run()
 
-    def run(self, args=[]):
+    def run(self, args=[], sub=False):
         '''Very preliminary implementation of sequential execution function
         '''
-        # process global variables
-        self.prepareVars()
-        # process parameter section
-        if self.parameters_section:
-            self.parse_args(args)
-        elif args:
-            raise ArgumentError('Unrecognized command line argument {}'.format(' '.join(args)))
-        #
+        if not sub:
+            # process global variables
+            self.prepareVars()
+            # process parameter section
+            if self.parameters_section:
+                self.parse_args(args)
+            elif args:
+                raise ArgumentError('Unrecognized command line argument {}'.format(' '.join(args)))
+        else:
+            env.locals['_step'].output = env.locals['_step'].input
         # process step of the pipeline
         # There is no input initially
         for section in self.sections:
@@ -766,7 +783,7 @@ class SoS_Script:
     # Regular expressions for parsing section headers and options
     _SECTION_HEADER_TMPL = r'''
         ^\[\s*                             # [
-        (?P<section_name>[\d\w_,*\s]+)     # digit, alphabet, _ and ,
+        (?P<section_name>[\d\w_,+=*\s]+)   # digit, alphabet, _ and ,
         (:\s*                              # :
         (?P<section_option>.*)             # section options
         )?                                 # optional
@@ -783,6 +800,10 @@ class SoS_Script:
         (?(name)                           # if there is name
         (_(?P<index>\d+))?                 #   optional _index
         |(?P<default_index>\d+))           # no name, then index
+        (\s*=\s*
+        (?P<subworkflow>                   # = subworkflow
+        [\w\d_+]+                          # subworkflow specification
+        ))?                                # optional
         \s*$
         '''
 
@@ -858,9 +879,10 @@ class SoS_Script:
         # workflows in this script, from sections that are not skipped.
         section_steps = sum([x.names for x in self.sections if not \
             ('skip' in x.options and \
-                (x.options['skip'] is None or x.options['skip']))], [])
+                (x.options['skip'] is None or x.options['skip'])) \
+            and not ('target' in x.options)], [])
         # (name, None) is auxiliary steps
-        self.workflows = list(set([x[0] for x in section_steps if x[1] is not None and '*' not in x[0]]))
+        self.workflows = list(set([x[0] for x in section_steps if '*' not in x[0]]))
         if not self.workflows:
             self.workflows = ['default']
         #
@@ -880,7 +902,6 @@ class SoS_Script:
                 self.workflow_descriptions[cur_description] += '\n'.join(lines[1:] if lines[0].strip() == cur_description else lines) + '\n'
             else:
                 self.description += block + '\n'
-
         for section in self.sections:
             lines = [x for x in section.back_comment.split('\n') if x.strip()]
             for name in self.workflows:
@@ -975,13 +996,13 @@ class SoS_Script:
                 for name in section_name.split(','):
                     mo = self.SECTION_NAME.match(name)
                     if mo:
-                        n, i, di = mo.group('name', 'index', 'default_index')
+                        n, i, di, s = mo.group('name', 'index', 'default_index', 'subworkflow')
                         if n:
                             if i is None and '*' in n:
-                                parsing_errors.append(lineno, line, 'Auxillary section name cannot contain wildcard character (*).')
-                            step_names.append((n, i))
+                                parsing_errors.append(lineno, line, 'Unindexed section name cannot contain wildcard character (*).')
+                            step_names.append((n, i, s))
                         if di:
-                            step_names.append(('default', di))
+                            step_names.append(('default', di, s))
                     else:
                         parsing_errors.append(lineno, line, 'Invalid section name')
                 if section_option is not None:
@@ -1113,25 +1134,26 @@ class SoS_Script:
             raise parsing_errors
 
 
-    def workflow(self, wf_name=None):
+    def workflow(self, workflow_name=None):
         '''Return a workflow with name:step specified in wf_name'''
         allowed_steps = None
-        if not wf_name:
+        if not workflow_name:
             wf_name = ''
         else:
-            if '+' in wf_name:
-                combined_wf = None
-                for wf in wf_name.split('+'):
+            if '+' in workflow_name:
+                wfs = []
+                for wf in workflow_name.split('+'):
                     if not wf:
                         raise ValueError('Incorrect workflow name {}'.format(wf_name))
-                    subworkflow = self.workflow(wf)
-                    if combined_wf is None:
-                        combined_wf = subworkflow
-                    else:
-                        combined_wf.extend(subworkflow)
+                    wfs.append(self.workflow(wf))
+                combined_wf = wfs[0]
+                for wf in wfs[1:]:
+                    combined_wf.extend(wf)
                 return combined_wf
-            if ':' in wf_name:
-                wf_name, allowed_steps = wf_name.split(':', 1)
+            if ':' in workflow_name:
+                wf_name, allowed_steps = workflow_name.split(':', 1)
+            else:
+                wf_name = workflow_name
         if not wf_name:
             if len(self.workflows) == 1:
                 wf_name = list(self.workflows)[0]
@@ -1145,6 +1167,11 @@ class SoS_Script:
             raise ValueError('Workflow {} is undefined. Available workflows are: {}'.format(wf_name,
                 ', '.join(self.workflows)))
         #
+        for section in self.sections:
+            # expand subworkflow if needed
+            for i in range(len(section.names)):
+                if section.names[i][2] and section.names[i][2] != workflow_name and workflow_name not in section.names[i][2].split('+'):
+                    section.names[i] = (section.names[i][0], section.names[i][1], self.workflow(section.names[i][2]))
         return SoS_Workflow(wf_name, allowed_steps, self.sections, self.workflow_descriptions[wf_name])
 
     def __repr__(self):
