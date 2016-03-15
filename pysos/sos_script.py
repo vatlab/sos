@@ -803,7 +803,7 @@ class SoS_Workflow:
 class SoS_Script:
     _DIRECTIVES = ['input', 'output', 'depends', 'runtime']
     _SECTION_OPTIONS = ['alias', 'nonconcurrent',
-        'skip', 'blocking', 'sigil', 'target']
+        'skip', 'blocking', 'sigil', 'target', 'source']
     _PARAMETERS_SECTION_NAME = 'parameters'
 
     # Regular expressions for parsing section headers and options
@@ -839,7 +839,7 @@ class SoS_Script:
         [a-zA-Z*]                          # cannot start with _ etc
         ([\w\d_]*?))                       # can have _ and digit
         (_(?P<steps>                       # index start from _
-        [\d,-]+))?                         # with , and - and digit
+        [\d\s-]+))?                        # with - and digit
         \s*$                               # end
         '''
 
@@ -1044,6 +1044,7 @@ class SoS_Script:
                     else:
                         parsing_errors.append(lineno, line, 'Invalid section name')
                 if section_option is not None:
+                    # this does not work for list parameter
                     for option in section_option.split(','):
                         mo = self.SECTION_OPTION.match(option)
                         if mo:
