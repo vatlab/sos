@@ -500,7 +500,7 @@ executed.append(_step.name)
         self.assertEqual(env.locals['executed'], ['a_1', 'a_2', 'a_3', 'a_4', 'b_1', 'b_2', 'b_3', 'b_4'])
         self.assertEqual(env.locals['a'], 1)
         #
-        wf = script.workflow('a_1,2,4+b_3-')
+        wf = script.workflow('a_ 1 + a_2 + a_4 + b_3-')
         wf.run()
         self.assertEqual(env.locals['executed'], ['a_1', 'a_2', 'a_4', 'b_3', 'b_4'])
         #
@@ -651,6 +651,68 @@ executed.append(_step.name)
         wf.run()
         self.assertEqual(env.locals['executed'], ['c_0', 'c_1', 'a_1', 'a_2', 'a_3',
             'b_1', 'b_2', 'a_1', 'a_2'])
+        #
+        #
+        # nested subworkflow with step option and others
+        script = SoS_Script('''
+executed = []
+[a_1]
+executed.append(_step.name)
+[a_2]
+executed.append(_step.name)
+[a_3]
+executed.append(_step.name)
+[b=a_3+a_1, d=a_2, e2_2]
+input: 'a.txt', 'b.txt', group_by='single'
+executed.append(_step.name)
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow('b')
+        wf.run()
+        self.assertEqual(env.locals['executed'], ['b_0', 'a_3', 'a_1', 'b_0', 'a_3', 'a_1'])
+        wf = script.workflow('d')
+        wf.run()
+        self.assertEqual(env.locals['executed'], ['d_0', 'a_2', 'd_0', 'a_2'])
+        wf = script.workflow('e2')
+        wf.run()
+        self.assertEqual(env.locals['executed'], ['e2_2', 'e2_2'])
+
+    def testSourceOption(self):
+        '''Test the source section option'''
+        # nested subworkflow with step option and others
+        with open('temp/test.sos', 'w') as sos:
+            sos.write('''
+# test sos script
+
+# global definition
+GLB = 5
+
+[parameters]
+parB = 10
+
+[A_1]
+output: _input + 'a1'
+
+[A_2]
+output: _input + 'a2'
+
+''')
+        script = SoS_Script('''
+executed = []
+[b_1=A : source=['temp/test.sos', 'temp/test.sos'], skip=False]
+input: 'a.txt', 'b.txt', group_by='single'
+executed.append(_step.name)
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow('b')
+        print(wf)
+        wf.run()
+        self.assertEqual(env.locals['GLB'], 5)
+        self.assertEqual(env.locals['parB'], 5)
+        self.assertEqual(env.locals['executed'], [])
+        #
+        os.remove('temp/test.sos')
+
 
 if __name__ == '__main__':
     unittest.main()

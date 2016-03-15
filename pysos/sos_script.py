@@ -546,8 +546,8 @@ class SoS_Step:
         elif self.is_parameters:
             result += '[parameters]\n'
         else:
-            result += '[{}:{}]'.format(','.join('{}_{}'.format(x,y) if y else x for x,y in self.names),
-                ','.join('{}={}'.format(x,y) for x,y in self.options))
+            result += '[{}:{}]'.format(','.join('{}_{}'.format(x,y) if y else x for x,y,z in self.names),
+                ','.join('{}={}'.format(x,y) for x,y in self.options.items()))
         result += self.comment + '\n'
         for key, value, comment in self.parameters:
             # FIXME: proper line wrap
@@ -560,6 +560,8 @@ class SoS_Step:
         for line in self.statements:
             result += line
         result += '\n'
+        if self.subworkflow:
+            result += str(self.subworkflow)
         return result
 
 
@@ -1044,8 +1046,38 @@ class SoS_Script:
                     else:
                         parsing_errors.append(lineno, line, 'Invalid section name')
                 if section_option is not None:
-                    # this does not work for list parameter
-                    for option in section_option.split(','):
+                    # this does not work directly because list parameter can have ,
+                    # without having to really evaluate all complex expressions, we
+                    # have to try to put syntax correctly pieces together.
+                    pieces = section_option.split(',')
+                    idx = 0
+                    while True:
+                        try:
+                            # test current group
+                            compile(pieces[idx].strip(), filename = '<string>', mode='exec' if '=' in pieces[idx] else 'eval')
+                            # if it is ok, go next
+                            idx += 1
+                            if idx == len(pieces):
+                                break
+                        except Exception as e:
+                            # error happens merge the next piece
+                            if idx < len(pieces) - 1:
+                                pieces[idx] += ',' + pieces[idx + 1]
+                                # error happens merge the next piece
+                                pieces.pop(idx + 1)
+                            else:
+                                # if no next group, expand previously correct one
+                                if idx == 0:
+                                    parsing_errors.append(lineno, line, 'Invalid section option')
+                                    break
+                                # break myself again
+                                pieces = pieces[: idx] + pieces[idx].split(',') + pieces[idx+1:]
+                                # go back
+                                idx -= 1
+                                pieces[idx] += '\n' + pieces[idx + 1]
+                                pieces.pop(idx+1)
+                    #
+                    for option in pieces:
                         mo = self.SECTION_OPTION.match(option)
                         if mo:
                             opt_name, opt_value = mo.group('name', 'value')
@@ -1062,6 +1094,11 @@ class SoS_Script:
                                     opt_value[-1] in (' ', "'") or \
                                     opt_value.split(' ')[0] == opt_value.split(' ')[1]:
                                     parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(opt_value))
+                            if opt_name == 'source':
+                                opt_value = [opt_value] if isinstance(opt_value, basestring) else opt_value
+                                for sos_file in opt_value:
+                                    if not os.path.isfile(sos_file):
+                                        env.logger.warning('Source file for nested workflow {} does not exist'.format(sos_file))
                             if opt_name in step_options:
                                 parsing_errors.append(lineno, line, 'Duplicate options')
                             step_options[opt_name] = opt_value
@@ -1173,7 +1210,7 @@ class SoS_Script:
             raise parsing_errors
 
 
-    def workflow(self, workflow_name=None, nested=False):
+    def workflow(self, workflow_name=None, nested=False, extra_sections=[]):
         '''Return a workflow with name:step specified in wf_name
         If the workflow is a nested workflow, ignore parameters section.
         '''
@@ -1196,6 +1233,15 @@ class SoS_Script:
             if not mo:
                 raise ValueError('Incorrect workflow name {}'.format(workflow_name))
             wf_name, allowed_steps = mo.group('name', 'steps')
+        # get workflow name from extra_sections
+        extra_section_steps = sum([x.names for x in extra_sections if not \
+            ('skip' in x.options and \
+                (x.options['skip'] is None or x.options['skip'])) \
+            and not ('target' in x.options)], [])
+        extra_workflows = list(set([x[0] for x in extra_section_steps if '*' not in x[0]]))
+        if extra_sections:
+            env.logger.debug('Workflows {} imported'.format(', '.join(extra_workflows)))
+        #
         if not wf_name:
             if len(self.workflows) == 1:
                 wf_name = list(self.workflows)[0]
@@ -1205,10 +1251,10 @@ class SoS_Script:
                 raise ValueError('Name of workflow should be specified because '
                     'the script defines more than one pipelines without a default one. '
                     'Available pipelines are: {}.'.format(', '.join(self.workflows)))
-        elif wf_name not in self.workflows:
+        elif wf_name not in self.workflows + extra_workflows:
             raise ValueError('Workflow {} is undefined. Available workflows are: {}'.format(wf_name,
                 ', '.join(self.workflows)))
-        #
+        # do not send extra parameters of ...
         sections = []
         # look for relevant sections in self.sections
         for section in self.sections:
@@ -1216,7 +1262,7 @@ class SoS_Script:
             if 'skip' in section.options and (section.options['skip'] is None or section.options['skip']):
                 continue
             # nested section do not have parameters section
-            if nested and section.is_parameters:
+            if nested and (section.is_parameters or section.is_global):
                 continue
             if section.is_global or section.is_parameters or 'target' in section.options:
                 # section global is shared by all workflows
@@ -1224,6 +1270,15 @@ class SoS_Script:
                 continue
             for name, index, subworkflow in section.names:
                 if fnmatch.fnmatch(wf_name, name):
+                    #
+                    # if there is an source option, ...
+                    extra_sections = []
+                    if 'source' in section.options:
+                        for sos_file in section.options['source']:
+                            if not os.path.isfile(sos_file):
+                                raise RuntimeError('Source file for nested workflow {} does not exist'.format(sos_file))
+                            script = SoS_Script(filename=sos_file)
+                            extra_sections.extend(script.sections)
                     # expand subworkflow if needed
                     for i in range(len(section.names)):
                         if section.names[i][2] and isinstance(section.names[i][2], basestring):
@@ -1241,10 +1296,11 @@ class SoS_Script:
                             else:
                                 env.logger.debug('Expanding subworkflow {}'.format(section.names[i][2]))
                                 section.names[i] = (section.names[i][0], section.names[i][1], 
-                                    self.workflow(section.names[i][2]))
+                                    self.workflow(section.names[i][2], nested=True, extra_sections=extra_sections))
                     # now copy the step over
                     sections.append(section)
                     break
+        sections.extend(x for x in extra_sections if x.is_parameters)
         return SoS_Workflow(wf_name, allowed_steps, sections, self.workflow_descriptions[wf_name])
 
     def __repr__(self):
