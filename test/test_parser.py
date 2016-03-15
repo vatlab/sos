@@ -569,6 +569,85 @@ executed.append(_step.name)
         wf.run()
         self.assertEqual(env.locals['executed'], ['c_0', 'a_1', 'a_2', 'c_0', 'a_1', 'a_2'])
         self.assertEqual(env.locals['inputs'], [['a.txt'], ['a.txt'], ['a.txt.a1'], ['b.txt'], ['b.txt'], ['b.txt.a1']])
+        #
+        # allow specifying a single step
+        # step will be looped
+        env.verbosity=4
+        script = SoS_Script('''
+executed = []
+[a_1]
+executed.append(_step.name)
+[a_2]
+executed.append(_step.name)
+[c_0]
+executed.append(_step.name)
+[c_1=a_2]
+input: 'a.txt', 'b.txt', group_by='single'
+executed.append(_step.name)
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow('c')
+        wf.run()
+        self.assertEqual(env.locals['executed'], ['c_0', 'c_1', 'a_2', 'c_1', 'a_2'])
+        # allow specifying a single step
+        # step will be looped
+        script = SoS_Script('''
+executed = []
+[a_1]
+executed.append(_step.name)
+[a_2]
+executed.append(_step.name)
+[c_0]
+executed.append(_step.name)
+[c_1=a_2]
+input: 'a.txt', 'b.txt', group_by='single'
+executed.append(_step.name)
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow('c')
+        wf.run()
+        self.assertEqual(env.locals['executed'], ['c_0', 'c_1', 'a_2', 'c_1', 'a_2'])
+        #
+        # recursive subworkflow not allowed
+        script = SoS_Script('''
+executed = []
+[a_1]
+executed.append(_step.name)
+[a_2]
+executed.append(_step.name)
+[c_0]
+executed.append(_step.name)
+[c_1=a_2+c]
+input: 'a.txt', 'b.txt', group_by='single'
+executed.append(_step.name)
+''')
+        env.run_mode = 'dryrun'
+        self.assertRaises(RuntimeError, script.workflow, 'c')
+        #
+        # nested subworkflow is allowed
+        script = SoS_Script('''
+executed = []
+[a_1]
+executed.append(_step.name)
+[a_2]
+executed.append(_step.name)
+[a_3]
+executed.append(_step.name)
+[b_1]
+executed.append(_step.name)
+[b_2=a_1+a_2]
+executed.append(_step.name)
+[c_0]
+executed.append(_step.name)
+[c_1=a+b]
+input: 'a.txt'
+executed.append(_step.name)
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow('c')
+        wf.run()
+        self.assertEqual(env.locals['executed'], ['c_0', 'c_1', 'a_1', 'a_2', 'a_3',
+            'b_1', 'b_2', 'a_1', 'a_2'])
 
 if __name__ == '__main__':
     unittest.main()

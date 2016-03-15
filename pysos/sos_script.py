@@ -644,6 +644,9 @@ class SoS_Workflow:
                     raise ValueError('Invalid pipeline step item {}'.format(item))
             # keep only selected steps
             self.sections = [x for x in self.sections if all_steps[x.index]]
+        for section in self.sections:
+            if section.subworkflow is not None and isinstance(section.subworkflow, basestring):
+                raise RuntimeError('Subworkflow {} not executable most likely because of recursice expansion.'.format(section.subworkflow))
 
     def extend(self, workflow):
         '''Extend another workflow to existing one, essentailly creating a concatennated workflow.'''
@@ -1165,8 +1168,13 @@ class SoS_Script:
                 for wf in wfs[1:]:
                     combined_wf.extend(wf)
                 return combined_wf
+            # workflow:15,-10 etc
             if ':' in workflow_name:
                 wf_name, allowed_steps = workflow_name.split(':', 1)
+            # else if a single step (workflow_15)
+            elif '_' in workflow_name and workflow_name.rsplit('_', 1)[-1].isdigit():
+                wf_name, allowed_steps = workflow_name.rsplit('_', 1)
+                env.logger.error('HERE {} {}'.format(wf_name, allowed_steps))
             else:
                 wf_name = workflow_name
         if not wf_name:
@@ -1185,10 +1193,21 @@ class SoS_Script:
         for section in self.sections:
             # expand subworkflow if needed
             for i in range(len(section.names)):
-                # FIXME: this is a very crube way to avoid indefinite loop. Need some thought on
-                # better implementation.
-                if section.names[i][2] and section.names[i][2] != workflow_name and workflow_name not in section.names[i][2].split('+'):
-                    section.names[i] = (section.names[i][0], section.names[i][1], self.workflow(section.names[i][2]))
+                if section.names[i][2] and isinstance(section.names[i][2], basestring):
+                    # need to expand the workflow, but it is possible that it is nested ...
+                    # so let us figure out what workflows we are expanding
+                    expanded = []
+                    for tmp in section.names[i][2].split('+'):
+                        if ':' in tmp:
+                            tmp = tmp.split(':')[0]
+                        if '_' in tmp and tmp.rsplit('_')[-1].isdigit():
+                            tmp = tmp.rsplit('_')[0]
+                        expanded.append(tmp)
+                    if wf_name in expanded:
+                        env.logger.debug('NOT expanding {} because of potential loop'.format(section.names[i][2]))
+                    else:
+                        env.logger.debug('Expanding subworkflow {}'.format(section.names[i][2]))
+                        section.names[i] = (section.names[i][0], section.names[i][1], self.workflow(section.names[i][2]))
         return SoS_Workflow(wf_name, allowed_steps, self.sections, self.workflow_descriptions[wf_name])
 
     def __repr__(self):
