@@ -470,8 +470,8 @@ b = A()()
     def testCombinedWorkflow(self):
         '''Test the creation and execution of combined workfow'''
         script = SoS_Script('''
-executed = []
 a = 0
+executed.append('global')
 [parameters]
 a = a + 1
 [a_1]
@@ -495,19 +495,21 @@ executed.append(_step.name)
 [d]
 executed.append(_step.name)
 ''')
+        env.locals['executed'] = []
         wf = script.workflow('a+b')
-        env.verbosity = 4
         wf.run()
-        self.assertEqual(env.locals['executed'], ['a_1', 'a_2', 'a_3', 'a_4', 'b_1', 'b_2', 'b_3', 'b_4'])
+        self.assertEqual(env.locals['executed'], ['global', 'a_1', 'a_2', 'a_3', 'a_4', 'global', 'b_1', 'b_2', 'b_3', 'b_4'])
         self.assertEqual(env.locals['a'], 1)
         #
-        wf = script.workflow('a_ 1 + a_2 + a_4 + b_3-')
+        env.locals['executed'] = []
+        wf = script.workflow('a_ 1-2 + a_4 + b_3-')
         wf.run()
-        self.assertEqual(env.locals['executed'], ['a_1', 'a_2', 'a_4', 'b_3', 'b_4'])
+        self.assertEqual(env.locals['executed'], ['global', 'a_1', 'a_2', 'global', 'a_4', 'global', 'b_3', 'b_4'])
         #
+        env.locals['executed'] = []
         wf = script.workflow('a+c+d')
         wf.run()
-        self.assertEqual(env.locals['executed'], ['a_1', 'a_2', 'a_3', 'a_4', 'c_0', 'd_0'])
+        self.assertEqual(env.locals['executed'], ['global', 'a_1', 'a_2', 'a_3', 'a_4', 'global', 'c_0', 'global', 'd_0'])
 
     def testNestedWorkflow(self):
         '''Test the creation and execution of combined workfow'''

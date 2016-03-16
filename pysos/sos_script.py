@@ -638,9 +638,9 @@ class SoS_Workflow:
             if section.subworkflow is not None and isinstance(section.subworkflow, basestring):
                 raise RuntimeError('Subworkflow {} not executable most likely because of recursice expansion.'.format(section.subworkflow))
         #
-        self.logger.debug('Workflow {} created with {} global, {} parameter, and {} regular sections'
-            .format(wf_name, int(self.global_section is not None),
-            int(self.parameters_section is not 
+        env.logger.debug('Workflow {} created with {} global, {} parameter, and {} regular sections'
+            .format(workflow_name, int(self.global_section is not None),
+            int(self.parameters_section is not None), len(self.sections)))
 
     def extend(self, workflow):
         '''Extend another workflow to existing one, essentailly creating a concatennated workflow.'''
@@ -708,7 +708,10 @@ class SoS_Workflow:
     def prepareVars(self):
         '''Prepare global variables '''
         env.globals = globals()
-        env.locals = WorkflowDict()
+        # Because this workflow might belong to a combined workflow, we do not clear
+        # locals before the execution of workflow.
+        if not hasattr(env, 'locals'):
+            env.locals = WorkflowDict()
         # initial values
         try:
             env.locals['HOME'] = os.environ['HOME']
@@ -729,8 +732,7 @@ class SoS_Workflow:
         '''Very preliminary implementation of sequential execution function
         '''
         if sub:
-            # if this is a subworkflow, we do not execute global
-            # and parameter section and we use _input as input of 
+            # if this is a subworkflow, we use _input as step input
             # the workflow
             env.locals['_step'].input = env.locals['_input']
         else:
@@ -741,7 +743,8 @@ class SoS_Workflow:
                 self.parse_args(args)
             elif args:
                 raise ArgumentError('Unrecognized command line argument {}'.format(' '.join(args)))
-        # process step of the pipeline
+        # process step of the pipelinp
+        #
         # There is no input initially
         for idx, section in enumerate(self.sections):
             #
