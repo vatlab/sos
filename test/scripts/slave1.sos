@@ -1,0 +1,38 @@
+#!/usr/bin/env sos-runner
+#fileformat=SOS1.0
+
+
+# This is a master sos script that is used to test the source step
+# parameter used to include workflows from other sos scripts.
+#
+
+# we use executed to track the executed steps but this variable might be
+# already defined if it is in a nested script.
+if 'executed' in locals() or 'executed' in globals():
+	executed.append('nested global/slave1')
+else:
+	execute = ['global/slave1']
+
+[parameters]
+# paramter
+slave1_a = 'a'
+slave2_b = 'b'
+# this is a trick parameter to record if the parameter section is defined
+temp = execute.append('parameter/slave1')
+
+
+[S1_1]
+# 1st step of S1
+executed.append(_step.name)
+
+[S1_2]
+# 2nd step of S1
+executed.append(_step.name)
+
+[S1_3]
+# 3rd step of S1
+executed.append(_step.name)
+
+[S1_4]
+# 4th step of S1
+executed.append(_step.name)

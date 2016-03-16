@@ -47,13 +47,12 @@ if __name__ == '__main__':
         help='Execute a SoS script')
     parser.add_argument('script', metavar='SCRIPT',
         help='A SoS script that defines one or more workflows.')
-    parser.add_argument('workflow', metavar='WORKFLOW:STEPS', nargs='?',
+    parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help='''Name of the workflow to execute. This option can be ignored if
             the script defines a default workflow (with no name or with name
-            `default`) or defines only a single workflow. A comma separated
-            list of steps (`n` for step `n`, `-n` for up to `n`, `n-` for `n`
-            and later, `n-m` for `n` to `m`) can be appended to workflow name
-            (separated by `:`) to list steps of workflow to execute. ''')
+            `default`) or defines only a single workflow. A subworkflow or
+            a combined workflow can be specified. Please refer to the SoS
+            documentation for how to specify such workflows.''')
     parser.add_argument('-d', action='store_true', dest='__dryrun__',
         help='''Execute the workflow in dryrun mode. SoS executes the
             specified workflow one by one, evaluate all expressions and
@@ -78,8 +77,9 @@ if __name__ == '__main__':
     parser.add_argument('script', metavar='SCRIPT',
         help='A SoS script')
 
-    parser.add_argument('workflow', metavar='WORKFLOW:STEPS', nargs='?',
-        help='Name of the workflow to execute')
+    parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
+        help='''Name of the workflow to execute where workflow can be a single
+            workflow, a subworkflow or a combined workflow.''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_show)
 ##     #

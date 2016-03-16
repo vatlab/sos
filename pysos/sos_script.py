@@ -647,6 +647,7 @@ class SoS_Workflow:
                 self.sections[-1].index = -2 if section.is_global else -1
                 # parameters and global section will not have subworkflow
                 self.sections[-1].subworkflow = None
+                continue
             for name, index, subworkflow in section.names:
                 if 'target' in section.options:
                     self.auxillary_sections.append(section)
@@ -662,7 +663,6 @@ class SoS_Workflow:
         # disable some disallowed steps
         if allowed_steps:
             all_steps = {x.index:False for x in self.sections if x.index >= 0}
-            env.logger.error(all_steps)
             #
             for item in allowed_steps.split(','):
                 # remove space
@@ -693,11 +693,12 @@ class SoS_Workflow:
             if section.subworkflow is not None and isinstance(section.subworkflow, basestring):
                 raise RuntimeError('Subworkflow {} not executable most likely because of recursice expansion.'.format(section.subworkflow))
         #
-        env.logger.debug('Workflow {} created with {} sections'
-            .format(workflow_name, len(self.sections)))
+        env.logger.debug('Workflow {} created with {} sections: {}'
+            .format(workflow_name, len(self.sections),
+            ', '.join('{}_{}'.format(section.name, section.index) for section in self.sections)))
 
     def extend(self, workflow):
-        '''Extend another workflow to existing one, essentailly creating a concatennated workflow.'''
+        '''Append another workflow to existing one to created a combined workflow'''
         # all sections are simply appended ...
         self.sections.extend(workflow.sections)
 
@@ -760,7 +761,7 @@ class SoS_Workflow:
             else:
                 # use initial values
                 start = False
-                #
+            #
             section.run()
 
     def show(self, indent = 0):
@@ -782,17 +783,17 @@ class SoS_Workflow:
         for step in self.sections:
             if step.is_parameters:
                 print('\n{}Parameters:'.format(' '*indent))
-                for k,v,c in self.parameters_section.parameters:
+                for k,v,c in step.parameters:
                     #
                     text = '{:<20}'.format(k) + (c + ' ' if c else '') + \
                         ('(default: {})'.format(v) if v else '')
                     print('\n'.join(
                         textwrap.wrap(text, 
-                        initial_indent=' '*indent,
+                        initial_indent=' '*(2 + indent),
                         subsequent_indent=' '*(22 + indent),
                         width=textWidth)
                         ))
-            else:
+            elif step.index >= 0:
                 # hide a step if there is no comment
                 text = '{:<20}'.format('{}_{}:'.format(step.name, step.index)) + step.comment
                 print('\n'.join(
@@ -813,7 +814,7 @@ class SoS_Script:
     # Regular expressions for parsing section headers and options
     _SECTION_HEADER_TMPL = r'''
         ^\[\s*                             # [
-        (?P<section_name>[\d\w_,+=*\s]+)   # digit, alphabet, _ and ,
+        (?P<section_name>[\d\w_,+=*\s-]+)  # digit, alphabet, _ and ,
         (:\s*                              # :
         (?P<section_option>.*)             # section options
         )?                                 # optional
@@ -832,7 +833,7 @@ class SoS_Script:
         |(?P<default_index>\d+))           # no name, then index
         (\s*=\s*
         (?P<subworkflow>                   # = subworkflow
-        [\w\d_+]+                          # subworkflow specification
+        [\w\d_+\s-]+                       # subworkflow specification
         ))?                                # optional
         \s*$
         '''
@@ -919,14 +920,20 @@ class SoS_Script:
                     self._read(fp, '<string>')
         #
         # workflows in this script, from sections that are not skipped.
-        section_steps = sum([x.names for x in self.sections if not \
-            ('skip' in x.options and \
-                (x.options['skip'] is None or x.options['skip'])) \
-            and not ('target' in x.options)], [])
+        section_steps = sum([x.names for x in self.sections if \
+            not (x.is_global or x.is_parameters) or \
+            ('skip' in x.options and (x.options['skip'] is None or x.options['skip'])) and \
+            not ('target' in x.options)], [])
         # (name, None) is auxiliary steps
         self.workflows = list(set([x[0] for x in section_steps if '*' not in x[0]]))
         if not self.workflows:
             self.workflows = ['default']
+        #
+        # now we need to record the workflows to the global and parameters section so 
+        # that we know if which has to be included when a subworkflow is used.
+        for section in self.sections:
+            if section.is_global or section.is_parameters:
+                section.names = self.workflows
         #
         # get script descriptions
         cur_description = None
@@ -1027,7 +1034,7 @@ class SoS_Script:
                 # check previous expression before a new assignment
                 if cursect:
                     if not cursect.isValid():
-                        parsing_errors.append(cursect.lineno, ''.join(cursect.values), 'Invalid ' + cursect.category)
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category)
                     cursect.category = None
                     cursect.values = []
                 # start a new section
@@ -1106,6 +1113,8 @@ class SoS_Script:
                             step_options[opt_name] = opt_value
                         else:
                             parsing_errors.append(lineno, line, 'Invalid section option')
+                    env.logger.trace('Header parsed with names {} and options {}'
+                        .format(step_names, step_options))
                 for name in step_names:
                     prev_workflows = [x[0] for x in all_step_names if '*' not in x[0]]
                     for prev_name in all_step_names:
@@ -1139,7 +1148,7 @@ class SoS_Script:
                     cursect = self.sections[-1]
                 # check previous expression before a new assignment
                 if not cursect.isValid():
-                    parsing_errors.append(cursect.lineno, ''.join(cursect.values), 'Invalid ' + cursect.category)
+                    parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category)
                     continue
                 cursect.values = []
                 #
@@ -1168,7 +1177,7 @@ class SoS_Script:
                 # check previous expression before a new directive
                 if cursect:
                     if not cursect.isValid():
-                        parsing_errors.append(cursect.lineno, ''.join(cursect.values), 'Invalid ' + cursect.category)
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category)
                     cursect.values = []
                 #
                 directive_name = mo.group('directive_name')
@@ -1205,7 +1214,7 @@ class SoS_Script:
         #
         # check the last expression before a new directive
         if cursect and not cursect.isValid():
-            parsing_errors.append(cursect.lineno, ''.join(cursect.values), 'Invalid ' + cursect.category)
+            parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category)
         #
         # if there is any parsing error, raise an exception
         if parsing_errors.errors:
@@ -1227,7 +1236,7 @@ class SoS_Script:
                 for wf in workflow_name.split('+'):
                     if not self.SUBWORKFLOW.match(wf):
                         raise ValueError('Incorrect workflow name {}'.format(workflow_name))
-                    # if this is a nested workflow, extra_section might be specied.
+                    # if this is a combined workflow, extra_section might be specied.
                     wfs.append(self.workflow(wf, extra_sections))
                 combined_wf = wfs[0]
                 for wf in wfs[1:]:
@@ -1262,18 +1271,23 @@ class SoS_Script:
                 ', '.join(self.workflows + extra_workflows)))
         # do not send extra parameters of ...
         sections = []
-        # look for relevant sections in self.sections
+        # look for relevant sections in self.sections and extra sections from another script
         for section in self.sections + extra_sections:
             # skip, skip=True, skip=1 etc are all allowed.
             if 'skip' in section.options and (section.options['skip'] is None or section.options['skip']):
                 continue
-            if section.is_global or section.is_parameters or 'target' in section.options:
+            if section.is_global or section.is_parameters:
+                # include global or parameter only if they apply to wf_name
+                if wf_name in section.names:
+                    sections.append(section)
+                continue
+            if 'target' in section.options:
                 # section global is shared by all workflows
                 sections.append(section)
                 continue
             for name, index, subworkflow in section.names:
+                # exact match or filename like match if name contains * etc
                 if fnmatch.fnmatch(wf_name, name):
-                    #
                     # if there is an source option, ...
                     imported_sections = []
                     if 'source' in section.options:
@@ -1317,7 +1331,7 @@ class SoS_Script:
         #
         text = 'Available workflows: {}'.format(', '.join(sorted(self.workflows)))
         print('\n' + '\n'.join(textwrap.wrap(text, width=textWidth, subsequent_indent=' '*8)))
-        print('\nUse command\n    sos show workflow_name\nto display details of specific workflow.')
+        print('\nUse command "sos show script workflow_name" to display details of specific workflow.')
 
 #
 # subcommmand show
@@ -1346,7 +1360,7 @@ def print_traceback():
 
 def sos_show(args, argv):
     try:
-        script = SoS_Script(filename=args.script, args=argv)
+        script = SoS_Script(filename=args.script)
         # do not parse args
         if args.workflow:
             workflow = script.workflow(args.workflow)
