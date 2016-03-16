@@ -76,7 +76,7 @@ output: dest
 
 run(''' cp ${_input} ${_dest} ''')
 """)
-        wf = script.workflow('default:0')
+        wf = script.workflow('default_0')
         wf.run()
         # not the default value of 1.0
         self.assertTrue(os.path.isfile('temp/a.txt'))

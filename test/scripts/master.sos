@@ -11,14 +11,14 @@
 if 'executed' in locals() or 'executed' in globals():
 	executed.append('nested global/master')
 else:
-	execute = ['global/master']
+	executed = ['global/master']
 
 [parameters]
 # paramter
 master_a = 'a'
 master_b = 'b'
 # this is a trick parameter to record if the parameter section is defined
-temp = execute.append('parameter/master')
+temp = executed.append('parameter/master')
 
 
 [L_1]
@@ -50,4 +50,6 @@ executed.append(_step.name)
 [M3 = S1_-2 + S2_1 : source=['slave1.sos', 'slave2.sos']]
 executed.append(_step.name)
 
-
+[M3_1]
+executed.append(_step.name)
+print(executed)

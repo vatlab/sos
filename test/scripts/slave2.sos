@@ -11,14 +11,14 @@
 if 'executed' in locals() or 'executed' in globals():
 	executed.append('nested global/slave2')
 else:
-	execute = ['global/slave2']
+	executed = ['global/slave2']
 
 [parameters]
 # paramter
 slave2_a = 'a'
 slave2_b = 'b'
 # this is a trick parameter to record if the parameter section is defined
-temp = execute.append('parameter/slave2')
+temp = executed.append('parameter/slave2')
 
 
 [S2_1]

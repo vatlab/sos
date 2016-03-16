@@ -592,6 +592,8 @@ class SoS_Step:
                     if self.subworkflow:
                         self.subworkflow.run(nested=True)
                 except Exception as e:
+                    if env.verbosity > 2:
+                        print_traceback()
                     raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
             if o and o != env.locals['_step'].output and env.run_mode == 'run':
                 partial_signature.write()
@@ -695,7 +697,9 @@ class SoS_Workflow:
         #
         env.logger.debug('Workflow {} created with {} sections: {}'
             .format(workflow_name, len(self.sections),
-            ', '.join('{}_{}'.format(section.name, section.index) for section in self.sections)))
+            ', '.join('{}_{}'.format(section.name, 
+                    'global' if section.index == -2 else ('parameters' if section.index == -1 else section.index))
+            for section in self.sections)))
 
     def extend(self, workflow):
         '''Append another workflow to existing one to created a combined workflow'''
@@ -722,16 +726,19 @@ class SoS_Workflow:
             except:
                 env.locals['HOME'] = '.'
             #
-            env.locals['WORKFLOW_NAME'] = self.name
             env.locals.set('_step', StepInfo())
             # initially there is no input, output, or depends
             env.locals['_step'].input = []
+            env.locals['_step'].name = self.name
             env.locals['_step'].output = []
             env.locals['_step'].depends = []
         #
         # process step of the pipelinp
         #
         start = True
+        num_parameters_sections = len([x for x in self.sections if x.is_parameters or x.subworkflow])
+        if num_parameters_sections == 0 and args:
+            raise ArgumentError('Unused parameter {}'.format(' '.join(args)))
         for idx, section in enumerate(self.sections):
             # global section will not change _step etc
             if section.is_global:
@@ -739,8 +746,7 @@ class SoS_Workflow:
                 continue
             elif section.is_parameters:
                 # if there is only one parameters section and no nested workflow, check unused section
-                check_unused = len([x.is_parameters or x.subworkflow for x in self.sections]) == 1
-                section.parse_args(args, check_unused)
+                section.parse_args(args, num_parameters_sections == 1)
                 continue
             # 
             # execute section with specified input
@@ -921,8 +927,8 @@ class SoS_Script:
         #
         # workflows in this script, from sections that are not skipped.
         section_steps = sum([x.names for x in self.sections if \
-            not (x.is_global or x.is_parameters) or \
-            ('skip' in x.options and (x.options['skip'] is None or x.options['skip'])) and \
+            not (x.is_global or x.is_parameters) and \
+            not ('skip' in x.options and (x.options['skip'] is None or x.options['skip'])) and \
             not ('target' in x.options)], [])
         # (name, None) is auxiliary steps
         self.workflows = list(set([x[0] for x in section_steps if '*' not in x[0]]))
