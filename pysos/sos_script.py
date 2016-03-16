@@ -227,6 +227,7 @@ class SoS_Step:
         except Exception as e:
             return False
 
+
     #
     # Execution: input options
     #
@@ -409,6 +410,68 @@ class SoS_Step:
         self.runtime = RuntimeEnvironment(kwargs)
 
     #
+    # handling of parameters step
+    #
+    def _parse_error(self, msg):
+        '''This function will replace error() function in argparse module so that SoS
+        can hijack errors raised from it.'''
+        raise ArgumentError(msg)
+
+    def parse_args(self, args, check_unused=False):
+        '''Parse command line arguments and set values to parameters section'''
+        def str2bool(v):
+            if v.lower() in ('yes', 'true', 't', '1'):
+                return True
+            elif v.lower() in ('no', 'false', 'f', '0'):
+                return False
+            else:
+                raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
+        #
+        parser = argparse.ArgumentParser()
+        parser.register('type', 'bool', str2bool)
+        arguments = {}
+        for key, defvalue, comment in self.parameters:
+            try:
+                defvalue = SoS_eval(defvalue, self.sigil)
+                arguments[key] = defvalue
+            except Exception as e:
+                raise RuntimeError('Incorrect default value {} for parameter {}: {}'.format(defvalue, key, e))
+            if isinstance(defvalue, type):
+                if defvalue == bool:
+                    parser.add_argument('--{}'.format(key), type='bool', help=comment, required=True, nargs='?') 
+                else:
+                    # if only a type is specified, it is a required document of required type
+                    parser.add_argument('--{}'.format(key), type=str if hasattr(defvalue, '__iter__') else defvalue,
+                        help=comment, required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
+            else:
+                if isinstance(defvalue, bool):
+                    parser.add_argument('--{}'.format(key), type='bool', help=comment,
+                        nargs='?', default=defvalue)
+                else:
+                    parser.add_argument('--{}'.format(key), type=type(defvalue), help=comment,
+                        nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, basestring) else '?',
+                        default=defvalue)
+        #
+        parser.error = self._parse_error
+        # 
+        # because of the complexity of having combined and nested workflows, we cannot know how
+        # many parameters section a workflow has and therfore have to assume that the unknown parameters
+        # are for other sections.
+        if check_unused:
+            parsed = parser.parse_args(args)
+        else:
+            parsed, unknown = parser.parse_known_args(args)
+            if unknown:
+                env.logger.warning('Unparsed arguments [{}] that might be processed by another combined or nested workflow'
+                    .format(' '.join(unknown)))
+        #
+        arguments.update(vars(parsed))
+        # now change the value with passed values
+        for k, v in arguments.items():
+            env.locals[k] = v
+
+
+    #
     # Execution
     #
     def run(self):
@@ -527,7 +590,7 @@ class SoS_Step:
                     # and will be executed mutliple times if necessary. The partial signature 
                     # stuff works for these though
                     if self.subworkflow:
-                        self.subworkflow.run(sub=True)
+                        self.subworkflow.run(nested=True)
                 except Exception as e:
                     raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
             if o and o != env.locals['_step'].output and env.run_mode == 'run':
@@ -574,40 +637,32 @@ class SoS_Workflow:
         self.name = workflow_name
         self.description = description
         self.sections = []
-        self.global_section = None
-        self.parameters_section = None
         self.auxillary_sections = []
         #
         for section in sections:
-            if section.is_global:
-                # section global is shared by all workflows
-                self.global_section = copy.deepcopy(section)
-                continue
-            elif section.is_parameters:
-                # section parameters is shared by all workflows
-                self.parameters_section = copy.deepcopy(section)
-                continue
+            if section.is_global or section.is_parameters:
+                self.sections.append(copy.deepcopy(section))
+                self.sections[-1].name = workflow_name
+                # for ordering purpose, this section is always after global
+                self.sections[-1].index = -2 if section.is_global else -1
+                # parameters and global section will not have subworkflow
+                self.sections[-1].subworkflow = None
             for name, index, subworkflow in section.names:
                 if 'target' in section.options:
                     self.auxillary_sections.append(section)
                 elif fnmatch.fnmatch(workflow_name, name):
                     self.sections.append(copy.deepcopy(section))
                     self.sections[-1].name = workflow_name
-                    self.sections[-1].index = None if index is None else int(index)
+                    self.sections[-1].index = 0 if index is None else int(index)
                     self.sections[-1].subworkflow = subworkflow
         #
-        if any(x.index is None for x in self.sections):
-            if len(self.sections) > 1:
-                raise RuntimeError('A workflow cannot have both indexed and unindexed steps: {}'
-                    .format(','.join('{}_{}'.format(x.name, x.index) for x in self.sections)))
-            else:
-                self.sections[0].index = 0
-        else:
-            # sort sections by index
-            self.sections.sort(key=lambda x: x.index)
+        # sort sections by index
+        self.sections.sort(key=lambda x: x.index)
         #
+        # disable some disallowed steps
         if allowed_steps:
-            all_steps = {x.index:False for x in self.sections}
+            all_steps = {x.index:False for x in self.sections if x.index >= 0}
+            env.logger.error(all_steps)
             #
             for item in allowed_steps.split(','):
                 # remove space
@@ -631,128 +686,67 @@ class SoS_Workflow:
                             all_steps[key] = True
                 else:
                     raise ValueError('Invalid pipeline step item {}'.format(item))
-            # keep only selected steps
-            self.sections = [x for x in self.sections if all_steps[x.index]]
+            # keep only selected steps (and the global and parameters section)
+            self.sections = [x for x in self.sections if x.index < 0 or all_steps[x.index]]
         #
         for section in self.sections:
             if section.subworkflow is not None and isinstance(section.subworkflow, basestring):
                 raise RuntimeError('Subworkflow {} not executable most likely because of recursice expansion.'.format(section.subworkflow))
         #
-        env.logger.debug('Workflow {} created with {} global, {} parameter, and {} regular sections'
-            .format(workflow_name, int(self.global_section is not None),
-            int(self.parameters_section is not None), len(self.sections)))
+        env.logger.debug('Workflow {} created with {} sections'
+            .format(workflow_name, len(self.sections)))
 
     def extend(self, workflow):
         '''Extend another workflow to existing one, essentailly creating a concatennated workflow.'''
-        # The global sections are prepended to each workflow, that is ok
-        # the parameter section need to be combined...
-        if self.parameters_section is not None and workflow.parameters_section is not None:
-            for k, v, _ in workflow.parameters_section.parameters:
-                for k1, v1, _ in self.parameters_section.parameters:
-                    if k == k1 and v != v1:
-                        raise ValueError('Conflicting definition for parameter {} with values {} and {}'.format(k, v, v1))
-        #
-        if workflow.global_section is not None:
-            self.sections.append(workflow.global_section)
-        if workflow.parameters_section is not None:
-            self.sections.append(workflow.parameters_section)
+        # all sections are simply appended ...
         self.sections.extend(workflow.sections)
 
-    def _parse_error(self, msg):
-        '''This function will replace error() function in argparse module so that SoS
-        can hijack errors raised from it.'''
-        raise ArgumentError(msg)
-
-    def parse_args(self, args):
-        '''Parse command line arguments and set values to parameters section'''
-        def str2bool(v):
-            if v.lower() in ('yes', 'true', 't', '1'):
-                return True
-            elif v.lower() in ('no', 'false', 'f', '0'):
-                return False
-            else:
-                raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
-        #
-        parser = argparse.ArgumentParser()
-        parser.register('type', 'bool', str2bool)
-        arguments = {}
-        for key, defvalue, comment in self.parameters_section.parameters:
-            try:
-                defvalue = SoS_eval(defvalue, self.parameters_section.sigil)
-                arguments[key] = defvalue
-            except Exception as e:
-                raise RuntimeError('Incorrect default value {} for parameter {}: {}'.format(defvalue, key, e))
-            if isinstance(defvalue, type):
-                if defvalue == bool:
-                    parser.add_argument('--{}'.format(key), type='bool', help=comment, required=True, nargs='?') 
-                else:
-                    # if only a type is specified, it is a required document of required type
-                    parser.add_argument('--{}'.format(key), type=str if hasattr(defvalue, '__iter__') else defvalue,
-                        help=comment, required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
-            else:
-                if isinstance(defvalue, bool):
-                    parser.add_argument('--{}'.format(key), type='bool', help=comment,
-                        nargs='?', default=defvalue)
-                else:
-                    parser.add_argument('--{}'.format(key), type=type(defvalue), help=comment,
-                        nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, basestring) else '?',
-                        default=defvalue)
-        #
-        parser.error = self._parse_error
-        #
-        arguments.update(vars(parser.parse_args(args)))
-        # now change the value with passed values
-        for k, v in arguments.items():
-            env.locals[k] = v
-
-    def prepareVars(self):
-        '''Prepare global variables '''
-        env.globals = globals()
-        # Because this workflow might belong to a combined workflow, we do not clear
-        # locals before the execution of workflow.
-        if not hasattr(env, 'locals'):
-            env.locals = WorkflowDict()
-        # initial values
-        try:
-            env.locals['HOME'] = os.environ['HOME']
-        except:
-            env.locals['HOME'] = '.'
-        #
-        env.locals['WORKFLOW_NAME'] = self.name
-        env.locals.set('_step', StepInfo())
-        # initially there is no input, output, or depends
-        env.locals['_step'].input = []
-        env.locals['_step'].output = []
-        env.locals['_step'].depends = []
-        #
-        if self.global_section:
-            self.global_section.run()
-
-    def run(self, args=[], sub=False):
-        '''Very preliminary implementation of sequential execution function
+    def run(self, args=[], nested=False):
+        '''Execute a workflow with specified command line args. If sub is True, this 
+        workflow is a nested workflow and be treated slightly differently.
         '''
-        if sub:
-            # if this is a subworkflow, we use _input as step input
-            # the workflow
+        if nested:
+            # if this is a subworkflow, we use _input as step input the workflow
             env.locals['_step'].input = env.locals['_input']
         else:
-            # process global variables
-            self.prepareVars()
-            # process parameter section
-            if self.parameters_section:
-                self.parse_args(args)
-            elif args:
-                raise ArgumentError('Unrecognized command line argument {}'.format(' '.join(args)))
+            # other wise we need to prepare running environment.
+            env.globals = globals()
+            # Because this workflow might belong to a combined workflow, we do not clear
+            # locals before the execution of workflow.
+            if not hasattr(env, 'locals'):
+                env.locals = WorkflowDict()
+            # initial values
+            try:
+                env.locals['HOME'] = os.environ['HOME']
+            except:
+                env.locals['HOME'] = '.'
+            #
+            env.locals['WORKFLOW_NAME'] = self.name
+            env.locals.set('_step', StepInfo())
+            # initially there is no input, output, or depends
+            env.locals['_step'].input = []
+            env.locals['_step'].output = []
+            env.locals['_step'].depends = []
+        #
         # process step of the pipelinp
         #
-        # There is no input initially
+        start = True
         for idx, section in enumerate(self.sections):
-            #
+            # global section will not change _step etc
+            if section.is_global:
+                section.run()
+                continue
+            elif section.is_parameters:
+                # if there is only one parameters section and no nested workflow, check unused section
+                check_unused = len([x.is_parameters or x.subworkflow for x in self.sections]) == 1
+                section.parse_args(args, check_unused)
+                continue
+            # 
             # execute section with specified input
             # 1. for first step of workflow, _step.input=[]
             # 2. for subworkflow, _step.input = _input
             # 3. for second to later step, _step.input = _step.output
-            if idx > 0:
+            if not start:
                 # set the output to the input of the next step
                 if hasattr(env.locals['_step'], 'output'):
                     # passing step output to _step.input of next step
@@ -763,43 +757,52 @@ class SoS_Workflow:
                 #
                 env.locals['_step'].output = []
                 env.locals['_step'].depends = []
+            else:
+                # use initial values
+                start = False
                 #
             section.run()
 
-    def show(self, parameters=True):
+    def show(self, indent = 0):
         textWidth = max(60, getTermWidth())
         paragraphs = dehtml(self.description).split('\n\n')
-        print('\n' + '\n'.join(textwrap.wrap('{}:  {}'
-            .format(self.name, paragraphs[0]), width=textWidth)))
+        print('\n')
+        print('\n'.join(
+            textwrap.wrap('{}:  {}'.format(self.name, paragraphs[0]),
+                initial_indent = ' '*indent,
+                subsequent_indent = ' '*indent,
+                width=textWidth)
+            ))
         for paragraph in paragraphs[1:]:
-            print('\n'.join(textwrap.wrap(paragraph, width=textWidth)))
+            print('\n'.join(
+            textwrap.wrap(paragraph, width=textWidth,
+                initial_indent = ' '*indent,
+                subsequent_indent = ' '*indent)
+            ))
         for step in self.sections:
-            # hide a step if there is no comment
-            text = '{:<22}'.format('  {}_{}:'.format(step.name, step.index)) + step.comment
-            print('\n'.join(textwrap.wrap(text, width=textWidth, subsequent_indent=' '*22)))
-        if parameters and self.parameters_section:
-            print('\nParameters:')
-            for k,v,c in self.parameters_section.parameters:
-                #
-                text = '  ' + k + \
-                    (' '*(22-len(k)-2) if len(k)<20 else ' ') + \
-                    (c + ' ' if c else '') + \
-                    ('(default: {})'.format(v) if v else '')
-                print('\n'.join(textwrap.wrap(text, subsequent_indent=' '*22,
-                    width=textWidth)))
+            if step.is_parameters:
+                print('\n{}Parameters:'.format(' '*indent))
+                for k,v,c in self.parameters_section.parameters:
+                    #
+                    text = '{:<20}'.format(k) + (c + ' ' if c else '') + \
+                        ('(default: {})'.format(v) if v else '')
+                    print('\n'.join(
+                        textwrap.wrap(text, 
+                        initial_indent=' '*indent,
+                        subsequent_indent=' '*(22 + indent),
+                        width=textWidth)
+                        ))
+            else:
+                # hide a step if there is no comment
+                text = '{:<20}'.format('{}_{}:'.format(step.name, step.index)) + step.comment
+                print('\n'.join(
+                    textwrap.wrap(text, 
+                        width=textWidth, 
+                        initial_indent=' '*indent,
+                        subsequent_indent=' '*(22 + indent))))
+                if step.subworkflow:
+                    step.subworkflow.show(indent+4)
 
-
-    def __repr__(self):
-        result = '__WORKFLOW__\n'
-        # FIXME: proper line wrap
-        result += '# ' + self.description
-        if self.global_section:
-            result += repr(self.global_section)
-        if self.parameters_section:
-            result += repr(self.parameters_section)
-        for sect in self.sections:
-            result += repr(sect)
-        return result
 
 class SoS_Script:
     _DIRECTIVES = ['input', 'output', 'depends', 'runtime']
@@ -1304,10 +1307,6 @@ class SoS_Script:
                     break
         return SoS_Workflow(wf_name, allowed_steps, sections, self.workflow_descriptions[wf_name])
 
-    def __repr__(self):
-        result = 'SOS Script (version {}\n'.format(self.format_version)
-        result += 'workflows:\n    ' + '\n    '.join(self.workflows)
-        return result
 
     def show(self):
         textWidth = max(60, getTermWidth())
@@ -1318,23 +1317,7 @@ class SoS_Script:
         #
         text = 'Available workflows: {}'.format(', '.join(sorted(self.workflows)))
         print('\n' + '\n'.join(textwrap.wrap(text, width=textWidth, subsequent_indent=' '*8)))
-        # details of each workflow
-        for wf_name in self.workflows:
-            #print('\n{}:'.format(wf_name))
-            wf = self.workflow(wf_name)
-            wf.show(parameters=False)
-        #
-        # parameters
-        if wf.parameters_section:
-            print('\nParameters:')
-            for k,v,c in wf.parameters_section.parameters:
-                #
-                text = '  ' + k + \
-                    (' '*(22-len(k)-2) if len(k)<20 else ' ') + \
-                    (c + ' ' if c else '') + \
-                    ('(default: {})'.format(v) if v else '')
-                print('\n'.join(textwrap.wrap(text, subsequent_indent=' '*22,
-                    width=textWidth)))
+        print('\nUse command\n    sos show workflow_name\nto display details of specific workflow.')
 
 #
 # subcommmand show
