@@ -496,6 +496,7 @@ executed.append(_step.name)
 executed.append(_step.name)
 ''')
         wf = script.workflow('a+b')
+        env.verbosity = 4
         wf.run()
         self.assertEqual(env.locals['executed'], ['a_1', 'a_2', 'a_3', 'a_4', 'b_1', 'b_2', 'b_3', 'b_4'])
         self.assertEqual(env.locals['a'], 1)

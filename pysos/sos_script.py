@@ -637,29 +637,25 @@ class SoS_Workflow:
         for section in self.sections:
             if section.subworkflow is not None and isinstance(section.subworkflow, basestring):
                 raise RuntimeError('Subworkflow {} not executable most likely because of recursice expansion.'.format(section.subworkflow))
+        #
+        self.logger.debug('Workflow {} created with {} global, {} parameter, and {} regular sections'
+            .format(wf_name, int(self.global_section is not None),
+            int(self.parameters_section is not 
 
     def extend(self, workflow):
         '''Extend another workflow to existing one, essentailly creating a concatennated workflow.'''
         # The global sections are prepended to each workflow, that is ok
         # the parameter section need to be combined...
-        if self.parameters_section is None:
-            if workflow.parameters_section is not None:
-                self.parameters_section = workflow.parameters_section
-        else:
-            if workflow.parameters_section is not None:
-                new_parameters = []
-                for k, v, c in workflow.parameters_section.parameters:
-                    found = False
-                    for k1, v1, _ in self.parameters_section.parameters:
-                        if k == k1:
-                            if v != v1:
-                                raise ValueError('Conflicting definition for parameter {} with values {} and {}'.format(k, v, v1))
-                            found = True
-                            break
-                    if not found:
-                        new_parameters.append((k, v, c))
-                self.parameters_section.parameters.extend(new_parameters)
+        if self.parameters_section is not None and workflow.parameters_section is not None:
+            for k, v, _ in workflow.parameters_section.parameters:
+                for k1, v1, _ in self.parameters_section.parameters:
+                    if k == k1 and v != v1:
+                        raise ValueError('Conflicting definition for parameter {} with values {} and {}'.format(k, v, v1))
         #
+        if workflow.global_section is not None:
+            self.sections.append(workflow.global_section)
+        if workflow.parameters_section is not None:
+            self.sections.append(workflow.parameters_section)
         self.sections.extend(workflow.sections)
 
     def _parse_error(self, msg):
@@ -1210,24 +1206,28 @@ class SoS_Script:
             raise parsing_errors
 
 
-    def workflow(self, workflow_name=None, nested=False, extra_sections=[]):
-        '''Return a workflow with name:step specified in wf_name
-        If the workflow is a nested workflow, ignore parameters section.
-        '''
+    def workflow(self, workflow_name=None, extra_sections=[]):
+        '''Return a workflow with name_step+name_step specified in wf_name
+        This function might be called recursively because of nested
+        workflow. extra_sections are sections read from other sos script
+        when the source section option is encountered. '''
         allowed_steps = None
         if not workflow_name:
             wf_name = ''
         else:
+            # if consists of multiple workflows
             if '+' in workflow_name:
                 wfs = []
                 for wf in workflow_name.split('+'):
                     if not self.SUBWORKFLOW.match(wf):
                         raise ValueError('Incorrect workflow name {}'.format(workflow_name))
-                    wfs.append(self.workflow(wf))
+                    # if this is a nested workflow, extra_section might be specied.
+                    wfs.append(self.workflow(wf, extra_sections))
                 combined_wf = wfs[0]
                 for wf in wfs[1:]:
                     combined_wf.extend(wf)
                 return combined_wf
+            # if a single workflow
             # workflow:15,-10 etc
             mo = self.SUBWORKFLOW.match(workflow_name)
             if not mo:
@@ -1253,16 +1253,13 @@ class SoS_Script:
                     'Available pipelines are: {}.'.format(', '.join(self.workflows)))
         elif wf_name not in self.workflows + extra_workflows:
             raise ValueError('Workflow {} is undefined. Available workflows are: {}'.format(wf_name,
-                ', '.join(self.workflows)))
+                ', '.join(self.workflows + extra_workflows)))
         # do not send extra parameters of ...
         sections = []
         # look for relevant sections in self.sections
-        for section in self.sections:
+        for section in self.sections + extra_sections:
             # skip, skip=True, skip=1 etc are all allowed.
             if 'skip' in section.options and (section.options['skip'] is None or section.options['skip']):
-                continue
-            # nested section do not have parameters section
-            if nested and (section.is_parameters or section.is_global):
                 continue
             if section.is_global or section.is_parameters or 'target' in section.options:
                 # section global is shared by all workflows
@@ -1272,13 +1269,14 @@ class SoS_Script:
                 if fnmatch.fnmatch(wf_name, name):
                     #
                     # if there is an source option, ...
-                    extra_sections = []
+                    imported_sections = []
                     if 'source' in section.options:
                         for sos_file in section.options['source']:
                             if not os.path.isfile(sos_file):
                                 raise RuntimeError('Source file for nested workflow {} does not exist'.format(sos_file))
                             script = SoS_Script(filename=sos_file)
-                            extra_sections.extend(script.sections)
+                            # this includes all global and parameters sections
+                            imported_sections.extend(script.sections)
                     # expand subworkflow if needed
                     for i in range(len(section.names)):
                         if section.names[i][2] and isinstance(section.names[i][2], basestring):
@@ -1295,12 +1293,12 @@ class SoS_Script:
                                 env.logger.debug('NOT expanding {} because of potential loop'.format(section.names[i][2]))
                             else:
                                 env.logger.debug('Expanding subworkflow {}'.format(section.names[i][2]))
+                                # expand nested workflow
                                 section.names[i] = (section.names[i][0], section.names[i][1], 
-                                    self.workflow(section.names[i][2], nested=True, extra_sections=extra_sections))
+                                    self.workflow(section.names[i][2], extra_sections=extra_sections + imported_sections))
                     # now copy the step over
                     sections.append(section)
                     break
-        sections.extend(x for x in extra_sections if x.is_parameters)
         return SoS_Workflow(wf_name, allowed_steps, sections, self.workflow_descriptions[wf_name])
 
     def __repr__(self):
