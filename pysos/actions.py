@@ -36,7 +36,7 @@ class SoS_ExecuteScript:
         if '{}' in self.interpreter:
             cmd = self.interpreter.replace('{}', pipes.quote(self.script_file))
         else:
-            cmd = self.interpreter + ' ' + pipes.quote(self.script_file) 
+            cmd = self.interpreter + ' ' + pipes.quote(self.script_file)
         env.logger.info('Running ``{}``'.format(cmd))
         ret = subprocess.call(cmd, shell=True)
         if ret != 0:
@@ -56,7 +56,7 @@ class SoS_ExecuteShellScript(SoS_ExecuteScript):
     check action SoS_ExecuteScript for more details.
     '''
     def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='bash', 
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='bash',
             suffix='.sh')
 
 class SoS_ExecutePythonScript(SoS_ExecuteScript):
@@ -136,7 +136,7 @@ except ImportError:
 
 @SoS_Action(run_mode=['dryrun', 'run'])
 def check_command(cmds):
-    '''Check the existence of command `cmd` and raise an error if 
+    '''Check the existence of command `cmd` and raise an error if
     command does not exist. `cmd` can be one command or a list of
     commands.'''
     cmds = [cmds] if isinstance(cmds, basestring) else cmds
@@ -144,8 +144,8 @@ def check_command(cmds):
     for cmd in cmds:
         name = which(cmd)
         if not name:
-            raise RuntimeError('Command {} not find.'.format(cmd))
-        env.logger.info('Command {} is located as {}.'.format(cmd, name))
+            raise RuntimeError('Command ``{}`` not found!'.format(cmd))
+        env.logger.info('Command ``{}`` is located as ``{}``.'.format(cmd, name))
     return 0
 
 
@@ -167,10 +167,9 @@ def search_output(cmd, pattern):
     '''Raise an exception if output of `cmd` does not match specified `pattern`.
     Multiple patterns can be specified as a list of patterns.'''
     output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode()
-    env.logger.trace('Output of command "{}" is "{}"'.format(cmd, output))
+    env.logger.trace('Output of command ``{}`` is ``{}``'.format(cmd, output))
     #
     pattern = [pattern] if isinstance(pattern, basestring) else pattern
     if all([re.search(x, output, re.MULTILINE) is None for x in pattern]):
-        raise RuntimeError('Output of command "{}" does not match specified regular expression {}.'
+        raise RuntimeError('Output of command ``{}`` does not match specified regular expression ``{}``.'
             .format(cmd, ' or '.join(pattern)))
-
