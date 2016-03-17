@@ -417,7 +417,7 @@ class SoS_Step:
         can hijack errors raised from it.'''
         raise ArgumentError(msg)
 
-    def parse_args(self, args, check_unused=False):
+    def parse_args(self, args, check_unused=False, cmd_name=''):
         '''Parse command line arguments and set values to parameters section'''
         def str2bool(v):
             if v.lower() in ('yes', 'true', 't', '1'):
@@ -427,7 +427,7 @@ class SoS_Step:
             else:
                 raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
         #
-        parser = argparse.ArgumentParser(prog='sos-runner {} {}'.format(args.script, args.workflow if args.workflow else ''))
+        parser = argparse.ArgumentParser(prog='sos-runner {}'.format(cmd_name))
         parser.register('type', 'bool', str2bool)
         arguments = {}
         for key, defvalue, comment in self.parameters:
@@ -458,9 +458,9 @@ class SoS_Step:
         # many parameters section a workflow has and therfore have to assume that the unknown parameters
         # are for other sections.
         if check_unused:
-            parsed = parser.parse_args(args.options)
+            parsed = parser.parse_args(args)
         else:
-            parsed, unknown = parser.parse_known_args(args.options)
+            parsed, unknown = parser.parse_known_args(args)
             if unknown:
                 env.logger.warning('Unparsed arguments [{}] that might be processed by another combined or nested workflow'
                     .format(' '.join(unknown)))
@@ -706,7 +706,7 @@ class SoS_Workflow:
         # all sections are simply appended ...
         self.sections.extend(workflow.sections)
 
-    def run(self, args=[], nested=False):
+    def run(self, args=[], nested=False, cmd_name=''):
         '''Execute a workflow with specified command line args. If sub is True, this 
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -746,7 +746,7 @@ class SoS_Workflow:
                 continue
             elif section.is_parameters:
                 # if there is only one parameters section and no nested workflow, check unused section
-                section.parse_args(args, num_parameters_sections == 1)
+                section.parse_args(args, num_parameters_sections == 1, cmd_name=cmd_name)
                 continue
             # 
             # execute section with specified input
@@ -1387,12 +1387,12 @@ def sos_run(args):
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
         # in case -d is specified at the end.
-        if args.options[0] == '-d':
+        if len(args.options) > 0 and args.options[0] == '-d':
             args.__dryrun__ = True
             args.options.pop(0)
         if args.__dryrun__:
             env.run_mode = 'dryrun'
-        workflow.run(args)
+        workflow.run(args.options, cmd_name='{} {}'.format(args.script, args.workflow))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             print_traceback()
