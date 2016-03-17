@@ -512,7 +512,7 @@ class SoS_Step:
             self._groups = [env.locals['_step'].input]
         else:
             self._groups = [[]]
-        self._vars = [[]]
+        self._vars = [{}]
         self._outputs = []
         self._depends = []
         for key, value in self.directives:
@@ -567,6 +567,7 @@ class SoS_Step:
         for g, v, o, d in zip(self._groups, self._vars, self._outputs, self._depends):
             env.locals.update(v)
             env.locals['_input'] = g
+            env.locals['_output'] = o
             #
             # If the users specifies output files for each loop (using ${input} etc, we
             # can try to see if we can create partial signature. This would help if the
@@ -1373,6 +1374,7 @@ def sos_show(args):
     for k, v in remaining_args.__dict__.items():
         setattr(args, k, v)
     args.options = remainder
+    env.verbosity = args.verbosity
     try:
         script = SoS_Script(filename=args.script)
         # do not parse args
@@ -1400,6 +1402,7 @@ def sos_run(args):
     for k, v in remaining_args.__dict__.items():
         setattr(args, k, v)
     args.options = remainder
+    env.verbosity = args.verbosity
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)

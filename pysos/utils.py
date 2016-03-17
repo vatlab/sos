@@ -145,6 +145,13 @@ class WorkflowDict(dict):
         or warning message.'''
         dict.__setitem__(self, key, value)
 
+    def update(self, obj):
+        '''Redefine update to trigger logging message'''
+        dict.update(self, obj)
+        for k, v in obj.items():
+            if env.verbosity > 2:
+                self._log(k, v)
+
     def __setitem__(self, key, value):
         '''Set value to key, trigger logging and warning messages if needed'''
         if env.verbosity > 2:
@@ -171,7 +178,7 @@ class WorkflowDict(dict):
         if key.isupper() and dict.__contains__(self, key) and dict.__getitem__(self, key) != value:
             env.logger.warning('Changing readonly variable {} from {} to {}'
                 .format(key, dict.__getitem__(self, key), value))
-        if key.startswith('_') and key != '_input':
+        if key.startswith('_') and key not in ('_input', '_output', '_step'):
             env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
 #
@@ -455,6 +462,7 @@ class SoS_String:
             return text
         pieces = text.split(self.l, 1)
         # the first piece must be before sigil and be completed text
+        #env.logger.trace('"{}" interpolated to "{}"'.format(text, res))
         return pieces[0] + self._interpolate(pieces[1])
 
     def _interpolate(self, text, start_nested=0):
