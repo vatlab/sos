@@ -1365,6 +1365,14 @@ def print_traceback():
     #print "*** tb_lineno:", exc_traceback.tb_lineno
 
 def sos_show(args):
+    # options such as -v might be put at the end and we need to 
+    # extract them from args.options
+    mini_parser = ArgumentParser()
+    mini_parser.add_argument('-v', '--verbosity', type=int, choices=range(5))
+    remaining_args, remainder = mini_parser.parse_known_arguments(args.options)
+    for k, v in remaining_args.__dict__.items():
+        setattr(args, k, v)
+    args.options = remainder
     try:
         script = SoS_Script(filename=args.script)
         # do not parse args
@@ -1383,13 +1391,18 @@ def sos_show(args):
 # subcommand run
 #
 def sos_run(args):
+    # options such as -d might be put at the end and we need to 
+    # extract them from args.options
+    mini_parser = argparse.ArgumentParser()
+    mini_parser.add_argument('-v', '--verbosity', type=int, choices=range(5))
+    mini_parser.add_argument('-d', action='store_true', dest='__dryrun__')
+    remaining_args, remainder = mini_parser.parse_known_args(args.options)
+    for k, v in remaining_args.__dict__.items():
+        setattr(args, k, v)
+    args.options = remainder
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
-        # in case -d is specified at the end.
-        if len(args.options) > 0 and args.options[0] == '-d':
-            args.__dryrun__ = True
-            args.options.pop(0)
         if args.__dryrun__:
             env.run_mode = 'dryrun'
         workflow.run(args.options, cmd_name='{} {}'.format(args.script, args.workflow))

@@ -69,7 +69,6 @@ if __name__ == '__main__':
             SoS also produces diagnoistic warning messages in this mode.''')
     parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
         nargs=argparse.REMAINDER, help=workflow_options)
-
     addCommonArgs(parser)
     parser.set_defaults(func=sos_run)
     #
