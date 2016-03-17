@@ -41,6 +41,20 @@ if __name__ == '__main__':
     master_parser.add_argument('--version', action='version',
         version='%(prog)s {}'.format(SOS_FULL_VERSION))
     subparsers = master_parser.add_subparsers(title='subcommands')
+    workflow_spec =  '''Name of the workflow to execute. This option can be
+        ignored if the script defines a default workflow (with no name or with
+        name `default`) or defines only a single workflow. A subworkflow or a 
+        combined workflow can also be specified, where a subworkflow executes a
+        subset of workflow (`name_steps` where `steps` can be `n` (a step `n`),
+        `-n` (up to step `n`), `n-m` (from step `n` to `m`), and `n-` (from step
+        `n`)), and a combined workflow executes to multiple (sub)workflows
+        combined by `+` (e.g. `A_0+B+B`).'''
+    workflow_options = '''Arbitrary parameters defined by the [parameters] step
+        of the script, and [parameters] steps of other scripts if nested workflows
+        are defined in other SoS files (option `source`). The name, default and
+        type of the parameters are specified in the script. Single value parameters
+        should be passed using option `--name value` and multi-value parameters
+        should be passed using option `--name value1 value2`. '''
     #
     # command run
     parser = subparsers.add_parser('run',
@@ -48,68 +62,30 @@ if __name__ == '__main__':
     parser.add_argument('script', metavar='SCRIPT',
         help='A SoS script that defines one or more workflows.')
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
-        help='''Name of the workflow to execute. This option can be ignored if
-            the script defines a default workflow (with no name or with name
-            `default`) or defines only a single workflow. A subworkflow or
-            a combined workflow can be specified. Please refer to the SoS
-            documentation for how to specify such workflows.''')
+        help=workflow_spec)
     parser.add_argument('-d', action='store_true', dest='__dryrun__',
-        help='''Execute the workflow in dryrun mode. SoS executes the
-            specified workflow one by one, evaluate all expressions and
-            statements but skip any function call and do not raise any
-            error for missing input or output files. Running a script
-            in dryrun mode, especially in verbosity mode 3 can help you
-            trace the input, output of steps and definition of variables.''')
+        help='''Execute the workflow in dryrun mode in which step processes
+            are executed normally but with most SoS actions return directly.
+            SoS also produces diagnoistic warning messages in this mode.''')
+    parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
+        nargs=argparse.REMAINDER, help=workflow_options)
+
     addCommonArgs(parser)
     parser.set_defaults(func=sos_run)
     #
     # command show
     parser = subparsers.add_parser('show',
-        help='Show a SoS script')
-##         help='Execute a pipeline or a SQL query',
-##         description='''Execute a pipeline that uses external commands to
-##             process input files, usually to align raw reads to a reference
-##             genome and call variants from aligned reads. The pipelines are
-##             controlled by pipeline description files. This command can also be
-##             used to execute arbitrary SQL query against the project database.
-##             Additional parameters will be passed to pipelines as pipeline
-##             parameters. ''')
+        help='Show details of a SoS script')
     parser.add_argument('script', metavar='SCRIPT',
-        help='A SoS script')
-
+        help='A SoS script that defines one or more workflows.')
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
-        help='''Name of the workflow to execute where workflow can be a single
-            workflow, a subworkflow or a combined workflow.''')
+        help=workflow_spec)
+    parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
+        nargs=argparse.REMAINDER, help=workflow_options)
     addCommonArgs(parser)
     parser.set_defaults(func=sos_show)
-##     #
-##     # getting args, some commands accept arbitrary arguments so we need to
-##     # separate them into argv
-##     #
-##     # http://bugs.python.org/issue12353
-##     # parse_known_args cannot handle arguments with empty string '', we need
-##     # to manually change it to ' ' to get around of this problem.
-##     # Hopefully this will not cause any trouble in later argument processing.
-##     if '' in sys.argv:
-##         for idx, arg in enumerate(sys.argv):
-##             if arg == '':
-##                 sys.argv[idx] = ' '
-##     #
-    args, argv = master_parser.parse_known_args()
+    #
+    args = master_parser.parse_args()
     env.verbosity = args.verbosity
-##     # python3 does not raise an error "too few arguments" when no argument is
-##     # provided so we have to explicitly handle this case. The output of command
-##     # vtools is therefore different in python 2 (error message) and 3 (help message).
-##     if not hasattr(args, 'func'):
-##         master_parser.print_help()
-##         sys.exit(0)
-##     # commands that accepts format and other subparsers can pass arbitrary
-##     # parameter to subparsers
-##     if args.func in [association.associate, importer.importVariants,
-##         update.update, exporter.export, pipeline.execute, pipeline.simulate]:
-##         args.unknown_args = argv
-##     elif len(argv) > 0:
-##         master_parser.print_usage(sys.stderr)
-##         sys.exit('sos: error: unrecognized arguments: ' + ' '.join(argv))
     # calling the associated functions
-    args.func(args, argv)
+    args.func(args)

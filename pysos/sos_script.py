@@ -427,7 +427,7 @@ class SoS_Step:
             else:
                 raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
         #
-        parser = argparse.ArgumentParser()
+        parser = argparse.ArgumentParser(prog='sos-runner {} {}'.format(args.script, args.workflow if args.workflow else ''))
         parser.register('type', 'bool', str2bool)
         arguments = {}
         for key, defvalue, comment in self.parameters:
@@ -458,9 +458,9 @@ class SoS_Step:
         # many parameters section a workflow has and therfore have to assume that the unknown parameters
         # are for other sections.
         if check_unused:
-            parsed = parser.parse_args(args)
+            parsed = parser.parse_args(args.options)
         else:
-            parsed, unknown = parser.parse_known_args(args)
+            parsed, unknown = parser.parse_known_args(args.options)
             if unknown:
                 env.logger.warning('Unparsed arguments [{}] that might be processed by another combined or nested workflow'
                     .format(' '.join(unknown)))
@@ -1345,10 +1345,10 @@ class SoS_Script:
 def print_traceback():
     exc_type, exc_value, exc_traceback = sys.exc_info()
     #print "*** print_tb:"
-    traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
+    traceback.print_tb(exc_traceback, limit=1, file=sys.stderr)
     #print "*** print_exception:"
     traceback.print_exception(exc_type, exc_value, exc_traceback,
-                              limit=5, file=sys.stdout)
+                              limit=5, file=sys.stderr)
     #print "*** print_exc:"
     #traceback.print_exc()
     #print "*** format_exc, first and last line:"
@@ -1364,7 +1364,7 @@ def print_traceback():
     #print repr(traceback.format_tb(exc_traceback))
     #print "*** tb_lineno:", exc_traceback.tb_lineno
 
-def sos_show(args, argv):
+def sos_show(args):
     try:
         script = SoS_Script(filename=args.script)
         # do not parse args
@@ -1382,13 +1382,17 @@ def sos_show(args, argv):
 #
 # subcommand run
 #
-def sos_run(args, argv):
+def sos_run(args):
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
+        # in case -d is specified at the end.
+        if args.options[0] == '-d':
+            args.__dryrun__ = True
+            args.options.pop(0)
         if args.__dryrun__:
             env.run_mode = 'dryrun'
-        workflow.run(args=argv)
+        workflow.run(args)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             print_traceback()
