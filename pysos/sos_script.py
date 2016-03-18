@@ -438,7 +438,7 @@ class SoS_Step:
             for key in res.keys():
                 if key not in env.locals:
                     raise ValueError('Undefined variable {} in pattern {}'.format(key, pattern))
-                if isinstance(env.locals[key], Sequence):
+                if not isinstance(env.locals[key], basestring) and isinstance(env.locals[key], Sequence):
                     if sz is None:
                         sz = len(env.locals[key])
                         wildcard = [{} for x in range(sz)]
