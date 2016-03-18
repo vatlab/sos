@@ -177,5 +177,11 @@ class TestUtils(unittest.TestCase):
         d['a'] += 1
         self.assertEqual(d['a'], 2)
 
+    def testPatternMatch(self):
+        '''Test snake match's pattern match facility'''
+        res = glob_wildcards('{a}-{b}.txt', ['file-1.txt', 'file-ab.txt'])
+        self.assertEqual(res['a'], ['file', 'file'])
+        self.assertEqual(res['b'], ['1', 'ab'])
+
 if __name__ == '__main__':
     unittest.main()

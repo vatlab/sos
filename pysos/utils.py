@@ -590,6 +590,7 @@ def interpolate(text, sigil='${ }'):
     global and local dictionaries, and replace the expressions with their formatted strings.'''
     return SoS_String(sigil).interpolate(text)
 
+
 def ConvertString(s, sigil):
     '''Convert a unicode string to a raw string and interpolate expressions
     within it by parsing the python expression and statement BEFORE they are
@@ -840,3 +841,70 @@ class RuntimeInfo:
                 os.remove(filename)
             except Exception as e:
                 env.logger.warning('Fail to remove {}: {}'.format(filename, e))
+
+
+#
+# The following is adapted from snakemake so that the syntax of the pattern parameter
+# would be the same as snakemake.
+#
+# https://bitbucket.org/snakemake/snakemake/src/22eff35627401d3bb243e068c5dce97107e7090b/snakemake/io.py?at=master&fileviewer=file-view-default
+#
+# I will re-implement it if there is any license issue with the code
+# 
+
+_wildcard_regex = re.compile(
+    "\{\s*(?P<name>\w+?)(\s*,\s*(?P<constraint>([^\{\}]+|\{\d+(,\d+)?\})*))?\s*\}")
+
+
+def regex(filepattern):
+    f = []
+    last = 0
+    wildcards = set()
+    for match in _wildcard_regex.finditer(filepattern):
+        f.append(re.escape(filepattern[last:match.start()]))
+        wildcard = match.group("name")
+        if wildcard in wildcards:
+            if match.group("constraint"):
+                raise ValueError(
+                    "If multiple wildcards of the same name "
+                    "appear in a string, eventual constraints have to be defined "
+                    "at the first occurence and will be inherited by the others.")
+            f.append("(?P={})".format(wildcard))
+        else:
+            wildcards.add(wildcard)
+            f.append("(?P<{}>{})".format(wildcard, match.group("constraint") if
+                                         match.group("constraint") else ".+"))
+        last = match.end()
+    f.append(re.escape(filepattern[last:]))
+    f.append("$")  # ensure that the match spans the whole file
+    return "".join(f)
+
+
+def glob_wildcards(pattern, files=None):
+    """
+    Glob the values of the wildcards by matching the given pattern to the filesystem.
+    Returns a named tuple with a list of values for each wildcard.
+    """
+    pattern = os.path.normpath(pattern)
+    first_wildcard = re.search("{[^{]", pattern)
+    dirname = os.path.dirname(pattern[:first_wildcard.start(
+    )]) if first_wildcard else os.path.dirname(pattern)
+    if not dirname:
+        dirname = "."
+
+    names = [match.group('name')
+             for match in _wildcard_regex.finditer(pattern)]
+    res = {x: [] for x in names}
+    pattern = re.compile(regex(pattern))
+
+    if files is None:
+        files = ((os.path.join(dirpath, f) if dirpath != "." else f)
+                 for dirpath, dirnames, filenames in os.walk(dirname)
+                 for f in chain(filenames, dirnames))
+
+    for f in files:
+        match = re.match(pattern, f)
+        if match:
+            for name, value in match.groupdict().items():
+                res[name].append(value)
+    return res
