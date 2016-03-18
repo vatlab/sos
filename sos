@@ -23,7 +23,7 @@
 import sys
 import argparse
 
-from pysos import SOS_VERSION, SOS_FULL_VERSION, env, sos_run, sos_show
+from pysos import SOS_VERSION, SOS_FULL_VERSION, env, sos_run, sos_dryrun, sos_show
 
 def addCommonArgs(parser):
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5),
@@ -71,6 +71,18 @@ if __name__ == '__main__':
         nargs=argparse.REMAINDER, help=workflow_options)
     addCommonArgs(parser)
     parser.set_defaults(func=sos_run)
+    #
+    # command dryrun
+    parser = subparsers.add_parser('dryrun',
+        help='Execute a SoS script in dryrun mode')
+    parser.add_argument('script', metavar='SCRIPT',
+        help='A SoS script that defines one or more workflows.')
+    parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
+        help=workflow_spec)
+    parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
+        nargs=argparse.REMAINDER, help=workflow_options)
+    addCommonArgs(parser)
+    parser.set_defaults(func=sos_dryrun)
     #
     # command show
     parser = subparsers.add_parser('show',

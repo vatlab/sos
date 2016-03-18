@@ -1422,3 +1422,10 @@ def sos_run(args):
             print_traceback()
         env.logger.error(e)
         sys.exit(1)
+
+#
+# subcommand dryrun
+#
+def sos_dryrun(args):
+    args.options.append('-d')
+    sos_run(args)
