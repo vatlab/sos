@@ -43,7 +43,7 @@ from io import StringIO
 
 from .actions import *
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
-    dehtml, getTermWidth, interpolate, shortRepr
+    dehtml, getTermWidth, interpolate, shortRepr, glob_wildcards
 
 class ArgumentError(Error):
     """Raised when an invalid argument is passed."""
@@ -91,7 +91,7 @@ class SoS_Step:
     #
     # A single sos step
     #
-    _INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'paired_with', 'for_each', 'dynamic']
+    _INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic']
     _OUTPUT_OPTIONS = ['dynamic']
     _DEPENDS_OPTIONS = ['dynamic']
     _RUNTIME_OPTIONS = ['workdir']
@@ -248,6 +248,34 @@ class SoS_Step:
         elif group_by == 'combinations':
             return [list(x) for x in combinations(ifiles, 2)]
 
+    def _get_pattern(self, pattern):
+        ifiles = env.locals['_step'].input
+        # 
+        if pattern is None or not pattern:
+            patterns = []
+        elif isinstance(pattern, basestring):
+            patterns = [pattern]
+        elif isinstance(pattern, list):
+            patterns = pattern
+        else:
+            raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
+        #
+        for pattern in patterns:
+            res = glob_wildcards(pattern, [])
+            for ifile in ifiles:
+                matched = glob_wildcards(pattern, [ifile])
+                for key in matched.keys():
+                    if not matched[key]:
+                        env.logger.warning('Filename {} does not match pattern {}. None returned.'.format(ifile, pattern))
+                        res[key].append(None)
+                    else:
+                        res[key].extend(matched[key])
+            # now, assign the variables to env
+            for k, v in res.items():
+                env.locals[k] = v
+            # also make k, v pair with _input
+            self._get_paired_with(res.keys())
+        
     def _get_paired_with(self, paired_with):
         if paired_with is None or not paired_with:
             paired_with = []
@@ -259,7 +287,8 @@ class SoS_Step:
             raise ValueError('Unacceptable value for parameter paired_with: {}'.format(paired_with))
         #
         ifiles = env.locals['_step'].input
-        set_vars = [{} for x in self._groups]
+        if not hasattr(self, '_vars'):
+            self._vars = [{} for x in self._groups]
         for wv in paired_with:
             values = env.locals[wv]
             if isinstance(values, basestring) or not isinstance(values, Sequence):
@@ -269,8 +298,7 @@ class SoS_Step:
                     .format(wv, len(values), len(ifiles)))
             file_map = {x:y for x,y in zip(ifiles, values)}
             for idx, grp in enumerate(self._groups):
-                set_vars[idx]['_' + wv] = [file_map[x] for x in grp]
-        return set_vars
+                self._vars[idx]['_' + wv] = [file_map[x] for x in grp]
 
     def _get_for_each(self, for_each):
         if for_each is None or not for_each:
@@ -362,11 +390,14 @@ class SoS_Step:
             self._groups = self._get_groups(ifiles, kwargs['group_by'])
         else:
             self._groups = [ifiles]
+        #
+        self._vars = [{} for x in self._groups]
         # handle paired_with
         if 'paired_with' in kwargs:
-            self._vars = self._get_paired_with(kwargs['paired_with'])
-        else:
-            self._vars = [{} for x in self._groups]
+            self._get_paired_with(kwargs['paired_with'])
+        # handle pattern
+        if 'pattern' in kwargs:
+            self._get_pattern(kwargs['pattern'])
         # handle for_each
         if 'for_each' in kwargs:
             self._get_for_each(kwargs['for_each'])
