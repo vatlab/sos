@@ -30,7 +30,6 @@ import textwrap
 import traceback
 from collections import OrderedDict, defaultdict, Sequence
 from itertools import tee, combinations
-from collections import OrderedDict
 
 try:
     # python 2.7
@@ -252,7 +251,7 @@ class SoS_Step:
     def _get_paired_with(self, paired_with):
         if paired_with is None or not paired_with:
             paired_with = []
-        elif isinstance(paired_with, str):
+        elif isinstance(paired_with, basestring):
             paired_with = [paired_with]
         elif isinstance(paired_with, list):
             paired_with = paired_with
@@ -263,14 +262,14 @@ class SoS_Step:
         set_vars = [{} for x in self._groups]
         for wv in paired_with:
             values = env.locals[wv]
-            if not isinstance(values, list):
-                raise ValueError('with_var variable {} is not a list ("{}")'.format(wv, values))
+            if isinstance(values, basestring) or not isinstance(values, Sequence):
+                raise ValueError('with_var variable {} is not a sequence ("{}")'.format(wv, values))
             if len(values) != len(ifiles):
                 raise ValueError('Length of variable {} (length {}) should match the number of input files (length {}).'
                     .format(wv, len(values), len(ifiles)))
             file_map = {x:y for x,y in zip(ifiles, values)}
-            for idx,val in enumerate(values):
-                set_vars[idx]['_' + wv] = [file_map[x] for x in self._groups[idx]]
+            for idx, grp in enumerate(self._groups):
+                set_vars[idx]['_' + wv] = [file_map[x] for x in grp]
         return set_vars
 
     def _get_for_each(self, for_each):
