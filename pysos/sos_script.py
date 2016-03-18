@@ -42,8 +42,9 @@ except ImportError:
 # Python 2.7 should also have this module
 from io import StringIO
 
-from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, dehtml, getTermWidth, interpolate
 from .actions import *
+from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
+    dehtml, getTermWidth, interpolate, shortRepr
 
 class ArgumentError(Error):
     """Raised when an invalid argument is passed."""
@@ -540,6 +541,9 @@ class SoS_Step:
         # we need to reduce output files in case they have been processed multiple times.
         env.locals['_step'].output = list(OrderedDict.fromkeys(sum(self._outputs, [])))
         env.locals['_step'].depends = list(OrderedDict.fromkeys(sum(self._depends, [])))
+        env.logger.info('_step.input: ``{}``'.format(shortRepr(env.locals['_step'].input)))
+        env.logger.info('_step.output: ``{}``'.format(shortRepr(env.locals['_step'].output)))
+        env.logger.info('_step.depends: ``{}``'.format(shortRepr(env.locals['_step'].depends)))
         #
         # input alias
         # if the step is ignored
@@ -564,10 +568,14 @@ class SoS_Step:
         else:
             signature = None
         #
-        for g, v, o, d in zip(self._groups, self._vars, self._outputs, self._depends):
+        for idx, (g, v, o, d) in enumerate(zip(self._groups, self._vars, self._outputs, self._depends)):
             env.locals.update(v)
             env.locals['_input'] = g
             env.locals['_output'] = o
+            env.locals['_index'] = idx
+            env.logger.info('_idx: ``{}``'.format(idx))
+            env.logger.info('_input: ``{}``'.format(shortRepr(env.locals['_input'])))
+            env.logger.info('_output: ``{}``'.format(shortRepr(env.locals['_output'])))
             #
             # If the users specifies output files for each loop (using ${input} etc, we
             # can try to see if we can create partial signature. This would help if the

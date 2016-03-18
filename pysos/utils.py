@@ -129,6 +129,20 @@ class ColoredFormatter(logging.Formatter):
             record.color_msg = self.emphasize(record.msg)
         return logging.Formatter.format(self, record)
 
+
+def shortRepr(obj):
+    '''Return a short representation of obj for clarity.'''
+    if isinstance(obj, (str, int, float, bool)) or (isinstance(obj, collections.Sequence) \
+        and len(obj) <= 2) or len(str(obj)) < 50:
+        return str(obj)
+    elif isinstance(obj, collections.Sequence): # should be a list or tuple
+        return str(obj).split(' ')[0] + ' ...] ({} items)'.format(len(obj))
+    elif isinstance(obj, dict):
+        first_key = obj.keys()[0]
+        return '{{{}:{}, ...}} ({} items)'.format(first_key, obj[first_key], len(obj))
+    else:
+        return '{}...'.format(repr(value)[:40])
+
 #
 # SoS Workflow dictionary
 #
@@ -161,24 +175,13 @@ class WorkflowDict(dict):
         dict.__setitem__(self, key, value)
 
     def _log(self, key, value):
-        if isinstance(value, (str, int, float, bool)) or (isinstance(value, collections.Sequence) \
-            and len(value) <= 2) or len(str(value)) < 50:
-            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, str(value)))
-        elif isinstance(value, collections.Sequence): # should be a list or tuple
-            val = str(value).split(' ')[0] + ' ...] ({} items)'.format(len(value))
-            env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, val))
-        elif isinstance(value, dict):
-            first_key = value.keys()[0]
-            env.logger.debug('Workflow variable ``{}`` is set to ``{{{}:{}, ...}} ({} items)``'
-                .format(key, first_key, value[first_key], len(value)))
-        else:
-            env.logger.debug('Workflow variable ``{}`` is set to ``{}...``'.format(key, repr(value)[:40]))
+        env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, shortRepr(value)))
 
     def _warn(self, key, value):
         if key.isupper() and dict.__contains__(self, key) and dict.__getitem__(self, key) != value:
             env.logger.warning('Changing readonly variable {} from {} to {}'
                 .format(key, dict.__getitem__(self, key), value))
-        if key.startswith('_') and key not in ('_input', '_output', '_step'):
+        if key.startswith('_') and key not in ('_input', '_output', '_step', '_index'):
             env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
 #
