@@ -908,3 +908,28 @@ def glob_wildcards(pattern, files=None):
             for name, value in match.groupdict().items():
                 res[name].append(value)
     return res
+
+def apply_wildcards(pattern,
+                    wildcards,
+                    fill_missing=False,
+                    fail_dynamic=False,
+                    dynamic_fill=None,
+                    keep_dynamic=False):
+    def format_match(match):
+        name = match.group("name")
+        try:
+            value = wildcards[name]
+            if fail_dynamic and value == dynamic_fill:
+                raise WildcardError(name)
+            return str(value)  # convert anything into a str
+        except KeyError as ex:
+            if keep_dynamic:
+                return "{{{}}}".format(name)
+            elif fill_missing:
+                return dynamic_fill
+            else:
+                raise RuntimeError('Wildcard apply error {}'.format(ex))
+
+    return re.sub(_wildcard_regex, format_match, pattern)
+
+

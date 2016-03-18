@@ -43,7 +43,7 @@ from io import StringIO
 
 from .actions import *
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
-    dehtml, getTermWidth, interpolate, shortRepr, glob_wildcards
+    dehtml, getTermWidth, interpolate, shortRepr, glob_wildcards, apply_wildcards
 
 class ArgumentError(Error):
     """Raised when an invalid argument is passed."""
@@ -92,8 +92,8 @@ class SoS_Step:
     # A single sos step
     #
     _INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic']
-    _OUTPUT_OPTIONS = ['dynamic']
-    _DEPENDS_OPTIONS = ['dynamic']
+    _OUTPUT_OPTIONS = ['pattern', 'dynamic']
+    _DEPENDS_OPTIONS = ['pattern', 'dynamic']
     _RUNTIME_OPTIONS = ['workdir']
     def __init__(self, names=[], options={}, is_global=False, is_parameters=False):
         # A step will not have a name and index until it is copied to separate workflows
@@ -248,7 +248,7 @@ class SoS_Step:
         elif group_by == 'combinations':
             return [list(x) for x in combinations(ifiles, 2)]
 
-    def _get_pattern(self, pattern):
+    def _handle_input_pattern(self, pattern):
         ifiles = env.locals['_step'].input
         # 
         if pattern is None or not pattern:
@@ -274,9 +274,9 @@ class SoS_Step:
             for k, v in res.items():
                 env.locals[k] = v
             # also make k, v pair with _input
-            self._get_paired_with(res.keys())
+            self._handle_input_paired_with(res.keys())
         
-    def _get_paired_with(self, paired_with):
+    def _handle_input_paired_with(self, paired_with):
         if paired_with is None or not paired_with:
             paired_with = []
         elif isinstance(paired_with, basestring):
@@ -300,7 +300,7 @@ class SoS_Step:
             for idx, grp in enumerate(self._groups):
                 self._vars[idx]['_' + wv] = [file_map[x] for x in grp]
 
-    def _get_for_each(self, for_each):
+    def _handle_input_for_each(self, for_each):
         if for_each is None or not for_each:
             for_each = []
         elif isinstance(for_each, str):
@@ -394,13 +394,13 @@ class SoS_Step:
         self._vars = [{} for x in self._groups]
         # handle paired_with
         if 'paired_with' in kwargs:
-            self._get_paired_with(kwargs['paired_with'])
+            self._handle_input_paired_with(kwargs['paired_with'])
         # handle pattern
         if 'pattern' in kwargs:
-            self._get_pattern(kwargs['pattern'])
+            self._handle_input_pattern(kwargs['pattern'])
         # handle for_each
         if 'for_each' in kwargs:
-            self._get_for_each(kwargs['for_each'])
+            self._handle_input_for_each(kwargs['for_each'])
 
 
     def _directive_depends(self, *args, **kwargs):
@@ -419,6 +419,42 @@ class SoS_Step:
                 dfiles.extend(arg)
         self._depends.append(dfiles)
 
+    def _handle_output_pattern(self, pattern, ofiles):
+        # 
+        if pattern is None or not pattern:
+            patterns = []
+        elif isinstance(pattern, basestring):
+            patterns = [pattern]
+        elif isinstance(pattern, list):
+            patterns = pattern
+        else:
+            raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
+        #
+        for pattern in patterns:
+            sz = None
+            res = glob_wildcards(pattern, [])
+            sz = None
+            wildcard = [{}]
+            for key in res.keys():
+                if key not in env.locals:
+                    raise ValueError('Undefined variable {} in pattern {}'.format(key, pattern))
+                if isinstance(env.locals[key], Sequence):
+                    if sz is None:
+                        sz = len(env.locals[key])
+                        wildcard = [{} for x in range(sz)]
+                    elif sz != len(env.locals[key]):
+                        raise ValueError('Variables in output pattern should have the same length (other={}, len({})={})'
+                            .format(sz, key, len(env.locals[key])))
+                    for idx, value in enumerate(env.locals[key]):
+                        wildcard[idx][key] = value
+                else:
+                    for v in wildcard:
+                        v[key] = env.locals[key]
+            #
+            for card in wildcard:
+                ofiles.append(apply_wildcards(pattern, card, fill_missing=False,
+                   fail_dynamic=False, dynamic_fill=None, keep_dynamic=False))
+            
     def _directive_output(self, *args, **kwargs):
         for k in kwargs.keys():
             if k not in self._OUTPUT_OPTIONS:
@@ -431,6 +467,9 @@ class SoS_Step:
                 if not all(isinstance(x, basestring) for x in arg):
                     raise RuntimeError('Invalid output file: {}'.format(arg))
                 ofiles.extend(arg)
+        #
+        if 'pattern' in kwargs:
+            self._handle_output_pattern(kwargs['pattern'], ofiles)
         self._outputs.append(ofiles)
 
     def _directive_runtime(self, **kwargs):

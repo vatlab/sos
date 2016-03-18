@@ -157,8 +157,8 @@ processed.append((_par, _res))
         '''Test option paired_with '''
         pass
 
-    def testPattern(self):
-        '''Test option pattern '''
+    def testInputPattern(self):
+        '''Test option pattern of step input '''
         env.run_mode = 'dryrun'
         #env.verbosity = 4
         script = SoS_Script(r"""
@@ -175,6 +175,25 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
         self.assertEqual(env.locals['name'], ["a", 'b'])
         self.assertEqual(env.locals['par'], ["20", '10'])
         self.assertEqual(env.locals['_output'], ["a-20-a-20.txt", 'b-10-b-10.txt'])
+
+    def testOutputPattern(self):
+        '''Test option pattern of step output'''
+        env.run_mode = 'dryrun'
+        #env.verbosity = 4
+        script = SoS_Script(r"""
+[0]
+
+files = ['a-20.txt', 'b-10.txt']
+input: files, pattern=['{name}-{par}.txt', '{base}.txt']
+output: pattern=['{base}-{name}-{par}.txt', '{par}.txt']
+
+""")
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals['base'], ["a-20", 'b-10'])
+        self.assertEqual(env.locals['name'], ["a", 'b'])
+        self.assertEqual(env.locals['par'], ["20", '10'])
+        self.assertEqual(env.locals['_output'], ['a-20-a-20.txt', 'b-10-b-10.txt', '20.txt', '10.txt'])
 
 
     def testAlias(self):
