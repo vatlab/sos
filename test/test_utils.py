@@ -182,6 +182,17 @@ class TestUtils(unittest.TestCase):
         res = glob_wildcards('{a}-{b}.txt', ['file-1.txt', 'file-ab.txt'])
         self.assertEqual(res['a'], ['file', 'file'])
         self.assertEqual(res['b'], ['1', 'ab'])
+        res = glob_wildcards('{a}-{b}.txt', ['file--ab--cd.txt'])
+        self.assertEqual(res['a'], ['file--ab-'])
+        self.assertEqual(res['b'], ['cd'])
+        res = glob_wildcards('{path}/{to}/{file}.txt', ['/tmp//1.txt'])
+        self.assertEqual(res['path'], [])
+        self.assertEqual(res['to'], [])
+        self.assertEqual(res['file'], [])
+        res = glob_wildcards('{path}/{to}/{file}.txt', ['/tmp/test/1.txt.txt'])
+        self.assertEqual(res['path'], ['/tmp'])
+        self.assertEqual(res['to'], ['test'])
+        self.assertEqual(res['file'], ['1.txt'])
 
 if __name__ == '__main__':
     unittest.main()
