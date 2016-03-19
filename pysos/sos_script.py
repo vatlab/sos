@@ -106,8 +106,6 @@ class SoS_Step:
         # comment at the end of a section that could be a workflow description
         self.back_comment = ''
         self.parameters = []
-        self.assignments = []
-        self.directives = []
         self.statements = []
         self.subworkflow = None
         # is it global section?
@@ -156,7 +154,7 @@ class SoS_Step:
             if self.is_parameters:
                 self.parameters[-1][1] += value
             else:
-                self.assignments[-1][1] += value
+                self.statements[-1][-1] += value
             self.values.append(value)
         else:
             # new assignment
@@ -166,7 +164,7 @@ class SoS_Step:
                 self.parameters.append([key, value, self.comment])
                 self.comment = ''
             else:
-                self.assignments.append([key, value])
+                self.statements.append(['=', key, value])
             self.category = 'expression'
             self.values = [value]
         self.back_comment = ''
@@ -177,11 +175,11 @@ class SoS_Step:
         '''Assignments are items with ':' type '''
         if key is None:
             # continuation of multi-line directive
-            self.directives[-1][1] += value
+            self.statements[-1][-1] += value
             self.values.append(value)
         else:
             # new directive
-            self.directives.append([key, value])
+            self.statements.append([':', key, value])
             self.category = 'directive'
             self.values = [value]
         self.back_comment = ''
@@ -191,7 +189,7 @@ class SoS_Step:
     def add_statement(self, line, lineno=None):
         '''Assignments are items with ':' type '''
         # there can be only one statement block
-        self.statements.append(line)
+        self.statements.append(['!', line])
         if self.category != 'statements':
             self.values = [line]
         else:
@@ -200,6 +198,29 @@ class SoS_Step:
         self.back_comment = ''
         if lineno:
             self.lineno = lineno
+
+    def finalize(self):
+        ''' split statement and process by last directive '''
+        if not self.statements:
+            self.process = ''
+            return
+        directives = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':']
+        if not directives:
+            start_process = 0
+        else:
+            start_process = directives[-1] + 1
+        # convert statement to process
+        self.process = ''
+        for statement in self.statements[start_process:]:
+            if statement[0] == '=':
+                self.process += '{} = {}'.format(statement[1], statement[2])
+            else:
+                self.process += statement[1]
+        # remove process from self.statement
+        if not directives:
+            self.statements = []
+        else:
+            self.statements = self.statements[:start_process]
 
     def isValid(self):
         if not self.values:
@@ -551,23 +572,7 @@ class SoS_Step:
         if self.name is not None:
             env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment))
         #
-        # assignment
-        #
-        if self.is_parameters:
-            for key, value, _ in self.parameters:
-                try:
-                    env.locals[key] = SoS_eval(value, self.sigil)
-                except Exception as e:
-                    raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
-        else:
-            for key, value in self.assignments:
-                try:
-                    env.locals[key] = SoS_eval(value, self.sigil)
-                except Exception as e:
-                    raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
-        #
-        # directives
-        #
+        # 
         # the following is a quick hack to allow _directive_input function etc to access 
         # the workflow dictionary
         env.globals['self'] = self
@@ -575,7 +580,6 @@ class SoS_Step:
         env.locals['_step'].index = self.index
         env.locals['_step'].output = []
         env.locals['_step'].depends = []
-
         #
         # default input groups and vars
         if hasattr(env.locals['_step'], 'input'):
@@ -585,22 +589,31 @@ class SoS_Step:
         self._vars = [{}]
         self._outputs = []
         self._depends = []
-        for key, value in self.directives:
-            # input is processed only once
-            if key in ('input', 'runtime'):
+        #
+        for statement in self.statements:
+            if statement[0] == '=':
+                key, value = statement[1:]
                 try:
-                    SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
+                    env.locals[key] = SoS_eval(value, self.sigil)
                 except Exception as e:
-                    raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
-            # output processed multiple times for each input group
-            else: # input is processed once
-                for g, v in zip(self._groups, self._vars):
-                    env.locals.update(v)
-                    env.locals.set('_input', g)
+                    raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
+            elif statement[0] == ':':
+                key, value = statement[1:]
+                # input is processed only once
+                if key in ('input', 'runtime'):
                     try:
                         SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
                     except Exception as e:
                         raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
+                # output processed multiple times for each input group
+                else: # input is processed once
+                    for g, v in zip(self._groups, self._vars):
+                        env.locals.update(v)
+                        env.locals.set('_input', g)
+                        try:
+                            SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
+                        except Exception as e:
+                            raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
         # if no output directive, assuming no output for each step
         if not self._outputs:
             self._outputs = [[] for x in self._groups]
@@ -623,7 +636,7 @@ class SoS_Step:
             env.locals[self.options['alias']] = copy.deepcopy(env.locals['_step'])
         #
         if env.locals['_step'].output:
-            signature = RuntimeInfo(self.statements, 
+            signature = RuntimeInfo(self.process, 
                 env.locals['_step'].input, env.locals['_step'].output, env.locals['_step'].depends)
             if env.run_mode == 'run':
                 for ofile in env.locals['_step'].output:
@@ -650,7 +663,7 @@ class SoS_Step:
             # can try to see if we can create partial signature. This would help if the
             # step is interrupted in the middle.
             if o and o != env.locals['_step'].output and env.run_mode == 'run':
-                partial_signature = RuntimeInfo(self.statements, g, o, d)
+                partial_signature = RuntimeInfo(self.process, g, o, d)
                 if partial_signature.validate():
                     # everything matches
                     env.logger.info('Reusing existing output files {}'.format(', '.join(o)))
@@ -662,7 +675,7 @@ class SoS_Step:
                     env.locals['_step'].name = '{}_{}'.format(self.name, self.index)
                     env.locals['_step'].index = self.index
                     #
-                    SoS_exec(''.join(self.statements), self.sigil)
+                    SoS_exec(self.process, self.sigil)
                     #
                     # if there is subworkflow, the subworkflow is considered part of the process
                     # and will be executed mutliple times if necessary. The partial signature 
@@ -672,7 +685,7 @@ class SoS_Step:
                 except Exception as e:
                     if env.verbosity > 2:
                         print_traceback()
-                    raise RuntimeError('Failed to execute action\n{}\n{}'.format(''.join(self.statements), e))
+                    raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.process, e))
             if o and o != env.locals['_step'].output and env.run_mode == 'run':
                 partial_signature.write()
         if env.run_mode == 'run':
@@ -1121,6 +1134,7 @@ class SoS_Script:
                         parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category)
                     cursect.category = None
                     cursect.values = []
+                    cursect.finalize()
                 # start a new section
                 section_name = mo.group('section_name').strip()
                 section_option = mo.group('section_option')
@@ -1297,8 +1311,11 @@ class SoS_Script:
                 cursect.extend(line)
         #
         # check the last expression before a new directive
-        if cursect and not cursect.isValid():
-            parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category)
+        if cursect:
+            if not cursect.isValid():
+                parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category)
+            else:
+                cursect.finalize()
         #
         # if there is any parsing error, raise an exception
         if parsing_errors.errors:
