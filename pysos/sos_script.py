@@ -105,15 +105,19 @@ class SoS_Step:
         self.comment = ''
         # comment at the end of a section that could be a workflow description
         self.back_comment = ''
+        # parameters for parameters section
         self.parameters = []
+        # everything before step process
         self.statements = []
+        # step process
+        self.process = ''
+        # subworkflow of a step
         self.subworkflow = None
         # is it global section?
         self.is_global = is_global
         # is it the parameters section?
         self.is_parameters = is_parameters
         # indicate the type of input of the last line
-        self.category = None
         self.values = []
         self.lineno = None
         #
@@ -123,17 +127,30 @@ class SoS_Step:
         else:
             self.sigil = '${ }'
 
+    def category(self):
+        if self.statements:
+            if self.statements[-1][0] == '=':
+                return 'expression'
+            elif self.statements[-1][0] == ':':
+                return 'directive'
+            else:
+                return 'statements'
+        elif self.parameters:
+            return 'expression'
+        else:
+            return None
+
     #
     # Parsing input
     #
     def empty(self):
         '''If there is no content (comment does not count)'''
-        return self.category is None
+        return self.category() is None
 
     def extend(self, line):
-        if self.category == 'directive':
+        if self.category() == 'directive':
             self.add_directive(None, line)
-        elif self.category == 'expression':
+        elif self.category() == 'expression':
             self.add_assignment(None, line)
         else:
             self.add_statement(line)
@@ -165,7 +182,6 @@ class SoS_Step:
                 self.comment = ''
             else:
                 self.statements.append(['=', key, value])
-            self.category = 'expression'
             self.values = [value]
         self.back_comment = ''
         if lineno:
@@ -180,7 +196,6 @@ class SoS_Step:
         else:
             # new directive
             self.statements.append([':', key, value])
-            self.category = 'directive'
             self.values = [value]
         self.back_comment = ''
         if lineno:
@@ -189,12 +204,11 @@ class SoS_Step:
     def add_statement(self, line, lineno=None):
         '''Assignments are items with ':' type '''
         # there can be only one statement block
-        self.statements.append(['!', line])
-        if self.category != 'statements':
+        if self.category() != 'statements':
             self.values = [line]
         else:
             self.values.append(line)
-        self.category = 'statements'
+        self.statements.append(['!', line])
         self.back_comment = ''
         if lineno:
             self.lineno = lineno
@@ -226,9 +240,9 @@ class SoS_Step:
         if not self.values:
             return True
         try:
-            if self.category == 'expression':
+            if self.category() == 'expression':
                 compile(''.join(self.values), filename='<string>', mode='eval')
-            elif self.category == 'directive':
+            elif self.category() == 'directive':
                 # we add func() because the expression can be multi-line and
                 # can have keyword-argument like options
                 #
@@ -240,10 +254,10 @@ class SoS_Step:
                 if self.values[-1].strip().endswith(','):
                     return False
                 compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
-            elif self.category == 'statements':
+            elif self.category() == 'statements':
                 compile(''.join(self.values), filename='<string>', mode='exec')
             else:
-                raise RuntimeError('Unrecognized expression type {}'.format(self.category))
+                raise RuntimeError('Unrecognized expression type {}'.format(self.category()))
             return True
         except Exception as e:
             return False
@@ -1106,7 +1120,7 @@ class SoS_Script:
                     comment_block += 1
                     self.descriptions.append('')
                 else:
-                    if cursect.category == 'statements':
+                    if cursect.category() == 'statements':
                         cursect.extend(line)
                     elif cursect.comment:
                         comment_block += 1
@@ -1131,8 +1145,7 @@ class SoS_Script:
                 # check previous expression before a new assignment
                 if cursect:
                     if not cursect.isValid():
-                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category)
-                    cursect.category = None
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category())
                     cursect.values = []
                     cursect.finalize()
                 # start a new section
@@ -1246,7 +1259,7 @@ class SoS_Script:
                     cursect = self.sections[-1]
                 # check previous expression before a new assignment
                 if not cursect.isValid():
-                    parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category)
+                    parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category())
                     continue
                 cursect.values = []
                 #
@@ -1258,11 +1271,11 @@ class SoS_Script:
                 var_value = mo.group('var_value') + '\n'
                 # if first line of the section, or following another assignment
                 # this is assignment
-                if cursect.empty() or cursect.category == 'expression':
+                if cursect.empty() or cursect.category() == 'expression':
                     cursect.add_assignment(var_name, var_value, lineno)
                 #
                 # if following a directive, this must be start of an action
-                elif cursect.category == 'directive':
+                elif cursect.category() == 'directive':
                     cursect.add_statement('{} = {}\n'.format(var_name, var_value), lineno)
                 else:
                     # otherwise it is an continuation of the existing action
@@ -1275,7 +1288,7 @@ class SoS_Script:
                 # check previous expression before a new directive
                 if cursect:
                     if not cursect.isValid():
-                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category)
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category())
                     cursect.values = []
                 #
                 directive_name = mo.group('directive_name')
@@ -1287,7 +1300,7 @@ class SoS_Script:
                 if cursect.is_parameters:
                     parsing_errors.append(lineno, line, 'Directive {} is not allowed in {} section'.format(directive_name, self._PARAMETERS_SECTION_NAME))
                     continue
-                if not cursect.empty() and cursect.category == 'statements':
+                if not cursect.empty() and cursect.category() == 'statements':
                     parsing_errors.append(lineno, line, 'Directive {} should be be defined before step action'.format(directive_name))
                     continue
                 cursect.add_directive(directive_name, directive_value, lineno)
@@ -1303,7 +1316,7 @@ class SoS_Script:
                 parsing_errors.append(lineno, line, 'Action statement is not allowed in {} section'.format(self._PARAMETERS_SECTION_NAME))
                 continue
             #
-            if cursect.empty() or cursect.category != 'statements':
+            if cursect.empty() or cursect.category() != 'statements':
                 # new statement
                 cursect.add_statement(line, lineno)
             else:
@@ -1313,7 +1326,7 @@ class SoS_Script:
         # check the last expression before a new directive
         if cursect:
             if not cursect.isValid():
-                parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category)
+                parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category())
             else:
                 cursect.finalize()
         #
@@ -1462,9 +1475,9 @@ def print_traceback():
 def sos_show(args):
     # options such as -v might be put at the end and we need to 
     # extract them from args.options
-    mini_parser = ArgumentParser()
+    mini_parser = argparse.ArgumentParser()
     mini_parser.add_argument('-v', '--verbosity', type=int, choices=range(5))
-    remaining_args, remainder = mini_parser.parse_known_arguments(args.options)
+    remaining_args, remainder = mini_parser.parse_known_args(args.options)
     for k, v in remaining_args.__dict__.items():
         setattr(args, k, v)
     args.options = remainder
