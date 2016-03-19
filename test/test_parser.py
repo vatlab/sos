@@ -377,8 +377,8 @@ input: 'filename'  filename2
 func()        
 input: 'filename',  'filename2', opt=value==1
 ''')
-        # cannot be assigned between directives
-        self.assertRaises(ParsingError, SoS_Script, '''
+        # assignments between directives are allowed
+        SoS_Script('''
 [0]
 input: 'filename',  'filename2', opt=value==1
 a = 'some text'

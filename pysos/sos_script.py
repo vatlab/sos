@@ -1274,9 +1274,9 @@ class SoS_Script:
                 if cursect.empty() or cursect.category() == 'expression':
                     cursect.add_assignment(var_name, var_value, lineno)
                 #
-                # if following a directive, this must be start of an action
+                # if following a directive, this can be start of an action or between directives
                 elif cursect.category() == 'directive':
-                    cursect.add_statement('{} = {}\n'.format(var_name, var_value), lineno)
+                    cursect.add_assignment(var_name, var_value, lineno)
                 else:
                     # otherwise it is an continuation of the existing action
                     cursect.extend('{} = {}\n'.format(var_name, var_value))
