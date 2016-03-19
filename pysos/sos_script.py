@@ -524,6 +524,7 @@ class SoS_Step:
 
     def parse_args(self, args, check_unused=False, cmd_name=''):
         '''Parse command line arguments and set values to parameters section'''
+        env.logger.info('Execute ``{}_parameters``'.format(self.name))
         def str2bool(v):
             if v.lower() in ('yes', 'true', 't', '1'):
                 return True
@@ -579,6 +580,7 @@ class SoS_Step:
     def run_global(self):
         '''Execute the global section. The biggest difference is that there is no directive
         and no changing or _step ...'''
+        env.logger.info('Execute ``{}_global``'.format(self.name))
         try:
             SoS_exec(self.process)
         except Exception as e:
@@ -594,8 +596,7 @@ class SoS_Step:
         if isinstance(self.index, int):
             env.locals.set('_workflow_index', self.index)
         #
-        if self.name is not None:
-            env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment))
+        env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment))
         #
         # 
         # the following is a quick hack to allow _directive_input function etc to access 
