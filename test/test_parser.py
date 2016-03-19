@@ -481,8 +481,10 @@ executed.append(_step.name)
 [a_3]
 executed.append(_step.name)
 [a_4]
+output: 'out_a_4'
 executed.append(_step.name)
 [b_1]
+input_b1 = _step.input
 executed.append(_step.name)
 [b_2]
 executed.append(_step.name)
@@ -496,10 +498,12 @@ executed.append(_step.name)
 executed.append(_step.name)
 ''')
         env.locals['executed'] = []
+        env.run_mode = 'dryrun'
         wf = script.workflow('a+b')
         wf.run()
         self.assertEqual(env.locals['executed'], ['global', 'a_1', 'a_2', 'a_3', 'a_4', 'global', 'b_1', 'b_2', 'b_3', 'b_4'])
         self.assertEqual(env.locals['a'], 1)
+        self.assertEqual(env.locals['input_b1'], ['out_a_4'])
         #
         env.locals['executed'] = []
         wf = script.workflow('a_ 1-2 + a_4 + b_3-')

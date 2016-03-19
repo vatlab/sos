@@ -576,10 +576,21 @@ class SoS_Step:
             env.locals[k] = v
 
 
+    def run_global(self):
+        '''Execute the global section. The biggest difference is that there is no directive
+        and no changing or _step ...'''
+        try:
+            SoS_exec(self.process)
+        except Exception as e:
+            if env.verbosity > 2:
+                print_traceback()
+            raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.process, e))
+
     #
     # Execution
     #
     def run(self):
+        # handle these two sections differently
         if isinstance(self.index, int):
             env.locals.set('_workflow_index', self.index)
         #
@@ -704,7 +715,7 @@ class SoS_Step:
                 partial_signature.write()
         if env.run_mode == 'run':
             for ofile in env.locals['_step'].output:
-                if not os.path.isfile(os.path.expanduser(ofile)):
+                if not os.path.isfile(os.path.expanduser(ofile)): 
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
         if signature and env.run_mode == 'run':
             signature.write()
@@ -847,7 +858,7 @@ class SoS_Workflow:
         for idx, section in enumerate(self.sections):
             # global section will not change _step etc
             if section.is_global:
-                section.run()
+                section.run_global()
                 continue
             elif section.is_parameters:
                 # if there is only one parameters section and no nested workflow, check unused section
