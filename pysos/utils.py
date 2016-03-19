@@ -181,7 +181,7 @@ class WorkflowDict(dict):
         if key.isupper() and dict.__contains__(self, key) and dict.__getitem__(self, key) != value:
             env.logger.warning('Changing readonly variable {} from {} to {}'
                 .format(key, dict.__getitem__(self, key), value))
-        if key.startswith('_') and key not in ('_input', '_output', '_step', '_index'):
+        if key.startswith('_') and key not in ('_input', '_output', '_step', '_index', '_depends'):
             env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
 #

@@ -452,7 +452,7 @@ class SoS_Step:
                 if not all(isinstance(x, basestring) for x in arg):
                     raise RuntimeError('Invalid dependent file: {}'.format(arg))
                 dfiles.extend(arg)
-        self._depends.append(dfiles)
+        env.locals.set('_depends', dfiles)
 
     def _handle_output_pattern(self, pattern, ofiles):
         # 
@@ -505,7 +505,7 @@ class SoS_Step:
         #
         if 'pattern' in kwargs:
             self._handle_output_pattern(kwargs['pattern'], ofiles)
-        self._outputs.append(ofiles)
+        env.locals.set('_output', ofiles)
 
     def _directive_runtime(self, **kwargs):
         for k in kwargs.keys():
@@ -607,47 +607,103 @@ class SoS_Step:
         env.locals['_step'].output = []
         env.locals['_step'].depends = []
         #
+        # these are temporary variables that should be removed if exist
+        for var in ('_input', '_depends', '_output'):
+            env.locals.pop(var, '')
+        #
         # default input groups and vars
         if hasattr(env.locals['_step'], 'input'):
             self._groups = [env.locals['_step'].input]
         else:
             self._groups = [[]]
         self._vars = [{}]
+        #
+        input_idx = [idx for idx,x in enumerate(self.statements) if x[0] == ':' and x[1] == 'input']
+        if not input_idx:
+            input_idx = None
+        elif len(input_idx) == 1:
+            input_idx = input_idx[0]
+        else:
+            raise RuntimeError('Only one step input is allowed')
+        # if there is no input, easily
         self._outputs = []
         self._depends = []
-        #
-        for statement in self.statements:
-            if statement[0] == '=':
-                key, value = statement[1:]
-                try:
-                    env.locals[key] = SoS_eval(value, self.sigil)
-                except Exception as e:
-                    raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
-                if key == '_output':
-                    self._outputs[-1] = env.locals['_output']
-                elif key == '_depends':
-                    self._depends[-1] = env.locals['_depends']
-            elif statement[0] == ':':
-                key, value = statement[1:]
-                # input is processed only once
-                if key in ('input', 'runtime'):
+        if input_idx is None:
+            # no input? _input is _step.input
+            env.locals.set('_input', env.locals['_step'].input)
+            for statement in self.statements:
+                if statement[0] == '=':
+                    key, value = statement[1:]
+                    try:
+                        env.locals[key] = SoS_eval(value, self.sigil)
+                    except Exception as e:
+                        raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
+                elif statement[0] == ':':
+                    key, value = statement[1:]
+                    # input and runtime is processed only once
                     try:
                         SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
                     except Exception as e:
                         raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
-                # output processed multiple times for each input group
-                else: # input is processed once
-                    for g, v in zip(self._groups, self._vars):
-                        env.locals.update(v)
-                        env.locals.set('_input', g)
+            # these assignments could affect _output and _depends and affect
+            # saved _outputs and _depends list
+            if '_output' in env.locals:
+                self._outputs.append(env.locals['_output'])
+            else:
+                self._outputs.append([])
+            if '_depends' in env.locals:
+                self._depends.append(env.locals['_depends'])
+            else:
+                self._depends.append([])
+        else:
+            # if there is input directive
+            for statement in self.statements[:input_idx]:
+                if statement[0] == '=':
+                    key, value = statement[1:]
+                    try:
+                        env.locals[key] = SoS_eval(value, self.sigil)
+                    except Exception as e:
+                        raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
+                elif statement[0] == ':':
+                    raise RuntimeError('Step input should be specified before others')
+            # input
+            key, value = self.statements[input_idx][1:]
+            try:
+                SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
+            except Exception as e:
+                raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
+            # post input
+            # output and depends can be processed many times
+            for g, v in zip(self._groups, self._vars):
+                # other variables
+                env.locals.update(v)
+                env.locals.set('_input', g)
+                for statement in self.statements[input_idx+1:]:
+                    if statement[0] == '=':
+                        key, value = statement[1:]
+                        try:
+                            env.locals[key] = SoS_eval(value, self.sigil)
+                        except Exception as e:
+                            raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
+                    elif statement[0] == ':':
+                        key, value = statement[1:]
+                        # input and runtime is processed only once
                         try:
                             SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
                         except Exception as e:
                             raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
-                        if key in ['output']:
-                            env.locals.set('_output', self._outputs[-1])
-                        elif key in ['depends']:
-                            env.locals.set('_depends', self._depends[-1])
+                # collect _output and _depends
+                if '_output' in env.locals:
+                    self._outputs.append(env.locals['_output'])
+                    env.locals.pop('_output')
+                else:
+                    self._outputs.append([])
+                if '_depends' in env.locals:
+                    self._depends.append(env.locals['_depends'])
+                    env.locals.pop('_depends')
+                else:
+                    self._depends.append([])
+        #
         # if no output directive, assuming no output for each step
         if not self._outputs:
             self._outputs = [[] for x in self._groups]
