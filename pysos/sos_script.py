@@ -623,6 +623,10 @@ class SoS_Step:
                     env.locals[key] = SoS_eval(value, self.sigil)
                 except Exception as e:
                     raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
+                if key == '_output':
+                    self._outputs[-1] = env.locals['_output']
+                elif key == '_depends':
+                    self._depends[-1] = env.locals['_depends']
             elif statement[0] == ':':
                 key, value = statement[1:]
                 # input is processed only once
@@ -640,6 +644,10 @@ class SoS_Step:
                             SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
                         except Exception as e:
                             raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
+                        if key in ['output']:
+                            env.locals.set('_output', self._outputs[-1])
+                        elif key in ['depends']:
+                            env.locals.set('_depends', self._depends[-1])
         # if no output directive, assuming no output for each step
         if not self._outputs:
             self._outputs = [[] for x in self._groups]
