@@ -404,6 +404,81 @@ input: 'a.pdf', files, skip=False
         env.run_mode = 'dryrun'
         script.workflow('default').run()
 
+    def testGroupBy(self):
+        '''Test group_by parameter of step input'''
+        # group_by = 'all'
+        script = SoS_Script('''
+[0]
+
+executed = []
+input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='all'
+
+executed.append(_input)
+
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals['executed'],  [['a1.txt', 'a2.txt', 'a3.txt', 'a4.txt']])
+        # group_by = 'single'
+        script = SoS_Script('''
+[0]
+
+executed = []
+input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='single'
+
+executed.append(_input)
+
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals['executed'],  [['a1.txt'], ['a2.txt'], ['a3.txt'], ['a4.txt']])
+        # group_by = 'pairs'
+        script = SoS_Script('''
+[0]
+
+executed = []
+input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='pairs'
+
+executed.append(_input)
+
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals['executed'],  [['a1.txt', 'a3.txt'], ['a2.txt', 'a4.txt']])
+        # group_by = 'pairwise'
+        script = SoS_Script('''
+[0]
+
+executed = []
+input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='pairwise'
+
+executed.append(_input)
+
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals['executed'],  [['a1.txt', 'a2.txt'], ['a2.txt', 'a3.txt'], ['a3.txt', 'a4.txt']])
+        # group_by = 'combinations'
+        script = SoS_Script('''
+[0]
+
+executed = []
+input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='combinations'
+
+executed.append(_input)
+
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.locals['executed'],  [['a1.txt', 'a2.txt'], ['a1.txt', 'a3.txt'], 
+            ['a1.txt', 'a4.txt'], ['a2.txt', 'a3.txt'], ['a2.txt', 'a4.txt'], ['a3.txt', 'a4.txt']])
+
+
     def testSectionActions(self):
         '''Test actions of sections'''
         SoS_Script(

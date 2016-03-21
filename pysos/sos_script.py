@@ -266,16 +266,19 @@ class SoS_Step:
     #
     # Execution: input options
     #
-    def _get_groups(self, ifiles, group_by):
+    def _handle_input_group_by(self, ifiles, group_by):
         # for this special case, the step is skipped
         if group_by == 'single':
             return [[x] for x in ifiles]
         elif group_by == 'all':
+            # default option
             return [ifiles]
-        elif group_by == 'paired':
-            if len(ifiles) // 2 != 0:
-                raise ValueError('Paired group_by has to have even number of input files')
-            return list(zip(ifiles[:len(ifiles)//2], ifiles[len(ifiles)//2:]))
+        elif group_by == 'pairs':
+            if len(ifiles) % 2 != 0:
+                raise ValueError('Paired group_by has to have even number of input files: {} provided'
+                    .format(len(ifiles)))
+            env.logger.error( list(zip(ifiles[:len(ifiles)//2], ifiles[len(ifiles)//2:])))
+            return list(list(x) for x in zip(ifiles[:len(ifiles)//2], ifiles[len(ifiles)//2:]))
         elif group_by == 'pairwise':
             f1, f2 = tee(ifiles)
             next(f2, None)
@@ -422,7 +425,7 @@ class SoS_Step:
         #             
         # handle group_by
         if 'group_by' in kwargs:
-            self._groups = self._get_groups(ifiles, kwargs['group_by'])
+            self._groups = self._handle_input_group_by(ifiles, kwargs['group_by'])
         else:
             self._groups = [ifiles]
         #
