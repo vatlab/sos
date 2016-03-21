@@ -41,6 +41,7 @@ except ImportError:
 # Python 2.7 should also have this module
 from io import StringIO
 
+from . import __version__
 from .actions import *
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
     dehtml, getTermWidth, interpolate, shortRepr, glob_wildcards, apply_wildcards
@@ -905,10 +906,10 @@ class SoS_Workflow:
             if not hasattr(env, 'locals'):
                 env.locals = WorkflowDict()
             # initial values
-            try:
-                env.locals['HOME'] = os.environ['HOME']
-            except:
-                env.locals['HOME'] = '.'
+            env.locals.set('SOS_VERSION', __version__)
+            py_version = sys.version_info
+            env.locals.set('SOS_PYTHON_VERSION', (py_version.major, py_version.minor, py_version.micro))
+
             #
             env.locals.set('_step', StepInfo())
             # initially there is no input, output, or depends

@@ -29,10 +29,11 @@ if (ver.major == 2 and (ver.minor, ver.micro) < (7, 1)) or (ver.major == 3 and (
         .format(ver.major, ver.minor, ver.micro))
 
 
-SOS_VERSION='0.1.0'
+__version__ = '0.5.0'
+__py_version__ = '{}.{}.{}'.format(ver.major, ver.minor, ver.micro)
 #
-SOS_FULL_VERSION='{} for Python {}.{}.{}'.format(SOS_VERSION, ver.major, ver.minor, ver.micro)
-SOS_COPYRIGHT = '''SOS {} : Copyright (c) 2011 - 2016 Bo Peng'''.format(SOS_VERSION)
+SOS_FULL_VERSION='{} for Python {}.{}.{}'.format(__version__, ver.major, ver.minor, ver.micro)
+SOS_COPYRIGHT = '''SoS {} : Copyright (c) 2016 Bo Peng'''.format(__version__)
 SOS_CONTACT = '''Please visit http://github.com/bpeng2000/SOS for more information.'''
 
 from .sos_script import *

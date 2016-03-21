@@ -26,8 +26,10 @@ try:
 except ImportError:
    from distutils.command.build_py import build_py
 
+from pysos import __version__
+
 setup(name = "sos",
-    version = '0.1',
+    version = __version__,
     description = "Script of Scripts (SoS): a workflow system for the execution of scripts in different languages",
     author = 'Bo Peng',
     url = 'https://github.com/bpeng2000/SOS',

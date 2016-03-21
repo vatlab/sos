@@ -23,7 +23,7 @@
 import sys
 import argparse
 
-from pysos import SOS_VERSION, SOS_FULL_VERSION, env, sos_run, sos_dryrun, sos_show
+from pysos import __version__, SOS_FULL_VERSION, env, sos_run, sos_dryrun, sos_show
 
 def addCommonArgs(parser):
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5),
@@ -33,7 +33,7 @@ def addCommonArgs(parser):
 if __name__ == '__main__':
     master_parser = argparse.ArgumentParser(description='''A workflow system
             for the execution of commands and scripts.''',
-        prog='sos',
+        prog='SoS',
         fromfile_prefix_chars='@',
         epilog='''Use 'sos cmd -h' for details about each subcommand. Please
             contact Bo Peng (bpeng at mdanderson.org) if you have any question.''')

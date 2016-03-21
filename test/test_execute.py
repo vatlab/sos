@@ -28,8 +28,18 @@ import os
 import unittest
 
 from pysos import *
+from pysos import __version__
+import subprocess
 
 class TestRun(unittest.TestCase):
+    def testCommandLine(self):
+        '''Test command line arguments'''
+        result = subprocess.check_output('sos --version', stderr=subprocess.STDOUT, shell=True).decode()
+        self.assertTrue(result.startswith('SoS {}'.format(__version__)))
+        subprocess.check_output('sos -h', stderr=subprocess.STDOUT, shell=True)
+        subprocess.check_output('sos run -h', stderr=subprocess.STDOUT, shell=True)
+        subprocess.check_output('sos dryrun -h', stderr=subprocess.STDOUT, shell=True)
+        subprocess.check_output('sos show -h', stderr=subprocess.STDOUT, shell=True)
 
     def testInterpolation(self):
         '''Test string interpolation during execution'''
@@ -57,7 +67,7 @@ for b in range(5):
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['HOME'], os.environ['HOME'])
+        self.assertEqual(env.locals['SOS_VERSION'], __version__)
 
     def testSignature(self):
         '''Test recognizing the format of SoS script'''
