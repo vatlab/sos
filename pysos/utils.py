@@ -45,7 +45,7 @@ except ImportError:
     from HTMLParser import HTMLParser
 
 #
-# Logging 
+# Logging
 #
 
 class ColoredFormatter(logging.Formatter):
@@ -141,7 +141,7 @@ def shortRepr(obj):
         first_key = obj.keys()[0]
         return '{{{}:{}, ...}} ({} items)'.format(first_key, obj[first_key], len(obj))
     else:
-        return '{}...'.format(repr(value)[:40])
+        return '{}...'.format(repr(obj)[:40])
 
 #
 # SoS Workflow dictionary
@@ -637,7 +637,7 @@ def SoS_exec(stmts, sigil='${ }'):
     # # this is already correct syntax but the remaining piece is not.
     #     def another_one(self):
     #         pass
-    # 
+    #
     # We therefore has to be a bit more clever on this.
     #
     # we first group all lines by their own group
@@ -850,7 +850,7 @@ class RuntimeInfo:
 # https://bitbucket.org/snakemake/snakemake/src/22eff35627401d3bb243e068c5dce97107e7090b/snakemake/io.py?at=master&fileviewer=file-view-default
 #
 # I will re-implement it if there is any license issue with the code
-# 
+#
 
 _wildcard_regex = re.compile(
     "\{\s*(?P<name>\w+?)(\s*,\s*(?P<constraint>([^\{\}]+|\{\d+(,\d+)?\})*))?\s*\}")
@@ -931,5 +931,3 @@ def apply_wildcards(pattern,
                 raise RuntimeError('Wildcard apply error {}'.format(ex))
 
     return re.sub(_wildcard_regex, format_match, pattern)
-
-
