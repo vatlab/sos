@@ -356,5 +356,25 @@ a += 1
         env.run_mode = 'dryrun'
         self.assertRaises(RuntimeError, wf.run)
 
+    def testReadonlyVarsInParameters(self):
+        '''Test vars defined in global section are readonly'''
+        script = SoS_Script(r"""
+
+a = 10
+import random
+
+[parameters]
+
+b = random.randint(0, 100000)
+
+[a_1]
+
+[default=a+a]
+
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        self.assertRaises(RuntimeError, wf.run)
+
 if __name__ == '__main__':
     unittest.main()

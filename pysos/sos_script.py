@@ -599,8 +599,9 @@ class SoS_Step:
         #
         arguments.update(vars(parsed))
         # now change the value with passed values
-        for k, v in arguments.items():
-            env.locals[k] = v
+        with env.locals.readonly_assignment():
+            for k, v in arguments.items():
+                env.locals[k] = v
 
     #
     # Execution
