@@ -290,7 +290,6 @@ class SoS_Step:
             if len(ifiles) % 2 != 0:
                 raise ValueError('Paired group_by has to have even number of input files: {} provided'
                     .format(len(ifiles)))
-            env.logger.error( list(zip(ifiles[:len(ifiles)//2], ifiles[len(ifiles)//2:])))
             return list(list(x) for x in zip(ifiles[:len(ifiles)//2], ifiles[len(ifiles)//2:]))
         elif group_by == 'pairwise':
             f1, f2 = tee(ifiles)
@@ -545,7 +544,8 @@ class SoS_Step:
         env.locals['_step'].index = -1
         if self.global_process:
             try:
-                SoS_exec(self.global_process)
+                with env.locals.readonly_assignment():
+                    SoS_exec(self.global_process)
             except Exception as e:
                 if env.verbosity > 2:
                     print_traceback()
@@ -646,7 +646,8 @@ class SoS_Step:
         # execute global process
         if self.global_process:
             try:
-                SoS_exec(self.global_process)
+                with env.locals.readonly_assignment():
+                    SoS_exec(self.global_process)
             except Exception as e:
                 if env.verbosity > 2:
                     print_traceback()
@@ -927,8 +928,8 @@ class SoS_Workflow:
             env.globals = globals()
             # Because this workflow might belong to a combined workflow, we do not clear
             # locals before the execution of workflow.
-            if not hasattr(env, 'locals'):
-                env.locals = WorkflowDict()
+            #if not hasattr(env, 'locals'):
+            env.locals = WorkflowDict()
             # initial values
             env.locals.set('SOS_VERSION', __version__)
             py_version = sys.version_info

@@ -326,8 +326,8 @@ from pysos import SoS_Action
 def fail():
     return 1
 
-a = fail()
 [0]
+a = fail()
 """)
         wf = script.workflow()
         env.run_mode = 'dryrun'
@@ -335,11 +335,26 @@ a = fail()
         # should return 0 in dryrun mode
         self.assertEqual(env.locals['a'], 0)
         #
+
         env.run_mode = 'run'
         wf.run()
         # shoulw return 1 in run mode
         self.assertEqual(env.locals['a'], 1)
 
+    def testReadonlyVarsInGalobal(self):
+        '''Test vars defined in global section are readonly'''
+        script = SoS_Script(r"""
+
+a = 10
+
+[0]
+
+a += 1
+
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        self.assertRaises(RuntimeError, wf.run)
 
 if __name__ == '__main__':
     unittest.main()
