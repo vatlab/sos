@@ -222,6 +222,10 @@ class RuntimeEnvironments(object):
         # execution of SoS workflows
         self.locals = WorkflowDict()
         self.globals = globals()
+        # 
+        # maximum number of concurrent jobs
+        self.max_jobs = 1
+        self.running_jobs = 0
 
     #
     # attribute logger
@@ -931,3 +935,4 @@ def apply_wildcards(pattern,
                 raise RuntimeError('Wildcard apply error {}'.format(ex))
 
     return re.sub(_wildcard_regex, format_match, pattern)
+

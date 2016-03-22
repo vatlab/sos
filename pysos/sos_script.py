@@ -394,17 +394,17 @@ class SoS_Step:
         # expand files with wildcard characters and check if files exist
         tmp = []
         for ifile in ifiles:
-            if os.path.isfile(ifile):
+            if os.path.isfile(os.path.expanduser(ifile)):
                 tmp.append(ifile)
             elif env.run_mode == 'run':
                 # in this mode file must exist
-                expanded = glob.glob(ifile)
+                expanded = glob.glob(os.path.expanduser(ifile))
                 if not expanded:
                     raise RuntimeError('{} not exist.'.format(ifile))
                 tmp.extend(expanded)
             elif env.run_mode == 'dryrun':
                 # FIXME: this should be the 'dynamic' mode
-                expanded = glob.glob(ifile)
+                expanded = glob.glob(os.path.expanduser(ifile))
                 if expanded:
                     tmp.extend(expanded)
                 else:
@@ -592,6 +592,40 @@ class SoS_Step:
                 print_traceback()
             raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.process, e))
 
+    def execute_single(self):
+        '''Execute a single step 
+        '''
+        # If the users specifies output files for each loop (using ${input} etc, we
+        # can try to see if we can create partial signature. This would help if the
+        # step is interrupted in the middle.
+        partial_signature = None
+        if env.locals['_output'] and env.locals['_output'] != env.locals['_step'].output and env.run_mode == 'run':
+            partial_signature = RuntimeInfo(self.process, env.locals['_input'], env.locals['_output'], 
+                env.locals['_depends'])
+            if partial_signature.validate():
+                # everything matches
+                env.logger.info('Reusing existing output files {}'.format(', '.join(env.locals['_output'])))
+                return
+        with self.runtime:
+            try:
+                # in case of nested workflow, these names might be changed and need to be reset
+                env.locals['_step'].name = '{}_{}'.format(self.name, self.index)
+                env.locals['_step'].index = self.index
+                #
+                SoS_exec(self.process, self.sigil)
+                #
+                # if there is subworkflow, the subworkflow is considered part of the process
+                # and will be executed mutliple times if necessary. The partial signature 
+                # stuff works for these though
+                if self.subworkflow:
+                    self.subworkflow.run(nested=True)
+            except Exception as e:
+                if env.verbosity > 2:
+                    print_traceback()
+                raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.process, e))
+        if partial_signature:
+            partial_signature.write()
+        
     #
     # Execution
     #
@@ -648,7 +682,7 @@ class SoS_Step:
                     try:
                         SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
                     except Exception as e:
-                        raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
+                        raise RuntimeError('Failed to process step {}: {}'.format(key, e))
             # these assignments could affect _output and _depends and affect
             # saved _outputs and _depends list
             if '_output' in env.locals:
@@ -748,40 +782,14 @@ class SoS_Step:
             env.locals.update(v)
             env.locals['_input'] = g
             env.locals['_output'] = o
+            env.locals['_depends'] = d
             env.locals['_index'] = idx
             env.logger.info('_idx: ``{}``'.format(idx))
             env.logger.info('_input: ``{}``'.format(shortRepr(env.locals['_input'])))
             env.logger.info('_output: ``{}``'.format(shortRepr(env.locals['_output'])))
             #
-            # If the users specifies output files for each loop (using ${input} etc, we
-            # can try to see if we can create partial signature. This would help if the
-            # step is interrupted in the middle.
-            if o and o != env.locals['_step'].output and env.run_mode == 'run':
-                partial_signature = RuntimeInfo(self.process, g, o, d)
-                if partial_signature.validate():
-                    # everything matches
-                    env.logger.info('Reusing existing output files {}'.format(', '.join(o)))
-                    continue
             # action
-            with self.runtime:
-                try:
-                    # in case of nested workflow, these names might be changed and need to be reset
-                    env.locals['_step'].name = '{}_{}'.format(self.name, self.index)
-                    env.locals['_step'].index = self.index
-                    #
-                    SoS_exec(self.process, self.sigil)
-                    #
-                    # if there is subworkflow, the subworkflow is considered part of the process
-                    # and will be executed mutliple times if necessary. The partial signature 
-                    # stuff works for these though
-                    if self.subworkflow:
-                        self.subworkflow.run(nested=True)
-                except Exception as e:
-                    if env.verbosity > 2:
-                        print_traceback()
-                    raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.process, e))
-            if o and o != env.locals['_step'].output and env.run_mode == 'run':
-                partial_signature.write()
+            self.execute_single()
         if env.run_mode == 'run':
             for ofile in env.locals['_step'].output:
                 if not os.path.isfile(os.path.expanduser(ofile)): 
@@ -1098,7 +1106,7 @@ class SoS_Script:
         from a file.
         '''
         if filename:
-            if not os.path.isfile(filename):
+            if not os.path.isfile(os.path.expanduser(filename)):
                 raise ValueError('{} does not exist'.format(filename))
             with open(filename) as fp:
                 self._read(fp, filename)
@@ -1590,6 +1598,7 @@ def sos_run(args):
         setattr(args, k, v)
     args.options = remainder
     env.verbosity = args.verbosity
+    env.max_jobs = args.__max_jobs__
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
