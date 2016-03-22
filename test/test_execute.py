@@ -44,6 +44,7 @@ class TestRun(unittest.TestCase):
     def testInterpolation(self):
         '''Test string interpolation during execution'''
         script = SoS_Script(r"""
+[0]
 res = ''
 b = 200
 res += '${b}'
@@ -53,6 +54,7 @@ res += '${b}'
         self.assertEqual(env.locals['res'], '200')
         #
         script = SoS_Script(r"""
+[0]
 res = ''
 for b in range(5):
     res += '${b}'
@@ -325,6 +327,7 @@ def fail():
     return 1
 
 a = fail()
+[0]
 """)
         wf = script.workflow()
         env.run_mode = 'dryrun'

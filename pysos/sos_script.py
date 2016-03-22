@@ -88,6 +88,16 @@ class StepInfo:
     def __init__(self):
         pass
 
+def execute_function(step_process, global_process, locals):
+    '''A function that has a local dictionary (from SoS env.locals),
+    a global process, and a step process. The processes are executed 
+    in a separate process, independent of SoS. This makes it possible
+    to execute the processes in background, on cluster, or submit as
+    Celery tasks.'''
+    
+
+    
+
 class SoS_Step:
     #
     # A single sos step
@@ -110,11 +120,13 @@ class SoS_Step:
         self.parameters = []
         # everything before step process
         self.statements = []
-        # step process
+        # step processes
+        self.global_process = None
         self.process = ''
         # subworkflow of a step
         self.subworkflow = None
-        # is it global section?
+        # is it global section? This is a temporary indicator because the global section 
+        # will be inserted to each step of the workflow.
         self.is_global = is_global
         # is it the parameters section?
         self.is_parameters = is_parameters
@@ -529,6 +541,16 @@ class SoS_Step:
     def parse_args(self, args, check_unused=False, cmd_name=''):
         '''Parse command line arguments and set values to parameters section'''
         env.logger.info('Execute ``{}_parameters``'.format(self.name))
+        env.locals['_step'].name = '{}_parameters'.format(self.name)
+        env.locals['_step'].index = -1
+        if self.global_process:
+            try:
+                SoS_exec(self.global_process)
+            except Exception as e:
+                if env.verbosity > 2:
+                    print_traceback()
+                raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.global_process, e))
+     
         def str2bool(v):
             if v.lower() in ('yes', 'true', 't', '1'):
                 return True
@@ -580,52 +602,6 @@ class SoS_Step:
         for k, v in arguments.items():
             env.locals[k] = v
 
-
-    def run_global(self):
-        '''Execute the global section. The biggest difference is that there is no directive
-        and no changing or _step ...'''
-        env.logger.info('Execute ``{}_global``'.format(self.name))
-        try:
-            SoS_exec(self.process)
-        except Exception as e:
-            if env.verbosity > 2:
-                print_traceback()
-            raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.process, e))
-
-    def execute_single(self):
-        '''Execute a single step 
-        '''
-        # If the users specifies output files for each loop (using ${input} etc, we
-        # can try to see if we can create partial signature. This would help if the
-        # step is interrupted in the middle.
-        partial_signature = None
-        if env.locals['_output'] and env.locals['_output'] != env.locals['_step'].output and env.run_mode == 'run':
-            partial_signature = RuntimeInfo(self.process, env.locals['_input'], env.locals['_output'], 
-                env.locals['_depends'])
-            if partial_signature.validate():
-                # everything matches
-                env.logger.info('Reusing existing output files {}'.format(', '.join(env.locals['_output'])))
-                return
-        with self.runtime:
-            try:
-                # in case of nested workflow, these names might be changed and need to be reset
-                env.locals['_step'].name = '{}_{}'.format(self.name, self.index)
-                env.locals['_step'].index = self.index
-                #
-                SoS_exec(self.process, self.sigil)
-                #
-                # if there is subworkflow, the subworkflow is considered part of the process
-                # and will be executed mutliple times if necessary. The partial signature 
-                # stuff works for these though
-                if self.subworkflow:
-                    self.subworkflow.run(nested=True)
-            except Exception as e:
-                if env.verbosity > 2:
-                    print_traceback()
-                raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.process, e))
-        if partial_signature:
-            partial_signature.write()
-        
     #
     # Execution
     #
@@ -666,6 +642,16 @@ class SoS_Step:
         # if there is no input, easily
         self._outputs = []
         self._depends = []
+        #
+        # execute global process
+        if self.global_process:
+            try:
+                SoS_exec(self.global_process)
+            except Exception as e:
+                if env.verbosity > 2:
+                    print_traceback()
+                raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.global_process, e))
+        #
         if input_idx is None:
             # no input? _input is _step.input
             env.locals.set('_input', env.locals['_step'].input)
@@ -789,7 +775,37 @@ class SoS_Step:
             env.logger.info('_output: ``{}``'.format(shortRepr(env.locals['_output'])))
             #
             # action
-            self.execute_single()
+            # If the users specifies output files for each loop (using ${input} etc, we
+            # can try to see if we can create partial signature. This would help if the
+            # step is interrupted in the middle.
+            partial_signature = None
+            if env.locals['_output'] and env.locals['_output'] != env.locals['_step'].output and env.run_mode == 'run':
+                partial_signature = RuntimeInfo(self.process, env.locals['_input'], env.locals['_output'], 
+                    env.locals['_depends'])
+                if partial_signature.validate():
+                    # everything matches
+                    env.logger.info('Reusing existing output files {}'.format(', '.join(env.locals['_output'])))
+                    return
+            with self.runtime:
+                try:
+                    # in case of nested workflow, these names might be changed and need to be reset
+                    env.locals['_step'].name = '{}_{}'.format(self.name, self.index)
+                    env.locals['_step'].index = self.index
+                    #
+                    SoS_exec(self.process, self.sigil)
+                    #
+                    # if there is subworkflow, the subworkflow is considered part of the process
+                    # and will be executed mutliple times if necessary. The partial signature 
+                    # stuff works for these though
+                    if self.subworkflow:
+                        self.subworkflow.run(nested=True)
+                except Exception as e:
+                    if env.verbosity > 2:
+                        print_traceback()
+                    raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.process, e))
+            if partial_signature:
+                partial_signature.write()
+
         if env.run_mode == 'run':
             for ofile in env.locals['_step'].output:
                 if not os.path.isfile(os.path.expanduser(ofile)): 
@@ -835,11 +851,11 @@ class SoS_Workflow:
         self.auxillary_sections = []
         #
         for section in sections:
-            if section.is_global or section.is_parameters:
+            if section.is_parameters:
                 self.sections.append(copy.deepcopy(section))
                 self.sections[-1].name = workflow_name
                 # for ordering purpose, this section is always after global
-                self.sections[-1].index = -2 if section.is_global else -1
+                self.sections[-1].index = -1
                 # parameters and global section will not have subworkflow
                 self.sections[-1].subworkflow = None
                 continue
@@ -934,10 +950,7 @@ class SoS_Workflow:
             raise ArgumentError('Unused parameter {}'.format(' '.join(args)))
         for idx, section in enumerate(self.sections):
             # global section will not change _step etc
-            if section.is_global:
-                section.run_global()
-                continue
-            elif section.is_parameters:
+            if section.is_parameters:
                 # if there is only one parameters section and no nested workflow, check unused section
                 section.parse_args(args, num_parameters_sections == 1, cmd_name=cmd_name)
                 continue
@@ -1421,6 +1434,15 @@ class SoS_Script:
         # if there is any parsing error, raise an exception
         if parsing_errors.errors:
             raise parsing_errors
+        #
+        # as the last step, let us insert the global section to all sections
+        global_section = [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]
+        if global_section:
+            global_process = global_section[0][1].process
+            for section in self.sections:
+                section.global_process = global_process
+            # remove the global section after inserting it to each step of the process
+            self.sections.pop(global_section[0][0])
 
 
     def workflow(self, workflow_name=None, extra_sections=[]):
@@ -1478,8 +1500,8 @@ class SoS_Script:
             # skip, skip=True, skip=1 etc are all allowed.
             if 'skip' in section.options and (section.options['skip'] is None or section.options['skip']):
                 continue
-            if section.is_global or section.is_parameters:
-                # include global or parameter only if they apply to wf_name
+            if section.is_parameters:
+                # include parameter only if they apply to wf_name
                 if wf_name in section.names:
                     sections.append(section)
                 continue
