@@ -28,6 +28,7 @@ import fnmatch
 import argparse
 import textwrap
 import traceback
+import multiprocessing as mp
 from collections import OrderedDict, defaultdict, Sequence
 from itertools import tee, combinations
 
@@ -88,15 +89,26 @@ class StepInfo:
     def __init__(self):
         pass
 
-def execute_function(step_process, global_process, locals):
+def execute_step_process(step_process, global_process, locals):
     '''A function that has a local dictionary (from SoS env.locals),
     a global process, and a step process. The processes are executed 
     in a separate process, independent of SoS. This makes it possible
     to execute the processes in background, on cluster, or submit as
     Celery tasks.'''
-    
-
-    
+    signature = None 
+    if locals['_output'] and locals['_output'] != locals['_step'].output and env.run_mode == 'run':
+        signature = RuntimeInfo(global_process + '\n' + step_process,
+            locals['_input'], locals['_output'], locals['_depends'])
+    try:
+        with env.locals.yield_to_dict(locals):
+            SoS_exec(global_process)
+            SoS_exec(step_process)
+    except Exception as e:
+        env.logger.error(e)
+        return e
+    if signature:
+        signature.write()
+    return 0
 
 class SoS_Step:
     #
@@ -606,7 +618,7 @@ class SoS_Step:
     #
     # Execution
     #
-    def run(self):
+    def run(self, pool):
         # handle these two sections differently
         if isinstance(self.index, int):
             env.locals.set('_workflow_index', self.index)
@@ -766,6 +778,7 @@ class SoS_Step:
         else:
             signature = None
         #
+        results = []
         for idx, (g, v, o, d) in enumerate(zip(self._groups, self._vars, self._outputs, self._depends)):
             env.locals.update(v)
             env.locals['_input'] = g
@@ -794,20 +807,26 @@ class SoS_Step:
                     env.locals['_step'].name = '{}_{}'.format(self.name, self.index)
                     env.locals['_step'].index = self.index
                     #
-                    SoS_exec(self.process, self.sigil)
+                    results.append(pool.apply_async(
+                        execute_step_process,   # function
+                        (self.process,          # process
+                        self.global_process,    # global process
+                        env.locals.clone_pickleable())))
                     #
                     # if there is subworkflow, the subworkflow is considered part of the process
                     # and will be executed mutliple times if necessary. The partial signature 
                     # stuff works for these though
                     if self.subworkflow:
-                        self.subworkflow.run(nested=True)
+                        self.subworkflow.run(nested=True, pool=pool)
                 except Exception as e:
+                    # FIXME: cannot catch exception from subprocesses
                     if env.verbosity > 2:
                         print_traceback()
                     raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.process, e))
-            if partial_signature:
-                partial_signature.write()
-
+        pool.close()
+        # check results?
+        results = [res.get() for res in results]
+        pool.join()
         if env.run_mode == 'run':
             for ofile in env.locals['_step'].output:
                 if not os.path.isfile(os.path.expanduser(ofile)): 
@@ -917,7 +936,7 @@ class SoS_Workflow:
         # all sections are simply appended ...
         self.sections.extend(workflow.sections)
 
-    def run(self, args=[], nested=False, cmd_name=''):
+    def run(self, args=[], nested=False, cmd_name='', pool=None):
         '''Execute a workflow with specified command line args. If sub is True, this 
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -950,6 +969,10 @@ class SoS_Workflow:
         num_parameters_sections = len([x for x in self.sections if x.is_parameters or x.subworkflow])
         if num_parameters_sections == 0 and args:
             raise ArgumentError('Unused parameter {}'.format(' '.join(args)))
+        #
+        if pool is None:
+            pool = mp.Pool(env.max_jobs)
+        # the steps can be executed in the pool (Not implemented)
         for idx, section in enumerate(self.sections):
             # global section will not change _step etc
             if section.is_parameters:
@@ -975,8 +998,8 @@ class SoS_Workflow:
             else:
                 # use initial values
                 start = False
-            #
-            section.run()
+            # each section can use multiple processes of the pool
+            section.run(pool)
 
     def show(self, indent = 0):
         textWidth = max(60, getTermWidth())

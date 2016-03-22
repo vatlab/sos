@@ -22,6 +22,8 @@
 import os
 import sys
 import re
+import copy
+import types
 import logging
 import collections
 import hashlib
@@ -168,8 +170,32 @@ class WorkflowDict(dict):
         def __exit__(self,  etype, value, traceback):
             self.wf_dict._protect_vars_assigned = False
 
+    class protect_dict_from_dict:
+        '''A environment that change the env.protected_vars_assigned to true
+        when statement is executed in this mode. This is friendier with
+        excetion because _protect_vars_assigned would be turned off as soon
+        as the statement finishes, or if an exception raises.
+        '''
+        def __init__(self, old_dict, new_dict):
+            self.old_dict = old_dict
+            self.new_dict = new_dict
+
+        def __enter__(self):
+            # archive old items
+            self.archive = copy.deepcopy(self.old_dict)
+            self.old_dict.clear()
+            self.old_dict.update(self.new_dict)
+            #env.logger.warning('Now I have keys {}'.format(self.old_dict
+
+        def __exit__(self,  etype, value, traceback):
+            self.old_dict.clear()
+            self.old_dict.update(self.archive)
+
     def readonly_assignment(self):
         return self.protect_vars_assigned(self)
+    
+    def yield_to_dict(self, wf_dict):
+        return self.protect_dict_from_dict(self, wf_dict)
 
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)
@@ -222,6 +248,10 @@ class WorkflowDict(dict):
         if key.startswith('_') and key not in ('_input', '_output', '_step', '_index', '_depends'):
             env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
+    def clone_pickleable(self):
+        '''Return a copy of the existing dictionary but keep only the ones that are pickleable'''
+        # FIXME: not well tested
+        return {x:copy.deepcopy(y) for x,y in self.items() if not callable(y) and not isinstance(y, types.ModuleType)}
 #
 # Runtime environment
 #

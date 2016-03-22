@@ -376,5 +376,28 @@ b = random.randint(0, 100000)
         env.run_mode = 'dryrun'
         self.assertRaises(RuntimeError, wf.run)
 
+    def testExecuteInParallel(self):
+        '''Test execution of step process in parallel'''
+        script = SoS_Script(r"""
+
+import time
+import random
+
+[1]
+repeat=range(5)
+input: for_each='repeat'
+
+wait = random.randint(1,5)
+time.sleep(wait)
+print('I am {} after {} seconds'.format(_index, wait))
+
+""")
+        env.max_jobs = 5
+        wf = script.workflow()
+        wf.run()
+        #
+        # execute in parallel mode
+
+
 if __name__ == '__main__':
     unittest.main()
