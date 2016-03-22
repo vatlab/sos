@@ -100,7 +100,9 @@ def execute_step_process(step_process, global_process, locals):
         signature = RuntimeInfo(global_process + '\n' + step_process,
             locals['_input'], locals['_output'], locals['_depends'])
     try:
-        with env.locals.yield_to_dict(locals):
+        # switch context to the new dict and switch back once the with
+        # statement ends (or if an exception is raised)
+        with env.push_context(locals):
             SoS_exec(global_process)
             SoS_exec(step_process)
     except Exception as e:

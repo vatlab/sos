@@ -170,33 +170,9 @@ class WorkflowDict(dict):
         def __exit__(self,  etype, value, traceback):
             self.wf_dict._protect_vars_assigned = False
 
-    class protect_dict_from_dict:
-        '''A environment that change the env.protected_vars_assigned to true
-        when statement is executed in this mode. This is friendier with
-        excetion because _protect_vars_assigned would be turned off as soon
-        as the statement finishes, or if an exception raises.
-        '''
-        def __init__(self, old_dict, new_dict):
-            self.old_dict = old_dict
-            self.new_dict = new_dict
-
-        def __enter__(self):
-            # archive old items
-            self.archive = copy.deepcopy(self.old_dict)
-            self.old_dict.clear()
-            self.old_dict.update(self.new_dict)
-            #env.logger.warning('Now I have keys {}'.format(self.old_dict
-
-        def __exit__(self,  etype, value, traceback):
-            self.old_dict.clear()
-            self.old_dict.update(self.archive)
-
     def readonly_assignment(self):
         return self.protect_vars_assigned(self)
     
-    def yield_to_dict(self, wf_dict):
-        return self.protect_dict_from_dict(self, wf_dict)
-
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)
         self._readonly = set()
@@ -288,12 +264,35 @@ class RuntimeEnvironments(object):
         #
         # local and global dictionaries used by SoS during the
         # execution of SoS workflows
+        self.context_stack = []
         self.locals = WorkflowDict()
         self.globals = globals()
         # 
         # maximum number of concurrent jobs
         self.max_jobs = 1
         self.running_jobs = 0
+
+    class ContextStack:
+        '''A context stack and pushes existing workflow dict (env.locals)
+        to a stack and make the new workflow the current dict. The 
+        context will be poped as soon as the with statement ends and/or
+        an exception is raised.
+        '''
+        def __init__(self, environ, new_dict):
+            #
+            self.environ = environ
+            self.new_dict = new_dict
+
+        def __enter__(self):
+            # archive old items
+            self.environ.context_stack.append(self.environ.locals)
+            self.environ.locals = self.new_dict
+
+        def __exit__(self, etype, value, traceback):
+            self.environ.locals = self.environ.context_stack.pop()
+
+    def push_context(self, wf_dict):
+        return self.ContextStack(self, wf_dict)
 
     #
     # attribute logger
