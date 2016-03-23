@@ -104,5 +104,14 @@ if __name__ == '__main__':
     parser.set_defaults(func=sos_show)
     #
     args = master_parser.parse_args()
+    # FIXME: -h at the end will trigger the master help message, not the
+    # subparser message because at this point we do not know which subparser
+    # was triggered. The problem is caused by the 'options' argument with 
+    # argparse.REMAINDER which sends everything afterwards to a subsequent
+    # parser (supposedly to the script) but some arguments belong to the
+    # main parser (e.g. -d, -d) can be contained there.
+    if hasattr(args, 'options') and '-h' in args.options:
+        master_parser.print_help()
+        master_parser.exit()
     # calling the associated functions
     args.func(args)

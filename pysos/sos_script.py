@@ -1717,4 +1717,5 @@ def sos_run(args):
 #
 def sos_dryrun(args):
     args.options.append('-d')
+    args.__max_jobs__ = 1
     sos_run(args)
