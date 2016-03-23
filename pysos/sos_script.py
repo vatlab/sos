@@ -97,17 +97,13 @@ class StepInfo(object):
     def __setattr__(self, key, value):
         raise RuntimeError('Changing of step info {} is prohibited.'.format(key))
 
-def execute_step_process(step_process, global_process, locals, sigil, workdir):
+def execute_step_process(step_process, global_process, locals, sigil, signature, workdir):
     '''A function that has a local dictionary (from SoS env.locals),
     a global process, and a step process. The processes are executed 
     in a separate process, independent of SoS. This makes it possible
     to execute the processes in background, on cluster, or submit as
     Celery tasks.'''
     os.chdir(workdir)
-    signature = None
-    if locals['_output'] and locals['_output'] != locals['_step'].output and env.run_mode == 'run':
-        signature = RuntimeInfo(global_process + '\n' + step_process,
-            locals['_input'], locals['_output'], locals['_depends'])
     try:
         # switch context to the new dict and switch back once the with
         # statement ends (or if an exception is raised)
@@ -145,7 +141,7 @@ class SoS_Step:
         # everything before step process
         self.statements = []
         # step processes
-        self.global_process = None
+        self.global_process = ''
         self.process = ''
         # subworkflow of a step
         self.subworkflow = None
@@ -635,6 +631,19 @@ class SoS_Step:
     #
     # Execution
     #
+    def step_signature(self):
+        '''return everything that might affect the execution of the step 
+        namely, global process, step definition etc to create a unique 
+        signature that might will be changed with the change of SoS script.'''
+        result = self.global_process
+        for statement in self.statements:
+            if statement[0] in (':', '='):
+                result += '{}: {}\n'.format(statement[1], statement[2])
+            else:
+                result += statement[1] + '\n'
+        result += self.process
+        return re.sub(r'\s+', ' ', result)
+
     def run(self, pool):
         # handle these two sections differently
         if isinstance(self.index, int):
@@ -709,13 +718,22 @@ class SoS_Step:
             # assuming everything starts from 0 is after input
             input_idx = 0
         
+        if 'alias' in self.options:
+            env.locals[self.options['alias']] = env.locals['_step']
+        if not self._groups:
+            env.logger.info('Step {} is skipped'.format(self.index))
+            return
         # post input
         # output and depends can be processed many times
+        env.logger.info('_step.input: ``{}``'.format(shortRepr(env.locals['_step'].input)))
         for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
             # other variables
             env.locals.update(v)
             env.locals.set('_input', g)
             env.locals.set('_index', idx)
+            for key in ('_output', '_depends'):
+                if key in env.locals:
+                    env.locals.pop(key)
             for statement in self.statements[input_idx:]:
                 if statement[0] == '=':
                     key, value = statement[1:]
@@ -739,12 +757,10 @@ class SoS_Step:
             # collect _output and _depends
             if '_output' in env.locals:
                 self._outputs.append(env.locals['_output'])
-                env.locals.pop('_output')
             else:
                 self._outputs.append([])
             if '_depends' in env.locals:
                 self._depends.append(env.locals['_depends'])
-                env.locals.pop('_depends')
             else:
                 self._depends.append([])
         #
@@ -757,34 +773,33 @@ class SoS_Step:
         # we need to reduce output files in case they have been processed multiple times.
         env.locals['_step'].set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
         env.locals['_step'].set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
-        env.logger.info('_step.input: ``{}``'.format(shortRepr(env.locals['_step'].input)))
         env.logger.info('_step.output: ``{}``'.format(shortRepr(env.locals['_step'].output)))
         env.logger.info('_step.depends: ``{}``'.format(shortRepr(env.locals['_step'].depends)))
         #
-        # input alias
-        # if the step is ignored
-        if not self._groups:
-            env.logger.info('Step {} is skipped'.format(self.index))
-            return
-        if 'alias' in self.options:
-            env.locals[self.options['alias']] = copy.deepcopy(env.locals['_step'])
-        #
+        # if the signature matches, the whole step is ignored, including subworkflows
+        sig = self.step_signature()
         if env.locals['_step'].output:
-            signature = RuntimeInfo(self.process, 
+            signature = RuntimeInfo(sig, 
                 env.locals['_step'].input, env.locals['_step'].output, env.locals['_step'].depends)
             if env.run_mode == 'run':
                 for ofile in env.locals['_step'].output:
-                    parent_dir = os.path.split(ofile)[0]
+                    parent_dir = os.path.split(os.path.expanduser(ofile))[0]
                     if parent_dir and not os.path.isdir(parent_dir):
                         os.makedirs(parent_dir)
-                if signature.validate():
-                    # everything matches
-                    env.logger.info('Reusing existing output files {}'.format(', '.join(env.locals['_step'].output)))
-                    return
+                if env.sig_mode == 'default':
+                    if signature.validate():
+                        # everything matches
+                        env.logger.info('Reusing existing output files {}'.format(', '.join(env.locals['_step'].output)))
+                        return
+                elif env.sig_mode == 'assert':
+                    if not signature.validate():
+                        raise RuntimeError('Signature mismatch.')
+                # elif env.sig_mode == 'ignore'
         else:
             signature = None
         #
         results = []
+        signatures = []
         for idx, (g, v, o, d) in enumerate(zip(self._groups, self._vars, self._outputs, self._depends)):
             env.locals.update(v)
             env.locals.set('_input', g)
@@ -801,12 +816,21 @@ class SoS_Step:
             # step is interrupted in the middle.
             partial_signature = None
             if env.locals['_output'] and env.locals['_output'] != env.locals['_step'].output and env.run_mode == 'run':
-                partial_signature = RuntimeInfo(self.process, env.locals['_input'], env.locals['_output'], 
+                partial_signature = RuntimeInfo(sig, env.locals['_input'], env.locals['_output'], 
                     env.locals['_depends'])
-                if partial_signature.validate():
-                    # everything matches
-                    env.logger.info('Reusing existing output files {}'.format(', '.join(env.locals['_output'])))
-                    return
+                if env.sig_mode == 'default':
+                    if partial_signature.validate():
+                        # everything matches
+                        env.logger.info('Reusing existing output files {}'.format(', '.join(env.locals['_output'])))
+                        continue
+                elif env.sig_mode == 'assert':
+                    if not partial_signature.validate():
+                        raise RuntimeError('Signature mismatch for input {} and output {}'.format(
+                            ', '.join(env.locals['_input']), ', '.join(env.locals['_output'])))
+            #
+            if self.subworkflow and partial_signature is not None:
+                signatures.append(partial_signature)
+            #
             with self.runtime:
                 try:
                     # in case of nested workflow, these names might be changed and need to be reset
@@ -820,6 +844,8 @@ class SoS_Step:
                             self.global_process,    # global process
                             env.locals.clone_pickleable(),
                             self.sigil,
+                            # if subworkflow contribute to outcome, we can not save signature here
+                            partial_signature if partial_signature is not None and not self.subworkflow else None,
                             os.getcwd())))
                 except Exception as e:
                     # FIXME: cannot catch exception from subprocesses
@@ -840,37 +866,16 @@ class SoS_Step:
                 raise RuntimeError('Failed to execute subworkflow: {}'.format(e))
         # check results?
         results = [res.get() for res in results]
+        for sig in signatures:
+            sig.write()
+        if not all(x==0 for x in results):
+            raise RuntimeError('Step process returns non-zero value')
         if env.run_mode == 'run':
             for ofile in env.locals['_step'].output:
                 if not os.path.isfile(os.path.expanduser(ofile)): 
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
         if signature and env.run_mode == 'run':
             signature.write()
-
-    def __repr__(self):
-        result = ''
-        if self.is_global:
-            result += '## global definitions ##\n'
-        elif self.is_parameters:
-            result += '[parameters]\n'
-        else:
-            result += '[{}:{}]'.format(','.join('{}_{}'.format(x,y) if y else x for x,y,z in self.names),
-                ','.join('{}={}'.format(x,y) for x,y in self.options.items()))
-        result += self.comment + '\n'
-        for key, value, comment in self.parameters:
-            # FIXME: proper line wrap
-            result += '# {}\n'.format(comment)
-            result += '{} = {}\n'.format(key, value)
-        for key, value in self.assignments:
-            result += '{} = {}\n'.format(key, value)
-        for key, value in self.directives:
-            result += '{} = {}\n'.format(key, value)
-        for line in self.statements:
-            result += line
-        result += '\n'
-        if self.subworkflow:
-            result += str(self.subworkflow)
-        return result
 
     def show(self, indent):
         '''Output for command sos show'''

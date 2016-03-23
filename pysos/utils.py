@@ -237,6 +237,12 @@ class RuntimeEnvironments(object):
         # run mode, this mode controls how SoS actions behave
         #
         self.run_mode = 'run'
+        # signature mode can be
+        #
+        # default              (save signature, skip if signature match)
+        # ignore_signature     (ignore existing signature but still saves signature)
+        # assert_signature     (should 
+        self.sig_mode = 'default'
         #
         # local and global dictionaries used by SoS during the
         # execution of SoS workflows
