@@ -671,6 +671,7 @@ def ConvertString(s, sigil):
     string interpolation. Not sure how to handle this option right now.
     '''
     result = []
+    left_sigil = sigil.split(' ')[0]
     # tokenize the input syntax.
     if sys.version_info.major == 2:
         g = generate_tokens(StringIO(s.decode()).readline)
@@ -684,7 +685,8 @@ def ConvertString(s, sigil):
                 # we convert it to a raw string
                 tokval = u'r' + tokval
             # we then perform interpolation on the string and put it back to expression
-            tokval = 'interpolate(' + tokval + ", \'" + sigil + "')"
+            if left_sigil in tokval:
+                tokval = 'interpolate(' + tokval + ", \'" + sigil + "')"
         # the resusting string is put back to the expression (or statement)
         result.append((toknum, tokval))
     return untokenize(result)

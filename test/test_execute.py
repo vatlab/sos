@@ -308,14 +308,16 @@ counter += 1
         script =  SoS_Script(r"""
 [0]
 
-runtime: workdir='..'
+process: workdir='..'
 
-files = os.listdir('test')
-
+with open('test/result.txt', 'w') as res:
+   for file in os.listdir('test'):
+       res.write(file + '\n')
 """)
         wf = script.workflow()
         wf.run()
-        self.assertTrue('test_execute.py' in env.locals['files'])
+        content = [x.strip() for x in open('result.txt').readlines()]
+        self.assertTrue('test_execute.py' in content)
 
     def testRunmode(self):
         '''Test the runmode decoration'''

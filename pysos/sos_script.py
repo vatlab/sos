@@ -89,13 +89,14 @@ class StepInfo:
     def __init__(self):
         pass
 
-def execute_step_process(step_process, global_process, locals):
+def execute_step_process(step_process, global_process, locals, sigil, workdir):
     '''A function that has a local dictionary (from SoS env.locals),
     a global process, and a step process. The processes are executed 
     in a separate process, independent of SoS. This makes it possible
     to execute the processes in background, on cluster, or submit as
     Celery tasks.'''
-    signature = None 
+    os.chdir(workdir)
+    signature = None
     if locals['_output'] and locals['_output'] != locals['_step'].output and env.run_mode == 'run':
         signature = RuntimeInfo(global_process + '\n' + step_process,
             locals['_input'], locals['_output'], locals['_depends'])
@@ -103,8 +104,9 @@ def execute_step_process(step_process, global_process, locals):
         # switch context to the new dict and switch back once the with
         # statement ends (or if an exception is raised)
         with env.push_context(locals):
-            SoS_exec(global_process)
-            SoS_exec(step_process)
+            if global_process:
+                SoS_exec(global_process, sigil)
+            SoS_exec(step_process, sigil)
     except Exception as e:
         env.logger.error(e)
         return e
@@ -235,7 +237,10 @@ class SoS_Step:
             self.values = [line]
         else:
             self.values.append(line)
-        self.statements.append(['!', line])
+        if self.statements and self.statements[-1][0] == '!':
+            self.statements[-1][-1] += line
+        else:
+            self.statements.append(['!', line])
         self.back_comment = ''
         if lineno:
             self.lineno = lineno
@@ -245,22 +250,24 @@ class SoS_Step:
         if not self.statements:
             self.process = ''
             return
-        directives = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':']
-        if not directives:
-            start_process = 0
-        else:
-            start_process = directives[-1] + 1
+        process_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'process']
+        if not process_directive:
+            self.process = ''
+            return
+        elif len(process_directive) != 1:
+            raise ValueError('Only one step process is allowed')
+        start_process = process_directive[0] + 1
         # convert statement to process
         self.process = ''
         for statement in self.statements[start_process:]:
             if statement[0] == '=':
                 self.process += '{} = {}'.format(statement[1], statement[2])
+            elif statement[0] == ':':
+                raise ValueError('Step process should be defined as the last item in a SoS step')
             else:
                 self.process += statement[1]
         # remove process from self.statement
-        if not directives:
-            self.statements = []
-        else:
+        if process_directive:
             self.statements = self.statements[:start_process]
 
     def isValid(self):
@@ -536,7 +543,7 @@ class SoS_Step:
             self._handle_output_pattern(kwargs['pattern'], ofiles)
         env.locals.set('_output', ofiles)
 
-    def _directive_runtime(self, **kwargs):
+    def _directive_process(self, **kwargs):
         for k in kwargs.keys():
             if k not in self._RUNTIME_OPTIONS:
                 raise RuntimeError('Unrecognized runtime option {}'.format(k))
@@ -563,7 +570,7 @@ class SoS_Step:
             except Exception as e:
                 if env.verbosity > 2:
                     print_traceback()
-                raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.global_process, e))
+                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.global_process, e))
      
         def str2bool(v):
             if v.lower() in ('yes', 'true', 't', '1'):
@@ -666,7 +673,7 @@ class SoS_Step:
             except Exception as e:
                 if env.verbosity > 2:
                     print_traceback()
-                raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.global_process, e))
+                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.global_process, e))
         #
         if input_idx is None:
             # no input? _input is _step.input
@@ -684,8 +691,15 @@ class SoS_Step:
                     try:
                         SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
                     except Exception as e:
-                        raise RuntimeError('Failed to process step {}: {}'.format(key, e))
-            # these assignments could affect _output and _depends and affect
+                        env.logger.error(env.locals['_input'])
+                        raise RuntimeError('Failed to process step {} ({}): {}'.format(key, value, e))
+                else:
+                    try:
+                        SoS_exec(statement[1], self.sigil)
+                    except Exception as e:
+                        raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
+
+            # these assignments and statements could affect _output and _depends and affect
             # saved _outputs and _depends list
             if '_output' in env.locals:
                 self._outputs.append(env.locals['_output'])
@@ -706,18 +720,25 @@ class SoS_Step:
                         raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
                 elif statement[0] == ':':
                     raise RuntimeError('Step input should be specified before others')
+                else:
+                    try:
+                        SoS_exec(statement[1], self.sigil)
+                    except Exception as e:
+                        raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
+                    
             # input
             key, value = self.statements[input_idx][1:]
             try:
                 SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
             except Exception as e:
-                raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
+                raise RuntimeError('Failed to process directive {} ({}): {}'.format(key, value, e))
             # post input
             # output and depends can be processed many times
-            for g, v in zip(self._groups, self._vars):
+            for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
                 # other variables
                 env.locals.update(v)
                 env.locals.set('_input', g)
+                env.locals.set('_index', idx)
                 for statement in self.statements[input_idx+1:]:
                     if statement[0] == '=':
                         key, value = statement[1:]
@@ -732,6 +753,12 @@ class SoS_Step:
                             SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
                         except Exception as e:
                             raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
+                    else:
+                        try:
+                            SoS_exec(statement[1], self.sigil)
+                        except Exception as e:
+                            raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
+
                 # collect _output and _depends
                 if '_output' in env.locals:
                     self._outputs.append(env.locals['_output'])
@@ -809,26 +836,33 @@ class SoS_Step:
                     env.locals['_step'].name = '{}_{}'.format(self.name, self.index)
                     env.locals['_step'].index = self.index
                     #
-                    results.append(pool.apply_async(
-                        execute_step_process,   # function
-                        (self.process,          # process
-                        self.global_process,    # global process
-                        env.locals.clone_pickleable())))
-                    #
-                    # if there is subworkflow, the subworkflow is considered part of the process
-                    # and will be executed mutliple times if necessary. The partial signature 
-                    # stuff works for these though
-                    if self.subworkflow:
-                        self.subworkflow.run(nested=True, pool=pool)
+                    if self.process:
+                        results.append(pool.apply_async(
+                            execute_step_process,   # function
+                            (self.process,          # process
+                            self.global_process,    # global process
+                            env.locals.clone_pickleable(),
+                            self.sigil,
+                            os.getcwd())))
                 except Exception as e:
                     # FIXME: cannot catch exception from subprocesses
                     if env.verbosity > 2:
                         print_traceback()
-                    raise RuntimeError('Failed to execute process\n{}\n{}'.format(self.process, e))
-        pool.close()
+                    raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(self.process, e))
+                    #
+            try:
+                # if there is subworkflow, the subworkflow is considered part of the process
+                # and will be executed mutliple times if necessary. The partial signature 
+                # stuff works for these though
+                if self.subworkflow:
+                    self.subworkflow.run(nested=True, existing_pool=pool)
+            except Exception as e:
+                # FIXME: cannot catch exception from subprocesses
+                if env.verbosity > 2:
+                    print_traceback()
+                raise RuntimeError('Failed to execute subworkflow: {}'.format(e))
         # check results?
         results = [res.get() for res in results]
-        pool.join()
         if env.run_mode == 'run':
             for ofile in env.locals['_step'].output:
                 if not os.path.isfile(os.path.expanduser(ofile)): 
@@ -938,7 +972,7 @@ class SoS_Workflow:
         # all sections are simply appended ...
         self.sections.extend(workflow.sections)
 
-    def run(self, args=[], nested=False, cmd_name='', pool=None):
+    def run(self, args=[], nested=False, cmd_name='', existing_pool=None):
         '''Execute a workflow with specified command line args. If sub is True, this 
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -972,8 +1006,10 @@ class SoS_Workflow:
         if num_parameters_sections == 0 and args:
             raise ArgumentError('Unused parameter {}'.format(' '.join(args)))
         #
-        if pool is None:
+        if existing_pool is None:
             pool = mp.Pool(env.max_jobs)
+        else:
+            pool = existing_pool
         # the steps can be executed in the pool (Not implemented)
         for idx, section in enumerate(self.sections):
             # global section will not change _step etc
@@ -1002,6 +1038,9 @@ class SoS_Workflow:
                 start = False
             # each section can use multiple processes of the pool
             section.run(pool)
+        if existing_pool is None:
+            pool.close()
+            pool.join()
 
     def show(self, indent = 0):
         textWidth = max(60, getTermWidth())
@@ -1045,7 +1084,7 @@ class SoS_Workflow:
 
 
 class SoS_Script:
-    _DIRECTIVES = ['input', 'output', 'depends', 'runtime']
+    _DIRECTIVES = ['input', 'output', 'depends', 'process']
     _SECTION_OPTIONS = ['alias', 'nonconcurrent',
         'skip', 'blocking', 'sigil', 'target', 'source']
     _PARAMETERS_SECTION_NAME = 'parameters'
@@ -1146,17 +1185,15 @@ class SoS_Script:
         from a file.
         '''
         if filename:
-            if not os.path.isfile(os.path.expanduser(filename)):
+            self.sos_script = os.path.expanduser(filename)
+            if not os.path.isfile(self.sos_script):
                 raise ValueError('{} does not exist'.format(filename))
-            with open(filename) as fp:
-                self._read(fp, filename)
+            with open(self.sos_script) as fp:
+                self._read(fp)
         else:
-            if os.path.isfile(content):
-                with open(content) as fp:
-                    self._read(fp, content)
-            else:
-                with StringIO(content) as fp:
-                    self._read(fp, '<string>')
+            self.sos_script = '<string>'
+            with StringIO(content) as fp:
+                self._read(fp)
         #
         # workflows in this script, from sections that are not skipped.
         section_steps = sum([x.names for x in self.sections if \
@@ -1197,7 +1234,7 @@ class SoS_Script:
                     self.workflow_descriptions[name] += '\n'.join(lines[1:]) + '\n'
 
 
-    def _read(self, fp, fpname):
+    def _read(self, fp):
         self.sections = []
         self.format_version = '1.0'
         self.descriptions = []
@@ -1211,7 +1248,7 @@ class SoS_Script:
         #
         # this ParsingError is a container for all parsing errors. It will be
         # raised after parsing if there is at least one parsing error.
-        parsing_errors = ParsingError(fpname)
+        parsing_errors = ParsingError(self.sos_script)
         for lineno, line in enumerate(fp, start=1):
             #
             # comments in SoS scripts are mostly informative
@@ -1345,7 +1382,7 @@ class SoS_Script:
                             if opt_name == 'source':
                                 opt_value = [opt_value] if isinstance(opt_value, basestring) else opt_value
                                 for sos_file in opt_value:
-                                    if not os.path.isfile(sos_file):
+                                    if not os.path.isfile(sos_file) and not os.path.isfile(os.path.join(os.path.split(self.sos_script)[0], sos_file)):
                                         env.logger.warning('Source file for nested workflow {} does not exist'.format(sos_file))
                             if opt_name in step_options:
                                 parsing_errors.append(lineno, line, 'Duplicate options')
@@ -1465,7 +1502,13 @@ class SoS_Script:
         # as the last step, let us insert the global section to all sections
         global_section = [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]
         if global_section:
-            global_process = global_section[0][1].process
+            global_process = ''
+            for statement in global_section[0][1].statements:
+                if statement[0] == '=':
+                    global_process += '{} = {}\n'.format(statement[1], statement[2])
+                else:
+                    global_process += statement[1]
+            #
             for section in self.sections:
                 section.global_process = global_process
             # remove the global section after inserting it to each step of the process
@@ -1543,6 +1586,8 @@ class SoS_Script:
                     imported_sections = []
                     if 'source' in section.options:
                         for sos_file in section.options['source']:
+                            if not os.path.isfile(sos_file):
+                                sos_file = os.path.join(os.path.split(self.sos_script)[0], sos_file)
                             if not os.path.isfile(sos_file):
                                 raise RuntimeError('Source file for nested workflow {} does not exist'.format(sos_file))
                             script = SoS_Script(filename=sos_file)
