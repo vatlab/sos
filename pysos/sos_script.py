@@ -894,6 +894,31 @@ class SoS_Step:
             result += str(self.subworkflow)
         return result
 
+    def show(self, indent):
+        '''Output for command sos show'''
+        textWidth = max(60, getTermWidth())
+        if self.is_parameters:
+            print(indent + '  Parameters:')
+            for k,v,c in self.parameters:
+                 text = '{:<18}'.format(k) + (c + ' ' if c else '') + \
+                     ('(default: {})'.format(v) if v else '')
+                 print('\n'.join(
+                     textwrap.wrap(text, 
+                     initial_indent=indent + ' '*4,
+                     subsequent_indent=indent + ' '*22,
+                     width=textWidth)
+                     ))
+        else:
+            # hide a step if there is no comment
+            text = '  {:<20}'.format('Step {}_{}:'.format(self.name, self.index)) + self.comment
+            print('\n'.join(
+                textwrap.wrap(text, 
+                    width=textWidth, 
+                    initial_indent=indent,
+                    subsequent_indent=indent + ' '*22)))
+            if self.subworkflow:
+                self.subworkflow.show(indent+ '   ' + chr(124), nested=True)
+          
 
 class SoS_Workflow:
     #
@@ -1041,46 +1066,25 @@ class SoS_Workflow:
             pool.close()
             pool.join()
 
-    def show(self, indent = 0):
+    def show(self, indent = '', nested=False):
         textWidth = max(60, getTermWidth())
         paragraphs = dehtml(self.description).split('\n\n')
-        print('\n')
         print('\n'.join(
-            textwrap.wrap('{}:  {}'.format(self.name, paragraphs[0]),
-                initial_indent = ' '*indent,
-                subsequent_indent = ' '*indent,
+            textwrap.wrap('{} {}:  {}'.format(
+                'Nested workflow' if nested else 'Workflow', 
+                self.name, paragraphs[0]),
+                initial_indent = indent,
+                subsequent_indent = indent,
                 width=textWidth)
             ))
         for paragraph in paragraphs[1:]:
             print('\n'.join(
             textwrap.wrap(paragraph, width=textWidth,
-                initial_indent = ' '*indent,
-                subsequent_indent = ' '*indent)
+                initial_indent = indent,
+                subsequent_indent = indent)
             ))
-        for step in self.sections:
-            if step.is_parameters:
-                print('\n{}Parameters:'.format(' '*indent))
-                for k,v,c in step.parameters:
-                    #
-                    text = '{:<20}'.format(k) + (c + ' ' if c else '') + \
-                        ('(default: {})'.format(v) if v else '')
-                    print('\n'.join(
-                        textwrap.wrap(text, 
-                        initial_indent=' '*(2 + indent),
-                        subsequent_indent=' '*(22 + indent),
-                        width=textWidth)
-                        ))
-            elif step.index >= 0:
-                # hide a step if there is no comment
-                text = '{:<20}'.format('{}_{}:'.format(step.name, step.index)) + step.comment
-                print('\n'.join(
-                    textwrap.wrap(text, 
-                        width=textWidth, 
-                        initial_indent=' '*indent,
-                        subsequent_indent=' '*(22 + indent))))
-                if step.subworkflow:
-                    step.subworkflow.show(indent+4)
-
+        for section in self.sections:
+            section.show(indent)
 
 class SoS_Script:
     _DIRECTIVES = ['input', 'output', 'depends', 'process']
@@ -1627,6 +1631,10 @@ class SoS_Script:
         #
         text = 'Available workflows: {}'.format(', '.join(sorted(self.workflows)))
         print('\n' + '\n'.join(textwrap.wrap(text, width=textWidth, subsequent_indent=' '*8)))
+        for workflow in sorted(self.workflows):
+            wf = self.workflow(workflow)
+            wf.show()
+            print('')
         print('\nUse command "sos show script workflow_name" to display details of specific workflow.')
 
 #
@@ -1666,7 +1674,6 @@ def sos_show(args):
     env.verbosity = args.verbosity
     try:
         script = SoS_Script(filename=args.script)
-        # do not parse args
         if args.workflow:
             workflow = script.workflow(args.workflow)
             workflow.show()

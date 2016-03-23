@@ -249,8 +249,6 @@ class RuntimeEnvironments(object):
         self.max_jobs = 1
         self.running_jobs = 0
 
-        
-
     class ContextStack:
         '''A context stack and pushes existing workflow dict (env.locals)
         to a stack and make the new workflow the current dict. The 
