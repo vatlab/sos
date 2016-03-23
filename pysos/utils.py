@@ -153,37 +153,14 @@ class WorkflowDict(dict):
     1. Generate logging message for debugging purposes.
     2. Generate warning message if ALLCAP variables are changed.
     """
-    _protect_vars_assigned = False
-     
-    class protect_vars_assigned:
-        '''A environment that change the env.protected_vars_assigned to true
-        when statement is executed in this mode. This is friendier with
-        excetion because _protect_vars_assigned would be turned off as soon
-        as the statement finishes, or if an exception raises.
-        '''
-        def __init__(self, wf_dict):
-            self.wf_dict = wf_dict
-
-        def __enter__(self):
-            self.wf_dict._protect_vars_assigned = True
-
-        def __exit__(self,  etype, value, traceback):
-            self.wf_dict._protect_vars_assigned = False
-
-    def readonly_assignment(self):
-        return self.protect_vars_assigned(self)
-    
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)
-        self._readonly = set()
 
     def set(self, key, value):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
         self._check_readonly(key, value)
         dict.__setitem__(self, key, value)
-        if self._protect_vars_assigned:
-            self._readonly.add(key)
 
     def update(self, obj):
         '''Redefine update to trigger logging message'''
@@ -194,12 +171,6 @@ class WorkflowDict(dict):
         for k, v in obj.items():
             if env.verbosity > 2:
                 self._log(k, v)
-            if self._protect_vars_assigned:
-                self._readonly.add(k)
-
-    def clear(self):
-        dict.clear(self)
-        self._readonly = set()
 
     def __setitem__(self, key, value):
         '''Set value to key, trigger logging and warning messages if needed'''
@@ -210,7 +181,7 @@ class WorkflowDict(dict):
         self.set(key, value)
 
     def _check_readonly(self, key, value):
-        if key in self._readonly and value != dict.__getitem__(self, key):
+        if dict.__contains__(self, key) and key in env.readonly_vars and value != dict.__getitem__(self, key):
             raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
                 .format(key, dict.__getitem__(self, key), value))
 
@@ -252,6 +223,9 @@ class RuntimeEnvironments(object):
         return cls._instance
 
     def __init__(self):
+        self.reset()
+
+    def reset(self):
         # logger
         self._logger = None
         self._verbosity = 2
@@ -264,13 +238,18 @@ class RuntimeEnvironments(object):
         #
         # local and global dictionaries used by SoS during the
         # execution of SoS workflows
-        self.context_stack = []
         self.locals = WorkflowDict()
         self.globals = globals()
+        # variables that are defined in global and parameters sections and
+        # are readonly
+        self.readonly_vars = set()
+        self.context_stack = []
         # 
         # maximum number of concurrent jobs
         self.max_jobs = 1
         self.running_jobs = 0
+
+        
 
     class ContextStack:
         '''A context stack and pushes existing workflow dict (env.locals)

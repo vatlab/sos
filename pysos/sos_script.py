@@ -565,8 +565,7 @@ class SoS_Step:
         env.locals['_step'].index = -1
         if self.global_process:
             try:
-                with env.locals.readonly_assignment():
-                    SoS_exec(self.global_process)
+                SoS_exec(self.global_process)
             except Exception as e:
                 if env.verbosity > 2:
                     print_traceback()
@@ -620,9 +619,10 @@ class SoS_Step:
         #
         arguments.update(vars(parsed))
         # now change the value with passed values
-        with env.locals.readonly_assignment():
-            for k, v in arguments.items():
-                env.locals[k] = v
+        for k, v in arguments.items():
+            env.locals[k] = v
+            # protect variables from being further modified
+            env.readonly_vars.add(k)
 
     #
     # Execution
@@ -668,8 +668,7 @@ class SoS_Step:
         # execute global process
         if self.global_process:
             try:
-                with env.locals.readonly_assignment():
-                    SoS_exec(self.global_process)
+                SoS_exec(self.global_process)
             except Exception as e:
                 if env.verbosity > 2:
                     print_traceback()
@@ -1506,6 +1505,7 @@ class SoS_Script:
             for statement in global_section[0][1].statements:
                 if statement[0] == '=':
                     global_process += '{} = {}\n'.format(statement[1], statement[2])
+                    env.readonly_vars.add(statement[1])
                 else:
                     global_process += statement[1]
             #

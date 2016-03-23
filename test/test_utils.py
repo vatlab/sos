@@ -170,6 +170,7 @@ class TestUtils(unittest.TestCase):
 
     def testWorkflowDict(self):
         '''Test workflow dict with attribute access'''
+        env.reset()
         d = WorkflowDict()
         d['a'] = 1
         self.assertEqual(d['a'], 1)
