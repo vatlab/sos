@@ -136,12 +136,12 @@ def shortRepr(obj):
     '''Return a short representation of obj for clarity.'''
     if isinstance(obj, (str, int, float, bool)) or (isinstance(obj, collections.Sequence) \
         and len(obj) <= 2) or len(str(obj)) < 50:
-        return str(obj)
+        return repr(obj)
     elif isinstance(obj, collections.Sequence): # should be a list or tuple
-        return str(obj).split(' ')[0] + ' ...] ({} items)'.format(len(obj))
+        return repr(obj).split(' ')[0] + ' ...] ({} items)'.format(len(obj))
     elif isinstance(obj, dict):
         first_key = obj.keys()[0]
-        return '{{{}:{}, ...}} ({} items)'.format(first_key, obj[first_key], len(obj))
+        return '{{{!r}:{!r}, ...}} ({} items)'.format(first_key, obj[first_key], len(obj))
     else:
         return '{}...'.format(repr(obj)[:40])
 
@@ -178,6 +178,8 @@ class WorkflowDict(dict):
             self._log(key, value)
         if env.run_mode == 'dryrun':
             self._warn(key, value)
+        if key in ('_input', '_output', '_depends'):
+            env.logger.warning('Variable {} is set automatically by SoS. Changing its value might cause unexpected results.'.format(key))
         self.set(key, value)
 
     def _check_readonly(self, key, value):
@@ -186,7 +188,7 @@ class WorkflowDict(dict):
                 .format(key, dict.__getitem__(self, key), value))
 
     def _log(self, key, value):
-        env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, shortRepr(value)))
+        env.logger.debug('``{}`` = ``{}``'.format(key, shortRepr(value)))
 
     def _warn(self, key, value):
         if key.isupper() and dict.__contains__(self, key) and dict.__getitem__(self, key) != value:

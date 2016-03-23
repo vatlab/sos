@@ -43,8 +43,8 @@ class TestRun(unittest.TestCase):
         self.assertEqual(subprocess.call('sos -h', stderr=devnull, stdout=devnull, shell=True), 0)
         self.assertEqual(subprocess.call('sos run -h', stderr=devnull, stdout=devnull, shell=True), 0)
         self.assertEqual(subprocess.call('sos dryrun -h', stderr=devnull, stdout=devnull, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun test/scripts/master.sos', stderr=devnull, stdout=devnull, shell=True), 1)
-        self.assertEqual(subprocess.call('sos dryrun test/scripts/master.sos L', stderr=devnull, stdout=devnull, shell=True), 0)
+        self.assertEqual(subprocess.call('sos dryrun scripts/master.sos', stderr=devnull, stdout=devnull, shell=True), 1)
+        self.assertEqual(subprocess.call('sos dryrun scripts/master.sos L', stderr=devnull, stdout=devnull, shell=True), 0)
         self.assertEqual(subprocess.call('sos show -h', stderr=devnull, stdout=devnull, shell=True), 0)
 
     def testInterpolation(self):

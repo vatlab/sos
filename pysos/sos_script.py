@@ -84,10 +84,18 @@ class RuntimeEnvironment:
         if self.workdir:
             os.chdir(self.saved_dir)
 
-class StepInfo:
-    '''A simple class to hold input, output, and index of step'''
+class StepInfo(object):
+    '''A simple class to hold input, output, and index of step. Its attribute can
+    only be set using an interface, and cannot be assigned. This is to make sure
+    such information is not changed freely by malicious scripts'''
     def __init__(self):
         pass
+
+    def set(self, key, value):
+        object.__setattr__(self, key, value)
+
+    def __setattr__(self, key, value):
+        raise RuntimeError('Changing of step info {} is prohibited.'.format(key))
 
 def execute_step_process(step_process, global_process, locals, sigil, workdir):
     '''A function that has a local dictionary (from SoS env.locals),
@@ -420,7 +428,7 @@ class SoS_Step:
                     if not all(isinstance(x, basestring) for x in arg):
                         raise RuntimeError('Invalid input file: {}'.format(arg))
                     ifiles.extend(arg)
-            env.locals['_step'].input = ifiles
+            env.locals['_step'].set('input', ifiles)
         else:
             ifiles = env.locals['_step'].input
         # expand files with wildcard characters and check if files exist
@@ -561,8 +569,8 @@ class SoS_Step:
     def parse_args(self, args, check_unused=False, cmd_name=''):
         '''Parse command line arguments and set values to parameters section'''
         env.logger.info('Execute ``{}_parameters``'.format(self.name))
-        env.locals['_step'].name = '{}_parameters'.format(self.name)
-        env.locals['_step'].index = -1
+        env.locals['_step'].set('name', '{}_parameters'.format(self.name))
+        env.locals['_step'].set('index', -1)
         if self.global_process:
             try:
                 SoS_exec(self.global_process)
@@ -638,10 +646,10 @@ class SoS_Step:
         # the following is a quick hack to allow _directive_input function etc to access 
         # the workflow dictionary
         env.globals['self'] = self
-        env.locals['_step'].name = '{}_{}'.format(self.name, self.index)
-        env.locals['_step'].index = self.index
-        env.locals['_step'].output = []
-        env.locals['_step'].depends = []
+        env.locals['_step'].set('name', '{}_{}'.format(self.name, self.index))
+        env.locals['_step'].set('index', self.index)
+        env.locals['_step'].set('output', [])
+        env.locals['_step'].set('depends', [])
         #
         # these are temporary variables that should be removed if exist
         for var in ('_input', '_depends', '_output'):
@@ -674,42 +682,8 @@ class SoS_Step:
                     print_traceback()
                 raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.global_process, e))
         #
-        if input_idx is None:
-            # no input? _input is _step.input
-            env.locals.set('_input', env.locals['_step'].input)
-            for statement in self.statements:
-                if statement[0] == '=':
-                    key, value = statement[1:]
-                    try:
-                        env.locals[key] = SoS_eval(value, self.sigil)
-                    except Exception as e:
-                        raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
-                elif statement[0] == ':':
-                    key, value = statement[1:]
-                    # input and runtime is processed only once
-                    try:
-                        SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
-                    except Exception as e:
-                        env.logger.error(env.locals['_input'])
-                        raise RuntimeError('Failed to process step {} ({}): {}'.format(key, value, e))
-                else:
-                    try:
-                        SoS_exec(statement[1], self.sigil)
-                    except Exception as e:
-                        raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
-
-            # these assignments and statements could affect _output and _depends and affect
-            # saved _outputs and _depends list
-            if '_output' in env.locals:
-                self._outputs.append(env.locals['_output'])
-            else:
-                self._outputs.append([])
-            if '_depends' in env.locals:
-                self._depends.append(env.locals['_depends'])
-            else:
-                self._depends.append([])
-        else:
-            # if there is input directive
+        if input_idx is not None:
+            # execute before input stuff
             for statement in self.statements[:input_idx]:
                 if statement[0] == '=':
                     key, value = statement[1:]
@@ -724,51 +698,55 @@ class SoS_Step:
                         SoS_exec(statement[1], self.sigil)
                     except Exception as e:
                         raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
-                    
             # input
             key, value = self.statements[input_idx][1:]
             try:
                 SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
             except Exception as e:
                 raise RuntimeError('Failed to process directive {} ({}): {}'.format(key, value, e))
-            # post input
-            # output and depends can be processed many times
-            for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
-                # other variables
-                env.locals.update(v)
-                env.locals.set('_input', g)
-                env.locals.set('_index', idx)
-                for statement in self.statements[input_idx+1:]:
-                    if statement[0] == '=':
-                        key, value = statement[1:]
-                        try:
-                            env.locals[key] = SoS_eval(value, self.sigil)
-                        except Exception as e:
-                            raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
-                    elif statement[0] == ':':
-                        key, value = statement[1:]
-                        # input and runtime is processed only once
-                        try:
-                            SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
-                        except Exception as e:
-                            raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
-                    else:
-                        try:
-                            SoS_exec(statement[1], self.sigil)
-                        except Exception as e:
-                            raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
+            input_idx += 1
+        else:
+            # assuming everything starts from 0 is after input
+            input_idx = 0
+        
+        # post input
+        # output and depends can be processed many times
+        for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
+            # other variables
+            env.locals.update(v)
+            env.locals.set('_input', g)
+            env.locals.set('_index', idx)
+            for statement in self.statements[input_idx:]:
+                if statement[0] == '=':
+                    key, value = statement[1:]
+                    try:
+                        env.locals[key] = SoS_eval(value, self.sigil)
+                    except Exception as e:
+                        raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
+                elif statement[0] == ':':
+                    key, value = statement[1:]
+                    # input and runtime is processed only once
+                    try:
+                        SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
+                    except Exception as e:
+                        raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
+                else:
+                    try:
+                        SoS_exec(statement[1], self.sigil)
+                    except Exception as e:
+                        raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
 
-                # collect _output and _depends
-                if '_output' in env.locals:
-                    self._outputs.append(env.locals['_output'])
-                    env.locals.pop('_output')
-                else:
-                    self._outputs.append([])
-                if '_depends' in env.locals:
-                    self._depends.append(env.locals['_depends'])
-                    env.locals.pop('_depends')
-                else:
-                    self._depends.append([])
+            # collect _output and _depends
+            if '_output' in env.locals:
+                self._outputs.append(env.locals['_output'])
+                env.locals.pop('_output')
+            else:
+                self._outputs.append([])
+            if '_depends' in env.locals:
+                self._depends.append(env.locals['_depends'])
+                env.locals.pop('_depends')
+            else:
+                self._depends.append([])
         #
         # if no output directive, assuming no output for each step
         if not self._outputs:
@@ -777,8 +755,8 @@ class SoS_Step:
         if not self._depends:
             self._depends = [[] for x in self._groups]
         # we need to reduce output files in case they have been processed multiple times.
-        env.locals['_step'].output = list(OrderedDict.fromkeys(sum(self._outputs, [])))
-        env.locals['_step'].depends = list(OrderedDict.fromkeys(sum(self._depends, [])))
+        env.locals['_step'].set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
+        env.locals['_step'].set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
         env.logger.info('_step.input: ``{}``'.format(shortRepr(env.locals['_step'].input)))
         env.logger.info('_step.output: ``{}``'.format(shortRepr(env.locals['_step'].output)))
         env.logger.info('_step.depends: ``{}``'.format(shortRepr(env.locals['_step'].depends)))
@@ -809,10 +787,10 @@ class SoS_Step:
         results = []
         for idx, (g, v, o, d) in enumerate(zip(self._groups, self._vars, self._outputs, self._depends)):
             env.locals.update(v)
-            env.locals['_input'] = g
-            env.locals['_output'] = o
-            env.locals['_depends'] = d
-            env.locals['_index'] = idx
+            env.locals.set('_input', g)
+            env.locals.set('_output', o)
+            env.locals.set('_depends', d)
+            env.locals.set('_index', idx)
             env.logger.info('_idx: ``{}``'.format(idx))
             env.logger.info('_input: ``{}``'.format(shortRepr(env.locals['_input'])))
             env.logger.info('_output: ``{}``'.format(shortRepr(env.locals['_output'])))
@@ -832,8 +810,8 @@ class SoS_Step:
             with self.runtime:
                 try:
                     # in case of nested workflow, these names might be changed and need to be reset
-                    env.locals['_step'].name = '{}_{}'.format(self.name, self.index)
-                    env.locals['_step'].index = self.index
+                    env.locals['_step'].set('name', '{}_{}'.format(self.name, self.index))
+                    env.locals['_step'].set('index', self.index)
                     #
                     if self.process:
                         results.append(pool.apply_async(
@@ -1002,7 +980,7 @@ class SoS_Workflow:
         '''
         if nested:
             # if this is a subworkflow, we use _input as step input the workflow
-            env.locals['_step'].input = env.locals['_input']
+            env.locals['_step'].set('input', env.locals['_input'])
         else:
             # other wise we need to prepare running environment.
             env.globals = globals()
@@ -1018,10 +996,10 @@ class SoS_Workflow:
             #
             env.locals.set('_step', StepInfo())
             # initially there is no input, output, or depends
-            env.locals['_step'].input = []
-            env.locals['_step'].name = self.name
-            env.locals['_step'].output = []
-            env.locals['_step'].depends = []
+            env.locals['_step'].set('input', [])
+            env.locals['_step'].set('name', self.name)
+            env.locals['_step'].set('output', [])
+            env.locals['_step'].set('depends', [])
         #
         # process step of the pipelinp
         #
@@ -1050,13 +1028,13 @@ class SoS_Workflow:
                 # set the output to the input of the next step
                 if hasattr(env.locals['_step'], 'output'):
                     # passing step output to _step.input of next step
-                    env.locals['_step'].input = env.locals['_step'].output
+                    env.locals['_step'].set('input', env.locals['_step'].output)
                     # step_output and depends are temporary
                 else:
-                    env.locals['_step'].input = []
+                    env.locals['_step'].set('input', [])
                 #
-                env.locals['_step'].output = []
-                env.locals['_step'].depends = []
+                env.locals['_step'].set('output', [])
+                env.locals['_step'].set('depends', [])
             else:
                 # use initial values
                 start = False
@@ -1694,6 +1672,7 @@ def sos_run(args):
     mini_parser = argparse.ArgumentParser()
     mini_parser.add_argument('-v', '--verbosity', type=int, choices=range(5))
     mini_parser.add_argument('-d', action='store_true', dest='__dryrun__')
+    mini_parser.add_argument('-j', type=int, metavar='JOBS', default=1, dest='__max_jobs__')
     remaining_args, remainder = mini_parser.parse_known_args(args.options)
     for k, v in remaining_args.__dict__.items():
         setattr(args, k, v)
