@@ -66,23 +66,6 @@ class ParsingError(Error):
         self.errors.append((lineno, line))
         self.message += '\n\t[line %2d]: %s\n%s' % (lineno, line, msg)
 
-class RuntimeEnvironment:
-    """Context manager for changing the current working directory"""
-    def __init__(self, runtime={}):
-        self.runtime = runtime
-        if 'workdir' in runtime:
-            self.workdir = os.path.expanduser(runtime['workdir'])
-        else:
-            self.workdir = None
-
-    def __enter__(self):
-        if self.workdir:
-            self.saved_dir = os.getcwd()
-            os.chdir(self.workdir)
-
-    def __exit__(self, etype, value, traceback):
-        if self.workdir:
-            os.chdir(self.saved_dir)
 
 class StepInfo(object):
     '''A simple class to hold input, output, and index of step. Its attribute can
@@ -125,7 +108,7 @@ class SoS_Step:
     _INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic']
     _OUTPUT_OPTIONS = ['pattern', 'dynamic']
     _DEPENDS_OPTIONS = ['pattern', 'dynamic']
-    _RUNTIME_OPTIONS = ['workdir']
+    _RUNTIME_OPTIONS = ['workdir', 'concurrent']
     def __init__(self, names=[], options={}, is_global=False, is_parameters=False):
         # A step will not have a name and index until it is copied to separate workflows
         self.name = None
@@ -154,7 +137,7 @@ class SoS_Step:
         self.values = []
         self.lineno = None
         #
-        self.runtime = RuntimeEnvironment()
+        self.runtime_options = {}
         if 'sigil' in self.options:
             self.sigil = self.options['sigil']
         else:
@@ -552,7 +535,7 @@ class SoS_Step:
             if k not in self._RUNTIME_OPTIONS:
                 raise RuntimeError('Unrecognized runtime option {}'.format(k))
         #
-        self.runtime = RuntimeEnvironment(kwargs)
+        self.runtime_options = kwargs
 
     #
     # handling of parameters step
@@ -831,28 +814,31 @@ class SoS_Step:
             if self.subworkflow and partial_signature is not None:
                 signatures.append(partial_signature)
             #
-            with self.runtime:
-                try:
-                    # in case of nested workflow, these names might be changed and need to be reset
-                    env.locals['_step'].set('name', '{}_{}'.format(self.name, self.index))
-                    env.locals['_step'].set('index', self.index)
-                    #
-                    if self.process:
-                        results.append(pool.apply_async(
-                            execute_step_process,   # function
-                            (self.process,          # process
-                            self.global_process,    # global process
-                            env.locals.clone_pickleable(),
-                            self.sigil,
-                            # if subworkflow contribute to outcome, we can not save signature here
-                            partial_signature if partial_signature is not None and not self.subworkflow else None,
-                            os.getcwd())))
-                except Exception as e:
-                    # FIXME: cannot catch exception from subprocesses
-                    if env.verbosity > 2:
-                        print_traceback()
-                    raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(self.process, e))
-                    #
+            try:
+                # in case of nested workflow, these names might be changed and need to be reset
+                env.locals['_step'].set('name', '{}_{}'.format(self.name, self.index))
+                env.locals['_step'].set('index', self.index)
+                #
+                if self.process:
+                    if 'concurrent' not in self.runtime_options or self.runtime_options['concurrent']:
+                        submitter = pool.apply_async
+                    else:
+                        submitter = pool.apply
+                    results.append(submitter(
+                        execute_step_process,   # function
+                        (self.process,          # process
+                        self.global_process,    # global process
+                        env.locals.clone_pickleable(),
+                        self.sigil,
+                        # if subworkflow contribute to outcome, we can not save signature here
+                        partial_signature if partial_signature is not None and not self.subworkflow else None,
+                        self.runtime_options['workdir'] if 'workdir' in self.runtime_options else os.getcwd())))
+            except Exception as e:
+                # FIXME: cannot catch exception from subprocesses
+                if env.verbosity > 2:
+                    print_traceback()
+                raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(self.process, e))
+                #
             try:
                 # if there is subworkflow, the subworkflow is considered part of the process
                 # and will be executed mutliple times if necessary. The partial signature 
@@ -865,7 +851,7 @@ class SoS_Step:
                     print_traceback()
                 raise RuntimeError('Failed to execute subworkflow: {}'.format(e))
         # check results?
-        results = [res.get() for res in results]
+        results = [res.get() if isinstance(res, mp.pool.AsyncResult) else res for res in results]
         for sig in signatures:
             sig.write()
         if not all(x==0 for x in results):

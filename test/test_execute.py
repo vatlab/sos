@@ -25,6 +25,7 @@
 from __future__ import unicode_literals
 
 import os
+import time
 import unittest
 
 from pysos import *
@@ -365,6 +366,44 @@ with open('test/result.txt', 'w') as res:
         wf.run()
         content = [x.strip() for x in open('result.txt').readlines()]
         self.assertTrue('test_execute.py' in content)
+
+    def testConcurrency(self):
+        '''Test workdir option for runtime environment'''
+        env.max_jobs = 5
+        script =  SoS_Script(r"""
+[0]
+
+repeat = range(4)
+input: for_each='repeat'
+
+process: concurrent=False
+
+import time
+time.sleep(_repeat + 1)
+print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
+""")
+        wf = script.workflow()
+        start = time.time()
+        wf.run()
+        self.assertGreater(time.time() - start, 9)
+        #
+        #
+        script =  SoS_Script(r"""
+[0]
+
+repeat = range(4)
+input: for_each='repeat'
+
+process: concurrent=True
+
+import time
+time.sleep(_repeat + 1)
+print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
+""")
+        wf = script.workflow()
+        start = time.time()
+        wf.run()
+        self.assertLess(time.time() - start, 6)
 
     def testRunmode(self):
         '''Test the runmode decoration'''
