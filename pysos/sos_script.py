@@ -448,10 +448,6 @@ class SoS_Step:
         #
         ifiles = tmp
         #
-        if 'skip' in kwargs and kwargs['skip']:
-            self._groups = []
-            self._vars = []
-            return
         if 'filetype' in kwargs:
             if isinstance(kwargs['filetype'], basestring):
                 ifiles = fnmatch.filter(ifiles, kwargs['filetype'])
@@ -476,6 +472,19 @@ class SoS_Step:
         # handle for_each
         if 'for_each' in kwargs:
             self._handle_input_for_each(kwargs['for_each'])
+        #
+        if 'skip' in kwargs:
+            if callable(kwargs['skip']):
+                # FIXME:
+                # this is a quick fix to make sure user-defined functions are avaialble to use
+                # by another user-defined funciton. There should be better methods out there.
+                globals().update({x:y for x,y in env.locals.items() if callable(y)})
+                filtered_groups = [(g, v) for g, v in zip(self._groups, self._vars) if kwargs['skip'](g, **v)]
+                self._groups = [x[0] for x in filtered_groups]
+                self._vars = [x[1] for x in filtered_groups]
+            else:
+                self._groups = []
+                self._vars = []
 
 
     def _directive_depends(self, *args, **kwargs):
@@ -1479,9 +1488,6 @@ class SoS_Script:
                     continue
                 if cursect.is_parameters:
                     parsing_errors.append(lineno, line, 'Directive {} is not allowed in {} section'.format(directive_name, self._PARAMETERS_SECTION_NAME))
-                    continue
-                if not cursect.empty() and cursect.category() == 'statements':
-                    parsing_errors.append(lineno, line, 'Directive {} should be be defined before step action'.format(directive_name))
                     continue
                 cursect.add_directive(directive_name, directive_value, lineno)
                 continue

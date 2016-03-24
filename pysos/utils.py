@@ -203,7 +203,16 @@ class WorkflowDict(dict):
     def clone_pickleable(self):
         '''Return a copy of the existing dictionary but keep only the ones that are pickleable'''
         # FIXME: not well tested
-        return {x:copy.deepcopy(y) for x,y in self.items() if not callable(y) and not isinstance(y, types.ModuleType)}
+        try:
+            return {x:copy.deepcopy(y) for x,y in self.items() if not callable(y) and not isinstance(y, (types.ModuleType, WorkflowDict))}
+        except:
+            res = {}
+            for x,y in self.items():
+                try:
+                    res[x] = copy.deepcopy(y)
+                except:
+                    pass
+            return res
 #
 # Runtime environment
 #
