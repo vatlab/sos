@@ -351,7 +351,14 @@ class SoS_Step:
         if not hasattr(self, '_vars'):
             self._vars = [{} for x in self._groups]
         for wv in paired_with:
-            values = env.locals[wv]
+            if '.' in wv:
+                if wv.split('.')[0] not in env.locals:
+                    raise ValueError('Variable {} does not exist.'.format(wv))
+                values = getattr(env.locals[wv.split('.')[0]], wv.split('.', 1)[-1])
+            else:
+                if wv not in env.locals:
+                    raise ValueError('Variable {} does not exist.'.format(wv))
+                values = env.locals[wv]
             if isinstance(values, basestring) or not isinstance(values, Sequence):
                 raise ValueError('with_var variable {} is not a sequence ("{}")'.format(wv, values))
             if len(values) != len(ifiles):
@@ -359,7 +366,7 @@ class SoS_Step:
                     .format(wv, len(values), len(ifiles)))
             file_map = {x:y for x,y in zip(ifiles, values)}
             for idx, grp in enumerate(self._groups):
-                self._vars[idx]['_' + wv] = [file_map[x] for x in grp]
+                self._vars[idx]['_' + wv.split('.')[0]] = [file_map[x] for x in grp]
 
     def _handle_input_for_each(self, for_each):
         if for_each is None or not for_each:
@@ -388,7 +395,14 @@ class SoS_Step:
             for vidx in range(loop_size):
                 for idx in range(len(self._vars)):
                     for fe in fe_all.split(','):
-                        self._vars[idx]['_' + fe] = env.locals[fe][vidx]
+                        if '.' in fe:
+                            if fe.split('.')[0] not in env.locals:
+                                raise ValueError('Variable {} does not exist.'.format(fe))
+                            self._vars[idx]['_' + fe.split('.')[0]] = getattr(env.locals[fe.split('.')[0]], fe.split('.', 1)[-1])[vidx]
+                        else:
+                            if fe not in env.locals:
+                                raise ValueError('Variable {} does not exist.'.format(fe))
+                            self._vars[idx]['_' + fe] = env.locals[fe][vidx]
                 tmp.extend(copy.deepcopy(self._vars))
             self._vars = tmp
 
