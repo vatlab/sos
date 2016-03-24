@@ -702,7 +702,8 @@ class SoS_Step:
             input_idx = 0
         
         if 'alias' in self.options:
-            env.locals[self.options['alias']] = env.locals['_step']
+            # copy once before the step might be skipped...
+            env.locals[self.options['alias']] = copy.deepcopy(env.locals['_step'])
         if not self._groups:
             env.logger.info('Step {} is skipped'.format(self.index))
             return
@@ -768,6 +769,8 @@ class SoS_Step:
         env.logger.info('_step.output:  ``{}``'.format(shortRepr(env.locals['_step'].output)))
         if env.locals['_step'].depends:
             env.logger.info('_step.depends: ``{}``'.format(shortRepr(env.locals['_step'].depends)))
+        if 'alias' in self.options:
+            env.locals[self.options['alias']] = copy.deepcopy(env.locals['_step'])
         #
         # if the signature matches, the whole step is ignored, including subworkflows
         if env.locals['_step'].output:
