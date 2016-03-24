@@ -111,6 +111,30 @@ output: _dest
 process:
 run(''' cp ${_input} ${_dest} ''')
 """)
+        # script format
+        env.max_jobs = 4
+        self._testSignature(r"""
+[*_0]
+output: 'temp/a.txt', 'temp/b.txt'
+
+run:
+
+echo "a.txt" > 'temp/a.txt'
+
+run:
+
+echo "b.txt" > 'temp/b.txt'
+
+[1: alias='oa']
+dest = ['temp/c.txt', 'temp/d.txt']
+input: group_by='single', paired_with='dest'
+output: _dest
+
+run:
+
+cp ${_input} ${_dest}
+""")
+
         # reset env mode
         env.sig_mode = 'default'
 

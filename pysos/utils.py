@@ -759,7 +759,7 @@ def SoS_exec(stmts, sigil='${ }'):
             else:
                 # if no next group, expand previously correct one
                 if idx == 0:
-                    raise RuntimeError('Failed to find syntax correct group')
+                    raise RuntimeError('Failed to find syntax correct group: {}'.format(stmts))
                 # break myself again
                 code_group = code_group[: idx] + code_group[idx].split('\n') + code_group[idx+1:]
                 # go back

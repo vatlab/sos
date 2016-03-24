@@ -26,6 +26,7 @@ import copy
 import atexit
 import glob
 import fnmatch
+import keyword
 import argparse
 import textwrap
 import traceback
@@ -81,6 +82,9 @@ class StepInfo(object):
     def __setattr__(self, key, value):
         raise RuntimeError('Changing of step info {} is prohibited.'.format(key))
 
+    def __repr__(self):
+        return '{' + ', '.join('{}: {!r}'.format(x,y) for x,y in self.__dict__.items()) + '}'
+
 def execute_step_process(step_process, global_process, locals, sigil, signature, workdir):
     '''A function that has a local dictionary (from SoS env.locals),
     a global process, and a step process. The processes are executed 
@@ -100,7 +104,7 @@ def execute_step_process(step_process, global_process, locals, sigil, signature,
         if signature:
             signature.write()
     except KeyboardInterrupt:
-        raise RuntimeError('KeyboardInterrupt')
+        raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
     env.deregister_process(os.getpid())
     return 0
 
@@ -145,13 +149,32 @@ class SoS_Step:
             self.sigil = self.options['sigil']
         else:
             self.sigil = '${ }'
+        
+        #
+        # string mode to collect all strings as part of an action
+        self._action = None
+        self._script = ''
 
     def category(self):
         if self.statements:
             if self.statements[-1][0] == '=':
                 return 'expression'
             elif self.statements[-1][0] == ':':
-                return 'directive'
+                # a hack. ... to avoid calling isValid recursively
+                def validDirective():
+                    if not self.values:
+                        return True
+                    if self.values[-1].strip().endswith(','):
+                        return False
+                    try:
+                        compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
+                    except:
+                        return False
+                    return True
+                if validDirective() and self._action is not None:
+                    return 'script'
+                else:
+                    return 'directive'
             else:
                 return 'statements'
         elif self.parameters:
@@ -171,6 +194,8 @@ class SoS_Step:
             self.add_directive(None, line)
         elif self.category() == 'expression':
             self.add_assignment(None, line)
+        elif self.category() == 'script':
+            self._script += line
         else:
             self.add_statement(line)
         self.back_comment = ''
@@ -206,7 +231,7 @@ class SoS_Step:
         if lineno:
             self.lineno = lineno
 
-    def add_directive(self, key, value, lineno=None):
+    def add_directive(self, key, value, lineno=None, action=None):
         '''Assignments are items with ':' type '''
         if key is None:
             # continuation of multi-line directive
@@ -216,6 +241,8 @@ class SoS_Step:
             # new directive
             self.statements.append([':', key, value])
             self.values = [value]
+            if action is not None:
+                self._action = action
         self.back_comment = ''
         if lineno:
             self.lineno = lineno
@@ -235,8 +262,17 @@ class SoS_Step:
         if lineno:
             self.lineno = lineno
 
+    def wrap_script(self):
+        '''convert action: script to process: action(script)'''
+        if self._action is None:
+            return
+        self.statements.append(['!', '{}({!r})'.format(self._action, self._script)])
+        self._action = None
+        self._script = ''
+
     def finalize(self):
         ''' split statement and process by last directive '''
+        self.wrap_script()
         if not self.statements:
             self.process = ''
             return
@@ -244,8 +280,6 @@ class SoS_Step:
         if not process_directive:
             self.process = ''
             return
-        elif len(process_directive) != 1:
-            raise ValueError('Only one step process is allowed')
         start_process = process_directive[0] + 1
         # convert statement to process
         self.process = ''
@@ -253,7 +287,12 @@ class SoS_Step:
             if statement[0] == '=':
                 self.process += '{} = {}'.format(statement[1], statement[2])
             elif statement[0] == ':':
-                raise ValueError('Step process should be defined as the last item in a SoS step')
+                if statement[1] in ('input', 'output', 'depends'):
+                    raise ValueError('Step process should be defined as the last item in a SoS step')
+                elif statement[2].strip():
+                    raise ValueError('Runtime options are not allowed for second or more actions in a SoS step')
+                # ignore ...
+                self.process += '\n'
             else:
                 self.process += statement[1]
         # remove process from self.statement
@@ -280,6 +319,8 @@ class SoS_Step:
                 compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
             elif self.category() == 'statements':
                 compile(''.join(self.values), filename='<string>', mode='exec')
+            elif self.category() == 'script':
+                return True
             else:
                 raise RuntimeError('Unrecognized expression type {}'.format(self.category()))
             return True
@@ -479,9 +520,20 @@ class SoS_Step:
                 # this is a quick fix to make sure user-defined functions are avaialble to use
                 # by another user-defined funciton. There should be better methods out there.
                 globals().update({x:y for x,y in env.locals.items() if callable(y)})
-                filtered_groups = [(g, v) for g, v in zip(self._groups, self._vars) if kwargs['skip'](g, **v)]
-                self._groups = [x[0] for x in filtered_groups]
-                self._vars = [x[1] for x in filtered_groups]
+                _groups = []
+                _vars = []
+                for g, v in zip(self._groups, self._vars):
+                    try:
+                        res = kwargs['skip'](g, **v)
+                    except Exception as e:
+                        raise RuntimeError('Failed to apply skip function to group {}: {}'.format(', '.join(g), e))
+                    if res:
+                       env.logger.info('Input group {} is skipped.'.format(', '.join(g)))
+                    else:
+                        _groups.append(g)
+                        _vars.append(v)
+                self._groups = _groups
+                self._vars = _vars
             else:
                 self._groups = []
                 self._vars = []
@@ -897,7 +949,7 @@ class SoS_Step:
             # if keyboard interrupt
             pool.terminate()
             pool.join()
-            raise RuntimeError('KeyboardInterrupt')
+            raise RuntimeError('KeyboardInterrupt fro m {} (master)'.format(os.getpid()))
         except Exception as e:
             # if keyboard interrupt etc
             env.logger.error('Caught {}'.format(e))
@@ -1176,10 +1228,13 @@ class SoS_Script:
 
     _DIRECTIVE_TMPL = r'''
         ^                                  # from start of line
-        (?P<directive_name>{})             # name of directive
+        (?P<directive_name>                # 
+        (?!({})\s*:)                       # not a python keyword followed by : (can be input)
+        ({}                                # name of directive
+        |[a-zA-Z][\w\d_]*))                #    or action
         \s*:\s*                            # followed by :
         (?P<directive_value>.*)            # and values
-        '''.format('|'.join(_DIRECTIVES))
+        '''.format('|'.join(keyword.kwlist), '|'.join(_DIRECTIVES))
 
     _ASSIGNMENT_TMPL = r'''
         ^                                  # from start of line
@@ -1300,7 +1355,11 @@ class SoS_Script:
                 else:
                     # in the parameter section, the comments are description
                     # of parameters and are all significant
-                    cursect.add_comment(line)
+                    if cursect.isValid():
+                        cursect.add_comment(line)
+                    # comment add to script
+                    else:
+                        cursect.extend(line)
                 continue
             elif not line.strip():
                 # a blank line start a new comment block if we are still
@@ -1440,6 +1499,38 @@ class SoS_Script:
                 cursect = self.sections[-1]
                 continue
             #
+            # directive?
+            mo = self.DIRECTIVE.match(line)
+            if mo:
+                # check previous expression before a new directive
+                if cursect:
+                    if not cursect.isValid():
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category())
+                    cursect.values = []
+                    # allow multiple process-style actions
+                    cursect.wrap_script()
+                #
+                directive_name = mo.group('directive_name')
+                # newline should be kept in case of multi-line directive
+                directive_value = mo.group('directive_value') + '\n'
+                if cursect is None:
+                    parsing_errors.append(lineno, line, 'Directive {} is not allowed out side of a SoS step'.format(directive_name))
+                    continue
+                if cursect.is_parameters:
+                    parsing_errors.append(lineno, line, 'Directive {} is not allowed in {} section'.format(directive_name, self._PARAMETERS_SECTION_NAME))
+                    continue
+                # is it an action??
+                if directive_name in self._DIRECTIVES:
+                    cursect.add_directive(directive_name, directive_value, lineno)
+                else:
+                    # should be in string mode ...
+                    cursect.add_directive('process', directive_value, lineno, action=directive_name)
+                continue
+            # if section is string mode?
+            if cursect and cursect.isValid() and cursect.category() == 'script':
+                cursect.extend(line)
+                continue
+            #
             # assignment?
             mo = self.ASSIGNMENT.match(line)
             if mo:
@@ -1471,27 +1562,6 @@ class SoS_Script:
                     cursect.extend('{} = {}\n'.format(var_name, var_value))
                 continue
             #
-            # directive?
-            mo = self.DIRECTIVE.match(line)
-            if mo:
-                # check previous expression before a new directive
-                if cursect:
-                    if not cursect.isValid():
-                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category())
-                    cursect.values = []
-                #
-                directive_name = mo.group('directive_name')
-                # newline should be kept in case of multi-line directive
-                directive_value = mo.group('directive_value') + '\n'
-                if cursect is None:
-                    parsing_errors.append(lineno, line, 'Directive {} is not allowed out side of a SoS step'.format(directive_name))
-                    continue
-                if cursect.is_parameters:
-                    parsing_errors.append(lineno, line, 'Directive {} is not allowed in {} section'.format(directive_name, self._PARAMETERS_SECTION_NAME))
-                    continue
-                cursect.add_directive(directive_name, directive_value, lineno)
-                continue
-            #
             # all others?
             if not cursect:
                 self.sections.append(SoS_Step(is_global=True))
@@ -1508,6 +1578,7 @@ class SoS_Script:
             else:
                 # existing one
                 cursect.extend(line)
+
         #
         # check the last expression before a new directive
         if cursect:
