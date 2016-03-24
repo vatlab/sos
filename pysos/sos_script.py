@@ -839,8 +839,10 @@ class SoS_Step:
                     if not partial_signature.validate():
                         raise RuntimeError('Signature mismatch for input {} and output {}'.format(
                             ', '.join(env.locals['_input']), ', '.join(env.locals['_output'])))
-            #
-            if self.subworkflow and partial_signature is not None:
+            # now, if output file has already been generated using non-process statement
+            # so that no process need to be run, or if the output need help from a subworkflow
+            # we create signature from outside.
+            if (not self.process or self.subworkflow) and partial_signature is not None:
                 signatures.append(partial_signature)
             #
             try:

@@ -881,6 +881,7 @@ class RuntimeInfo:
         '''Write .exe_info file with signature of script, input, output and dependent files.'''
         if not self.proc_info:
             return
+        env.logger.trace('Write signature {}'.format(self.proc_info))
         with open(self.proc_info, 'w') as md5:
             md5.write('{}\n'.format(textMD5(self.script)))
             for f in self.input_files + self.output_files + self.dependent_files:
@@ -890,18 +891,21 @@ class RuntimeInfo:
     def validate(self):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
         if not self.proc_info or not os.path.isfile(self.proc_info):
+            env.logger.trace('Fail because of no signature file {}'.format(self.proc_info))
             return False
         #
         # duplicated files are only tested once.
         all_files = [os.path.realpath(os.path.expanduser(x)) for x in set(self.input_files + self.output_files + self.dependent_files)]
         # file not exist?
         if not all(os.path.isfile(x) for x in all_files):
+            env.logger.trace('Fail because of missing one of the files {}'.format(', '.join(all_files)))
             return False
         #
         files_checked = {x:False for x in all_files}
         with open(self.proc_info) as md5:
             cmdMD5 = md5.readline().strip()   # command
             if textMD5(self.script) != cmdMD5:
+                env.logger.trace('Fail because of command change')
                 return False
             for line in md5:
                 try:
