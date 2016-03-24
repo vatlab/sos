@@ -430,6 +430,17 @@ open('something')
 save.put()
 
 ''')
+        # test dedent
+        script = SoS_Script('''
+[0]
+python:
+    from pysos import env
+    env.logger.warning('I am from a dented text')
+    if 1:
+        env.logger.warning('Another warning')
+''')
+        wf = script.workflow()
+        wf.run()
 
 
 

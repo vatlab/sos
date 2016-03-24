@@ -266,7 +266,7 @@ class SoS_Step:
         '''convert action: script to process: action(script)'''
         if self._action is None:
             return
-        self.statements.append(['!', '{}({!r})'.format(self._action, self._script)])
+        self.statements.append(['!', '{}({!r})'.format(self._action, textwrap.dedent(self._script))])
         self._action = None
         self._script = ''
 
@@ -1376,8 +1376,7 @@ class SoS_Script:
             #
             # a continuation of previous item?
             if line[0].isspace() and cursect is not None and not cursect.empty():
-                if line.strip():
-                    cursect.extend(line)
+                cursect.extend(line)
                 continue
             #
             # is it a continuation of uncompleted assignment or directive?
