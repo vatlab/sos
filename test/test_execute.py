@@ -32,7 +32,7 @@ from pysos import *
 from pysos import __version__
 import subprocess
 
-class TestRun(unittest.TestCase):
+class TestExecute(unittest.TestCase):
     def testCommandLine(self):
         '''Test command line arguments'''
         result = subprocess.check_output('sos --version', stderr=subprocess.STDOUT, shell=True).decode()
@@ -269,10 +269,15 @@ counter = "0"
 input: 'a.pdf', files, group_by='single', paired_with='names', for_each='c'
 
 counter = str(int(counter) + 1)
+
+[1: alias = 'ob']
+input: oa.input
+output: _input
 """)
         wf = script.workflow()
         wf.run()
         self.assertEqual(env.locals['oa'].input, ["a.pdf", 'a.txt', 'b.txt'])
+        self.assertEqual(env.locals['ob'].output, ["a.pdf", 'a.txt', 'b.txt'])
 
     def testFileType(self):
         '''Test input option filetype'''
