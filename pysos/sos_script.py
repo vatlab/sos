@@ -632,7 +632,7 @@ class SoS_Step:
         if isinstance(self.index, int):
             env.locals.set('_workflow_index', self.index)
         #
-        env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment))
+        env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
         #
         # 
         # the following is a quick hack to allow _directive_input function etc to access 
@@ -708,7 +708,8 @@ class SoS_Step:
             return
         # post input
         # output and depends can be processed many times
-        env.logger.info('_step.input: ``{}``'.format(shortRepr(env.locals['_step'].input)))
+        step_sig = self.step_signature()
+        env.logger.info('_step.input:   ``{}``'.format(shortRepr(env.locals['_step'].input)))
         for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
             # other variables
             env.locals.update(v)
@@ -732,10 +733,18 @@ class SoS_Step:
                     except Exception as e:
                         raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
                 else:
+                    old_run_mode = env.run_mode
+                    if '_output' in env.locals:
+                        signature = RuntimeInfo(step_sig, env.locals['_input'], env.locals['_output'],
+                            env.locals.get('_depends', []))
+                        if env.sig_mode == 'default' and signature.validate():
+                            env.logger.info('Execute statement in dryrun mode and reuse existing output files {}'.format(', '.join(env.locals['_output'])))
+                            env.run_mode = 'dryrun'
                     try:
                         SoS_exec(statement[1], self.sigil)
                     except Exception as e:
                         raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
+                    env.run_mode = old_run_mode
 
             # collect _output and _depends
             if '_output' in env.locals:
@@ -756,13 +765,13 @@ class SoS_Step:
         # we need to reduce output files in case they have been processed multiple times.
         env.locals['_step'].set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
         env.locals['_step'].set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
-        env.logger.info('_step.output: ``{}``'.format(shortRepr(env.locals['_step'].output)))
-        env.logger.info('_step.depends: ``{}``'.format(shortRepr(env.locals['_step'].depends)))
+        env.logger.info('_step.output:  ``{}``'.format(shortRepr(env.locals['_step'].output)))
+        if env.locals['_step'].depends:
+            env.logger.info('_step.depends: ``{}``'.format(shortRepr(env.locals['_step'].depends)))
         #
         # if the signature matches, the whole step is ignored, including subworkflows
-        sig = self.step_signature()
         if env.locals['_step'].output:
-            signature = RuntimeInfo(sig, 
+            signature = RuntimeInfo(step_sig, 
                 env.locals['_step'].input, env.locals['_step'].output, env.locals['_step'].depends)
             if env.run_mode == 'run':
                 for ofile in env.locals['_step'].output:
@@ -799,7 +808,7 @@ class SoS_Step:
             # step is interrupted in the middle.
             partial_signature = None
             if env.locals['_output'] and env.locals['_output'] != env.locals['_step'].output and env.run_mode == 'run':
-                partial_signature = RuntimeInfo(sig, env.locals['_input'], env.locals['_output'], 
+                partial_signature = RuntimeInfo(step_sig, env.locals['_input'], env.locals['_output'], 
                     env.locals['_depends'])
                 if env.sig_mode == 'default':
                     if partial_signature.validate():
