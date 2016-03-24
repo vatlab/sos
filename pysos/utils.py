@@ -25,10 +25,13 @@ import re
 import copy
 import types
 import logging
+import signal
+import glob
 import collections
 import hashlib
 import shutil
 import token
+import psutil
 from tokenize import generate_tokens, untokenize
 from io import StringIO
 
@@ -237,6 +240,7 @@ class RuntimeEnvironments(object):
         # run mode, this mode controls how SoS actions behave
         #
         self.run_mode = 'run'
+        #
         # signature mode can be
         #
         # default              (save signature, skip if signature match)
@@ -256,6 +260,34 @@ class RuntimeEnvironments(object):
         # maximum number of concurrent jobs
         self.max_jobs = 1
         self.running_jobs = 0
+
+    def register_process(self, pid, msg=''):
+        '''Register a process used by this SoS instance. It will also be
+        used to check resource used.'''
+        if not os.path.isdir('.sos'):
+            os.mkdir('.sos')
+        self.logger.trace('Register {} {}'.format(pid, msg))
+        with open('.sos/proc_{}'.format(pid), 'w') as p:
+            p.write(msg)
+
+    def deregister_process(self, pid):
+        self.logger.trace('Deregister {}'.format(pid))
+        if os.path.isfile('.sos/proc_{}'.format(pid)):
+            os.remove('.sos/proc_{}'.format(pid))
+
+    def cleanup(self):
+        '''Clean up all running processes'''
+        for p in glob.glob('.sos/proc_*'):
+            pid = int(os.path.basename(p)[5:])
+            try:
+                env.logger.trace('Killing {} and all its children'.format(pid))
+                parent = psutil.Process(pid)
+                for child in parent.children(recursive=True):  # or parent.children() for recursive=False
+                    child.kill()
+                parent.kill()
+            except Exception as e:
+                env.logger.debug(e)
+            os.remove(p)
 
     class ContextStack:
         '''A context stack and pushes existing workflow dict (env.locals)

@@ -23,6 +23,7 @@ import os
 import sys
 import re
 import copy
+import atexit
 import glob
 import fnmatch
 import argparse
@@ -86,19 +87,21 @@ def execute_step_process(step_process, global_process, locals, sigil, signature,
     in a separate process, independent of SoS. This makes it possible
     to execute the processes in background, on cluster, or submit as
     Celery tasks.'''
-    os.chdir(workdir)
+    env.register_process(os.getpid(), 'spawned_job with {} {}'
+        .format(', '.join(locals['_input']), ', '.join(locals['_output'])))
     try:
+        os.chdir(workdir)
         # switch context to the new dict and switch back once the with
         # statement ends (or if an exception is raised)
         with env.push_context(locals):
             if global_process:
                 SoS_exec(global_process, sigil)
             SoS_exec(step_process, sigil)
-    except Exception as e:
-        env.logger.error(e)
-        return e
-    if signature:
-        signature.write()
+        if signature:
+            signature.write()
+    except KeyboardInterrupt:
+        raise RuntimeError('KeyboardInterrupt')
+    env.deregister_process(os.getpid())
     return 0
 
 class SoS_Step:
@@ -863,7 +866,19 @@ class SoS_Step:
                     print_traceback()
                 raise RuntimeError('Failed to execute subworkflow: {}'.format(e))
         # check results?
-        results = [res.get() if isinstance(res, mp.pool.AsyncResult) else res for res in results]
+        try:
+            results = [res.get() if isinstance(res, mp.pool.AsyncResult) else res for res in results]
+        except KeyboardInterrupt:
+            # if keyboard interrupt
+            pool.terminate()
+            pool.join()
+            raise RuntimeError('KeyboardInterrupt')
+        except Exception as e:
+            # if keyboard interrupt etc
+            env.logger.error('Caught {}'.format(e))
+            pool.terminate()
+            pool.join()
+            raise
         for sig in signatures:
             sig.write()
         if not all(x==0 for x in results):
@@ -1669,6 +1684,8 @@ def sos_show(args):
 #
 # subcommand run
 #
+
+
 def sos_run(args):
     # options such as -d might be put at the end and we need to 
     # extract them from args.options
@@ -1682,6 +1699,9 @@ def sos_run(args):
     args.options = remainder
     env.verbosity = args.verbosity
     env.max_jobs = args.__max_jobs__
+    #
+    atexit.register(env.cleanup)
+    #
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
