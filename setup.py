@@ -21,11 +21,6 @@
 #
 
 from distutils.core import setup
-try:
-   from distutils.command.build_py import build_py_2to3 as build_py
-except ImportError:
-   from distutils.command.build_py import build_py
-
 from pysos import __version__
 
 setup(name = "sos",
@@ -38,23 +33,24 @@ setup(name = "sos",
     maintainer_email = 'bpeng@mdanderson.org',
     license = 'GPL3',
     classifiers = [
-        'Development Status :: 2 - Pro-Alpha',
+        'Development Status :: 3 - Alpha',
         'Environment :: Console',
         'License :: OSI Approved :: GNU General Public License (GPL)',
         'Natural Language :: English',
         'Operating System :: POSIX :: Linux',
         'Operating System :: MacOS :: MacOS X',
-        'Programming Language :: Python',
         'Intended Audience :: Information Technology',
         'Intended Audience :: Science/Research',
-        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3 :: Only',
         ],
     packages = ['pysos'],
+    install_requires=[
+          'psutil',
+      ],
     scripts = [
         'sos',
         'sos-runner',
         ],
-    cmdclass = {'build_py': build_py },
     py_modules = [
         'pysos.actions',
         'pysos.utils',

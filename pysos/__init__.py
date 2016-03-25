@@ -36,5 +36,6 @@ SOS_FULL_VERSION='{} for Python {}.{}.{}'.format(__version__, ver.major, ver.min
 SOS_COPYRIGHT = '''SoS {} : Copyright (c) 2016 Bo Peng'''.format(__version__)
 SOS_CONTACT = '''Please visit http://github.com/bpeng2000/SOS for more information.'''
 
+# this import might fail when SoS is not properly installed
 from .sos_script import *
 from .utils import *

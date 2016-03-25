@@ -31,23 +31,15 @@ import collections
 import hashlib
 import shutil
 import token
-import psutil
 from tokenize import generate_tokens, untokenize
 from io import StringIO
+from shlex import quote
+from html.parser import HTMLParser
 
 try:
-    # python 3.3
-    from shlex import quote
-except ImportError:
-    # python 2.7
-    from pipes import quote
-
-try:
-    # python 3.x
-    from html.parser import HTMLParser
-except ImportError:
-    # python 2.7
-    from HTMLParser import HTMLParser
+    import psutil
+except ImportError as e:
+    pass
 
 #
 # Logging
@@ -290,6 +282,8 @@ class RuntimeEnvironments(object):
             pid = int(os.path.basename(p)[5:])
             try:
                 env.logger.trace('Killing {} and all its children'.format(pid))
+                # psutil might not exist if SoS is not properly installed
+                # but we are not acting like the end of world here
                 parent = psutil.Process(pid)
                 for child in parent.children(recursive=True):  # or parent.children() for recursive=False
                     child.kill()
