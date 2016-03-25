@@ -113,6 +113,9 @@ if __name__ == '__main__':
     addCommonArgs(parser)
     parser.set_defaults(func=sos_show)
     #
+    if len(sys.argv) == 1:
+        master_parser.print_help()
+        sys.exit(1)
     args, workflow_args = master_parser.parse_known_args()
     # calling the associated functions
     args.func(args, workflow_args)

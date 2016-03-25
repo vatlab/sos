@@ -41,6 +41,7 @@ class TestExecute(unittest.TestCase):
             devnull = subprocess.DEVNULL
         else:
             devnull = open(os.devnull, 'w')
+        self.assertEqual(subprocess.call('sos', stderr=devnull, stdout=devnull, shell=True), 0)
         self.assertEqual(subprocess.call('sos -h', stderr=devnull, stdout=devnull, shell=True), 0)
         self.assertEqual(subprocess.call('sos run -h', stderr=devnull, stdout=devnull, shell=True), 0)
         self.assertEqual(subprocess.call('sos dryrun -h', stderr=devnull, stdout=devnull, shell=True), 0)
