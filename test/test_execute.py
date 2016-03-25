@@ -516,6 +516,24 @@ print('I am {} after {} seconds'.format(_index, wait))
         #
         # execute in parallel mode
 
+    def testUserDefinedFunc(self):
+        '''Test the use of user-defined functions in SoS script'''
+        script = SoS_Script(r"""
+
+def myfunc():
+  return 'a'
+
+[1: alias='test']
+output: myfunc()
+
+myfunc()
+
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        wf.run()
+        self.assertEqual(env.locals['test'].output, ['a'])
+
 
 if __name__ == '__main__':
     unittest.main()
