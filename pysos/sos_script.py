@@ -43,6 +43,15 @@ from .actions import *
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
     dehtml, getTermWidth, interpolate, shortRepr, glob_wildcards, apply_wildcards
 
+# 
+# global definitions of SoS syntax
+# 
+_INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic']
+_OUTPUT_OPTIONS = ['pattern', 'dynamic']
+_DEPENDS_OPTIONS = ['pattern', 'dynamic']
+_RUNTIME_OPTIONS = ['workdir', 'concurrent']
+
+
 class ArgumentError(Error):
     """Raised when an invalid argument is passed."""
     def __init__(self, msg):
@@ -80,7 +89,7 @@ class StepInfo(object):
         return '{' + ', '.join('{}: {!r}'.format(x,y) for x,y in self.__dict__.items()) + '}'
 
 def execute_step_process(step_process, global_process, locals, sigil, signature, workdir):
-    '''A function that has a local dictionary (from SoS env.locals),
+    '''A function that has a local dictionary (from SoS env.sos_dict),
     a global process, and a step process. The processes are executed 
     in a separate process, independent of SoS. This makes it possible
     to execute the processes in background, on cluster, or submit as
@@ -89,11 +98,12 @@ def execute_step_process(step_process, global_process, locals, sigil, signature,
         .format(', '.join(locals['_input']), ', '.join(locals['_output'])))
     try:
         os.chdir(workdir)
+        # forcefully inject pysos import the local namespace
+        global_process = 'from pysos import *\n' + global_process
         # switch context to the new dict and switch back once the with
         # statement ends (or if an exception is raised)
         with env.push_context(locals):
-            if global_process:
-                SoS_exec(global_process, sigil)
+            SoS_exec(global_process, sigil)
             SoS_exec(step_process, sigil)
         if signature:
             signature.write()
@@ -102,14 +112,305 @@ def execute_step_process(step_process, global_process, locals, sigil, signature,
     env.deregister_process(os.getpid())
     return 0
 
+#
+# Functions to handle directives
+#
+
+def handle_input_group_by(ifiles, group_by):
+    '''Handle input option group_by'''
+    if group_by == 'single':
+        return [[x] for x in ifiles]
+    elif group_by == 'all':
+        # default option
+        return [ifiles]
+    elif group_by == 'pairs':
+        if len(ifiles) % 2 != 0:
+            raise ValueError('Paired group_by has to have even number of input files: {} provided'
+                .format(len(ifiles)))
+        return list(list(x) for x in zip(ifiles[:len(ifiles)//2], ifiles[len(ifiles)//2:]))
+    elif group_by == 'pairwise':
+        f1, f2 = tee(ifiles)
+        next(f2, None)
+        return [list(x) for x in zip(f1, f2)]
+    elif group_by == 'combinations':
+        return [list(x) for x in combinations(ifiles, 2)]
+
+
+def handle_input_paired_with(paired_with, _groups, _vars):
+    '''Handle input option paired_with'''
+    if paired_with is None or not paired_with:
+        paired_with = []
+    elif isinstance(paired_with, str):
+        paired_with = [paired_with]
+    elif isinstance(paired_with, Iterable):
+        paired_with = paired_with
+    else:
+        raise ValueError('Unacceptable value for parameter paired_with: {}'.format(paired_with))
+    #
+    ifiles = env.sos_dict['_step'].input
+    for wv in paired_with:
+        if '.' in wv:
+            if wv.split('.')[0] not in env.sos_dict:
+                raise ValueError('Variable {} does not exist.'.format(wv))
+            values = getattr(env.sos_dict[wv.split('.')[0]], wv.split('.', 1)[-1])
+        else:
+            if wv not in env.sos_dict:
+                raise ValueError('Variable {} does not exist.'.format(wv))
+            values = env.sos_dict[wv]
+        if isinstance(values, str) or not isinstance(values, Iterable):
+            raise ValueError('with_var variable {} is not a sequence ("{}")'.format(wv, values))
+        if len(values) != len(ifiles):
+            raise ValueError('Length of variable {} (length {}) should match the number of input files (length {}).'
+                .format(wv, len(values), len(ifiles)))
+        file_map = {x:y for x,y in zip(ifiles, values)}
+        for idx, grp in enumerate(_groups):
+            _vars[idx]['_' + wv.split('.')[0]] = [file_map[x] for x in grp]
+
+
+def handle_input_pattern(pattern, ifiles, _groups, _vars):
+    '''Handle input option pattern'''
+    if pattern is None or not pattern:
+        patterns = []
+    elif isinstance(pattern, str):
+        patterns = [pattern]
+    elif isinstance(pattern, Iterable):
+        patterns = pattern
+    else:
+        raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
+    #
+    for pattern in patterns:
+        res = glob_wildcards(pattern, [])
+        for ifile in ifiles:
+            matched = glob_wildcards(pattern, [ifile])
+            for key in matched.keys():
+                if not matched[key]:
+                    env.logger.warning('Filename {} does not match pattern {}. None returned.'.format(ifile, pattern))
+                    res[key].append(None)
+                else:
+                    res[key].extend(matched[key])
+        # now, assign the variables to env
+        for k, v in res.items():
+            env.sos_dict[k] = v
+        # also make k, v pair with _input
+        handle_input_paired_with(res.keys(), _groups, _vars)
+    
+
+def handle_input_for_each(for_each, _groups, _vars):
+    if for_each is None or not for_each:
+        for_each = []
+    elif isinstance(for_each, str):
+        for_each = [for_each]
+    elif isinstance(for_each, Sequence):
+        for_each = for_each
+    else:
+        raise ValueError('Unacceptable value for parameter for_each: {}'.format(for_each))
+    #
+    for fe_all in for_each:
+        loop_size = None
+        for fe in fe_all.split(','):
+            values = env.sos_dict[fe]
+            if not isinstance(values, Sequence):
+                raise ValueError('for_each variable {} is not a sequence ("{}")'.format(fe, values))
+            if loop_size is None:
+                loop_size = len(values)
+            elif loop_size != len(values):
+                raise ValueError('Length of variable {} (length {}) should match the length of variable {} (length {}).'
+                    .format(fe, len(values), fe_all.split(',')[0], loop_size))
+        # expand
+        _tmp_groups = copy.deepcopy(_groups)
+        _groups.clear()
+        for i in range(loop_size):
+            _groups.extend(_tmp_groups)
+        #
+        _tmp_vars = copy.deepcopy(_vars)
+        _vars.clear()
+        for vidx in range(loop_size):
+            for idx in range(len(_tmp_vars)):
+                for fe in fe_all.split(','):
+                    if '.' in fe:
+                        if fe.split('.')[0] not in env.sos_dict:
+                            raise ValueError('Variable {} does not exist.'.format(fe))
+                        _tmp_vars[idx]['_' + fe.split('.')[0]] = getattr(env.sos_dict[fe.split('.')[0]], fe.split('.', 1)[-1])[vidx]
+                    else:
+                        if fe not in env.sos_dict:
+                            raise ValueError('Variable {} does not exist.'.format(fe))
+                        _tmp_vars[idx]['_' + fe] = env.sos_dict[fe][vidx]
+            _vars.extend(copy.deepcopy(_tmp_vars))
+
+# directive input
+def directive_input(*args, **kwargs):
+    # first *args are filenames
+    for k in kwargs.keys():
+        if k not in _INPUT_OPTIONS:
+            raise RuntimeError('Unrecognized input option {}'.format(k))
+    #
+    if args:
+        ifiles = []
+        for arg in args:
+            if isinstance(arg, str):
+                ifiles.append(arg)
+            elif isinstance(arg, list):
+                if not all(isinstance(x, str) for x in arg):
+                    raise RuntimeError('Invalid input file: {}'.format(arg))
+                ifiles.extend(arg)
+        env.sos_dict['_step'].set('input', ifiles)
+    else:
+        ifiles = env.sos_dict['_step'].input
+    # expand files with wildcard characters and check if files exist
+    tmp = []
+    for ifile in ifiles:
+        if os.path.isfile(os.path.expanduser(ifile)):
+            tmp.append(ifile)
+        elif env.run_mode == 'run':
+            # in this mode file must exist
+            expanded = glob.glob(os.path.expanduser(ifile))
+            if not expanded:
+                raise RuntimeError('{} not exist.'.format(ifile))
+            tmp.extend(expanded)
+        elif env.run_mode == 'dryrun':
+            # FIXME: this should be the 'dynamic' mode
+            expanded = glob.glob(os.path.expanduser(ifile))
+            if expanded:
+                tmp.extend(expanded)
+            else:
+                tmp.append(ifile)
+    #
+    ifiles = tmp
+    #
+    if 'filetype' in kwargs:
+        if isinstance(kwargs['filetype'], str):
+            ifiles = fnmatch.filter(ifiles, kwargs['filetype'])
+        elif isinstance(kwargs['filetype'], (list, tuple)):
+            ifiles = [x for x in ifiles if any(fnmatch.fnmatch(x, y) for y in kwargs['filetype'])]
+        elif callable(kwargs['filetype']):
+            ifiles = [x for x in ifiles if kwargs['filetype'](x)]
+    #             
+    # handle group_by
+    if 'group_by' in kwargs:
+        _groups = handle_input_group_by(ifiles, kwargs['group_by'])
+    else:
+        _groups = [ifiles]
+    #
+    _vars = [{} for x in _groups]
+    # handle paired_with
+    if 'paired_with' in kwargs:
+        handle_input_paired_with(kwargs['paired_with'], _groups, _vars)
+    # handle pattern
+    if 'pattern' in kwargs:
+        handle_input_pattern(kwargs['pattern'], ifiles, _groups, _vars)
+    # handle for_each
+    if 'for_each' in kwargs:
+        handle_input_for_each(kwargs['for_each'], _groups, _vars)
+    #
+    if 'skip' in kwargs:
+        if callable(kwargs['skip']):
+            _tmp_groups = []
+            _tmp_vars = []
+            for g, v in zip(_groups, _vars):
+                try:
+                    res = kwargs['skip'](g, **v)
+                except Exception as e:
+                    raise RuntimeError('Failed to apply skip function to group {}: {}'.format(', '.join(g), e))
+                if res:
+                   env.logger.info('Input group {} is skipped.'.format(', '.join(g)))
+                else:
+                    _tmp_groups.append(g)
+                    _tmp_vars.append(v)
+            _groups = _tmp_groups
+            _vars = _tmp_vars
+        else:
+            _groups = []
+            _vars = []
+    return _groups, _vars
+
+
+def directive_depends(*args, **kwargs):
+    '''handle directive depends'''
+    for k in kwargs.keys():
+        if k not in _DEPENDS_OPTIONS:
+            raise RuntimeError('Unrecognized depends option {}'.format(k))
+    # first *args are filenames
+    dfiles = []
+    for arg in args:
+        if isinstance(arg, str):
+            dfiles.append(arg)
+        elif isinstance(arg, list):
+            if not all(isinstance(x, str) for x in arg):
+                raise RuntimeError('Invalid dependent file: {}'.format(arg))
+            dfiles.extend(arg)
+    env.sos_dict.set('_depends', dfiles)
+
+def handle_output_pattern(pattern, ofiles):
+    # 
+    if pattern is None or not pattern:
+        patterns = []
+    elif isinstance(pattern, str):
+        patterns = [pattern]
+    elif isinstance(pattern, list):
+        patterns = pattern
+    else:
+        raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
+    #
+    for pattern in patterns:
+        sz = None
+        res = glob_wildcards(pattern, [])
+        sz = None
+        wildcard = [{}]
+        for key in res.keys():
+            if key not in env.sos_dict:
+                raise ValueError('Undefined variable {} in pattern {}'.format(key, pattern))
+            if not isinstance(env.sos_dict[key], str) and isinstance(env.sos_dict[key], Sequence):
+                if sz is None:
+                    sz = len(env.sos_dict[key])
+                    wildcard = [{} for x in range(sz)]
+                elif sz != len(env.sos_dict[key]):
+                    raise ValueError('Variables in output pattern should have the same length (other={}, len({})={})'
+                        .format(sz, key, len(env.sos_dict[key])))
+                for idx, value in enumerate(env.sos_dict[key]):
+                    wildcard[idx][key] = value
+            else:
+                for v in wildcard:
+                    v[key] = env.sos_dict[key]
+        #
+        for card in wildcard:
+            ofiles.append(apply_wildcards(pattern, card, fill_missing=False,
+               fail_dynamic=False, dynamic_fill=None, keep_dynamic=False))
+        
+def directive_output(*args, **kwargs):
+    for k in kwargs.keys():
+        if k not in _OUTPUT_OPTIONS:
+            raise RuntimeError('Unrecognized output option {}'.format(k))
+    ofiles = []
+    for arg in args:
+        if isinstance(arg, str):
+            ofiles.append(arg)
+        elif isinstance(arg, list):
+            if not all(isinstance(x, str) for x in arg):
+                raise RuntimeError('Invalid output file: {}'.format(arg))
+            ofiles.extend(arg)
+    #
+    if 'pattern' in kwargs:
+        handle_output_pattern(kwargs['pattern'], ofiles)
+    env.sos_dict.set('_output', ofiles)
+
+def directive_process(**kwargs):
+    for k in kwargs.keys():
+        if k not in _RUNTIME_OPTIONS:
+            raise RuntimeError('Unrecognized runtime option {}'.format(k))
+    #
+    if '_runtime' not in env.sos_dict:
+        env.sos_dict.set('_runtime', kwargs)
+
+#
+# handling of parameters step
+#
+
+
+
 class SoS_Step:
     #
     # A single sos step
     #
-    _INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic']
-    _OUTPUT_OPTIONS = ['pattern', 'dynamic']
-    _DEPENDS_OPTIONS = ['pattern', 'dynamic']
-    _RUNTIME_OPTIONS = ['workdir', 'concurrent']
     def __init__(self, names=[], options={}, is_global=False, is_parameters=False):
         # A step will not have a name and index until it is copied to separate workflows
         self.name = None
@@ -321,297 +622,6 @@ class SoS_Step:
         except Exception as e:
             return False
 
-
-    #
-    # Execution: input options
-    #
-    def _handle_input_group_by(self, ifiles, group_by):
-        # for this special case, the step is skipped
-        if group_by == 'single':
-            return [[x] for x in ifiles]
-        elif group_by == 'all':
-            # default option
-            return [ifiles]
-        elif group_by == 'pairs':
-            if len(ifiles) % 2 != 0:
-                raise ValueError('Paired group_by has to have even number of input files: {} provided'
-                    .format(len(ifiles)))
-            return list(list(x) for x in zip(ifiles[:len(ifiles)//2], ifiles[len(ifiles)//2:]))
-        elif group_by == 'pairwise':
-            f1, f2 = tee(ifiles)
-            next(f2, None)
-            return [list(x) for x in zip(f1, f2)]
-        elif group_by == 'combinations':
-            return [list(x) for x in combinations(ifiles, 2)]
-
-    def _handle_input_pattern(self, pattern):
-        ifiles = env.locals['_step'].input
-        # 
-        if pattern is None or not pattern:
-            patterns = []
-        elif isinstance(pattern, str):
-            patterns = [pattern]
-        elif isinstance(pattern, Iterable):
-            patterns = pattern
-        else:
-            raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
-        #
-        for pattern in patterns:
-            res = glob_wildcards(pattern, [])
-            for ifile in ifiles:
-                matched = glob_wildcards(pattern, [ifile])
-                for key in matched.keys():
-                    if not matched[key]:
-                        env.logger.warning('Filename {} does not match pattern {}. None returned.'.format(ifile, pattern))
-                        res[key].append(None)
-                    else:
-                        res[key].extend(matched[key])
-            # now, assign the variables to env
-            for k, v in res.items():
-                env.locals[k] = v
-            # also make k, v pair with _input
-            self._handle_input_paired_with(res.keys())
-        
-    def _handle_input_paired_with(self, paired_with):
-        if paired_with is None or not paired_with:
-            paired_with = []
-        elif isinstance(paired_with, str):
-            paired_with = [paired_with]
-        elif isinstance(paired_with, Iterable):
-            paired_with = paired_with
-        else:
-            raise ValueError('Unacceptable value for parameter paired_with: {}'.format(paired_with))
-        #
-        ifiles = env.locals['_step'].input
-        if not hasattr(self, '_vars'):
-            self._vars = [{} for x in self._groups]
-        for wv in paired_with:
-            if '.' in wv:
-                if wv.split('.')[0] not in env.locals:
-                    raise ValueError('Variable {} does not exist.'.format(wv))
-                values = getattr(env.locals[wv.split('.')[0]], wv.split('.', 1)[-1])
-            else:
-                if wv not in env.locals:
-                    raise ValueError('Variable {} does not exist.'.format(wv))
-                values = env.locals[wv]
-            if isinstance(values, str) or not isinstance(values, Iterable):
-                raise ValueError('with_var variable {} is not a sequence ("{}")'.format(wv, values))
-            if len(values) != len(ifiles):
-                raise ValueError('Length of variable {} (length {}) should match the number of input files (length {}).'
-                    .format(wv, len(values), len(ifiles)))
-            file_map = {x:y for x,y in zip(ifiles, values)}
-            for idx, grp in enumerate(self._groups):
-                self._vars[idx]['_' + wv.split('.')[0]] = [file_map[x] for x in grp]
-
-    def _handle_input_for_each(self, for_each):
-        if for_each is None or not for_each:
-            for_each = []
-        elif isinstance(for_each, str):
-            for_each = [for_each]
-        elif isinstance(for_each, Sequence):
-            for_each = for_each
-        else:
-            raise ValueError('Unacceptable value for parameter for_each: {}'.format(for_each))
-        #
-        for fe_all in for_each:
-            loop_size = None
-            for fe in fe_all.split(','):
-                values = env.locals[fe]
-                if not isinstance(values, Sequence):
-                    raise ValueError('for_each variable {} is not a sequence ("{}")'.format(fe, values))
-                if loop_size is None:
-                    loop_size = len(values)
-                elif loop_size != len(values):
-                    raise ValueError('Length of variable {} (length {}) should match the length of variable {} (length {}).'
-                        .format(fe, len(values), fe_all.split(',')[0], loop_size))
-            # expand
-            self._groups = self._groups * loop_size
-            tmp = []
-            for vidx in range(loop_size):
-                for idx in range(len(self._vars)):
-                    for fe in fe_all.split(','):
-                        if '.' in fe:
-                            if fe.split('.')[0] not in env.locals:
-                                raise ValueError('Variable {} does not exist.'.format(fe))
-                            self._vars[idx]['_' + fe.split('.')[0]] = getattr(env.locals[fe.split('.')[0]], fe.split('.', 1)[-1])[vidx]
-                        else:
-                            if fe not in env.locals:
-                                raise ValueError('Variable {} does not exist.'.format(fe))
-                            self._vars[idx]['_' + fe] = env.locals[fe][vidx]
-                tmp.extend(copy.deepcopy(self._vars))
-            self._vars = tmp
-
-    #
-    # Execution; directives
-    #
-    def _directive_input(self, *args, **kwargs):
-        # first *args are filenames
-        for k in kwargs.keys():
-            if k not in self._INPUT_OPTIONS:
-                raise RuntimeError('Unrecognized input option {}'.format(k))
-        #
-        if args:
-            ifiles = []
-            for arg in args:
-                if isinstance(arg, str):
-                    ifiles.append(arg)
-                elif isinstance(arg, list):
-                    if not all(isinstance(x, str) for x in arg):
-                        raise RuntimeError('Invalid input file: {}'.format(arg))
-                    ifiles.extend(arg)
-            env.locals['_step'].set('input', ifiles)
-        else:
-            ifiles = env.locals['_step'].input
-        # expand files with wildcard characters and check if files exist
-        tmp = []
-        for ifile in ifiles:
-            if os.path.isfile(os.path.expanduser(ifile)):
-                tmp.append(ifile)
-            elif env.run_mode == 'run':
-                # in this mode file must exist
-                expanded = glob.glob(os.path.expanduser(ifile))
-                if not expanded:
-                    raise RuntimeError('{} not exist.'.format(ifile))
-                tmp.extend(expanded)
-            elif env.run_mode == 'dryrun':
-                # FIXME: this should be the 'dynamic' mode
-                expanded = glob.glob(os.path.expanduser(ifile))
-                if expanded:
-                    tmp.extend(expanded)
-                else:
-                    tmp.append(ifile)
-        #
-        ifiles = tmp
-        #
-        if 'filetype' in kwargs:
-            if isinstance(kwargs['filetype'], str):
-                ifiles = fnmatch.filter(ifiles, kwargs['filetype'])
-            elif isinstance(kwargs['filetype'], (list, tuple)):
-                ifiles = [x for x in ifiles if any(fnmatch.fnmatch(x, y) for y in kwargs['filetype'])]
-            elif callable(kwargs['filetype']):
-                ifiles = [x for x in ifiles if kwargs['filetype'](x)]
-        #             
-        # handle group_by
-        if 'group_by' in kwargs:
-            self._groups = self._handle_input_group_by(ifiles, kwargs['group_by'])
-        else:
-            self._groups = [ifiles]
-        #
-        self._vars = [{} for x in self._groups]
-        # handle paired_with
-        if 'paired_with' in kwargs:
-            self._handle_input_paired_with(kwargs['paired_with'])
-        # handle pattern
-        if 'pattern' in kwargs:
-            self._handle_input_pattern(kwargs['pattern'])
-        # handle for_each
-        if 'for_each' in kwargs:
-            self._handle_input_for_each(kwargs['for_each'])
-        #
-        if 'skip' in kwargs:
-            if callable(kwargs['skip']):
-                # FIXME:
-                # this is a quick fix to make sure user-defined functions are avaialble to use
-                # by another user-defined funciton. There should be better methods out there.
-                globals().update({x:y for x,y in env.locals.items() if callable(y)})
-                _groups = []
-                _vars = []
-                for g, v in zip(self._groups, self._vars):
-                    try:
-                        res = kwargs['skip'](g, **v)
-                    except Exception as e:
-                        raise RuntimeError('Failed to apply skip function to group {}: {}'.format(', '.join(g), e))
-                    if res:
-                       env.logger.info('Input group {} is skipped.'.format(', '.join(g)))
-                    else:
-                        _groups.append(g)
-                        _vars.append(v)
-                self._groups = _groups
-                self._vars = _vars
-            else:
-                self._groups = []
-                self._vars = []
-
-
-    def _directive_depends(self, *args, **kwargs):
-        '''handle directive depends'''
-        for k in kwargs.keys():
-            if k not in self._DEPENDS_OPTIONS:
-                raise RuntimeError('Unrecognized depends option {}'.format(k))
-        # first *args are filenames
-        dfiles = []
-        for arg in args:
-            if isinstance(arg, str):
-                dfiles.append(arg)
-            elif isinstance(arg, list):
-                if not all(isinstance(x, str) for x in arg):
-                    raise RuntimeError('Invalid dependent file: {}'.format(arg))
-                dfiles.extend(arg)
-        env.locals.set('_depends', dfiles)
-
-    def _handle_output_pattern(self, pattern, ofiles):
-        # 
-        if pattern is None or not pattern:
-            patterns = []
-        elif isinstance(pattern, str):
-            patterns = [pattern]
-        elif isinstance(pattern, list):
-            patterns = pattern
-        else:
-            raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
-        #
-        for pattern in patterns:
-            sz = None
-            res = glob_wildcards(pattern, [])
-            sz = None
-            wildcard = [{}]
-            for key in res.keys():
-                if key not in env.locals:
-                    raise ValueError('Undefined variable {} in pattern {}'.format(key, pattern))
-                if not isinstance(env.locals[key], str) and isinstance(env.locals[key], Sequence):
-                    if sz is None:
-                        sz = len(env.locals[key])
-                        wildcard = [{} for x in range(sz)]
-                    elif sz != len(env.locals[key]):
-                        raise ValueError('Variables in output pattern should have the same length (other={}, len({})={})'
-                            .format(sz, key, len(env.locals[key])))
-                    for idx, value in enumerate(env.locals[key]):
-                        wildcard[idx][key] = value
-                else:
-                    for v in wildcard:
-                        v[key] = env.locals[key]
-            #
-            for card in wildcard:
-                ofiles.append(apply_wildcards(pattern, card, fill_missing=False,
-                   fail_dynamic=False, dynamic_fill=None, keep_dynamic=False))
-            
-    def _directive_output(self, *args, **kwargs):
-        for k in kwargs.keys():
-            if k not in self._OUTPUT_OPTIONS:
-                raise RuntimeError('Unrecognized output option {}'.format(k))
-        ofiles = []
-        for arg in args:
-            if isinstance(arg, str):
-                ofiles.append(arg)
-            elif isinstance(arg, list):
-                if not all(isinstance(x, str) for x in arg):
-                    raise RuntimeError('Invalid output file: {}'.format(arg))
-                ofiles.extend(arg)
-        #
-        if 'pattern' in kwargs:
-            self._handle_output_pattern(kwargs['pattern'], ofiles)
-        env.locals.set('_output', ofiles)
-
-    def _directive_process(self, **kwargs):
-        for k in kwargs.keys():
-            if k not in self._RUNTIME_OPTIONS:
-                raise RuntimeError('Unrecognized runtime option {}'.format(k))
-        #
-        self.runtime_options = kwargs
-
-    #
-    # handling of parameters step
-    #
     def _parse_error(self, msg):
         '''This function will replace error() function in argparse module so that SoS
         can hijack errors raised from it.'''
@@ -620,8 +630,8 @@ class SoS_Step:
     def parse_args(self, args, check_unused=False, cmd_name=''):
         '''Parse command line arguments and set values to parameters section'''
         env.logger.info('Execute ``{}_parameters``'.format(self.name))
-        env.locals['_step'].set('name', '{}_parameters'.format(self.name))
-        env.locals['_step'].set('index', -1)
+        env.sos_dict['_step'].set('name', '{}_parameters'.format(self.name))
+        env.sos_dict['_step'].set('index', -1)
         if self.global_process:
             try:
                 SoS_exec(self.global_process)
@@ -679,7 +689,7 @@ class SoS_Step:
         arguments.update(vars(parsed))
         # now change the value with passed values
         for k, v in arguments.items():
-            env.locals[k] = v
+            env.sos_dict[k] = v
             # protect variables from being further modified
             env.readonly_vars.add(k)
 
@@ -699,29 +709,27 @@ class SoS_Step:
         result += self.process
         return re.sub(r'\s+', ' ', result)
 
-    def run(self, pool):
+    def run(self):
+        '''Execute a single step and return results '''
+        # only results will be sent back to the master process
+        result = {}
         # handle these two sections differently
-        if isinstance(self.index, int):
-            env.locals.set('_workflow_index', self.index)
-        #
         env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
-        #
         # 
-        # the following is a quick hack to allow _directive_input function etc to access 
+        # the following is a quick hack to allow directive_input function etc to access 
         # the workflow dictionary
-        env.globals['self'] = self
-        env.locals['_step'].set('name', '{}_{}'.format(self.name, self.index))
-        env.locals['_step'].set('index', self.index)
-        env.locals['_step'].set('output', [])
-        env.locals['_step'].set('depends', [])
+        env.sos_dict['_step'].set('name', '{}_{}'.format(self.name, self.index))
+        env.sos_dict['_step'].set('index', self.index)
+        env.sos_dict['_step'].set('output', [])
+        env.sos_dict['_step'].set('depends', [])
         #
         # these are temporary variables that should be removed if exist
         for var in ('_input', '_depends', '_output'):
-            env.locals.pop(var, '')
+            env.sos_dict.pop(var, '')
         #
-        # default input groups and vars
-        if hasattr(env.locals['_step'], 'input'):
-            self._groups = [env.locals['_step'].input]
+        # default input groups and vars, might be reset by directive input
+        if hasattr(env.sos_dict['_step'], 'input'):
+            self._groups = [env.sos_dict['_step'].input]
         else:
             self._groups = [[]]
         self._vars = [{}]
@@ -733,9 +741,6 @@ class SoS_Step:
             input_idx = input_idx[0]
         else:
             raise RuntimeError('Only one step input is allowed')
-        # if there is no input, easily
-        self._outputs = []
-        self._depends = []
         #
         # execute global process
         if self.global_process:
@@ -752,7 +757,7 @@ class SoS_Step:
                 if statement[0] == '=':
                     key, value = statement[1:]
                     try:
-                        env.locals[key] = SoS_eval(value, self.sigil)
+                        env.sos_dict[key] = SoS_eval(value, self.sigil)
                     except Exception as e:
                         raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
                 elif statement[0] == ':':
@@ -765,7 +770,7 @@ class SoS_Step:
             # input
             key, value = self.statements[input_idx][1:]
             try:
-                SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
+                self._groups, self._vars = SoS_eval('directive_input({})'.format(value), self.sigil)
             except Exception as e:
                 raise RuntimeError('Failed to process directive {} ({}): {}'.format(key, value, e))
             input_idx += 1
@@ -775,43 +780,46 @@ class SoS_Step:
         
         if 'alias' in self.options:
             # copy once before the step might be skipped...
-            env.locals[self.options['alias']] = copy.deepcopy(env.locals['_step'])
+            env.sos_dict[self.options['alias']] = copy.deepcopy(env.sos_dict['_step'])
+            result[self.options['alias']] = copy.deepcopy(env.sos_dict['_step'])
         if not self._groups:
             env.logger.info('Step {} is skipped'.format(self.index))
-            return
+            return result
         # post input
         # output and depends can be processed many times
         step_sig = self.step_signature()
-        env.logger.info('_step.input:   ``{}``'.format(shortRepr(env.locals['_step'].input)))
+        env.logger.info('_step.input:   ``{}``'.format(shortRepr(env.sos_dict['_step'].input)))
+        self._outputs = []
+        self._depends = []
         for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
             # other variables
-            env.locals.update(v)
-            env.locals.set('_input', g)
-            env.locals.set('_index', idx)
+            env.sos_dict.update(v)
+            env.sos_dict.set('_input', g)
+            env.sos_dict.set('_index', idx)
             for key in ('_output', '_depends'):
-                if key in env.locals:
-                    env.locals.pop(key)
+                if key in env.sos_dict:
+                    env.sos_dict.pop(key)
             for statement in self.statements[input_idx:]:
                 if statement[0] == '=':
                     key, value = statement[1:]
                     try:
-                        env.locals[key] = SoS_eval(value, self.sigil)
+                        env.sos_dict[key] = SoS_eval(value, self.sigil)
                     except Exception as e:
                         raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
                 elif statement[0] == ':':
                     key, value = statement[1:]
-                    # input and runtime is processed only once
+                    # output, depends, and process can be processed multiple times
                     try:
-                        SoS_eval('self._directive_{}({})'.format(key, value), self.sigil)
+                        SoS_eval('directive_{}({})'.format(key, value), self.sigil)
                     except Exception as e:
                         raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
                 else:
                     old_run_mode = env.run_mode
-                    if '_output' in env.locals:
-                        signature = RuntimeInfo(step_sig, env.locals['_input'], env.locals['_output'],
-                            env.locals.get('_depends', []))
+                    if '_output' in env.sos_dict:
+                        signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'],
+                            env.sos_dict.get('_depends', []))
                         if env.sig_mode == 'default' and signature.validate():
-                            env.logger.info('Execute statement in dryrun mode and reuse existing output files {}'.format(', '.join(env.locals['_output'])))
+                            env.logger.info('Execute statement in dryrun mode and reuse existing output files {}'.format(', '.join(env.sos_dict['_output'])))
                             env.run_mode = 'dryrun'
                     try:
                         SoS_exec(statement[1], self.sigil)
@@ -820,12 +828,12 @@ class SoS_Step:
                     env.run_mode = old_run_mode
 
             # collect _output and _depends
-            if '_output' in env.locals:
-                self._outputs.append(env.locals['_output'])
+            if '_output' in env.sos_dict:
+                self._outputs.append(env.sos_dict['_output'])
             else:
                 self._outputs.append([])
-            if '_depends' in env.locals:
-                self._depends.append(env.locals['_depends'])
+            if '_depends' in env.sos_dict:
+                self._depends.append(env.sos_dict['_depends'])
             else:
                 self._depends.append([])
         #
@@ -836,28 +844,29 @@ class SoS_Step:
         if not self._depends:
             self._depends = [[] for x in self._groups]
         # we need to reduce output files in case they have been processed multiple times.
-        env.locals['_step'].set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
-        env.locals['_step'].set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
-        env.logger.info('_step.output:  ``{}``'.format(shortRepr(env.locals['_step'].output)))
-        if env.locals['_step'].depends:
-            env.logger.info('_step.depends: ``{}``'.format(shortRepr(env.locals['_step'].depends)))
+        env.sos_dict['_step'].set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
+        env.sos_dict['_step'].set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
+        env.logger.info('_step.output:  ``{}``'.format(shortRepr(env.sos_dict['_step'].output)))
+        if env.sos_dict['_step'].depends:
+            env.logger.info('_step.depends: ``{}``'.format(shortRepr(env.sos_dict['_step'].depends)))
         if 'alias' in self.options:
-            env.locals[self.options['alias']] = copy.deepcopy(env.locals['_step'])
+            env.sos_dict[self.options['alias']] = copy.deepcopy(env.sos_dict['_step'])
+            result[self.options['alias']] = copy.deepcopy(env.sos_dict['_step'])
         #
         # if the signature matches, the whole step is ignored, including subworkflows
-        if env.locals['_step'].output:
+        if env.sos_dict['_step'].output:
             signature = RuntimeInfo(step_sig, 
-                env.locals['_step'].input, env.locals['_step'].output, env.locals['_step'].depends)
+                env.sos_dict['_step'].input, env.sos_dict['_step'].output, env.sos_dict['_step'].depends)
             if env.run_mode == 'run':
-                for ofile in env.locals['_step'].output:
+                for ofile in env.sos_dict['_step'].output:
                     parent_dir = os.path.split(os.path.expanduser(ofile))[0]
                     if parent_dir and not os.path.isdir(parent_dir):
                         os.makedirs(parent_dir)
                 if env.sig_mode == 'default':
                     if signature.validate():
                         # everything matches
-                        env.logger.info('Reusing existing output files {}'.format(', '.join(env.locals['_step'].output)))
-                        return
+                        env.logger.info('Reusing existing output files {}'.format(', '.join(env.sos_dict['_step'].output)))
+                        return result
                 elif env.sig_mode == 'assert':
                     if not signature.validate():
                         raise RuntimeError('Signature mismatch.')
@@ -865,35 +874,38 @@ class SoS_Step:
         else:
             signature = None
         #
-        results = []
+        proc_results = []
         signatures = []
+        if '_runtime' in env.sos_dict:
+            self.runtime_options = env.sos_dict['_runtime']
+        pool = mp.Pool(min(env.max_jobs, 100))
         for idx, (g, v, o, d) in enumerate(zip(self._groups, self._vars, self._outputs, self._depends)):
-            env.locals.update(v)
-            env.locals.set('_input', g)
-            env.locals.set('_output', o)
-            env.locals.set('_depends', d)
-            env.locals.set('_index', idx)
+            env.sos_dict.update(v)
+            env.sos_dict.set('_input', g)
+            env.sos_dict.set('_output', o)
+            env.sos_dict.set('_depends', d)
+            env.sos_dict.set('_index', idx)
             env.logger.info('_idx: ``{}``'.format(idx))
-            env.logger.info('_input: ``{}``'.format(shortRepr(env.locals['_input'])))
-            env.logger.info('_output: ``{}``'.format(shortRepr(env.locals['_output'])))
+            env.logger.info('_input: ``{}``'.format(shortRepr(env.sos_dict['_input'])))
+            env.logger.info('_output: ``{}``'.format(shortRepr(env.sos_dict['_output'])))
             #
             # action
             # If the users specifies output files for each loop (using ${input} etc, we
             # can try to see if we can create partial signature. This would help if the
             # step is interrupted in the middle.
             partial_signature = None
-            if env.locals['_output'] and env.locals['_output'] != env.locals['_step'].output and env.run_mode == 'run':
-                partial_signature = RuntimeInfo(step_sig, env.locals['_input'], env.locals['_output'], 
-                    env.locals['_depends'])
+            if env.sos_dict['_output'] and env.sos_dict['_output'] != env.sos_dict['_step'].output and env.run_mode == 'run':
+                partial_signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], 
+                    env.sos_dict['_depends'])
                 if env.sig_mode == 'default':
                     if partial_signature.validate():
                         # everything matches
-                        env.logger.info('Reusing existing output files {}'.format(', '.join(env.locals['_output'])))
+                        env.logger.info('Reusing existing output files {}'.format(', '.join(env.sos_dict['_output'])))
                         continue
                 elif env.sig_mode == 'assert':
                     if not partial_signature.validate():
                         raise RuntimeError('Signature mismatch for input {} and output {}'.format(
-                            ', '.join(env.locals['_input']), ', '.join(env.locals['_output'])))
+                            ', '.join(env.sos_dict['_input']), ', '.join(env.sos_dict['_output'])))
             # now, if output file has already been generated using non-process statement
             # so that no process need to be run, or if the output need help from a subworkflow
             # we create signature from outside.
@@ -902,19 +914,19 @@ class SoS_Step:
             #
             try:
                 # in case of nested workflow, these names might be changed and need to be reset
-                env.locals['_step'].set('name', '{}_{}'.format(self.name, self.index))
-                env.locals['_step'].set('index', self.index)
+                env.sos_dict['_step'].set('name', '{}_{}'.format(self.name, self.index))
+                env.sos_dict['_step'].set('index', self.index)
                 #
                 if self.process:
                     if 'concurrent' not in self.runtime_options or self.runtime_options['concurrent']:
                         submitter = pool.apply_async
                     else:
                         submitter = pool.apply
-                    results.append(submitter(
+                    proc_results.append(submitter(
                         execute_step_process,   # function
                         (self.process,          # process
                         self.global_process,    # global process
-                        env.locals.clone_pickleable(),
+                        env.sos_dict.clone_pickleable(),
                         self.sigil,
                         # if subworkflow contribute to outcome, we can not save signature here
                         partial_signature if partial_signature is not None and not self.subworkflow else None,
@@ -930,7 +942,7 @@ class SoS_Step:
                 # and will be executed mutliple times if necessary. The partial signature 
                 # stuff works for these though
                 if self.subworkflow:
-                    self.subworkflow.run(nested=True, existing_pool=pool)
+                    self.subworkflow.run(nested=True)
             except Exception as e:
                 # FIXME: cannot catch exception from subprocesses
                 if env.verbosity > 2:
@@ -938,7 +950,7 @@ class SoS_Step:
                 raise RuntimeError('Failed to execute subworkflow: {}'.format(e))
         # check results?
         try:
-            results = [res.get() if isinstance(res, mp.pool.AsyncResult) else res for res in results]
+            proc_results = [res.get() if isinstance(res, mp.pool.AsyncResult) else res for res in proc_results]
         except KeyboardInterrupt:
             # if keyboard interrupt
             pool.terminate()
@@ -952,14 +964,18 @@ class SoS_Step:
             raise
         for sig in signatures:
             sig.write()
-        if not all(x==0 for x in results):
+        if not all(x==0 for x in proc_results):
             raise RuntimeError('Step process returns non-zero value')
         if env.run_mode == 'run':
-            for ofile in env.locals['_step'].output:
+            for ofile in env.sos_dict['_step'].output:
                 if not os.path.isfile(os.path.expanduser(ofile)): 
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
         if signature and env.run_mode == 'run':
             signature.write()
+        # finally, write results back to the master process
+        pool.close()
+        pool.join()
+        return result
 
     def show(self, indent):
         '''Output for command sos show'''
@@ -1063,30 +1079,32 @@ class SoS_Workflow:
         # all sections are simply appended ...
         self.sections.extend(workflow.sections)
 
-    def run(self, args=[], nested=False, cmd_name='', existing_pool=None):
+    def run(self, args=[], nested=False, cmd_name=''):
         '''Execute a workflow with specified command line args. If sub is True, this 
         workflow is a nested workflow and be treated slightly differently.
         '''
         if nested:
             # if this is a subworkflow, we use _input as step input the workflow
-            env.locals['_step'].set('input', env.locals['_input'])
+            env.sos_dict['_step'].set('input', env.sos_dict['_input'])
         else:
             # other wise we need to prepare running environment.
             env.globals = globals()
             # Because this workflow might belong to a combined workflow, we do not clear
             # locals before the execution of workflow.
             #if not hasattr(env, 'locals'):
-            env.locals = WorkflowDict()
+            #
+            # Need to choose what to inject to globals
+            env.sos_dict = WorkflowDict(globals())
             # initial values
-            env.locals.set('SOS_VERSION', __version__)
+            env.sos_dict.set('SOS_VERSION', __version__)
             py_version = sys.version_info
             #
-            env.locals.set('_step', StepInfo())
+            env.sos_dict.set('_step', StepInfo())
             # initially there is no input, output, or depends
-            env.locals['_step'].set('input', [])
-            env.locals['_step'].set('name', self.name)
-            env.locals['_step'].set('output', [])
-            env.locals['_step'].set('depends', [])
+            env.sos_dict['_step'].set('input', [])
+            env.sos_dict['_step'].set('name', self.name)
+            env.sos_dict['_step'].set('output', [])
+            env.sos_dict['_step'].set('depends', [])
         #
         # process step of the pipelinp
         #
@@ -1095,10 +1113,6 @@ class SoS_Workflow:
         if num_parameters_sections == 0 and args:
             raise ArgumentError('Unused parameter {}'.format(' '.join(args)))
         #
-        if existing_pool is None:
-            pool = mp.Pool(env.max_jobs)
-        else:
-            pool = existing_pool
         # the steps can be executed in the pool (Not implemented)
         for idx, section in enumerate(self.sections):
             # global section will not change _step etc
@@ -1113,23 +1127,34 @@ class SoS_Workflow:
             # 3. for second to later step, _step.input = _step.output
             if not start:
                 # set the output to the input of the next step
-                if hasattr(env.locals['_step'], 'output'):
+                if hasattr(env.sos_dict['_step'], 'output'):
                     # passing step output to _step.input of next step
-                    env.locals['_step'].set('input', env.locals['_step'].output)
+                    env.sos_dict['_step'].set('input', env.sos_dict['_step'].output)
                     # step_output and depends are temporary
                 else:
-                    env.locals['_step'].set('input', [])
+                    env.sos_dict['_step'].set('input', [])
                 #
-                env.locals['_step'].set('output', [])
-                env.locals['_step'].set('depends', [])
+                env.sos_dict['_step'].set('output', [])
+                env.sos_dict['_step'].set('depends', [])
             else:
                 # use initial values
                 start = False
             # each section can use multiple processes of the pool
-            section.run(pool)
-        if existing_pool is None:
-            pool.close()
-            pool.join()
+            # use a separate process to run each section
+
+            # this does not yet work because section.run needs to pickle the whole section
+            # object which is not easily pickleable.
+            #queue = mp.Queue()
+            #proc = mp.Process(target=section.run,
+            #    args=(queue,))
+            #proc.start()
+            #res = queue.get()
+            #proc.join()
+            res = section.run()
+            # 
+            env.logger.debug('Result returned {}'.format(res))
+            for k, v in res.items():
+                env.sos_dict.set(k, v)
 
     def show(self, indent = '', nested=False):
         textWidth = max(60, getTermWidth())

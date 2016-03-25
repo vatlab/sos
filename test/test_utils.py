@@ -25,7 +25,7 @@ import unittest
 
 import shlex
 
-from pysos.utils import *
+from pysos import *
 
 class TestUtils(unittest.TestCase):
     def testLogger(self):
@@ -59,7 +59,8 @@ class TestUtils(unittest.TestCase):
 
     def testInterpolation(self):
         '''Test string interpolation'''
-        env.locals = {
+        env.sos_dict = globals()
+        env.sos_dict.update({
             'a': 100,
             'b': 20,
             'c': ['file1', 'file2', 'file3'],
@@ -70,7 +71,7 @@ class TestUtils(unittest.TestCase):
             'file': 'a/b.txt',
             'files2': ['a/b.txt', 'c.d.txt'],
             'file_ws': ['d i r/f .txt']
-            }
+            })
         for sigil in ('${ }', '{ }', '[ ]', '%( )', '[[ ]]', '%( )s'):
             l, r = sigil.split(' ')
             for expr, result in [
@@ -142,12 +143,13 @@ class TestUtils(unittest.TestCase):
 
     def testEval(self):
         '''Test the evaluation of SoS expression'''
-        env.locals = {
+        env.sos_dict = WorkflowDict(globals())
+        env.sos_dict.update({
             'a': 100,
             'b': 'file name',
             'c': ['file1', 'file2', 'file 3'],
             'd': {'a': 'file1', 'b':'file2'},
-        }
+        })
         for expression, result in [
             ('''"This is ${a+100}"''', 'This is 200'),
             ('''"${a+100}" + "${a//100}"''', "2001"),
@@ -197,8 +199,8 @@ class TestUtils(unittest.TestCase):
 
     def testContextStack(self):
         '''Test context stack '''
-        env.locals = WorkflowDict()
-        env.locals['a'] = 5
+        env.sos_dict = WorkflowDict(globals())
+        env.sos_dict['a'] = 5
         self.assertEqual(interpolate('${a}'), '5')
         with env.push_context({'a': 10}):
             self.assertEqual(interpolate('${a}'), '10')

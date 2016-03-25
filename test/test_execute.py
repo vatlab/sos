@@ -36,7 +36,7 @@ class TestExecute(unittest.TestCase):
     def testCommandLine(self):
         '''Test command line arguments'''
         result = subprocess.check_output('sos --version', stderr=subprocess.STDOUT, shell=True).decode()
-        self.assertTrue(result.startswith('SoS {}'.format(__version__)))
+        self.assertTrue(result.startswith('sos {}'.format(__version__)))
         if hasattr(subprocess, 'DEVNULL'):
             devnull = subprocess.DEVNULL
         else:
@@ -59,7 +59,7 @@ res += '${b}'
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['res'], '200')
+        self.assertEqual(env.sos_dict['res'], '200')
         #
         script = SoS_Script(r"""
 [0]
@@ -69,7 +69,7 @@ for b in range(5):
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['res'], '01234')
+        self.assertEqual(env.sos_dict['res'], '01234')
 
     def testGlobalVars(self):
         '''Test SoS defined variables'''
@@ -77,7 +77,7 @@ for b in range(5):
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['SOS_VERSION'], __version__)
+        self.assertEqual(env.sos_dict['SOS_VERSION'], __version__)
 
     def testSignature(self):
         self._testSignature(r"""
@@ -168,7 +168,7 @@ cp ${_input} ${_dest}
             self.assertTrue(tc.read(), 'a.txt')
         with open('temp/d.txt') as td:
             self.assertTrue(td.read(), 'b.txt')
-        self.assertEqual(env.locals['oa'].output, ['temp/c.txt', 'temp/d.txt'])
+        self.assertEqual(env.sos_dict['oa'].output, ['temp/c.txt', 'temp/d.txt'])
         env.sig_mode = 'assert'
         wf.run()
         #
@@ -193,7 +193,7 @@ output: _input
 """)
         wf = script.workflow()
         wf.run()
-        self.assertTrue('test_execute.py' in env.locals['_step'].output)
+        self.assertTrue('test_execute.py' in env.sos_dict['_step'].output)
 
     def testForEach(self):
         '''Test for_each option of input'''
@@ -216,9 +216,9 @@ counter = counter + 1
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['counter'], 6)
-        self.assertEqual(env.locals['all_names'], "a b c a b c ")
-        self.assertEqual(env.locals['all_loop'], "1 1 1 2 2 2 ")
+        self.assertEqual(env.sos_dict['counter'], 6)
+        self.assertEqual(env.sos_dict['all_names'], "a b c a b c ")
+        self.assertEqual(env.sos_dict['all_loop'], "1 1 1 2 2 2 ")
         #
         # test same-level for loop and parameter with nested list
         script = SoS_Script(r"""
@@ -235,7 +235,7 @@ processed.append((_par, _res))
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['processed'], [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
+        self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
 
 
     def testPairedWith(self):
@@ -256,10 +256,10 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['base'], ["a-20", 'b-10'])
-        self.assertEqual(env.locals['name'], ["a", 'b'])
-        self.assertEqual(env.locals['par'], ["20", '10'])
-        self.assertEqual(env.locals['_output'], ["a-20-a-20.txt", 'b-10-b-10.txt'])
+        self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
+        self.assertEqual(env.sos_dict['name'], ["a", 'b'])
+        self.assertEqual(env.sos_dict['par'], ["20", '10'])
+        self.assertEqual(env.sos_dict['_output'], ["a-20-a-20.txt", 'b-10-b-10.txt'])
 
     def testOutputPattern(self):
         '''Test option pattern of step output'''
@@ -275,10 +275,10 @@ output: pattern=['{base}-{name}-{par}.txt', '{par}.txt']
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['base'], ["a-20", 'b-10'])
-        self.assertEqual(env.locals['name'], ["a", 'b'])
-        self.assertEqual(env.locals['par'], ["20", '10'])
-        self.assertEqual(env.locals['_output'], ['a-20-a-20.txt', 'b-10-b-10.txt', '20.txt', '10.txt'])
+        self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
+        self.assertEqual(env.sos_dict['name'], ["a", 'b'])
+        self.assertEqual(env.sos_dict['par'], ["20", '10'])
+        self.assertEqual(env.sos_dict['_output'], ['a-20-a-20.txt', 'b-10-b-10.txt', '20.txt', '10.txt'])
 
 
     def testAlias(self):
@@ -301,8 +301,8 @@ output: _input
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['oa'].input, ["a.pdf", 'a.txt', 'b.txt'])
-        self.assertEqual(env.locals['ob'].output, ["a.pdf", 'a.txt', 'b.txt'])
+        self.assertEqual(env.sos_dict['oa'].input, ["a.pdf", 'a.txt', 'b.txt'])
+        self.assertEqual(env.sos_dict['ob'].output, ["a.pdf", 'a.txt', 'b.txt'])
 
     def testFileType(self):
         '''Test input option filetype'''
@@ -319,7 +319,7 @@ output: _input
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['_step'].output, ['a.txt', 'b.txt'])
+        self.assertEqual(env.sos_dict['_step'].output, ['a.txt', 'b.txt'])
         #
         script = SoS_Script(r"""
 [0]
@@ -332,7 +332,7 @@ counter += 1
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['counter'], 3)
+        self.assertEqual(env.sos_dict['counter'], 3)
         #
         script = SoS_Script(r"""
 [0]
@@ -345,7 +345,7 @@ counter += 1
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['counter'], 2)
+        self.assertEqual(env.sos_dict['counter'], 2)
 
     def testSkip(self):
         '''Test input option skip'''
@@ -361,7 +361,7 @@ counter += 1
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['counter'], 0)
+        self.assertEqual(env.sos_dict['counter'], 0)
 
     def testOutputFromInput(self):
         '''Test deriving output files from input files'''
@@ -378,8 +378,8 @@ counter += 1
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['counter'], 2)
-        self.assertEqual(env.locals['_step'].output, ['a.txt.bak', 'b.txt.bak'])
+        self.assertEqual(env.sos_dict['counter'], 2)
+        self.assertEqual(env.sos_dict['_step'].output, ['a.txt.bak', 'b.txt.bak'])
 
     def testWorkdir(self):
         '''Test workdir option for runtime environment'''
@@ -394,8 +394,9 @@ with open('test/result.txt', 'w') as res:
 """)
         wf = script.workflow()
         wf.run()
-        content = [x.strip() for x in open('result.txt').readlines()]
-        self.assertTrue('test_execute.py' in content)
+        with open('result.txt') as res:
+            content = [x.strip() for x in res.readlines()]
+            self.assertTrue('test_execute.py' in content)
 
     def testConcurrency(self):
         '''Test workdir option for runtime environment'''
@@ -451,13 +452,13 @@ a = fail()
         env.run_mode = 'dryrun'
         wf.run()
         # should return 0 in dryrun mode
-        self.assertEqual(env.locals['a'], 0)
+        self.assertEqual(env.sos_dict['a'], 0)
         #
 
         env.run_mode = 'run'
         wf.run()
         # shoulw return 1 in run mode
-        self.assertEqual(env.locals['a'], 1)
+        self.assertEqual(env.sos_dict['a'], 1)
 
     def testReadonlyVarsInGalobal(self):
         '''Test vars defined in global section are readonly'''
@@ -532,7 +533,7 @@ myfunc()
         wf = script.workflow()
         env.run_mode = 'dryrun'
         wf.run()
-        self.assertEqual(env.locals['test'].output, ['a'])
+        self.assertEqual(env.sos_dict['test'].output, ['a'])
         #
         script = SoS_Script(r"""
 
@@ -548,7 +549,7 @@ myfunc()
         wf = script.workflow()
         env.run_mode = 'dryrun'
         wf.run()
-        self.assertEqual(env.locals['test'].output, ['a'])
+        self.assertEqual(env.sos_dict['test'].output, ['a'])
 
 if __name__ == '__main__':
     unittest.main()

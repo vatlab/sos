@@ -20,10 +20,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-# passing string as unicode to python 2 version of SoS
-# to ensure compatibility
-from __future__ import unicode_literals
-
 import os
 import unittest
 
@@ -32,7 +28,7 @@ from pysos import *
 class TestParser(unittest.TestCase):
     def setUp(self):
         if hasattr(env, 'locals'):
-            env.locals.clear()
+            env.sos_dict.clear()
         env.protect_vars_assigned = False
 
     def testFileFormat(self):
@@ -60,10 +56,10 @@ b'''
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['a'], 'a\n')
-        self.assertEqual(env.locals['b'], 'a\n')
+        self.assertEqual(env.sos_dict['a'], 'a\n')
+        self.assertEqual(env.sos_dict['b'], 'a\n')
         # MAYJOR difference
-        self.assertEqual(env.locals['c'], 'a\\n\nb')
+        self.assertEqual(env.sos_dict['c'], 'a\\n\nb')
         script = SoS_Script(r'''
 [0]
 c = """a\n
@@ -73,7 +69,7 @@ b"""
         wf = script.workflow()
         wf.run()
         # Note the difference between """ and ''' quotes
-        self.assertEqual(env.locals['c'], 'a\n\nb')
+        self.assertEqual(env.sos_dict['c'], 'a\n\nb')
 
     def testWorkflows(self):
         '''Test workflows defined in SoS script'''
@@ -143,7 +139,7 @@ b"""
         self.assertRaises(ParsingError, SoS_Script,
             '''a = 'b  ''')
         # This one also does not work because b is not defined.
-        delattr(env, 'locals')
+        delattr(env, 'sos_dict')
         script = SoS_Script('''a = b\n[0] ''')
         wf = script.workflow()
         self.assertRaises(RuntimeError, wf.run)
@@ -190,8 +186,8 @@ a="100"
 b=str(int(a)+1)
 ''')
         script.workflow().run()
-        self.assertEqual(env.locals['b'], '101')
-        env.locals.clear()
+        self.assertEqual(env.sos_dict['b'], '101')
+        env.sos_dict.clear()
         script = SoS_Script('''
 a=100
 
@@ -199,7 +195,7 @@ a=100
 b=a+1
 ''')
         script.workflow().run()
-        self.assertEqual(env.locals['b'], 101)
+        self.assertEqual(env.sos_dict['b'], 101)
         #
         script = SoS_Script('''
 a=100
@@ -219,7 +215,7 @@ b=a+1.
         wf = script.workflow()
         wf.run(args=['--b', '1000'])
         #
-        self.assertEqual(env.locals['b'], 1000)
+        self.assertEqual(env.sos_dict['b'], 1000)
         #
         # test string interpolation of the parameter section
         script = SoS_Script('''
@@ -230,7 +226,7 @@ b='${a+1}'
 ''')
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['b'], '101')
+        self.assertEqual(env.sos_dict['b'], '101')
         # test alternative sigil
         script = SoS_Script('''
 a=100
@@ -240,7 +236,7 @@ b='[a+1]'
 ''')
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['b'], '101')
+        self.assertEqual(env.sos_dict['b'], '101')
         #
         # argument has hve a value
         self.assertRaises(ParsingError, SoS_Script, '''
@@ -272,7 +268,7 @@ b = int
 ''')
         wf = script.workflow()
         wf.run(args=['--b', '5'])
-        self.assertEqual(env.locals['b'], 5)
+        self.assertEqual(env.sos_dict['b'], 5)
         # list is ok
         script = SoS_Script('''
 [parameters]
@@ -280,7 +276,7 @@ b = list
 ''')
         wf = script.workflow()
         wf.run(args=['--b', '5'])
-        self.assertEqual(env.locals['b'], ['5'])
+        self.assertEqual(env.sos_dict['b'], ['5'])
         # bool
         script = SoS_Script('''
 [parameters]
@@ -288,28 +284,28 @@ b = bool
 ''')
         wf = script.workflow()
         wf.run(args=['--b', 't'])
-        self.assertEqual(env.locals['b'], True)
+        self.assertEqual(env.sos_dict['b'], True)
         script = SoS_Script('''
 [parameters]
 b = True
 ''')
         wf = script.workflow()
         wf.run(args=['--b', 'False'])
-        self.assertEqual(env.locals['b'], False)
+        self.assertEqual(env.sos_dict['b'], False)
         script = SoS_Script('''
 [parameters]
 b = True
 ''')
         wf = script.workflow()
         wf.run(args=['--b', '1'])
-        self.assertEqual(env.locals['b'], True)
+        self.assertEqual(env.sos_dict['b'], True)
         script = SoS_Script('''
 [parameters]
 b = bool
 ''')
         wf = script.workflow()
         wf.run(args=['--b', 'no'])
-        self.assertEqual(env.locals['b'], False)
+        self.assertEqual(env.sos_dict['b'], False)
         #
         # should fail for undefined variables
         script = SoS_Script('''
@@ -433,7 +429,7 @@ save.put()
         # test dedent
         script = SoS_Script('''
 [0]
-python:
+python3:
     from pysos import env
     env.logger.warning('I am from a dented text')
     if 1:
@@ -471,7 +467,7 @@ executed.append(_input)
         env.run_mode = 'dryrun'
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['executed'],  [['a1.txt', 'a2.txt', 'a3.txt', 'a4.txt']])
+        self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt', 'a3.txt', 'a4.txt']])
         # group_by = 'single'
         script = SoS_Script('''
 [0]
@@ -485,7 +481,7 @@ executed.append(_input)
         env.run_mode = 'dryrun'
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['executed'],  [['a1.txt'], ['a2.txt'], ['a3.txt'], ['a4.txt']])
+        self.assertEqual(env.sos_dict['executed'],  [['a1.txt'], ['a2.txt'], ['a3.txt'], ['a4.txt']])
         # group_by = 'pairs'
         script = SoS_Script('''
 [0]
@@ -499,7 +495,7 @@ executed.append(_input)
         env.run_mode = 'dryrun'
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['executed'],  [['a1.txt', 'a3.txt'], ['a2.txt', 'a4.txt']])
+        self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a3.txt'], ['a2.txt', 'a4.txt']])
         # group_by = 'pairwise'
         script = SoS_Script('''
 [0]
@@ -513,7 +509,7 @@ executed.append(_input)
         env.run_mode = 'dryrun'
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['executed'],  [['a1.txt', 'a2.txt'], ['a2.txt', 'a3.txt'], ['a3.txt', 'a4.txt']])
+        self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt'], ['a2.txt', 'a3.txt'], ['a3.txt', 'a4.txt']])
         # group_by = 'combinations'
         script = SoS_Script('''
 [0]
@@ -527,7 +523,7 @@ executed.append(_input)
         env.run_mode = 'dryrun'
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['executed'],  [['a1.txt', 'a2.txt'], ['a1.txt', 'a3.txt'], 
+        self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt'], ['a1.txt', 'a3.txt'], 
             ['a1.txt', 'a4.txt'], ['a2.txt', 'a3.txt'], ['a2.txt', 'a4.txt'], ['a3.txt', 'a4.txt']])
 
 
@@ -592,7 +588,7 @@ b = A()()
 ''')
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.locals['b'], 0)
+        self.assertEqual(env.sos_dict['b'], 0)
 
     def testCombinedWorkflow(self):
         '''Test the creation and execution of combined workfow'''
@@ -620,18 +616,18 @@ input_b1 = _step.input
         env.run_mode = 'dryrun'
         wf = script.workflow('a+b')
         wf.run()
-        self.assertEqual(env.locals['executed'], ['a_parameters', 'a_1', 'a_2', 'a_3', 'a_4', 'b_parameters', 'b_1', 'b_2', 'b_3', 'b_4'])
-        self.assertEqual(env.locals['a'], 1)
-        self.assertEqual(env.locals['input_b1'], ['out_a_4'])
+        self.assertEqual(env.sos_dict['executed'], ['a_parameters', 'a_1', 'a_2', 'a_3', 'a_4', 'b_parameters', 'b_1', 'b_2', 'b_3', 'b_4'])
+        self.assertEqual(env.sos_dict['a'], 1)
+        self.assertEqual(env.sos_dict['input_b1'], ['out_a_4'])
         #
         wf = script.workflow('a_ 1-2 + a_4 + b_3-')
         wf.run()
-        self.assertEqual(env.locals['executed'], ['a_parameters', 'a_1', 'a_2', 'a_parameters', 'a_4', 
+        self.assertEqual(env.sos_dict['executed'], ['a_parameters', 'a_1', 'a_2', 'a_parameters', 'a_4', 
             'b_parameters', 'b_3', 'b_4'])
         #
         wf = script.workflow('a+c+d')
         wf.run()
-        self.assertEqual(env.locals['executed'], ['a_parameters', 'a_1', 'a_2', 'a_3', 'a_4', 'c_parameters', 'c_0', 'd_parameters', 'd_0'])
+        self.assertEqual(env.sos_dict['executed'], ['a_parameters', 'a_1', 'a_2', 'a_3', 'a_4', 'c_parameters', 'c_0', 'd_parameters', 'd_0'])
 
     def testNestedWorkflow(self):
         '''Test the creation and execution of combined workfow'''
@@ -671,9 +667,9 @@ inputs.append(_step.input)
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
         wf.run()
-        self.assertEqual(env.locals['executed'], ['c_0', 'a_1', 'a_2', 'a_3', 'a_4',
+        self.assertEqual(env.sos_dict['executed'], ['c_0', 'a_1', 'a_2', 'a_3', 'a_4',
             'b_1', 'b_2', 'b_3', 'b_4'])
-        self.assertEqual(env.locals['inputs'], [['a.txt'], ['a.txt'], [], [], [], ['b.begin'], [], [], []])
+        self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], [], [], [], ['b.begin'], [], [], []])
         # step will be looped
         script = SoS_Script('''
 if 'executed' in locals():
@@ -696,8 +692,8 @@ inputs.append(_input)
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
         wf.run()
-        self.assertEqual(env.locals['executed'], ['c_0', 'a_1', 'a_2', 'a_1', 'a_2'])
-        #self.assertEqual(env.locals['inputs'], [['a.txt'], ['a.txt'], ['a.txt.a1'], ['b.txt'], ['b.txt'], ['b.txt.a1']])
+        self.assertEqual(env.sos_dict['executed'], ['c_0', 'a_1', 'a_2', 'a_1', 'a_2'])
+        #self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], ['a.txt.a1'], ['b.txt'], ['b.txt'], ['b.txt.a1']])
         #
         # allow specifying a single step
         # step will be looped
@@ -715,7 +711,7 @@ input: 'a.txt', 'b.txt', group_by='single'
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
         wf.run()
-        self.assertEqual(env.locals['executed'], ['c_0', 'c_1', 'a_2',  'a_2'])
+        self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_2',  'a_2'])
         # allow specifying a single step
         # step will be looped
         script = SoS_Script('''
@@ -732,7 +728,7 @@ input: 'a.txt', 'b.txt', group_by='single'
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
         wf.run()
-        self.assertEqual(env.locals['executed'], ['c_0', 'c_1', 'a_2', 'a_2'])
+        self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_2', 'a_2'])
         #
         # recursive subworkflow not allowed
         script = SoS_Script('''
@@ -767,7 +763,7 @@ input: 'a.txt'
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
         wf.run()
-        self.assertEqual(env.locals['executed'], ['c_0', 'c_1', 'a_1', 'a_2', 'a_3',
+        self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_1', 'a_2', 'a_3',
             'b_1', 'b_2', 'a_1', 'a_2'])
         #
         #
@@ -786,13 +782,13 @@ input: 'a.txt', 'b.txt', group_by='single'
         env.run_mode = 'dryrun'
         wf = script.workflow('b')
         wf.run()
-        self.assertEqual(env.locals['executed'], ['b_0', 'a_3', 'a_1', 'a_3', 'a_1'])
+        self.assertEqual(env.sos_dict['executed'], ['b_0', 'a_3', 'a_1', 'a_3', 'a_1'])
         wf = script.workflow('d')
         wf.run()
-        self.assertEqual(env.locals['executed'], ['d_0', 'a_2', 'a_2'])
+        self.assertEqual(env.sos_dict['executed'], ['d_0', 'a_2', 'a_2'])
         wf = script.workflow('e2')
         wf.run()
-        self.assertEqual(env.locals['executed'], ['e2_2'])
+        self.assertEqual(env.sos_dict['executed'], ['e2_2'])
 
     def testSourceOption(self):
         '''Test the source section option'''
@@ -829,9 +825,9 @@ input: 'a.txt', 'b.txt', group_by='single'
         env.run_mode = 'dryrun'
         wf = script.workflow('b')
         wf.run()
-        self.assertEqual(env.locals['GLB'], 5)
-        self.assertEqual(env.locals['parB'], 10)
-        self.assertEqual(env.locals['executed'], ['g.b_1', 't.A_parameters', 't.A_1', 't.A_2', 't.A_parameters', 't.A_1', 't.A_2'])
+        self.assertEqual(env.sos_dict['GLB'], 5)
+        self.assertEqual(env.sos_dict['parB'], 10)
+        self.assertEqual(env.sos_dict['executed'], ['g.b_1', 't.A_parameters', 't.A_1', 't.A_2', 't.A_parameters', 't.A_1', 't.A_2'])
         #
         os.remove('temp/test.sos')
 

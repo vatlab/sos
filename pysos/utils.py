@@ -148,8 +148,8 @@ class WorkflowDict(dict):
     1. Generate logging message for debugging purposes.
     2. Generate warning message if ALLCAP variables are changed.
     """
-    def __init__(self, *args, **kwargs):
-        dict.__init__(self, *args, **kwargs)
+    def __init__(self, init_dict={}, *args, **kwargs):
+        dict.__init__(self, init_dict, *args, **kwargs)
 
     def set(self, key, value):
         '''A short cut to set value to key without triggering any logging
@@ -189,22 +189,24 @@ class WorkflowDict(dict):
         if key.isupper() and dict.__contains__(self, key) and dict.__getitem__(self, key) != value:
             env.logger.warning('Changing readonly variable {} from {} to {}'
                 .format(key, dict.__getitem__(self, key), value))
-        if key.startswith('_') and key not in ('_input', '_output', '_step', '_index', '_depends'):
+        if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends'):
             env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
     def clone_pickleable(self):
         '''Return a copy of the existing dictionary but keep only the ones that are pickleable'''
         # FIXME: not well tested
         try:
-            return {x:copy.deepcopy(y) for x,y in self.items() if not callable(y) and not isinstance(y, (types.ModuleType, WorkflowDict))}
+            res = {x:copy.deepcopy(y) for x,y in self.items() if not callable(y) and not isinstance(y, (types.ModuleType, WorkflowDict))}
         except:
             res = {}
             for x,y in self.items():
+                if callable(y):
+                    continue
                 try:
                     res[x] = copy.deepcopy(y)
                 except:
                     pass
-            return res
+        return res
 #
 # Runtime environment
 #
@@ -249,10 +251,9 @@ class RuntimeEnvironments(object):
         # assert_signature     (should 
         self.sig_mode = 'default'
         #
-        # local and global dictionaries used by SoS during the
+        # global dictionaries used by SoS during the
         # execution of SoS workflows
-        self.locals = WorkflowDict()
-        self.globals = globals()
+        self.sos_dict = WorkflowDict()
         # variables that are defined in global and parameters sections and
         # are readonly
         self.readonly_vars = set()
@@ -293,7 +294,7 @@ class RuntimeEnvironments(object):
             os.remove(p)
 
     class ContextStack:
-        '''A context stack and pushes existing workflow dict (env.locals)
+        '''A context stack and pushes existing workflow dict (env.sos_dict)
         to a stack and make the new workflow the current dict. The 
         context will be poped as soon as the with statement ends and/or
         an exception is raised.
@@ -305,11 +306,11 @@ class RuntimeEnvironments(object):
 
         def __enter__(self):
             # archive old items
-            self.environ.context_stack.append(self.environ.locals)
-            self.environ.locals = self.new_dict
+            self.environ.context_stack.append(self.environ.sos_dict)
+            self.environ.sos_dict = self.new_dict
 
         def __exit__(self, etype, value, traceback):
-            self.environ.locals = self.environ.context_stack.pop()
+            self.environ.sos_dict = self.environ.context_stack.pop()
 
     def push_context(self, wf_dict):
         return self.ContextStack(self, wf_dict)
@@ -634,7 +635,7 @@ class SoS_String:
                     # if the syntax is correct
                     compile(expr, '<string>', 'eval')
                     try:
-                        result = eval(expr, env.globals, env.locals)
+                        result = eval(expr, env.sos_dict)
                     except Exception as e:
                         raise InterpolationError(expr, e)
                     # evaluate the expression and interpolate the next expression
@@ -715,7 +716,7 @@ def SoS_eval(expr, sigil='${ }'):
     '''Evaluate an expression after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
     expr = ConvertString(expr, sigil)
-    return eval(expr, env.globals, env.locals)
+    return eval(expr, env.sos_dict)
 
 def SoS_exec(stmts, sigil='${ }'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
@@ -765,7 +766,7 @@ def SoS_exec(stmts, sigil='${ }'):
     executed = ''
     for code in code_group:
         stmts = ConvertString(code, sigil)
-        exec(stmts, env.globals, env.locals)
+        exec(stmts, env.sos_dict)
         executed += stmts + '\n'
     #
     env.logger.trace('Executed\n{}'.format(executed))
