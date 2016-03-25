@@ -30,6 +30,7 @@ import unittest
 
 from pysos import *
 from pysos import __version__
+from pysos.utils import env
 import subprocess
 
 class TestExecute(unittest.TestCase):

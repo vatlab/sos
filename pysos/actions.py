@@ -27,6 +27,8 @@ import tempfile
 import pipes
 from .utils import env
 
+__all__ = ['R', 'SoS_Action', 'SoS_ExecuteScript', 'check_command', 'fail_if', 'python', 'python3',
+    'run', 'search_output', 'warn_if']
 #
 # A decoration function that allows SoS to replace all SoS actions
 # with a null action.
@@ -39,6 +41,7 @@ def SoS_Action(run_mode='run'):
                 return 0
             else:
                 return func(*args, **kwargs)
+        action_wrapper.run_mode = run_mode
         return action_wrapper
     return runtime_decorator
 
@@ -64,8 +67,6 @@ class SoS_ExecuteScript:
             env.deregister_process(p.pid)
         if ret != 0:
             raise RuntimeError('Failed to execute script')
-
-
 
 class SoS_ExecuteRScript(SoS_ExecuteScript):
     '''SoS_Execute in-line R script using Rscript as interpreter. Please

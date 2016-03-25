@@ -23,7 +23,8 @@
 import sys
 import argparse
 
-from pysos import __version__, SOS_FULL_VERSION, env, sos_run, sos_dryrun, sos_show
+from pysos import __version__, SOS_FULL_VERSION
+from pysos.sos_script import sos_run, sos_dryrun, sos_show
 
 def addCommonArgs(parser):
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5),

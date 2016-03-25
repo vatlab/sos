@@ -28,6 +28,7 @@ import os
 import unittest
 
 from pysos import *
+from pysos.utils import env
 
 class TestActions(unittest.TestCase):
     def testCheckCommand(self):

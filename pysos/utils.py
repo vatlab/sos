@@ -41,9 +41,10 @@ try:
 except ImportError as e:
     pass
 
-#
-# Logging
-#
+# function interpolate is needed because it is required by the SoS
+# script (not seen but translated to have this function)
+__all__ = ['logger', 'interpolate']
+
 
 class ColoredFormatter(logging.Formatter):
     ''' A logging formatter that uses color to differntiate logging messages
@@ -148,8 +149,13 @@ class WorkflowDict(dict):
     1. Generate logging message for debugging purposes.
     2. Generate warning message if ALLCAP variables are changed.
     """
-    def __init__(self, init_dict={}, *args, **kwargs):
-        dict.__init__(self, init_dict, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+        for k, v in globals().items():
+            # we also make available SoS_Action decorator, interpolate function
+            # and os, sys, and glob modules
+            if k in ('interpolate', 'os', 'sys', 'glob'):
+                dict.__setitem__(self, k, v)        
 
     def set(self, key, value):
         '''A short cut to set value to key without triggering any logging
@@ -173,7 +179,7 @@ class WorkflowDict(dict):
             self._log(key, value)
         if env.run_mode == 'dryrun':
             self._warn(key, value)
-        if key in ('_input', '_output', '_depends'):
+        if key in ('_input', '_output', '_depends', '_runtime'):
             env.logger.warning('Variable {} is set automatically by SoS. Changing its value might cause unexpected results.'.format(key))
         self.set(key, value)
 
@@ -189,7 +195,7 @@ class WorkflowDict(dict):
         if key.isupper() and dict.__contains__(self, key) and dict.__getitem__(self, key) != value:
             env.logger.warning('Changing readonly variable {} from {} to {}'
                 .format(key, dict.__getitem__(self, key), value))
-        if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends'):
+        if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
             env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
     def clone_pickleable(self):
@@ -313,6 +319,7 @@ class RuntimeEnvironments(object):
             self.environ.sos_dict = self.environ.context_stack.pop()
 
     def push_context(self, wf_dict):
+        # make sure the pushed dictionary has these key pieces to work
         return self.ContextStack(self, wf_dict)
 
     #
@@ -378,6 +385,7 @@ class RuntimeEnvironments(object):
    
 # set up environment variable and a default logger
 env = RuntimeEnvironments()
+logger = env.logger
 
 
 #

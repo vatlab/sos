@@ -23,7 +23,8 @@
 import os
 import unittest
 
-from pysos import *
+from pysos.utils import env
+from pysos.sos_script import SoS_Script, ParsingError, ArgumentError
 
 class TestParser(unittest.TestCase):
     def setUp(self):

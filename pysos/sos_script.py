@@ -31,17 +31,22 @@ import argparse
 import textwrap
 import traceback
 import multiprocessing as mp
+from io import StringIO
 from collections import OrderedDict, defaultdict
 from collections.abc import Sequence, Iterable
 from itertools import tee, combinations
 
-# Python 2.7 should also have this module
-from io import StringIO
-
 from . import __version__
-from .actions import *
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
     dehtml, getTermWidth, interpolate, shortRepr, glob_wildcards, apply_wildcards
+
+__all__ = ['SoS_Script']
+
+#
+# Note: we import actions here because we execute some actions in the main SoS 
+# namespace. If we are moving all steps to their separate processes, this should
+# be removed.
+from .actions import *
 
 # 
 # global definitions of SoS syntax
@@ -88,22 +93,23 @@ class StepInfo(object):
     def __repr__(self):
         return '{' + ', '.join('{}: {!r}'.format(x,y) for x,y in self.__dict__.items()) + '}'
 
-def execute_step_process(step_process, global_process, locals, sigil, signature, workdir):
+def execute_step_process(step_process, global_process, sos_dict, sigil, signature, workdir):
     '''A function that has a local dictionary (from SoS env.sos_dict),
     a global process, and a step process. The processes are executed 
     in a separate process, independent of SoS. This makes it possible
     to execute the processes in background, on cluster, or submit as
     Celery tasks.'''
     env.register_process(os.getpid(), 'spawned_job with {} {}'
-        .format(', '.join(locals['_input']), ', '.join(locals['_output'])))
+        .format(', '.join(sos_dict['_input']), ', '.join(sos_dict['_output'])))
     try:
         os.chdir(workdir)
-        # forcefully inject pysos import the local namespace
-        global_process = 'from pysos import *\n' + global_process
         # switch context to the new dict and switch back once the with
         # statement ends (or if an exception is raised)
-        with env.push_context(locals):
-            SoS_exec(global_process, sigil)
+        with env.push_context(sos_dict):
+            SoS_exec('import os, sys, glob')
+            SoS_exec('from pysos import *')
+            if global_process:
+                SoS_exec(global_process, sigil)
             SoS_exec(step_process, sigil)
         if signature:
             signature.write()

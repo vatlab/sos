@@ -38,3 +38,4 @@ SOS_CONTACT = '''Please visit http://github.com/bpeng2000/SOS for more informati
 # this import might fail when SoS is not properly installed
 from .sos_script import *
 from .utils import *
+from .actions import *

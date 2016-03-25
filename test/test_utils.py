@@ -23,31 +23,31 @@
 import os
 import unittest
 
-import shlex
-
-from pysos import *
+# these functions are normally not available but can be imported 
+# using their names for testing purposes
+from pysos.utils import env, logger, interpolate, WorkflowDict, glob_wildcards, SoS_eval, InterpolationError
 
 class TestUtils(unittest.TestCase):
     def testLogger(self):
         '''Test logging level'''
         for verbosity in ['0', '1', '2', '3', '4']:
             env.verbosity = verbosity
-            env.logger.trace('Verbosity {}:trace message with ``empahsized text`` in between'.format(env.verbosity))
-            env.logger.debug('Verbosity {}:debug message with ``empahsized text`` in between'.format(env.verbosity))
-            env.logger.info('Verbosity {}:info message with ``empahsized text`` in between'.format(env.verbosity))
-            env.logger.warning('Verbosity {}:warning message with ``empahsized text`` in between'.format(env.verbosity))
-            env.logger.error('Verbosity {}:error message with ``empahsized text`` in between'.format(env.verbosity))
+            logger.trace('Verbosity {}:trace message with ``empahsized text`` in between'.format(env.verbosity))
+            logger.debug('Verbosity {}:debug message with ``empahsized text`` in between'.format(env.verbosity))
+            logger.info('Verbosity {}:info message with ``empahsized text`` in between'.format(env.verbosity))
+            logger.warning('Verbosity {}:warning message with ``empahsized text`` in between'.format(env.verbosity))
+            logger.error('Verbosity {}:error message with ``empahsized text`` in between'.format(env.verbosity))
         # log
         if os.path.isfile('test.log'):
             os.remove('test.log')
         env.logfile = 'test.log'
         for verbosity in ['0', '1', '2', '3', '4']:
             env.verbosity = verbosity
-            env.logger.trace('Verbosity {}:trace message with ``empahsized text`` in between'.format(env.verbosity))
-            env.logger.debug('Verbosity {}:debug message with ``empahsized text`` in between'.format(env.verbosity))
-            env.logger.info('Verbosity {}:info message with ``empahsized text`` in between'.format(env.verbosity))
-            env.logger.warning('Verbosity {}:warning message with ``empahsized text`` in between'.format(env.verbosity))
-            env.logger.error('Verbosity {}:error message with ``empahsized text`` in between'.format(env.verbosity))
+            logger.trace('Verbosity {}:trace message with ``empahsized text`` in between'.format(env.verbosity))
+            logger.debug('Verbosity {}:debug message with ``empahsized text`` in between'.format(env.verbosity))
+            logger.info('Verbosity {}:info message with ``empahsized text`` in between'.format(env.verbosity))
+            logger.warning('Verbosity {}:warning message with ``empahsized text`` in between'.format(env.verbosity))
+            logger.error('Verbosity {}:error message with ``empahsized text`` in between'.format(env.verbosity))
         # log file should not have any color codes
         with open('test.log') as logfile:
             line_count = 0
@@ -59,8 +59,7 @@ class TestUtils(unittest.TestCase):
 
     def testInterpolation(self):
         '''Test string interpolation'''
-        env.sos_dict = globals()
-        env.sos_dict.update({
+        env.sos_dict = WorkflowDict({
             'a': 100,
             'b': 20,
             'c': ['file1', 'file2', 'file3'],
@@ -143,8 +142,7 @@ class TestUtils(unittest.TestCase):
 
     def testEval(self):
         '''Test the evaluation of SoS expression'''
-        env.sos_dict = WorkflowDict(globals())
-        env.sos_dict.update({
+        env.sos_dict = WorkflowDict({
             'a': 100,
             'b': 'file name',
             'c': ['file1', 'file2', 'file 3'],
@@ -199,7 +197,7 @@ class TestUtils(unittest.TestCase):
 
     def testContextStack(self):
         '''Test context stack '''
-        env.sos_dict = WorkflowDict(globals())
+        env.sos_dict = WorkflowDict()
         env.sos_dict['a'] = 5
         self.assertEqual(interpolate('${a}'), '5')
         with env.push_context({'a': 10}):
