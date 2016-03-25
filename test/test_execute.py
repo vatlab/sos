@@ -70,7 +70,7 @@ for b in range(5):
         wf = script.workflow()
         wf.run()
         self.assertEqual(env.locals['res'], '01234')
-        
+
     def testGlobalVars(self):
         '''Test SoS defined variables'''
         script = SoS_Script(r"""
@@ -139,7 +139,7 @@ cp ${_input} ${_dest}
         # reset env mode
         env.sig_mode = 'default'
 
-        
+
 
     def _testSignature(self, text):
         '''Test recognizing the format of SoS script'''
@@ -533,7 +533,22 @@ myfunc()
         env.run_mode = 'dryrun'
         wf.run()
         self.assertEqual(env.locals['test'].output, ['a'])
+        #
+        script = SoS_Script(r"""
 
+def myfunc():
+  return 'a'
+
+[1: alias='test']
+output: [myfunc() for i in range(10)][0]
+
+myfunc()
+
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        wf.run()
+        self.assertEqual(env.locals['test'].output, ['a'])
 
 if __name__ == '__main__':
     unittest.main()
