@@ -25,10 +25,13 @@ import re
 import copy
 import types
 import logging
+import signal
+import glob
 import collections
 import hashlib
 import shutil
 import token
+import psutil
 from tokenize import generate_tokens, untokenize
 from io import StringIO
 
@@ -141,7 +144,7 @@ def shortRepr(obj):
         return repr(obj).split(' ')[0] + ' ...] ({} items)'.format(len(obj))
     elif isinstance(obj, dict):
         first_key = obj.keys()[0]
-        return '{{{:r}:{:r}, ...}} ({} items)'.format(first_key, obj[first_key], len(obj))
+        return '{{{!r}:{!r}, ...}} ({} items)'.format(first_key, obj[first_key], len(obj))
     else:
         return '{}...'.format(repr(obj)[:40])
 
@@ -178,6 +181,8 @@ class WorkflowDict(dict):
             self._log(key, value)
         if env.run_mode == 'dryrun':
             self._warn(key, value)
+        if key in ('_input', '_output', '_depends'):
+            env.logger.warning('Variable {} is set automatically by SoS. Changing its value might cause unexpected results.'.format(key))
         self.set(key, value)
 
     def _check_readonly(self, key, value):
@@ -198,7 +203,16 @@ class WorkflowDict(dict):
     def clone_pickleable(self):
         '''Return a copy of the existing dictionary but keep only the ones that are pickleable'''
         # FIXME: not well tested
-        return {x:copy.deepcopy(y) for x,y in self.items() if not callable(y) and not isinstance(y, types.ModuleType)}
+        try:
+            return {x:copy.deepcopy(y) for x,y in self.items() if not callable(y) and not isinstance(y, (types.ModuleType, WorkflowDict))}
+        except:
+            res = {}
+            for x,y in self.items():
+                try:
+                    res[x] = copy.deepcopy(y)
+                except:
+                    pass
+            return res
 #
 # Runtime environment
 #
@@ -236,6 +250,13 @@ class RuntimeEnvironments(object):
         #
         self.run_mode = 'run'
         #
+        # signature mode can be
+        #
+        # default              (save signature, skip if signature match)
+        # ignore_signature     (ignore existing signature but still saves signature)
+        # assert_signature     (should 
+        self.sig_mode = 'default'
+        #
         # local and global dictionaries used by SoS during the
         # execution of SoS workflows
         self.locals = WorkflowDict()
@@ -248,6 +269,34 @@ class RuntimeEnvironments(object):
         # maximum number of concurrent jobs
         self.max_jobs = 1
         self.running_jobs = 0
+
+    def register_process(self, pid, msg=''):
+        '''Register a process used by this SoS instance. It will also be
+        used to check resource used.'''
+        if not os.path.isdir('.sos'):
+            os.mkdir('.sos')
+        self.logger.trace('Register {} {}'.format(pid, msg))
+        with open('.sos/proc_{}'.format(pid), 'w') as p:
+            p.write(msg)
+
+    def deregister_process(self, pid):
+        self.logger.trace('Deregister {}'.format(pid))
+        if os.path.isfile('.sos/proc_{}'.format(pid)):
+            os.remove('.sos/proc_{}'.format(pid))
+
+    def cleanup(self):
+        '''Clean up all running processes'''
+        for p in glob.glob('.sos/proc_*'):
+            pid = int(os.path.basename(p)[5:])
+            try:
+                env.logger.trace('Killing {} and all its children'.format(pid))
+                parent = psutil.Process(pid)
+                for child in parent.children(recursive=True):  # or parent.children() for recursive=False
+                    child.kill()
+                parent.kill()
+            except Exception as e:
+                env.logger.debug(e)
+            os.remove(p)
 
     class ContextStack:
         '''A context stack and pushes existing workflow dict (env.locals)
@@ -710,7 +759,7 @@ def SoS_exec(stmts, sigil='${ }'):
             else:
                 # if no next group, expand previously correct one
                 if idx == 0:
-                    raise RuntimeError('Failed to find syntax correct group')
+                    raise RuntimeError('Failed to find syntax correct group: {}'.format(stmts))
                 # break myself again
                 code_group = code_group[: idx] + code_group[idx].split('\n') + code_group[idx+1:]
                 # go back
@@ -841,6 +890,7 @@ class RuntimeInfo:
         '''Write .exe_info file with signature of script, input, output and dependent files.'''
         if not self.proc_info:
             return
+        env.logger.trace('Write signature {}'.format(self.proc_info))
         with open(self.proc_info, 'w') as md5:
             md5.write('{}\n'.format(textMD5(self.script)))
             for f in self.input_files + self.output_files + self.dependent_files:
@@ -850,18 +900,21 @@ class RuntimeInfo:
     def validate(self):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
         if not self.proc_info or not os.path.isfile(self.proc_info):
+            env.logger.trace('Fail because of no signature file {}'.format(self.proc_info))
             return False
         #
         # duplicated files are only tested once.
         all_files = [os.path.realpath(os.path.expanduser(x)) for x in set(self.input_files + self.output_files + self.dependent_files)]
         # file not exist?
         if not all(os.path.isfile(x) for x in all_files):
+            env.logger.trace('Fail because of missing one of the files {}'.format(', '.join(all_files)))
             return False
         #
         files_checked = {x:False for x in all_files}
         with open(self.proc_info) as md5:
             cmdMD5 = md5.readline().strip()   # command
             if textMD5(self.script) != cmdMD5:
+                env.logger.trace('Fail because of command change')
                 return False
             for line in md5:
                 try:

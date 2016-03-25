@@ -25,13 +25,14 @@
 from __future__ import unicode_literals
 
 import os
+import time
 import unittest
 
 from pysos import *
 from pysos import __version__
 import subprocess
 
-class TestRun(unittest.TestCase):
+class TestExecute(unittest.TestCase):
     def testCommandLine(self):
         '''Test command line arguments'''
         result = subprocess.check_output('sos --version', stderr=subprocess.STDOUT, shell=True).decode()
@@ -78,9 +79,7 @@ for b in range(5):
         self.assertEqual(env.locals['SOS_VERSION'], __version__)
 
     def testSignature(self):
-        '''Test recognizing the format of SoS script'''
-        env.run_mode = 'run'
-        script = SoS_Script(r"""
+        self._testSignature(r"""
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
 
@@ -90,11 +89,63 @@ run('''echo "b.txt" > 'temp/b.txt' ''')
 [1: alias='oa']
 dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
-output: dest
+output: _dest
 
 run(''' cp ${_input} ${_dest} ''')
 """)
+        env.max_jobs = 4
+        self._testSignature(r"""
+[*_0]
+output: 'temp/a.txt', 'temp/b.txt'
+
+process:
+
+run('''echo "a.txt" > 'temp/a.txt' ''')
+run('''echo "b.txt" > 'temp/b.txt' ''')
+
+[1: alias='oa']
+dest = ['temp/c.txt', 'temp/d.txt']
+input: group_by='single', paired_with='dest'
+output: _dest
+
+process:
+run(''' cp ${_input} ${_dest} ''')
+""")
+        # script format
+        env.max_jobs = 4
+        self._testSignature(r"""
+[*_0]
+output: 'temp/a.txt', 'temp/b.txt'
+
+run:
+
+echo "a.txt" > 'temp/a.txt'
+
+run:
+
+echo "b.txt" > 'temp/b.txt'
+
+[1: alias='oa']
+dest = ['temp/c.txt', 'temp/d.txt']
+input: group_by='single', paired_with='dest'
+output: _dest
+
+run:
+
+cp ${_input} ${_dest}
+""")
+
+        # reset env mode
+        env.sig_mode = 'default'
+
+        
+
+    def _testSignature(self, text):
+        '''Test recognizing the format of SoS script'''
+        env.run_mode = 'run'
+        script = SoS_Script(text)
         wf = script.workflow('default_0')
+        env.sig_mode = 'ignore'
         wf.run()
         # not the default value of 1.0
         self.assertTrue(os.path.isfile('temp/a.txt'))
@@ -103,7 +154,10 @@ run(''' cp ${_input} ${_dest} ''')
             self.assertTrue(ta.read(), 'a.txt')
         with open('temp/b.txt') as tb:
             self.assertTrue(tb.read(), 'b.txt')
+        env.sig_mode = 'assert'
+        wf.run()
         #
+        env.sig_mode = 'ignore'
         wf = script.workflow()
         wf.run()
         # not the default value of 1.0
@@ -114,7 +168,19 @@ run(''' cp ${_input} ${_dest} ''')
         with open('temp/d.txt') as td:
             self.assertTrue(td.read(), 'b.txt')
         self.assertEqual(env.locals['oa'].output, ['temp/c.txt', 'temp/d.txt'])
-        
+        env.sig_mode = 'assert'
+        wf.run()
+        #
+        # change script a little bit
+        script = SoS_Script('# comment\n' + text)
+        wf = script.workflow()
+        env.sig_mode = 'assert'
+        wf.run()
+        # add some other variable?
+        script = SoS_Script('comment = 1\n' + text)
+        wf = script.workflow()
+        env.sig_mode = 'assert'
+        self.assertRaises(RuntimeError, wf.run)
 
     def testInput(self):
         '''Test input specification'''
@@ -227,10 +293,15 @@ counter = "0"
 input: 'a.pdf', files, group_by='single', paired_with='names', for_each='c'
 
 counter = str(int(counter) + 1)
+
+[1: alias = 'ob']
+input: oa.input
+output: _input
 """)
         wf = script.workflow()
         wf.run()
         self.assertEqual(env.locals['oa'].input, ["a.pdf", 'a.txt', 'b.txt'])
+        self.assertEqual(env.locals['ob'].output, ["a.pdf", 'a.txt', 'b.txt'])
 
     def testFileType(self):
         '''Test input option filetype'''
@@ -325,6 +396,44 @@ with open('test/result.txt', 'w') as res:
         content = [x.strip() for x in open('result.txt').readlines()]
         self.assertTrue('test_execute.py' in content)
 
+    def testConcurrency(self):
+        '''Test workdir option for runtime environment'''
+        env.max_jobs = 5
+        script =  SoS_Script(r"""
+[0]
+
+repeat = range(4)
+input: for_each='repeat'
+
+process: concurrent=False
+
+import time
+time.sleep(_repeat + 1)
+print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
+""")
+        wf = script.workflow()
+        start = time.time()
+        wf.run()
+        self.assertGreater(time.time() - start, 9)
+        #
+        #
+        script =  SoS_Script(r"""
+[0]
+
+repeat = range(4)
+input: for_each='repeat'
+
+process: concurrent=True
+
+import time
+time.sleep(_repeat + 1)
+print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
+""")
+        wf = script.workflow()
+        start = time.time()
+        wf.run()
+        self.assertLess(time.time() - start, 6)
+
     def testRunmode(self):
         '''Test the runmode decoration'''
         script = SoS_Script(r"""
@@ -395,7 +504,7 @@ import random
 repeat=range(5)
 input: for_each='repeat'
 
-wait = random.randint(1,5)
+wait = random.randint(0,3)
 time.sleep(wait)
 print('I am {} after {} seconds'.format(_index, wait))
 

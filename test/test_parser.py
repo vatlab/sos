@@ -369,8 +369,8 @@ depends:
 input: 'filename',  'filename2', opt=value==1
 
 ''')
-        # unrecognized directive
-        self.assertRaises(ParsingError, SoS_Script, '''
+        # unrecognized directive, allowed now
+        SoS_Script('''
 [0]
 something: 'filename',  filename2, opt=value==1
 ''')
@@ -379,8 +379,8 @@ something: 'filename',  filename2, opt=value==1
 [0]
 input: 'filename'  filename2
 ''')
-        # cannot be after action
-        self.assertRaises(ParsingError, SoS_Script, '''
+        # can be after action
+        SoS_Script('''
 [0]
 func()        
 input: 'filename',  'filename2', opt=value==1
@@ -392,13 +392,57 @@ input: 'filename',  'filename2', opt=value==1
 a = 'some text'
 output: 'filename',  'filename2', opt=value==1
 ''')
-        # cannot be action between directives
-        self.assertRaises(ParsingError, SoS_Script, '''
+        # can have action between directives
+        SoS_Script('''
 [0]
 input: 'filename',  'filename2', opt=value==1
 abc
 output: 'filename',  'filename2', opt=value==1
 ''')
+
+    def testScriptFormat(self):
+        '''Test putting scripts directly under action'''
+        script = SoS_Script('''
+[0]
+input: 'filename',  'filename2', opt=value==1
+R:
+
+open('something')
+save.put()
+
+''')
+        script = SoS_Script('''
+[0]
+input: 'filename',  'filename2', opt=value==1
+R: concurrent = True
+
+open('something')
+save.put()
+
+''')
+        script = SoS_Script('''
+[0]
+input: 'filename',  'filename2', opt=value==1
+R: concurrent = True,
+    workdir = 'someelse else'
+
+open('something')
+save.put()
+
+''')
+        # test dedent
+        script = SoS_Script('''
+[0]
+python:
+    from pysos import env
+    env.logger.warning('I am from a dented text')
+    if 1:
+        env.logger.warning('Another warning')
+''')
+        wf = script.workflow()
+        wf.run()
+
+
 
     def testInput(self):
         '''Test input directive'''

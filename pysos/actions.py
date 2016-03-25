@@ -4,9 +4,7 @@ import re
 import subprocess
 import tempfile
 import pipes
-
 from .utils import env
-
 
 #
 # A decoration function that allows SoS to replace all SoS actions
@@ -37,10 +35,15 @@ class SoS_ExecuteScript:
             cmd = self.interpreter.replace('{}', pipes.quote(self.script_file))
         else:
             cmd = self.interpreter + ' ' + pipes.quote(self.script_file)
-        env.logger.info('Running ``{}``'.format(cmd))
-        ret = subprocess.call(cmd, shell=True)
+        try:
+            p = subprocess.Popen(cmd, shell=True)
+            env.register_process(p.pid, 'Runing {}'.format(self.script_file))
+            ret = p.wait()
+        finally:
+            env.deregister_process(p.pid)
         if ret != 0:
             raise RuntimeError('Failed to execute script')
+
 
 
 class SoS_ExecuteRScript(SoS_ExecuteScript):
