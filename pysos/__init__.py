@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-#
+#!/usr/bin/env python3
 #
 # This file is part of Script of Scripts (sos), a workflow system
 # for the execution of commands and scripts in different languages.
@@ -29,7 +28,7 @@ if ver.major == 2 or (ver.major == 3 and (ver.minor, ver.micro) < (3, 0)):
         .format(ver.major, ver.minor, ver.micro))
 
 
-__version__ = '0.5.0'
+__version__ = '0.5.1'
 __py_version__ = '{}.{}.{}'.format(ver.major, ver.minor, ver.micro)
 #
 SOS_FULL_VERSION='{} for Python {}.{}.{}'.format(__version__, ver.major, ver.minor, ver.micro)

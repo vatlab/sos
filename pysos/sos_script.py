@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # This file is part of Script of Scripts (sos), a workflow system
 # for the execution of commands and scripts in different languages.
@@ -31,7 +31,8 @@ import argparse
 import textwrap
 import traceback
 import multiprocessing as mp
-from collections import OrderedDict, defaultdict, Sequence
+from collections import OrderedDict, defaultdict
+from collections.abc import Sequence, Iterable
 from itertools import tee, combinations
 
 # Python 2.7 should also have this module
@@ -350,7 +351,7 @@ class SoS_Step:
             patterns = []
         elif isinstance(pattern, str):
             patterns = [pattern]
-        elif isinstance(pattern, list):
+        elif isinstance(pattern, Iterable):
             patterns = pattern
         else:
             raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
@@ -376,7 +377,7 @@ class SoS_Step:
             paired_with = []
         elif isinstance(paired_with, str):
             paired_with = [paired_with]
-        elif isinstance(paired_with, list):
+        elif isinstance(paired_with, Iterable):
             paired_with = paired_with
         else:
             raise ValueError('Unacceptable value for parameter paired_with: {}'.format(paired_with))
@@ -393,7 +394,7 @@ class SoS_Step:
                 if wv not in env.locals:
                     raise ValueError('Variable {} does not exist.'.format(wv))
                 values = env.locals[wv]
-            if isinstance(values, basestring) or not isinstance(values, Sequence):
+            if isinstance(values, str) or not isinstance(values, Iterable):
                 raise ValueError('with_var variable {} is not a sequence ("{}")'.format(wv, values))
             if len(values) != len(ifiles):
                 raise ValueError('Length of variable {} (length {}) should match the number of input files (length {}).'
@@ -407,7 +408,7 @@ class SoS_Step:
             for_each = []
         elif isinstance(for_each, str):
             for_each = [for_each]
-        elif isinstance(for_each, list):
+        elif isinstance(for_each, Sequence):
             for_each = for_each
         else:
             raise ValueError('Unacceptable value for parameter for_each: {}'.format(for_each))
@@ -1741,16 +1742,7 @@ def print_traceback():
     #print repr(traceback.format_tb(exc_traceback))
     #print "*** tb_lineno:", exc_traceback.tb_lineno
 
-def sos_show(args):
-    # options such as -v might be put at the end and we need to 
-    # extract them from args.options
-    mini_parser = argparse.ArgumentParser()
-    mini_parser.add_argument('-v', '--verbosity', type=int, choices=range(5))
-    remaining_args, remainder = mini_parser.parse_known_args(args.options)
-    for k, v in remaining_args.__dict__.items():
-        setattr(args, k, v)
-    args.options = remainder
-    env.verbosity = args.verbosity
+def sos_show(args, workflow_args):
     try:
         script = SoS_Script(filename=args.script)
         if args.workflow:
@@ -1767,30 +1759,17 @@ def sos_show(args):
 #
 # subcommand run
 #
-
-
-def sos_run(args):
-    # options such as -d might be put at the end and we need to 
-    # extract them from args.options
-    mini_parser = argparse.ArgumentParser()
-    mini_parser.add_argument('-v', '--verbosity', type=int, choices=range(5))
-    mini_parser.add_argument('-d', action='store_true', dest='__dryrun__')
-    mini_parser.add_argument('-j', type=int, metavar='JOBS', default=1, dest='__max_jobs__')
-    remaining_args, remainder = mini_parser.parse_known_args(args.options)
-    for k, v in remaining_args.__dict__.items():
-        setattr(args, k, v)
-    args.options = remainder
+def sos_run(args, workflow_args):
     env.verbosity = args.verbosity
     env.max_jobs = args.__max_jobs__
-    #
+    # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)
-    #
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
         if args.__dryrun__:
             env.run_mode = 'dryrun'
-        workflow.run(args.options, cmd_name='{} {}'.format(args.script, args.workflow))
+        workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             print_traceback()
@@ -1800,7 +1779,7 @@ def sos_run(args):
 #
 # subcommand dryrun
 #
-def sos_dryrun(args):
-    args.options.append('-d')
+def sos_dryrun(args, workflow_args):
     args.__max_jobs__ = 1
-    sos_run(args)
+    args.__dryrun__ = True
+    sos_run(args, workflow_args)

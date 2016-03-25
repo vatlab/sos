@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # This file is part of Script of Scripts (SoS), a workflow system
 # for the execution of commands and scripts in different languages.

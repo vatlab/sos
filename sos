@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 #
 # This file is part of Script of Scripts (sos), a workflow system
 # for the execution of commands and scripts in different languages.
@@ -32,7 +32,7 @@ def addCommonArgs(parser):
 
 if __name__ == '__main__':
     master_parser = argparse.ArgumentParser(description='''A workflow system
-            for the execution of commands and scripts.''',
+            for the execution of commands and scripts in different languages.''',
         prog='SoS',
         fromfile_prefix_chars='@',
         epilog='''Use 'sos cmd -h' for details about each subcommand. Please
@@ -58,6 +58,8 @@ if __name__ == '__main__':
     #
     # command run
     parser = subparsers.add_parser('run',
+        description='Execute a workflow defined in script',
+        epilog=workflow_options,
         help='Execute a SoS script')
     parser.add_argument('script', metavar='SCRIPT',
         help='A SoS script that defines one or more workflows.')
@@ -74,44 +76,43 @@ if __name__ == '__main__':
         help='''Execute the workflow in dryrun mode in which step processes
             are executed normally but with most SoS actions return directly.
             SoS also produces diagnoistic warning messages in this mode.''')
-    parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
-        nargs=argparse.REMAINDER, help=workflow_options)
     addCommonArgs(parser)
     parser.set_defaults(func=sos_run)
     #
     # command dryrun
     parser = subparsers.add_parser('dryrun',
+        description='''Execute a workflow in dryrun mode. In comparison to
+            run mode, SoS does not panic for non-existing input or output
+            files, does not execute most SoS actions, and does not save or
+            check runtime signatures. It simply goes through the workflow,
+            figure out input/output of steps, and produce warning messages
+            if necessary.''',
+        epilog=workflow_options,
         help='Execute a SoS script in dryrun mode')
     parser.add_argument('script', metavar='SCRIPT',
         help='A SoS script that defines one or more workflows.')
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
-    parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
-        nargs=argparse.REMAINDER, help=workflow_options)
+    #parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
+    #    nargs=argparse.REMAINDER, help=workflow_options)
     addCommonArgs(parser)
     parser.set_defaults(func=sos_dryrun)
     #
     # command show
     parser = subparsers.add_parser('show',
+        description='''The show command displays details of all workflows
+            defined in a script, including description of script, workflow,
+            steps, and command line parameters. The output can be limited
+            to a specified workflow (which can be a subworkflow or a combined
+            workflow) if a workflow is specified.''',
         help='Show details of a SoS script')
     parser.add_argument('script', metavar='SCRIPT',
         help='A SoS script that defines one or more workflows.')
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
-    parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
-        nargs=argparse.REMAINDER, help=workflow_options)
     addCommonArgs(parser)
     parser.set_defaults(func=sos_show)
     #
-    args = master_parser.parse_args()
-    # FIXME: -h at the end will trigger the master help message, not the
-    # subparser message because at this point we do not know which subparser
-    # was triggered. The problem is caused by the 'options' argument with 
-    # argparse.REMAINDER which sends everything afterwards to a subsequent
-    # parser (supposedly to the script) but some arguments belong to the
-    # main parser (e.g. -d, -d) can be contained there.
-    if hasattr(args, 'options') and '-h' in args.options:
-        master_parser.print_help()
-        master_parser.exit()
+    args, workflow_args = master_parser.parse_known_args()
     # calling the associated functions
-    args.func(args)
+    args.func(args, workflow_args)
