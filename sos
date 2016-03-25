@@ -33,7 +33,7 @@ def addCommonArgs(parser):
 if __name__ == '__main__':
     master_parser = argparse.ArgumentParser(description='''A workflow system
             for the execution of commands and scripts in different languages.''',
-        prog='SoS',
+        prog='sos',
         fromfile_prefix_chars='@',
         epilog='''Use 'sos cmd -h' for details about each subcommand. Please
             contact Bo Peng (bpeng at mdanderson.org) if you have any question.''')
