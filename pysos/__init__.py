@@ -24,8 +24,8 @@
 import sys
 
 ver = sys.version_info
-if (ver.major == 2 and (ver.minor, ver.micro) < (7, 1)) or (ver.major == 3 and (ver.minor, ver.micro) < (2, 0)):
-    raise SystemError('SOS requires Python 2.7.1, Python 3.2.1 or higher. Please upgrade your Python {}.{}.{}.'
+if ver.major == 2 or (ver.major == 3 and (ver.minor, ver.micro) < (3, 0)):
+    raise SystemError('SOS requires Python 3.3 or higher. Please upgrade your Python {}.{}.{}.'
         .format(ver.major, ver.minor, ver.micro))
 
 

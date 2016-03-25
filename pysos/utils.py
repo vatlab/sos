@@ -136,12 +136,12 @@ def shortRepr(obj):
     '''Return a short representation of obj for clarity.'''
     if isinstance(obj, (str, int, float, bool)) or (isinstance(obj, collections.Sequence) \
         and len(obj) <= 2) or len(str(obj)) < 50:
-        return str(obj)
+        return repr(obj)
     elif isinstance(obj, collections.Sequence): # should be a list or tuple
-        return str(obj).split(' ')[0] + ' ...] ({} items)'.format(len(obj))
+        return repr(obj).split(' ')[0] + ' ...] ({} items)'.format(len(obj))
     elif isinstance(obj, dict):
         first_key = obj.keys()[0]
-        return '{{{}:{}, ...}} ({} items)'.format(first_key, obj[first_key], len(obj))
+        return '{{{:r}:{:r}, ...}} ({} items)'.format(first_key, obj[first_key], len(obj))
     else:
         return '{}...'.format(repr(obj)[:40])
 
@@ -186,7 +186,7 @@ class WorkflowDict(dict):
                 .format(key, dict.__getitem__(self, key), value))
 
     def _log(self, key, value):
-        env.logger.debug('Workflow variable ``{}`` is set to ``{}``'.format(key, shortRepr(value)))
+        env.logger.debug('``{}`` = ``{}``'.format(key, shortRepr(value)))
 
     def _warn(self, key, value):
         if key.isupper() and dict.__contains__(self, key) and dict.__getitem__(self, key) != value:
@@ -623,7 +623,7 @@ class SoS_String:
         in a basic type. Callable object cannot be outputed (an InterpolationError
         will be raised).
         '''
-        if isinstance(obj, basestring):
+        if isinstance(obj, str):
             return obj if fmt is None else self._format(obj, fmt)
         elif isinstance(obj, collections.Iterable):
             # the object might be nested...
@@ -789,10 +789,10 @@ class RuntimeInfo:
         workdir:
             Current working directory.,
         '''
-        self.script = script if isinstance(script, basestring) else ''.join(script)
-        self.input_files = [input_files] if isinstance(input_files, basestring) else input_files
-        self.output_files = [output_files] if isinstance(output_files, basestring) else output_files
-        self.dependent_files = dependent_files if isinstance(dependent_files, basestring) else dependent_files
+        self.script = script if isinstance(script, str) else ''.join(script)
+        self.input_files = [input_files] if isinstance(input_files, str) else input_files
+        self.output_files = [output_files] if isinstance(output_files, str) else output_files
+        self.dependent_files = dependent_files if isinstance(dependent_files, str) else dependent_files
         #
         sig_name = os.path.realpath(os.path.expanduser(self.output_files[0])) + textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
         #

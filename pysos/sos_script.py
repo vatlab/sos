@@ -32,13 +32,6 @@ import multiprocessing as mp
 from collections import OrderedDict, defaultdict, Sequence
 from itertools import tee, combinations
 
-try:
-    # python 2.7
-    import izip
-except ImportError:
-    # python 3.x
-    izip = zip
-
 # Python 2.7 should also have this module
 from io import StringIO
 
@@ -315,7 +308,7 @@ class SoS_Step:
         elif group_by == 'pairwise':
             f1, f2 = tee(ifiles)
             next(f2, None)
-            return [list(x) for x in izip(f1, f2)]
+            return [list(x) for x in zip(f1, f2)]
         elif group_by == 'combinations':
             return [list(x) for x in combinations(ifiles, 2)]
 
@@ -324,7 +317,7 @@ class SoS_Step:
         # 
         if pattern is None or not pattern:
             patterns = []
-        elif isinstance(pattern, basestring):
+        elif isinstance(pattern, str):
             patterns = [pattern]
         elif isinstance(pattern, list):
             patterns = pattern
@@ -350,7 +343,7 @@ class SoS_Step:
     def _handle_input_paired_with(self, paired_with):
         if paired_with is None or not paired_with:
             paired_with = []
-        elif isinstance(paired_with, basestring):
+        elif isinstance(paired_with, str):
             paired_with = [paired_with]
         elif isinstance(paired_with, list):
             paired_with = paired_with
@@ -362,7 +355,7 @@ class SoS_Step:
             self._vars = [{} for x in self._groups]
         for wv in paired_with:
             values = env.locals[wv]
-            if isinstance(values, basestring) or not isinstance(values, Sequence):
+            if isinstance(values, str) or not isinstance(values, Sequence):
                 raise ValueError('with_var variable {} is not a sequence ("{}")'.format(wv, values))
             if len(values) != len(ifiles):
                 raise ValueError('Length of variable {} (length {}) should match the number of input files (length {}).'
@@ -385,8 +378,8 @@ class SoS_Step:
             loop_size = None
             for fe in fe_all.split(','):
                 values = env.locals[fe]
-                if not isinstance(values, list):
-                    raise ValueError('for_each variable {} is not a list ("{}")'.format(fe, values))
+                if not isinstance(values, Sequence):
+                    raise ValueError('for_each variable {} is not a sequence ("{}")'.format(fe, values))
                 if loop_size is None:
                     loop_size = len(values)
                 elif loop_size != len(values):
@@ -414,10 +407,10 @@ class SoS_Step:
         if args:
             ifiles = []
             for arg in args:
-                if isinstance(arg, basestring):
+                if isinstance(arg, str):
                     ifiles.append(arg)
                 elif isinstance(arg, list):
-                    if not all(isinstance(x, basestring) for x in arg):
+                    if not all(isinstance(x, str) for x in arg):
                         raise RuntimeError('Invalid input file: {}'.format(arg))
                     ifiles.extend(arg)
             env.locals['_step'].input = ifiles
@@ -449,7 +442,7 @@ class SoS_Step:
             self._vars = []
             return
         if 'filetype' in kwargs:
-            if isinstance(kwargs['filetype'], basestring):
+            if isinstance(kwargs['filetype'], str):
                 ifiles = fnmatch.filter(ifiles, kwargs['filetype'])
             elif isinstance(kwargs['filetype'], (list, tuple)):
                 ifiles = [x for x in ifiles if any(fnmatch.fnmatch(x, y) for y in kwargs['filetype'])]
@@ -482,10 +475,10 @@ class SoS_Step:
         # first *args are filenames
         dfiles = []
         for arg in args:
-            if isinstance(arg, basestring):
+            if isinstance(arg, str):
                 dfiles.append(arg)
             elif isinstance(arg, list):
-                if not all(isinstance(x, basestring) for x in arg):
+                if not all(isinstance(x, str) for x in arg):
                     raise RuntimeError('Invalid dependent file: {}'.format(arg))
                 dfiles.extend(arg)
         env.locals.set('_depends', dfiles)
@@ -494,7 +487,7 @@ class SoS_Step:
         # 
         if pattern is None or not pattern:
             patterns = []
-        elif isinstance(pattern, basestring):
+        elif isinstance(pattern, str):
             patterns = [pattern]
         elif isinstance(pattern, list):
             patterns = pattern
@@ -509,7 +502,7 @@ class SoS_Step:
             for key in res.keys():
                 if key not in env.locals:
                     raise ValueError('Undefined variable {} in pattern {}'.format(key, pattern))
-                if not isinstance(env.locals[key], basestring) and isinstance(env.locals[key], Sequence):
+                if not isinstance(env.locals[key], str) and isinstance(env.locals[key], Sequence):
                     if sz is None:
                         sz = len(env.locals[key])
                         wildcard = [{} for x in range(sz)]
@@ -532,10 +525,10 @@ class SoS_Step:
                 raise RuntimeError('Unrecognized output option {}'.format(k))
         ofiles = []
         for arg in args:
-            if isinstance(arg, basestring):
+            if isinstance(arg, str):
                 ofiles.append(arg)
             elif isinstance(arg, list):
-                if not all(isinstance(x, basestring) for x in arg):
+                if not all(isinstance(x, str) for x in arg):
                     raise RuntimeError('Invalid output file: {}'.format(arg))
                 ofiles.extend(arg)
         #
@@ -601,7 +594,7 @@ class SoS_Step:
                         nargs='?', default=defvalue)
                 else:
                     parser.add_argument('--{}'.format(key), type=type(defvalue), help=comment,
-                        nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, basestring) else '?',
+                        nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
                         default=defvalue)
         #
         parser.error = self._parse_error
@@ -982,7 +975,7 @@ class SoS_Workflow:
             self.sections = [x for x in self.sections if x.index < 0 or all_steps[x.index]]
         #
         for section in self.sections:
-            if section.subworkflow is not None and isinstance(section.subworkflow, basestring):
+            if section.subworkflow is not None and isinstance(section.subworkflow, str):
                 raise RuntimeError('Subworkflow {} not executable most likely because of recursice expansion.'.format(section.subworkflow))
         #
         env.logger.debug('Workflow {} created with {} sections: {}'
@@ -1013,8 +1006,6 @@ class SoS_Workflow:
             # initial values
             env.locals.set('SOS_VERSION', __version__)
             py_version = sys.version_info
-            env.locals.set('SOS_PYTHON_VERSION', (py_version.major, py_version.minor, py_version.micro))
-
             #
             env.locals.set('_step', StepInfo())
             # initially there is no input, output, or depends
@@ -1383,7 +1374,7 @@ class SoS_Script:
                                     opt_value.split(' ')[0] == opt_value.split(' ')[1]:
                                     parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(opt_value))
                             if opt_name == 'source':
-                                opt_value = [opt_value] if isinstance(opt_value, basestring) else opt_value
+                                opt_value = [opt_value] if isinstance(opt_value, str) else opt_value
                                 for sos_file in opt_value:
                                     if not os.path.isfile(sos_file) and not os.path.isfile(os.path.join(os.path.split(self.sos_script)[0], sos_file)):
                                         env.logger.warning('Source file for nested workflow {} does not exist'.format(sos_file))
@@ -1599,7 +1590,7 @@ class SoS_Script:
                             imported_sections.extend(script.sections)
                     # expand subworkflow if needed
                     for i in range(len(section.names)):
-                        if section.names[i][2] and isinstance(section.names[i][2], basestring):
+                        if section.names[i][2] and isinstance(section.names[i][2], str):
                             # need to expand the workflow, but it is possible that it is nested ...
                             # so let us figure out what workflows we are expanding
                             expanded = []

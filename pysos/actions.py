@@ -13,7 +13,7 @@ from .utils import env
 # with a null action.
 #
 def SoS_Action(run_mode='run'):
-    run_mode = [run_mode] if isinstance(run_mode, basestring) else run_mode
+    run_mode = [run_mode] if isinstance(run_mode, str) else run_mode
     def runtime_decorator(func):
         def action_wrapper(*args, **kwargs):
             if env.run_mode not in run_mode:
@@ -139,7 +139,7 @@ def check_command(cmds):
     '''Check the existence of command `cmd` and raise an error if
     command does not exist. `cmd` can be one command or a list of
     commands.'''
-    cmds = [cmds] if isinstance(cmds, basestring) else cmds
+    cmds = [cmds] if isinstance(cmds, str) else cmds
     #
     for cmd in cmds:
         name = which(cmd)
@@ -169,7 +169,7 @@ def search_output(cmd, pattern):
     output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode()
     env.logger.trace('Output of command ``{}`` is ``{}``'.format(cmd, output))
     #
-    pattern = [pattern] if isinstance(pattern, basestring) else pattern
+    pattern = [pattern] if isinstance(pattern, str) else pattern
     if all([re.search(x, output, re.MULTILINE) is None for x in pattern]):
         raise RuntimeError('Output of command ``{}`` does not match specified regular expression ``{}``.'
             .format(cmd, ' or '.join(pattern)))
