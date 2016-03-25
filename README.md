@@ -16,4 +16,9 @@ or compile the latest git version with commands
 % python3 setup.py install
 ```
 
+Depending on your system configuration, you might need to add paths such as
+`/Library/Frameworks/Python.framework/Versions/3.4/bin/` to `%PATH` or
+create symbolic links of `sos` and `sos-runner` commands in
+`/usr/local/bin`.
+
 Please find more information on **[SoS wiki](https://github.com/bpeng2000/SOS/wiki)**.
