@@ -195,17 +195,5 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(res['to'], ['test'])
         self.assertEqual(res['file'], ['1.txt'])
 
-    def testContextStack(self):
-        '''Test context stack '''
-        env.sos_dict = WorkflowDict()
-        env.sos_dict['a'] = 5
-        self.assertEqual(interpolate('${a}'), '5')
-        with env.push_context({'a': 10}):
-            self.assertEqual(interpolate('${a}'), '10')
-            with env.push_context({'a': 15}):
-                self.assertEqual(interpolate('${a}'), '15')
-            self.assertEqual(interpolate('${a}'), '10')
-        self.assertEqual(interpolate('${a}'), '5')
-
 if __name__ == '__main__':
     unittest.main()

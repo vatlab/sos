@@ -105,12 +105,12 @@ def execute_step_process(step_process, global_process, sos_dict, sigil, signatur
         os.chdir(workdir)
         # switch context to the new dict and switch back once the with
         # statement ends (or if an exception is raised)
-        with env.push_context(sos_dict):
-            SoS_exec('import os, sys, glob')
-            SoS_exec('from pysos import *')
-            if global_process:
-                SoS_exec(global_process, sigil)
-            SoS_exec(step_process, sigil)
+        env.sos_dict.quick_update(sos_dict)
+        SoS_exec('import os, sys, glob')
+        SoS_exec('from pysos import *')
+        if global_process:
+            SoS_exec(global_process, sigil)
+        SoS_exec(step_process, sigil)
         if signature:
             signature.write()
     except KeyboardInterrupt:
@@ -791,7 +791,7 @@ class SoS_Step:
             try:
                 self._groups, self._vars = SoS_eval('directive_input({})'.format(value), self.sigil)
             except Exception as e:
-                raise RuntimeError('Failed to process directive {} ({}): {}'.format(key, value, e))
+                raise RuntimeError('Failed to step process {} ({}): {}'.format(key, value, e))
             input_idx += 1
         else:
             # assuming everything starts from 0 is after input
@@ -831,7 +831,7 @@ class SoS_Step:
                     try:
                         SoS_eval('directive_{}({})'.format(key, value), self.sigil)
                     except Exception as e:
-                        raise RuntimeError('Failed to process directive {}: {}'.format(key, e))
+                        raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value, e))
                 else:
                     old_run_mode = env.run_mode
                     if '_output' in env.sos_dict:
@@ -897,7 +897,9 @@ class SoS_Step:
         signatures = []
         if '_runtime' in env.sos_dict:
             self.runtime_options = env.sos_dict['_runtime']
-        pool = mp.Pool(min(env.max_jobs, 100))
+        concurrent = 'concurrent' in self.runtime_options and self.runtime_options['concurrent']
+        if concurrent:
+            pool = mp.Pool(min(env.max_jobs, len(self._groups)))
         for idx, (g, v, o, d) in enumerate(zip(self._groups, self._vars, self._outputs, self._depends)):
             env.sos_dict.update(v)
             env.sos_dict.set('_input', g)
@@ -937,19 +939,27 @@ class SoS_Step:
                 env.sos_dict['_step'].set('index', self.index)
                 #
                 if self.process:
-                    if 'concurrent' not in self.runtime_options or self.runtime_options['concurrent']:
-                        submitter = pool.apply_async
+                    if concurrent:
+                        proc_results.append(pool.apply_async(
+                            execute_step_process,   # function
+                            (self.process,          # process
+                            self.global_process,    # global process
+                            env.sos_dict.clone_pickleable(),
+                            self.sigil,
+                            # if subworkflow contribute to outcome, we can not save signature here
+                            partial_signature if partial_signature is not None and not self.subworkflow else None,
+                            self.runtime_options['workdir'] if 'workdir' in self.runtime_options else os.getcwd())))
                     else:
-                        submitter = pool.apply
-                    proc_results.append(submitter(
-                        execute_step_process,   # function
-                        (self.process,          # process
-                        self.global_process,    # global process
-                        env.sos_dict.clone_pickleable(),
-                        self.sigil,
-                        # if subworkflow contribute to outcome, we can not save signature here
-                        partial_signature if partial_signature is not None and not self.subworkflow else None,
-                        self.runtime_options['workdir'] if 'workdir' in self.runtime_options else os.getcwd())))
+                        # execute in existing process
+                        proc_results.append(
+                            execute_step_process(   # function
+                            self.process,          # process
+                            self.global_process,    # global process
+                            # do not clone dict
+                            env.sos_dict,
+                            self.sigil,
+                            partial_signature if partial_signature is not None and not self.subworkflow else None,
+                            self.runtime_options['workdir'] if 'workdir' in self.runtime_options else os.getcwd()))
             except Exception as e:
                 # FIXME: cannot catch exception from subprocesses
                 if env.verbosity > 2:
@@ -967,20 +977,21 @@ class SoS_Step:
                 if env.verbosity > 2:
                     print_traceback()
                 raise RuntimeError('Failed to execute subworkflow: {}'.format(e))
-        # check results?
-        try:
-            proc_results = [res.get() if isinstance(res, mp.pool.AsyncResult) else res for res in proc_results]
-        except KeyboardInterrupt:
-            # if keyboard interrupt
-            pool.terminate()
-            pool.join()
-            raise RuntimeError('KeyboardInterrupt fro m {} (master)'.format(os.getpid()))
-        except Exception as e:
-            # if keyboard interrupt etc
-            env.logger.error('Caught {}'.format(e))
-            pool.terminate()
-            pool.join()
-            raise
+        # check results? This is only meaningful for pool
+        if concurrent:
+            try:
+                proc_results = [res.get() if isinstance(res, mp.pool.AsyncResult) else res for res in proc_results]
+            except KeyboardInterrupt:
+                # if keyboard interrupt
+                pool.terminate()
+                pool.join()
+                raise RuntimeError('KeyboardInterrupt fro m {} (master)'.format(os.getpid()))
+            except Exception as e:
+                # if keyboard interrupt etc
+                env.logger.error('Caught {}'.format(e))
+                pool.terminate()
+                pool.join()
+                raise
         for sig in signatures:
             sig.write()
         if not all(x==0 for x in proc_results):
@@ -991,9 +1002,10 @@ class SoS_Step:
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
         if signature and env.run_mode == 'run':
             signature.write()
-        # finally, write results back to the master process
-        pool.close()
-        pool.join()
+        if concurrent:
+            # finally, write results back to the master process
+            pool.close()
+            pool.join()
         return result
 
     def show(self, indent):
@@ -1195,8 +1207,7 @@ class SoS_Workflow:
 
 class SoS_Script:
     _DIRECTIVES = ['input', 'output', 'depends', 'process']
-    _SECTION_OPTIONS = ['alias', 'nonconcurrent',
-        'skip', 'blocking', 'sigil', 'target', 'source']
+    _SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'target', 'source']
     _PARAMETERS_SECTION_NAME = 'parameters'
 
     # Regular expressions for parsing section headers and options

@@ -430,7 +430,7 @@ save.put()
         script = SoS_Script('''
 [0]
 python3:
-    from pysos import env
+    from pysos import logger
     logger.warning('I am from a dented text')
     if 1:
         logger.warning('Another warning')

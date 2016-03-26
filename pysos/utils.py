@@ -163,6 +163,10 @@ class WorkflowDict(dict):
         self._check_readonly(key, value)
         dict.__setitem__(self, key, value)
 
+    def quick_update(self, obj):
+        '''Update without readonly check etc. For fast internal update'''
+        dict.update(self, obj)
+
     def update(self, obj):
         '''Redefine update to trigger logging message'''
         for k,v in obj.items():
@@ -260,10 +264,8 @@ class RuntimeEnvironments(object):
         # global dictionaries used by SoS during the
         # execution of SoS workflows
         self.sos_dict = WorkflowDict()
-        # variables that are defined in global and parameters sections and
-        # are readonly
+        # variables that are defined in global and parameters sections and are readonly
         self.readonly_vars = set()
-        self.context_stack = []
         # 
         # a list of variables that will be sent back from subprocess
         # in addition to aliased stepinfo. This is designed for testing
@@ -302,29 +304,6 @@ class RuntimeEnvironments(object):
             except Exception as e:
                 env.logger.debug(e)
             os.remove(p)
-
-    class ContextStack:
-        '''A context stack and pushes existing workflow dict (env.sos_dict)
-        to a stack and make the new workflow the current dict. The 
-        context will be poped as soon as the with statement ends and/or
-        an exception is raised.
-        '''
-        def __init__(self, environ, new_dict):
-            #
-            self.environ = environ
-            self.new_dict = new_dict
-
-        def __enter__(self):
-            # archive old items
-            self.environ.context_stack.append(self.environ.sos_dict)
-            self.environ.sos_dict = self.new_dict
-
-        def __exit__(self, etype, value, traceback):
-            self.environ.sos_dict = self.environ.context_stack.pop()
-
-    def push_context(self, wf_dict):
-        # make sure the pushed dictionary has these key pieces to work
-        return self.ContextStack(self, wf_dict)
 
     #
     # attribute logger
