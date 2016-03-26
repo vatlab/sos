@@ -715,6 +715,15 @@ class SoS_Step:
         result += self.process
         return re.sub(r'\s+', ' ', result)
 
+    def run_with_queue(self, queue):
+        '''Execute the step in a separate process and return the results through a 
+        queue '''
+        try:
+            res = self.run()
+            queue.put(res)
+        except Exception as e:
+            queue.put(e)
+
     def run(self):
         '''Execute a single step and return results '''
         # only results will be sent back to the master process
@@ -1145,20 +1154,18 @@ class SoS_Workflow:
             else:
                 # use initial values
                 start = False
-            # each section can use multiple processes of the pool
-            # use a separate process to run each section
-
-            # this does not yet work because section.run needs to pickle the whole section
-            # object which is not easily pickleable.
-            #queue = mp.Queue()
-            #proc = mp.Process(target=section.run,
-            #    args=(queue,))
-            #proc.start()
-            #res = queue.get()
-            #proc.join()
-            res = section.run()
-            # 
-            env.logger.debug('Result returned {}'.format(res))
+            # each section can use a separate process
+            queue = mp.Queue()
+            proc = mp.Process(target=section.run_with_queue,
+                args=(queue,))
+            proc.start()
+            proc.join()
+            res = queue.get()
+            # if the job is failed
+            if isinstance(res, Exception):
+                # error must have been displayed.
+                raise RuntimeError(res)
+            #res = section.run()
             for k, v in res.items():
                 env.sos_dict.set(k, v)
 

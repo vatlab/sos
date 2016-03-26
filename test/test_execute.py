@@ -535,7 +535,10 @@ myfunc()
         env.run_mode = 'dryrun'
         wf.run()
         self.assertEqual(env.sos_dict['test'].output, ['a'])
-        #
+        # User defined function should also work under nested workflows
+        # This is difficult because the 'local namespace' is usually
+        # not seen inside function definition. The solution now is to
+        # use a single workspace.
         script = SoS_Script(r"""
 
 def myfunc():
@@ -551,6 +554,82 @@ myfunc()
         env.run_mode = 'dryrun'
         wf.run()
         self.assertEqual(env.sos_dict['test'].output, ['a'])
+
+    def testReadOnlyStepVars(self):
+        '''Test if the _step variables can be changed.'''
+        script = SoS_Script(r"""
+[1: alias='test']
+output: 'a.txt'
+
+_step.output=['ab.txt']
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        self.assertRaises(RuntimeError, wf.run)
+        #
+        script = SoS_Script(r"""
+[1: alias='test']
+output: 'a.txt'
+
+[2]
+test.output=['ab.txt']
+
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        self.assertRaises(RuntimeError, wf.run)
+
+    def testReadOnlyInputOutputVars(self):
+        '''Test readonly input output vars'''
+        script = SoS_Script(r"""
+[1: alias='test']
+output: 'a.txt'
+_output = ['b.txt']
+
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        # I would like to disallow setting _output directly, but this is
+        # not the case now.
+        self.assertRaises(RuntimeError, wf.run)
+
+    def testLocalNamespace(self):
+        '''Test if steps are well separated.'''
+        script = SoS_Script(r"""
+[1]
+a = 1
+
+[2]
+# this should fail because a is defined in another step
+print(a)
+
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        # I would like to disallow accessing variables defined
+        # in other cases.
+        self.assertRaises(RuntimeError, wf.run)
+        # however, alias should be sent back
+        script = SoS_Script(r"""
+[1: alias='shared']
+input: 'a.txt'
+output: 'b.txt'
+
+[2]
+# this should fail because a is defined in another step
+print(shared.input)
+
+output: shared.input
+
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        # I would like to disallow accessing variables defined
+        # in other cases.
+        wf.run()
+        self.assertEqual(env.sos_dict['shared'].output, ['b.txt'])
+
+
 
 if __name__ == '__main__':
     unittest.main()
