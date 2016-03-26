@@ -731,7 +731,7 @@ class SoS_Step:
     def run(self):
         '''Execute a single step and return results '''
         # only results will be sent back to the master process
-        result = {}
+        result = {'__step_output__': []}
         # handle these two sections differently
         env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
         # 
@@ -741,6 +741,7 @@ class SoS_Step:
         env.sos_dict['_step'].set('index', self.index)
         env.sos_dict['_step'].set('output', [])
         env.sos_dict['_step'].set('depends', [])
+        env.logger.info('I am {} with {}'.format(env.sos_dict['_step'].name, env.sos_dict['_step'].input))
         #
         # these are temporary variables that should be removed if exist
         for var in ('_input', '_depends', '_output'):
@@ -868,6 +869,7 @@ class SoS_Step:
         env.logger.info('_step.output:  ``{}``'.format(shortRepr(env.sos_dict['_step'].output)))
         if env.sos_dict['_step'].depends:
             env.logger.info('_step.depends: ``{}``'.format(shortRepr(env.sos_dict['_step'].depends)))
+        result['__step_output__'] = env.sos_dict['_step'].output
         if 'alias' in self.options:
             env.sos_dict[self.options['alias']] = copy.deepcopy(env.sos_dict['_step'])
             result[self.options['alias']] = copy.deepcopy(env.sos_dict['_step'])
@@ -1139,7 +1141,6 @@ class SoS_Workflow:
         #
         # process step of the pipelinp
         #
-        start = True
         num_parameters_sections = len([x for x in self.sections if x.is_parameters or x.subworkflow])
         if num_parameters_sections == 0 and args:
             raise ArgumentError('Unused parameter {}'.format(' '.join(args)))
@@ -1156,20 +1157,8 @@ class SoS_Workflow:
             # 1. for first step of workflow, _step.input=[]
             # 2. for subworkflow, _step.input = _input
             # 3. for second to later step, _step.input = _step.output
-            if not start:
-                # set the output to the input of the next step
-                if hasattr(env.sos_dict['_step'], 'output'):
-                    # passing step output to _step.input of next step
-                    env.sos_dict['_step'].set('input', env.sos_dict['_step'].output)
-                    # step_output and depends are temporary
-                else:
-                    env.sos_dict['_step'].set('input', [])
-                #
-                env.sos_dict['_step'].set('output', [])
-                env.sos_dict['_step'].set('depends', [])
-            else:
-                # use initial values
-                start = False
+            env.sos_dict['_step'].set('output', [])
+            env.sos_dict['_step'].set('depends', [])
             # each section can use a separate process
             queue = mp.Queue()
             proc = mp.Process(target=section.run_with_queue,
@@ -1183,6 +1172,8 @@ class SoS_Workflow:
                 raise RuntimeError(res)
             #res = section.run()
             for k, v in res.items():
+                if k == '__step_output__':
+                    env.sos_dict['_step'].set('input', v)
                 env.sos_dict.set(k, v)
 
     def show(self, indent = '', nested=False):

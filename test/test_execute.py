@@ -34,6 +34,9 @@ from pysos.utils import env
 import subprocess
 
 class TestExecute(unittest.TestCase):
+    def setUp(self):
+        env.reset()
+
     def testCommandLine(self):
         '''Test command line arguments'''
         result = subprocess.check_output('sos --version', stderr=subprocess.STDOUT, shell=True).decode()
@@ -59,6 +62,7 @@ b = 200
 res += '${b}'
 """)
         wf = script.workflow()
+        env.shared_vars = ['res']
         wf.run()
         self.assertEqual(env.sos_dict['res'], '200')
         #
@@ -188,13 +192,13 @@ cp ${_input} ${_dest}
         '''Test input specification'''
         env.run_mode = 'dryrun'
         script = SoS_Script(r"""
-[0]
+[0:alias='res']
 input: '*.py'
 output: _input
 """)
         wf = script.workflow()
         wf.run()
-        self.assertTrue('test_execute.py' in env.sos_dict['_step'].output)
+        self.assertTrue('test_execute.py' in env.sos_dict['res'].output)
 
     def testForEach(self):
         '''Test for_each option of input'''
@@ -216,6 +220,7 @@ all_loop += _c + " "
 counter = counter + 1
 """)
         wf = script.workflow()
+        env.shared_vars = ['counter', 'all_names', 'all_loop', 'processed']
         wf.run()
         self.assertEqual(env.sos_dict['counter'], 6)
         self.assertEqual(env.sos_dict['all_names'], "a b c a b c ")
@@ -256,6 +261,7 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
 
 """)
         wf = script.workflow()
+        env.shared_vars=['base', 'name', 'par', '_output']
         wf.run()
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
@@ -275,6 +281,7 @@ output: pattern=['{base}-{name}-{par}.txt', '{par}.txt']
 
 """)
         wf = script.workflow()
+        env.shared_vars = ['base', 'name', 'par', '_output']
         wf.run()
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
@@ -309,7 +316,7 @@ output: _input
         '''Test input option filetype'''
         env.run_mode = 'dryrun'
         script = SoS_Script(r"""
-[0]
+[0: alias='res']
 files = ['a.txt', 'b.txt']
 counter = 0
 
@@ -320,7 +327,7 @@ output: _input
 """)
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.sos_dict['_step'].output, ['a.txt', 'b.txt'])
+        self.assertEqual(env.sos_dict['res'].output, ['a.txt', 'b.txt'])
         #
         script = SoS_Script(r"""
 [0]
@@ -332,6 +339,7 @@ input: 'a.pdf', 'b.html', files, filetype=('*.txt', '*.pdf'), group_by='single'
 counter += 1
 """)
         wf = script.workflow()
+        env.shared_vars=['counter']
         wf.run()
         self.assertEqual(env.sos_dict['counter'], 3)
         #
@@ -351,6 +359,7 @@ counter += 1
     def testSkip(self):
         '''Test input option skip'''
         env.run_mode = 'dryrun'
+        env.shared_vars = ['counter']
         script = SoS_Script(r"""
 [0]
 files = ['a.txt', 'b.txt']
@@ -378,6 +387,7 @@ output: _input[0] + '.bak'
 counter += 1
 """)
         wf = script.workflow()
+        env.shared_vars = ['counter', '_step']
         wf.run()
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['_step'].output, ['a.txt.bak', 'b.txt.bak'])
@@ -451,6 +461,7 @@ a = fail()
 """)
         wf = script.workflow()
         env.run_mode = 'dryrun'
+        env.shared_vars=['a']
         wf.run()
         # should return 0 in dryrun mode
         self.assertEqual(env.sos_dict['a'], 0)
