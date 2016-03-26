@@ -28,9 +28,7 @@ from pysos.sos_script import SoS_Script, ParsingError, ArgumentError
 
 class TestParser(unittest.TestCase):
     def setUp(self):
-        if hasattr(env, 'locals'):
-            env.sos_dict.clear()
-        env.protect_vars_assigned = False
+        env.reset()
 
     def testFileFormat(self):
         '''Test recognizing the format of SoS script'''
@@ -47,6 +45,7 @@ class TestParser(unittest.TestCase):
 
     def testStringLiteral(self):
         '''Test string literals of SoS'''
+        env.shared_vars = ['a', 'b', 'c']
         script = SoS_Script(r"""
 [0]
 a = 'a\n'
@@ -432,9 +431,9 @@ save.put()
 [0]
 python3:
     from pysos import env
-    env.logger.warning('I am from a dented text')
+    logger.warning('I am from a dented text')
     if 1:
-        env.logger.warning('Another warning')
+        logger.warning('Another warning')
 ''')
         wf = script.workflow()
         wf.run()
@@ -456,6 +455,7 @@ input: 'a.pdf', files, skip=False
     def testGroupBy(self):
         '''Test group_by parameter of step input'''
         # group_by = 'all'
+        env.shared_vars = ['executed']
         script = SoS_Script('''
 [0]
 
@@ -587,12 +587,14 @@ class A:
 b = A()()
 
 ''')
+        env.shared_vars=['b']
         wf = script.workflow()
         wf.run()
         self.assertEqual(env.sos_dict['b'], 0)
 
     def testCombinedWorkflow(self):
         '''Test the creation and execution of combined workfow'''
+        env.shared_vars = ['executed', 'input_b1', 'a']
         script = SoS_Script('''
 a0 = 0
 if 'executed' in locals():
@@ -632,6 +634,7 @@ input_b1 = _step.input
 
     def testNestedWorkflow(self):
         '''Test the creation and execution of combined workfow'''
+        env.shared_vars = ['executed', 'inputs']
         script = SoS_Script('''
 if 'executed' in locals():
     executed.append(_step.name)
@@ -794,6 +797,7 @@ input: 'a.txt', 'b.txt', group_by='single'
     def testSourceOption(self):
         '''Test the source section option'''
         # nested subworkflow with step option and others
+        env.shared_vars = ['executed', 'GLB', 'parB']
         with open('temp/test.sos', 'w') as sos:
             sos.write('''
 # test sos script

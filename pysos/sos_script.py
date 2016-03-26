@@ -720,6 +720,10 @@ class SoS_Step:
         queue '''
         try:
             res = self.run()
+            # shared variables will be sent from subprocess to the master
+            for key in env.shared_vars:
+                if key in env.sos_dict and key not in res:
+                    res[key] = env.sos_dict[key]
             queue.put(res)
         except Exception as e:
             queue.put(e)

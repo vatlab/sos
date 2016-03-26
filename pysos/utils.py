@@ -265,6 +265,10 @@ class RuntimeEnvironments(object):
         self.readonly_vars = set()
         self.context_stack = []
         # 
+        # a list of variables that will be sent back from subprocess
+        # in addition to aliased stepinfo. This is designed for testing
+        # purposes only
+        self.shared_vars = set()
         # maximum number of concurrent jobs
         self.max_jobs = 1
         self.running_jobs = 0
