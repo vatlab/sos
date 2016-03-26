@@ -185,7 +185,7 @@ class WorkflowDict(dict):
         if env.run_mode == 'dryrun':
             self._warn(key, value)
         if key in ('_input', '_output', '_depends', '_runtime'):
-            env.logger.warning('Variable {} is set automatically by SoS. Changing its value might cause unexpected results.'.format(key))
+            raise ValueError('Variable {} can only be set by SoS')
         self.set(key, value)
 
     def _check_readonly(self, key, value):
