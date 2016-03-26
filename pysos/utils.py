@@ -35,6 +35,7 @@ from tokenize import generate_tokens, untokenize
 from io import StringIO
 from shlex import quote
 from html.parser import HTMLParser
+import multiprocessing as mp
 
 try:
     import psutil
@@ -313,9 +314,9 @@ class RuntimeEnvironments(object):
             logging.TRACE = 5
             logging.addLevelName(logging.TRACE, "TRACE")
         # create a logger, but shutdown the previous one
-        if self._logger is not None:
-            self._logger.handlers = []
-        self._logger = logging.getLogger()
+        self._logger = mp.get_logger()
+        # clear previous handler
+        self._logger.handlers = []
         self._logger.setLevel(logging.DEBUG)
         # output to standard output
         cout = logging.StreamHandler()

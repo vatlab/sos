@@ -791,7 +791,7 @@ class SoS_Step:
             try:
                 self._groups, self._vars = SoS_eval('directive_input({})'.format(value), self.sigil)
             except Exception as e:
-                raise RuntimeError('Failed to step process {} ({}): {}'.format(key, value, e))
+                raise RuntimeError('Failed to process step {} : {} ({})'.format(key, value.strip(), e))
             input_idx += 1
         else:
             # assuming everything starts from 0 is after input
@@ -831,7 +831,7 @@ class SoS_Step:
                     try:
                         SoS_eval('directive_{}({})'.format(key, value), self.sigil)
                     except Exception as e:
-                        raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value, e))
+                        raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
                     old_run_mode = env.run_mode
                     if '_output' in env.sos_dict:
