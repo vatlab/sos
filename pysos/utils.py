@@ -299,7 +299,7 @@ class RuntimeEnvironments(object):
                 # psutil might not exist if SoS is not properly installed
                 # but we are not acting like the end of world here
                 parent = psutil.Process(pid)
-                for child in parent.children(recursive=True):  # or parent.children() for recursive=False
+                for child in parent.children(recursive=True):
                     child.kill()
                 parent.kill()
             except Exception as e:
@@ -313,8 +313,11 @@ class RuntimeEnvironments(object):
         if not hasattr(logging, 'TRACE'):
             logging.TRACE = 5
             logging.addLevelName(logging.TRACE, "TRACE")
-        # create a logger, but shutdown the previous one
-        self._logger = mp.get_logger()
+        # create a logger, we current use the regular logger but we should 
+        # switch to multiprocessing.get_logger if we notice trouble in, for example,
+        # logging from multiple processes.
+        #self._logger = mp.get_logger()
+        self._logger = logging.getLogger()
         # clear previous handler
         self._logger.handlers = []
         self._logger.setLevel(logging.DEBUG)
