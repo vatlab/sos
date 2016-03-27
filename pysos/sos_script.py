@@ -257,6 +257,8 @@ def directive_input(*args, **kwargs):
                 if not all(isinstance(x, str) for x in arg):
                     raise RuntimeError('Invalid input file: {}'.format(arg))
                 ifiles.extend(arg)
+            else:
+                raise ValueError('Unrecognizable input type {}'.format(arg))
         env.sos_dict['_step'].set('input', ifiles)
     else:
         ifiles = env.sos_dict['_step'].input
@@ -342,6 +344,9 @@ def directive_depends(*args, **kwargs):
             if not all(isinstance(x, str) for x in arg):
                 raise RuntimeError('Invalid dependent file: {}'.format(arg))
             dfiles.extend(arg)
+        else:
+            raise ValueError('Unrecognizable output type {}'.format(arg))
+
     env.sos_dict.set('_depends', dfiles)
 
 def handle_output_pattern(pattern, ofiles):
@@ -370,6 +375,8 @@ def directive_output(*args, **kwargs):
             if not all(isinstance(x, str) for x in arg):
                 raise RuntimeError('Invalid output file: {}'.format(arg))
             ofiles.extend(arg)
+        else:
+            raise ValueError('Unrecognizable output type {}'.format(arg))
     #
     if 'pattern' in kwargs:
         handle_output_pattern(kwargs['pattern'], ofiles)
