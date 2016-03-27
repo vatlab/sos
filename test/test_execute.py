@@ -620,7 +620,8 @@ myfunc()
         script = SoS_Script(r"""
 
 def myfunc():
-  return 'a'
+    # test if builtin functions (sum and range) can be used here.
+    return 'a' + str(sum(range(10)))
 
 [1: alias='test']
 output: [myfunc() for i in range(10)][0]
@@ -631,7 +632,7 @@ myfunc()
         wf = script.workflow()
         env.run_mode = 'dryrun'
         wf.run()
-        self.assertEqual(env.sos_dict['test'].output, ['a'])
+        self.assertEqual(env.sos_dict['test'].output, ['a45'])
 
     def testReadOnlyStepVars(self):
         '''Test if the _step variables can be changed.'''
