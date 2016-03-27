@@ -29,6 +29,9 @@ from pysos.utils import env, logger, interpolate, WorkflowDict, SoS_eval, Interp
     extract_pattern, expand_pattern
 
 class TestUtils(unittest.TestCase):
+    def setUp(self):
+        env.reset()
+
     def testLogger(self):
         '''Test logging level'''
         for verbosity in ['0', '1', '2', '3', '4']:
