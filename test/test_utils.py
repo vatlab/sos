@@ -61,6 +61,7 @@ class TestUtils(unittest.TestCase):
     def testInterpolation(self):
         '''Test string interpolation'''
         env.sos_dict = WorkflowDict({
+            'os': os,
             'a': 100,
             'b': 20,
             'c': ['file1', 'file2', 'file3'],
@@ -144,6 +145,7 @@ class TestUtils(unittest.TestCase):
     def testEval(self):
         '''Test the evaluation of SoS expression'''
         env.sos_dict = WorkflowDict({
+            'interpolate': interpolate,
             'a': 100,
             'b': 'file name',
             'c': ['file1', 'file2', 'file 3'],
@@ -197,6 +199,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(res['file'], ['1.txt'])
         # expand_pattern
         env.sos_dict = WorkflowDict({
+            'os': os,
             'a': 100,
             'b': 'file name',
             'c': ['file1', 'file2', 'file 3'],

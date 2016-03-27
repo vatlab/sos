@@ -120,6 +120,37 @@ output: add_a(['${x}_${y}_process.txt' for x,y in zip(name, model)])
         wf.run()
         self.assertEqual(env.sos_dict['SOS_VERSION'], __version__)
 
+    def testFuncDef(self):
+        '''Test defintion of function that can be used by other steps'''
+        script = SoS_Script(r"""
+def myfunc(a):
+    sum(range(5))
+    return ['a' + x for x in a]
+
+[0: alias='test']
+input: myfunc(['a.txt', 'b.txt'])
+""")
+        wf = script.workflow()
+        env.run_mode='dryrun'
+        wf.run()
+        self.assertEqual(env.sos_dict['test'].input, ['aa.txt', 'ab.txt'])
+        # in nested workflow?
+        script = SoS_Script(r"""
+def myfunc(a):
+    return ['a' + x for x in a]
+
+[mse: alias='test']
+input: myfunc(['a.txt', 'b.txt'])
+
+[1=mse]
+""")
+        wf = script.workflow()
+        env.run_mode='dryrun'
+        wf.run()
+        #
+        # Names defined in subworkflow is not returned to the master dict
+        self.assertTrue('test' not in env.sos_dict)
+
     def testSignature(self):
         self._testSignature(r"""
 [*_0]

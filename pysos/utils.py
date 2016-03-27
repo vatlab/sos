@@ -28,6 +28,7 @@ import logging
 import signal
 import glob
 import collections
+import traceback
 import hashlib
 import shutil
 import token
@@ -145,38 +146,52 @@ def shortRepr(obj):
 #
 # SoS Workflow dictionary
 #
-class WorkflowDict(dict):
+class WorkflowDict(object):
     """A dictionary object that
     1. Generate logging message for debugging purposes.
     2. Generate warning message if ALLCAP variables are changed.
+
+    IMPORTANT:
+
+    Python does not allow the passing of a derived class of dict as globals
+    to eval or exec. Doing so will result in strange behavior such as __builtins__
+    not found. We then have to embed a real dictionary in WorkflowDict instead of
+    deriving a dict from it.
     """
     def __init__(self, *args, **kwargs):
-        dict.__init__(self, *args, **kwargs)
-        for k, v in globals().items():
-            # we also make available SoS_Action decorator, interpolate function
-            # and os, sys, and glob modules
-            if k in ('interpolate', 'os', 'sys', 'glob'):
-                dict.__setitem__(self, k, v)        
+        self._dict = dict(*args, **kwargs)
+        self._readonly_vars = {}
 
     def set(self, key, value):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
         self._check_readonly(key, value)
-        dict.__setitem__(self, key, value)
+        self._dict[key] = value
 
     def quick_update(self, obj):
         '''Update without readonly check etc. For fast internal update'''
-        dict.update(self, obj)
+        self._dict.update(obj)
 
     def update(self, obj):
         '''Redefine update to trigger logging message'''
         for k,v in obj.items():
             self._check_readonly(k, v)
         #
-        dict.update(self, obj)
+        self._dict.update(obj)
         for k, v in obj.items():
             if env.verbosity > 2:
                 self._log(k, v)
+
+    def __contains__(self, key):
+        return key in self._dict
+
+    def __getattr__(self, attr):
+        # for attributes that cannot be found, default to dictionary attribute
+        # (e.g. keys, pop, get...)
+        return getattr(self._dict, attr)
+
+    def __getitem__(self, key):
+        return self._dict[key]
 
     def __setitem__(self, key, value):
         '''Set value to key, trigger logging and warning messages if needed'''
@@ -188,29 +203,46 @@ class WorkflowDict(dict):
             raise ValueError('Variable {} can only be set by SoS')
         self.set(key, value)
 
+    def check_readonly_vars(self):
+        for key in env.readonly_vars:
+            if key in self._readonly_vars:
+                if self._dict[key] != self._readonly_vars[key]:
+                    raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
+                        .format(key, self._dict[key], self._readonly_vars[key]))
+            elif key in self._dict:
+                self._readonly_vars[key] = self._dict[key]
+
     def _check_readonly(self, key, value):
-        if dict.__contains__(self, key) and key in env.readonly_vars and value != dict.__getitem__(self, key):
-            raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
-                .format(key, dict.__getitem__(self, key), value))
+        if key in env.readonly_vars:
+            if key not in self._readonly_vars:
+                self._readonly_vars[key] = value
+            # if the key already exists
+            if key in self._dict:
+                if self._dict[key] != self._readonly_vars[key]:
+                    raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
+                    .format(key, self._dict[key], self._readonly_vars[key]))
+                if value != self._dict[key]:
+                    raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
+                        .format(key, self._dict[key], value))
 
     def _log(self, key, value):
         env.logger.debug('``{}`` = ``{}``'.format(key, shortRepr(value)))
 
     def _warn(self, key, value):
-        if key.isupper() and dict.__contains__(self, key) and dict.__getitem__(self, key) != value:
+        if key.isupper() and key in self._dict and self._dict[key] != value:
             env.logger.warning('Changing readonly variable {} from {} to {}'
-                .format(key, dict.__getitem__(self, key), value))
-        if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
+                .format(key, self._dict[key], value))
+        if key.startswith('_') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
             env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
     def clone_pickleable(self):
         '''Return a copy of the existing dictionary but keep only the ones that are pickleable'''
         # FIXME: not well tested
         try:
-            res = {x:copy.deepcopy(y) for x,y in self.items() if not callable(y) and not isinstance(y, (types.ModuleType, WorkflowDict))}
+            res = {x:copy.deepcopy(y) for x,y in self._dict.items() if not callable(y) and not isinstance(y, (types.ModuleType, WorkflowDict))}
         except:
             res = {}
-            for x,y in self.items():
+            for x,y in self._dict.items():
                 if callable(y):
                     continue
                 try:
@@ -632,7 +664,7 @@ class SoS_String:
                     # if the syntax is correct
                     compile(expr, '<string>', 'eval')
                     try:
-                        result = eval(expr, env.sos_dict, self.local_dict)
+                        result = eval(expr, env.sos_dict._dict, self.local_dict)
                     except Exception as e:
                         raise InterpolationError(expr, e)
                     # evaluate the expression and interpolate the next expression
@@ -713,7 +745,7 @@ def SoS_eval(expr, sigil='${ }'):
     '''Evaluate an expression after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
     expr = ConvertString(expr, sigil)
-    return eval(expr, env.sos_dict)
+    return eval(expr, env.sos_dict._dict)
 
 def SoS_exec(stmts, sigil='${ }'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
@@ -763,10 +795,12 @@ def SoS_exec(stmts, sigil='${ }'):
     executed = ''
     for code in code_group:
         stmts = ConvertString(code, sigil)
-        exec(stmts, env.sos_dict)
+        env.logger.trace('Executing\n{}'.format(executed))
+        exec(stmts, env.sos_dict._dict)
         executed += stmts + '\n'
+        # check if the statement has altered any readonly variables
+        env.sos_dict.check_readonly_vars()
     #
-    env.logger.trace('Executed\n{}'.format(executed))
     return executed
 
 
@@ -1070,4 +1104,26 @@ def expand_pattern(pattern):
            fail_dynamic=False, dynamic_fill=None, keep_dynamic=False))
     return ofiles
  
-    
+def print_traceback():
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    #print "*** print_tb:"
+    traceback.print_tb(exc_traceback, limit=1, file=sys.stderr)
+    #print "*** print_exception:"
+    traceback.print_exception(exc_type, exc_value, exc_traceback,
+                              limit=5, file=sys.stderr)
+    #print "*** print_exc:"
+    #traceback.print_exc()
+    #print "*** format_exc, first and last line:"
+    #formatted_lines = traceback.format_exc().splitlines()
+    #print formatted_lines[0]
+    #print formatted_lines[-1]
+    #print "*** format_exception:"
+    #print repr(traceback.format_exception(exc_type, exc_value,
+    #                                      exc_traceback))
+    #print "*** extract_tb:"
+    #print repr(traceback.extract_tb(exc_traceback))
+    #print "*** format_tb:"
+    #print repr(traceback.format_tb(exc_traceback))
+    #print "*** tb_lineno:", exc_traceback.tb_lineno
+
+

@@ -29,7 +29,6 @@ import fnmatch
 import keyword
 import argparse
 import textwrap
-import traceback
 import multiprocessing as mp
 from io import StringIO
 from collections import OrderedDict, defaultdict
@@ -38,7 +37,8 @@ from itertools import tee, combinations
 
 from . import __version__
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
-    dehtml, getTermWidth, interpolate, shortRepr, extract_pattern, expand_pattern
+    dehtml, getTermWidth, interpolate, shortRepr, extract_pattern, expand_pattern, \
+    print_traceback
 
 __all__ = ['SoS_Script']
 
@@ -236,6 +236,10 @@ def handle_input_for_each(for_each, _groups, _vars):
                             raise ValueError('Variable {} does not exist.'.format(fe))
                         _tmp_vars[idx]['_' + fe] = env.sos_dict[fe][vidx]
             _vars.extend(copy.deepcopy(_tmp_vars))
+
+def __null_func__(*args, **kwargs):
+    '''This is a utility function for the parser'''
+    return args, kwargs
 
 # directive input
 def directive_input(*args, **kwargs):
@@ -713,7 +717,6 @@ class SoS_Step:
         env.sos_dict['_step'].set('index', self.index)
         env.sos_dict['_step'].set('output', [])
         env.sos_dict['_step'].set('depends', [])
-        env.logger.info('I am {} with {}'.format(env.sos_dict['_step'].name, env.sos_dict['_step'].input))
         #
         # these are temporary variables that should be removed if exist
         for var in ('_input', '_depends', '_output'):
@@ -762,7 +765,8 @@ class SoS_Step:
             # input
             key, value = self.statements[input_idx][1:]
             try:
-                self._groups, self._vars = SoS_eval('directive_input({})'.format(value), self.sigil)
+                args, kwargs = SoS_eval('__null_func__({})'.format(value), self.sigil)
+                self._groups, self._vars = directive_input(*args, **kwargs)
             except Exception as e:
                 raise RuntimeError('Failed to process step {} : {} ({})'.format(key, value.strip(), e))
             input_idx += 1
@@ -802,7 +806,8 @@ class SoS_Step:
                     key, value = statement[1:]
                     # output, depends, and process can be processed multiple times
                     try:
-                        SoS_eval('directive_{}({})'.format(key, value), self.sigil)
+                        args, kwargs = SoS_eval('__null_func__({})'.format(value), self.sigil)
+                        eval('directive_' + key)(*args, **kwargs)
                     except Exception as e:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
@@ -1092,14 +1097,19 @@ class SoS_Workflow:
             # if this is a subworkflow, we use _input as step input the workflow
             env.sos_dict['_step'].set('input', env.sos_dict['_input'])
         else:
-            # other wise we need to prepare running environment.
-            env.globals = globals()
             # Because this workflow might belong to a combined workflow, we do not clear
             # locals before the execution of workflow.
-            #if not hasattr(env, 'locals'):
-            #
             # Need to choose what to inject to globals
-            env.sos_dict = WorkflowDict(globals())
+            env.sos_dict = WorkflowDict()
+            #
+            # inject a few things
+            env.sos_dict.set('__null_func__', __null_func__)
+            for k, v in globals().items():
+                # if this is an action inject
+                if callable(v) and hasattr(v, 'run_mode'):
+                    env.sos_dict.set(k, v)
+                elif k in ('os', 'globl', 'sys', 'SoS_Action', 'interpolate'):
+                    env.sos_dict.set(k, v)
             # initial values
             env.sos_dict.set('SOS_VERSION', __version__)
             py_version = sys.version_info
@@ -1736,28 +1746,6 @@ class SoS_Script:
 #
 # subcommmand show
 #
-def print_traceback():
-    exc_type, exc_value, exc_traceback = sys.exc_info()
-    #print "*** print_tb:"
-    traceback.print_tb(exc_traceback, limit=1, file=sys.stderr)
-    #print "*** print_exception:"
-    traceback.print_exception(exc_type, exc_value, exc_traceback,
-                              limit=5, file=sys.stderr)
-    #print "*** print_exc:"
-    #traceback.print_exc()
-    #print "*** format_exc, first and last line:"
-    #formatted_lines = traceback.format_exc().splitlines()
-    #print formatted_lines[0]
-    #print formatted_lines[-1]
-    #print "*** format_exception:"
-    #print repr(traceback.format_exception(exc_type, exc_value,
-    #                                      exc_traceback))
-    #print "*** extract_tb:"
-    #print repr(traceback.extract_tb(exc_traceback))
-    #print "*** format_tb:"
-    #print repr(traceback.format_tb(exc_traceback))
-    #print "*** tb_lineno:", exc_traceback.tb_lineno
-
 def sos_show(args, workflow_args):
     try:
         script = SoS_Script(filename=args.script)
