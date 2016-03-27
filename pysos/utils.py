@@ -1057,7 +1057,7 @@ def apply_wildcards(pattern,
             elif fill_missing:
                 return dynamic_fill
             else:
-                raise RuntimeError('Wildcard apply error {}'.format(ex))
+                raise RuntimeError('Wildcard apply error: {} ({})'.format(ex, wildcards))
 
     return re.sub(_wildcard_regex, format_match, pattern)
 
@@ -1089,7 +1089,7 @@ def expand_pattern(pattern):
         if not isinstance(env.sos_dict[key], str) and isinstance(env.sos_dict[key], collections.Sequence):
             if sz is None:
                 sz = len(env.sos_dict[key])
-                wildcard = [{} for x in range(sz)]
+                wildcard = [copy.deepcopy(wildcard[0]) for x in range(sz)]
             elif sz != len(env.sos_dict[key]):
                 raise ValueError('Variables in output pattern should have the same length (other={}, len({})={})'
                     .format(sz, key, len(env.sos_dict[key])))

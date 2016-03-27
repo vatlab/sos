@@ -32,7 +32,7 @@ import textwrap
 import multiprocessing as mp
 from io import StringIO
 from collections import OrderedDict, defaultdict
-from collections.abc import Sequence, Iterable
+from collections.abc import Sequence, Iterable 
 from itertools import tee, combinations
 
 from . import __version__
@@ -253,7 +253,9 @@ def directive_input(*args, **kwargs):
         for arg in args:
             if isinstance(arg, str):
                 ifiles.append(arg)
-            elif isinstance(arg, Sequence):
+            elif isinstance(arg, Iterable):
+                # in case arg is a Generator, check its type will exhaust it
+                arg = list(arg)
                 if not all(isinstance(x, str) for x in arg):
                     raise RuntimeError('Invalid input file: {}'.format(arg))
                 ifiles.extend(arg)
@@ -286,7 +288,7 @@ def directive_input(*args, **kwargs):
     if 'filetype' in kwargs:
         if isinstance(kwargs['filetype'], str):
             ifiles = fnmatch.filter(ifiles, kwargs['filetype'])
-        elif isinstance(kwargs['filetype'], Sequence):
+        elif isinstance(kwargs['filetype'], Iterable):
             ifiles = [x for x in ifiles if any(fnmatch.fnmatch(x, y) for y in kwargs['filetype'])]
         elif callable(kwargs['filetype']):
             ifiles = [x for x in ifiles if kwargs['filetype'](x)]
@@ -340,7 +342,8 @@ def directive_depends(*args, **kwargs):
     for arg in args:
         if isinstance(arg, str):
             dfiles.append(arg)
-        elif isinstance(arg, Sequence):
+        elif isinstance(arg, Iterable):
+            arg = list(arg)
             if not all(isinstance(x, str) for x in arg):
                 raise RuntimeError('Invalid dependent file: {}'.format(arg))
             dfiles.extend(arg)
@@ -355,7 +358,7 @@ def handle_output_pattern(pattern, ofiles):
         patterns = []
     elif isinstance(pattern, str):
         patterns = [pattern]
-    elif isinstance(pattern, Sequence):
+    elif isinstance(pattern, Iterable):
         patterns = pattern
     else:
         raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
@@ -371,7 +374,8 @@ def directive_output(*args, **kwargs):
     for arg in args:
         if isinstance(arg, str):
             ofiles.append(arg)
-        elif isinstance(arg, Sequence):
+        elif isinstance(arg, Iterable):
+            arg = list(arg)
             if not all(isinstance(x, str) for x in arg):
                 raise RuntimeError('Invalid output file: {}'.format(arg))
             ofiles.extend(arg)

@@ -451,6 +451,21 @@ input: 'a.pdf', files, skip=False
 ''')
         env.run_mode = 'dryrun'
         script.workflow('default').run()
+        #
+        # test input types
+        script = SoS_Script('''
+[0:alias='test']
+files = ('a${i}' for i in range(2))
+input: {'a.txt', 'b.txt'}, files
+output: ('a${x}' for x in _input)
+
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(sorted(env.sos_dict['test'].input), ['a.txt', 'a0', 'a1', 'b.txt'])
+        self.assertEqual(sorted(env.sos_dict['test'].output), ['aa.txt', 'aa0', 'aa1', 'ab.txt'])
+
 
     def testGroupBy(self):
         '''Test group_by parameter of step input'''
