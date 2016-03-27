@@ -253,7 +253,7 @@ def directive_input(*args, **kwargs):
         for arg in args:
             if isinstance(arg, str):
                 ifiles.append(arg)
-            elif isinstance(arg, list):
+            elif isinstance(arg, Sequence):
                 if not all(isinstance(x, str) for x in arg):
                     raise RuntimeError('Invalid input file: {}'.format(arg))
                 ifiles.extend(arg)
@@ -284,7 +284,7 @@ def directive_input(*args, **kwargs):
     if 'filetype' in kwargs:
         if isinstance(kwargs['filetype'], str):
             ifiles = fnmatch.filter(ifiles, kwargs['filetype'])
-        elif isinstance(kwargs['filetype'], (list, tuple)):
+        elif isinstance(kwargs['filetype'], Sequence):
             ifiles = [x for x in ifiles if any(fnmatch.fnmatch(x, y) for y in kwargs['filetype'])]
         elif callable(kwargs['filetype']):
             ifiles = [x for x in ifiles if kwargs['filetype'](x)]
@@ -338,7 +338,7 @@ def directive_depends(*args, **kwargs):
     for arg in args:
         if isinstance(arg, str):
             dfiles.append(arg)
-        elif isinstance(arg, list):
+        elif isinstance(arg, Sequence):
             if not all(isinstance(x, str) for x in arg):
                 raise RuntimeError('Invalid dependent file: {}'.format(arg))
             dfiles.extend(arg)
@@ -350,7 +350,7 @@ def handle_output_pattern(pattern, ofiles):
         patterns = []
     elif isinstance(pattern, str):
         patterns = [pattern]
-    elif isinstance(pattern, list):
+    elif isinstance(pattern, Sequence):
         patterns = pattern
     else:
         raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
@@ -366,7 +366,7 @@ def directive_output(*args, **kwargs):
     for arg in args:
         if isinstance(arg, str):
             ofiles.append(arg)
-        elif isinstance(arg, list):
+        elif isinstance(arg, Sequence):
             if not all(isinstance(x, str) for x in arg):
                 raise RuntimeError('Invalid output file: {}'.format(arg))
             ofiles.extend(arg)
