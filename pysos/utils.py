@@ -319,7 +319,8 @@ class RuntimeEnvironments(object):
         #self._logger = mp.get_logger()
         self._logger = logging.getLogger()
         # clear previous handler
-        self._logger.handlers = []
+        for handler in self._logger.handlers:
+            self._logger.removeHandler(handler)
         self._logger.setLevel(logging.DEBUG)
         # output to standard output
         cout = logging.StreamHandler()

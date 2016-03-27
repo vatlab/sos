@@ -195,6 +195,16 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(res['path'], ['/tmp'])
         self.assertEqual(res['to'], ['test'])
         self.assertEqual(res['file'], ['1.txt'])
+        # expand_pattern
+        env.sos_dict = WorkflowDict({
+            'a': 100,
+            'b': 'file name',
+            'c': ['file1', 'file2', 'file 3'],
+            'd': {'a': 'file1', 'b':'file2'},
+        })
+        self.assertEqual(expand_pattern('{b}.txt'), ['file name.txt'])
+        self.assertEqual(expand_pattern('{c}.txt'), ['file1.txt', 'file2.txt', 'file 3.txt'])
+        self.assertEqual(expand_pattern('{a}_{c}.txt'), ['100_file1.txt', '100_file2.txt', '100_file 3.txt'])
 
 if __name__ == '__main__':
     unittest.main()
