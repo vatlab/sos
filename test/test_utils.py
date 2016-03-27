@@ -25,7 +25,8 @@ import unittest
 
 # these functions are normally not available but can be imported 
 # using their names for testing purposes
-from pysos.utils import env, logger, interpolate, WorkflowDict, glob_wildcards, SoS_eval, InterpolationError
+from pysos.utils import env, logger, interpolate, WorkflowDict, SoS_eval, InterpolationError, \
+    extract_pattern, expand_pattern
 
 class TestUtils(unittest.TestCase):
     def testLogger(self):
@@ -136,7 +137,7 @@ class TestUtils(unittest.TestCase):
                     self.assertTrue(interpolate(expr.format(l, r), sigil=sigil) in result)
         #
         # locals should be the one passed to the expression
-        self.assertTrue('file_ws' in interpolate('${locals().keys()}'))
+        self.assertTrue('file_ws' in interpolate('${globals().keys()}'))
         # 5:.5.0f does not work.
         self.assertRaises(InterpolationError, interpolate, '${5:.${4/2.}f}')
 
@@ -180,17 +181,17 @@ class TestUtils(unittest.TestCase):
 
     def testPatternMatch(self):
         '''Test snake match's pattern match facility'''
-        res = glob_wildcards('{a}-{b}.txt', ['file-1.txt', 'file-ab.txt'])
+        res = extract_pattern('{a}-{b}.txt', ['file-1.txt', 'file-ab.txt'])
         self.assertEqual(res['a'], ['file', 'file'])
         self.assertEqual(res['b'], ['1', 'ab'])
-        res = glob_wildcards('{a}-{b}.txt', ['file--ab--cd.txt'])
+        res = extract_pattern('{a}-{b}.txt', ['file--ab--cd.txt'])
         self.assertEqual(res['a'], ['file--ab-'])
         self.assertEqual(res['b'], ['cd'])
-        res = glob_wildcards('{path}/{to}/{file}.txt', ['/tmp//1.txt'])
-        self.assertEqual(res['path'], [])
-        self.assertEqual(res['to'], [])
-        self.assertEqual(res['file'], [])
-        res = glob_wildcards('{path}/{to}/{file}.txt', ['/tmp/test/1.txt.txt'])
+        res = extract_pattern('{path}/{to}/{file}.txt', ['/tmp//1.txt'])
+        self.assertEqual(res['path'], [None])
+        self.assertEqual(res['to'], [None])
+        self.assertEqual(res['file'], [None])
+        res = extract_pattern('{path}/{to}/{file}.txt', ['/tmp/test/1.txt.txt'])
         self.assertEqual(res['path'], ['/tmp'])
         self.assertEqual(res['to'], ['test'])
         self.assertEqual(res['file'], ['1.txt'])

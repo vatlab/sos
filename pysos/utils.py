@@ -44,7 +44,7 @@ except ImportError as e:
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
-__all__ = ['logger', 'interpolate']
+__all__ = ['logger', 'interpolate', 'extract_pattern', 'expand_pattern']
 
 
 class ColoredFormatter(logging.Formatter):
@@ -1026,3 +1026,47 @@ def apply_wildcards(pattern,
 
     return re.sub(_wildcard_regex, format_match, pattern)
 
+def extract_pattern(pattern, ifiles):
+    '''This function match pattern to a list of input files, extract and return
+    pieces of filenames as a list of variables with keys defined by pattern.'''
+    res = glob_wildcards(pattern, [])
+    for ifile in ifiles:
+        matched = glob_wildcards(pattern, [ifile])
+        for key in matched.keys():
+            if not matched[key]:
+                env.logger.warning('Filename {} does not match pattern {}. None returned.'.format(ifile, pattern))
+                res[key].append(None)
+            else:
+                res[key].extend(matched[key])
+    return res
+
+def expand_pattern(pattern):
+    '''This function expand patterns against the current namespace
+    and return a list of filenames'''
+    ofiles = []
+    sz = None
+    res = glob_wildcards(pattern, [])
+    sz = None
+    wildcard = [{}]
+    for key in res.keys():
+        if key not in env.sos_dict:
+            raise ValueError('Undefined variable {} in pattern {}'.format(key, pattern))
+        if not isinstance(env.sos_dict[key], str) and isinstance(env.sos_dict[key], collections.Sequence):
+            if sz is None:
+                sz = len(env.sos_dict[key])
+                wildcard = [{} for x in range(sz)]
+            elif sz != len(env.sos_dict[key]):
+                raise ValueError('Variables in output pattern should have the same length (other={}, len({})={})'
+                    .format(sz, key, len(env.sos_dict[key])))
+            for idx, value in enumerate(env.sos_dict[key]):
+                wildcard[idx][key] = value
+        else:
+            for v in wildcard:
+                v[key] = env.sos_dict[key]
+    #
+    for card in wildcard:
+        ofiles.append(apply_wildcards(pattern, card, fill_missing=False,
+           fail_dynamic=False, dynamic_fill=None, keep_dynamic=False))
+    return ofiles
+ 
+    

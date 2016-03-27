@@ -38,7 +38,7 @@ from itertools import tee, combinations
 
 from . import __version__
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
-    dehtml, getTermWidth, interpolate, shortRepr, glob_wildcards, apply_wildcards
+    dehtml, getTermWidth, interpolate, shortRepr, extract_pattern, expand_pattern
 
 __all__ = ['SoS_Script']
 
@@ -185,17 +185,11 @@ def handle_input_pattern(pattern, ifiles, _groups, _vars):
         raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
     #
     for pattern in patterns:
-        res = glob_wildcards(pattern, [])
-        for ifile in ifiles:
-            matched = glob_wildcards(pattern, [ifile])
-            for key in matched.keys():
-                if not matched[key]:
-                    env.logger.warning('Filename {} does not match pattern {}. None returned.'.format(ifile, pattern))
-                    res[key].append(None)
-                else:
-                    res[key].extend(matched[key])
+        res = extract_pattern(pattern, ifiles)
         # now, assign the variables to env
         for k, v in res.items():
+            if k in ('input', 'output', 'depends') or k.startswith('_'):
+                raise RuntimeError('Pattern defined variable {} is not allowed'.format(k))
             env.sos_dict[k] = v
         # also make k, v pair with _input
         handle_input_paired_with(res.keys(), _groups, _vars)
@@ -358,29 +352,7 @@ def handle_output_pattern(pattern, ofiles):
         raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
     #
     for pattern in patterns:
-        sz = None
-        res = glob_wildcards(pattern, [])
-        sz = None
-        wildcard = [{}]
-        for key in res.keys():
-            if key not in env.sos_dict:
-                raise ValueError('Undefined variable {} in pattern {}'.format(key, pattern))
-            if not isinstance(env.sos_dict[key], str) and isinstance(env.sos_dict[key], Sequence):
-                if sz is None:
-                    sz = len(env.sos_dict[key])
-                    wildcard = [{} for x in range(sz)]
-                elif sz != len(env.sos_dict[key]):
-                    raise ValueError('Variables in output pattern should have the same length (other={}, len({})={})'
-                        .format(sz, key, len(env.sos_dict[key])))
-                for idx, value in enumerate(env.sos_dict[key]):
-                    wildcard[idx][key] = value
-            else:
-                for v in wildcard:
-                    v[key] = env.sos_dict[key]
-        #
-        for card in wildcard:
-            ofiles.append(apply_wildcards(pattern, card, fill_missing=False,
-               fail_dynamic=False, dynamic_fill=None, keep_dynamic=False))
+        ofiles.extend(expand_pattern(pattern))
         
 def directive_output(*args, **kwargs):
     for k in kwargs.keys():
