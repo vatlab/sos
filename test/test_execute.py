@@ -75,6 +75,42 @@ for b in range(5):
         wf = script.workflow()
         wf.run()
         self.assertEqual(env.sos_dict['res'], '01234')
+        # 
+        env.run_mode='dryrun'
+        script = SoS_Script(r"""
+[0: alias='res']
+input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
+output: ['{}_{}_processed.txt'.format(x,y) for x,y in zip(name, model)]
+
+""")
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.sos_dict['res'].output,  ['a_1_processed.txt', 'b_2_processed.txt', 'c_2_processed.txt'])
+        #
+        env.run_mode='dryrun'
+        script = SoS_Script(r"""
+[0: alias='res']
+input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
+output: ['${x}_${y}_process.txt' for x,y in zip(name, model)]
+
+""")
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.sos_dict['res'].output,  ['a_1_process.txt', 'b_2_process.txt', 'c_2_process.txt'])
+        #
+        env.run_mode='dryrun'
+        script = SoS_Script(r"""
+[0: alias='res']
+def add_a(x):
+    return ['a'+_x for _x in x]
+
+input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
+output: add_a(['${x}_${y}_process.txt' for x,y in zip(name, model)])
+
+""")
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.sos_dict['res'].output,  ['aa_1_process.txt', 'ab_2_process.txt', 'ac_2_process.txt'])
 
     def testGlobalVars(self):
         '''Test SoS defined variables'''

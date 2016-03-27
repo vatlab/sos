@@ -529,11 +529,12 @@ class SoS_String:
     # DOTALL makes . matchs also to newline so this supports multi-line expression
     FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
 
-    def __init__(self, sigil = '${ }'):
+    def __init__(self, sigil = '${ }', local_dict={}):
         # do not check sigil here because the function will be called quite frequently
         # the sigil will be checked when it is entered in SoS script.
         self.l, self.r = sigil.split(' ')
         self.error_count = 0
+        self.local_dict = local_dict
 
     def interpolate(self, text):
         '''Intepolate string with local and global dictionary'''
@@ -630,7 +631,7 @@ class SoS_String:
                     # if the syntax is correct
                     compile(expr, '<string>', 'eval')
                     try:
-                        result = eval(expr, env.sos_dict)
+                        result = eval(expr, env.sos_dict, self.local_dict)
                     except Exception as e:
                         raise InterpolationError(expr, e)
                     # evaluate the expression and interpolate the next expression
@@ -672,10 +673,10 @@ class SoS_String:
         else:
             return repr(obj) if fmt is None else self._format(obj, fmt)
 
-def interpolate(text, sigil='${ }'):
+def interpolate(text, sigil='${ }', local_dict={}):
     '''Evaluate expressions in `text` marked by specified `sigil` using provided
     global and local dictionaries, and replace the expressions with their formatted strings.'''
-    return SoS_String(sigil).interpolate(text)
+    return SoS_String(sigil, local_dict).interpolate(text)
 
 
 def ConvertString(s, sigil):
@@ -702,7 +703,7 @@ def ConvertString(s, sigil):
                 tokval = u'r' + tokval
             # we then perform interpolation on the string and put it back to expression
             if left_sigil in tokval:
-                tokval = 'interpolate(' + tokval + ", \'" + sigil + "')"
+                tokval = 'interpolate(' + tokval + ", \'" + sigil + "', locals())"
         # the resusting string is put back to the expression (or statement)
         result.append((toknum, tokval))
     return untokenize(result)
