@@ -199,7 +199,7 @@ class WorkflowDict(object):
             self._log(key, value)
         if env.run_mode == 'dryrun':
             self._warn(key, value)
-        if key in ('_input', '_output', '_depends', '_runtime'):
+        if key in ('input', 'output', 'depends', '_input', '_output', '_depends', '_runtime'):
             raise ValueError('Variable {} can only be set by SoS')
         self.set(key, value)
 

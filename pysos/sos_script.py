@@ -153,7 +153,7 @@ def handle_input_paired_with(paired_with, _groups, _vars):
     else:
         raise ValueError('Unacceptable value for parameter paired_with: {}'.format(paired_with))
     #
-    ifiles = env.sos_dict['_step'].input
+    ifiles = env.sos_dict['__step_input__']
     for wv in paired_with:
         if '.' in wv:
             if wv.split('.')[0] not in env.sos_dict:
@@ -261,9 +261,9 @@ def directive_input(*args, **kwargs):
                 ifiles.extend(arg)
             else:
                 raise ValueError('Unrecognizable input type {}'.format(arg))
-        env.sos_dict['_step'].set('input', ifiles)
+        env.sos_dict.set('__step_input__', ifiles)
     else:
-        ifiles = env.sos_dict['_step'].input
+        ifiles = env.sos_dict['__step_input__']
     # expand files with wildcard characters and check if files exist
     tmp = []
     for ifile in ifiles:
@@ -623,8 +623,7 @@ class SoS_Step:
     def parse_args(self, args, check_unused=False, cmd_name=''):
         '''Parse command line arguments and set values to parameters section'''
         env.logger.info('Execute ``{}_parameters``'.format(self.name))
-        env.sos_dict['_step'].set('name', '{}_parameters'.format(self.name))
-        env.sos_dict['_step'].set('index', -1)
+        env.sos_dict.set('step_name', '{}_parameters'.format(self.name))
         if self.global_process:
             try:
                 SoS_exec(self.global_process)
@@ -721,21 +720,18 @@ class SoS_Step:
         result = {'__step_output__': []}
         # handle these two sections differently
         env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
+        env.sos_dict.set('step_name', '{}_{}'.format(self.name, self.index))
         # 
         # the following is a quick hack to allow directive_input function etc to access 
         # the workflow dictionary
-        env.sos_dict['_step'].set('name', '{}_{}'.format(self.name, self.index))
-        env.sos_dict['_step'].set('index', self.index)
-        env.sos_dict['_step'].set('output', [])
-        env.sos_dict['_step'].set('depends', [])
         #
         # these are temporary variables that should be removed if exist
-        for var in ('_input', '_depends', '_output'):
+        for var in ('input', 'output', 'depends', '_input', '_depends', '_output'):
             env.sos_dict.pop(var, '')
         #
         # default input groups and vars, might be reset by directive input
-        if hasattr(env.sos_dict['_step'], 'input'):
-            self._groups = [env.sos_dict['_step'].input]
+        if '__step_input__' in env.sos_dict:
+            self._groups = [env.sos_dict['__step_input__']]
         else:
             self._groups = [[]]
         self._vars = [{}]
@@ -785,17 +781,20 @@ class SoS_Step:
             # assuming everything starts from 0 is after input
             input_idx = 0
         
+        env.sos_dict.set('input', list(OrderedDict.fromkeys(sum(self._groups, []))))
+        step_info = StepInfo()
+        step_info.set('step_name', env.sos_dict['step_name'])
+        step_info.set('input', env.sos_dict['input'])
         if 'alias' in self.options:
-            # copy once before the step might be skipped...
-            env.sos_dict[self.options['alias']] = copy.deepcopy(env.sos_dict['_step'])
-            result[self.options['alias']] = copy.deepcopy(env.sos_dict['_step'])
+            # the step might be skipped 
+            result[self.options['alias']] = copy.deepcopy(step_info)
         if not self._groups:
             env.logger.info('Step {} is skipped'.format(self.index))
             return result
         # post input
         # output and depends can be processed many times
         step_sig = self.step_signature()
-        env.logger.info('_step.input:   ``{}``'.format(shortRepr(env.sos_dict['_step'].input)))
+        env.logger.info('input:   ``{}``'.format(shortRepr(env.sos_dict['input'])))
         self._outputs = []
         self._depends = []
         for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
@@ -852,29 +851,30 @@ class SoS_Step:
         if not self._depends:
             self._depends = [[] for x in self._groups]
         # we need to reduce output files in case they have been processed multiple times.
-        env.sos_dict['_step'].set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
-        env.sos_dict['_step'].set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
-        env.logger.info('_step.output:  ``{}``'.format(shortRepr(env.sos_dict['_step'].output)))
-        if env.sos_dict['_step'].depends:
-            env.logger.info('_step.depends: ``{}``'.format(shortRepr(env.sos_dict['_step'].depends)))
-        result['__step_output__'] = env.sos_dict['_step'].output
+        env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
+        env.sos_dict.set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
+        env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'])))
+        if env.sos_dict['depends']:
+            env.logger.info('depends: ``{}``'.format(shortRepr(env.sos_dict['depends'])))
+        result['__step_output__'] = env.sos_dict['output']
         if 'alias' in self.options:
-            env.sos_dict[self.options['alias']] = copy.deepcopy(env.sos_dict['_step'])
-            result[self.options['alias']] = copy.deepcopy(env.sos_dict['_step'])
+            step_info.set('output', env.sos_dict['output'])
+            step_info.set('depends', env.sos_dict['depends'])
+            result[self.options['alias']] = copy.deepcopy(step_info)
         #
         # if the signature matches, the whole step is ignored, including subworkflows
-        if env.sos_dict['_step'].output:
+        if env.sos_dict['output']:
             signature = RuntimeInfo(step_sig, 
-                env.sos_dict['_step'].input, env.sos_dict['_step'].output, env.sos_dict['_step'].depends)
+                env.sos_dict['input'], env.sos_dict['output'], env.sos_dict['depends'])
             if env.run_mode == 'run':
-                for ofile in env.sos_dict['_step'].output:
+                for ofile in env.sos_dict['output']:
                     parent_dir = os.path.split(os.path.expanduser(ofile))[0]
                     if parent_dir and not os.path.isdir(parent_dir):
                         os.makedirs(parent_dir)
                 if env.sig_mode == 'default':
                     if signature.validate():
                         # everything matches
-                        env.logger.info('Reusing existing output files {}'.format(', '.join(env.sos_dict['_step'].output)))
+                        env.logger.info('Reusing existing output files {}'.format(', '.join(env.sos_dict['output'])))
                         return result
                 elif env.sig_mode == 'assert':
                     if not signature.validate():
@@ -896,16 +896,16 @@ class SoS_Step:
             env.sos_dict.set('_output', o)
             env.sos_dict.set('_depends', d)
             env.sos_dict.set('_index', idx)
-            env.logger.info('_idx: ``{}``'.format(idx))
-            env.logger.info('_input: ``{}``'.format(shortRepr(env.sos_dict['_input'])))
-            env.logger.info('_output: ``{}``'.format(shortRepr(env.sos_dict['_output'])))
+            env.logger.debug('_idx: ``{}``'.format(idx))
+            env.logger.debug('_input: ``{}``'.format(shortRepr(env.sos_dict['_input'])))
+            env.logger.debug('_output: ``{}``'.format(shortRepr(env.sos_dict['_output'])))
             #
             # action
             # If the users specifies output files for each loop (using ${input} etc, we
             # can try to see if we can create partial signature. This would help if the
             # step is interrupted in the middle.
             partial_signature = None
-            if env.sos_dict['_output'] and env.sos_dict['_output'] != env.sos_dict['_step'].output and env.run_mode == 'run':
+            if env.sos_dict['_output'] and env.sos_dict['_output'] != env.sos_dict['output'] and env.run_mode == 'run':
                 partial_signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], 
                     env.sos_dict['_depends'])
                 if env.sig_mode == 'default':
@@ -924,10 +924,6 @@ class SoS_Step:
                 signatures.append(partial_signature)
             #
             try:
-                # in case of nested workflow, these names might be changed and need to be reset
-                env.sos_dict['_step'].set('name', '{}_{}'.format(self.name, self.index))
-                env.sos_dict['_step'].set('index', self.index)
-                #
                 if self.process:
                     if concurrent:
                         proc_results.append(pool.apply_async(
@@ -987,7 +983,7 @@ class SoS_Step:
         if not all(x==0 for x in proc_results):
             raise RuntimeError('Step process returns non-zero value')
         if env.run_mode == 'run':
-            for ofile in env.sos_dict['_step'].output:
+            for ofile in env.sos_dict['output']:
                 if not os.path.isfile(os.path.expanduser(ofile)): 
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
         if signature and env.run_mode == 'run':
@@ -1106,7 +1102,7 @@ class SoS_Workflow:
         '''
         if nested:
             # if this is a subworkflow, we use _input as step input the workflow
-            env.sos_dict['_step'].set('input', env.sos_dict['_input'])
+            env.sos_dict.set('__step_input__', env.sos_dict['_input'])
         else:
             # Because this workflow might belong to a combined workflow, we do not clear
             # locals before the execution of workflow.
@@ -1124,13 +1120,7 @@ class SoS_Workflow:
             # initial values
             env.sos_dict.set('SOS_VERSION', __version__)
             py_version = sys.version_info
-            #
-            env.sos_dict.set('_step', StepInfo())
-            # initially there is no input, output, or depends
-            env.sos_dict['_step'].set('input', [])
-            env.sos_dict['_step'].set('name', self.name)
-            env.sos_dict['_step'].set('output', [])
-            env.sos_dict['_step'].set('depends', [])
+            env.sos_dict.set('__step_input__', [])
         #
         # process step of the pipelinp
         #
@@ -1150,8 +1140,6 @@ class SoS_Workflow:
             # 1. for first step of workflow, _step.input=[]
             # 2. for subworkflow, _step.input = _input
             # 3. for second to later step, _step.input = _step.output
-            env.sos_dict['_step'].set('output', [])
-            env.sos_dict['_step'].set('depends', [])
             # each section can use a separate process
             queue = mp.Queue()
             proc = mp.Process(target=section.run_with_queue,
@@ -1166,7 +1154,7 @@ class SoS_Workflow:
             #res = section.run()
             for k, v in res.items():
                 if k == '__step_output__':
-                    env.sos_dict['_step'].set('input', v)
+                    env.sos_dict.set('__step_input__', v)
                 env.sos_dict.set(k, v)
 
     def show(self, indent = '', nested=False):

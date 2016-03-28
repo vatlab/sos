@@ -9,7 +9,7 @@
 # we use executed to track the executed steps but this variable might be
 # already defined if it is in a nested script.
 if 'executed' in locals() or 'executed' in globals():
-	executed.append('nested global/master')
+	executed.append(step_name)
 else:
 	executed = ['global/master']
 
@@ -23,33 +23,24 @@ temp = executed.append('parameter/master')
 
 [L_1]
 # 1st step of pipeline L
-executed.append(_step.name)
 
 [L_2]
 # 2st step of pipeline L
-executed.append(_step.name)
 
 [L_3]
 # 3rd step of pipeline L
-executed.append(_step.name)
 
 
 [A_1 = S1 : source='slave1.sos']
-executed.append(_step.name)
 
 
 [A_2 = S2 : source='slave2.sos']
-executed.append(_step.name)
 
 [M1 = S1 + S2 : source=['slave1.sos', 'slave2.sos']]
-executed.append(_step.name)
 
 [M2 = S1_1 + S2 : source=['slave1.sos', 'slave2.sos']]
-executed.append(_step.name)
 
 [M3 = S1_-2 + S2_1 : source=['slave1.sos', 'slave2.sos']]
-executed.append(_step.name)
 
 [M3_1]
-executed.append(_step.name)
 print(executed)

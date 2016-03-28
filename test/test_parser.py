@@ -613,9 +613,9 @@ b = A()()
         script = SoS_Script('''
 a0 = 0
 if 'executed' in locals():
-    executed.append(_step.name)
+    executed.append(step_name)
 else:
-    executed = [_step.name]
+    executed = [step_name]
 [parameters]
 a = a0 + 1
 [a_1]
@@ -624,7 +624,7 @@ a = a0 + 1
 [a_4]
 output: 'out_a_4'
 [b_1]
-input_b1 = _step.input
+input_b1 = input
 [b_2]
 [b_3]
 [b_4]
@@ -652,36 +652,36 @@ input_b1 = _step.input
         env.shared_vars = ['executed', 'inputs']
         script = SoS_Script('''
 if 'executed' in locals():
-    executed.append(_step.name)
+    executed.append(step_name)
 else:
-    executed = [_step.name]
+    executed = [step_name]
 if 'inputs' not in locals():
     inputs = []
 
 [paramters]
 [a_1]
-inputs.append(_step.input)
+inputs.append(input)
 [a_2]
-inputs.append(_step.input)
+inputs.append(input)
 [a_3]
-inputs.append(_step.input)
+inputs.append(input)
 [a_4]
 output: 'a.done'
-inputs.append(_step.input)
+inputs.append(input)
 [b_1]
 input: 'b.begin'
-inputs.append(_step.input)
+inputs.append(input)
 [b_2]
-inputs.append(_step.input)
+inputs.append(input)
 [b_3]
-inputs.append(_step.input)
+inputs.append(input)
 [b_4]
 output: 'b.txt'
-inputs.append(_step.input)
+inputs.append(input)
 [c=a+b]
 input: 'a.txt'
 output: 'b.txt'
-inputs.append(_step.input)
+inputs.append(input)
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
@@ -692,18 +692,18 @@ inputs.append(_step.input)
         # step will be looped
         script = SoS_Script('''
 if 'executed' in locals():
-    executed.append(_step.name)
+    executed.append(step_name)
 else:
-    executed = [_step.name]
+    executed = [step_name]
 if 'inputs' not in locals():
     inputs = []
 
 [a_1]
 output: _input[0] + '.a1'
-inputs.append(_step.input)
+inputs.append(input)
 [a_2]
 output: _input[0] + '.a2'
-inputs.append(_step.input)
+inputs.append(input)
 [c=a]
 input: 'a.txt', 'b.txt', group_by='single'
 inputs.append(_input)
@@ -718,9 +718,9 @@ inputs.append(_input)
         # step will be looped
         script = SoS_Script('''
 if 'executed' in locals():
-    executed.append(_step.name)
+    executed.append(step_name)
 else:
-    executed = [_step.name]
+    executed = [step_name]
 [a_1]
 [a_2]
 [c_0]
@@ -735,9 +735,9 @@ input: 'a.txt', 'b.txt', group_by='single'
         # step will be looped
         script = SoS_Script('''
 if 'executed' in locals():
-    executed.append(_step.name)
+    executed.append(step_name)
 else:
-    executed = [_step.name]
+    executed = [step_name]
 [a_1]
 [a_2]
 [c_0]
@@ -752,9 +752,9 @@ input: 'a.txt', 'b.txt', group_by='single'
         # recursive subworkflow not allowed
         script = SoS_Script('''
 if 'executed' in locals():
-    executed.append(_step.name)
+    executed.append(step_name)
 else:
-    executed = [_step.name]
+    executed = [step_name]
 [a_1]
 [a_2]
 [c_0]
@@ -767,9 +767,9 @@ input: 'a.txt', 'b.txt', group_by='single'
         # nested subworkflow is allowed
         script = SoS_Script('''
 if 'executed' in locals():
-    executed.append(_step.name)
+    executed.append(step_name)
 else:
-    executed = [_step.name]
+    executed = [step_name]
 [a_1]
 [a_2]
 [a_3]
@@ -789,9 +789,9 @@ input: 'a.txt'
         # nested subworkflow with step option and others
         script = SoS_Script('''
 if 'executed' in locals():
-    executed.append(_step.name)
+    executed.append(step_name)
 else:
-    executed = [_step.name]
+    executed = [step_name]
 [a_1]
 [a_2]
 [a_3]
@@ -820,9 +820,9 @@ input: 'a.txt', 'b.txt', group_by='single'
 # global definition
 GLB = 5
 if 'executed' in locals():
-    executed.append('t.' + _step.name)
+    executed.append('t.' + step_name)
 else:
-    executed = ['t.' + _step.name]
+    executed = ['t.' + step_name]
 
 [parameters]
 parB = 10
@@ -836,9 +836,9 @@ output: _input[0] + 'a2'
 ''')
         script = SoS_Script('''
 if 'executed' in locals():
-    executed.append('g.' + _step.name)
+    executed.append('g.' + step_name)
 else:
-    executed = ['g.' + _step.name]
+    executed = ['g.' + step_name]
 [b_1=A : source='temp/test.sos', skip=False]
 input: 'a.txt', 'b.txt', group_by='single'
 ''')

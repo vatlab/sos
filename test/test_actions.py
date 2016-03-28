@@ -60,7 +60,7 @@ check_command('catmouse')
         script = SoS_Script(r"""
 [0]
 input: 'a.txt'
-fail_if(len(_step.input) == 1)
+fail_if(len(input) == 1)
 """)
         env.run_mode = 'dryrun'
         wf = script.workflow()
@@ -69,7 +69,7 @@ fail_if(len(_step.input) == 1)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
-fail_if(len(_step.input) == 1)
+fail_if(len(input) == 1)
 """)
         env.run_mode = 'dryrun'
         wf = script.workflow()
@@ -81,7 +81,7 @@ fail_if(len(_step.input) == 1)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt'
-warn_if(len(_step.input) == 1, 'Expect to see a warning message')
+warn_if(len(input) == 1, 'Expect to see a warning message')
 """)
         env.run_mode = 'dryrun'
         wf = script.workflow()
@@ -91,7 +91,7 @@ warn_if(len(_step.input) == 1, 'Expect to see a warning message')
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
-warn_if(len(_step.input) == 1)
+warn_if(len(input) == 1)
 """)
         env.run_mode = 'dryrun'
         wf = script.workflow()

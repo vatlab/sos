@@ -444,7 +444,7 @@ counter += 1
         '''Test deriving output files from input files'''
         env.run_mode = 'dryrun'
         script = SoS_Script(r"""
-[0]
+[0: alias='step']
 files = ['a.txt', 'b.txt']
 counter = 0
 
@@ -454,10 +454,10 @@ output: _input[0] + '.bak'
 counter += 1
 """)
         wf = script.workflow()
-        env.shared_vars = ['counter', '_step']
+        env.shared_vars = ['counter']
         wf.run()
         self.assertEqual(env.sos_dict['counter'], 2)
-        self.assertEqual(env.sos_dict['_step'].output, ['a.txt.bak', 'b.txt.bak'])
+        self.assertEqual(env.sos_dict['step'].output, ['a.txt.bak', 'b.txt.bak'])
 
     def testWorkdir(self):
         '''Test workdir option for runtime environment'''
@@ -635,16 +635,7 @@ myfunc()
         self.assertEqual(env.sos_dict['test'].output, ['a45'])
 
     def testReadOnlyStepVars(self):
-        '''Test if the _step variables can be changed.'''
-        script = SoS_Script(r"""
-[1: alias='test']
-output: 'a.txt'
-
-_step.output=['ab.txt']
-""")
-        wf = script.workflow()
-        env.run_mode = 'dryrun'
-        self.assertRaises(RuntimeError, wf.run)
+        '''Test if the step variables can be changed.'''
         #
         script = SoS_Script(r"""
 [1: alias='test']
