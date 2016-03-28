@@ -178,6 +178,30 @@ func()
         self.assertRaises(ArgumentError, script.workflow('chapter_0').run,
             args=['--par1', 'a', 'b'])
         # 
+        script = SoS_Script('''
+[parameters]
+a = [1, 2]
+[0]
+''')    
+        script.workflow().run()
+        self.assertEqual(env.sos_dict['a'], [1,2])
+        script.workflow().run(args=['--a', '3'])
+        self.assertEqual(env.sos_dict['a'], [3])
+        script.workflow().run(args=['--a', '3', '5'])
+        self.assertEqual(env.sos_dict['a'], [3, 5])
+        #
+        script = SoS_Script('''
+[parameters]
+a = ['a.txt', 'b.txt']
+[0]
+''')    
+        script.workflow().run()
+        self.assertEqual(env.sos_dict['a'], ['a.txt', 'b.txt'])
+        script.workflow().run(args=['--a', '3'])
+        self.assertEqual(env.sos_dict['a'], ['3'])
+        script.workflow().run(args=['--a', '3', '5'])
+        self.assertEqual(env.sos_dict['a'], ['3', '5'])
+        #
         # test parameter using global definition
         script = SoS_Script('''
 a="100"
@@ -187,6 +211,7 @@ b=str(int(a)+1)
 ''')
         script.workflow().run()
         self.assertEqual(env.sos_dict['b'], '101')
+        #
         env.sos_dict.clear()
         script = SoS_Script('''
 a=100

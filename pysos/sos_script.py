@@ -661,7 +661,16 @@ class SoS_Step:
                     parser.add_argument('--{}'.format(key), type='bool', help=comment,
                         nargs='?', default=defvalue)
                 else:
-                    parser.add_argument('--{}'.format(key), type=type(defvalue), help=comment,
+                    if isinstance(defvalue, str):
+                        deftype = str
+                    elif isinstance(defvalue, Sequence):
+                        if len(defvalue) > 0:
+                            deftype = type(defvalue[0])
+                        else:
+                            deftype = str
+                    else:
+                        deftype = type(defvalue)
+                    parser.add_argument('--{}'.format(key), type=deftype, help=comment,
                         nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
                         default=defvalue)
         #
@@ -1740,8 +1749,6 @@ class SoS_Script:
             wf = self.workflow(workflow)
             wf.show()
             print('')
-        print('\nUse command "sos show script workflow_name" to display details of specific workflow.')
-
 #
 # subcommmand show
 #
