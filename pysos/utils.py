@@ -238,15 +238,7 @@ class WorkflowDict(object):
 
     def clone_pickleable(self):
         '''Return a copy of the existing dictionary but keep only the ones that are pickleable'''
-        #try:
-        #    return {x:copy.deepcopy(y) for x,y in self._dict.items() if not isinstance(y, (types.ModuleType, WorkflowDict))}
-        #except:
-        # try to pickle individual object to test
-        return {x:copy.deepcopy(y) for x,y in self._dict.items() if \
-            # positive check, guranteed to be pickleable
-            isinstance(y, (str, int, float)) or \
-            # negative check
-            (not isinstance(y, (types.ModuleType, WorkflowDict)) and pickleable(y))}
+        return {x:copy.deepcopy(y) for x,y in self._dict.items() if pickleable(y)}
 #
 # Runtime environment
 #
@@ -1125,6 +1117,10 @@ def print_traceback():
 
 
 def pickleable(obj):
+    if isinstance(obj, (str, bool, int, float, complex, bytes)):
+        return True
+    if isinstance(obj, (types.ModuleType, WorkflowDict)):
+        return False
     try:
         pickle.dumps(obj)
         return True
