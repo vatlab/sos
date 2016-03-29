@@ -724,6 +724,30 @@ e = shared.d + 1
         wf.run()
         self.assertEqual(env.sos_dict['shared'].c, 'c.txt')
         self.assertEqual(env.sos_dict['d'].e, 2)
+        #
+        # aliased variables are readonly
+        script = SoS_Script(r"""
+[1: alias='shared']
+input: 'a.txt'
+output: 'b.txt'
+
+c = 'c.txt'
+d = 1
+
+[2: alias='d']
+# this should fail because a is defined in another step
+print(shared.input)
+
+output: shared.c
+
+shared.d += 1
+
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        # I would like to disallow accessing variables defined
+        # in other cases.
+        self.assertRaises(RuntimeError, wf.run)
 
 
 
