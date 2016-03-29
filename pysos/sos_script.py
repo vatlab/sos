@@ -38,7 +38,7 @@ from itertools import tee, combinations
 from . import __version__
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
     dehtml, getTermWidth, interpolate, shortRepr, extract_pattern, expand_pattern, \
-    print_traceback
+    print_traceback, pickleable
 
 __all__ = ['SoS_Script']
 
@@ -762,11 +762,13 @@ class SoS_Step:
                     print_traceback()
                 raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.global_process, e))
         #
+        public_vars = set()
         if input_idx is not None:
             # execute before input stuff
             for statement in self.statements[:input_idx]:
                 if statement[0] == '=':
                     key, value = statement[1:]
+                    public_vars.add(key)
                     try:
                         env.sos_dict[key] = SoS_eval(value, self.sigil)
                     except Exception as e:
@@ -796,6 +798,10 @@ class SoS_Step:
         step_info.set('input', env.sos_dict['input'])
         if 'alias' in self.options:
             # the step might be skipped 
+            for var in public_vars:
+                # there is a slight possibility that var is deleted
+                if var in env.sos_dict and pickleable(env.sos_dict[var]):
+                    step_info.set(var, env.sos_dict[var])
             result[self.options['alias']] = copy.deepcopy(step_info)
         if not self._groups:
             env.logger.info('Step {} is skipped'.format(self.index))
@@ -817,6 +823,7 @@ class SoS_Step:
             for statement in self.statements[input_idx:]:
                 if statement[0] == '=':
                     key, value = statement[1:]
+                    public_vars.add(key)
                     try:
                         env.sos_dict[key] = SoS_eval(value, self.sigil)
                     except Exception as e:
@@ -869,6 +876,9 @@ class SoS_Step:
         if 'alias' in self.options:
             step_info.set('output', env.sos_dict['output'])
             step_info.set('depends', env.sos_dict['depends'])
+            for var in public_vars:
+                if var in env.sos_dict and pickleable(env.sos_dict[var]):
+                    step_info.set(var, env.sos_dict[var])
             result[self.options['alias']] = copy.deepcopy(step_info)
         #
         # if the signature matches, the whole step is ignored, including subworkflows

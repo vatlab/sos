@@ -31,6 +31,7 @@ import collections
 import traceback
 import hashlib
 import shutil
+import pickle
 import token
 from tokenize import generate_tokens, untokenize
 from io import StringIO
@@ -237,19 +238,15 @@ class WorkflowDict(object):
 
     def clone_pickleable(self):
         '''Return a copy of the existing dictionary but keep only the ones that are pickleable'''
-        # FIXME: not well tested
-        try:
-            res = {x:copy.deepcopy(y) for x,y in self._dict.items() if not callable(y) and not isinstance(y, (types.ModuleType, WorkflowDict))}
-        except:
-            res = {}
-            for x,y in self._dict.items():
-                if callable(y):
-                    continue
-                try:
-                    res[x] = copy.deepcopy(y)
-                except:
-                    pass
-        return res
+        #try:
+        #    return {x:copy.deepcopy(y) for x,y in self._dict.items() if not isinstance(y, (types.ModuleType, WorkflowDict))}
+        #except:
+        # try to pickle individual object to test
+        return {x:copy.deepcopy(y) for x,y in self._dict.items() if \
+            # positive check, guranteed to be pickleable
+            isinstance(y, (str, int, float)) or \
+            # negative check
+            (not isinstance(y, (types.ModuleType, WorkflowDict)) and pickleable(y))}
 #
 # Runtime environment
 #
@@ -1127,3 +1124,9 @@ def print_traceback():
     #print "*** tb_lineno:", exc_traceback.tb_lineno
 
 
+def pickleable(obj):
+    try:
+        pickle.dumps(obj)
+        return True
+    except:
+        return False

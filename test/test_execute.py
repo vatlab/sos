@@ -698,6 +698,32 @@ output: shared.input
         # in other cases.
         wf.run()
         self.assertEqual(env.sos_dict['shared'].output, ['b.txt'])
+        #
+        # this include other variables set in the step
+        script = SoS_Script(r"""
+[1: alias='shared']
+input: 'a.txt'
+output: 'b.txt'
+
+c = 'c.txt'
+d = 1
+
+[2: alias='d']
+# this should fail because a is defined in another step
+print(shared.input)
+
+output: shared.c
+
+e = shared.d + 1
+
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        # I would like to disallow accessing variables defined
+        # in other cases.
+        wf.run()
+        self.assertEqual(env.sos_dict['shared'].c, 'c.txt')
+        self.assertEqual(env.sos_dict['d'].e, 2)
 
 
 
