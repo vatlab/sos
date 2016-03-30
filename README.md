@@ -16,8 +16,12 @@ or compile the latest git version with commands
 % python3 setup.py install
 ```
 
-Depending on your system configuration, you might need to add paths such as
-`/Library/Frameworks/Python.framework/Versions/3.4/bin/` to `%PATH` or
+Note that
+
+* Use command `**pip**` and `**python**` (instead of `pip3` and `python3`) if you have
+python 3 as the default python installation.
+* If `sos` is not found after installation, you will need to add paths such as
+`/Library/Frameworks/Python.framework/Versions/3.4/bin/` to `$PATH` or
 create symbolic links of `sos` and `sos-runner` commands in
 `/usr/local/bin`.
 
