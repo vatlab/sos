@@ -1131,9 +1131,8 @@ def pickleable(obj):
 class ProgressBar:
     '''A text-based progress bar, it differs from regular progress bar in that
     1. it can start from the middle with init count
-    2. it accept update for successful and failed counts
     '''
-    def __init__(self, message, totalCount = None, newLine=False):
+    def __init__(self, message, totalCount = None):
         if env.verbosity != 1:
             self.update = self.empty
             self.progress = self.empty
@@ -1148,14 +1147,11 @@ class ProgressBar:
         # get terminal width
         self.term_width = getTermWidth()
         #
-        # total count, including failed ones
+        # total count
         self.count = 0
         # total initial count
         self.init_count = self.count
         #
-        if newLine:
-            sys.stderr.write('\n')
-            sys.stderr.flush()
         self.finished = 0
         self.reset('', totalCount)
         
@@ -1230,7 +1226,6 @@ class ProgressBar:
                 time.strftime('%H:%M:%S', time.gmtime(time_left)))
         # percentage / progress
         if self.count > 0:
-            # no failed count
             msg[3] = ' {:,}'.format(int(self.count))
             m3Len = len(msg[3])
         else:
@@ -1251,15 +1246,12 @@ class ProgressBar:
         # use stderr to avoid messing up process output
         sys.stderr.write('\r' + ''.join(msg))
 
-    def done(self, completed=None, failed=None):
+    def done(self, completed=None):
         '''Finish, output a new line'''
         if completed is not None:
             self.count = completed
         elif self.totalCount:
             self.count = self.totalCount
-        #
-        if failed is not None:
-            self.falied_count = failed
         #
         msg = ['', '', '', '', '', '']
         # message

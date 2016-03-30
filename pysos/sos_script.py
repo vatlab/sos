@@ -976,6 +976,7 @@ class SoS_Step:
                 # and will be executed mutliple times if necessary. The partial signature 
                 # stuff works for these though
                 if self.subworkflow:
+                    # terminate current progress bar
                     self.subworkflow.run(nested=True)
             except Exception as e:
                 # FIXME: cannot catch exception from subprocesses
@@ -1149,7 +1150,7 @@ class SoS_Workflow:
         #
         # the steps can be executed in the pool (Not implemented)
         # if nested = true, start a new progress bar
-        prog = ProgressBar(self.name, len(self.sections), newLine=nested)
+        prog = ProgressBar(self.name, len(self.sections))
         for idx, section in enumerate(self.sections):
             # global section will not change _step etc
             if section.is_parameters:
@@ -1668,6 +1669,7 @@ class SoS_Script:
                 combined_wf = wfs[0]
                 for wf in wfs[1:]:
                     combined_wf.extend(wf)
+                combined_wf.name = workflow_name
                 return combined_wf
             # if a single workflow
             # workflow:15,-10 etc
