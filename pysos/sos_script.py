@@ -29,7 +29,20 @@ import fnmatch
 import keyword
 import argparse
 import textwrap
-import multiprocessing as mp
+#
+# billiard is a Celery extension to multiprocessing
+# 
+# When we execute a step with subprocesses in parallel, the multiprocessing.pool
+# module creates processes in daemon mode, which disallows the creation of new
+# pools from these processes, which means we have to execute subworkflow
+# separately from the step process. This forces us to get result from
+# step.process and send to step.subworkflow, which can be really tedious
+#
+# The multiprocessing extension in Celery overcomes this problem and
+# allows use to create new processes from a pooled process.
+import billiard as mp
+from billiard.pool import ApplyResult
+
 from io import StringIO
 from collections import OrderedDict, defaultdict
 from collections.abc import Sequence, Iterable 
@@ -93,7 +106,7 @@ class StepInfo(object):
     def __repr__(self):
         return '{' + ', '.join('{}: {!r}'.format(x,y) for x,y in self.__dict__.items()) + '}'
 
-def execute_step_process(step_process, global_process, sos_dict, sigil, signature, workdir):
+def execute_step_process(step_process, global_process, subworkflow, sos_dict, sigil, signature, workdir):
     '''A function that has a local dictionary (from SoS env.sos_dict),
     a global process, and a step process. The processes are executed 
     in a separate process, independent of SoS. This makes it possible
@@ -108,9 +121,14 @@ def execute_step_process(step_process, global_process, sos_dict, sigil, signatur
         env.sos_dict.quick_update(sos_dict)
         SoS_exec('import os, sys, glob')
         SoS_exec('from pysos import *')
+        # global
         if global_process:
             SoS_exec(global_process, sigil)
+        # step process
         SoS_exec(step_process, sigil)
+        # subworkflow
+        if subworkflow:
+            subworkflow.run(nested=True)
         if signature:
             signature.write()
     except KeyboardInterrupt:
@@ -939,54 +957,44 @@ class SoS_Step:
             # now, if output file has already been generated using non-process statement
             # so that no process need to be run, or if the output need help from a subworkflow
             # we create signature from outside.
-            if (not self.process or self.subworkflow) and partial_signature is not None:
-                signatures.append(partial_signature)
+            if (not self.process and not self.subworkflow):
+                if partial_signature is not None:
+                    partial_signature.write()
+                continue
             #
             try:
-                if self.process:
-                    if concurrent:
-                        proc_results.append(pool.apply_async(
-                            execute_step_process,   # function
-                            (self.process,          # process
-                            self.global_process,    # global process
-                            env.sos_dict.clone_pickleable(),
-                            self.sigil,
-                            # if subworkflow contribute to outcome, we can not save signature here
-                            partial_signature if partial_signature is not None and not self.subworkflow else None,
-                            self.runtime_options['workdir'] if 'workdir' in self.runtime_options else os.getcwd())))
-                    else:
-                        # execute in existing process
-                        proc_results.append(
-                            execute_step_process(   # function
-                            self.process,          # process
-                            self.global_process,    # global process
-                            # do not clone dict
-                            env.sos_dict,
-                            self.sigil,
-                            partial_signature if partial_signature is not None and not self.subworkflow else None,
-                            self.runtime_options['workdir'] if 'workdir' in self.runtime_options else os.getcwd()))
+                if concurrent:
+                    proc_results.append(pool.apply_async(
+                        execute_step_process,   # function
+                        (self.process,          # process
+                        self.global_process,    # global process
+                        self.subworkflow,       # subworkflow
+                        env.sos_dict.clone_pickleable(),
+                        self.sigil,
+                        # if subworkflow contribute to outcome, we can not save signature here
+                        partial_signature,
+                        self.runtime_options['workdir'] if 'workdir' in self.runtime_options else os.getcwd())))
+                else:
+                    # execute in existing process
+                    proc_results.append(
+                        execute_step_process(   # function
+                        self.process,           # process
+                        '',                     # local execusion, no need to re-run global
+                        self.subworkflow,       # subworkflow
+                        # do not clone dict
+                        env.sos_dict,
+                        self.sigil,
+                        partial_signature,
+                        self.runtime_options['workdir'] if 'workdir' in self.runtime_options else os.getcwd()))
             except Exception as e:
                 # FIXME: cannot catch exception from subprocesses
                 if env.verbosity > 2:
                     print_traceback()
                 raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(self.process, e))
-                #
-            try:
-                # if there is subworkflow, the subworkflow is considered part of the process
-                # and will be executed mutliple times if necessary. The partial signature 
-                # stuff works for these though
-                if self.subworkflow:
-                    # terminate current progress bar
-                    self.subworkflow.run(nested=True)
-            except Exception as e:
-                # FIXME: cannot catch exception from subprocesses
-                if env.verbosity > 2:
-                    print_traceback()
-                raise RuntimeError('Failed to execute subworkflow: {}'.format(e))
         # check results? This is only meaningful for pool
         if concurrent:
             try:
-                proc_results = [res.get() if isinstance(res, mp.pool.AsyncResult) else res for res in proc_results]
+                proc_results = [res.get() if isinstance(res, ApplyResult) else res for res in proc_results]
             except KeyboardInterrupt:
                 # if keyboard interrupt
                 pool.terminate()
@@ -998,8 +1006,6 @@ class SoS_Step:
                 pool.terminate()
                 pool.join()
                 raise
-        for sig in signatures:
-            sig.write()
         if not all(x==0 for x in proc_results):
             raise RuntimeError('Step process returns non-zero value')
         if env.run_mode == 'run':

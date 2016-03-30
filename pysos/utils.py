@@ -38,7 +38,6 @@ from tokenize import generate_tokens, untokenize
 from io import StringIO
 from shlex import quote
 from html.parser import HTMLParser
-import multiprocessing as mp
 
 try:
     import psutil
@@ -338,7 +337,6 @@ class RuntimeEnvironments(object):
         # create a logger, we current use the regular logger but we should 
         # switch to multiprocessing.get_logger if we notice trouble in, for example,
         # logging from multiple processes.
-        #self._logger = mp.get_logger()
         self._logger = logging.getLogger()
         # clear previous handler
         for handler in self._logger.handlers:
