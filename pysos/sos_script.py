@@ -1811,4 +1811,5 @@ def sos_run(args, workflow_args):
 def sos_dryrun(args, workflow_args):
     args.__max_jobs__ = 1
     args.__dryrun__ = True
+    args.__rerun__ = False
     sos_run(args, workflow_args)
