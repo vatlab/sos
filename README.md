@@ -24,4 +24,10 @@ python 3 as the default python installation.
 create symbolic links of `sos` and `sos-runner` commands in
 `/usr/local/bin`.
 
-Please find more information on **[SoS wiki](https://github.com/bpeng2000/SOS/wiki)**.
+Please find more information on **[SoS
+wiki](https://github.com/bpeng2000/SOS/wiki)**, or use the following links
+directly:
+
+* [quick start guide](https://github.com/bpeng2000/SOS/wiki/Quick-Start)
+* [A presentation about SoS](https://github.com/bpeng2000/SOS/wiki/SoS_March2016.pdf)
+* [Complete documentation](https://github.com/bpeng2000/SOS/wiki/Documentation)
