@@ -616,27 +616,28 @@ b = random.randint(0, 100000)
         env.run_mode = 'dryrun'
         self.assertRaises(RuntimeError, wf.run)
 
-    def testExecuteInParallel(self):
-        '''Test execution of step process in parallel'''
+    def testPassingVarsToNestedWorkflow(self):
+        '''Test if variables can be passed to nested workflows'''
         script = SoS_Script(r"""
 
 import time
 import random
 
-[1]
-repeat=range(5)
-input: for_each='repeat'
+[nested]
+print('I am nested ${nested} with seed ${seed}')
 
-wait = random.randint(0,3)
-time.sleep(wait)
-print('I am {} after {} seconds'.format(_index, wait))
+[0=nested]
+reps = range(5)
+input: for_each='reps'
+process: concurrent=True
+nested = _reps
+seed = random.randint(1, 1000)
+print('Passing ${seed} to ${nested}')
 
 """)
-        env.max_jobs = 5
+        env.max_jobs = 1
         wf = script.workflow()
         wf.run()
-        #
-        # execute in parallel mode
 
     def testUserDefinedFunc(self):
         '''Test the use of user-defined functions in SoS script'''
