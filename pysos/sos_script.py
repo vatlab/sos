@@ -38,7 +38,7 @@ from itertools import tee, combinations
 from . import __version__
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
     dehtml, getTermWidth, interpolate, shortRepr, extract_pattern, expand_pattern, \
-    print_traceback, pickleable
+    print_traceback, pickleable, ProgressBar
 
 __all__ = ['SoS_Script']
 
@@ -1148,11 +1148,14 @@ class SoS_Workflow:
             raise ArgumentError('Unused parameter {}'.format(' '.join(args)))
         #
         # the steps can be executed in the pool (Not implemented)
+        # if nested = true, start a new progress bar
+        prog = ProgressBar(self.name, len(self.sections), newLine=nested)
         for idx, section in enumerate(self.sections):
             # global section will not change _step etc
             if section.is_parameters:
                 # if there is only one parameters section and no nested workflow, check unused section
                 section.parse_args(args, num_parameters_sections == 1, cmd_name=cmd_name)
+                prog.progress(1)
                 continue
             # 
             # execute section with specified input
@@ -1175,6 +1178,8 @@ class SoS_Workflow:
                 if k == '__step_output__':
                     env.sos_dict.set('__step_input__', v)
                 env.sos_dict.set(k, v)
+            prog.progress(1)
+        prog.done()
 
     def show(self, indent = '', nested=False):
         textWidth = max(60, getTermWidth())

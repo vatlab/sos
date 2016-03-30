@@ -26,7 +26,8 @@ import unittest
 # these functions are normally not available but can be imported 
 # using their names for testing purposes
 from pysos.utils import env, logger, interpolate, WorkflowDict, SoS_eval, InterpolationError, \
-    extract_pattern, expand_pattern
+    extract_pattern, expand_pattern, ProgressBar
+from pysos.sos_script import SoS_Script
 
 class TestUtils(unittest.TestCase):
     def setUp(self):
@@ -211,6 +212,46 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(expand_pattern('{b}.txt'), ['file name.txt'])
         self.assertEqual(expand_pattern('{c}.txt'), ['file1.txt', 'file2.txt', 'file 3.txt'])
         self.assertEqual(expand_pattern('{a}_{c}.txt'), ['100_file1.txt', '100_file2.txt', '100_file 3.txt'])
+
+    def testProgressBar(self):
+        '''Test progress bar'''
+        env.verbosity = 1
+        prog = ProgressBar('test', 100)
+        for i in range(100):
+            prog.update(i)
+        prog.done()
+        prog = ProgressBar('test', 100)
+        for i in range(20):
+            prog.progress(5)
+        prog.done()
+        #
+        script = SoS_Script('''
+
+[1]
+[2]
+[3]
+[4]
+[5]
+''')
+        wf = script.workflow()
+        wf.run()
+        # progress bar with nested workflow
+        script = SoS_Script('''
+import time
+time.sleep(0.5)
+[sub_1]
+[sub_2]
+[sub_3]
+[sub_4]
+[a_1]
+[a_2]
+[a_3=sub]
+[a_4]
+[a_5]
+''')
+        wf = script.workflow('a')
+        wf.run()
+
 
 if __name__ == '__main__':
     unittest.main()

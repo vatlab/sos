@@ -23,6 +23,7 @@ import os
 import sys
 import re
 import copy
+import time
 import types
 import logging
 import signal
@@ -1126,3 +1127,171 @@ def pickleable(obj):
         return True
     except:
         return False
+
+class ProgressBar:
+    '''A text-based progress bar, it differs from regular progress bar in that
+    1. it can start from the middle with init count
+    2. it accept update for successful and failed counts
+    '''
+    def __init__(self, message, totalCount = None, newLine=False):
+        if env.verbosity != 1:
+            self.update = self.empty
+            self.progress = self.empty
+            self.outputProgress = self.empty
+            self.done = self.empty
+            self.main = ''
+            self.finished = 0
+            return
+        self.main = message
+        self.main_start_time = time.time()
+        self.message = self.main
+        # get terminal width
+        self.term_width = getTermWidth()
+        #
+        # total count, including failed ones
+        self.count = 0
+        # total initial count
+        self.init_count = self.count
+        #
+        if newLine:
+            sys.stderr.write('\n')
+            sys.stderr.flush()
+        self.finished = 0
+        self.reset('', totalCount)
+        
+    def reset(self, msg='', totalCount = None):
+        if msg:
+            self.message = '{} - {}'.format(self.main, msg)
+        self.finished += self.count
+        self.count = 0
+        self.totalCount = totalCount
+        self.min_progress_count = None if self.totalCount is None else self.totalCount / 1000 
+        self.last_progress_count = 0
+        self.start_time = None
+        self.last_time = None
+        self.outputProgress()
+
+    def empty(self, *args, **kwargs):
+        return
+
+    def update(self, count):
+        '''completed count jobs'''
+        # do not update if the diferent is less than 0.1% of the total count.
+        # this is to avoid excess of calling the time() function
+        if self.totalCount is not None and (count - self.count) < self.min_progress_count:
+            return
+        self.count = count
+        self.outputProgress()
+
+    def progress(self, count):
+        self.last_progress_count += count
+        if self.last_progress_count > self.min_progress_count:
+            self.count += self.last_progress_count
+            self.outputProgress()
+            self.last_progress_count = 0
+
+    def outputProgress(self):
+        '''Output progress'''
+        if not self.start_time:
+            self.start_time = time.time()
+            self.last_time = self.start_time
+        cur_time = time.time()
+        # stop update progress bar more than once per second.
+        if self.count > 0 and self.count > self.init_count and \
+            self.count != self.totalCount and cur_time - self.last_time < 1:
+            return
+        msg = ['', '', '', '', '', '', '']
+        # message
+        msg[0] = self.message + ':'
+        self.last_time = cur_time
+        second_elapsed = cur_time - self.start_time
+        if second_elapsed < 0.0001 or self.count == 0:
+            msg[4] = ''
+        else:
+            cps = (self.count - self.init_count) / second_elapsed
+            # speed
+            if cps > 1000000:
+                msg[4] = ' {:.1f}M/s'.format(cps/1000000)
+            elif cps > 1000:
+                msg[4] = ' {:.1f}K/s'.format(cps/1000)
+            elif cps > 0.05:
+                msg[4] = ' {:.1f}/s'.format(cps)
+            elif cps > 1e-6:
+                msg[4] = ' {:.1f}s each'.format(1. / cps)
+            else:
+                msg[4] = ' 0.0/s'
+        # estimated time left
+        if self.totalCount:
+            perc = min(1, float(self.count) / self.totalCount)
+            init_perc = min(1, float(self.init_count) / self.totalCount)
+            time_left = (second_elapsed / (perc - init_perc) * (1 - perc)) if perc > init_perc else 0
+            msg[5] += ' in {}{}'.format('' if time_left < 86400 else '{} day{} '
+                .format(int(time_left/86400), 's' if time_left > 172800 else ''),
+                time.strftime('%H:%M:%S', time.gmtime(time_left)))
+        # percentage / progress
+        if self.count > 0:
+            # no failed count
+            msg[3] = ' {:,}'.format(int(self.count))
+            m3Len = len(msg[3])
+        else:
+            msg[3] = ' '
+            m3Len = 1
+        if self.totalCount:
+            # percentage
+            perc = min(1, float(self.count) / self.totalCount)
+            msg[1] = ' {:5.1f}%'.format(perc * 100)
+            width = self.term_width - len(msg[0]) - len(msg[1]) - m3Len - len(msg[4]) - len(msg[5])
+            if width > 5:
+                front = int(perc * (width - 4))
+                back = width - 4 - front
+                msg[2] = ' [{}>{}]'.format('=' * front, ' ' * back)
+        else:
+            width = self.term_width - len(msg[0]) - len(msg[1]) - m3Len - len(msg[4])
+            msg[6] = ' '*width
+        # use stderr to avoid messing up process output
+        sys.stderr.write('\r' + ''.join(msg))
+
+    def done(self, completed=None, failed=None):
+        '''Finish, output a new line'''
+        if completed is not None:
+            self.count = completed
+        elif self.totalCount:
+            self.count = self.totalCount
+        #
+        if failed is not None:
+            self.falied_count = failed
+        #
+        msg = ['', '', '', '', '', '']
+        # message
+        msg[0] = self.main + ':'
+        second_elapsed = time.time() - self.main_start_time
+        cps = 0 if second_elapsed < 0.0001 else (self.finished + self.count) / second_elapsed
+        # speed
+        if cps > 1000000:
+            msg[4] = ' {:.1f}M/s'.format(cps/1000000)
+        elif cps > 1000:
+            msg[4] = ' {:.1f}K/s'.format(cps/1000)
+        elif cps > 0.05:
+            msg[4] = ' {:.1f}/s'.format(cps)
+        elif cps > 1e-6:
+            msg[4] = ' {:.1f}s each'.format(1. / cps)
+        else:
+            msg[4] = ' 0.0/s'
+        #
+        msg[3] = ' {:,}'.format(self.finished + self.count)
+        m3Len = len(msg[3])
+        msg[5] += ' in {}{}'.format('' if second_elapsed < 86400 else '{} day{} '
+            .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
+                time.strftime('%H:%M:%S', time.gmtime(second_elapsed)))
+        # percentage / progress
+        if self.totalCount:
+            # percentage
+            msg[1] = ' 100%'
+            width = self.term_width - len(msg[0]) - len(msg[1]) - m3Len - len(msg[4]) - len(msg[5])
+            if width > 4:
+                front = int(width - 3)
+                msg[2] = ' [{}]'.format('=' * front)
+        sys.stderr.write('\r' + ''.join(msg) + '\n')
+        sys.stderr.flush()
+
+
