@@ -255,6 +255,48 @@ cp ${_input} ${_dest}
         env.sig_mode = 'assert'
         self.assertRaises(RuntimeError, wf.run)
 
+    def testReexecution(self):
+        '''Test -f option of sos run'''
+        script = SoS_Script('''
+import time
+
+[0]
+output: 'a.txt'
+process:
+time.sleep(3)
+run('touch ${output}')
+''')
+        wf = script.workflow()
+        try:
+            # remove existing output if exists
+            os.remove('a.txt')
+        except:
+            pass
+        start = time.time()
+        wf.run()
+        # regularly take more than 5 seconds to execute
+        self.assertGreater(time.time() - start, 2)
+        # now, rerun should be much faster
+        start = time.time()
+        wf.run()
+        # rerun takes less than 1 second
+        self.assertLess(time.time() - start, 1)
+        #
+        # force rerun mode
+        env.sig_mode = 'ignore'
+        start = time.time()
+        wf.run()
+        # regularly take more than 5 seconds to execute
+        self.assertGreater(time.time() - start, 2)
+        env.sig_mode = 'default'
+        try:
+            # remove existing output if exists
+            os.remove('a.txt')
+        except:
+            pass
+
+
+
     def testInput(self):
         '''Test input specification'''
         env.run_mode = 'dryrun'

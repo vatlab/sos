@@ -77,6 +77,8 @@ if __name__ == '__main__':
         help='''Execute the workflow in dryrun mode in which step processes
             are executed normally but with most SoS actions return directly.
             SoS also produces diagnoistic warning messages in this mode.''')
+    parser.add_argument('-f', action='store_true', dest='__rerun__',
+        help='''Ignore saved runtime signature and re-execution the workflow''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_run)
     #
