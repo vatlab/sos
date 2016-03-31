@@ -27,6 +27,7 @@ from __future__ import unicode_literals
 import os
 import time
 import unittest
+import shutil
 
 from pysos import *
 from pysos import __version__
@@ -210,6 +211,7 @@ cp ${_input} ${_dest}
 
         # reset env mode
         env.sig_mode = 'default'
+        shutil.rmtree('temp')
 
 
 
@@ -517,6 +519,7 @@ with open('test/result.txt', 'w') as res:
         with open('result.txt') as res:
             content = [x.strip() for x in res.readlines()]
             self.assertTrue('test_execute.py' in content)
+        os.remove('result.txt')
 
     def testConcurrency(self):
         '''Test workdir option for runtime environment'''

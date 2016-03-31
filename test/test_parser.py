@@ -22,6 +22,7 @@
 
 import os
 import unittest
+import shutil
 
 from pysos.utils import env
 from pysos.sos_script import SoS_Script, ParsingError, ArgumentError
@@ -838,6 +839,8 @@ input: 'a.txt', 'b.txt', group_by='single'
         '''Test the source section option'''
         # nested subworkflow with step option and others
         env.shared_vars = ['executed', 'GLB', 'parB']
+        if not os.path.isdir('temp'):
+            os.mkdir('temp')
         with open('temp/test.sos', 'w') as sos:
             sos.write('''
 # test sos script
@@ -874,7 +877,7 @@ input: 'a.txt', 'b.txt', group_by='single'
         self.assertEqual(env.sos_dict['parB'], 10)
         self.assertEqual(env.sos_dict['executed'], ['g.b_1', 't.A_parameters', 't.A_1', 't.A_2', 't.A_parameters', 't.A_1', 't.A_2'])
         #
-        os.remove('temp/test.sos')
+        shutil.rmtree('temp')
 
 
 if __name__ == '__main__':
