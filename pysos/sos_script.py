@@ -402,6 +402,10 @@ def directive_output(*args, **kwargs):
     #
     if 'pattern' in kwargs:
         handle_output_pattern(kwargs['pattern'], ofiles)
+    for ofile in ofiles:
+        parent_dir = os.path.split(os.path.expanduser(ofile))[0]
+        if parent_dir and not os.path.isdir(parent_dir):
+            os.makedirs(parent_dir)
     env.sos_dict.set('_output', ofiles)
 
 def directive_process(**kwargs):
@@ -904,10 +908,6 @@ class SoS_Step:
             signature = RuntimeInfo(step_sig, 
                 env.sos_dict['input'], env.sos_dict['output'], env.sos_dict['depends'])
             if env.run_mode == 'run':
-                for ofile in env.sos_dict['output']:
-                    parent_dir = os.path.split(os.path.expanduser(ofile))[0]
-                    if parent_dir and not os.path.isdir(parent_dir):
-                        os.makedirs(parent_dir)
                 if env.sig_mode == 'default':
                     if signature.validate():
                         # everything matches
