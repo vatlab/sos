@@ -924,7 +924,7 @@ class SoS_Step:
         signatures = []
         if '_runtime' in env.sos_dict:
             self.runtime_options = env.sos_dict['_runtime']
-        concurrent = env.max_jobs > 1 and 'concurrent' in self.runtime_options and self.runtime_options['concurrent']
+        concurrent = env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in self.runtime_options and self.runtime_options['concurrent']
         if concurrent:
             pool = mp.Pool(min(env.max_jobs, len(self._groups)))
         for idx, (g, v, o, d) in enumerate(zip(self._groups, self._vars, self._outputs, self._depends)):
