@@ -26,14 +26,14 @@ import subprocess
 import tempfile
 import pipes
 from shutil import which
-from .utils import env
+from .utils import env, interpolate
 
 __all__ = ['SoS_Action', 'SoS_ExecuteScript',
     'check_command', 'fail_if', 'warn_if', 'search_output',  
-    'run', 'bash', 'sh', 'awk',
+    'run', 'bash', 'csh', 'tcsh', 'zsh', 'sh', 
     'python', 'python3', 
     'perl', 'ruby', 'node', 'JavaScript',
-    'R', 'check_r_package',
+    'R', 'check_R_library',
     ]
 
 #
@@ -138,6 +138,42 @@ def run(script):
 def bash(script):
     return SoS_ExecuteBashScript(script).run()
 
+class SoS_ExecuteCshScript(SoS_ExecuteScript):
+    '''SoS_Execute in-line cshell script using bash as interpreter. Please
+    check action SoS_ExecuteScript for more details.
+    '''
+    def __init__(self, script=''):
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='csh',
+            suffix='.sh')
+
+@SoS_Action(run_mode='run')
+def csh(script):
+    return SoS_ExecuteCshScript(script).run()
+
+
+class SoS_ExecuteTcshScript(SoS_ExecuteScript):
+    '''SoS_Execute in-line cshell script using bash as interpreter. Please
+    check action SoS_ExecuteScript for more details.
+    '''
+    def __init__(self, script=''):
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='tcsh',
+            suffix='.sh')
+
+@SoS_Action(run_mode='run')
+def tcsh(script):
+    return SoS_ExecuteTcshScript(script).run()
+
+class SoS_ExecuteZshScript(SoS_ExecuteScript):
+    '''SoS_Execute in-line cshell script using bash as interpreter. Please
+    check action SoS_ExecuteScript for more details.
+    '''
+    def __init__(self, script=''):
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='zsh',
+            suffix='.zsh')
+
+@SoS_Action(run_mode='run')
+def zsh(script):
+    return SoS_ExecuteZshScript(script).run()
 
 class SoS_ExecuteShellScript(SoS_ExecuteScript):
     '''SoS_Execute in-line shell script using bash as interpreter. Please
@@ -150,19 +186,6 @@ class SoS_ExecuteShellScript(SoS_ExecuteScript):
 @SoS_Action(run_mode='run')
 def sh(script):
     return SoS_ExecuteShellScript(script).run()
-
-class SoS_ExecuteAwkScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line shell script using bash as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='awk',
-            suffix='.awk')
-
-@SoS_Action(run_mode='run')
-def awk(script):
-    return SoS_ExecuteAwkScript(script).run()
-
 
 class SoS_ExecutePythonScript(SoS_ExecuteScript):
     '''SoS_Execute in-line python script using python as interpreter. Please
@@ -242,10 +265,11 @@ class SoS_ExecuteRScript(SoS_ExecuteScript):
 def R(script):
     return SoS_ExecuteRScript(script).run()
 
-def check_r_package(names):
+@SoS_Action(run_mode=['dryrun', 'run'])
+def check_R_library(names):
     output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
 
-    SoS_ExecuteRScript('''
+    SoS_ExecuteRScript(interpolate('''
         for (package in c(${names!r,})) {
             if (require(package, character.only=TRUE, quietly=TRUE)) {
                 write(paste(package, "AVAILABLE"), file="{1}", append=TRUE)
@@ -266,7 +290,7 @@ def check_r_package(names):
                 write(paste(package, "MISSING"), file="${output_file}", append=TRUE)
             }
         }
-    ''').run()
+    ''', '${ }', locals())).run()
     with open(output_file) as tmp:
         count = 0
         for line in tmp:

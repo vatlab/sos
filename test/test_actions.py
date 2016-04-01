@@ -31,6 +31,44 @@ from pysos import *
 from pysos.utils import env
 
 class TestActions(unittest.TestCase):
+    def setUp(self):
+        env.run_mode = 'run'
+
+    def testSoSAction(self):
+        '''Test sos_action decorator'''
+        script = SoS_Script(r"""
+from pysos import SoS_Action
+
+@SoS_Action(run_mode='dryrun')
+def func_dryrun():
+    return 1
+
+@SoS_Action(run_mode='run')
+def func_run():
+    return 1
+
+@SoS_Action(run_mode=['run', 'dryrun'])
+def func_both():
+    return 1
+
+[0:alias='result']
+a=func_dryrun()
+b=func_run()
+c=func_both()
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        wf.run()
+        self.assertEqual(env.sos_dict['result'].a, 1)
+        self.assertEqual(env.sos_dict['result'].b, 0)
+        self.assertEqual(env.sos_dict['result'].c, 1)
+        #
+        env.run_mode = 'run'
+        wf.run()
+        self.assertEqual(env.sos_dict['result'].a, 0)
+        self.assertEqual(env.sos_dict['result'].b, 1)
+        self.assertEqual(env.sos_dict['result'].c, 1)
+
     def testCheckCommand(self):
         '''Test action check_command'''
         script = SoS_Script(r"""
@@ -113,6 +151,203 @@ search_output('cat test_actions.py', 'testSearchOutput')
 """)
         wf = script.workflow()
         wf.run()
+
+    def testRun(self):
+        '''Test action run'''
+        script = SoS_Script(r'''
+[0]
+run:
+echo 'Echo'
+''')
+        wf = script.workflow()
+        wf.run()
+        script = SoS_Script(r'''
+[0]
+run:
+echo 'Echo
+''')
+        wf = script.workflow()
+        self.assertRaises(RuntimeError, wf.run)
+
+    def testBash(self):
+        '''Test action run'''
+        script = SoS_Script(r'''
+[0]
+bash:
+echo 'Echo'
+''')
+        wf = script.workflow()
+        wf.run()
+        script = SoS_Script(r'''
+[0]
+bash:
+echo 'Echo
+''')
+        wf = script.workflow()
+        self.assertRaises(RuntimeError, wf.run)
+
+    def testSh(self):
+        '''Test action run'''
+        script = SoS_Script(r'''
+[0]
+sh:
+echo 'Echo'
+''')
+        wf = script.workflow()
+        wf.run()
+        script = SoS_Script(r'''
+[0]
+sh:
+echo 'Echo
+''')
+        wf = script.workflow()
+        self.assertRaises(RuntimeError, wf.run)
+
+    def testCsh(self):
+        '''Test action csh'''
+        script = SoS_Script(r'''
+[0]
+csh:
+    foreach file (*)
+        if (-d $file) then
+            echo "Skipping $file (is a directory)"
+        else
+            echo "Echo $file"
+            echo $file
+        endif
+    end
+''')
+        wf = script.workflow()
+        wf.run()
+
+
+    def testTcsh(self):
+        '''Test action tcsh'''
+        script = SoS_Script(r'''
+[0]
+csh:
+    foreach file (*)
+        if (-d $file) then
+            echo "Skipping $file (is a directory)"
+        else
+            echo "Echo $file"
+            echo $file
+        endif
+    end
+''')
+        wf = script.workflow()
+        wf.run()
+
+    def testZsh(self):
+        '''Test action zsh'''
+        script = SoS_Script(r'''
+[0]
+zsh:
+echo "Hello World!", $SHELL
+''')
+        wf = script.workflow()
+        wf.run()
+
+    def testPython(self):
+        '''Test python command. This might fail if python3 is the 
+        default interpreter'''
+        script = SoS_Script(r'''
+[0]
+python:
+a = {'1': 2}
+print(a)
+''')
+        wf = script.workflow()
+        wf.run()
+        
+    def testPython3(self):
+        script = SoS_Script(r'''
+[0]
+python3:
+a = {'1', '2'}
+print(a)
+''')
+        wf = script.workflow()
+        wf.run()
+
+    def testPerl(self):
+        '''Test action ruby'''
+        script = SoS_Script(r'''
+[0]
+perl:
+use strict;
+use warnings;
+
+print "hi NAME\n";
+''')
+        wf = script.workflow()
+        wf.run()
+
+    def testRuby(self):
+        '''Test action ruby'''
+        script = SoS_Script(r'''
+[0]
+ruby:
+line1 = "Cats are smarter than dogs";
+line2 = "Dogs also like meat";
+
+if ( line1 =~ /Cats(.*)/ )
+  puts "Line1 contains Cats"
+end
+if ( line2 =~ /Cats(.*)/ )
+  puts "Line2 contains  Dogs"
+end
+''')
+        wf = script.workflow()
+        wf.run()
+
+    def testNode(self):
+        '''Test action ruby'''
+        script = SoS_Script(r'''
+[0]
+node:
+var args = process.argv.slice(2);
+console.log('Hello ' + args.join(' ') + '!');
+''')
+        wf = script.workflow()
+        wf.run()
+
+    def testJavaScript(self):
+        '''Test action JavaScript'''
+        script = SoS_Script(r'''
+[0]
+JavaScript:
+var args = process.argv.slice(2);
+console.log('Hello ' + args.join(' ') + '!');
+''')
+        wf = script.workflow()
+        wf.run()
+
+    def testR(self):
+        '''Test action JavaScript'''
+        script = SoS_Script(r'''
+[0]
+R:
+nums = rnorm(25, mean=100, sd=15)  
+mean(nums)
+''')
+        wf = script.workflow()
+        wf.run()
+
+    def testCheckRLibrary(self):
+        '''Test action check_R_library'''
+        script = SoS_Script(r'''
+[0]
+check_R_library(['edgeR'])
+''')
+        wf = script.workflow()
+        wf.run()
+        script = SoS_Script(r'''
+[0]
+check_R_library(['edgeRRRR'])
+''')
+        wf = script.workflow()
+        self.assertRaises(RuntimeError, wf.run)
 
 if __name__ == '__main__':
     unittest.main()
