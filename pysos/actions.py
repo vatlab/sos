@@ -25,10 +25,17 @@ import re
 import subprocess
 import tempfile
 import pipes
+from shutil import which
 from .utils import env
 
-__all__ = ['R', 'SoS_Action', 'SoS_ExecuteScript', 'check_command', 'fail_if', 'python', 'python3',
-    'run', 'search_output', 'warn_if']
+__all__ = ['SoS_Action', 'SoS_ExecuteScript',
+    'check_command', 'fail_if', 'warn_if', 'search_output',  
+    'run', 'bash', 'sh', 'awk',
+    'python', 'python3', 
+    'perl', 'ruby', 'node', 'JavaScript',
+    'R', 'check_r_package',
+    ]
+
 #
 # A decoration function that allows SoS to replace all SoS actions
 # with a null action.
@@ -68,95 +75,7 @@ class SoS_ExecuteScript:
         if ret != 0:
             raise RuntimeError('Failed to execute script')
 
-class SoS_ExecuteRScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line R script using Rscript as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='Rscript',
-            suffix='.R')
 
-class SoS_ExecuteShellScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line shell script using bash as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='bash',
-            suffix='.sh')
-
-class SoS_ExecutePythonScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line python script using python as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='python',
-            suffix='.py')
-
-
-class SoS_ExecutePython3Script(SoS_ExecuteScript):
-    '''SoS_Execute in-line python script using python as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='python3',
-            suffix='.py')
-
-@SoS_Action(run_mode='run')
-def run(script):
-    SoS_ExecuteShellScript(script).run()
-
-@SoS_Action(run_mode='run')
-def python(script):
-    SoS_ExecutePythonScript(script).run()
-
-@SoS_Action(run_mode='run')
-def python3(script):
-    SoS_ExecutePython3Script(script).run()
-
-@SoS_Action(run_mode='run')
-def R(script):
-    SoS_ExecuteRScript(script).run()
-
-
-try:
-    from shutil import which
-except ImportError:
-    # this function is only define in Python 3.3 +
-    def which(cmd, mode=os.F_OK | os.X_OK, path=None):
-        """Given a command, mode, and a PATH string, return the path which
-        conforms to the given mode on the PATH, or None if there is no such
-        file.
-
-        `mode` defaults to os.F_OK | os.X_OK. `path` defaults to the result
-        of os.environ.get("PATH"), or can be overridden with a custom search
-        path.
-
-        """
-        # Check that a given file can be accessed with the correct mode.
-        # Additionally check that `file` is not a directory, as on Windows
-        # directories pass the os.access check.
-        def _access_check(fn, mode):
-            return (os.path.exists(fn) and os.access(fn, mode)
-                    and not os.path.isdir(fn))
-
-        # Short circuit. If we're given a full path which matches the mode
-        # and it exists, we're done here.
-        if _access_check(cmd, mode):
-            return cmd
-
-        path = (path or os.environ.get("PATH", os.defpath)).split(os.pathsep)
-        files = [cmd]
-
-        seen = set()
-        for dir in path:
-            dir = os.path.normcase(dir)
-            if not dir in seen:
-                seen.add(dir)
-                for thefile in files:
-                    name = os.path.join(dir, thefile)
-                    if _access_check(name, mode):
-                        return name
-        return None
 
 
 @SoS_Action(run_mode=['dryrun', 'run'])
@@ -179,6 +98,7 @@ def fail_if(expr, msg=''):
     '''Raise an exception with `msg` if condition `expr` is False'''
     if expr:
         raise RuntimeError(msg)
+    return 0
 
 
 @SoS_Action(run_mode=['dryrun', 'run'])
@@ -186,6 +106,7 @@ def warn_if(expr, msg=''):
     '''Yield an warning message `msg` if `expr` is False '''
     if expr:
         env.logger.warning(msg)
+    return 0
 
 @SoS_Action(run_mode=['dryrun', 'run'])
 def search_output(cmd, pattern):
@@ -198,3 +119,172 @@ def search_output(cmd, pattern):
     if all([re.search(x, output, re.MULTILINE) is None for x in pattern]):
         raise RuntimeError('Output of command ``{}`` does not match specified regular expression ``{}``.'
             .format(cmd, ' or '.join(pattern)))
+    return 0
+
+
+class SoS_ExecuteBashScript(SoS_ExecuteScript):
+    '''SoS_Execute in-line shell script using bash as interpreter. Please
+    check action SoS_ExecuteScript for more details.
+    '''
+    def __init__(self, script=''):
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='bash',
+            suffix='.sh')
+
+@SoS_Action(run_mode='run')
+def run(script):
+    return SoS_ExecuteBashScript(script).run()
+
+@SoS_Action(run_mode='run')
+def bash(script):
+    return SoS_ExecuteBashScript(script).run()
+
+
+class SoS_ExecuteShellScript(SoS_ExecuteScript):
+    '''SoS_Execute in-line shell script using bash as interpreter. Please
+    check action SoS_ExecuteScript for more details.
+    '''
+    def __init__(self, script=''):
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='sh',
+            suffix='.sh')
+
+@SoS_Action(run_mode='run')
+def sh(script):
+    return SoS_ExecuteShellScript(script).run()
+
+class SoS_ExecuteAwkScript(SoS_ExecuteScript):
+    '''SoS_Execute in-line shell script using bash as interpreter. Please
+    check action SoS_ExecuteScript for more details.
+    '''
+    def __init__(self, script=''):
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='awk',
+            suffix='.awk')
+
+@SoS_Action(run_mode='run')
+def awk(script):
+    return SoS_ExecuteAwkScript(script).run()
+
+
+class SoS_ExecutePythonScript(SoS_ExecuteScript):
+    '''SoS_Execute in-line python script using python as interpreter. Please
+    check action SoS_ExecuteScript for more details.
+    '''
+    def __init__(self, script=''):
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='python',
+            suffix='.py')
+
+
+class SoS_ExecutePython3Script(SoS_ExecuteScript):
+    '''SoS_Execute in-line python script using python as interpreter. Please
+    check action SoS_ExecuteScript for more details.
+    '''
+    def __init__(self, script=''):
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='python3',
+            suffix='.py')
+
+@SoS_Action(run_mode='run')
+def python(script):
+    return SoS_ExecutePythonScript(script).run()
+
+@SoS_Action(run_mode='run')
+def python3(script):
+    return SoS_ExecutePython3Script(script).run()
+
+class SoS_ExecutePerlScript(SoS_ExecuteScript):
+    '''SoS_Execute in-line python script using python as interpreter. Please
+    check action SoS_ExecuteScript for more details.
+    '''
+    def __init__(self, script=''):
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='perl',
+            suffix='.pl')
+
+@SoS_Action(run_mode='run')
+def perl(script):
+    return SoS_ExecutePerlScript(script).run()
+
+class SoS_ExecuteRubyScript(SoS_ExecuteScript):
+    '''SoS_Execute in-line python script using python as interpreter. Please
+    check action SoS_ExecuteScript for more details.
+    '''
+    def __init__(self, script=''):
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='ruby',
+            suffix='.rb')
+
+
+@SoS_Action(run_mode='run')
+def ruby(script):
+    SoS_ExecuteRubyScript(script).run()
+
+class SoS_ExecuteJavaScriptScript(SoS_ExecuteScript):
+    '''SoS_Execute in-line python script using python as interpreter. Please
+    check action SoS_ExecuteScript for more details.
+    '''
+    def __init__(self, script=''):
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='node',
+            suffix='.js')
+
+@SoS_Action(run_mode='run')
+def node(script):
+    return SoS_ExecuteJavaScriptScript(script).run()
+
+@SoS_Action(run_mode='run')
+def JavaScript(script):
+    return SoS_ExecuteJavaScriptScript(script).run()
+
+class SoS_ExecuteRScript(SoS_ExecuteScript):
+    '''SoS_Execute in-line R script using Rscript as interpreter. Please
+    check action SoS_ExecuteScript for more details.
+    '''
+    def __init__(self, script=''):
+        SoS_ExecuteScript.__init__(self, script=script, interpreter='Rscript',
+            suffix='.R')
+
+@SoS_Action(run_mode='run')
+def R(script):
+    return SoS_ExecuteRScript(script).run()
+
+def check_r_package(names):
+    output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
+
+    SoS_ExecuteRScript('''
+        for (package in c(${names!r,})) {
+            if (require(package, character.only=TRUE, quietly=TRUE)) {
+                write(paste(package, "AVAILABLE"), file="{1}", append=TRUE)
+                next
+            } else {
+                install.packages(package, repos="http://cran.us.r-project.org", 
+                    quiet=TRUE)
+            }
+            # if the package still does not exist
+            if (!require(package, character.only=TRUE, quietly=TRUE)) {
+                source("http://bioconductor.org/biocLite.R")
+                biocLite(package, ask=FALSE)
+            }
+            # if it still does not exist, write the package name to output
+            if (require(package, character.only=TRUE, quietly=TRUE)) {
+                write(paste(package, "INSTALLED"), file="${output_file}", append=TRUE)
+            } else {
+                write(paste(package, "MISSING"), file="${output_file}", append=TRUE)
+            }
+        }
+    ''').run()
+    with open(output_file) as tmp:
+        count = 0
+        for line in tmp:
+            lib, status = line.split()
+            if status.strip() == "MISSING":
+                env.logger.error('R Library {} is not available and cannot be installed.'.format(lib))
+                count += 1
+            elif status.strip() == 'AVAILABLE':
+                env.logger.info('R library {} is available'.format(lib))
+            elif status.strip() == 'INSTALLED':
+                env.logger.info('R library {} has been installed'.format(lib))
+            else:
+                raise RuntimeError('This should not happen: {}'.format(line))
+    try:
+        os.remove(self.output_file)
+    except:
+        pass
+    if count > 0:
+        raise RuntimeError("One or more R libraries are not available.")
+    return 0
+
