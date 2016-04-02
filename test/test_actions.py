@@ -344,6 +344,12 @@ check_R_library('edgeR')
         wf.run()
         script = SoS_Script(r'''
 [0]
+check_R_library('stephens999/ashr')
+''')
+        wf = script.workflow()
+        wf.run()
+        script = SoS_Script(r'''
+[0]
 check_R_library('edgeRRRR')
 ''')
         wf = script.workflow()

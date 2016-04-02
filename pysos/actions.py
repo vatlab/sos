@@ -26,7 +26,7 @@ import subprocess
 import tempfile
 import pipes
 from shutil import which
-from .utils import env, interpolate
+from .utils import env, interpolate, glob_wildcards
 
 __all__ = ['SoS_Action', 'SoS_ExecuteScript',
     'check_command', 'fail_if', 'warn_if',
@@ -256,9 +256,36 @@ def R(script):
 
 @SoS_Action(run_mode=['dryrun', 'run'])
 def check_R_library(name, version = None):
+    '''Check existence and version match of R library.
+    cran and bioc packages are unique yet might overlap with github.
+    Therefore if the input name is {repo}/{pkg} the package will be
+    installed from github if not available, else from cran or bioc
+    '''
     output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
-    # Try to install package if not exist
-    install_script = interpolate('''
+    if len(glob_wildcards('{repo}/{pkg}', [name])['repo']):
+        # package is from github
+        check_R_library('devtools')
+        install_script = interpolate('''
+        options(warn=-1)
+        package_repo <- ${name!r}
+        package <- basename(package_repo)
+        if (require(package, character.only=TRUE, quietly=TRUE)) {
+            write(paste(package, packageVersion(package), "AVAILABLE"), file="${output_file}")
+        } else {
+            devtools::install_github(package_repo)
+            # if it still does not exist, write the package name to output
+            if (require(package, character.only=TRUE, quietly=TRUE)) {
+                write(paste(package, packageVersion(package), "INSTALLED"), file="${output_file}")
+            } else {
+                write(paste(package, "NA", "MISSING"), file="${output_file}")
+                quit("no")
+            }
+        }
+        cur_version <- packageVersion(package)
+        ''', '${ }', locals())
+    else:
+        # package is from cran or bioc
+        install_script = interpolate('''
         options(warn=-1)
         package <- ${name!r}
         if (require(package, character.only=TRUE, quietly=TRUE)) {
@@ -280,7 +307,7 @@ def check_R_library(name, version = None):
             }
         }
         cur_version <- packageVersion(package)
-    ''', '${ }', locals())
+        ''', '${ }', locals())
     version_script = ''
     if version is not None:
         version = [version] if isinstance(version, str) else version
