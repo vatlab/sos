@@ -92,6 +92,25 @@ check_command('catmouse')
         wf = script.workflow()
         # should fail also in run mode
         self.assertRaises(RuntimeError, wf.run)
+        #
+        # should also check command with option
+        script = SoS_Script(r"""
+[0]
+check_command('ls -l')
+""")
+        wf = script.workflow()
+        # this should pass
+        wf.run()
+        #
+        script = SoS_Script(r"""
+[0]
+if check_command('cat -h') != 0:
+    raise RuntimeError('command return non-zero')
+""")
+        wf = script.workflow()
+        # this should give a warning and return false
+        self.assertRaises(RuntimeError, wf.run)
+
 
     def testFailIf(self):
         '''Test action fail if'''
