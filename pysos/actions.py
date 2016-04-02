@@ -255,7 +255,7 @@ def R(script):
     return SoS_ExecuteRScript(script).run()
 
 @SoS_Action(run_mode=['dryrun', 'run'])
-def check_R_library(name, version = None):
+def check_R_library(name, version = None, strict_versioning = False):
     '''Check existence and version match of R library.
     cran and bioc packages are unique yet might overlap with github.
     Therefore if the input name is {repo}/{pkg} the package will be
@@ -344,8 +344,11 @@ def check_R_library(name, version = None):
             elif status.strip() == 'INSTALLED':
                 env.logger.info('R library {} ({}) has been installed'.format(lib, version))
             elif status.strip() == 'VERSION_MISMATCH':
-                env.logger.warning('R library {} ({}) does not satisfy version requirement!'.\
-                                   format(lib, version))
+                msg = 'R library {} ({}) does not satisfy version requirement!'.format(lib, version)
+                if strict_versioning:
+                    raise RuntimeError(msg)
+                else:
+                    env.logger.warning(msg)
             else:
                 raise RuntimeError('This should not happen: {}'.format(line))
     try:
