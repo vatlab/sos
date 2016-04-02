@@ -137,17 +137,17 @@ warn_if(len(input) == 1)
         wf.run()
 
     def testSearchOutput(self):
-        '''Test action search_output'''
+        '''Test action check_command for output search'''
         script = SoS_Script(r"""
 [0]
-search_output('cat test_actions.py', 'abcde' + 'fgh')
+check_command('cat test_actions.py', 'abcde' + 'fgh')
 """)
         wf = script.workflow()
         # should raise an error
         self.assertRaises(RuntimeError, wf.run)
         #
         script = SoS_Script(r"""
-search_output('cat test_actions.py', 'testSearchOutput')
+check_command('cat test_actions.py', 'testSearchOutput')
 """)
         wf = script.workflow()
         wf.run()
@@ -249,7 +249,7 @@ echo "Hello World!", $SHELL
         wf.run()
 
     def testPython(self):
-        '''Test python command. This might fail if python3 is the 
+        '''Test python command. This might fail if python3 is the
         default interpreter'''
         script = SoS_Script(r'''
 [0]
@@ -259,7 +259,7 @@ print(a)
 ''')
         wf = script.workflow()
         wf.run()
-        
+
     def testPython3(self):
         script = SoS_Script(r'''
 [0]
@@ -328,7 +328,7 @@ console.log('Hello ' + args.join(' ') + '!');
         script = SoS_Script(r'''
 [0]
 R:
-nums = rnorm(25, mean=100, sd=15)  
+nums = rnorm(25, mean=100, sd=15)
 mean(nums)
 ''')
         wf = script.workflow()
@@ -338,13 +338,13 @@ mean(nums)
         '''Test action check_R_library'''
         script = SoS_Script(r'''
 [0]
-check_R_library(['edgeR'])
+check_R_library('edgeR')
 ''')
         wf = script.workflow()
         wf.run()
         script = SoS_Script(r'''
 [0]
-check_R_library(['edgeRRRR'])
+check_R_library('edgeRRRR')
 ''')
         wf = script.workflow()
         self.assertRaises(RuntimeError, wf.run)
