@@ -75,6 +75,9 @@ class SoS_ExecuteScript:
         if ret != 0:
             raise RuntimeError('Failed to execute script')
 
+@SoS_Action(run_mode=['run'])
+def execute_script(script, interpreter, suffix):
+    return SoS_ExecuteScript(script, interpreter, suffix).run()
 
 @SoS_Action(run_mode=['dryrun', 'run'])
 def check_command(cmd, pattern = None):
@@ -111,148 +114,57 @@ def warn_if(expr, msg=''):
         env.logger.warning(msg)
     return 0
 
-class SoS_ExecuteBashScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line shell script using bash as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='bash',
-            suffix='.sh')
-
 @SoS_Action(run_mode='run')
 def run(script):
-    return SoS_ExecuteBashScript(script).run()
+    return SoS_ExecuteScript(script, 'bash', '.sh').run()
 
 @SoS_Action(run_mode='run')
 def bash(script):
-    return SoS_ExecuteBashScript(script).run()
-
-class SoS_ExecuteCshScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line cshell script using bash as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='csh',
-            suffix='.sh')
+    return SoS_ExecuteScript(script, 'bash', '.sh').run()
 
 @SoS_Action(run_mode='run')
 def csh(script):
-    return SoS_ExecuteCshScript(script).run()
-
-
-class SoS_ExecuteTcshScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line cshell script using bash as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='tcsh',
-            suffix='.sh')
+    return SoS_ExecuteScript(script, 'csh', '.csh').run()
 
 @SoS_Action(run_mode='run')
 def tcsh(script):
-    return SoS_ExecuteTcshScript(script).run()
-
-class SoS_ExecuteZshScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line cshell script using bash as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='zsh',
-            suffix='.zsh')
+    return SoS_ExecuteScript(script, 'tcsh', '.sh').run()
 
 @SoS_Action(run_mode='run')
 def zsh(script):
-    return SoS_ExecuteZshScript(script).run()
-
-class SoS_ExecuteShellScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line shell script using bash as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='sh',
-            suffix='.sh')
+    return SoS_ExecuteScript(script, 'zsh', '.zsh').run()
 
 @SoS_Action(run_mode='run')
 def sh(script):
-    return SoS_ExecuteShellScript(script).run()
-
-class SoS_ExecutePythonScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line python script using python as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='python',
-            suffix='.py')
-
-
-class SoS_ExecutePython3Script(SoS_ExecuteScript):
-    '''SoS_Execute in-line python script using python as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='python3',
-            suffix='.py')
+    return SoS_ExecuteScript(script, 'sh', '.sh').run()
 
 @SoS_Action(run_mode='run')
 def python(script):
-    return SoS_ExecutePythonScript(script).run()
+    return SoS_ExecuteScript(script, 'python', '.py').run()
 
 @SoS_Action(run_mode='run')
 def python3(script):
-    return SoS_ExecutePython3Script(script).run()
-
-class SoS_ExecutePerlScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line python script using python as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='perl',
-            suffix='.pl')
+    return SoS_ExecuteScript(script, 'python3', '.py').run()
 
 @SoS_Action(run_mode='run')
 def perl(script):
-    return SoS_ExecutePerlScript(script).run()
-
-class SoS_ExecuteRubyScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line python script using python as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='ruby',
-            suffix='.rb')
-
+    return SoS_ExecuteScript(script, 'perl', '.pl').run()
 
 @SoS_Action(run_mode='run')
 def ruby(script):
-    SoS_ExecuteRubyScript(script).run()
-
-class SoS_ExecuteJavaScriptScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line python script using python as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='node',
-            suffix='.js')
+    return SoS_ExecuteScript(script, 'ruby', '.rb').run()
 
 @SoS_Action(run_mode='run')
 def node(script):
-    return SoS_ExecuteJavaScriptScript(script).run()
+    return SoS_ExecuteScript(script, 'node', '.js').run()
 
 @SoS_Action(run_mode='run')
 def JavaScript(script):
-    return SoS_ExecuteJavaScriptScript(script).run()
-
-class SoS_ExecuteRScript(SoS_ExecuteScript):
-    '''SoS_Execute in-line R script using Rscript as interpreter. Please
-    check action SoS_ExecuteScript for more details.
-    '''
-    def __init__(self, script=''):
-        SoS_ExecuteScript.__init__(self, script=script, interpreter='Rscript',
-            suffix='.R')
+    return SoS_ExecuteScript(script, 'node', '.js').run()
 
 @SoS_Action(run_mode='run')
 def R(script):
-    return SoS_ExecuteRScript(script).run()
+    return SoS_ExecuteScript(script, 'Rscript', '.R').run()
 
 @SoS_Action(run_mode=['dryrun', 'run'])
 def check_R_library(name, version = None, strict_versioning = False):
@@ -333,7 +245,7 @@ def check_R_library(name, version = None, strict_versioning = False):
             '''.format(repr(x), y)
         version_script += 'write(paste(package, cur_version, "VERSION_MISMATCH"), file = {})'.\
           format(repr(output_file))
-    SoS_ExecuteRScript(install_script + version_script).run()
+    SoS_ExecuteScript(install_script + version_script, 'Rscript', '.R').run()
     with open(output_file) as tmp:
         for line in tmp:
             lib, version, status = line.split()
