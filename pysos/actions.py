@@ -164,7 +164,7 @@ def JavaScript(script):
 
 @SoS_Action(run_mode='run')
 def R(script):
-    return SoS_ExecuteScript(script, 'Rscript', '.R').run()
+    return SoS_ExecuteScript(script, 'Rscript --default-packages=methods,utils,stats', '.R').run()
 
 @SoS_Action(run_mode=['dryrun', 'run'])
 def check_R_library(name, version = None, strict_versioning = False):
@@ -245,7 +245,7 @@ def check_R_library(name, version = None, strict_versioning = False):
             '''.format(repr(x), y)
         version_script += 'write(paste(package, cur_version, "VERSION_MISMATCH"), file = {})'.\
           format(repr(output_file))
-    SoS_ExecuteScript(install_script + version_script, 'Rscript', '.R').run()
+    R(install_script + version_script)
     with open(output_file) as tmp:
         for line in tmp:
             lib, version, status = line.split()
