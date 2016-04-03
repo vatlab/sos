@@ -28,7 +28,7 @@ if ver.major == 2 or (ver.major == 3 and (ver.minor, ver.micro) < (3, 0)):
         .format(ver.major, ver.minor, ver.micro))
 
 
-__version__ = '0.5.4'
+__version__ = '0.5.6'
 __py_version__ = '{}.{}.{}'.format(ver.major, ver.minor, ver.micro)
 #
 SOS_FULL_VERSION='{} for Python {}.{}.{}'.format(__version__, ver.major, ver.minor, ver.micro)
