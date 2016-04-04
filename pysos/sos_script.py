@@ -1122,7 +1122,7 @@ class SoS_Workflow:
         # all sections are simply appended ...
         self.sections.extend(workflow.sections)
 
-    def run(self, args=[], nested=False, cmd_name=''):
+    def run(self, args=[], nested=False, cmd_name='', config_file=None):
         '''Execute a workflow with specified command line args. If sub is True, this 
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -1145,6 +1145,18 @@ class SoS_Workflow:
                     env.sos_dict.set(k, v)
             # initial values
             env.sos_dict.set('SOS_VERSION', __version__)
+            cfg = {}
+            if config_file is not None:
+                if not os.path.isfile(config_file):
+                    raise RuntimeError('Config file {} not found'.format(config_file))
+                try:
+                    import yaml
+                    with open(config_file) as config:
+                        cfg = yaml.safe_load(config)
+                except Exception as e:
+                    raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format?'.format(config_file))
+            #
+            env.sos_dict.set('CONFIG', cfg)
             py_version = sys.version_info
             env.sos_dict.set('__step_input__', [])
         #
@@ -1804,7 +1816,8 @@ def sos_run(args, workflow_args):
             env.run_mode = 'dryrun'
         if args.__rerun__:
             env.sig_mode = 'ignore'
-        workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow))
+        #
+        workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             print_traceback()
@@ -1818,4 +1831,5 @@ def sos_dryrun(args, workflow_args):
     args.__max_jobs__ = 1
     args.__dryrun__ = True
     args.__rerun__ = False
+    args.__config__ = None
     sos_run(args, workflow_args)

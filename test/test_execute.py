@@ -42,17 +42,13 @@ class TestExecute(unittest.TestCase):
         '''Test command line arguments'''
         result = subprocess.check_output('sos --version', stderr=subprocess.STDOUT, shell=True).decode()
         self.assertTrue(result.startswith('sos {}'.format(__version__)))
-        if hasattr(subprocess, 'DEVNULL'):
-            devnull = subprocess.DEVNULL
-        else:
-            devnull = open(os.devnull, 'w')
-        self.assertEqual(subprocess.call('sos', stderr=devnull, stdout=devnull, shell=True), 0)
-        self.assertEqual(subprocess.call('sos -h', stderr=devnull, stdout=devnull, shell=True), 0)
-        self.assertEqual(subprocess.call('sos run -h', stderr=devnull, stdout=devnull, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun -h', stderr=devnull, stdout=devnull, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun scripts/master.sos', stderr=devnull, stdout=devnull, shell=True), 1)
-        self.assertEqual(subprocess.call('sos dryrun scripts/master.sos L', stderr=devnull, stdout=devnull, shell=True), 0)
-        self.assertEqual(subprocess.call('sos show -h', stderr=devnull, stdout=devnull, shell=True), 0)
+        self.assertEqual(subprocess.call('sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos run -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos dryrun -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos dryrun scripts/master.sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
+        self.assertEqual(subprocess.call('sos dryrun scripts/master.sos L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos show -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
 
     def testInterpolation(self):
         '''Test string interpolation during execution'''

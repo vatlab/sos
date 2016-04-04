@@ -23,6 +23,7 @@
 import os
 import unittest
 import shutil
+import subprocess
 
 from pysos.utils import env
 from pysos.sos_script import SoS_Script, ParsingError, ArgumentError
@@ -878,6 +879,39 @@ input: 'a.txt', 'b.txt', group_by='single'
         self.assertEqual(env.sos_dict['executed'], ['g.b_1', 't.A_parameters', 't.A_1', 't.A_2', 't.A_parameters', 't.A_1', 't.A_2'])
         #
         shutil.rmtree('temp')
+
+    def testYAMLConfig(self):
+        '''Test config file in yaml format'''
+        with open('config.yaml', 'w') as config:
+            config.write('''
+# Lines beginning with # are skipped when the JSON is parsed, so we can
+# put comments into our JSON configuration files
+{
+    StoreOwner : "John Doe",
+
+    # List of items that we sell
+    Fruits: [ "apple", "banana", "pear" ],
+    Price: 1.05
+}            
+''')
+        with open('config.sos', 'w') as sos:
+            sos.write('''
+[0]
+print(CONFIG['StoreOwner'])
+'''
+)
+        # run the command
+        self.assertEqual(subprocess.call('sos run config.sos -c config.yaml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        # now test the value
+        script = SoS_Script(filename='config.sos')
+        wf = script.workflow()
+        wf.run(config_file='config.yaml')
+        self.assertEqual(env.sos_dict['CONFIG']['Price'], 1.05)
+        self.assertEqual(env.sos_dict['CONFIG']['StoreOwner'], 'John Doe')
+        self.assertEqual(env.sos_dict['CONFIG']['Fruits'], ['apple', 'banana', 'pear'])
+        #
+        for filename in ['config.sos', 'config.yaml']:
+            os.remove(filename)
 
 
 if __name__ == '__main__':
