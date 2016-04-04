@@ -73,7 +73,7 @@ if __name__ == '__main__':
             specified processes concurrently. These include looped processes
             within a step (with runtime option `concurrent=True`) and steps with
             non-missing required files.''')
-    parser.add_argument('-c', dest='__config__',
+    parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE',
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary 
             CONF in the SoS script being executed.''')
