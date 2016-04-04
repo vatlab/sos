@@ -51,7 +51,7 @@ from itertools import tee, combinations
 from . import __version__
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
     dehtml, getTermWidth, interpolate, shortRepr, extract_pattern, expand_pattern, \
-    print_traceback, pickleable, ProgressBar
+    print_traceback, pickleable, ProgressBar, frozendict
 
 __all__ = ['SoS_Script']
 
@@ -1156,7 +1156,7 @@ class SoS_Workflow:
                 except Exception as e:
                     raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format?'.format(config_file))
             #
-            env.sos_dict.set('CONFIG', cfg)
+            env.sos_dict.set('CONFIG', frozendict(cfg))
             py_version = sys.version_info
             env.sos_dict.set('__step_input__', [])
         #

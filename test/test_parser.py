@@ -909,10 +909,20 @@ print(CONFIG['StoreOwner'])
         self.assertEqual(env.sos_dict['CONFIG']['Price'], 1.05)
         self.assertEqual(env.sos_dict['CONFIG']['StoreOwner'], 'John Doe')
         self.assertEqual(env.sos_dict['CONFIG']['Fruits'], ['apple', 'banana', 'pear'])
+        # configuration items should be readonly
+        with open('config.sos', 'w') as sos:
+            sos.write('''
+[0]
+CONFIG['a'] = 'b'
+'''
+)
+        # the command would fail with error message
+        # ERROR: Failed to process statement CONFIG['a'] = 'b'
+        # : Cannot modify a readonly dictionary.
+        self.assertEqual(subprocess.call('sos run config.sos -c config.yaml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
         #
         for filename in ['config.sos', 'config.yaml']:
             os.remove(filename)
-
 
 if __name__ == '__main__':
     unittest.main()
