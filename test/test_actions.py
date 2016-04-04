@@ -390,5 +390,27 @@ check_R_library('edgeRRRR')
         wf = script.workflow()
         self.assertRaises(RuntimeError, wf.run)
 
+    def testDockerBuild(self):
+        '''Test action docker build'''
+        script = SoS_Script(r'''
+[0]
+docker_build:
+#
+# Super simple example of a Dockerfile
+#
+FROM ubuntu:latest
+MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
+
+RUN apt-get update
+RUN apt-get install -y python python-pip wget
+RUN pip install Flask
+
+ADD test_actions.py /home/hello.py
+
+WORKDIR /home
+''')
+        wf = script.workflow()
+        wf.run()
+
 if __name__ == '__main__':
     unittest.main()

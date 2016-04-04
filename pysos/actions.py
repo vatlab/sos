@@ -24,17 +24,17 @@ import os
 import re
 import subprocess
 import tempfile
-import pipes
 import shlex
 from shutil import which
 from .utils import env, interpolate, glob_wildcards
 
-__all__ = ['SoS_Action', 'SoS_ExecuteScript',
+__all__ = ['SoS_Action', 'execute_script',
     'check_command', 'fail_if', 'warn_if',
     'run', 'bash', 'csh', 'tcsh', 'zsh', 'sh',
     'python', 'python3',
     'perl', 'ruby', 'node', 'JavaScript',
     'R', 'check_R_library',
+    'docker_build',
     ]
 
 #
@@ -55,18 +55,19 @@ def SoS_Action(run_mode='run'):
 
 
 class SoS_ExecuteScript:
-    def __init__(self, script, interpreter, suffix):
+    def __init__(self, script, interpreter, suffix, script_file=None):
         self.script = script
         self.interpreter = interpreter
-        self.script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=suffix, delete=False).name
+        if script_file is None:
+            self.script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=suffix, delete=False).name
+        else:
+            self.script_file = script_file
         with open(self.script_file, 'w') as script_file:
             script_file.write(self.script)
 
     def run(self):
-        if '{}' in self.interpreter:
-            cmd = self.interpreter.replace('{}', pipes.quote(self.script_file))
-        else:
-            cmd = self.interpreter + ' ' + pipes.quote(self.script_file)
+        script = self.script_file
+        cmd = interpolate(self.interpreter, '${ }', locals())
         try:
             p = subprocess.Popen(cmd, shell=True)
             env.register_process(p.pid, 'Runing {}'.format(self.script_file))
@@ -131,55 +132,55 @@ def warn_if(expr, msg=''):
 
 @SoS_Action(run_mode='run')
 def run(script):
-    return SoS_ExecuteScript(script, 'bash', '.sh').run()
+    return SoS_ExecuteScript(script, 'bash ${script!q}', '.sh').run()
 
 @SoS_Action(run_mode='run')
 def bash(script):
-    return SoS_ExecuteScript(script, 'bash', '.sh').run()
+    return SoS_ExecuteScript(script, 'bash ${script!q}', '.sh').run()
 
 @SoS_Action(run_mode='run')
 def csh(script):
-    return SoS_ExecuteScript(script, 'csh', '.csh').run()
+    return SoS_ExecuteScript(script, 'csh ${script!q}', '.csh').run()
 
 @SoS_Action(run_mode='run')
 def tcsh(script):
-    return SoS_ExecuteScript(script, 'tcsh', '.sh').run()
+    return SoS_ExecuteScript(script, 'tcsh ${script!q}', '.sh').run()
 
 @SoS_Action(run_mode='run')
 def zsh(script):
-    return SoS_ExecuteScript(script, 'zsh', '.zsh').run()
+    return SoS_ExecuteScript(script, 'zsh ${script!q}', '.zsh').run()
 
 @SoS_Action(run_mode='run')
 def sh(script):
-    return SoS_ExecuteScript(script, 'sh', '.sh').run()
+    return SoS_ExecuteScript(script, 'sh ${script!q}', '.sh').run()
 
 @SoS_Action(run_mode='run')
 def python(script):
-    return SoS_ExecuteScript(script, 'python', '.py').run()
+    return SoS_ExecuteScript(script, 'python ${script!q}', '.py').run()
 
 @SoS_Action(run_mode='run')
 def python3(script):
-    return SoS_ExecuteScript(script, 'python3', '.py').run()
+    return SoS_ExecuteScript(script, 'python3 ${script!q}', '.py').run()
 
 @SoS_Action(run_mode='run')
 def perl(script):
-    return SoS_ExecuteScript(script, 'perl', '.pl').run()
+    return SoS_ExecuteScript(script, 'perl ${script!q}', '.pl').run()
 
 @SoS_Action(run_mode='run')
 def ruby(script):
-    return SoS_ExecuteScript(script, 'ruby', '.rb').run()
+    return SoS_ExecuteScript(script, 'ruby ${script!q}', '.rb').run()
 
 @SoS_Action(run_mode='run')
 def node(script):
-    return SoS_ExecuteScript(script, 'node', '.js').run()
+    return SoS_ExecuteScript(script, 'node ${script!q}', '.js').run()
 
 @SoS_Action(run_mode='run')
 def JavaScript(script):
-    return SoS_ExecuteScript(script, 'node', '.js').run()
+    return SoS_ExecuteScript(script, 'node ${script!q}', '.js').run()
 
 @SoS_Action(run_mode='run')
 def R(script):
-    return SoS_ExecuteScript(script, 'Rscript --default-packages=methods,utils,stats', '.R').run()
+    return SoS_ExecuteScript(script, 'Rscript --default-packages=methods,utils,stats ${script!q}', '.R').run()
 
 @SoS_Action(run_mode=['dryrun', 'run'])
 def check_R_library(name, version = None):
@@ -260,7 +261,7 @@ def check_R_library(name, version = None):
             '''.format(repr(x), y)
         version_script += 'write(paste(package, cur_version, "VERSION_MISMATCH"), file = {})'.\
           format(repr(output_file))
-    SoS_ExecuteScript(install_script + version_script, 'Rscript --default-packages=methods,utils,stats', '.R').run()
+    SoS_ExecuteScript(install_script + version_script, 'Rscript --default-packages=methods,utils,stats ${script!q}', '.R').run()
     ret_val = 0
     with open(output_file) as tmp:
         for line in tmp:
@@ -281,3 +282,9 @@ def check_R_library(name, version = None):
     except:
         pass
     return ret_val
+
+
+@SoS_Action(run_mode='run')
+def docker_build(script):
+    return SoS_ExecuteScript(script, 'docker build .', '.Dockerfile',
+        script_file = 'Dockerfile').run()

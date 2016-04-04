@@ -67,7 +67,7 @@ from .actions import *
 _INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic']
 _OUTPUT_OPTIONS = ['pattern', 'dynamic']
 _DEPENDS_OPTIONS = ['pattern', 'dynamic']
-_RUNTIME_OPTIONS = ['workdir', 'concurrent']
+_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'docker', 'docker_options']
 
 
 class ArgumentError(Error):
