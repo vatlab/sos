@@ -104,13 +104,29 @@ check_command('ls -l')
         #
         script = SoS_Script(r"""
 [0]
-if check_command('cat -h') != 0:
-    raise RuntimeError('command return non-zero')
+fail_if(check_command('cat -h') != 0, 'command return non-zero')
 """)
         wf = script.workflow()
         # this should give a warning and return false
         self.assertRaises(RuntimeError, wf.run)
-
+        #
+        # check check_command is the command is stuck
+        env.run_mode = 'dryrun'
+        script = SoS_Script(r"""
+[0]
+check_command('sleep 4')
+""")
+        wf = script.workflow()
+        # this should pass
+        wf.run()
+        #
+        script = SoS_Script(r"""
+[0]
+fail_if(check_command('sleep 4') != 0, 'Command time out')
+""")
+        wf = script.workflow()
+        # this should pass
+        self.assertRaises(RuntimeError, wf.run)
 
     def testFailIf(self):
         '''Test action fail if'''

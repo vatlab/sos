@@ -94,11 +94,17 @@ def check_command(cmd, pattern = None):
         env.logger.info('Command ``{}`` is located as ``{}``.'.format(cmd, name))
     else:
         try:
-            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode()
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True, timeout=2).decode()
+        except subprocess.TimeoutExpired as e:
+            output = e.output
+            ret_val = 1
+            env.logger.warning(e)
+            env.logger.warning(e.output.decode())
         except subprocess.CalledProcessError as e:
             ret_val = e.returncode
             output = e.output
             env.logger.warning(e)
+            env.logger.warning(e.output.decode())
         #
         env.logger.trace('Output of command ``{}`` is ``{}``'.format(cmd, output))
         #

@@ -47,6 +47,7 @@ setup(name = "sos",
     install_requires=[
           'psutil',
           'celery',
+          'pyyaml',
       ],
     scripts = [
         'sos',
