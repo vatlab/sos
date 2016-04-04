@@ -25,6 +25,7 @@ import re
 import subprocess
 import tempfile
 import pipes
+import shlex
 from shutil import which
 from .utils import env, interpolate, glob_wildcards
 
@@ -85,20 +86,28 @@ def check_command(cmd, pattern = None):
     Multiple patterns can be specified as a list of patterns.
     When pattern is None, check the existence of command `cmd`
     and raise an error if command does not exist.'''
-    if pattern is None:
+    ret_val = 0
+    if pattern is None and len(shlex.split(cmd)) == 1:
         name = which(cmd)
         if not name:
             raise RuntimeError('Command ``{}`` not found!'.format(cmd))
         env.logger.info('Command ``{}`` is located as ``{}``.'.format(cmd, name))
     else:
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode()
+        try:
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).decode()
+        except subprocess.CalledProcessError as e:
+            ret_val = e.returncode
+            output = e.output
+            env.logger.warning(e)
+        #
         env.logger.trace('Output of command ``{}`` is ``{}``'.format(cmd, output))
         #
-        pattern = [pattern] if isinstance(pattern, str) else pattern
-        if all([re.search(x, output, re.MULTILINE) is None for x in pattern]):
-            raise RuntimeError('Output of command ``{}`` does not match specified regular expression ``{}``.'
-                .format(cmd, ' or '.join(pattern)))
-    return 0
+        if pattern:
+            pattern = [pattern] if isinstance(pattern, str) else pattern
+            if all([re.search(x, output, re.MULTILINE) is None for x in pattern]):
+                raise RuntimeError('Output of command ``{}`` does not match specified regular expression ``{}``.'
+                    .format(cmd, ' or '.join(pattern)))
+    return ret_val
 
 @SoS_Action(run_mode=['dryrun', 'run'])
 def fail_if(expr, msg=''):
@@ -167,7 +176,7 @@ def R(script):
     return SoS_ExecuteScript(script, 'Rscript --default-packages=methods,utils,stats', '.R').run()
 
 @SoS_Action(run_mode=['dryrun', 'run'])
-def check_R_library(name, version = None, strict_versioning = False):
+def check_R_library(name, version = None):
     '''Check existence and version match of R library.
     cran and bioc packages are unique yet might overlap with github.
     Therefore if the input name is {repo}/{pkg} the package will be
@@ -245,7 +254,8 @@ def check_R_library(name, version = None, strict_versioning = False):
             '''.format(repr(x), y)
         version_script += 'write(paste(package, cur_version, "VERSION_MISMATCH"), file = {})'.\
           format(repr(output_file))
-    R(install_script + version_script)
+    SoS_ExecuteScript(install_script + version_script, 'Rscript --default-packages=methods,utils,stats', '.R').run()
+    ret_val = 0
     with open(output_file) as tmp:
         for line in tmp:
             lib, version, status = line.split()
@@ -256,15 +266,12 @@ def check_R_library(name, version = None, strict_versioning = False):
             elif status.strip() == 'INSTALLED':
                 env.logger.info('R library {} ({}) has been installed'.format(lib, version))
             elif status.strip() == 'VERSION_MISMATCH':
-                msg = 'R library {} ({}) does not satisfy version requirement!'.format(lib, version)
-                if strict_versioning:
-                    raise RuntimeError(msg)
-                else:
-                    env.logger.warning(msg)
+                env.logger.warning('R library {} ({}) does not satisfy version requirement!'.format(lib, version))
+                ret_val = 1
             else:
                 raise RuntimeError('This should not happen: {}'.format(line))
     try:
         os.remove(self.output_file)
     except:
         pass
-    return 0
+    return ret_val
