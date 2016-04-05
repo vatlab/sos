@@ -355,7 +355,7 @@ def docker_run(command='', **kwargs):
     response = docker.start(container=container.get('Id'))
     if response is not None:
         env.logger.info(response)
-    print(docker.logs(container=container.get('Id')))
+    print(docker.logs(container=container.get('Id')).decode())
     return 0
 
 
