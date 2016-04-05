@@ -20,7 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from distutils.core import setup
+from setuptools import setup
 exec(open('pysos/_version.py').read())
 
 setup(name = "sos",
