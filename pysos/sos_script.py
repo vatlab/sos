@@ -26,7 +26,6 @@ import copy
 import atexit
 import glob
 import fnmatch
-import keyword
 import argparse
 import textwrap
 #
@@ -53,16 +52,13 @@ from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
     dehtml, getTermWidth, interpolate, shortRepr, extract_pattern, expand_pattern, \
     print_traceback, pickleable, ProgressBar, frozendict
 
+from .sos_syntax import *
+
 __all__ = ['SoS_Script']
 
 # 
 # global definitions of SoS syntax
 # 
-_INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic']
-_OUTPUT_OPTIONS = ['pattern', 'dynamic']
-_DEPENDS_OPTIONS = ['pattern', 'dynamic']
-_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'docker', 'docker_options']
-
 
 class ArgumentError(Error):
     """Raised when an invalid argument is passed."""
@@ -257,7 +253,7 @@ def __null_func__(*args, **kwargs):
 def directive_input(*args, **kwargs):
     # first *args are filenames
     for k in kwargs.keys():
-        if k not in _INPUT_OPTIONS:
+        if k not in SOS_INPUT_OPTIONS:
             raise RuntimeError('Unrecognized input option {}'.format(k))
     #
     if args:
@@ -347,7 +343,7 @@ def directive_input(*args, **kwargs):
 def directive_depends(*args, **kwargs):
     '''handle directive depends'''
     for k in kwargs.keys():
-        if k not in _DEPENDS_OPTIONS:
+        if k not in SOS_DEPENDS_OPTIONS:
             raise RuntimeError('Unrecognized depends option {}'.format(k))
     # first *args are filenames
     dfiles = []
@@ -380,7 +376,7 @@ def handle_output_pattern(pattern, ofiles):
         
 def directive_output(*args, **kwargs):
     for k in kwargs.keys():
-        if k not in _OUTPUT_OPTIONS:
+        if k not in SOS_OUTPUT_OPTIONS:
             raise RuntimeError('Unrecognized output option {}'.format(k))
     ofiles = []
     for arg in args:
@@ -404,7 +400,7 @@ def directive_output(*args, **kwargs):
 
 def directive_process(**kwargs):
     for k in kwargs.keys():
-        if k not in _RUNTIME_OPTIONS:
+        if k not in SOS_RUNTIME_OPTIONS:
             raise RuntimeError('Unrecognized runtime option {}'.format(k))
     #
     if '_runtime' not in env.sos_dict:
@@ -457,6 +453,7 @@ class SoS_Step:
         #
         # string mode to collect all strings as part of an action
         self._action = None
+        self._action_options = ''
         self._script = ''
 
     def category(self):
@@ -547,6 +544,7 @@ class SoS_Step:
             self.values = [value]
             if action is not None:
                 self._action = action
+                self._action_options = value
         self.back_comment = ''
         if lineno:
             self.lineno = lineno
@@ -570,8 +568,10 @@ class SoS_Step:
         '''convert action: script to process: action(script)'''
         if self._action is None:
             return
-        self.statements.append(['!', '{}({!r})'.format(self._action, textwrap.dedent(self._script))])
+        # _action options can contain both runtime option and action options
+        self.statements.append(['!', '{}({!r},{})'.format(self._action, textwrap.dedent(self._script), self._action_options)])
         self._action = None
+        self._action_options = None
         self._script = ''
 
     def finalize(self):
@@ -1211,96 +1211,6 @@ class SoS_Workflow:
             section.show(indent)
 
 class SoS_Script:
-    _DIRECTIVES = ['input', 'output', 'depends', 'process']
-    _SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'target', 'source']
-    _PARAMETERS_SECTION_NAME = 'parameters'
-
-    # Regular expressions for parsing section headers and options
-    _SECTION_HEADER_TMPL = r'''
-        ^\[\s*                             # [
-        (?P<section_name>[\d\w_,+=*\s-]+)  # digit, alphabet, _ and ,
-        (:\s*                              # :
-        (?P<section_option>.*)             # section options
-        )?                                 # optional
-        \]\s*$                             # ]
-        '''
-
-    _SECTION_NAME_TMPL = '''
-        ^\s*                               # start
-        (?P<name>                          # optional name
-        [a-zA-Z*]                          # alphabet or '*'
-        ([\w\d_*]*?                        # followed by alpha numeric or '*'
-        [a-zA-Z\d*])??                     # but last character cannot be _
-        )?                                 # name is optional
-        (?(name)                           # if there is name
-        (_(?P<index>\d+))?                 #   optional _index
-        |(?P<default_index>\d+))           # no name, then index
-        (\s*=\s*
-        (?P<subworkflow>                   # = subworkflow
-        [\w\d_+\s-]+                       # subworkflow specification
-        ))?                                # optional
-        \s*$
-        '''
-
-    _SUBWORKFLOW_TMPL = '''
-        ^\s*                               # leading space
-        (?P<name>                          # name
-        [a-zA-Z*]                          # cannot start with _ etc
-        ([\w\d_]*?))                       # can have _ and digit
-        (_(?P<steps>                       # index start from _
-        [\d\s-]+))?                        # with - and digit
-        \s*$                               # end
-        '''
-
-    _SECTION_OPTION_TMPL = '''
-        ^\s*                               # start
-        (?P<name>{})                       # one of the option names
-        (\s*=\s*                           # =
-        (?P<value>.+)                      # value
-        )?                                 # value is optional
-        \s*$
-        '''.format('|'.join(_SECTION_OPTIONS))
-
-
-    _FORMAT_LINE_TMPL = r'''
-        ^                                  # from first column
-        \#fileformat\s*=\s*                # starts with #fileformat=SOS
-        (?P<format_name>.*)                # format name
-        \s*$                               # till end of line
-        '''
-
-    _FORMAT_VERSION_TMPL = r'''
-        ^                                  # from first column
-        (?P<format_name>[a-zA-Z]+)         # format name
-        (?P<format_version>[\d\.]+)        # any number and .
-        \s*$                               # till end of line
-        '''
-
-    _DIRECTIVE_TMPL = r'''
-        ^                                  # from start of line
-        (?P<directive_name>                # 
-        (?!({})\s*:)                       # not a python keyword followed by : (can be input)
-        ({}                                # name of directive
-        |[a-zA-Z][\w\d_]*))                #    or action
-        \s*:\s*                            # followed by :
-        (?P<directive_value>.*)            # and values
-        '''.format('|'.join(keyword.kwlist), '|'.join(_DIRECTIVES))
-
-    _ASSIGNMENT_TMPL = r'''
-        ^                                  # from start of line
-        (?P<var_name>[\w_][\d\w_]*)        # variable name
-        \s*=\s*                            # assignment
-        (?P<var_value>.*)                  # variable content
-        '''
-
-    SECTION_HEADER = re.compile(_SECTION_HEADER_TMPL, re.VERBOSE)
-    SECTION_NAME = re.compile(_SECTION_NAME_TMPL, re.VERBOSE)
-    SUBWORKFLOW = re.compile(_SUBWORKFLOW_TMPL, re.VERBOSE)
-    SECTION_OPTION = re.compile(_SECTION_OPTION_TMPL, re.VERBOSE)
-    FORMAT_LINE = re.compile(_FORMAT_LINE_TMPL, re.VERBOSE)
-    FORMAT_VERSION = re.compile(_FORMAT_VERSION_TMPL, re.VERBOSE)
-    DIRECTIVE = re.compile(_DIRECTIVE_TMPL, re.VERBOSE)
-    ASSIGNMENT = re.compile(_ASSIGNMENT_TMPL, re.VERBOSE)
 
     def __init__(self, content='', filename=None):
         '''Parse a sectioned SoS script file. Please refer to the SoS manual
@@ -1386,13 +1296,13 @@ class SoS_Script:
                 if cursect is None:
                     if comment_block == 1:
                         # look for format information
-                        mo = self.FORMAT_LINE.match(line)
+                        mo = SOS_FORMAT_LINE.match(line)
                         if mo:
                             format_name = mo.group('format_name')
                             if not format_name.upper().startswith('SOS'):
                                 parsing_errors.append(lineno, line,
                                     'Unrecognized file format name {}. Expecting SOS.'.format(format_name))
-                            mo = self.FORMAT_VERSION.match(format_name)
+                            mo = SOS_FORMAT_VERSION.match(format_name)
                             if mo:
                                 self.format_version = mo.group('format_version')
                             else:
@@ -1437,7 +1347,7 @@ class SoS_Script:
             # a new line (start from first column)
             #
             # section header?
-            mo = self.SECTION_HEADER.match(line)
+            mo = SOS_SECTION_HEADER.match(line)
             if mo:
                 # check previous expression before a new assignment
                 if cursect:
@@ -1451,7 +1361,7 @@ class SoS_Script:
                 step_names = []
                 step_options = {}
                 for name in section_name.split(','):
-                    mo = self.SECTION_NAME.match(name)
+                    mo = SOS_SECTION_NAME.match(name)
                     if mo:
                         n, i, di, s = mo.group('name', 'index', 'default_index', 'subworkflow')
                         if n:
@@ -1495,7 +1405,7 @@ class SoS_Script:
                                 pieces.pop(idx+1)
                     #
                     for option in pieces:
-                        mo = self.SECTION_OPTION.match(option)
+                        mo = SOS_SECTION_OPTION.match(option)
                         if mo:
                             opt_name, opt_value = mo.group('name', 'value')
                             #
@@ -1544,12 +1454,12 @@ class SoS_Script:
                         if len(set(prev_names) & set(names)):
                             parsing_errors.append(lineno, line, 'Duplicate section names')
                 all_step_names.extend(step_names)
-                self.sections.append(SoS_Step(step_names, step_options, is_parameters= step_names and step_names[0][0] == self._PARAMETERS_SECTION_NAME))
+                self.sections.append(SoS_Step(step_names, step_options, is_parameters= step_names and step_names[0][0] == SOS_PARAMETERS_SECTION_NAME))
                 cursect = self.sections[-1]
                 continue
             #
             # directive?
-            mo = self.DIRECTIVE.match(line)
+            mo = SOS_DIRECTIVE.match(line)
             if mo:
                 # check previous expression before a new directive
                 if cursect:
@@ -1566,10 +1476,10 @@ class SoS_Script:
                     parsing_errors.append(lineno, line, 'Directive {} is not allowed out side of a SoS step'.format(directive_name))
                     continue
                 if cursect.is_parameters:
-                    parsing_errors.append(lineno, line, 'Directive {} is not allowed in {} section'.format(directive_name, self._PARAMETERS_SECTION_NAME))
+                    parsing_errors.append(lineno, line, 'Directive {} is not allowed in {} section'.format(directive_name, SOS_PARAMETERS_SECTION_NAME))
                     continue
                 # is it an action??
-                if directive_name in self._DIRECTIVES:
+                if directive_name in SOS_DIRECTIVES:
                     cursect.add_directive(directive_name, directive_value, lineno)
                 else:
                     # should be in string mode ...
@@ -1581,7 +1491,7 @@ class SoS_Script:
                 continue
             #
             # assignment?
-            mo = self.ASSIGNMENT.match(line)
+            mo = SOS_ASSIGNMENT.match(line)
             if mo:
                 if cursect is None:
                     self.sections.append(SoS_Step(is_global=True))
@@ -1593,7 +1503,7 @@ class SoS_Script:
                 cursect.values = []
                 #
                 var_name = mo.group('var_name')
-                if var_name in self._DIRECTIVES:
+                if var_name in SOS_DIRECTIVES:
                     parsing_errors.append(lineno, line, 'directive name cannot be used as variables')
                     continue
                 # newline should be kept for multi-line assignment
@@ -1618,7 +1528,7 @@ class SoS_Script:
                 cursect.add_statement(line, lineno)
                 continue
             elif cursect.is_parameters:
-                parsing_errors.append(lineno, line, 'Action statement is not allowed in {} section'.format(self._PARAMETERS_SECTION_NAME))
+                parsing_errors.append(lineno, line, 'Action statement is not allowed in {} section'.format(SOS_PARAMETERS_SECTION_NAME))
                 continue
             #
             if cursect.empty() or cursect.category() != 'statements':
@@ -1670,7 +1580,7 @@ class SoS_Script:
             if '+' in workflow_name:
                 wfs = []
                 for wf in workflow_name.split('+'):
-                    if not self.SUBWORKFLOW.match(wf):
+                    if not SOS_SUBWORKFLOW.match(wf):
                         raise ValueError('Incorrect workflow name {}'.format(workflow_name))
                     # if this is a combined workflow, extra_section might be specied.
                     wfs.append(self.workflow(wf, extra_sections))
@@ -1681,7 +1591,7 @@ class SoS_Script:
                 return combined_wf
             # if a single workflow
             # workflow:15,-10 etc
-            mo = self.SUBWORKFLOW.match(workflow_name)
+            mo = SOS_SUBWORKFLOW.match(workflow_name)
             if not mo:
                 raise ValueError('Incorrect workflow name {}'.format(workflow_name))
             wf_name, allowed_steps = mo.group('name', 'steps')
