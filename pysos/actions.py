@@ -26,6 +26,7 @@ import re
 import subprocess
 import tempfile
 import shlex
+import platform
 from io import BytesIO
 from docker import Client
 from docker.utils import kwargs_from_env
@@ -343,19 +344,40 @@ def docker_commit(**kwargs):
 
 
 @SoS_Action(run_mode='run')
-def docker_run(command='', **kwargs):
+def docker_run(script='', **kwargs):
     docker = DockerClient().client
     if docker is None:
         raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
-    container = docker.create_container(command=command, **kwargs)
-    env.logger.info('Container created {}'.format(container.get('Id')))
-    if container.get('warnings', None):
-        env.logger.warning(container.get('warnings'))
-    #
-    response = docker.start(container=container.get('Id'))
-    if response is not None:
-        env.logger.info(response)
-    print(docker.logs(container=container.get('Id')).decode())
+    env.logger.debug('docker_run with keyword args {}'.format(kwargs))
+    if 'volumes' in kwargs:
+        binds = []
+        vols = []
+        volumes = [kwargs['volumes']] if isinstance(kwargs['volumes'], str) else kwargs['volumes']
+        for vol in volumes:
+            if vol.count(':') != 1:
+                raise RuntimeError('Please specify columes in the format of host_dir:mnt_dir')
+            host_dir, mnt_dir = vol.split(':')
+            if platform.system() == 'Darwin':
+                # under Darwin, host_dir must be under /Users
+                if not os.path.abspath(host_dir).startswith('/Users'):
+                    raise RuntimeError('hostdir ({}) under MacOSX must be under /Users to be usable in docker container'.format(host_dir))
+            binds.append('{}:{}'.format(os.path.abspath(host_dir), mnt_dir))
+            vols.append(mnt_dir)
+        kwargs['volumes'] = vols
+        kwargs['host_config'] = docker.create_host_config(binds=binds)
+    for command in script.strip().split('\n'):
+        container = docker.create_container(command="/bin/bash -c '{}'".format(command), **kwargs)
+        env.logger.debug('Container created {} with command "{}" and args {}'.format(container.get('Id'), command, kwargs))
+        if container.get('warnings', None):
+            env.logger.warning(container.get('warnings'))
+        #
+        response = docker.start(container=container.get('Id'))
+        if response is not None:
+            env.logger.info(response)
+        docker.stop(container=container.get('Id'))
+        print(docker.logs(container=container.get('Id'), stdout=True, stderr=True).decode())
+        for line in docker.logs(container=container.get('Id'), stream=True):
+            print(line)
     return 0
 
 

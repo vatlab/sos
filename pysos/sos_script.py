@@ -533,6 +533,8 @@ class SoS_Step:
             # continuation of multi-line directive
             self.statements[-1][-1] += value
             self.values.append(value)
+            if self._action is not None:
+                self._action_options += value
         else:
             # new directive
             self.statements.append([':', key, value])
