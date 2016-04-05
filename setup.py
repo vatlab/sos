@@ -48,6 +48,7 @@ setup(name = "sos",
           'psutil',
           'celery',
           'pyyaml',
+          'docker-py',
       ],
     scripts = [
         'sos',

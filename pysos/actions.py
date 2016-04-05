@@ -21,10 +21,14 @@
 #
 
 import os
+import sys
 import re
 import subprocess
 import tempfile
 import shlex
+from io import BytesIO
+from docker import Client
+from docker.utils import kwargs_from_env
 from shutil import which
 from .utils import env, interpolate, glob_wildcards
 
@@ -36,6 +40,22 @@ __all__ = ['SoS_Action', 'execute_script',
     'R', 'check_R_library',
     'docker_build',
     ]
+
+
+class DockerClient:
+    '''A singleton class to ensure there is only one client'''
+    _instance = None
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(DockerClient, cls).__new__(cls)
+        return cls._instance
+
+    def __init__(self):
+        self.client = Client(**kwargs_from_env(assert_hostname=False))
+        try:
+            self.client.info()
+        except Exception as e:
+            self.client = None
 
 #
 # A decoration function that allows SoS to replace all SoS actions
@@ -286,5 +306,10 @@ def check_R_library(name, version = None):
 
 @SoS_Action(run_mode='run')
 def docker_build(script):
-    return SoS_ExecuteScript(script, 'docker build .', '.Dockerfile',
-        script_file = 'Dockerfile').run()
+    docker = DockerClient()
+    if docker.client is None:
+        raise RuntimeError('Cannot connect to docker daemon')
+    f = BytesIO(script.encode('utf-8'))
+    for line in docker.client.build(fileobj=f, rm=True, tag='yourname/volume'):
+        sys.stdout.write(line.decode('utf-8'))
+    return 0
