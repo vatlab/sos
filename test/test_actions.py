@@ -394,7 +394,7 @@ check_R_library('edgeRRRR')
         '''Test action docker build'''
         script = SoS_Script(r'''
 [0]
-docker_build:
+docker_build:  tag='test/docker_build'
 #
 # Super simple example of a Dockerfile
 #
@@ -404,8 +404,6 @@ MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
 RUN apt-get update
 RUN apt-get install -y python python-pip wget
 RUN pip install Flask
-
-ADD test_actions.py /home/hello.py
 
 WORKDIR /home
 ''')

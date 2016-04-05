@@ -320,4 +320,13 @@ def docker_build(script=None, **kwargs):
     else:
         for line in docker.build(**kwargs):
             sys.stdout.write(line.decode('utf-8'))
+    # if a tag is given, check if the image is built
+    if 'tag' in kwargs:
+        images = sum([x['RepoTags'] for x in docker.images()], [])
+        if ':' in kwargs['tag']:
+            if kwargs['tag'] not in images:
+                raise RuntimeError('Image with tag {} is not created.'.format(kwargs['tag']))
+        else:
+            if '{}:latest'.format(kwargs['tag']) not in images:
+                raise RuntimeError('Image with tag {}:latest is not created.'.format(kwargs['tag']))
     return 0
