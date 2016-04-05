@@ -306,7 +306,7 @@ def check_R_library(name, version = None):
 def docker_build(script):
     docker = DockerClient().client
     if docker is None:
-        raise RuntimeError('Cannot connect to docker daemon')
+        raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
     f = BytesIO(script.encode('utf-8'))
     for line in docker.build(fileobj=f, rm=True, tag='yourname/volume'):
         sys.stdout.write(line.decode('utf-8'))

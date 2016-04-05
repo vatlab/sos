@@ -34,15 +34,11 @@ import hashlib
 import shutil
 import pickle
 import token
+import psutil
 from tokenize import generate_tokens, untokenize
 from io import StringIO
 from shlex import quote
 from html.parser import HTMLParser
-
-try:
-    import psutil
-except ImportError as e:
-    pass
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)

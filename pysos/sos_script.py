@@ -55,12 +55,6 @@ from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
 
 __all__ = ['SoS_Script']
 
-#
-# Note: we import actions here because we execute some actions in the main SoS 
-# namespace. If we are moving all steps to their separate processes, this should
-# be removed.
-from .actions import *
-
 # 
 # global definitions of SoS syntax
 # 
@@ -1134,15 +1128,11 @@ class SoS_Workflow:
             # locals before the execution of workflow.
             # Need to choose what to inject to globals
             env.sos_dict = WorkflowDict()
+            SoS_exec('import os, sys, glob')
+            SoS_exec('from pysos import *')
             #
             # inject a few things
             env.sos_dict.set('__null_func__', __null_func__)
-            for k, v in globals().items():
-                # if this is an action inject
-                if callable(v) and hasattr(v, 'run_mode'):
-                    env.sos_dict.set(k, v)
-                elif k in ('os', 'globl', 'sys', 'SoS_Action', 'interpolate'):
-                    env.sos_dict.set(k, v)
             # initial values
             env.sos_dict.set('SOS_VERSION', __version__)
             cfg = {}
