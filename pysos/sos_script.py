@@ -399,12 +399,7 @@ def directive_output(*args, **kwargs):
     env.sos_dict.set('_output', ofiles)
 
 def directive_process(**kwargs):
-    for k in kwargs.keys():
-        if k not in SOS_RUNTIME_OPTIONS:
-            raise RuntimeError('Unrecognized runtime option {}'.format(k))
-    #
-    if '_runtime' not in env.sos_dict:
-        env.sos_dict.set('_runtime', kwargs)
+    env.sos_dict.set('_runtime', {k:v for k,v in kwargs.items() if k in SOS_RUNTIME_OPTIONS})
 
 #
 # handling of parameters step

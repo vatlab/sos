@@ -41,6 +41,7 @@ __all__ = ['SoS_Action', 'execute_script',
     'docker_build',
     ]
 
+from .sos_syntax import SOS_RUNTIME_OPTIONS
 
 class DockerClient:
     '''A singleton class to ensure there is only one client'''
@@ -68,7 +69,8 @@ def SoS_Action(run_mode='run'):
             if env.run_mode not in run_mode:
                 return 0
             else:
-                return func(*args, **kwargs)
+                non_runtime_options = {k:v for k,v in kwargs.items() if k not in SOS_RUNTIME_OPTIONS}
+                return func(*args, **non_runtime_options)
         action_wrapper.run_mode = run_mode
         return action_wrapper
     return runtime_decorator
