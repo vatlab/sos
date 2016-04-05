@@ -21,7 +21,7 @@
 #
 
 from distutils.core import setup
-from pysos import __version__
+exec(open('pysos/_version.py').read())
 
 setup(name = "sos",
     version = __version__,
