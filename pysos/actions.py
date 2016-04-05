@@ -303,11 +303,19 @@ def check_R_library(name, version = None):
 
 
 @SoS_Action(run_mode='run')
-def docker_build(script):
+def docker_build(script=None, **kwargs):
+    '''docker build command. By default a script is sent to the docker build command but
+    you can also specify different parameters defined in 
+    https://docker-py.readthedocs.org/en/stable/api/#build
+    '''
     docker = DockerClient().client
     if docker is None:
         raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
-    f = BytesIO(script.encode('utf-8'))
-    for line in docker.build(fileobj=f, rm=True, tag='yourname/volume'):
-        sys.stdout.write(line.decode('utf-8'))
+    if script is not None:
+        f = BytesIO(script.encode('utf-8'))
+        for line in docker.build(fileobj=f, **kwargs):
+            sys.stdout.write(line.decode('utf-8'))
+    else:
+        for line in docker.build(**kwargs):
+            sys.stdout.write(line.decode('utf-8'))
     return 0
