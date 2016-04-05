@@ -38,7 +38,7 @@ __all__ = ['SoS_Action', 'execute_script',
     'python', 'python3',
     'perl', 'ruby', 'node', 'JavaScript',
     'R', 'check_R_library',
-    'docker_build',
+    'docker_build', 'docker_commit', 'docker_run',
     ]
 
 from .sos_syntax import SOS_RUNTIME_OPTIONS
@@ -305,7 +305,7 @@ def check_R_library(name, version = None):
 
 
 @SoS_Action(run_mode='run')
-def docker_build(script=None, **kwargs):
+def docker_build(dockerfile=None, **kwargs):
     '''docker build command. By default a script is sent to the docker build command but
     you can also specify different parameters defined in 
     https://docker-py.readthedocs.org/en/stable/api/#build
@@ -313,8 +313,8 @@ def docker_build(script=None, **kwargs):
     docker = DockerClient().client
     if docker is None:
         raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
-    if script is not None:
-        f = BytesIO(script.encode('utf-8'))
+    if dockerfile is not None:
+        f = BytesIO(dockerfile.encode('utf-8'))
         for line in docker.build(fileobj=f, **kwargs):
             sys.stdout.write(line.decode('utf-8'))
     else:
@@ -330,3 +330,32 @@ def docker_build(script=None, **kwargs):
             if '{}:latest'.format(kwargs['tag']) not in images:
                 raise RuntimeError('Image with tag {}:latest is not created.'.format(kwargs['tag']))
     return 0
+
+
+@SoS_Action(run_mode='run')
+def docker_commit(**kwargs):
+    docker = DockerClient().client
+    if docker is None:
+        raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+    for line in docker.commit(**kwargs):
+        sys.stdout.write(line.decode('utf-8'))
+    return 0
+
+
+@SoS_Action(run_mode='run')
+def docker_run(command='', **kwargs):
+    docker = DockerClient().client
+    if docker is None:
+        raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+    container = docker.create_container(command=command, **kwargs)
+    env.logger.info('Container created {}'.format(container.get('Id')))
+    if container.get('warnings', None):
+        env.logger.warning(container.get('warnings'))
+    #
+    response = docker.start(container=container.get('Id'))
+    if response is not None:
+        env.logger.info(response)
+    print(docker.logs(container=container.get('Id')))
+    return 0
+
+

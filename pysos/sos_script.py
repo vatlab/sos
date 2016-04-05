@@ -564,7 +564,7 @@ class SoS_Step:
         if self._action is None:
             return
         # _action options can contain both runtime option and action options
-        self.statements.append(['!', '{}({!r},{})'.format(self._action, textwrap.dedent(self._script), self._action_options)])
+        self.statements.append(['!', '{}({!r},{})'.format(self._action, textwrap.dedent(self._script), self._action_options.strip())])
         self._action = None
         self._action_options = None
         self._script = ''

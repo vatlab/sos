@@ -410,5 +410,16 @@ WORKDIR /home
         wf = script.workflow()
         wf.run()
 
+    def testDockerRun(self):
+        '''Test docker run '''
+        script = SoS_Script(r'''
+[0]
+docker_run:  image='ubuntu'
+ /bin/ls -l
+''')
+        wf = script.workflow()
+        wf.run()
+
+
 if __name__ == '__main__':
     unittest.main()
