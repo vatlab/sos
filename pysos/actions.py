@@ -26,6 +26,7 @@ import re
 import subprocess
 import tempfile
 import shlex
+import json
 import platform
 from io import BytesIO
 from docker import Client
@@ -349,25 +350,43 @@ def docker_run(script='', **kwargs):
     if docker is None:
         raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
     env.logger.debug('docker_run with keyword args {}'.format(kwargs))
-    if 'volumes' in kwargs:
+    if 'image' in kwargs:
+        # if image is specified, check if it is available locally. If not, pull it
+        images = sum([x['RepoTags'] for x in docker.images()], [])
+        if (':' in kwargs['image'] and kwargs['image'] not in images) or \
+            (':' not in kwargs['image'] and '{}:latest' not in images):
+            # need to pull
+            for line in docker.pull(kwargs['image']):
+                print(json.dumps(json.loads(line), indent=4))
+    # now, write a temporary file to a tempoary directory under the current directory, this is because
+    # we need to share the directory to ...
+    with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
+        tempscript = 'docker_run_{}.sh'.format(os.getpid())
+        with open(os.path.join(tempdir, tempscript), 'w') as script_file:
+            script_file.write(script)
+        #
         binds = []
         vols = []
-        volumes = [kwargs['volumes']] if isinstance(kwargs['volumes'], str) else kwargs['volumes']
-        for vol in volumes:
-            if vol.count(':') != 1:
-                raise RuntimeError('Please specify columes in the format of host_dir:mnt_dir')
-            host_dir, mnt_dir = vol.split(':')
-            if platform.system() == 'Darwin':
-                # under Darwin, host_dir must be under /Users
-                if not os.path.abspath(host_dir).startswith('/Users'):
-                    raise RuntimeError('hostdir ({}) under MacOSX must be under /Users to be usable in docker container'.format(host_dir))
-            binds.append('{}:{}'.format(os.path.abspath(host_dir), mnt_dir))
-            vols.append(mnt_dir)
+        if 'volumes' in kwargs:
+            volumes = [kwargs['volumes']] if isinstance(kwargs['volumes'], str) else kwargs['volumes']
+            for vol in volumes:
+                if vol.count(':') != 1:
+                    raise RuntimeError('Please specify columes in the format of host_dir:mnt_dir')
+                host_dir, mnt_dir = vol.split(':')
+                if platform.system() == 'Darwin':
+                    # under Darwin, host_dir must be under /Users
+                    if not os.path.abspath(host_dir).startswith('/Users'):
+                        raise RuntimeError('hostdir ({}) under MacOSX must be under /Users to be usable in docker container'.format(host_dir))
+                binds.append('{}:{}'.format(os.path.abspath(host_dir), mnt_dir))
+                vols.append(mnt_dir)
+        # we also need to mount the script
+        vols.append('/var/lib/sos/{}'.format(tempscript))
+        binds.append('{}:{}'.format(os.path.join(tempdir, tempscript), '/var/lib/sos/{}'.format(tempscript)))
         kwargs['volumes'] = vols
         kwargs['host_config'] = docker.create_host_config(binds=binds)
-    for command in script.strip().split('\n'):
-        container = docker.create_container(command="/bin/bash -c '{}'".format(command), **kwargs)
-        env.logger.debug('Container created {} with command "{}" and args {}'.format(container.get('Id'), command, kwargs))
+        #
+        container = docker.create_container(command="/bin/bash /var/lib/sos/{}".format(tempscript), **kwargs)
+        env.logger.debug('Container created {} with script "/var/lib/sos/{}" and args {}'.format(container.get('Id'), tempscript, kwargs))
         if container.get('warnings', None):
             env.logger.warning(container.get('warnings'))
         #
@@ -376,8 +395,6 @@ def docker_run(script='', **kwargs):
             env.logger.info(response)
         docker.stop(container=container.get('Id'))
         print(docker.logs(container=container.get('Id'), stdout=True, stderr=True).decode())
-        for line in docker.logs(container=container.get('Id'), stream=True):
-            print(line)
     return 0
 
 

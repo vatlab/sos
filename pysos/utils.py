@@ -292,12 +292,13 @@ class RuntimeEnvironments(object):
         # maximum number of concurrent jobs
         self.max_jobs = 1
         self.running_jobs = 0
+        # this directory will be used by a lot of processes 
+        if not os.path.isdir('.sos'):
+            os.mkdir('.sos')
 
     def register_process(self, pid, msg=''):
         '''Register a process used by this SoS instance. It will also be
         used to check resource used.'''
-        if not os.path.isdir('.sos'):
-            os.mkdir('.sos')
         self.logger.trace('Register {} {}'.format(pid, msg))
         with open('.sos/proc_{}'.format(pid), 'w') as p:
             p.write(msg)
