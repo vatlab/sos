@@ -177,6 +177,7 @@ class SoS_ExecuteScript:
     def __init__(self, script, interpreter, suffix):
         self.script = script
         self.interpreter = interpreter
+        self.suffix = suffix
 
     def run(self, **kwargs):
         if '{}' not in self.interpreter:
@@ -186,7 +187,7 @@ class SoS_ExecuteScript:
             docker = DockerClient()
             docker.run(runtime_options['docker_image'], self.script, self.interpreter, volumes=runtime_options.get('docker_volumes', []), **kwargs)
         else:
-            self.script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=suffix, delete=False).name
+            self.script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=self.suffix, delete=False).name
             with open(self.script_file, 'w') as script_file:
                 script_file.write(self.script)
             cmd = self.interpreter.replace('{}', shlex.quote(self.script_file))

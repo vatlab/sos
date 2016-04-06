@@ -1309,6 +1309,12 @@ class frozendict(dict):
             h = self._cached_hash = hash(tuple(sorted(self.items())))
             return h
 
+    def __getattr__(self, key):
+        return dict.__getitem__(self, key)
+
+    def __setattr__(self, key, value):
+        raise RuntimeError('Cannot modify a readonly dictionary')
+
     def __repr__(self):
         return "frozendict(%s)" % dict.__repr__(self)
 

@@ -898,6 +898,9 @@ input: 'a.txt', 'b.txt', group_by='single'
             sos.write('''
 [0]
 print(CONFIG['StoreOwner'])
+print(CONFIG.get('StoreOwner', 'something'))
+print(CONFIG.get('StoreOwnerSpouse', 'someone else'))
+print(CONFIG.StoreOwner)
 '''
 )
         # run the command
@@ -914,6 +917,17 @@ print(CONFIG['StoreOwner'])
             sos.write('''
 [0]
 CONFIG['a'] = 'b'
+'''
+)
+        # the command would fail with error message
+        # ERROR: Failed to process statement CONFIG['a'] = 'b'
+        # : Cannot modify a readonly dictionary.
+        self.assertEqual(subprocess.call('sos run config.sos -c config.yaml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
+        #
+        with open('config.sos', 'w') as sos:
+            sos.write('''
+[0]
+CONFIG.a = 'b'
 '''
 )
         # the command would fail with error message
