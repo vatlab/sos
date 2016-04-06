@@ -127,6 +127,20 @@ fail_if(check_command('sleep 4') != 0, 'Command time out')
         wf = script.workflow()
         # this should pass
         self.assertRaises(RuntimeError, wf.run)
+        # test reading this file
+        script = SoS_Script(r"""
+[0]
+check_command('cat test_actions.py', 'abcde' + 'fgh')
+""")
+        wf = script.workflow()
+        # should raise an error
+        self.assertRaises(RuntimeError, wf.run)
+        #
+        script = SoS_Script(r"""
+check_command('cat test_actions.py', 'testSearchOutput')
+""")
+        wf = script.workflow()
+        wf.run()
 
     def testFailIf(self):
         '''Test action fail if'''
@@ -171,22 +185,6 @@ warn_if(len(input) == 1)
         # should be silent
         wf.run()
 
-    def testSearchOutput(self):
-        '''Test action check_command for output search'''
-        script = SoS_Script(r"""
-[0]
-check_command('cat test_actions.py', 'abcde' + 'fgh')
-""")
-        wf = script.workflow()
-        # should raise an error
-        self.assertRaises(RuntimeError, wf.run)
-        #
-        script = SoS_Script(r"""
-check_command('cat test_actions.py', 'testSearchOutput')
-""")
-        wf = script.workflow()
-        wf.run()
-
     def testRun(self):
         '''Test action run'''
         script = SoS_Script(r'''
@@ -220,6 +218,15 @@ echo 'Echo
 ''')
         wf = script.workflow()
         self.assertRaises(RuntimeError, wf.run)
+        # docker
+        script = SoS_Script(r'''
+[0]
+bash:  docker_image='ubuntu'
+echo 'Echo'
+''')
+        wf = script.workflow()
+        wf.run()
+
 
     def testSh(self):
         '''Test action run'''
@@ -237,12 +244,36 @@ echo 'Echo
 ''')
         wf = script.workflow()
         self.assertRaises(RuntimeError, wf.run)
+        # test docker
+        script = SoS_Script(r'''
+[0]
+sh: docker_image='ubuntu'
+echo 'Echo
+''')
+        wf = script.workflow()
+        self.assertRaises(RuntimeError, wf.run)
 
     def testCsh(self):
         '''Test action csh'''
         script = SoS_Script(r'''
 [0]
 csh:
+    foreach file (*)
+        if (-d $file) then
+            echo "Skipping $file (is a directory)"
+        else
+            echo "Echo $file"
+            echo $file
+        endif
+    end
+''')
+        wf = script.workflow()
+        wf.run()
+        # test docker
+        script = SoS_Script(r'''
+[0]
+csh: docker_image='ubuntu'
+
     foreach file (*)
         if (-d $file) then
             echo "Skipping $file (is a directory)"
@@ -272,12 +303,35 @@ csh:
 ''')
         wf = script.workflow()
         wf.run()
+        # test docker
+        script = SoS_Script(r'''
+[0]
+csh:  docker_image='ubuntu'
+    foreach file (*)
+        if (-d $file) then
+            echo "Skipping $file (is a directory)"
+        else
+            echo "Echo $file"
+            echo $file
+        endif
+    end
+''')
+        wf = script.workflow()
+        wf.run()
 
     def testZsh(self):
         '''Test action zsh'''
         script = SoS_Script(r'''
 [0]
 zsh:
+echo "Hello World!", $SHELL
+''')
+        wf = script.workflow()
+        wf.run()
+        # test docker
+        script = SoS_Script(r'''
+[0]
+zsh: docker_image='ubuntu'
 echo "Hello World!", $SHELL
 ''')
         wf = script.workflow()
@@ -294,11 +348,29 @@ print(a)
 ''')
         wf = script.workflow()
         wf.run()
+        # test docker
+        script = SoS_Script(r'''
+[0]
+python:  docker_image='ubuntu'
+a = {'1': 2}
+print(a)
+''')
+        wf = script.workflow()
+        wf.run()
 
     def testPython3(self):
         script = SoS_Script(r'''
 [0]
 python3:
+a = {'1', '2'}
+print(a)
+''')
+        wf = script.workflow()
+        wf.run()
+        # test docker
+        script = SoS_Script(r'''
+[0] 
+python3: docker_image='ubuntu'
 a = {'1', '2'}
 print(a)
 ''')
@@ -317,12 +389,40 @@ print "hi NAME\n";
 ''')
         wf = script.workflow()
         wf.run()
+        # test docker
+        script = SoS_Script(r'''
+[0]
+perl: docker_image='ubuntu'
+use strict;
+use warnings;
+
+print "hi NAME\n";
+''')
+        wf = script.workflow()
+        wf.run()
+
 
     def testRuby(self):
         '''Test action ruby'''
         script = SoS_Script(r'''
 [0]
 ruby:
+line1 = "Cats are smarter than dogs";
+line2 = "Dogs also like meat";
+
+if ( line1 =~ /Cats(.*)/ )
+  puts "Line1 contains Cats"
+end
+if ( line2 =~ /Cats(.*)/ )
+  puts "Line2 contains  Dogs"
+end
+''')
+        wf = script.workflow()
+        wf.run()
+        # test docker
+        script = SoS_Script(r'''
+[0]
+ruby: docker_image='ubuntu'
 line1 = "Cats are smarter than dogs";
 line2 = "Dogs also like meat";
 
@@ -346,6 +446,17 @@ console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
         wf.run()
+        # test docker
+        script = SoS_Script(r'''
+[0]
+node: docker_image='ubuntu'
+
+var args = process.argv.slice(2);
+console.log('Hello ' + args.join(' ') + '!');
+''')
+        wf = script.workflow()
+        wf.run()
+
 
     def testJavaScript(self):
         '''Test action JavaScript'''
@@ -357,12 +468,31 @@ console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
         wf.run()
+        # test docker
+        script = SoS_Script(r'''
+[0]
+JavaScript: docker_image='ubuntu'
+
+var args = process.argv.slice(2);
+console.log('Hello ' + args.join(' ') + '!');
+''')
+        wf = script.workflow()
+        wf.run()
 
     def testR(self):
         '''Test action JavaScript'''
         script = SoS_Script(r'''
 [0]
 R:
+nums = rnorm(25, mean=100, sd=15)
+mean(nums)
+''')
+        wf = script.workflow()
+        wf.run()
+        # test docker
+        script = SoS_Script(r'''
+[0]
+R: docker_image='r-base'
 nums = rnorm(25, mean=100, sd=15)
 mean(nums)
 ''')
@@ -406,16 +536,6 @@ RUN apt-get install -y python python-pip wget
 RUN pip install Flask
 
 WORKDIR /home
-''')
-        wf = script.workflow()
-        wf.run()
-
-    def testDockerRun(self):
-        '''Test docker run '''
-        script = SoS_Script(r'''
-[0]
-docker_run:  image='ubuntu'
- /bin/ls -l
 ''')
         wf = script.workflow()
         wf.run()
