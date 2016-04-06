@@ -269,23 +269,7 @@ csh:
 ''')
         wf = script.workflow()
         wf.run()
-        # test docker
-        script = SoS_Script(r'''
-[0]
-csh: docker_image='ubuntu'
-
-    foreach file (*)
-        if (-d $file) then
-            echo "Skipping $file (is a directory)"
-        else
-            echo "Echo $file"
-            echo $file
-        endif
-    end
-''')
-        wf = script.workflow()
-        wf.run()
-
+        # no test for docker because standard distributions do not have csh
 
     def testTcsh(self):
         '''Test action tcsh'''
@@ -303,21 +287,7 @@ csh:
 ''')
         wf = script.workflow()
         wf.run()
-        # test docker
-        script = SoS_Script(r'''
-[0]
-csh:  docker_image='ubuntu'
-    foreach file (*)
-        if (-d $file) then
-            echo "Skipping $file (is a directory)"
-        else
-            echo "Echo $file"
-            echo $file
-        endif
-    end
-''')
-        wf = script.workflow()
-        wf.run()
+        # no test for docker because standard distributions do not have tcsh
 
     def testZsh(self):
         '''Test action zsh'''
@@ -328,14 +298,8 @@ echo "Hello World!", $SHELL
 ''')
         wf = script.workflow()
         wf.run()
-        # test docker
-        script = SoS_Script(r'''
-[0]
-zsh: docker_image='ubuntu'
-echo "Hello World!", $SHELL
-''')
-        wf = script.workflow()
-        wf.run()
+        # cannot test in docker because no first-tier repository
+        # provides zsh.
 
     def testPython(self):
         '''Test python command. This might fail if python3 is the
@@ -351,7 +315,7 @@ print(a)
         # test docker
         script = SoS_Script(r'''
 [0]
-python:  docker_image='ubuntu'
+python:  docker_image='python'
 a = {'1': 2}
 print(a)
 ''')
@@ -370,7 +334,8 @@ print(a)
         # test docker
         script = SoS_Script(r'''
 [0] 
-python3: docker_image='ubuntu'
+python3: docker_image='python'
+#!/usr/bin/env python3
 a = {'1', '2'}
 print(a)
 ''')
@@ -422,7 +387,7 @@ end
         # test docker
         script = SoS_Script(r'''
 [0]
-ruby: docker_image='ubuntu'
+ruby: docker_image='ruby'
 line1 = "Cats are smarter than dogs";
 line2 = "Dogs also like meat";
 
@@ -449,7 +414,7 @@ console.log('Hello ' + args.join(' ') + '!');
         # test docker
         script = SoS_Script(r'''
 [0]
-node: docker_image='ubuntu'
+node: docker_image='node'
 
 var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');
@@ -471,7 +436,7 @@ console.log('Hello ' + args.join(' ') + '!');
         # test docker
         script = SoS_Script(r'''
 [0]
-JavaScript: docker_image='ubuntu'
+JavaScript: docker_image='node'
 
 var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');

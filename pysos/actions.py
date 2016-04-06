@@ -75,7 +75,7 @@ class DockerClient:
         if script is not None:
             f = BytesIO(script.encode('utf-8'))
             for line in self.client.build(fileobj=f, **kwargs):
-                print(json.dumps(json.loads(line), indent=4))
+                print(json.dumps(json.loads(line.decode()), indent=4))
         else:
             for line in self.client.build(**kwargs):
                 print(json.dumps(json.loads(line), indent=4))
@@ -105,14 +105,16 @@ class DockerClient:
             print(json.dumps(json.loads(line), indent=4))
         return 0
 
-    def run(self, image, script='', interpreter='', **kwargs):
+    def run(self, image, script='', interpreter='', suffix='.sh', **kwargs):
         if self.client is None:
             raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         env.logger.debug('docker_run with keyword args {}'.format(kwargs))
         # now, write a temporary file to a tempoary directory under the current directory, this is because
         # we need to share the directory to ...
-        with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
-            tempscript = 'docker_run_{}.sh'.format(os.getpid())
+        #with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
+        if 1:
+            tempdir = tempfile.mkdtemp(dir=os.getcwd())
+            tempscript = 'docker_run_{}{}'.format(os.getpid(), suffix)
             with open(os.path.join(tempdir, tempscript), 'w') as script_file:
                 script_file.write(script)
             #
@@ -139,7 +141,7 @@ class DockerClient:
             kwargs['host_config'] = self.client.create_host_config(binds=binds)
             #
             cmd = interpreter.replace('{}', '/var/lib/sos/{}'.format(tempscript))
-            env.logger.info('docker run {} {}'.format(' '.join('-v ' + x for x in binds), cmd))
+            env.logger.info('docker run {} {} {}'.format(' '.join('-v ' + x for x in binds), image, cmd))
             container = self.client.create_container(image=image, command=cmd, **kwargs)
             env.logger.debug('Container created {} with script "/var/lib/sos/{}" and args {}'.format(container.get('Id'), tempscript, kwargs))
             if container.get('warnings', None):
@@ -187,7 +189,8 @@ class SoS_ExecuteScript:
         runtime_options = env.sos_dict.get('_runtime', {})
         if 'docker_image' in runtime_options:
             docker = DockerClient()
-            docker.run(runtime_options['docker_image'], self.script, self.interpreter, volumes=runtime_options.get('docker_volumes', []), **kwargs)
+            docker.run(runtime_options['docker_image'], self.script, self.interpreter, self.suffix, 
+                volumes=runtime_options.get('docker_volumes', []), **kwargs)
         else:
             self.script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=self.suffix, delete=False).name
             with open(self.script_file, 'w') as script_file:
@@ -412,8 +415,7 @@ def check_R_library(name, version = None):
 @SoS_Action(run_mode='run')
 def docker_build(dockerfile=None, **kwargs):
     '''docker build command. By default a script is sent to the docker build command but
-    you can also specify different parameters defined in 
-    https://docker-py.readthedocs.org/en/stable/api/#build
+    you can also specify different parameters defined inu//docker-py.readthedocs.org/en/stable/api/#build
     '''
     docker = DockerClient()
     docker.build(dockerfile, **kwargs)
