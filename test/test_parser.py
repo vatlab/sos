@@ -96,6 +96,27 @@ b"""
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse]\n[s*_2]''')
         self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
 
+    def testSkipStep(self):
+        '''Test the skip option to skip certain steps'''
+        script = SoS_Script('''
+[parameters]
+skip = 0
+
+[0: alias='a', skip=skip==0]
+var = 0
+
+[1: alias='b', skip=skip==1]
+var = 1
+
+''')
+        wf = script.workflow()
+        wf.run(args=['--skip', '0'])
+        self.assertEqual(env.sos_dict['b'].var, 1)
+        #
+        wf.run(args=['--skip', '1'])
+        self.assertEqual(env.sos_dict['a'].var, 0)
+        #
+
     def testSections(self):
         '''Test section definitions'''
         # bad names
