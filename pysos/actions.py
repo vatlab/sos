@@ -89,10 +89,12 @@ class DockerClient:
         # if image is specified, check if it is available locally. If not, pull it
         if not self._is_image_avail(image):
             env.logger.info('docker pull {}'.format(image))
-            for line in self.client.pull(image):
-                print(json.dumps(json.loads(line), indent=4))
-            env.logger.info('docker pull {} completed'.format(image))
-        #
+            # using subprocess instead of docker-py's pull function because this would have
+            # much better progress bar display
+            p = subprocess.Popen('docker pull {}'.format(image), shell=True)
+            ret = p.wait()
+            #for line in self.client.pull(image, stream=True):
+            #    print(json.dumps(json.loads(line.decode()), indent=4))
         if not self._is_image_avail(image):
             raise RuntimeError('Failed to pull image {}'.format(image))
 
