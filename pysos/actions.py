@@ -83,6 +83,12 @@ class DockerClient:
         if 'tag' in kwargs and not self._is_image_avail(kwargs['tag']):
             raise RuntimeError('Image with tag {} is not created.'.format(kwargs['tag']))
 
+    def import_image(self, image, **kwargs):
+        if not self.client:
+            raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+        env.logger.info('docker import {}'.format(image))
+        self.client.import_image(image, **kwargs)
+       
     def pull(self, image):
         if not self.client:
             raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
@@ -111,12 +117,11 @@ class DockerClient:
         env.logger.debug('docker_run with keyword args {}'.format(kwargs))
         # now, write a temporary file to a tempoary directory under the current directory, this is because
         # we need to share the directory to ...
-        #with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
-        if 1:
-            tempdir = tempfile.mkdtemp(dir=os.getcwd())
-            tempscript = 'docker_run_{}{}'.format(os.getpid(), suffix)
-            with open(os.path.join(tempdir, tempscript), 'w') as script_file:
-                script_file.write(script)
+        with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
+            if script:
+                tempscript = 'docker_run_{}{}'.format(os.getpid(), suffix)
+                with open(os.path.join(tempdir, tempscript), 'w') as script_file:
+                    script_file.write(script)
             #
             binds = []
             vols = []
@@ -135,22 +140,32 @@ class DockerClient:
                     binds.append('{}:{}'.format(os.path.abspath(host_dir), mnt_dir))
                     vols.append(mnt_dir)
             # we also need to mount the script
-            vols.append('/var/lib/sos/{}'.format(tempscript))
-            binds.append('{}:{}'.format(os.path.join(tempdir, tempscript), '/var/lib/sos/{}'.format(tempscript)))
+            if script:
+                vols.append('/var/lib/sos/{}'.format(tempscript))
+                binds.append('{}:{}'.format(os.path.join(tempdir, tempscript), '/var/lib/sos/{}'.format(tempscript)))
             kwargs['volumes'] = vols
             kwargs['host_config'] = self.client.create_host_config(binds=binds)
             #
-            cmd = interpreter.replace('{}', '/var/lib/sos/{}'.format(tempscript))
+            if script and interpreter:
+                cmd = interpreter.replace('{}', '/var/lib/sos/{}'.format(tempscript))
+            else:
+                cmd = ''
             env.logger.info('docker run {} {} {}'.format(' '.join('-v ' + x for x in binds), image, cmd))
             container = self.client.create_container(image=image, command=cmd, **kwargs)
-            env.logger.debug('Container created {} with script "/var/lib/sos/{}" and args {}'.format(container.get('Id'), tempscript, kwargs))
+            if script:
+                env.logger.debug('Container created {} with script "/var/lib/sos/{}" and args {}'.format(container.get('Id'), tempscript, kwargs))
+            else:
+                env.logger.debug('Container created {} with no script and args {}'.format(container.get('Id'), kwargs))
             if container.get('warnings', None):
                 env.logger.warning(container.get('warnings'))
             #
             response = self.client.start(container=container.get('Id'))
             if response is not None:
                 env.logger.info(response)
-            self.client.stop(container=container.get('Id'))
+            try:
+                self.client.stop(container=container.get('Id'))
+            except Exception as e:
+                env.logger.debug(e)
             print(self.client.logs(container=container.get('Id'), stdout=True, stderr=True).decode())
         return 0
 
@@ -167,6 +182,9 @@ def SoS_Action(run_mode='run'):
             runtime_options = env.sos_dict.get('_runtime', {})
             #
             non_runtime_options = {k:v for k,v in kwargs.items() if k not in SOS_RUNTIME_OPTIONS}
+            if 'docker_file' in runtime_options:
+                docker = DockerClient()
+                docker.import_image(runtime_options['docker_file'])
             # handle image
             if 'docker_image' in runtime_options:
                 docker = DockerClient()

@@ -523,5 +523,25 @@ run: docker_image='compbio/ngseasy-fastqc:1.0-r001',
         wf = script.workflow()
         wf.run()
 
+    def testDockerImageFromFile(self):
+        '''Test docker_image load from a file.'''
+        # image from a saved file
+        script = SoS_Script(r'''
+[0]
+run:   docker_image='hello-world'
+
+[1]
+run:
+    docker save hello-world > hello.tar
+    docker rmi -f hello-world
+
+[2]
+run: docker_image='hello-world', docker_file = 'hello.tar'
+''')
+        wf = script.workflow()
+        wf.run()
+
+
+
 if __name__ == '__main__':
     unittest.main()
