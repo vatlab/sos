@@ -26,7 +26,7 @@ import keyword
 SOS_INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic']
 SOS_OUTPUT_OPTIONS = ['pattern', 'dynamic']
 SOS_DEPENDS_OPTIONS = ['pattern', 'dynamic']
-SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'docker', 'docker_options']
+SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'docker_image', 'docker_volumes']
 
 SOS_DIRECTIVES = ['input', 'output', 'depends', 'process']
 SOS_SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'target', 'source']

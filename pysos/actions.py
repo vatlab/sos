@@ -40,11 +40,15 @@ __all__ = ['SoS_Action', 'execute_script',
     'python', 'python3',
     'perl', 'ruby', 'node', 'JavaScript',
     'R', 'check_R_library',
-    'docker_build', 'docker_commit', 'docker_run',
+    'docker_build', 'docker_commit'
     ]
 
 from .sos_syntax import SOS_RUNTIME_OPTIONS
 
+
+#
+# docker support
+#
 class DockerClient:
     '''A singleton class to ensure there is only one client'''
     _instance = None
@@ -60,6 +64,92 @@ class DockerClient:
         except Exception as e:
             self.client = None
 
+    def _is_image_avail(self, image):
+        images = sum([x['RepoTags'] for x in self.client.images()], [])
+        return (':' in image and image in images) or \
+            (':' not in image and '{}:latest'.format(image) in images)
+
+    def build(self, script, **kwargs):
+        if not self.client:
+            raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+        if script is not None:
+            f = BytesIO(script.encode('utf-8'))
+            for line in self.client.build(fileobj=f, **kwargs):
+                print(json.dumps(json.loads(line), indent=4))
+        else:
+            for line in self.client.build(**kwargs):
+                print(json.dumps(json.loads(line), indent=4))
+        # if a tag is given, check if the image is built
+        if 'tag' in kwargs and not self._is_image_avail(kwargs['tag']):
+            raise RuntimeError('Image with tag {} is not created.'.format(kwargs['tag']))
+
+    def pull(self, image):
+        if not self.client:
+            raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+        # if image is specified, check if it is available locally. If not, pull it
+        if not self._is_image_avail(image):
+            env.logger.info('docker pull {}'.format(image))
+            for line in self.client.pull(image):
+                print(json.dumps(json.loads(line), indent=4))
+            env.logger.info('docker pull {} completed'.format(image))
+        #
+        if not self._is_image_avail(image):
+            raise RuntimeError('Failed to pull image {}'.format(image))
+
+    def commit(self, **kwargs):
+        if not self.client:
+            raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+        for line in self.client.commit(**kwargs):
+            print(json.dumps(json.loads(line), indent=4))
+        return 0
+
+    def run(self, image, script='', interpreter='', **kwargs):
+        if self.client is None:
+            raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+        env.logger.debug('docker_run with keyword args {}'.format(kwargs))
+        # now, write a temporary file to a tempoary directory under the current directory, this is because
+        # we need to share the directory to ...
+        with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
+            tempscript = 'docker_run_{}.sh'.format(os.getpid())
+            with open(os.path.join(tempdir, tempscript), 'w') as script_file:
+                script_file.write(script)
+            #
+            binds = []
+            vols = []
+            if 'volumes' in kwargs:
+                volumes = [kwargs['volumes']] if isinstance(kwargs['volumes'], str) else kwargs['volumes']
+                for vol in volumes:
+                    if not vol:
+                        continue
+                    if vol.count(':') != 1:
+                        raise RuntimeError('Please specify columes in the format of host_dir:mnt_dir')
+                    host_dir, mnt_dir = vol.split(':')
+                    if platform.system() == 'Darwin':
+                        # under Darwin, host_dir must be under /Users
+                        if not os.path.abspath(host_dir).startswith('/Users'):
+                            raise RuntimeError('hostdir ({}) under MacOSX must be under /Users to be usable in docker container'.format(host_dir))
+                    binds.append('{}:{}'.format(os.path.abspath(host_dir), mnt_dir))
+                    vols.append(mnt_dir)
+            # we also need to mount the script
+            vols.append('/var/lib/sos/{}'.format(tempscript))
+            binds.append('{}:{}'.format(os.path.join(tempdir, tempscript), '/var/lib/sos/{}'.format(tempscript)))
+            kwargs['volumes'] = vols
+            kwargs['host_config'] = self.client.create_host_config(binds=binds)
+            #
+            cmd = interpreter.replace('{}', '/var/lib/sos/{}'.format(tempscript))
+            env.logger.info('docker run {} {}'.format(' '.join('-v ' + x for x in binds), cmd))
+            container = self.client.create_container(image=image, command=cmd, **kwargs)
+            env.logger.debug('Container created {} with script "/var/lib/sos/{}" and args {}'.format(container.get('Id'), tempscript, kwargs))
+            if container.get('warnings', None):
+                env.logger.warning(container.get('warnings'))
+            #
+            response = self.client.start(container=container.get('Id'))
+            if response is not None:
+                env.logger.info(response)
+            self.client.stop(container=container.get('Id'))
+            print(self.client.logs(container=container.get('Id'), stdout=True, stderr=True).decode())
+        return 0
+
 #
 # A decoration function that allows SoS to replace all SoS actions
 # with a null action.
@@ -70,9 +160,14 @@ def SoS_Action(run_mode='run'):
         def action_wrapper(*args, **kwargs):
             if env.run_mode not in run_mode:
                 return 0
-            else:
-                non_runtime_options = {k:v for k,v in kwargs.items() if k not in SOS_RUNTIME_OPTIONS}
-                return func(*args, **non_runtime_options)
+            runtime_options = env.sos_dict.get('_runtime', {})
+            #
+            non_runtime_options = {k:v for k,v in kwargs.items() if k not in SOS_RUNTIME_OPTIONS}
+            # handle image
+            if 'docker_image' in runtime_options:
+                docker = DockerClient()
+                docker.pull(runtime_options['docker_image'])
+            return func(*args, **non_runtime_options)
         action_wrapper.run_mode = run_mode
         return action_wrapper
     return runtime_decorator
@@ -82,26 +177,31 @@ class SoS_ExecuteScript:
     def __init__(self, script, interpreter, suffix):
         self.script = script
         self.interpreter = interpreter
-        self.script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=suffix, delete=False).name
-        with open(self.script_file, 'w') as script_file:
-            script_file.write(self.script)
 
-    def run(self):
+    def run(self, **kwargs):
         if '{}' not in self.interpreter:
             self.interpreter += ' {}'
-        cmd = self.interpreter.replace('{}', shlex.quote(self.script_file))
-        try:
-            p = subprocess.Popen(cmd, shell=True)
-            env.register_process(p.pid, 'Runing {}'.format(self.script_file))
-            ret = p.wait()
-        finally:
-            env.deregister_process(p.pid)
-        if ret != 0:
-            raise RuntimeError('Failed to execute script')
+        runtime_options = env.sos_dict.get('_runtime', {})
+        if 'docker_image' in runtime_options:
+            docker = DockerClient()
+            docker.run(runtime_options['docker_image'], self.script, self.interpreter, volumes=runtime_options.get('docker_volumes', []), **kwargs)
+        else:
+            self.script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=suffix, delete=False).name
+            with open(self.script_file, 'w') as script_file:
+                script_file.write(self.script)
+            cmd = self.interpreter.replace('{}', shlex.quote(self.script_file))
+            try:
+                p = subprocess.Popen(cmd, shell=True)
+                env.register_process(p.pid, 'Runing {}'.format(self.script_file))
+                ret = p.wait()
+            finally:
+                env.deregister_process(p.pid)
+            if ret != 0:
+                raise RuntimeError('Failed to execute script')
 
 @SoS_Action(run_mode=['run'])
-def execute_script(script, interpreter, suffix):
-    return SoS_ExecuteScript(script, interpreter, suffix).run()
+def execute_script(script, interpreter, suffix, **kwargs):
+    return SoS_ExecuteScript(script, interpreter, suffix).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'run'])
 def check_command(cmd, pattern = None):
@@ -153,56 +253,56 @@ def warn_if(expr, msg=''):
     return 0
 
 @SoS_Action(run_mode='run')
-def run(script):
-    return SoS_ExecuteScript(script, 'bash', '.sh').run()
+def run(script, **kwargs):
+    return SoS_ExecuteScript(script, '/bin/bash', '.sh').run(**kwargs)
 
 @SoS_Action(run_mode='run')
-def bash(script):
-    return SoS_ExecuteScript(script, 'bash', '.sh').run()
+def bash(script, **kwargs):
+    return SoS_ExecuteScript(script, '/bin/bash', '.sh').run(**kwargs)
 
 @SoS_Action(run_mode='run')
-def csh(script):
-    return SoS_ExecuteScript(script, 'csh', '.csh').run()
+def csh(script, **kwargs):
+    return SoS_ExecuteScript(script, '/bin/csh', '.csh').run(**kwargs)
 
 @SoS_Action(run_mode='run')
-def tcsh(script):
-    return SoS_ExecuteScript(script, 'tcsh', '.sh').run()
+def tcsh(script, **kwargs):
+    return SoS_ExecuteScript(script, '/bin/tcsh', '.sh').run(**kwargs)
 
 @SoS_Action(run_mode='run')
-def zsh(script):
-    return SoS_ExecuteScript(script, 'zsh', '.zsh').run()
+def zsh(script, **kwargs):
+    return SoS_ExecuteScript(script, '/bin/zsh', '.zsh').run(**kwargs)
 
 @SoS_Action(run_mode='run')
-def sh(script):
-    return SoS_ExecuteScript(script, 'sh', '.sh').run()
+def sh(script, **kwargs):
+    return SoS_ExecuteScript(script, '/bin/sh', '.sh').run(**kwargs)
 
 @SoS_Action(run_mode='run')
-def python(script):
-    return SoS_ExecuteScript(script, 'python', '.py').run()
+def python(script, **kwargs):
+    return SoS_ExecuteScript(script, 'python', '.py').run(**kwargs)
 
 @SoS_Action(run_mode='run')
-def python3(script):
-    return SoS_ExecuteScript(script, 'python3', '.py').run()
+def python3(script, **kwargs):
+    return SoS_ExecuteScript(script, 'python3', '.py').run(**kwargs)
 
 @SoS_Action(run_mode='run')
-def perl(script):
-    return SoS_ExecuteScript(script, 'perl', '.pl').run()
+def perl(script, **kwargs):
+    return SoS_ExecuteScript(script, 'perl', '.pl').run(**kwargs)
 
 @SoS_Action(run_mode='run')
-def ruby(script):
-    return SoS_ExecuteScript(script, 'ruby', '.rb').run()
+def ruby(script, **kwargs):
+    return SoS_ExecuteScript(script, 'ruby', '.rb').run(**kwargs)
 
 @SoS_Action(run_mode='run')
-def node(script):
-    return SoS_ExecuteScript(script, 'node', '.js').run()
+def node(script, **kwargs):
+    return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
 
 @SoS_Action(run_mode='run')
-def JavaScript(script):
-    return SoS_ExecuteScript(script, 'node', '.js').run()
+def JavaScript(script, **kwargs):
+    return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
 
 @SoS_Action(run_mode='run')
-def R(script):
-    return SoS_ExecuteScript(script, 'Rscript --default-packages=methods,utils,stats', '.R').run()
+def R(script, **kwargs):
+    return SoS_ExecuteScript(script, 'Rscript --default-packages=methods,utils,stats', '.R').run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'run'])
 def check_R_library(name, version = None):
@@ -312,89 +412,16 @@ def docker_build(dockerfile=None, **kwargs):
     you can also specify different parameters defined in 
     https://docker-py.readthedocs.org/en/stable/api/#build
     '''
-    docker = DockerClient().client
-    if docker is None:
-        raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
-    if dockerfile is not None:
-        f = BytesIO(dockerfile.encode('utf-8'))
-        for line in docker.build(fileobj=f, **kwargs):
-            sys.stdout.write(line.decode('utf-8'))
-    else:
-        for line in docker.build(**kwargs):
-            sys.stdout.write(line.decode('utf-8'))
-    # if a tag is given, check if the image is built
-    if 'tag' in kwargs:
-        images = sum([x['RepoTags'] for x in docker.images()], [])
-        if ':' in kwargs['tag']:
-            if kwargs['tag'] not in images:
-                raise RuntimeError('Image with tag {} is not created.'.format(kwargs['tag']))
-        else:
-            if '{}:latest'.format(kwargs['tag']) not in images:
-                raise RuntimeError('Image with tag {}:latest is not created.'.format(kwargs['tag']))
+    docker = DockerClient()
+    docker.build(dockerfile, **kwargs)
     return 0
 
 
 @SoS_Action(run_mode='run')
 def docker_commit(**kwargs):
-    docker = DockerClient().client
-    if docker is None:
-        raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
-    for line in docker.commit(**kwargs):
-        sys.stdout.write(line.decode('utf-8'))
+    docker = DockerClient()
+    docker.commit(**kwargs)
     return 0
 
-
-@SoS_Action(run_mode='run')
-def docker_run(script='', **kwargs):
-    docker = DockerClient().client
-    if docker is None:
-        raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
-    env.logger.debug('docker_run with keyword args {}'.format(kwargs))
-    if 'image' in kwargs:
-        # if image is specified, check if it is available locally. If not, pull it
-        images = sum([x['RepoTags'] for x in docker.images()], [])
-        if (':' in kwargs['image'] and kwargs['image'] not in images) or \
-            (':' not in kwargs['image'] and '{}:latest' not in images):
-            # need to pull
-            for line in docker.pull(kwargs['image']):
-                print(json.dumps(json.loads(line), indent=4))
-    # now, write a temporary file to a tempoary directory under the current directory, this is because
-    # we need to share the directory to ...
-    with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
-        tempscript = 'docker_run_{}.sh'.format(os.getpid())
-        with open(os.path.join(tempdir, tempscript), 'w') as script_file:
-            script_file.write(script)
-        #
-        binds = []
-        vols = []
-        if 'volumes' in kwargs:
-            volumes = [kwargs['volumes']] if isinstance(kwargs['volumes'], str) else kwargs['volumes']
-            for vol in volumes:
-                if vol.count(':') != 1:
-                    raise RuntimeError('Please specify columes in the format of host_dir:mnt_dir')
-                host_dir, mnt_dir = vol.split(':')
-                if platform.system() == 'Darwin':
-                    # under Darwin, host_dir must be under /Users
-                    if not os.path.abspath(host_dir).startswith('/Users'):
-                        raise RuntimeError('hostdir ({}) under MacOSX must be under /Users to be usable in docker container'.format(host_dir))
-                binds.append('{}:{}'.format(os.path.abspath(host_dir), mnt_dir))
-                vols.append(mnt_dir)
-        # we also need to mount the script
-        vols.append('/var/lib/sos/{}'.format(tempscript))
-        binds.append('{}:{}'.format(os.path.join(tempdir, tempscript), '/var/lib/sos/{}'.format(tempscript)))
-        kwargs['volumes'] = vols
-        kwargs['host_config'] = docker.create_host_config(binds=binds)
-        #
-        container = docker.create_container(command="/bin/bash /var/lib/sos/{}".format(tempscript), **kwargs)
-        env.logger.debug('Container created {} with script "/var/lib/sos/{}" and args {}'.format(container.get('Id'), tempscript, kwargs))
-        if container.get('warnings', None):
-            env.logger.warning(container.get('warnings'))
-        #
-        response = docker.start(container=container.get('Id'))
-        if response is not None:
-            env.logger.info(response)
-        docker.stop(container=container.get('Id'))
-        print(docker.logs(container=container.get('Id'), stdout=True, stderr=True).decode())
-    return 0
 
 

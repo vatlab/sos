@@ -33,6 +33,7 @@ import traceback
 import hashlib
 import shutil
 import pickle
+import json
 import token
 import psutil
 from tokenize import generate_tokens, untokenize
