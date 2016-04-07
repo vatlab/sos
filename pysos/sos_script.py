@@ -1432,11 +1432,6 @@ class SoS_Script:
                                     opt_value[-1] in (' ', "'") or \
                                     opt_value.split(' ')[0] == opt_value.split(' ')[1]:
                                     parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(opt_value))
-                            if opt_name == 'source':
-                                opt_value = [opt_value] if isinstance(opt_value, str) else opt_value
-                                for sos_file in opt_value:
-                                    if not os.path.isfile(sos_file) and not os.path.isfile(os.path.join(os.path.split(self.sos_script)[0], sos_file)):
-                                        env.logger.warning('Source file for nested workflow {} does not exist'.format(sos_file))
                             if opt_name in step_options:
                                 parsing_errors.append(lineno, line, 'Duplicate options')
                             step_options[opt_name] = opt_value
@@ -1608,6 +1603,7 @@ class SoS_Script:
         # check source
         source_scripts = []
         if source:
+            source = [source] if isinstance(source, str) else source
             for sos_file in source:
                 if not os.path.isfile(sos_file) and self.sos_script != '<string>':
                     sos_file = os.path.join(os.path.split(self.sos_script)[0], sos_file)
