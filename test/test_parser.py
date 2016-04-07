@@ -115,7 +115,6 @@ var = 1
         #
         wf.run(args=['--skip', '1'])
         self.assertEqual(env.sos_dict['a'].var, 0)
-        #
 
     def testSections(self):
         '''Test section definitions'''

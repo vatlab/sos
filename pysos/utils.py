@@ -1318,3 +1318,16 @@ class frozendict(dict):
     def __repr__(self):
         return "frozendict(%s)" % dict.__repr__(self)
 
+#
+# dynamic expression that cannot be resolved during parsing 
+# at dryrun mode etc, and has to be resolved at run time.
+#
+class DynamicExpression(object):
+    def __init__(self, expr):
+        self.expr = expr
+
+    def value(self, sigil='${ }'):
+        return SoS_eval(self.expr, sigil)
+
+    def __repr__(self):
+        return self.expr

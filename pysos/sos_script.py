@@ -52,7 +52,7 @@ from itertools import tee, combinations
 from . import __version__
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
     dehtml, getTermWidth, interpolate, shortRepr, extract_pattern, expand_pattern, \
-    print_traceback, pickleable, ProgressBar, frozendict
+    print_traceback, pickleable, ProgressBar, frozendict, DynamicExpression
 
 from .sos_syntax import *
 
@@ -751,6 +751,7 @@ class SoS_Step:
         # these are temporary variables that should be removed if exist
         for var in ('input', 'output', 'depends', '_input', '_depends', '_output'):
             env.sos_dict.pop(var, '')
+
         #
         # default input groups and vars, might be reset by directive input
         if '__step_input__' in env.sos_dict:
@@ -1164,6 +1165,18 @@ class SoS_Workflow:
                 section.parse_args(args, num_parameters_sections == 1, cmd_name=cmd_name)
                 prog.progress(1)
                 continue
+            if 'skip' in section.options:
+                if isinstance(section.options['skip'], DynamicExpression):
+                    try:
+                        val_skip = section.options['skip'].value(section.sigil)
+                    except Exception as e:
+                        raise RuntimeError('Failed to evaluate value of section option skip={}: {}'.format( section.options['skip'], e))
+                else:
+                    val_skip = section.options['skip']
+                if val_skip is None or val_skip is True:
+                    continue
+                elif val_skip is not False:
+                    raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
             # 
             # execute section with specified input
             # 1. for first step of workflow, _step.input=[]
@@ -1411,9 +1424,15 @@ class SoS_Script:
                             #which is most likely a string.
                             if opt_value:
                                 try:
+                                    # now, the expression might depend on some globle varialbe
+                                    # or even option so we might not be able to parse it at parsing time
                                     opt_value = eval(opt_value)
                                 except Exception as e:
-                                    parsing_errors.append(lineno, line, e)
+                                    if opt_name == 'sigil':
+                                        parsing_errors.append(lineno, line, e)
+                                    else:
+                                        env.logger.debug('Step option {}={} (line {}) cannot be resolved during parsing.'.format(opt_name, opt_value, lineno))
+                                        opt_value = DynamicExpression(opt_value)
                             if opt_name == 'sigil':
                                 if opt_value.count(' ') != 1 or opt_value[0] in (' ', "'") or \
                                     opt_value[-1] in (' ', "'") or \
@@ -1596,7 +1615,7 @@ class SoS_Script:
         # get workflow name from extra_sections
         extra_section_steps = sum([x.names for x in extra_sections if not \
             ('skip' in x.options and \
-                (x.options['skip'] is None or x.options['skip'])) \
+                (x.options['skip'] is None or x.options['skip'] is True)) \
             and not ('target' in x.options)], [])
         extra_workflows = list(set([x[0] for x in extra_section_steps if '*' not in x[0]]))
         if extra_sections:
@@ -1619,7 +1638,7 @@ class SoS_Script:
         # look for relevant sections in self.sections and extra sections from another script
         for section in self.sections + extra_sections:
             # skip, skip=True, skip=1 etc are all allowed.
-            if 'skip' in section.options and (section.options['skip'] is None or section.options['skip']):
+            if 'skip' in section.options and (section.options['skip'] is None or section.options['skip'] is True):
                 continue
             if section.is_parameters:
                 # include parameter only if they apply to wf_name
