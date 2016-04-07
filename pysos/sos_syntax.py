@@ -35,7 +35,7 @@ SOS_PARAMETERS_SECTION_NAME = 'parameters'
 # Regular expressions for parsing section headers and options
 _SECTION_HEADER_TMPL = r'''
     ^\[\s*                             # [
-    (?P<section_name>[\d\w_,+=*\s-]+)  # digit, alphabet, _ and ,
+    (?P<section_name>[^:\]]+)          # digit, alphabet, _ and ,
     (:\s*                              # :
     (?P<section_option>.*)             # section options
     )?                                 # optional
@@ -54,7 +54,8 @@ _SECTION_NAME_TMPL = '''
     |(?P<default_index>\d+))           # no name, then index
     (\s*=\s*
     (?P<subworkflow>                   # = subworkflow
-    [\w\d_+\s-]+                       # subworkflow specification
+    [^:\]]+                            # subworkflow specification
+                                       # can be any expression, but no : and ]
     ))?                                # optional
     \s*$
     '''

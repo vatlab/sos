@@ -1371,7 +1371,41 @@ class SoS_Script:
                 section_option = mo.group('section_option')
                 step_names = []
                 step_options = {}
-                for name in section_name.split(','):
+                #
+                # we cannot simply separate headers by , because arbitary expressions are allowed 
+                # for nested workflows
+                # without having to really evaluate all complex expressions, we
+                # have to try to put syntax correctly pieces together.
+                pieces = section_name.split(',')
+                idx = 0
+                while True:
+                    try:
+                        # test current group
+                        if '=' in pieces[idx]:
+                            compile(pieces[idx].strip(), filename = '<string>', mode='exec' if '=' in pieces[idx] else 'eval')
+                        # if it is ok, go next
+                        idx += 1
+                        if idx == len(pieces):
+                            break
+                    except Exception as e:
+                        # error happens merge the next piece
+                        if idx < len(pieces) - 1:
+                            pieces[idx] += ',' + pieces[idx + 1]
+                            # error happens merge the next piece
+                            pieces.pop(idx + 1)
+                        else:
+                            # if no next group, expand previously correct one
+                            if idx == 0:
+                                parsing_errors.append(lineno, line, 'Invalid section option')
+                                break
+                            # break myself again
+                            pieces = pieces[: idx] + pieces[idx].split(',') + pieces[idx+1:]
+                            # go back
+                            idx -= 1
+                            pieces[idx] += '\n' + pieces[idx + 1]
+                            pieces.pop(idx+1)
+                #
+                for name in pieces:
                     mo = SOS_SECTION_NAME.match(name)
                     if mo:
                         n, i, di, s = mo.group('name', 'index', 'default_index', 'subworkflow')
@@ -1584,7 +1618,7 @@ class SoS_Script:
             self.sections.pop(global_section[0][0])
 
 
-    def workflow(self, workflow_name=None, extra_sections=[]):
+    def workflow(self, workflow_name=None, extra_sections=[], args={}):
         '''Return a workflow with name_step+name_step specified in wf_name
         This function might be called recursively because of nested
         workflow. extra_sections are sections read from other sos script
@@ -1607,7 +1641,7 @@ class SoS_Script:
                 combined_wf.name = workflow_name
                 return combined_wf
             # if a single workflow
-            # workflow:15,-10 etc
+            # workflow_10-15 etc
             mo = SOS_SUBWORKFLOW.match(workflow_name)
             if not mo:
                 raise ValueError('Incorrect workflow name {}'.format(workflow_name))
@@ -1649,7 +1683,7 @@ class SoS_Script:
                 # section global is shared by all workflows
                 sections.append(section)
                 continue
-            for name, index, subworkflow in section.names:
+            for name, index, _ in section.names:
                 # exact match or filename like match if name contains * etc
                 if fnmatch.fnmatch(wf_name, name):
                     # if there is an source option, ...
@@ -1666,22 +1700,27 @@ class SoS_Script:
                     # expand subworkflow if needed
                     for i in range(len(section.names)):
                         if section.names[i][2] and isinstance(section.names[i][2], str):
+                            # we have to expand workflow name
+                            try:
+                                subworkflow = SoS_eval(section.names[i][2])
+                            except Exception as e:
+                                raise RuntimeError('Failed to determine subworkflow pattern from expression {}'.format(section.names[i][2]))
                             # need to expand the workflow, but it is possible that it is nested ...
                             # so let us figure out what workflows we are expanding
                             expanded = []
-                            for tmp in section.names[i][2].split('+'):
+                            for tmp in subworkflow.split('+'):
                                 if ':' in tmp:
                                     tmp = tmp.split(':')[0]
                                 if '_' in tmp and tmp.rsplit('_')[-1].isdigit():
                                     tmp = tmp.rsplit('_')[0]
                                 expanded.append(tmp)
                             if wf_name in expanded:
-                                env.logger.debug('NOT expanding {} because of potential loop'.format(section.names[i][2]))
+                                env.logger.debug('NOT expanding {} because of potential loop'.format(subworkflow))
                             else:
-                                env.logger.debug('Expanding subworkflow {}'.format(section.names[i][2]))
+                                env.logger.debug('Expanding subworkflow {}'.format(subworkflow))
                                 # expand nested workflow
                                 section.names[i] = (section.names[i][0], section.names[i][1], 
-                                    self.workflow(section.names[i][2], extra_sections=extra_sections + imported_sections))
+                                    self.workflow(subworkflow, extra_sections=extra_sections + imported_sections))
                     # now copy the step over
                     sections.append(section)
                     break
@@ -1708,7 +1747,7 @@ def sos_show(args, workflow_args):
     try:
         script = SoS_Script(filename=args.script)
         if args.workflow:
-            workflow = script.workflow(args.workflow)
+            workflow = script.workflow(args.workflow, args=workflow_args)
             workflow.show()
         else:
             script.show()
@@ -1760,7 +1799,7 @@ def sos_run(args, workflow_args):
         env.sig_mode = 'ignore'
         try:
             script = SoS_Script(filename=args.script)
-            workflow = script.workflow(args.workflow)
+            workflow = script.workflow(args.workflow, args=workflow_args)
             workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
         except Exception as e:
             if args.verbosity and args.verbosity > 2:
@@ -1774,7 +1813,7 @@ def sos_run(args, workflow_args):
             env.sig_mode = 'ignore'
         try:
             script = SoS_Script(filename=args.script)
-            workflow = script.workflow(args.workflow)
+            workflow = script.workflow(args.workflow, args=workflow_args)
             workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
         except Exception as e:
             if args.verbosity and args.verbosity > 2:
@@ -1788,7 +1827,7 @@ def sos_run(args, workflow_args):
             env.sig_mode = 'ignore'
         try:
             script = SoS_Script(filename=args.script)
-            workflow = script.workflow(args.workflow)
+            workflow = script.workflow(args.workflow, args=workflow_args)
             workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
         except Exception as e:
             if args.verbosity and args.verbosity > 2:

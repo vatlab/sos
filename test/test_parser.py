@@ -125,7 +125,7 @@ var = 1
         for badoption in ['ss', 'skip a', 'skip:_', 'skip, skip']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # option value should be a valid python expression
-        for badoption in ['sigil=a', 'alias=a', 'sigil="[]"', 'sigil="| |"']:
+        for badoption in ['sigil=a', 'sigil="[]"', 'sigil="| |"']:
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # good options
         for goodoption in ['sigil="[ ]"', 'alias="a"']:
@@ -725,7 +725,7 @@ inputs.append(input)
 [b_4]
 output: 'b.txt'
 inputs.append(input)
-[c=a+b]
+[c='a+b']
 input: 'a.txt'
 output: 'b.txt'
 inputs.append(input)
@@ -751,7 +751,7 @@ inputs.append(input)
 [a_2]
 output: _input[0] + '.a2'
 inputs.append(input)
-[c=a]
+[c='a']
 input: 'a.txt', 'b.txt', group_by='single'
 inputs.append(_input)
 ''')
@@ -771,7 +771,7 @@ else:
 [a_1]
 [a_2]
 [c_0]
-[c_1=a_2]
+[c_1='a_2']
 input: 'a.txt', 'b.txt', group_by='single'
 ''')
         env.run_mode = 'dryrun'
@@ -788,7 +788,7 @@ else:
 [a_1]
 [a_2]
 [c_0]
-[c_1=a_2]
+[c_1='a_2']
 input: 'a.txt', 'b.txt', group_by='single'
 ''')
         env.run_mode = 'dryrun'
@@ -805,7 +805,7 @@ else:
 [a_1]
 [a_2]
 [c_0]
-[c_1=a_2+c]
+[c_1='a_2+c']
 input: 'a.txt', 'b.txt', group_by='single'
 ''')
         env.run_mode = 'dryrun'
@@ -821,9 +821,9 @@ else:
 [a_2]
 [a_3]
 [b_1]
-[b_2=a_1+a_2]
+[b_2='a_1+a_2']
 [c_0]
-[c_1=a+b]
+[c_1='a+b']
 input: 'a.txt'
 ''')
         env.run_mode = 'dryrun'
@@ -842,7 +842,7 @@ else:
 [a_1]
 [a_2]
 [a_3]
-[b=a_3+a_1, d=a_2, e2_2]
+[b='a_3+a_1', d='a_2', e2_2]
 input: 'a.txt', 'b.txt', group_by='single'
 ''')
         env.run_mode = 'dryrun'
@@ -888,7 +888,7 @@ if 'executed' in locals():
     executed.append('g.' + step_name)
 else:
     executed = ['g.' + step_name]
-[b_1=A : source='temp/test.sos', skip=False]
+[b_1='A' : source='temp/test.sos', skip=False]
 input: 'a.txt', 'b.txt', group_by='single'
 ''')
         env.run_mode = 'dryrun'
