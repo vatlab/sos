@@ -46,7 +46,6 @@ setup(name = "sos",
     packages = ['pysos'],
     install_requires=[
           'psutil',
-          'celery',
           'pyyaml',
           'docker-py',
       ],
