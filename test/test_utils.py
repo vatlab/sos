@@ -246,7 +246,8 @@ time.sleep(0.5)
 [sub_4]
 [a_1]
 [a_2]
-[a_3=sub]
+[a_3]
+sos_run('sub')
 [a_4]
 [a_5]
 ''')

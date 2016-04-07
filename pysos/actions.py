@@ -34,7 +34,7 @@ from docker.utils import kwargs_from_env
 from shutil import which
 from .utils import env, interpolate, glob_wildcards
 
-__all__ = ['SoS_Action', 'execute_script',
+__all__ = ['SoS_Action', 'execute_script', 'sos_run',
     'check_command', 'fail_if', 'warn_if',
     'run', 'bash', 'csh', 'tcsh', 'zsh', 'sh',
     'python', 'python3',
@@ -44,6 +44,7 @@ __all__ = ['SoS_Action', 'execute_script',
     ]
 
 from .sos_syntax import SOS_RUNTIME_OPTIONS
+from .sos_script import SoS_Script
 
 
 #
@@ -223,6 +224,23 @@ class SoS_ExecuteScript:
                 env.deregister_process(p.pid)
             if ret != 0:
                 raise RuntimeError('Failed to execute script')
+
+
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+def sos_run(workflow, source=None):
+    '''Execute a workflow from specified source, input, and output
+    By default the workflow is defined in the existing SoS script, but
+    extra sos files can be specified from paramter source. The workflow
+    will be execute in the current step namespace with _input as workflow
+    input. '''
+    env.logger.info('Executing nested workflow {}'.format(workflow))
+    script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
+    wf = script.workflow(workflow, source=source)
+    # if wf contains the current step or one of the previous one, this constitute
+    # recusive nested workflow and should not be allowed
+    if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections if not x.is_parameters]:
+        raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
+    return wf.run(nested=True)
 
 @SoS_Action(run_mode=['run'])
 def execute_script(script, interpreter, suffix, **kwargs):
@@ -446,6 +464,5 @@ def docker_commit(**kwargs):
     docker = DockerClient()
     docker.commit(**kwargs)
     return 0
-
 
 

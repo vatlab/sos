@@ -29,13 +29,13 @@ SOS_DEPENDS_OPTIONS = ['pattern', 'dynamic']
 SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'docker_image', 'docker_file', 'docker_volumes']
 
 SOS_DIRECTIVES = ['input', 'output', 'depends', 'process']
-SOS_SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'target', 'source']
+SOS_SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'target']
 SOS_PARAMETERS_SECTION_NAME = 'parameters'
 
 # Regular expressions for parsing section headers and options
 _SECTION_HEADER_TMPL = r'''
     ^\[\s*                             # [
-    (?P<section_name>[^:\]]+)          # digit, alphabet, _ and ,
+    (?P<section_name>[\d\w_,*\s]+)     # digit, alphabet, _ and ,
     (:\s*                              # :
     (?P<section_option>.*)             # section options
     )?                                 # optional
@@ -52,11 +52,6 @@ _SECTION_NAME_TMPL = '''
     (?(name)                           # if there is name
     (_(?P<index>\d+))?                 #   optional _index
     |(?P<default_index>\d+))           # no name, then index
-    (\s*=\s*
-    (?P<subworkflow>                   # = subworkflow
-    [^:\]]+                            # subworkflow specification
-                                       # can be any expression, but no : and ]
-    ))?                                # optional
     \s*$
     '''
 

@@ -725,10 +725,11 @@ inputs.append(input)
 [b_4]
 output: 'b.txt'
 inputs.append(input)
-[c='a+b']
+[c]
 input: 'a.txt'
 output: 'b.txt'
 inputs.append(input)
+sos_run('a+b')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
@@ -751,9 +752,10 @@ inputs.append(input)
 [a_2]
 output: _input[0] + '.a2'
 inputs.append(input)
-[c='a']
+[c]
 input: 'a.txt', 'b.txt', group_by='single'
 inputs.append(_input)
+sos_run('a')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
@@ -771,8 +773,9 @@ else:
 [a_1]
 [a_2]
 [c_0]
-[c_1='a_2']
+[c_1]
 input: 'a.txt', 'b.txt', group_by='single'
+sos_run('a_2')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
@@ -788,8 +791,9 @@ else:
 [a_1]
 [a_2]
 [c_0]
-[c_1='a_2']
+[c_1]
 input: 'a.txt', 'b.txt', group_by='single'
+sos_run('a_2')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
@@ -805,11 +809,13 @@ else:
 [a_1]
 [a_2]
 [c_0]
-[c_1='a_2+c']
+[c_1]
 input: 'a.txt', 'b.txt', group_by='single'
+sos_run('a_2+c')
 ''')
         env.run_mode = 'dryrun'
-        self.assertRaises(RuntimeError, script.workflow, 'c')
+        wf = script.workflow('c')
+        self.assertRaises(RuntimeError, wf.run)
         #
         # nested subworkflow is allowed
         script = SoS_Script('''
@@ -821,10 +827,12 @@ else:
 [a_2]
 [a_3]
 [b_1]
-[b_2='a_1+a_2']
+[b_2]
+sos_run('a_1+a_2')
 [c_0]
-[c_1='a+b']
+[c_1]
 input: 'a.txt'
+sos_run('a+b')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
@@ -842,7 +850,13 @@ else:
 [a_1]
 [a_2]
 [a_3]
-[b='a_3+a_1', d='a_2', e2_2]
+[b]
+input: 'a.txt', 'b.txt', group_by='single'
+sos_run('a_3+a_1')
+[d]
+input: 'a.txt', 'b.txt', group_by='single'
+sos_run('a_2')
+[e2_2]
 input: 'a.txt', 'b.txt', group_by='single'
 ''')
         env.run_mode = 'dryrun'
@@ -888,8 +902,9 @@ if 'executed' in locals():
     executed.append('g.' + step_name)
 else:
     executed = ['g.' + step_name]
-[b_1='A' : source='temp/test.sos', skip=False]
+[b_1: skip=False]
 input: 'a.txt', 'b.txt', group_by='single'
+sos_run('A', source='temp/test.sos')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('b')

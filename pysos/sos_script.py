@@ -97,7 +97,7 @@ class StepInfo(object):
     def __repr__(self):
         return '{' + ', '.join('{}: {!r}'.format(x,y) for x,y in self.__dict__.items()) + '}'
 
-def execute_step_process(step_process, global_process, subworkflow, sos_dict, sigil, signature, workdir):
+def execute_step_process(step_process, global_process, sos_dict, sigil, signature, workdir):
     '''A function that has a local dictionary (from SoS env.sos_dict),
     a global process, and a step process. The processes are executed 
     in a separate process, independent of SoS. This makes it possible
@@ -117,9 +117,6 @@ def execute_step_process(step_process, global_process, subworkflow, sos_dict, si
             SoS_exec(global_process, sigil)
         # step process
         SoS_exec(step_process, sigil)
-        # subworkflow
-        if subworkflow:
-            subworkflow.run(nested=True)
         if signature:
             signature.write()
     except KeyboardInterrupt:
@@ -412,7 +409,9 @@ class SoS_Step:
     #
     # A single sos step
     #
-    def __init__(self, names=[], options={}, is_global=False, is_parameters=False):
+    def __init__(self, context=None, names=[], options={}, is_global=False, is_parameters=False):
+        '''A sos step'''
+        self.context = context
         # A step will not have a name and index until it is copied to separate workflows
         self.name = None
         self.index = None
@@ -429,8 +428,6 @@ class SoS_Step:
         # step processes
         self.global_process = ''
         self.process = ''
-        # subworkflow of a step
-        self.subworkflow = None
         # is it global section? This is a temporary indicator because the global section 
         # will be inserted to each step of the workflow.
         self.is_global = is_global
@@ -744,6 +741,7 @@ class SoS_Step:
         # handle these two sections differently
         env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
         env.sos_dict.set('step_name', '{}_{}'.format(self.name, self.index))
+        env.sos_dict.set('__step_context__', self.context)
         # 
         # the following is a quick hack to allow directive_input function etc to access 
         # the workflow dictionary
@@ -896,7 +894,7 @@ class SoS_Step:
                     step_info.set(var, env.sos_dict[var])
             result[self.options['alias']] = copy.deepcopy(step_info)
         #
-        # if the signature matches, the whole step is ignored, including subworkflows
+        # if the signature matches, the whole step is ignored
         if env.sos_dict['output']:
             signature = RuntimeInfo(step_sig, 
                 env.sos_dict['input'], env.sos_dict['output'], env.sos_dict['depends'])
@@ -948,9 +946,8 @@ class SoS_Step:
                         raise RuntimeError('Signature mismatch for input {} and output {}'.format(
                             ', '.join(env.sos_dict['_input']), ', '.join(env.sos_dict['_output'])))
             # now, if output file has already been generated using non-process statement
-            # so that no process need to be run, or if the output need help from a subworkflow
-            # we create signature from outside.
-            if (not self.process and not self.subworkflow):
+            # so that no process need to be run, we create signature from outside.
+            if not self.process:
                 if partial_signature is not None:
                     partial_signature.write()
                 continue
@@ -961,10 +958,8 @@ class SoS_Step:
                         execute_step_process,   # function
                         (self.process,          # process
                         self.global_process,    # global process
-                        self.subworkflow,       # subworkflow
                         env.sos_dict.clone_pickleable(),
                         self.sigil,
-                        # if subworkflow contribute to outcome, we can not save signature here
                         partial_signature,
                         self.runtime_options['workdir'] if 'workdir' in self.runtime_options else os.getcwd())))
                 else:
@@ -973,7 +968,6 @@ class SoS_Step:
                         execute_step_process(   # function
                         self.process,           # process
                         '',                     # local execusion, no need to re-run global
-                        self.subworkflow,       # subworkflow
                         # do not clone dict
                         env.sos_dict,
                         self.sigil,
@@ -1035,8 +1029,6 @@ class SoS_Step:
                     width=textWidth, 
                     initial_indent=indent,
                     subsequent_indent=indent + ' '*22)))
-            if self.subworkflow:
-                self.subworkflow.show(indent+ '   ' + chr(124), nested=True)
           
 
 class SoS_Workflow:
@@ -1056,17 +1048,14 @@ class SoS_Workflow:
                 self.sections[-1].name = workflow_name
                 # for ordering purpose, this section is always after global
                 self.sections[-1].index = -1
-                # parameters and global section will not have subworkflow
-                self.sections[-1].subworkflow = None
                 continue
-            for name, index, subworkflow in section.names:
+            for name, index in section.names:
                 if 'target' in section.options:
                     self.auxillary_sections.append(section)
                 elif fnmatch.fnmatch(workflow_name, name):
                     self.sections.append(copy.deepcopy(section))
                     self.sections[-1].name = workflow_name
                     self.sections[-1].index = 0 if index is None else int(index)
-                    self.sections[-1].subworkflow = subworkflow
         #
         # sort sections by index
         self.sections.sort(key=lambda x: x.index)
@@ -1099,10 +1088,6 @@ class SoS_Workflow:
                     raise ValueError('Invalid pipeline step item {}'.format(item))
             # keep only selected steps (and the global and parameters section)
             self.sections = [x for x in self.sections if x.index < 0 or all_steps[x.index]]
-        #
-        for section in self.sections:
-            if section.subworkflow is not None and isinstance(section.subworkflow, str):
-                raise RuntimeError('Subworkflow {} not executable most likely because of recursice expansion.'.format(section.subworkflow))
         #
         env.logger.debug('Workflow {} created with {} sections: {}'
             .format(workflow_name, len(self.sections),
@@ -1151,7 +1136,7 @@ class SoS_Workflow:
         #
         # process step of the pipelinp
         #
-        num_parameters_sections = len([x for x in self.sections if x.is_parameters or x.subworkflow])
+        num_parameters_sections = len([x for x in self.sections if x.is_parameters])
         if num_parameters_sections == 0 and args:
             raise ArgumentError('Unused parameter {}'.format(' '.join(args)))
         #
@@ -1221,8 +1206,14 @@ class SoS_Workflow:
         for section in self.sections:
             section.show(indent)
 
-class SoS_Script:
+class SoS_ScriptContent:
+    '''A small class to record the script information to be used by nested
+    workflow.'''
+    def __init__(self, content='', filename=None):
+        self.content = content
+        self.filename = filename
 
+class SoS_Script:
     def __init__(self, content='', filename=None):
         '''Parse a sectioned SoS script file. Please refer to the SoS manual
         for detailed specification of this format.
@@ -1235,13 +1226,15 @@ class SoS_Script:
         from a file.
         '''
         if filename:
-            self.sos_script = os.path.expanduser(filename)
+            self.sos_script = os.path.abspath(os.path.expanduser(filename))
+            self.content = SoS_ScriptContent(content, self.sos_script)
             if not os.path.isfile(self.sos_script):
                 raise ValueError('{} does not exist'.format(filename))
             with open(self.sos_script) as fp:
                 self._read(fp)
         else:
             self.sos_script = '<string>'
+            self.content = SoS_ScriptContent(content, None)
             with StringIO(content) as fp:
                 self._read(fp)
         #
@@ -1372,49 +1365,16 @@ class SoS_Script:
                 step_names = []
                 step_options = {}
                 #
-                # we cannot simply separate headers by , because arbitary expressions are allowed 
-                # for nested workflows
-                # without having to really evaluate all complex expressions, we
-                # have to try to put syntax correctly pieces together.
-                pieces = section_name.split(',')
-                idx = 0
-                while True:
-                    try:
-                        # test current group
-                        if '=' in pieces[idx]:
-                            compile(pieces[idx].strip(), filename = '<string>', mode='exec' if '=' in pieces[idx] else 'eval')
-                        # if it is ok, go next
-                        idx += 1
-                        if idx == len(pieces):
-                            break
-                    except Exception as e:
-                        # error happens merge the next piece
-                        if idx < len(pieces) - 1:
-                            pieces[idx] += ',' + pieces[idx + 1]
-                            # error happens merge the next piece
-                            pieces.pop(idx + 1)
-                        else:
-                            # if no next group, expand previously correct one
-                            if idx == 0:
-                                parsing_errors.append(lineno, line, 'Invalid section option')
-                                break
-                            # break myself again
-                            pieces = pieces[: idx] + pieces[idx].split(',') + pieces[idx+1:]
-                            # go back
-                            idx -= 1
-                            pieces[idx] += '\n' + pieces[idx + 1]
-                            pieces.pop(idx+1)
-                #
-                for name in pieces:
+                for name in section_name.split(','):
                     mo = SOS_SECTION_NAME.match(name)
                     if mo:
-                        n, i, di, s = mo.group('name', 'index', 'default_index', 'subworkflow')
+                        n, i, di = mo.group('name', 'index', 'default_index')
                         if n:
                             if i is None and '*' in n:
                                 parsing_errors.append(lineno, line, 'Unindexed section name cannot contain wildcard character (*).')
-                            step_names.append((n, i, s))
+                            step_names.append((n, i))
                         if di:
-                            step_names.append(('default', di, s))
+                            step_names.append(('default', di))
                     else:
                         parsing_errors.append(lineno, line, 'Invalid section name')
                 if section_option is not None:
@@ -1505,7 +1465,7 @@ class SoS_Script:
                         if len(set(prev_names) & set(names)):
                             parsing_errors.append(lineno, line, 'Duplicate section names')
                 all_step_names.extend(step_names)
-                self.sections.append(SoS_Step(step_names, step_options, is_parameters= step_names and step_names[0][0] == SOS_PARAMETERS_SECTION_NAME))
+                self.sections.append(SoS_Step(self.content, step_names, step_options, is_parameters= step_names and step_names[0][0] == SOS_PARAMETERS_SECTION_NAME))
                 cursect = self.sections[-1]
                 continue
             #
@@ -1618,11 +1578,10 @@ class SoS_Script:
             self.sections.pop(global_section[0][0])
 
 
-    def workflow(self, workflow_name=None, extra_sections=[], args={}):
+    def workflow(self, workflow_name=None, source=[]):
         '''Return a workflow with name_step+name_step specified in wf_name
         This function might be called recursively because of nested
-        workflow. extra_sections are sections read from other sos script
-        when the source section option is encountered. '''
+        workflow. Additional workflows can be specified in the source parameter.'''
         allowed_steps = None
         if not workflow_name:
             wf_name = ''
@@ -1634,7 +1593,7 @@ class SoS_Script:
                     if not SOS_SUBWORKFLOW.match(wf):
                         raise ValueError('Incorrect workflow name {}'.format(workflow_name))
                     # if this is a combined workflow, extra_section might be specied.
-                    wfs.append(self.workflow(wf, extra_sections))
+                    wfs.append(self.workflow(wf, source=source))
                 combined_wf = wfs[0]
                 for wf in wfs[1:]:
                     combined_wf.extend(wf)
@@ -1646,12 +1605,18 @@ class SoS_Script:
             if not mo:
                 raise ValueError('Incorrect workflow name {}'.format(workflow_name))
             wf_name, allowed_steps = mo.group('name', 'steps')
-        # get workflow name from extra_sections
-        extra_section_steps = sum([x.names for x in extra_sections if not \
-            ('skip' in x.options and \
-                (x.options['skip'] is None or x.options['skip'] is True)) \
-            and not ('target' in x.options)], [])
-        extra_workflows = list(set([x[0] for x in extra_section_steps if '*' not in x[0]]))
+        # check source
+        source_scripts = []
+        if source:
+            for sos_file in source:
+                if not os.path.isfile(sos_file) and self.sos_script != '<string>':
+                    sos_file = os.path.join(os.path.split(self.sos_script)[0], sos_file)
+                if not os.path.isfile(sos_file):
+                    raise RuntimeError('Source file for nested workflow {} does not exist'.format(sos_file))
+                source_scripts.append(SoS_Script(filename=sos_file))
+        # get workflow name from source files
+        extra_workflows = list(set(sum([x.workflows for x in source_scripts], [])))
+        extra_sections = sum([x.sections for x in source_scripts], [])
         if extra_sections:
             env.logger.debug('Workflows {} imported'.format(', '.join(extra_workflows)))
         #
@@ -1683,45 +1648,9 @@ class SoS_Script:
                 # section global is shared by all workflows
                 sections.append(section)
                 continue
-            for name, index, _ in section.names:
+            for name, index in section.names:
                 # exact match or filename like match if name contains * etc
                 if fnmatch.fnmatch(wf_name, name):
-                    # if there is an source option, ...
-                    imported_sections = []
-                    if 'source' in section.options:
-                        for sos_file in section.options['source']:
-                            if not os.path.isfile(sos_file):
-                                sos_file = os.path.join(os.path.split(self.sos_script)[0], sos_file)
-                            if not os.path.isfile(sos_file):
-                                raise RuntimeError('Source file for nested workflow {} does not exist'.format(sos_file))
-                            script = SoS_Script(filename=sos_file)
-                            # this includes all global and parameters sections
-                            imported_sections.extend(script.sections)
-                    # expand subworkflow if needed
-                    for i in range(len(section.names)):
-                        if section.names[i][2] and isinstance(section.names[i][2], str):
-                            # we have to expand workflow name
-                            try:
-                                subworkflow = SoS_eval(section.names[i][2])
-                            except Exception as e:
-                                raise RuntimeError('Failed to determine subworkflow pattern from expression {}'.format(section.names[i][2]))
-                            # need to expand the workflow, but it is possible that it is nested ...
-                            # so let us figure out what workflows we are expanding
-                            expanded = []
-                            for tmp in subworkflow.split('+'):
-                                if ':' in tmp:
-                                    tmp = tmp.split(':')[0]
-                                if '_' in tmp and tmp.rsplit('_')[-1].isdigit():
-                                    tmp = tmp.rsplit('_')[0]
-                                expanded.append(tmp)
-                            if wf_name in expanded:
-                                env.logger.debug('NOT expanding {} because of potential loop'.format(subworkflow))
-                            else:
-                                env.logger.debug('Expanding subworkflow {}'.format(subworkflow))
-                                # expand nested workflow
-                                section.names[i] = (section.names[i][0], section.names[i][1], 
-                                    self.workflow(subworkflow, extra_sections=extra_sections + imported_sections))
-                    # now copy the step over
                     sections.append(section)
                     break
         return SoS_Workflow(wf_name, allowed_steps, sections, self.workflow_descriptions[wf_name])
@@ -1747,7 +1676,7 @@ def sos_show(args, workflow_args):
     try:
         script = SoS_Script(filename=args.script)
         if args.workflow:
-            workflow = script.workflow(args.workflow, args=workflow_args)
+            workflow = script.workflow(args.workflow)
             workflow.show()
         else:
             script.show()
@@ -1799,7 +1728,7 @@ def sos_run(args, workflow_args):
         env.sig_mode = 'ignore'
         try:
             script = SoS_Script(filename=args.script)
-            workflow = script.workflow(args.workflow, args=workflow_args)
+            workflow = script.workflow(args.workflow)
             workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
         except Exception as e:
             if args.verbosity and args.verbosity > 2:
@@ -1813,7 +1742,7 @@ def sos_run(args, workflow_args):
             env.sig_mode = 'ignore'
         try:
             script = SoS_Script(filename=args.script)
-            workflow = script.workflow(args.workflow, args=workflow_args)
+            workflow = script.workflow(args.workflow)
             workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
         except Exception as e:
             if args.verbosity and args.verbosity > 2:
@@ -1827,7 +1756,7 @@ def sos_run(args, workflow_args):
             env.sig_mode = 'ignore'
         try:
             script = SoS_Script(filename=args.script)
-            workflow = script.workflow(args.workflow, args=workflow_args)
+            workflow = script.workflow(args.workflow)
             workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
         except Exception as e:
             if args.verbosity and args.verbosity > 2:

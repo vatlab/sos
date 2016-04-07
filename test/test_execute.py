@@ -139,7 +139,8 @@ def myfunc(a):
 [mse: alias='test']
 input: myfunc(['a.txt', 'b.txt'])
 
-[1=mse]
+[1]
+sos_run('mse')
 """)
         wf = script.workflow()
         env.run_mode='dryrun'
@@ -608,7 +609,8 @@ b = random.randint(0, 100000)
 
 [a_1]
 
-[default=a+a]
+[default]
+sos_run('a+a')
 
 """)
         wf = script.workflow()
@@ -625,13 +627,14 @@ import random
 [nested]
 print('I am nested ${nested} with seed ${seed}')
 
-[0=nested]
+[0]
 reps = range(5)
 input: for_each='reps'
 process: concurrent=True
 nested = _reps
 seed = random.randint(1, 1000)
 print('Passing ${seed} to ${nested}')
+sos_run('nested')
 
 """)
         env.max_jobs = 1
