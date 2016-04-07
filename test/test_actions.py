@@ -251,6 +251,7 @@ sh: docker_image='ubuntu'
 echo 'Echo
 ''')
         wf = script.workflow()
+        # FIXME: syntax error is not reflected outside of the docker
         self.assertRaises(RuntimeError, wf.run)
 
     def testCsh(self):

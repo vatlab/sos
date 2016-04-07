@@ -1382,7 +1382,7 @@ class SoS_Script:
                     try:
                         # test current group
                         if '=' in pieces[idx]:
-                            compile(pieces[idx].strip(), filename = '<string>', mode='exec' if '=' in pieces[idx] else 'eval')
+                            compile(pieces[idx].split('=', 1)[1].strip(), '<string>', 'eval')
                         # if it is ok, go next
                         idx += 1
                         if idx == len(pieces):
