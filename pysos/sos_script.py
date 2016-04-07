@@ -39,8 +39,10 @@ import textwrap
 #
 # The multiprocessing extension in Celery overcomes this problem and
 # allows use to create new processes from a pooled process.
-import billiard as mp
-from billiard.pool import ApplyResult
+#import billiard as mp
+#from billiard.pool import ApplyResult
+import multiprocessing as mp
+from multiprocessing.pool import AsyncResult
 
 from io import StringIO
 from collections import OrderedDict, defaultdict
@@ -56,9 +58,8 @@ from .sos_syntax import *
 
 __all__ = ['SoS_Script']
 
-# 
-# global definitions of SoS syntax
-# 
+from celery.signals import worker_process_init
+from multiprocessing import current_process
 
 class ArgumentError(Error):
     """Raised when an invalid argument is passed."""
@@ -985,7 +986,7 @@ class SoS_Step:
         # check results? This is only meaningful for pool
         if concurrent:
             try:
-                proc_results = [res.get() if isinstance(res, ApplyResult) else res for res in proc_results]
+                proc_results = [res.get() if isinstance(res, AsyncResult) else res for res in proc_results]
             except KeyboardInterrupt:
                 # if keyboard interrupt
                 pool.terminate()

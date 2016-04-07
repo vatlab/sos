@@ -791,6 +791,16 @@ shared.d += 1
         # in other cases.
         self.assertRaises(RuntimeError, wf.run)
 
+    def testSklearnImportFailure(self):
+        '''Test problem with Sklean when using Celery/multiprocessing'''
+        script = SoS_Script('''
+import sklearn
+
+[run]
+print(0)
+''')
+        wf = script.workflow()
+        wf.run()
 
 
 if __name__ == '__main__':
