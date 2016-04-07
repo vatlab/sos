@@ -870,6 +870,35 @@ input: 'a.txt', 'b.txt', group_by='single'
         wf.run()
         self.assertEqual(env.sos_dict['executed'], ['e2_2'])
 
+    def testDynamicNestedWorkflow(self):
+        '''Test nested workflow controlled by command line option'''
+        script = SoS_Script('''
+if 'executed' in locals():
+    executed.append(step_name)
+else:
+    executed = [step_name]
+[parameters]
+wf='a'
+
+[a_1]
+[a_2]
+[a_3]
+[b_1]
+[b_2]
+[b_3]
+
+[default]
+sos_run(wf)
+''')
+        env.shared_vars = ['executed']
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        wf.run(args=['--wf', 'b'])
+        self.assertEqual(env.sos_dict['executed'], ['default_parameters', 'default_0', 'b_parameters', 'b_1', 'b_2', 'b_3'])
+        #
+        wf.run(args=['--wf', 'a'])
+        self.assertEqual(env.sos_dict['executed'], ['default_parameters', 'default_0', 'a_parameters', 'a_1', 'a_2', 'a_3'])
+
     def testSourceOption(self):
         '''Test the source section option'''
         # nested subworkflow with step option and others

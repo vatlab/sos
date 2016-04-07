@@ -1117,6 +1117,7 @@ class SoS_Workflow:
             #
             # inject a few things
             env.sos_dict.set('__null_func__', __null_func__)
+            env.sos_dict.set('__args__', args)
             # initial values
             env.sos_dict.set('SOS_VERSION', __version__)
             cfg = {}
