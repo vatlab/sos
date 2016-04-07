@@ -70,16 +70,30 @@ class DockerClient:
         return (':' in image and image in images) or \
             (':' not in image and '{}:latest'.format(image) in images)
 
+    def stream(self, line):
+        # properly output streamed output
+        try:
+            sys.stdout.write(json.loads(line).get('stream', ''))
+        except ValueError:
+            # sometimes all the data is sent on a single line ????
+            #
+            # ValueError: Extra data: line 1 column 87 - line 1 column
+            # 33268 (char 86 - 33267)
+            # This ONLY works because every line is formatted as
+            # {"stream": STRING}
+            for obj in re.findall('{\s*"stream"\s*:\s*"[^"]*"\s*}', line):
+                sys.stdout.write(json.loads(obj).get('stream', ''))
+
     def build(self, script, **kwargs):
         if not self.client:
             raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         if script is not None:
             f = BytesIO(script.encode('utf-8'))
             for line in self.client.build(fileobj=f, **kwargs):
-                print(json.dumps(json.loads(line.decode()), indent=4))
+                self.stream(line.decode())
         else:
             for line in self.client.build(**kwargs):
-                print(json.dumps(json.loads(line), indent=4))
+                self.stream(line.decode())
         # if a tag is given, check if the image is built
         if 'tag' in kwargs and not self._is_image_avail(kwargs['tag']):
             raise RuntimeError('Image with tag {} is not created.'.format(kwargs['tag']))
@@ -94,22 +108,23 @@ class DockerClient:
         if not self.client:
             raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         # if image is specified, check if it is available locally. If not, pull it
+        ret = 0
         if not self._is_image_avail(image):
             env.logger.info('docker pull {}'.format(image))
             # using subprocess instead of docker-py's pull function because this would have
             # much better progress bar display
-            p = subprocess.Popen('docker pull {}'.format(image), shell=True)
-            ret = p.wait()
+            ret = subprocess.call('docker pull {}'.format(image), shell=True)
             #for line in self.client.pull(image, stream=True):
-            #    print(json.dumps(json.loads(line.decode()), indent=4))
+            #    self.stream(line)
         if not self._is_image_avail(image):
             raise RuntimeError('Failed to pull image {}'.format(image))
+        return ret
 
     def commit(self, **kwargs):
         if not self.client:
             raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         for line in self.client.commit(**kwargs):
-            print(json.dumps(json.loads(line), indent=4))
+            self.stream(line.decode())
         return 0
 
     def run(self, image, script='', interpreter='', suffix='.sh', **kwargs):
@@ -119,13 +134,14 @@ class DockerClient:
         # now, write a temporary file to a tempoary directory under the current directory, this is because
         # we need to share the directory to ...
         with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
+            # keep the temporary script for debugging purposes
+            # tempdir = tempfile.mkdtemp(dir=os.getcwd())
             if script:
                 tempscript = 'docker_run_{}{}'.format(os.getpid(), suffix)
                 with open(os.path.join(tempdir, tempscript), 'w') as script_file:
                     script_file.write(script)
             #
             binds = []
-            vols = []
             if 'volumes' in kwargs:
                 volumes = [kwargs['volumes']] if isinstance(kwargs['volumes'], str) else kwargs['volumes']
                 for vol in volumes:
@@ -139,35 +155,17 @@ class DockerClient:
                         if not os.path.abspath(host_dir).startswith('/Users'):
                             raise RuntimeError('hostdir ({}) under MacOSX must be under /Users to be usable in docker container'.format(host_dir))
                     binds.append('{}:{}'.format(os.path.abspath(host_dir), mnt_dir))
-                    vols.append(mnt_dir)
             # we also need to mount the script
-            if script:
-                vols.append('/var/lib/sos/{}'.format(tempscript))
-                binds.append('{}:{}'.format(os.path.join(tempdir, tempscript), '/var/lib/sos/{}'.format(tempscript)))
-            kwargs['volumes'] = vols
-            kwargs['host_config'] = self.client.create_host_config(binds=binds)
-            #
             if script and interpreter:
+                binds.append('{}:{}'.format(os.path.join(tempdir, tempscript), '/var/lib/sos/{}'.format(tempscript)))
                 cmd = interpreter.replace('{}', '/var/lib/sos/{}'.format(tempscript))
             else:
                 cmd = ''
-            env.logger.info('docker run {} {} {}'.format(' '.join('-v ' + x for x in binds), image, cmd))
-            container = self.client.create_container(image=image, command=cmd, **kwargs)
-            if script:
-                env.logger.debug('Container created {} with script "/var/lib/sos/{}" and args {}'.format(container.get('Id'), tempscript, kwargs))
-            else:
-                env.logger.debug('Container created {} with no script and args {}'.format(container.get('Id'), kwargs))
-            if container.get('warnings', None):
-                env.logger.warning(container.get('warnings'))
-            #
-            response = self.client.start(container=container.get('Id'))
-            if response is not None:
-                env.logger.info(response)
-            try:
-                self.client.stop(container=container.get('Id'))
-            except Exception as e:
-                env.logger.debug(e)
-            print(self.client.logs(container=container.get('Id'), stdout=True, stderr=True).decode())
+            command = 'docker run -t --rm {} {} {}'.format(' '.join('-v ' +x for x in binds), image, cmd)
+            env.logger.info(command)
+            ret = subprocess.call(command, shell=True)
+            if ret != 0:
+                raise RuntimeError('Executing script in docker returns an error')
         return 0
 
 #
