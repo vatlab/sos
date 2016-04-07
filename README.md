@@ -29,5 +29,5 @@ wiki](https://github.com/bpeng2000/SOS/wiki)**, or use the following links
 directly:
 
 * [Quick start guide](https://github.com/bpeng2000/SOS/wiki/Quick-Start)
-* [A presentation about SoS](https://github.com/bpeng2000/SOS/wiki/SoS_March2016.pdf)
+* [A presentation about SoS](https://github.com/bpeng2000/SOS/wiki/SoS_March2016.pdf), updated on Apr. 7th for version 0.5.7
 * [Complete documentation](https://github.com/bpeng2000/SOS/wiki/Documentation)
