@@ -1733,6 +1733,8 @@ def sos_run(args, workflow_args):
     # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)
     # first, run in dryrun mode
+    if not (args.__rerun__ or args.__prepare__ or args.__dryrun__ or args.__run__):
+        args.__run__ = True
     if args.__dryrun__:
         env.run_mode = 'dryrun'
         env.sig_mode = 'ignore'
