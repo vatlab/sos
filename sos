@@ -24,7 +24,7 @@ import sys
 import argparse
 
 from pysos._version import __version__, SOS_FULL_VERSION
-from pysos.sos_script import sos_run, sos_dryrun, sos_show
+from pysos.sos_script import sos_run, sos_dryrun, sos_prepare, sos_show
 
 def addCommonArgs(parser):
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5),
@@ -78,11 +78,11 @@ if __name__ == '__main__':
             of the configuration file will be available as a dictionary 
             CONF in the SoS script being executed.''')
     runmode = parser.add_argument_group(title='Run mode options',
-        description='''SoS scripts are default executed in run mode where all
+        description='''SoS scripts are by default executed in run mode where all
             steps are executed. If one or more of the runmode options are
             specified (e.g. '-d' or '-dpr'), SoS will execute the script in
             dryrun mode, preparation mode, and run mode if respective options
-            are specified, but will stop if any error occur at one mode. 
+            are specified, but will stop if an error occurs at one mode. 
             This allows you to detect problems and download resources before
             running a script in full power. ''')
     runmode.add_argument('-d', action='store_true', dest='__dryrun__',
@@ -121,6 +121,22 @@ if __name__ == '__main__':
     #    nargs=argparse.REMAINDER, help=workflow_options)
     addCommonArgs(parser)
     parser.set_defaults(func=sos_dryrun)
+    #
+    # command prepare
+    parser = subparsers.add_parser('prepare',
+        description='''Execute a workflow in prepare mode in which SoS 
+            prepares the exeuction of workflow by, for example, download
+            required resources and docker images.''',
+        epilog=workflow_options,
+        help='Execute a SoS script in prepare mode')
+    parser.add_argument('script', metavar='SCRIPT',
+        help='A SoS script that defines one or more workflows.')
+    parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
+        help=workflow_spec)
+    #parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
+    #    nargs=argparse.REMAINDER, help=workflow_options)
+    addCommonArgs(parser)
+    parser.set_defaults(func=sos_prepare)
     #
     # command show
     parser = subparsers.add_parser('show',

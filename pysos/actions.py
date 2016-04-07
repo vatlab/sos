@@ -177,18 +177,19 @@ def SoS_Action(run_mode='run'):
     run_mode = [run_mode] if isinstance(run_mode, str) else run_mode
     def runtime_decorator(func):
         def action_wrapper(*args, **kwargs):
-            if env.run_mode not in run_mode:
-                return 0
             runtime_options = env.sos_dict.get('_runtime', {})
             #
             non_runtime_options = {k:v for k,v in kwargs.items() if k not in SOS_RUNTIME_OPTIONS}
-            if 'docker_file' in runtime_options:
+            # docker files will be downloaded in run or prepare mode
+            if 'docker_file' in runtime_options and env.run_mode in ('run', 'prepare'):
                 docker = DockerClient()
                 docker.import_image(runtime_options['docker_file'])
             # handle image
-            if 'docker_image' in runtime_options:
+            if 'docker_image' in runtime_options and env.run_mode in ('run', 'prepare'):
                 docker = DockerClient()
                 docker.pull(runtime_options['docker_image'])
+            if env.run_mode not in run_mode:
+                return 0
             return func(*args, **non_runtime_options)
         action_wrapper.run_mode = run_mode
         return action_wrapper
@@ -227,7 +228,7 @@ class SoS_ExecuteScript:
 def execute_script(script, interpreter, suffix, **kwargs):
     return SoS_ExecuteScript(script, interpreter, suffix).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def check_command(cmd, pattern = None):
     '''Raise an exception if output of `cmd` does not match specified `pattern`.
     Multiple patterns can be specified as a list of patterns.
@@ -262,14 +263,14 @@ def check_command(cmd, pattern = None):
                     .format(cmd, ' or '.join(pattern)))
     return ret_val
 
-@SoS_Action(run_mode=['dryrun', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def fail_if(expr, msg=''):
     '''Raise an exception with `msg` if condition `expr` is False'''
     if expr:
         raise RuntimeError(msg)
     return 0
 
-@SoS_Action(run_mode=['dryrun', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def warn_if(expr, msg=''):
     '''Yield an warning message `msg` if `expr` is False '''
     if expr:
@@ -328,7 +329,7 @@ def JavaScript(script, **kwargs):
 def R(script, **kwargs):
     return SoS_ExecuteScript(script, 'Rscript --default-packages=methods,utils,stats', '.R').run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def check_R_library(name, version = None):
     '''Check existence and version match of R library.
     cran and bioc packages are unique yet might overlap with github.
