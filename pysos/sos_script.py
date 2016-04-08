@@ -1031,28 +1031,29 @@ class SoS_Step:
             pool.join()
         return result
 
-    def show(self, indent):
+    def show(self):
         '''Output for command sos show'''
         textWidth = max(60, getTermWidth())
         if self.is_parameters:
-            print(indent + 'Accepted parameters:')
+            print('Accepted parameters:')
             for k,v,c in self.parameters:
-                 text = '{:<16}'.format(k + ':') + (c + ' ' if c else '') + \
+                paragraphs = dehtml(c).split('\n\n')
+                # FIXME: print paragraphs one by one...
+                text = '{:<16}'.format(k + ':') + (c + ' ' if c else '') + \
                      ('(default: {})'.format(v) if v else '')
-                 print('\n'.join(
+                print('\n'.join(
                      textwrap.wrap(text, 
-                     initial_indent=indent + ' '*2,
-                     subsequent_indent=indent + ' '*18,
+                     initial_indent=' '*2,
+                     subsequent_indent=' '*18,
                      width=textWidth)
                      ))
         else:
-            # hide a step if there is no comment
             text = '  {:<20}'.format('Step {}_{}:'.format(self.name, self.index)) + self.comment
             print('\n'.join(
                 textwrap.wrap(text, 
                     width=textWidth, 
-                    initial_indent=indent,
-                    subsequent_indent=indent + ' '*22)))
+                    initial_indent='',
+                    subsequent_indent=' '*22)))
           
 
 class SoS_Workflow:
@@ -1228,30 +1229,26 @@ class SoS_Workflow:
                 # if there is any error, raise it
                 raise exception
 
-    def show(self, indent = '', parameters=True):
+    def show(self, parameters=True):
         textWidth = max(60, getTermWidth())
         paragraphs = dehtml(self.description).split('\n\n')
         print('\n'.join(
             textwrap.wrap('{} {}:  {}'.format(
                 'Workflow', 
                 self.name, paragraphs[0]),
-                initial_indent = indent,
-                subsequent_indent = indent,
                 width=textWidth)
             ))
         for paragraph in paragraphs[1:]:
             print('\n'.join(
-            textwrap.wrap(paragraph, width=textWidth,
-                initial_indent = indent,
-                subsequent_indent = indent)
+            textwrap.wrap(paragraph, width=textWidth)
             ))
         for section in [x for x in self.sections if not x.is_parameters]:
-            section.show(indent)
+            section.show()
         # parameters display at last
         if parameters:
             print('\n')
             for section in [x for x in self.sections if x.is_parameters]:
-                section.show(indent)
+                section.show()
 
 class SoS_ScriptContent:
     '''A small class to record the script information to be used by nested
