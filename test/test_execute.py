@@ -32,6 +32,7 @@ import shutil
 from pysos import *
 from pysos import __version__
 from pysos.utils import env
+from pysos.sos_script import ExecuteError
 import subprocess
 
 class TestExecute(unittest.TestCase):
@@ -615,7 +616,7 @@ sos_run('a+a')
 """)
         wf = script.workflow()
         env.run_mode = 'dryrun'
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), wf.run)
 
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''
@@ -692,7 +693,7 @@ test.output=['ab.txt']
 """)
         wf = script.workflow()
         env.run_mode = 'dryrun'
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises((RuntimeError, ExecuteError), wf.run)
 
     def testReadOnlyInputOutputVars(self):
         '''Test readonly input output vars'''
@@ -723,7 +724,7 @@ print(a)
         env.run_mode = 'dryrun'
         # I would like to disallow accessing variables defined
         # in other cases.
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises((RuntimeError, ExecuteError), wf.run)
         # however, alias should be sent back
         script = SoS_Script(r"""
 [1: alias='shared']
@@ -792,7 +793,7 @@ shared.d += 1
         env.run_mode = 'dryrun'
         # I would like to disallow accessing variables defined
         # in other cases.
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), wf.run)
 
     def testSklearnImportFailure(self):
         '''Test problem with Sklean when using Celery/multiprocessing'''

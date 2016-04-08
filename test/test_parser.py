@@ -26,7 +26,7 @@ import shutil
 import subprocess
 
 from pysos.utils import env
-from pysos.sos_script import SoS_Script, ParsingError, ArgumentError
+from pysos.sos_script import SoS_Script, ParsingError, ArgumentError, ExecuteError
 
 class TestParser(unittest.TestCase):
     def setUp(self):
@@ -815,7 +815,7 @@ sos_run('a_2+c')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), wf.run)
         #
         # nested subworkflow is allowed
         script = SoS_Script('''

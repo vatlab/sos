@@ -907,7 +907,8 @@ class SoS_Step:
         if env.sos_dict['depends']:
             env.logger.info('depends: ``{}``'.format(shortRepr(env.sos_dict['depends'])))
         result['__step_output__'] = env.sos_dict['output']
-        result['__execute_errors__'] = env.sos_dict['__execute_errors__']
+        if '__execute_errors__' in env.sos_dict:
+            result['__execute_errors__'] = env.sos_dict['__execute_errors__']
         if 'alias' in self.options:
             step_info.set('output', env.sos_dict['output'])
             step_info.set('depends', env.sos_dict['depends'])
