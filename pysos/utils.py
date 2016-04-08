@@ -952,7 +952,7 @@ class RuntimeInfo:
                     env.logger.waring('{} not need to be checked'.format(f))
                     continue
                 if partialMD5(f) != m.strip():
-                    env.logger.error('MD5 mismatch {}'.format(f))
+                    env.logger.debug('MD5 mismatch {}'.format(f))
                     return False
                 files_checked[f] = True
         #
