@@ -31,7 +31,7 @@ import argparse
 import textwrap
 #
 # billiard is a Celery extension to multiprocessing
-# 
+#
 # When we execute a step with subprocesses in parallel, the multiprocessing.pool
 # module creates processes in daemon mode, which disallows the creation of new
 # pools from these processes, which means we have to execute subworkflow
@@ -47,7 +47,7 @@ from multiprocessing.pool import AsyncResult
 
 from io import StringIO
 from collections import OrderedDict, defaultdict
-from collections.abc import Sequence, Iterable 
+from collections.abc import Sequence, Iterable
 from itertools import tee, combinations
 
 from . import __version__
@@ -59,7 +59,6 @@ from .sos_syntax import *
 
 __all__ = ['SoS_Script']
 
-from celery.signals import worker_process_init
 from multiprocessing import current_process
 
 class ArgumentError(Error):
@@ -118,7 +117,7 @@ class StepInfo(object):
 
 def execute_step_process(step_process, global_process, sos_dict, sigil, signature, workdir):
     '''A function that has a local dictionary (from SoS env.sos_dict),
-    a global process, and a step process. The processes are executed 
+    a global process, and a step process. The processes are executed
     in a separate process, independent of SoS. This makes it possible
     to execute the processes in background, on cluster, or submit as
     Celery tasks.'''
@@ -218,7 +217,7 @@ def handle_input_pattern(pattern, ifiles, _groups, _vars):
             env.sos_dict[k] = v
         # also make k, v pair with _input
         handle_input_paired_with(res.keys(), _groups, _vars)
-    
+
 
 def handle_input_for_each(for_each, _groups, _vars):
     if for_each is None or not for_each:
@@ -317,7 +316,7 @@ def directive_input(*args, **kwargs):
             ifiles = [x for x in ifiles if any(fnmatch.fnmatch(x, y) for y in kwargs['filetype'])]
         elif callable(kwargs['filetype']):
             ifiles = [x for x in ifiles if kwargs['filetype'](x)]
-    #             
+    #
     # handle group_by
     if 'group_by' in kwargs:
         _groups = handle_input_group_by(ifiles, kwargs['group_by'])
@@ -378,7 +377,7 @@ def directive_depends(*args, **kwargs):
     env.sos_dict.set('_depends', dfiles)
 
 def handle_output_pattern(pattern, ofiles):
-    # 
+    #
     if pattern is None or not pattern:
         patterns = []
     elif isinstance(pattern, str):
@@ -390,7 +389,7 @@ def handle_output_pattern(pattern, ofiles):
     #
     for pattern in patterns:
         ofiles.extend(expand_pattern(pattern))
-        
+
 def directive_output(*args, **kwargs):
     for k in kwargs.keys():
         if k not in SOS_OUTPUT_OPTIONS:
@@ -447,7 +446,7 @@ class SoS_Step:
         # step processes
         self.global_process = ''
         self.process = ''
-        # is it global section? This is a temporary indicator because the global section 
+        # is it global section? This is a temporary indicator because the global section
         # will be inserted to each step of the workflow.
         self.is_global = is_global
         # is it the parameters section?
@@ -461,7 +460,7 @@ class SoS_Step:
             self.sigil = self.options['sigil']
         else:
             self.sigil = '${ }'
-        
+
         #
         # string mode to collect all strings as part of an action
         self._action = None
@@ -661,7 +660,7 @@ class SoS_Step:
                 if env.verbosity > 2:
                     print_traceback()
                 raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.global_process, e))
-     
+
         def str2bool(v):
             if v.lower() in ('yes', 'true', 't', '1'):
                 return True
@@ -681,7 +680,7 @@ class SoS_Step:
                 raise RuntimeError('Incorrect default value {} for parameter {}: {}'.format(defvalue, key, e))
             if isinstance(defvalue, type):
                 if defvalue == bool:
-                    parser.add_argument('--{}'.format(key), type='bool', help=comment, required=True, nargs='?') 
+                    parser.add_argument('--{}'.format(key), type='bool', help=comment, required=True, nargs='?')
                 else:
                     # if only a type is specified, it is a required document of required type
                     parser.add_argument('--{}'.format(key), type=str if hasattr(defvalue, '__iter__') else defvalue,
@@ -705,7 +704,7 @@ class SoS_Step:
                         default=defvalue)
         #
         parser.error = self._parse_error
-        # 
+        #
         # because of the complexity of having combined and nested workflows, we cannot know how
         # many parameters section a workflow has and therfore have to assume that the unknown parameters
         # are for other sections.
@@ -728,8 +727,8 @@ class SoS_Step:
     # Execution
     #
     def step_signature(self):
-        '''return everything that might affect the execution of the step 
-        namely, global process, step definition etc to create a unique 
+        '''return everything that might affect the execution of the step
+        namely, global process, step definition etc to create a unique
         signature that might will be changed with the change of SoS script.'''
         result = self.global_process
         for statement in self.statements:
@@ -741,7 +740,7 @@ class SoS_Step:
         return re.sub(r'\s+', ' ', result)
 
     def run_with_queue(self, queue):
-        '''Execute the step in a separate process and return the results through a 
+        '''Execute the step in a separate process and return the results through a
         queue '''
         try:
             res = self.run()
@@ -761,8 +760,8 @@ class SoS_Step:
         env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
         env.sos_dict.set('step_name', '{}_{}'.format(self.name, self.index))
         env.sos_dict.set('__step_context__', self.context)
-        # 
-        # the following is a quick hack to allow directive_input function etc to access 
+        #
+        # the following is a quick hack to allow directive_input function etc to access
         # the workflow dictionary
         #
         # these are temporary variables that should be removed if exist
@@ -823,13 +822,13 @@ class SoS_Step:
         else:
             # assuming everything starts from 0 is after input
             input_idx = 0
-        
+
         env.sos_dict.set('input', list(OrderedDict.fromkeys(sum(self._groups, []))))
         step_info = StepInfo()
         step_info.set('step_name', env.sos_dict['step_name'])
         step_info.set('input', env.sos_dict['input'])
         if 'alias' in self.options:
-            # the step might be skipped 
+            # the step might be skipped
             for var in public_vars:
                 # there is a slight possibility that var is deleted
                 if var in env.sos_dict and pickleable(env.sos_dict[var]):
@@ -920,7 +919,7 @@ class SoS_Step:
         #
         # if the signature matches, the whole step is ignored
         if env.sos_dict['output']:
-            signature = RuntimeInfo(step_sig, 
+            signature = RuntimeInfo(step_sig,
                 env.sos_dict['input'], env.sos_dict['output'], env.sos_dict['depends'])
             if env.run_mode == 'run':
                 if env.sig_mode == 'default':
@@ -958,7 +957,7 @@ class SoS_Step:
             # step is interrupted in the middle.
             partial_signature = None
             if env.sos_dict['_output'] and env.sos_dict['_output'] != env.sos_dict['output'] and env.run_mode == 'run':
-                partial_signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], 
+                partial_signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'],
                     env.sos_dict['_depends'])
                 if env.sig_mode == 'default':
                     if partial_signature.validate():
@@ -1021,7 +1020,7 @@ class SoS_Step:
             raise RuntimeError('Step process returns non-zero value')
         if env.run_mode == 'run':
             for ofile in env.sos_dict['output']:
-                if not os.path.isfile(os.path.expanduser(ofile)): 
+                if not os.path.isfile(os.path.expanduser(ofile)):
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
         if signature and env.run_mode == 'run':
             signature.write()
@@ -1042,7 +1041,7 @@ class SoS_Step:
                 text = '{:<16}'.format(k + ':') + (c + ' ' if c else '') + \
                      ('(default: {})'.format(v) if v else '')
                 print('\n'.join(
-                     textwrap.wrap(text, 
+                     textwrap.wrap(text,
                      initial_indent=' '*2,
                      subsequent_indent=' '*18,
                      width=textWidth)
@@ -1050,11 +1049,11 @@ class SoS_Step:
         else:
             text = '  {:<20}'.format('Step {}_{}:'.format(self.name, self.index)) + self.comment
             print('\n'.join(
-                textwrap.wrap(text, 
-                    width=textWidth, 
+                textwrap.wrap(text,
+                    width=textWidth,
                     initial_indent='',
                     subsequent_indent=' '*22)))
-          
+
 
 class SoS_Workflow:
     #
@@ -1116,7 +1115,7 @@ class SoS_Workflow:
         #
         env.logger.debug('Workflow {} created with {} sections: {}'
             .format(workflow_name, len(self.sections),
-            ', '.join('{}_{}'.format(section.name, 
+            ', '.join('{}_{}'.format(section.name,
                     'global' if section.index == -2 else ('parameters' if section.index == -1 else section.index))
             for section in self.sections)))
 
@@ -1126,7 +1125,7 @@ class SoS_Workflow:
         self.sections.extend(workflow.sections)
 
     def run(self, args=[], nested=False, cmd_name='', config_file=None):
-        '''Execute a workflow with specified command line args. If sub is True, this 
+        '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
         if nested:
@@ -1199,7 +1198,7 @@ class SoS_Workflow:
                     continue
                 elif val_skip is not False:
                     raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
-            # 
+            #
             # execute section with specified input
             # 1. for first step of workflow, _step.input=[]
             # 2. for subworkflow, _step.input = _input
@@ -1234,7 +1233,7 @@ class SoS_Workflow:
         paragraphs = dehtml(self.description).split('\n\n')
         print('\n'.join(
             textwrap.wrap('{} {}:  {}'.format(
-                'Workflow', 
+                'Workflow',
                 self.name, paragraphs[0]),
                 width=textWidth)
             ))
@@ -1266,7 +1265,7 @@ class SoS_Script:
         SoS script in unicode, which is convenient for passing scripts for
         testing purposes.
 
-        Parameter `filename` should be used if the content should be read 
+        Parameter `filename` should be used if the content should be read
         from a file.
         '''
         if filename:
@@ -1292,7 +1291,7 @@ class SoS_Script:
         if not self.workflows:
             self.workflows = ['default']
         #
-        # now we need to record the workflows to the global and parameters section so 
+        # now we need to record the workflows to the global and parameters section so
         # that we know if which has to be included when a subworkflow is used.
         for section in self.sections:
             if section.is_global or section.is_parameters:
