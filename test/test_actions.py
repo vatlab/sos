@@ -30,6 +30,9 @@ import unittest
 from pysos import *
 from pysos.utils import env
 from pysos.sos_script import ExecuteError
+from pysos.actions import DockerClient
+
+has_docker = DockerClient().client is not None
 
 class TestActions(unittest.TestCase):
     def setUp(self):
@@ -204,7 +207,7 @@ echo 'Echo
         self.assertRaises(RuntimeError, wf.run)
 
     def testBash(self):
-        '''Test action run'''
+        '''Test action bash'''
         script = SoS_Script(r'''
 [0]
 bash:
@@ -219,7 +222,10 @@ echo 'Echo
 ''')
         wf = script.workflow()
         self.assertRaises(RuntimeError, wf.run)
-        # docker
+    
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+    def testBashInDocker(self):
+        '''Test action bash in docker environment'''
         script = SoS_Script(r'''
 [0]
 bash:  docker_image='ubuntu'
@@ -245,6 +251,11 @@ echo 'Echo
 ''')
         wf = script.workflow()
         self.assertRaises(RuntimeError, wf.run)
+
+
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+    def testShInDocker(self):
+        '''Test action sh in docker environment'''
         # test docker
         script = SoS_Script(r'''
 [0]
@@ -314,7 +325,10 @@ print(a)
 ''')
         wf = script.workflow()
         wf.run()
-        # test docker
+
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+    def testPythonInDocker(self):
+        '''Test action python in docker environment'''
         script = SoS_Script(r'''
 [0]
 python:  docker_image='python'
@@ -333,7 +347,11 @@ print(a)
 ''')
         wf = script.workflow()
         wf.run()
-        # test docker
+
+
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+    def testPythonsInDocker(self):
+        '''Test action pythons in docker environment'''
         script = SoS_Script(r'''
 [0] 
 python3: docker_image='python'
@@ -356,7 +374,11 @@ print "hi NAME\n";
 ''')
         wf = script.workflow()
         wf.run()
-        # test docker
+
+
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+    def testPerlInDocker(self):
+        '''Test action perl in docker environment'''
         script = SoS_Script(r'''
 [0]
 perl: docker_image='ubuntu'
@@ -386,7 +408,11 @@ end
 ''')
         wf = script.workflow()
         wf.run()
-        # test docker
+
+
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+    def testRubyInDocker(self):
+        '''Test action ruby in docker environment'''
         script = SoS_Script(r'''
 [0]
 ruby: docker_image='ruby'
@@ -413,7 +439,20 @@ console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
         wf.run()
-        # test docker
+        #
+        script = SoS_Script(r'''
+[0]
+JavaScript:
+var args = process.argv.slice(2);
+console.log('Hello ' + args.join(' ') + '!');
+''')
+        wf = script.workflow()
+        wf.run()
+
+
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+    def testNodeInDocker(self):
+        '''Test action node in docker environment'''
         script = SoS_Script(r'''
 [0]
 node: docker_image='node'
@@ -423,19 +462,7 @@ console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
         wf.run()
-
-
-    def testJavaScript(self):
-        '''Test action JavaScript'''
-        script = SoS_Script(r'''
-[0]
-JavaScript:
-var args = process.argv.slice(2);
-console.log('Hello ' + args.join(' ') + '!');
-''')
-        wf = script.workflow()
-        wf.run()
-        # test docker
+        #
         script = SoS_Script(r'''
 [0]
 JavaScript: docker_image='node'
@@ -456,7 +483,11 @@ mean(nums)
 ''')
         wf = script.workflow()
         wf.run()
-        # test docker
+
+
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+    def testRInDocker(self):
+        '''Test action R in docker environment'''
         script = SoS_Script(r'''
 [0]
 R: docker_image='r-base'
@@ -487,6 +518,7 @@ check_R_library('edgeRRRR')
         wf = script.workflow()
         self.assertRaises(RuntimeError, wf.run)
 
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerBuild(self):
         '''Test action docker build'''
         script = SoS_Script(r'''
@@ -507,7 +539,7 @@ WORKDIR /home
         wf = script.workflow()
         wf.run()
 
-
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerImage(self):
         '''Test docker_image option'''
         script = SoS_Script(r'''
@@ -525,6 +557,7 @@ run: docker_image='compbio/ngseasy-fastqc:1.0-r001',
         wf = script.workflow()
         wf.run()
 
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerImageFromFile(self):
         '''Test docker_image load from a file.'''
         # image from a saved file
