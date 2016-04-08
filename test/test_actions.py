@@ -32,7 +32,33 @@ from pysos.utils import env
 from pysos.sos_script import ExecuteError
 from pysos.actions import DockerClient
 
-has_docker = DockerClient().client is not None
+#
+# the following is copied from online, might go into SoS for timeout operations
+# here it is just used to terminate docker connection if it takes more than 
+# 2 seconds
+#
+import signal
+from contextlib import contextmanager
+
+class TimeoutException(Exception): pass
+
+@contextmanager
+def time_limit(seconds):
+    def signal_handler(signum, frame):
+        raise TimeoutException("Timed out!")
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+
+try:
+    with time_limit(2):
+        has_docker = DockerClient().client is not None
+except TimeException as e:
+    print('Cannot connect to a docker daemon in 2 seconds. Assuming no docker environment.')
+    has_docker = False
 
 class TestActions(unittest.TestCase):
     def setUp(self):
