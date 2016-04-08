@@ -1035,14 +1035,14 @@ class SoS_Step:
         '''Output for command sos show'''
         textWidth = max(60, getTermWidth())
         if self.is_parameters:
-            print(indent + '  Parameters:')
+            print(indent + 'Accepted parameters:')
             for k,v,c in self.parameters:
-                 text = '{:<18}'.format(k) + (c + ' ' if c else '') + \
+                 text = '{:<16}'.format(k + ':') + (c + ' ' if c else '') + \
                      ('(default: {})'.format(v) if v else '')
                  print('\n'.join(
                      textwrap.wrap(text, 
-                     initial_indent=indent + ' '*4,
-                     subsequent_indent=indent + ' '*22,
+                     initial_indent=indent + ' '*2,
+                     subsequent_indent=indent + ' '*18,
                      width=textWidth)
                      ))
         else:
@@ -1228,12 +1228,12 @@ class SoS_Workflow:
                 # if there is any error, raise it
                 raise exception
 
-    def show(self, indent = '', nested=False):
+    def show(self, indent = '', parameters=True):
         textWidth = max(60, getTermWidth())
         paragraphs = dehtml(self.description).split('\n\n')
         print('\n'.join(
             textwrap.wrap('{} {}:  {}'.format(
-                'Nested workflow' if nested else 'Workflow', 
+                'Workflow', 
                 self.name, paragraphs[0]),
                 initial_indent = indent,
                 subsequent_indent = indent,
@@ -1245,8 +1245,13 @@ class SoS_Workflow:
                 initial_indent = indent,
                 subsequent_indent = indent)
             ))
-        for section in self.sections:
+        for section in [x for x in self.sections if not x.is_parameters]:
             section.show(indent)
+        # parameters display at last
+        if parameters:
+            print('\n')
+            for section in [x for x in self.sections if x.is_parameters]:
+                section.show(indent)
 
 class SoS_ScriptContent:
     '''A small class to record the script information to be used by nested
@@ -1703,9 +1708,10 @@ class SoS_Script:
         #
         text = 'Available workflows: {}'.format(', '.join(sorted(self.workflows)))
         print('\n' + '\n'.join(textwrap.wrap(text, width=textWidth, subsequent_indent=' '*8)))
-        for workflow in sorted(self.workflows):
+        for idx, workflow in enumerate(sorted(self.workflows)):
             wf = self.workflow(workflow)
-            wf.show()
+            # does not define parameters
+            wf.show(parameters=idx == len(self.workflows)-1)
             print('')
 #
 # subcommmand show
