@@ -93,7 +93,7 @@ class ExecuteError(Error):
     def append(self, line, msg):
         lines = [x for x in line.split('\n') if x.strip()]
         if not lines:
-            short_lines = '<empty>'
+            short_line = '<empty>'
         else:
             short_line = lines[0][:40] if len(lines[0]) > 40 else lines[0]
         self.errors.append(short_line)
@@ -1137,9 +1137,6 @@ class SoS_Workflow:
             env.sos_dict = WorkflowDict()
             if env.run_mode != 'run':
                 env.sos_dict['__execute_errors__'] = ExecuteError(self.name)
-            SoS_exec('import os, sys, glob')
-            SoS_exec('from pysos import *')
-            #
             # inject a few things
             env.sos_dict.set('__null_func__', __null_func__)
             env.sos_dict.set('__args__', args)
@@ -1159,6 +1156,9 @@ class SoS_Workflow:
             env.sos_dict.set('CONFIG', frozendict(cfg))
             py_version = sys.version_info
             env.sos_dict.set('__step_input__', [])
+            SoS_exec('import os, sys, glob')
+            SoS_exec('from pysos import *')
+            #
         #
         # process step of the pipelinp
         #

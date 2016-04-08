@@ -36,10 +36,12 @@ import pickle
 import json
 import token
 import psutil
-from tokenize import generate_tokens, untokenize
 from io import StringIO
 from shlex import quote
+from tokenize import generate_tokens, untokenize
+from contextlib import contextmanager
 from html.parser import HTMLParser
+
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
@@ -727,12 +729,33 @@ def ConvertString(s, sigil):
         result.append((toknum, tokval))
     return untokenize(result)
 
+
+class TimeoutException(Exception):
+    def __init__(self, msg=''):
+        self.msg = msg
+
+@contextmanager
+def time_limit(seconds, msg=''):
+    def signal_handler(signum, frame):
+        raise TimeoutException("Timed out for option {}".format(msg))
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+
 def SoS_eval(expr, sigil='${ }'):
     '''Evaluate an expression after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
     expr = ConvertString(expr, sigil)
     try:
-        return eval(expr, env.sos_dict._dict)
+        if env.run_mode == 'run':
+            return eval(expr, env.sos_dict._dict)
+        else:
+            # make sure that the expression can be completed in 5 seconds
+            with time_limit(env.sos_dict['CONFIG'].get('sos_dryrun_timeout', 5), expr):
+                return eval(expr, env.sos_dict._dict)
     except Exception as e:
         if env.run_mode != 'run':
             env.sos_dict['__execute_errors__'].append(expr, e)
@@ -790,7 +813,12 @@ def SoS_exec(stmts, sigil='${ }'):
         stmts = ConvertString(code, sigil)
         env.logger.trace('Executing\n{}'.format(executed))
         try:
-            exec(stmts, env.sos_dict._dict)
+            if env.run_mode == 'run':
+                exec(stmts, env.sos_dict._dict)
+            else:
+                # make sure that the expression can be completed in 5 seconds
+                with time_limit(env.sos_dict['CONFIG'].get('sos_dryrun_timeout', 5), stmts):
+                    exec(stmts, env.sos_dict._dict)
         except Exception as e:
             if env.run_mode != 'run':
                 env.sos_dict['__execute_errors__'].append(stmts, e)

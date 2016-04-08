@@ -830,5 +830,21 @@ check_command('a4')
             self.assertEqual(len(e.errors), 6)
 
 
+    def testDryrunTimeout(self):
+        '''Test if any action should exit in five seconds in dryrun mode'''
+        script = SoS_Script('''
+[0]
+import time
+time.sleep(8)
+
+''')
+        wf = script.workflow()
+        env.run_mode = 'run'
+        # this should be ok
+        wf.run()
+        #
+        env.run_mode = 'dryrun'
+        self.assertRaises(ExecuteError, wf.run)
+
 if __name__ == '__main__':
     unittest.main()

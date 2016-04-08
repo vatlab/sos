@@ -28,35 +28,14 @@ import os
 import unittest
 
 from pysos import *
-from pysos.utils import env
+from pysos.utils import env, TimeoutException, time_limit
 from pysos.sos_script import ExecuteError
 from pysos.actions import DockerClient
 
-#
-# the following is copied from online, might go into SoS for timeout operations
-# here it is just used to terminate docker connection if it takes more than 
-# 2 seconds
-#
-import signal
-from contextlib import contextmanager
-
-class TimeoutException(Exception): pass
-
-@contextmanager
-def time_limit(seconds):
-    def signal_handler(signum, frame):
-        raise TimeoutException("Timed out!")
-    signal.signal(signal.SIGALRM, signal_handler)
-    signal.alarm(seconds)
-    try:
-        yield
-    finally:
-        signal.alarm(0)
-
 try:
-    with time_limit(2):
+    with time_limit(2, 'check docker daemon'):
         has_docker = DockerClient().client is not None
-except TimeException as e:
+except TimeoutException as e:
     print('Cannot connect to a docker daemon in 2 seconds. Assuming no docker environment.')
     has_docker = False
 
@@ -157,6 +136,7 @@ fail_if(check_command('sleep 4') != 0, 'Command time out')
         wf = script.workflow()
         # this should pass
         self.assertRaises((ExecuteError, RuntimeError), wf.run)
+        #
         # test reading this file
         script = SoS_Script(r"""
 [0]
@@ -171,6 +151,16 @@ check_command('cat test_actions.py', 'testSearchOutput')
 """)
         wf = script.workflow()
         wf.run()
+        # even for weird commands such as cat > /dev/null, it should quite
+        # in dryrun mode
+        script = SoS_Script(r"""
+[0]
+check_command('cat > /dev/null')
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        # this should pass
+        self.assertRaises(ExecuteError, wf.run)
 
     def testFailIf(self):
         '''Test action fail if'''
