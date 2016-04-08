@@ -48,6 +48,8 @@ setup(name = "sos",
           'psutil',
           'pyyaml',
           'docker-py',
+          'pycurl',
+          'blessings',
       ],
     scripts = [
         'sos',

@@ -26,7 +26,7 @@ import unittest
 # these functions are normally not available but can be imported 
 # using their names for testing purposes
 from pysos.utils import env, logger, interpolate, WorkflowDict, SoS_eval, InterpolationError, \
-    extract_pattern, expand_pattern, ProgressBar
+    extract_pattern, expand_pattern, ProgressBar, downloadURL
 from pysos.sos_script import SoS_Script
 
 class TestUtils(unittest.TestCase):
@@ -254,6 +254,12 @@ sos_run('sub')
         wf = script.workflow('a')
         wf.run()
 
+
+    def testDownload(self):
+        '''Test download file'''
+        downloadURL('https://github.com/bpeng2000/SOS/wiki/SoS_March2016.pdf', 'tmp/SoS_March2016.pdf', index=0)
+        self.assertTrue(os.path.isfile('tmp/SoS_March2016.pdf'))
+        os.remove('tmp/SoS_March2016.pdf')
 
 if __name__ == '__main__':
     unittest.main()

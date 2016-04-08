@@ -36,6 +36,9 @@ import pickle
 import json
 import token
 import psutil
+import urllib
+import pycurl
+import blessings
 from io import StringIO
 from shlex import quote
 from tokenize import generate_tokens, untokenize
@@ -399,24 +402,11 @@ logger = env.logger
 #
 # String formatting
 #
-
-
-from array import array
-try:
-    from fcntl import ioctl
-    import termios
-except ImportError:
-    pass
-
 def getTermWidth():
     '''Get the width of current user terminal to properly wrap SoS
     output when well-formatted output is required.
     '''
-    try:
-        h, w = array('h', ioctl(sys.stderr, termios.TIOCGWINSZ, '\0' * 8))[:2]
-        return w
-    except:
-        return 78
+    return blessings.Terminal().width
 
 class _DeHTMLParser(HTMLParser):
     '''This parser analyzes input text, removes HTML tags such as
@@ -1169,15 +1159,17 @@ class ProgressBar:
     '''A text-based progress bar, it differs from regular progress bar in that
     1. it can start from the middle with init count
     '''
-    def __init__(self, message, totalCount = None):
-        if env.verbosity != 1:
+    def __init__(self, message, totalCount = None, disp=True, index=None):
+        if not disp:
             self.update = self.empty
+            self.curlUpdate = self.empty
             self.progress = self.empty
             self.outputProgress = self.empty
             self.done = self.empty
             self.main = ''
             self.finished = 0
             return
+        self.index = index
         self.main = message
         self.main_start_time = time.time()
         self.message = self.main
@@ -1214,6 +1206,12 @@ class ProgressBar:
         if self.totalCount is not None and (count - self.count) < self.min_progress_count:
             return
         self.count = count
+        self.outputProgress()
+
+    def curlUpdate(self, total, existing, upload_t, upload_d):
+        '''Update called from pycurl'''
+        self.count = existing
+        self.totalCount = total
         self.outputProgress()
 
     def progress(self, count):
@@ -1281,7 +1279,12 @@ class ProgressBar:
             width = self.term_width - len(msg[0]) - len(msg[1]) - m3Len - len(msg[4])
             msg[6] = ' '*width
         # use stderr to avoid messing up process output
-        sys.stderr.write('\r' + ''.join(msg))
+        if self.index is None:
+            sys.stderr.write('\r' + ''.join(msg))
+        else:
+            t = blessings.Terminal(stream=sys.stderr)
+            with t.location(0, t.height - self.index + 1):
+                sys.stderr.write('\r' + ''.join(msg))
 
     def done(self, completed=None):
         '''Finish, output a new line'''
@@ -1320,8 +1323,58 @@ class ProgressBar:
             if width > 4:
                 front = int(width - 3)
                 msg[2] = ' [{}]'.format('=' * front)
-        sys.stderr.write('\r' + ''.join(msg) + '\n')
-        sys.stderr.flush()
+        if self.index is None:
+            sys.stderr.write('\r' + ''.join(msg) + '\n')
+            sys.stderr.flush()
+        else:
+            t = blessings.Terminal(stream=sys.stderr)
+            with t.location(0, t.height - self.index + 1):
+                sys.stderr.write('\r' + ''.join(msg) + '\n')
+                sys.stderr.flush()
+
+#
+# download file with progress bar
+#
+
+def downloadURL(URL, dest, index=None):
+    # use libcurl
+    filedir, filename = os.path.split(dest)
+    #
+    if not os.path.isdir(filedir):
+        os.makedirs(filedir)
+    if not os.path.isdir(filedir):
+        raise RuntimeError('Failed to create destination directory to download {}'.format(URL))
+    #
+    message = filename
+    if len(message) > 30:
+        message = message[:10] + '...' + message[-16:]
+    #
+    try:
+        prog = ProgressBar(message, disp=env.verbosity > 1, index=index)
+        dest_tmp = dest + '.tmp_{}'.format(os.getpid())
+        with open(dest_tmp, 'wb') as f:
+            c = pycurl.Curl()
+            c.setopt(pycurl.URL, str(URL))
+            c.setopt(pycurl.WRITEFUNCTION, f.write)
+            c.setopt(pycurl.SSL_VERIFYPEER, False)
+            c.setopt(pycurl.NOPROGRESS, False)
+            c.setopt(pycurl.PROGRESSFUNCTION, prog.curlUpdate)
+            c.perform()
+        prog.done()
+        if c.getinfo(pycurl.HTTP_CODE) == 404:
+            try:
+                os.remove(dest_tmp)
+            except OSError:
+                pass
+            raise RuntimeError('ERROR 404: Not Found.')
+        os.rename(dest_tmp, dest)
+    finally:
+        # if there is something wrong still remove temporary file
+        if os.path.isfile(dest_tmp):
+            os.remove(dest_tmp)
+    if os.path.isfile(dest):
+        return dest
+    raise RuntimeError('Failed to download {}'.format(URL))
 
 
 class frozendict(dict):

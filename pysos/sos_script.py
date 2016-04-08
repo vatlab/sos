@@ -1176,7 +1176,7 @@ class SoS_Workflow:
         #
         # the steps can be executed in the pool (Not implemented)
         # if nested = true, start a new progress bar
-        prog = ProgressBar(self.name, len(self.sections))
+        prog = ProgressBar(self.name, len(self.sections), disp=env.verbosity == 1)
         for idx, section in enumerate(self.sections):
             # global section will not change _step etc
             if section.is_parameters:
