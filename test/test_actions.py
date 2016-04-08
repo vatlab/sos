@@ -29,6 +29,7 @@ import unittest
 
 from pysos import *
 from pysos.utils import env
+from pysos.sos_script import ExecuteError
 
 class TestActions(unittest.TestCase):
     def setUp(self):
@@ -86,7 +87,7 @@ check_command('catmouse')
         env.run_mode = 'dryrun'
         wf = script.workflow()
         # should fail in dryrun mode
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), wf.run)
         #
         env.run_mode = 'run'
         wf = script.workflow()
@@ -126,7 +127,7 @@ fail_if(check_command('sleep 4') != 0, 'Command time out')
 """)
         wf = script.workflow()
         # this should pass
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), wf.run)
         # test reading this file
         script = SoS_Script(r"""
 [0]
@@ -134,7 +135,7 @@ check_command('cat test_actions.py', 'abcde' + 'fgh')
 """)
         wf = script.workflow()
         # should raise an error
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), wf.run)
         #
         script = SoS_Script(r"""
 check_command('cat test_actions.py', 'testSearchOutput')
@@ -152,7 +153,7 @@ fail_if(len(input) == 1)
         env.run_mode = 'dryrun'
         wf = script.workflow()
         # should fail in dryrun mode
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), wf.run)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
