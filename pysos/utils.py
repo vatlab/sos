@@ -230,7 +230,7 @@ class WorkflowDict(object):
         if key.isupper() and key in self._dict and self._dict[key] != value:
             env.logger.warning('Changing readonly variable {} from {} to {}'
                 .format(key, self._dict[key], value))
-        if key.startswith('_') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
+        if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
             env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
     def clone_pickleable(self):
@@ -731,7 +731,14 @@ def SoS_eval(expr, sigil='${ }'):
     '''Evaluate an expression after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
     expr = ConvertString(expr, sigil)
-    return eval(expr, env.sos_dict._dict)
+    try:
+        return eval(expr, env.sos_dict._dict)
+    except Exception as e:
+        if env.run_mode != 'run':
+            env.sos_dict['__execute_errors__'].append(expr, e)
+            return None
+        else:
+            raise
 
 def SoS_exec(stmts, sigil='${ }'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
@@ -782,7 +789,13 @@ def SoS_exec(stmts, sigil='${ }'):
     for code in code_group:
         stmts = ConvertString(code, sigil)
         env.logger.trace('Executing\n{}'.format(executed))
-        exec(stmts, env.sos_dict._dict)
+        try:
+            exec(stmts, env.sos_dict._dict)
+        except Exception as e:
+            if env.run_mode != 'run':
+                env.sos_dict['__execute_errors__'].append(stmts, e)
+            else:
+                raise
         executed += stmts + '\n'
         # check if the statement has altered any readonly variables
         env.sos_dict.check_readonly_vars()

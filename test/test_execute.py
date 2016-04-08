@@ -806,5 +806,28 @@ print(0)
         wf.run()
 
 
+    def testCollectionOfErrors(self):
+        '''Test collection of errors when running in dryrun mode.'''
+        script = SoS_Script('''
+[0]
+check_command('a1')
+[1: skip=blah]
+
+check_command('a2')
+[2: alias=unrecognized]
+check_command('a3')
+[3]
+check_command('a4')
+
+''')
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        # we should see a single error with 4 messages.
+        try:
+            wf.run()
+        except Exception as e:
+            self.assertEqual(len(e.errors), 4)
+
+
 if __name__ == '__main__':
     unittest.main()

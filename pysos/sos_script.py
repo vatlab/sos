@@ -80,6 +80,24 @@ class ParsingError(Error):
         self.errors.append((lineno, line))
         self.message += '\n\t[line %2d]: %s\n%s' % (lineno, line, msg)
 
+class ExecuteError(Error):
+    """Raised when there are errors in dryrun mode. Such errors are not raised
+    immediately, but will be collected and raised at the end """
+
+    def __init__(self, workflow):
+        Error.__init__(self, 'SoS workflow contains errors: %s' % workflow)
+        self.workflow = workflow
+        self.errors = []
+        self.args = (workflow, )
+
+    def append(self, line, msg):
+        lines = [x for x in line.split('\n') if x.strip()]
+        if not lines:
+            short_lines = '<empty>'
+        else:
+            short_line = lines[0][:40] if len(lines[0]) > 40 else lines[0]
+        self.errors.append(short_line)
+        self.message += '\n\t[%s]:\n%s' % (short_line, msg)
 
 class StepInfo(object):
     '''A simple class to hold input, output, and index of step. Its attribute can
@@ -886,6 +904,7 @@ class SoS_Step:
         if env.sos_dict['depends']:
             env.logger.info('depends: ``{}``'.format(shortRepr(env.sos_dict['depends'])))
         result['__step_output__'] = env.sos_dict['output']
+        result['__execute_errors__'] = env.sos_dict['__execute_errors__']
         if 'alias' in self.options:
             step_info.set('output', env.sos_dict['output'])
             step_info.set('depends', env.sos_dict['depends'])
@@ -1112,6 +1131,8 @@ class SoS_Workflow:
             # locals before the execution of workflow.
             # Need to choose what to inject to globals
             env.sos_dict = WorkflowDict()
+            if env.run_mode != 'run':
+                env.sos_dict['__execute_errors__'] = ExecuteError(self.name)
             SoS_exec('import os, sys, glob')
             SoS_exec('from pysos import *')
             #
@@ -1186,6 +1207,12 @@ class SoS_Workflow:
                 env.sos_dict.set(k, v)
             prog.progress(1)
         prog.done()
+        # at the end
+        if not nested and env.run_mode != 'run':
+            exception = env.sos_dict['__execute_errors__']
+            if exception.errors:
+                # if there is any error, raise it
+                raise exception
 
     def show(self, indent = '', nested=False):
         textWidth = max(60, getTermWidth())

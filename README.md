@@ -17,8 +17,7 @@ or compile the latest git version with commands
 
 Note that
 
-* Use command `pip` and `python` instead of `pip3` and `python3` if you have
-python 3 as the default python installation.
+* You might need to use command `pip` and `python` instead of `pip3` and `python3` if you have python 3 as the default python installation.
 * If command `sos` is not found after installation, you will need to add paths such as
 `/Library/Frameworks/Python.framework/Versions/3.4/bin/` to `$PATH` or
 create symbolic links of `sos` and `sos-runner` commands in
@@ -29,5 +28,5 @@ wiki](https://github.com/bpeng2000/SOS/wiki)**, or use the following links
 directly:
 
 * [Quick start guide](https://github.com/bpeng2000/SOS/wiki/Quick-Start)
-* [A presentation about SoS](https://github.com/bpeng2000/SOS/wiki/SoS_March2016.pdf), updated on Apr. 7th for version 0.5.7
+* [A presentation about SoS](https://github.com/bpeng2000/SOS/wiki/SoS_March2016.pdf) (updated on Apr. 7th for version 0.5.7)
 * [Complete documentation](https://github.com/bpeng2000/SOS/wiki/Documentation)
