@@ -826,7 +826,7 @@ check_command('a4')
         try:
             wf.run()
         except Exception as e:
-            self.assertEqual(len(e.errors), 4)
+            self.assertEqual(len(e.errors), 6)
 
 
 if __name__ == '__main__':

@@ -1344,3 +1344,7 @@ class DynamicExpression(object):
 
     def __repr__(self):
         return self.expr
+
+    def __hash__(self):
+        raise RuntimeError('Dynamic expression should be evaluated before used.'
+            'This is certainly a bug so please report this to SoS developer.')

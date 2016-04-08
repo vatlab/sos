@@ -97,7 +97,7 @@ class ExecuteError(Error):
         else:
             short_line = lines[0][:40] if len(lines[0]) > 40 else lines[0]
         self.errors.append(short_line)
-        self.message += '\n\t[%s]:\n%s' % (short_line, msg)
+        self.message += '\n[%s]:\n\t%s' % (short_line, msg)
 
 class StepInfo(object):
     '''A simple class to hold input, output, and index of step. Its attribute can
@@ -833,6 +833,9 @@ class SoS_Step:
                 # there is a slight possibility that var is deleted
                 if var in env.sos_dict and pickleable(env.sos_dict[var]):
                     step_info.set(var, env.sos_dict[var])
+            if isinstance(self.options['alias'], DynamicExpression):
+                # it is time to evalulate this expression now
+                self.options['alias'] = self.options['alias'].value(self.sigil)
             result[self.options['alias']] = copy.deepcopy(step_info)
         if not self._groups:
             env.logger.info('Step {} is skipped'.format(self.index))
@@ -1176,6 +1179,8 @@ class SoS_Workflow:
                 if isinstance(section.options['skip'], DynamicExpression):
                     try:
                         val_skip = section.options['skip'].value(section.sigil)
+                        if val_skip is None:
+                            val_skip = False
                     except Exception as e:
                         raise RuntimeError('Failed to evaluate value of section option skip={}: {}'.format( section.options['skip'], e))
                 else:
