@@ -750,12 +750,12 @@ def SoS_eval(expr, sigil='${ }'):
     interpolate expressions) strings.'''
     expr = ConvertString(expr, sigil)
     try:
-        if env.run_mode == 'run':
-            return eval(expr, env.sos_dict._dict)
-        else:
+        if env.run_mode == 'dryrun':
             # make sure that the expression can be completed in 5 seconds
             with time_limit(env.sos_dict['CONFIG'].get('sos_dryrun_timeout', 5), expr):
                 return eval(expr, env.sos_dict._dict)
+        else:
+            return eval(expr, env.sos_dict._dict)
     except Exception as e:
         if env.run_mode != 'run':
             env.sos_dict['__execute_errors__'].append(expr, e)
@@ -813,12 +813,12 @@ def SoS_exec(stmts, sigil='${ }'):
         stmts = ConvertString(code, sigil)
         env.logger.trace('Executing\n{}'.format(executed))
         try:
-            if env.run_mode == 'run':
-                exec(stmts, env.sos_dict._dict)
-            else:
+            if env.run_mode == 'dryrun':
                 # make sure that the expression can be completed in 5 seconds
                 with time_limit(env.sos_dict['CONFIG'].get('sos_dryrun_timeout', 5), stmts):
                     exec(stmts, env.sos_dict._dict)
+            else:
+                exec(stmts, env.sos_dict._dict)
         except Exception as e:
             if env.run_mode != 'run':
                 env.sos_dict['__execute_errors__'].append(stmts, e)

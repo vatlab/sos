@@ -832,6 +832,11 @@ check_command('a4')
 
     def testDryrunTimeout(self):
         '''Test if any action should exit in five seconds in dryrun mode'''
+        sos_config_file = os.path.expanduser('~/.sos/config.json')
+        move_back = False
+        if os.path.isfile(sos_config_file):
+            move_back = True
+            os.rename(sos_config_file, sos_config_file + '.bak')
         script = SoS_Script('''
 [0]
 import time
@@ -845,6 +850,26 @@ time.sleep(8)
         #
         env.run_mode = 'dryrun'
         self.assertRaises(ExecuteError, wf.run)
+        #
+        # now, if I have a configuration file, the default value can be changed
+        if not os.path.isdir(os.path.expanduser('~/.sos')):
+            os.mkdir(os.path.expanduser('~/.sos'))
+        with open(sos_config_file, 'w') as sos_config:
+            sos_config.write('''
+#
+# global sos configuration file
+#
+{
+    'sos_dryrun_timeout': 10
+}
+''')
+        # now we can rerun the script, and it should pass
+        wf.run()
+        # clean up
+        if move_back:
+            os.rename(sos_config_file + '.bak', sos_config_file)
+        else:
+            os.remove(sos_config_file)
 
 if __name__ == '__main__':
     unittest.main()
