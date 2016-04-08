@@ -309,7 +309,7 @@ def download(url_list, dest='.', decompress=True):
     # first scroll several lines to reserve place for progress bar
     for url in urls:
         sys.stderr.write('\n')
-    with mp.Pool(processes = env.sos_dict['CONFIG'].get('sos_download_pool', 5)) as pool:
+    with mp.Pool(processes = env.sos_dict['CONFIG'].get('sos_download_processes', 5)) as pool:
         for idx, url in enumerate(urls):
             token = urllib.parse.urlparse(url)
             # if no scheme or netloc, the URL is not acceptable
