@@ -1170,6 +1170,8 @@ class ProgressBar:
             self.finished = 0
             return
         self.index = index
+        if self.index is not None:
+            self.term = blessings.Terminal(stream=sys.stderr)
         self.main = message
         self.main_start_time = time.time()
         self.message = self.main
@@ -1282,15 +1284,13 @@ class ProgressBar:
         if self.index is None:
             sys.stderr.write('\r' + ''.join(msg))
         else:
-            t = blessings.Terminal(stream=sys.stderr)
-            with t.location(0, t.height - self.index + 1):
+            with self.term.location( 0, self.term.height - self.index - 1):
                 sys.stderr.write('\r' + ''.join(msg))
 
-    def done(self, completed=None):
+    def done(self, done_msg=''):
         '''Finish, output a new line'''
-        if completed is not None:
-            self.count = completed
-        elif self.totalCount:
+        # if an message is given, display and quit.
+        if self.totalCount and not done_msg:
             self.count = self.totalCount
         #
         msg = ['', '', '', '', '', '']
@@ -1323,13 +1323,20 @@ class ProgressBar:
             if width > 4:
                 front = int(width - 3)
                 msg[2] = ' [{}]'.format('=' * front)
+        #
+        if done_msg:
+            msg[0] = done_msg
+            msg[1] = ''
+            msg[2] = ''
+            msg[3] = ''
+            msg[4] = ''
+            msg[5] = ''
         if self.index is None:
             sys.stderr.write('\r' + ''.join(msg) + '\n')
             sys.stderr.flush()
         else:
-            t = blessings.Terminal(stream=sys.stderr)
-            with t.location(0, t.height - self.index + 1):
-                sys.stderr.write('\r' + ''.join(msg) + '\n')
+            with self.term.location(0, self.term.height - self.index - 1):
+                sys.stderr.write('\r' + ''.join(msg))
                 sys.stderr.flush()
 
 #
@@ -1349,9 +1356,9 @@ def downloadURL(URL, dest, index=None):
     if len(message) > 30:
         message = message[:10] + '...' + message[-16:]
     #
+    dest_tmp = dest + '.tmp_{}'.format(os.getpid())
     try:
         prog = ProgressBar(message, disp=env.verbosity > 1, index=index)
-        dest_tmp = dest + '.tmp_{}'.format(os.getpid())
         with open(dest_tmp, 'wb') as f:
             c = pycurl.Curl()
             c.setopt(pycurl.URL, str(URL))
@@ -1360,22 +1367,24 @@ def downloadURL(URL, dest, index=None):
             c.setopt(pycurl.NOPROGRESS, False)
             c.setopt(pycurl.PROGRESSFUNCTION, prog.curlUpdate)
             c.perform()
-        prog.done()
         if c.getinfo(pycurl.HTTP_CODE) == 404:
+            term_width = getTermWidth()
+            prog.done(message + ':\033[91m 404 Error {}\033[0m'.format('.'*(term_width - len(message) - 12)))
             try:
                 os.remove(dest_tmp)
             except OSError:
                 pass
-            raise RuntimeError('ERROR 404: Not Found.')
+            return False
+        prog.done()
         os.rename(dest_tmp, dest)
+    except Exception as e:
+        env.logger.error(e)
+        return False
     finally:
         # if there is something wrong still remove temporary file
         if os.path.isfile(dest_tmp):
             os.remove(dest_tmp)
-    if os.path.isfile(dest):
-        return dest
-    raise RuntimeError('Failed to download {}'.format(URL))
-
+    return os.path.isfile(dest)
 
 class frozendict(dict):
     '''A fronzen dictionary that disallow changing of its elements

@@ -28,14 +28,17 @@ import tempfile
 import shlex
 import json
 import platform
+import urllib
+import blessings
 from io import BytesIO
 from docker import Client
 from docker.utils import kwargs_from_env
 from shutil import which
-from .utils import env, interpolate, glob_wildcards
+import multiprocessing as mp
+from .utils import env, interpolate, glob_wildcards, downloadURL
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
-    'check_command', 'fail_if', 'warn_if',
+    'check_command', 'fail_if', 'warn_if', 'download',
     'run', 'bash', 'csh', 'tcsh', 'zsh', 'sh',
     'python', 'python3',
     'perl', 'ruby', 'node', 'JavaScript',
@@ -45,7 +48,6 @@ __all__ = ['SoS_Action', 'execute_script', 'sos_run',
 
 from .sos_syntax import SOS_RUNTIME_OPTIONS
 from .sos_script import SoS_Script
-
 
 #
 # docker support
@@ -293,6 +295,42 @@ def warn_if(expr, msg=''):
         env.logger.warning(msg)
     return 0
 
+@SoS_Action(run_mode=['prepare', 'run'])
+def download(url_list, dest='.', decompress=True):
+    '''Download files from specified URL, which should be space, tab or
+    newline separated URLs. The files will be downloaded to specified
+    destination. If `filename.md5` files are downloaded, they are used to 
+    validate downloaded `filename`. Unless otherwise specified, compressed
+    files are decompressed.
+    '''
+    urls = [x.strip() for x in url_list.split() if x.strip()]
+    # 
+    succ = [False for x in urls]
+    # first scroll several lines to reserve place for progress bar
+    for url in urls:
+        sys.stderr.write('\n')
+    with mp.Pool(processes = env.sos_dict['CONFIG'].get('sos_download_pool', 5)) as pool:
+        for idx, url in enumerate(urls):
+            token = urllib.parse.urlparse(url)
+            # if no scheme or netloc, the URL is not acceptable
+            if not all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
+                continue
+            filename = os.path.split(token.path)[-1]
+            if not filename:
+                continue
+            succ[idx] = pool.apply_async(downloadURL, (url, os.path.join(dest, filename), len(urls) - idx))
+        #
+        succ = [x.get() if isinstance(x, mp.pool.AsyncResult) else x for x in succ]
+    #
+    t = blessings.Terminal(stream=sys.stderr)
+    sys.stderr.write(t.move( t.height, 0)) # + '\n')
+    for su, url in zip(succ, urls):
+        if not su:
+            env.logger.warning('Failed to download {}'.format(url))
+    if not all(succ):
+        raise RuntimeError('Not all files have been downloaded')
+    return 0
+
 @SoS_Action(run_mode='run')
 def run(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/bash', '.sh').run(**kwargs)
@@ -462,5 +500,4 @@ def docker_commit(**kwargs):
     docker = DockerClient()
     docker.commit(**kwargs)
     return 0
-
 

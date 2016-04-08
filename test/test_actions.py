@@ -592,7 +592,18 @@ run: docker_image='hello-world', docker_file = 'hello.tar'
         wf = script.workflow()
         wf.run()
 
-
+    def testDownload(self):
+        '''Test download of resources'''
+        script = SoS_Script(r'''
+[0]
+download:
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/non-existing.gz
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_CHB_freq-hg18_20100817.DB.gz
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_CHB_freq.ann	
+''')
+        wf = script.workflow()
+        self.assertRaises((RuntimeError, ExecuteError), wf.run)
 
 if __name__ == '__main__':
     unittest.main()
