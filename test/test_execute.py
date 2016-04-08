@@ -860,7 +860,7 @@ time.sleep(8)
 # global sos configuration file
 #
 {
-    'sos_dryrun_timeout': 10
+    "sos_dryrun_timeout": 10
 }
 ''')
         # now we can rerun the script, and it should pass
