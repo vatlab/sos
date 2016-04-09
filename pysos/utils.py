@@ -897,7 +897,7 @@ class FileSignature:
 
     def add(self, filename):
         '''add related files to the same signature'''
-        self.filenames.append(filename)
+        self.filenames.append(os.path.abspath(os.path.expanduser(filename)))
         
     def write(self):
         '''Write .file_info file with signature'''
@@ -1393,6 +1393,7 @@ class ProgressBar:
 
 def downloadURL(URL, dest, decompress=False, index=None):
     # use libcurl
+    dest = os.path.abspath(os.path.expanduser(dest))
     dest_dir, filename = os.path.split(dest)
     #
     if not os.path.isdir(dest_dir):
@@ -1407,6 +1408,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
     dest_tmp = dest + '.tmp_{}'.format(os.getpid())
     term_width = getTermWidth()
     try:
+        env.logger.debug('Download {} to {}'.format(URL, dest))
         prog = ProgressBar(message, disp=env.verbosity > 1, index=index)
         sig = FileSignature(dest)
         if os.path.isfile(dest) and sig.validate():
