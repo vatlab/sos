@@ -1406,7 +1406,7 @@ def downloadURL(URL, dest, index=None):
         prog = ProgressBar(message, disp=env.verbosity > 1, index=index)
         sig = FileSignature(dest)
         if os.path.isfile(dest) and sig.validate():
-            prog.done(message + ': \033[32m Use existing {}\033[0m'.format(' '*(term_width - len(message) - 15)))
+            prog.done(message + ': \033[32m use existing {}\033[0m'.format(' '*(term_width - len(message) - 15)))
             return True
         #
         with open(dest_tmp, 'wb') as f:

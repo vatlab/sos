@@ -599,7 +599,7 @@ run: docker_image='hello-world', docker_file = 'hello.tar'
         if not os.path.isdir('tmp'):
             os.makedirs('tmp')
         #
-        for name in ['hapmap_ASW_freq.ann', 'hapmap_CHB_freq-hg18_20100817.DB.gz', 'hapmap_CHB_freq.ann']:
+        for name in ['hapmap_ASW_freq.ann', 'hapmap_ASW_freq-hg18_20100817.DB.gz', 'hapmap_CHB_freq.ann']:
             if os.path.isfile(os.path.join('tmp', name)):
                 os.remove(os.path.join('tmp', name))
         # this will take a while
@@ -608,18 +608,18 @@ run: docker_image='hello-world', docker_file = 'hello.tar'
 download: dest='tmp'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/non-existing.gz
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_CHB_freq-hg18_20100817.DB.gz
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq-hg18_20100817.DB.gz
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_CHB_freq.ann	
 ''')
         start = time.time()
         wf = script.workflow()
         self.assertRaises((RuntimeError, ExecuteError), wf.run)
-        self.assertGreater(time.time() - start, 10)
+        self.assertGreater(time.time() - start, 5)
         # this will be fast
         start = time.time()
         wf = script.workflow()
         self.assertRaises((RuntimeError, ExecuteError), wf.run)
-        self.assertLess(time.time() - start, 5)
+        self.assertLess(time.time() - start, 3)
         #
         shutil.rmtree('tmp')
 
