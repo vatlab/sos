@@ -35,7 +35,7 @@ from docker import Client
 from docker.utils import kwargs_from_env
 from shutil import which
 import multiprocessing as mp
-from .utils import env, interpolate, glob_wildcards, downloadURL
+from .utils import env, interpolate, glob_wildcards, downloadURL, fileMD5
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
     'check_command', 'fail_if', 'warn_if', 'download',
@@ -307,23 +307,33 @@ def download(url_list, dest_dir='.', dest_file=None, decompress=False):
     if dest_file is not None and len(urls) != 1:
         raise RuntimeError('Only one URL is allowed if a destination file is specified.')
     # 
+    if dest_file is None:
+        filenames = []
+        for idx, url in enumerate(urls):
+            token = urllib.parse.urlparse(url)
+            # if no scheme or netloc, the URL is not acceptable
+            if not all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
+                filenames.append(None)
+                continue
+            filename = os.path.split(token.path)[-1]
+            if not filename:
+                filenames.append(None)
+                continue
+            filenames.append(os.path.join(dest_dir, filename))
+    else:
+        filenames = [dest_file]
+    #
     succ = [False for x in urls]
     if len(succ) > 1:
         # first scroll several lines to reserve place for progress bar
         for url in urls:
             sys.stderr.write('\n')
         with mp.Pool(processes = env.sos_dict['CONFIG'].get('sos_download_processes', 5)) as pool:
-            for idx, url in enumerate(urls):
-                token = urllib.parse.urlparse(url)
-                # if no scheme or netloc, the URL is not acceptable
-                if not all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
-                    continue
-                filename = os.path.split(token.path)[-1]
+            for idx, (url, filename) in enumerate(zip(urls, filenames)):
                 if not filename:
                     continue
-                succ[idx] = pool.apply_async(downloadURL, (url, os.path.join(dest_dir, filename),
+                succ[idx] = pool.apply_async(downloadURL, (url, filename,
                     decompress, len(urls) - idx))
-            #
             succ = [x.get() if isinstance(x, mp.pool.AsyncResult) else x for x in succ]
         #
         t = blessings.Terminal(stream=sys.stderr)
@@ -332,17 +342,25 @@ def download(url_list, dest_dir='.', dest_file=None, decompress=False):
         if dest_file is not None:
             succ[0] = downloadURL(urls[0], dest_file, decompress=decompress)
         else:
-            token = urllib.parse.urlparse(urls[0])
-            # if no scheme or netloc, the URL is not acceptable
-            if all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
-                filename = os.path.split(token.path)[-1]
-                if filename:
-                    succ[0] = downloadURL(urls[0], os.path.join(dest_dir, filename), decompress=decompress)
+           if filenames[0]:
+                succ[0] = downloadURL(urls[0], filenames[0], decompress=decompress)
+    #
     for su, url in zip(succ, urls):
         if not su:
             env.logger.warning('Failed to download {}'.format(url))
     if not all(succ):
         raise RuntimeError('Not all files have been downloaded')
+    # if downloaded files contains .md5 signature, use them to validate
+    # downloaded files.
+    for filename in [x for x in filenames if x.endswith('.md5')]:
+        if filename[:-4] in filenames and os.path.isfile(filename[:-4]):
+            with open(filename) as md5:
+                rec_md5 = md5.readline().split()[0].strip()
+                obs_md5 = fileMD5(filename[:-4], partial=False)
+                if rec_md5 != obs_md5:
+                    env.logger.warning('md5 signature mismatch for downloaded file {} (recorded {}, observed {})'
+                        .format(filename[:-4], rec_md5, obs_md5))
+                    return 1
     return 0
 
 @SoS_Action(run_mode='run')

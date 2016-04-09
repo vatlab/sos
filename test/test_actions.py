@@ -659,8 +659,18 @@ download: dest_dir='tmp', decompress=True
         self.assertRaises((RuntimeError, ExecuteError), wf.run)
         self.assertLess(time.time() - start, 3)
         # 
+        # test decompress tar.gz file
+        script = SoS_Script(r'''
+[0]
+GATK_URL = 'ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/2.8/hg19/'
+download: dest_dir='tmp', decompress=True
+    ${GATK_URL}/1000G_omni2.5.hg19.sites.vcf.idx.gz
+    ${GATK_URL}/1000G_omni2.5.hg19.sites.vcf.idx.gz.md5
+''')
+        wf = script.workflow()
+        wf.run()
+        #
         shutil.rmtree('tmp')
-
 
 if __name__ == '__main__':
     unittest.main()
