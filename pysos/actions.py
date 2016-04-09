@@ -296,14 +296,18 @@ def warn_if(expr, msg=''):
     return 0
 
 @SoS_Action(run_mode=['prepare', 'run'])
-def download(url_list, dest_dir='.', dest_file=None, decompress=False):
+def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified
     destination. If `filename.md5` files are downloaded, they are used to 
     validate downloaded `filename`. Unless otherwise specified, compressed
     files are decompressed.
     '''
-    urls = [x.strip() for x in url_list.split() if x.strip()]
+    if isinstance(URLs, str):
+        urls = [x.strip() for x in URLs.split() if x.strip()]
+    else:
+        urls = list(URLs)
+    #
     if dest_file is not None and len(urls) != 1:
         raise RuntimeError('Only one URL is allowed if a destination file is specified.')
     # 

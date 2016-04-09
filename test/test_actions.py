@@ -610,8 +610,8 @@ run: docker_image='hello-world', docker_file = 'hello.tar'
         # test decompress tar.gz file
         script = SoS_Script(r'''
 [0]
-download: dest_dir='tmp', decompress=True
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/snapshot/vt_quickStartGuide.tar.gz
+download(['http://bioinformatics.mdanderson.org/Software/VariantTools/repository/snapshot/vt_quickStartGuide.tar.gz'],
+    dest_dir='tmp', decompress=True)
 ''')
         wf = script.workflow()
         wf.run()
