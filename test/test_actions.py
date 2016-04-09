@@ -603,6 +603,21 @@ run: docker_image='hello-world', docker_file = 'hello.tar'
         if not os.path.isdir('tmp'):
             os.makedirs('tmp')
         #
+        for name in ['hapmap_ASW_freq.ann', 'hapmap_ASW_freq-hg18_20100817.DB.gz', 'hapmap_CHB_freq.ann',
+                'vt_quickStartGuide.tar.gz']:
+            if os.path.isfile(os.path.join('tmp', name)):
+                os.remove(os.path.join('tmp', name))
+        # test decompress tar.gz file
+        script = SoS_Script(r'''
+[0]
+download: dest_dir='tmp', decompress=True
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/snapshot/vt_quickStartGuide.tar.gz
+''')
+        wf = script.workflow()
+        wf.run()
+        self.assertTrue(os.path.isfile('tmp/snapshot.proj'))
+        self.assertTrue(os.path.isfile('tmp/snapshot_genotype.DB'))
+        #
         # testing the download of single file
         #
         script = SoS_Script(r'''
@@ -613,7 +628,7 @@ download: dest_file='tmp/test.ann'
         wf = script.workflow()
         wf.run()
         self.assertTrue(os.path.isfile('tmp/test.ann'))
-        #
+        # test option dest_dir
         script = SoS_Script(r'''
 [0]
 download: dest_dir='tmp'
@@ -623,13 +638,11 @@ download: dest_dir='tmp'
         wf.run()
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq.ann'))
         #
-        for name in ['hapmap_ASW_freq.ann', 'hapmap_ASW_freq-hg18_20100817.DB.gz', 'hapmap_CHB_freq.ann']:
-            if os.path.isfile(os.path.join('tmp', name)):
-                os.remove(os.path.join('tmp', name))
+   
         # this will take a while
         script = SoS_Script(r'''
 [0]
-download: dest_dir='tmp'
+download: dest_dir='tmp', decompress=True
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/non-existing.gz
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq-hg18_20100817.DB.gz
@@ -638,6 +651,7 @@ download: dest_dir='tmp'
         start = time.time()
         wf = script.workflow()
         self.assertRaises((RuntimeError, ExecuteError), wf.run)
+        self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq-hg18_20100817.DB'))
         self.assertGreater(time.time() - start, 5)
         # this will be fast
         start = time.time()

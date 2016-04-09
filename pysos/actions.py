@@ -296,7 +296,7 @@ def warn_if(expr, msg=''):
     return 0
 
 @SoS_Action(run_mode=['prepare', 'run'])
-def download(url_list, dest_dir='.', dest_file=None, decompress=True):
+def download(url_list, dest_dir='.', dest_file=None, decompress=False):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified
     destination. If `filename.md5` files are downloaded, they are used to 
@@ -321,7 +321,8 @@ def download(url_list, dest_dir='.', dest_file=None, decompress=True):
                 filename = os.path.split(token.path)[-1]
                 if not filename:
                     continue
-                succ[idx] = pool.apply_async(downloadURL, (url, os.path.join(dest_dir, filename), len(urls) - idx))
+                succ[idx] = pool.apply_async(downloadURL, (url, os.path.join(dest_dir, filename),
+                    decompress, len(urls) - idx))
             #
             succ = [x.get() if isinstance(x, mp.pool.AsyncResult) else x for x in succ]
         #
@@ -329,14 +330,14 @@ def download(url_list, dest_dir='.', dest_file=None, decompress=True):
         sys.stderr.write(t.move( t.height, 0)) # + '\n')
     else:
         if dest_file is not None:
-            succ[0] = downloadURL(urls[0], dest_file)
+            succ[0] = downloadURL(urls[0], dest_file, decompress=decompress)
         else:
             token = urllib.parse.urlparse(urls[0])
             # if no scheme or netloc, the URL is not acceptable
             if all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
                 filename = os.path.split(token.path)[-1]
                 if filename:
-                    succ[0] = downloadURL(urls[0], os.path.join(dest_dir, filename))
+                    succ[0] = downloadURL(urls[0], os.path.join(dest_dir, filename), decompress=decompress)
     for su, url in zip(succ, urls):
         if not su:
             env.logger.warning('Failed to download {}'.format(url))

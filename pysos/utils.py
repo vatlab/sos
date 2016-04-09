@@ -31,6 +31,9 @@ import glob
 import collections
 import traceback
 import hashlib
+import gzip
+import zipfile
+import tarfile
 import shutil
 import pickle
 import json
@@ -867,11 +870,12 @@ def fileMD5(filename, partial=True):
 
 
 class FileSignature:
-    '''Record file MD5 information to sign downloaded files.'''
+    '''Record file MD5 information to sign downloaded files, also add
+    decompressed files in case the file is decompressed.'''
     def __init__(self, filename, workdir='.'):
         #
         sig_name = os.path.realpath(os.path.expanduser(filename)) 
-        self.filename = sig_name
+        self.filenames = [sig_name]
         #
         # If the output path is outside of the current working directory
         rel_path = os.path.relpath(sig_name, os.path.realpath(workdir))
@@ -889,25 +893,28 @@ class FileSignature:
             except Exception as e:
                 raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
 
+    def add(self, filename):
+        '''add related files to the same signature'''
+        self.filenames.append(filename)
+        
     def write(self):
         '''Write .file_info file with signature'''
         with open(self.sig_file, 'w') as md5:
-            md5.write('{}\t{}\n'.format(self.filename, fileMD5(self.filename)))
+            for filename in self.filenames:
+                md5.write('{}\t{}\n'.format(filename, fileMD5(filename)))
 
     def validate(self):
         '''Check if file matches its signature'''
         if not os.path.isfile(self.sig_file):
             return False
         with open(self.sig_file) as md5:
-            line = md5.readline()
-            f, m = line.rsplit('\t', 1)
-            if f != self.filename:
-                return False
-            if not os.path.isfile(f):
-                return False
-            if fileMD5(f) != m.strip():
-                env.logger.debug('MD5 mismatch {}'.format(f))
-                return False
+            for line in md5:
+                f, m = line.rsplit('\t', 1)
+                if not os.path.isfile(f):
+                    return False
+                if fileMD5(f) != m.strip():
+                    env.logger.debug('MD5 mismatch {}'.format(f))
+                    return False
         return True
 
 class RuntimeInfo:
@@ -1387,13 +1394,13 @@ class ProgressBar:
 # download file with progress bar
 #
 
-def downloadURL(URL, dest, index=None):
+def downloadURL(URL, dest, decompress=False, index=None):
     # use libcurl
-    filedir, filename = os.path.split(dest)
+    dest_dir, filename = os.path.split(dest)
     #
-    if not os.path.isdir(filedir):
-        os.makedirs(filedir)
-    if not os.path.isdir(filedir):
+    if not os.path.isdir(dest_dir):
+        os.makedirs(dest_dir)
+    if not os.path.isdir(dest_dir):
         raise RuntimeError('Failed to create destination directory to download {}'.format(URL))
     #
     message = filename
@@ -1424,8 +1431,43 @@ def downloadURL(URL, dest, index=None):
             except OSError:
                 pass
             return False
-        prog.done(message + ':\033[32m downloaded {}\033[0m'.format(' '*(term_width - len(message) - 13)))
         os.rename(dest_tmp, dest)
+        decompressed = 0
+        if decompress:
+            if zipfile.is_zipfile(dest):
+                zip = zipfile.ZipFile(dest)
+                zip.extractall(dest_dir)
+                names = zip.namelist()
+                for name in names:
+                    if not os.path.isfile(os.path.join(dest_dir, name)):
+                        return False
+                    else:
+                        sig.add(os.path.join(dest_dir, name))
+                        decompressed += 1
+            elif tarfile.is_tarfile(dest):
+                with tarfile.open(dest, 'r:*') as tar: 
+                    tar.extractall(dest_dir)
+                    # only extract files
+                    files = [x.name for x in tar.getmembers() if x.isfile()]
+                    for name in files:
+                        if not os.path.isfile(os.path.join(dest_dir, name)):
+                            return False
+                        else:
+                            sig.add(os.path.join(dest_dir, name))
+                            decompressed += 1
+            elif dest.endswith('.gz'):
+                decomp = dest[:-3]
+                with gzip.open(dest, 'rb') as fin, open(decomp, 'wb') as fout:
+                    buffer = fin.read(100000)
+                    while buffer:
+                        fout.write(buffer)
+                        buffer = fin.read(100000)
+                sig.add(decomp)
+                decompressed += 1
+        decompress_msg = '' if not decompressed else ' ({} file{} decompressed)'.format(
+            decompressed, '' if decompressed <= 1 else 's')
+        prog.done(message + ':\033[32m downloaded{} {}\033[0m'.format(decompress_msg,
+            ' '*(term_width - len(message) - 13 - len(decompress_msg))))
     except Exception as e:
         env.logger.error(e)
         return False
