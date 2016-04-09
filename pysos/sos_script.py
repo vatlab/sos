@@ -295,13 +295,13 @@ def directive_input(*args, **kwargs):
             tmp.append(ifile)
         elif env.run_mode == 'run':
             # in this mode file must exist
-            expanded = glob.glob(os.path.expanduser(ifile))
+            expanded = sorted(glob.glob(os.path.expanduser(ifile)))
             if not expanded:
                 raise RuntimeError('{} not exist.'.format(ifile))
             tmp.extend(expanded)
         elif env.run_mode == 'dryrun':
             # FIXME: this should be the 'dynamic' mode
-            expanded = glob.glob(os.path.expanduser(ifile))
+            expanded = sorted(glob.glob(os.path.expanduser(ifile)))
             if expanded:
                 tmp.extend(expanded)
             else:
