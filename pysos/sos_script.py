@@ -122,7 +122,7 @@ def execute_step_process(step_process, global_process, sos_dict, sigil, signatur
     to execute the processes in background, on cluster, or submit as
     Celery tasks.'''
     env.register_process(os.getpid(), 'spawned_job with {} {}'
-        .format(', '.join(sos_dict['_input']), ', '.join(sos_dict['_output'])))
+        .format(sos_dict['_input'], sos_dict['_output']))
     try:
         os.chdir(workdir)
         # switch context to the new dict and switch back once the with
@@ -651,7 +651,7 @@ class SoS_Step:
 
     def parse_args(self, args, check_unused=False, cmd_name=''):
         '''Parse command line arguments and set values to parameters section'''
-        env.logger.info('Execute ``{}_parameters``'.format(self.name))
+        env.logger.debug('Execute ``{}_parameters``'.format(self.name))
         env.sos_dict.set('step_name', '{}_parameters'.format(self.name))
         if self.global_process:
             try:
@@ -755,7 +755,7 @@ class SoS_Step:
     def run(self):
         '''Execute a single step and return results '''
         # only results will be sent back to the master process
-        result = {'__step_output__': []}
+        result = {'__step_output__': None}
         # handle these two sections differently
         env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
         env.sos_dict.set('step_name', '{}_{}'.format(self.name, self.index))
@@ -773,7 +773,7 @@ class SoS_Step:
         if '__step_input__' in env.sos_dict:
             self._groups = [env.sos_dict['__step_input__']]
         else:
-            self._groups = [[]]
+            self._groups = [None]
         self._vars = [{}]
         #
         input_idx = [idx for idx,x in enumerate(self.statements) if x[0] == ':' and x[1] == 'input']
@@ -823,7 +823,12 @@ class SoS_Step:
             # assuming everything starts from 0 is after input
             input_idx = 0
 
-        env.sos_dict.set('input', list(OrderedDict.fromkeys(sum(self._groups, []))))
+        if None in self._groups:
+            if not all(x is None for x in self._groups):
+                raise RuntimeError('Either none or all of input groups can be unknown.')
+            env.sos_dict.set('input', None)
+        else:
+            env.sos_dict.set('input', list(OrderedDict.fromkeys(sum(self._groups, []))))
         step_info = StepInfo()
         step_info.set('step_name', env.sos_dict['step_name'])
         step_info.set('input', env.sos_dict['input'])
@@ -843,7 +848,8 @@ class SoS_Step:
         # post input
         # output and depends can be processed many times
         step_sig = self.step_signature()
-        env.logger.info('input:   ``{}``'.format(shortRepr(env.sos_dict['input'])))
+        env.logger.info('input:   ``{}``'.format(shortRepr(env.sos_dict['input'], noneAsNA=True)))
+        # 
         self._outputs = []
         self._depends = []
         for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
@@ -872,7 +878,7 @@ class SoS_Step:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
                     old_run_mode = env.run_mode
-                    if '_output' in env.sos_dict:
+                    if '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
                         signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'],
                             env.sos_dict.get('_depends', []))
                         if env.sig_mode == 'default' and signature.validate():
@@ -888,22 +894,27 @@ class SoS_Step:
             if '_output' in env.sos_dict:
                 self._outputs.append(env.sos_dict['_output'])
             else:
-                self._outputs.append([])
+                self._outputs.append(None)
             if '_depends' in env.sos_dict:
                 self._depends.append(env.sos_dict['_depends'])
             else:
                 self._depends.append([])
         #
-        # if no output directive, assuming no output for each step
+        # if no output directive, assuming UNKNOWN output for each step
         if not self._outputs:
-            self._outputs = [[] for x in self._groups]
+            self._outputs = [None for x in self._groups]
         # if no depends directive, assuming no dependent files for each step
         if not self._depends:
             self._depends = [[] for x in self._groups]
         # we need to reduce output files in case they have been processed multiple times.
-        env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
+        if None in self._outputs:
+            if not all(x is None for x in self._outputs):
+                raise RuntimeError('Output should be specified for all loops.')
+            env.sos_dict.set('output', None)
+        else:
+            env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
         env.sos_dict.set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
-        env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'])))
+        env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
         if env.sos_dict['depends']:
             env.logger.info('depends: ``{}``'.format(shortRepr(env.sos_dict['depends'])))
         result['__step_output__'] = env.sos_dict['output']
@@ -918,7 +929,7 @@ class SoS_Step:
             result[self.options['alias']] = copy.deepcopy(step_info)
         #
         # if the signature matches, the whole step is ignored
-        if env.sos_dict['output']:
+        if env.sos_dict['input'] is not None and env.sos_dict['output'] is not None:
             signature = RuntimeInfo(step_sig,
                 env.sos_dict['input'], env.sos_dict['output'], env.sos_dict['depends'])
             if env.run_mode == 'run':
@@ -956,7 +967,7 @@ class SoS_Step:
             # can try to see if we can create partial signature. This would help if the
             # step is interrupted in the middle.
             partial_signature = None
-            if env.sos_dict['_output'] and env.sos_dict['_output'] != env.sos_dict['output'] and env.run_mode == 'run':
+            if env.sos_dict['_output'] is not None and env.sos_dict['_output'] != env.sos_dict['output'] and env.run_mode == 'run':
                 partial_signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'],
                     env.sos_dict['_depends'])
                 if env.sig_mode == 'default':
@@ -1018,7 +1029,7 @@ class SoS_Step:
                 raise
         if not all(x==0 for x in proc_results):
             raise RuntimeError('Step process returns non-zero value')
-        if env.run_mode == 'run':
+        if env.run_mode == 'run' and env.sos_dict['output'] is not None:
             for ofile in env.sos_dict['output']:
                 if not os.path.isfile(os.path.expanduser(ofile)):
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
@@ -1725,8 +1736,6 @@ def sos_show(args, workflow_args):
             print_traceback()
         env.logger.error(e)
         sys.exit(1)
-
-
 
 #
 # subcommand dryrun

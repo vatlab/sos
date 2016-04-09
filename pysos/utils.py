@@ -136,9 +136,11 @@ class ColoredFormatter(logging.Formatter):
         return logging.Formatter.format(self, record)
 
 
-def shortRepr(obj):
+def shortRepr(obj, noneAsNA=False):
     '''Return a short representation of obj for clarity.'''
-    if isinstance(obj, (str, int, float, bool)) or (isinstance(obj, collections.Sequence) \
+    if obj is None:
+        return 'NA' if noneAsNA else 'None'
+    elif isinstance(obj, (str, int, float, bool)) or (isinstance(obj, collections.Sequence) \
         and len(obj) <= 2) or len(str(obj)) < 50:
         return repr(obj)
     elif isinstance(obj, collections.Sequence): # should be a list or tuple
@@ -935,50 +937,45 @@ class RuntimeInfo:
         self.script = script if isinstance(script, str) else ''.join(script)
         self.input_files = [input_files] if isinstance(input_files, str) else input_files
         self.output_files = [output_files] if isinstance(output_files, str) else output_files
+        if self.input_files is None:
+            raise RuntimeError('Cannot create runtime signature for unknown input')
+        if self.output_files is None:
+            raise RuntimeError('Cannot create runtime signature for unknown output')
         self.dependent_files = dependent_files if isinstance(dependent_files, str) else dependent_files
         #
-        sig_name = os.path.realpath(os.path.expanduser(self.output_files[0])) + textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
-        #
-        if not output_files:
-            self.sig_file = None
-            self.proc_out = None
-            self.proc_err = None
-            self.proc_lck = None
-            self.proc_info = None
-            self.proc_cmd = None
-            self.proc_prog = None
-            self.proc_done = None
-            self.manifest = None
+        if self.output_files:
+            sig_name = os.path.realpath(os.path.expanduser(self.output_files[0])) + textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
         else:
-            #
-            # If the output path is outside of the current working directory
-            rel_path = os.path.relpath(sig_name, os.path.realpath(workdir))
-            # if this file is not relative to cache, use global signature file
-            if rel_path.startswith('../'):
-                self.sig_file = os.path.join(os.path.expanduser('~/.sos/.runtime'), sig_name.lstrip(os.sep))
-            else:
-                # if this file is relative to cache, use local directory
-                self.sig_file = os.path.join('.sos/.runtime', rel_path)
-            # path to file
-            sig_path = os.path.split(self.sig_file)[0]
-            if not os.path.isdir(sig_path):
-                try:
-                    os.makedirs(sig_path)
-                except Exception as e:
-                    raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
-            env.logger.trace('Using signature file {} for output {}'.format(self.sig_file, output_files))
-            if pid is None:
-                self.pid = os.getpid()
-            else:
-                self.pid = pid
-            self.proc_out = '{}.out_{}'.format(self.sig_file, self.pid)
-            self.proc_err = '{}.err_{}'.format(self.sig_file, self.pid)
-            self.proc_lck = '{}.lck'.format(self.sig_file)
-            self.proc_info = '{}.exe_info'.format(self.sig_file)
-            self.proc_cmd = '{}.cmd'.format(self.sig_file)
-            self.proc_done = '{}.done_{}'.format(self.sig_file, self.pid)
-            self.proc_prog = '{}.working_{}'.format(self.sig_file, self.pid)
-            self.manifest = '{}.manifest'.format(self.sig_file)
+            sig_name = textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
+        #
+        # If the output path is outside of the current working directory
+        rel_path = os.path.relpath(sig_name, os.path.realpath(workdir))
+        # if this file is not relative to cache, use global signature file
+        if rel_path.startswith('../'):
+            self.sig_file = os.path.join(os.path.expanduser('~/.sos/.runtime'), sig_name.lstrip(os.sep))
+        else:
+            # if this file is relative to cache, use local directory
+            self.sig_file = os.path.join('.sos/.runtime', rel_path)
+        # path to file
+        sig_path = os.path.split(self.sig_file)[0]
+        if not os.path.isdir(sig_path):
+            try:
+                os.makedirs(sig_path)
+            except Exception as e:
+                raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
+        env.logger.trace('Using signature file {} for output {}'.format(self.sig_file, output_files))
+        if pid is None:
+            self.pid = os.getpid()
+        else:
+            self.pid = pid
+        self.proc_out = '{}.out_{}'.format(self.sig_file, self.pid)
+        self.proc_err = '{}.err_{}'.format(self.sig_file, self.pid)
+        self.proc_lck = '{}.lck'.format(self.sig_file)
+        self.proc_info = '{}.exe_info'.format(self.sig_file)
+        self.proc_cmd = '{}.cmd'.format(self.sig_file)
+        self.proc_done = '{}.done_{}'.format(self.sig_file, self.pid)
+        self.proc_prog = '{}.working_{}'.format(self.sig_file, self.pid)
+        self.manifest = '{}.manifest'.format(self.sig_file)
 
     def write(self):
         '''Write .exe_info file with signature of script, input, output and dependent files.'''
@@ -1015,7 +1012,7 @@ class RuntimeInfo:
                     f, m = line.rsplit('\t', 1)
                     f = os.path.realpath(os.path.expanduser(f))
                 except Exception as e:
-                    env.logger.error('Wrong md5 line {} in {}: {}'.format(line, md5file, e))
+                    env.logger.debug('Wrong md5 line {} in {}: {}'.format(line, md5file, e))
                     continue
                 if f not in files_checked:
                     env.logger.waring('{} not need to be checked'.format(f))

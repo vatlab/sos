@@ -152,9 +152,11 @@ sos_run('mse')
 
     def testSignature(self):
         self._testSignature(r"""
+import time
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
-
+process:
+time.sleep(1)
 run('''echo "a.txt" > 'temp/a.txt' ''')
 run('''echo "b.txt" > 'temp/b.txt' ''')
 
@@ -163,15 +165,19 @@ dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
 
+process:
+time.sleep(0.5)
 run(''' cp ${_input} ${_dest} ''')
 """)
+        #
         env.max_jobs = 4
         self._testSignature(r"""
+import time
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
 
 process:
-
+time.sleep(1)
 run('''echo "a.txt" > 'temp/a.txt' ''')
 run('''echo "b.txt" > 'temp/b.txt' ''')
 
@@ -181,16 +187,18 @@ input: group_by='single', paired_with='dest'
 output: _dest
 
 process:
+time.sleep(0.5)
 run(''' cp ${_input} ${_dest} ''')
 """)
         # script format
         env.max_jobs = 4
         self._testSignature(r"""
+import time
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
 
 run:
-
+sleep 1
 echo "a.txt" > 'temp/a.txt'
 
 run:
@@ -202,11 +210,41 @@ dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
 
+process:
+time.sleep(0.5)
 run:
-
 cp ${_input} ${_dest}
 """)
+        # reset env mode
+        env.sig_mode = 'default'
+        shutil.rmtree('temp')
 
+
+    def testSignatureWithoutOutput(self):
+        # signature without output file
+        self._testSignature(r"""
+import time
+[*_0]
+output: []
+
+run:
+sleep 1
+[ -d temp ] || mkdir temp
+echo "a.txt" > 'temp/a.txt'
+
+run:
+
+echo "b.txt" > 'temp/b.txt'
+
+[1: alias='oa']
+dest = ['temp/c.txt', 'temp/d.txt']
+input: 'temp/a.txt', 'temp/b.txt', group_by='single', paired_with='dest'
+output: _dest
+
+run:
+sleep 0.5
+cp ${_input} ${_dest}
+""")
         # reset env mode
         env.sig_mode = 'default'
         shutil.rmtree('temp')
@@ -217,10 +255,13 @@ cp ${_input} ${_dest}
         '''Test recognizing the format of SoS script'''
         env.run_mode = 'run'
         script = SoS_Script(text)
+        #
+        # only the first step
         wf = script.workflow('default_0')
         env.sig_mode = 'ignore'
+        start = time.time()
         wf.run()
-        # not the default value of 1.0
+        self.assertGreater(time.time() - start, 1)
         self.assertTrue(os.path.isfile('temp/a.txt'))
         self.assertTrue(os.path.isfile('temp/b.txt'))
         with open('temp/a.txt') as ta:
@@ -232,8 +273,10 @@ cp ${_input} ${_dest}
         #
         env.sig_mode = 'ignore'
         wf = script.workflow()
+        start = time.time()
         wf.run()
-        # not the default value of 1.0
+        self.assertGreater(time.time() - start, 1)
+        #
         self.assertTrue(os.path.isfile('temp/c.txt'))
         self.assertTrue(os.path.isfile('temp/d.txt'))
         with open('temp/c.txt') as tc:
@@ -241,8 +284,15 @@ cp ${_input} ${_dest}
         with open('temp/d.txt') as td:
             self.assertTrue(td.read(), 'b.txt')
         self.assertEqual(env.sos_dict['oa'].output, ['temp/c.txt', 'temp/d.txt'])
+        # 
+        # now in assert mode, the signature should be there
         env.sig_mode = 'assert'
         wf.run()
+        #
+        env.sig_mode = 'default'
+        start = time.time()
+        wf.run()
+        self.assertLess(time.time() - start, 1)
         #
         # change script a little bit
         script = SoS_Script('# comment\n' + text)
