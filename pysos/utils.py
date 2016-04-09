@@ -139,7 +139,7 @@ class ColoredFormatter(logging.Formatter):
 def shortRepr(obj, noneAsNA=False):
     '''Return a short representation of obj for clarity.'''
     if obj is None:
-        return 'NA' if noneAsNA else 'None'
+        return 'unspecified' if noneAsNA else 'None'
     elif isinstance(obj, (str, int, float, bool)) or (isinstance(obj, collections.Sequence) \
         and len(obj) <= 2) or len(str(obj)) < 50:
         return repr(obj)
