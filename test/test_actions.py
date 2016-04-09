@@ -26,6 +26,8 @@ from __future__ import unicode_literals
 
 import os
 import unittest
+import time
+import shutil
 
 from pysos import *
 from pysos.utils import env, TimeoutException, time_limit
@@ -594,16 +596,33 @@ run: docker_image='hello-world', docker_file = 'hello.tar'
 
     def testDownload(self):
         '''Test download of resources'''
+        if not os.path.isdir('tmp'):
+            os.makedirs('tmp')
+        #
+        for name in ['hapmap_ASW_freq.ann', 'hapmap_CHB_freq-hg18_20100817.DB.gz', 'hapmap_CHB_freq.ann']:
+            if os.path.isfile(os.path.join('tmp', name)):
+                os.remove(os.path.join('tmp', name))
+        # this will take a while
         script = SoS_Script(r'''
 [0]
-download:
+download: dest='tmp'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/non-existing.gz
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_CHB_freq-hg18_20100817.DB.gz
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_CHB_freq.ann	
 ''')
+        start = time.time()
         wf = script.workflow()
         self.assertRaises((RuntimeError, ExecuteError), wf.run)
+        self.assertGreater(time.time() - start, 10)
+        # this will be fast
+        start = time.time()
+        wf = script.workflow()
+        self.assertRaises((RuntimeError, ExecuteError), wf.run)
+        self.assertLess(time.time() - start, 5)
+        #
+        shutil.rmtree('tmp')
+
 
 if __name__ == '__main__':
     unittest.main()

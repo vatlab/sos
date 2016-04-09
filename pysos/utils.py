@@ -832,7 +832,7 @@ def textMD5(text):
     m.update(text.encode())
     return m.hexdigest()
 
-def partialMD5(filename):
+def fileMD5(filename, partial=True):
     '''Calculate partial MD5, basically the first and last 32M
     of the file for large files. This should signicicantly reduce
     the time spent on the creation and comparison of file signature
@@ -842,7 +842,7 @@ def partialMD5(filename):
     md5 = hashlib.md5()
     block_size = 2**20  # buffer of 1M
     try:
-        if filesize < 2**26:
+        if (not partial) or filesize < 2**26:
             with open(filename, 'rb') as f:
                 while True:
                     data = f.read(block_size)
@@ -865,6 +865,50 @@ def partialMD5(filename):
         sys.exit('Failed to read {}: {}'.format(filename, e))
     return md5.hexdigest()
 
+
+class FileSignature:
+    '''Record file MD5 information to sign downloaded files.'''
+    def __init__(self, filename, workdir='.'):
+        #
+        sig_name = os.path.realpath(os.path.expanduser(filename)) 
+        self.filename = sig_name
+        #
+        # If the output path is outside of the current working directory
+        rel_path = os.path.relpath(sig_name, os.path.realpath(workdir))
+        # if this file is not relative to cache, use global signature file
+        if rel_path.startswith('../'):
+            self.sig_file = os.path.join(os.path.expanduser('~/.sos/.runtime'), sig_name.lstrip(os.sep) + '.file_info')
+        else:
+            # if this file is relative to cache, use local directory
+            self.sig_file = os.path.join('.sos/.runtime', rel_path + '.file_info')
+        # path to file
+        sig_path = os.path.split(self.sig_file)[0]
+        if not os.path.isdir(sig_path):
+            try:
+                os.makedirs(sig_path)
+            except Exception as e:
+                raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
+
+    def write(self):
+        '''Write .file_info file with signature'''
+        with open(self.sig_file, 'w') as md5:
+            md5.write('{}\t{}\n'.format(self.filename, fileMD5(self.filename)))
+
+    def validate(self):
+        '''Check if file matches its signature'''
+        if not os.path.isfile(self.sig_file):
+            return False
+        with open(self.sig_file) as md5:
+            line = md5.readline()
+            f, m = line.rsplit('\t', 1)
+            if f != self.filename:
+                return False
+            if not os.path.isfile(f):
+                return False
+            if fileMD5(f) != m.strip():
+                env.logger.debug('MD5 mismatch {}'.format(f))
+                return False
+        return True
 
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
@@ -938,7 +982,7 @@ class RuntimeInfo:
             md5.write('{}\n'.format(textMD5(self.script)))
             for f in self.input_files + self.output_files + self.dependent_files:
                 f = os.path.realpath(os.path.expanduser(f))
-                md5.write('{}\t{}\n'.format(f, partialMD5(f)))
+                md5.write('{}\t{}\n'.format(f, fileMD5(f)))
 
     def validate(self):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
@@ -969,7 +1013,7 @@ class RuntimeInfo:
                 if f not in files_checked:
                     env.logger.waring('{} not need to be checked'.format(f))
                     continue
-                if partialMD5(f) != m.strip():
+                if fileMD5(f) != m.strip():
                     env.logger.debug('MD5 mismatch {}'.format(f))
                     return False
                 files_checked[f] = True
@@ -1357,8 +1401,14 @@ def downloadURL(URL, dest, index=None):
         message = message[:10] + '...' + message[-16:]
     #
     dest_tmp = dest + '.tmp_{}'.format(os.getpid())
+    term_width = getTermWidth()
     try:
         prog = ProgressBar(message, disp=env.verbosity > 1, index=index)
+        sig = FileSignature(dest)
+        if os.path.isfile(dest) and sig.validate():
+            prog.done(message + ': \033[32m Use existing {}\033[0m'.format(' '*(term_width - len(message) - 15)))
+            return True
+        #
         with open(dest_tmp, 'wb') as f:
             c = pycurl.Curl()
             c.setopt(pycurl.URL, str(URL))
@@ -1368,14 +1418,13 @@ def downloadURL(URL, dest, index=None):
             c.setopt(pycurl.PROGRESSFUNCTION, prog.curlUpdate)
             c.perform()
         if c.getinfo(pycurl.HTTP_CODE) == 404:
-            term_width = getTermWidth()
-            prog.done(message + ':\033[91m 404 Error {}\033[0m'.format('.'*(term_width - len(message) - 12)))
+            prog.done(message + ':\033[91m 404 Error {}\033[0m'.format(' '*(term_width - len(message) - 12)))
             try:
                 os.remove(dest_tmp)
             except OSError:
                 pass
             return False
-        prog.done()
+        prog.done(message + ':\033[32m downloaded {}\033[0m'.format(' '*(term_width - len(message) - 13)))
         os.rename(dest_tmp, dest)
     except Exception as e:
         env.logger.error(e)
@@ -1384,6 +1433,7 @@ def downloadURL(URL, dest, index=None):
         # if there is something wrong still remove temporary file
         if os.path.isfile(dest_tmp):
             os.remove(dest_tmp)
+    sig.write()
     return os.path.isfile(dest)
 
 class frozendict(dict):
