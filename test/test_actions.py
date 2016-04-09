@@ -411,6 +411,8 @@ print "hi NAME\n";
 
     def testRuby(self):
         '''Test action ruby'''
+        if not shutil.which('ruby'):
+            return True
         script = SoS_Script(r'''
 [0]
 ruby:
@@ -449,6 +451,8 @@ end
 
     def testNode(self):
         '''Test action ruby'''
+        if not shutil.which('node'):
+            return
         script = SoS_Script(r'''
 [0]
 node:
@@ -599,13 +603,33 @@ run: docker_image='hello-world', docker_file = 'hello.tar'
         if not os.path.isdir('tmp'):
             os.makedirs('tmp')
         #
+        # testing the download of single file
+        #
+        script = SoS_Script(r'''
+[0]
+download: dest_file='tmp/test.ann'
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
+''')
+        wf = script.workflow()
+        wf.run()
+        self.assertTrue(os.path.isfile('tmp/test.ann'))
+        #
+        script = SoS_Script(r'''
+[0]
+download: dest_dir='tmp'
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
+''')
+        wf = script.workflow()
+        wf.run()
+        self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq.ann'))
+        #
         for name in ['hapmap_ASW_freq.ann', 'hapmap_ASW_freq-hg18_20100817.DB.gz', 'hapmap_CHB_freq.ann']:
             if os.path.isfile(os.path.join('tmp', name)):
                 os.remove(os.path.join('tmp', name))
         # this will take a while
         script = SoS_Script(r'''
 [0]
-download: dest='tmp'
+download: dest_dir='tmp'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/non-existing.gz
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq-hg18_20100817.DB.gz
@@ -620,7 +644,7 @@ download: dest='tmp'
         wf = script.workflow()
         self.assertRaises((RuntimeError, ExecuteError), wf.run)
         self.assertLess(time.time() - start, 3)
-        #
+        # 
         shutil.rmtree('tmp')
 
 

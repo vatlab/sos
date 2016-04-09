@@ -296,7 +296,7 @@ def warn_if(expr, msg=''):
     return 0
 
 @SoS_Action(run_mode=['prepare', 'run'])
-def download(url_list, dest='.', decompress=True):
+def download(url_list, dest_dir='.', dest_file=None, decompress=True):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified
     destination. If `filename.md5` files are downloaded, they are used to 
@@ -304,26 +304,39 @@ def download(url_list, dest='.', decompress=True):
     files are decompressed.
     '''
     urls = [x.strip() for x in url_list.split() if x.strip()]
+    if dest_file is not None and len(urls) != 1:
+        raise RuntimeError('Only one URL is allowed if a destination file is specified.')
     # 
     succ = [False for x in urls]
-    # first scroll several lines to reserve place for progress bar
-    for url in urls:
-        sys.stderr.write('\n')
-    with mp.Pool(processes = env.sos_dict['CONFIG'].get('sos_download_processes', 5)) as pool:
-        for idx, url in enumerate(urls):
-            token = urllib.parse.urlparse(url)
-            # if no scheme or netloc, the URL is not acceptable
-            if not all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
-                continue
-            filename = os.path.split(token.path)[-1]
-            if not filename:
-                continue
-            succ[idx] = pool.apply_async(downloadURL, (url, os.path.join(dest, filename), len(urls) - idx))
+    if len(succ) > 1:
+        # first scroll several lines to reserve place for progress bar
+        for url in urls:
+            sys.stderr.write('\n')
+        with mp.Pool(processes = env.sos_dict['CONFIG'].get('sos_download_processes', 5)) as pool:
+            for idx, url in enumerate(urls):
+                token = urllib.parse.urlparse(url)
+                # if no scheme or netloc, the URL is not acceptable
+                if not all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
+                    continue
+                filename = os.path.split(token.path)[-1]
+                if not filename:
+                    continue
+                succ[idx] = pool.apply_async(downloadURL, (url, os.path.join(dest_dir, filename), len(urls) - idx))
+            #
+            succ = [x.get() if isinstance(x, mp.pool.AsyncResult) else x for x in succ]
         #
-        succ = [x.get() if isinstance(x, mp.pool.AsyncResult) else x for x in succ]
-    #
-    t = blessings.Terminal(stream=sys.stderr)
-    sys.stderr.write(t.move( t.height, 0)) # + '\n')
+        t = blessings.Terminal(stream=sys.stderr)
+        sys.stderr.write(t.move( t.height, 0)) # + '\n')
+    else:
+        if dest_file is not None:
+            succ[0] = downloadURL(urls[0], dest_file)
+        else:
+            token = urllib.parse.urlparse(urls[0])
+            # if no scheme or netloc, the URL is not acceptable
+            if all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
+                filename = os.path.split(token.path)[-1]
+                if filename:
+                    succ[0] = downloadURL(urls[0], os.path.join(dest_dir, filename))
     for su, url in zip(succ, urls):
         if not su:
             env.logger.warning('Failed to download {}'.format(url))
