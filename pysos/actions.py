@@ -166,9 +166,17 @@ class DockerClient:
                 cmd = interpreter.replace('{}', '/var/lib/sos/{}'.format(tempscript))
             else:
                 cmd = ''
+            working_dir = '/'
+            if 'working_dir' in kwargs:
+                working_dir = kwargs['working_dir']
+            if not os.path.isabs(working_dir):
+                env.logger.warning('An absolute path is needed for -w option of docker run command. "{}" provided, "{}" used.'
+                    .format(working_dir, os.path.abspath(working_dir)))
+                working_dir = os.path.abspath(working_dir)
+            #
             command = 'docker run -P -it --rm {} {} {} {} {}'.format(
                 ' '.join('-v ' +x for x in binds),          # image
-                '-w=' + kwargs.get('working_dir', '/'),     # working dir
+                '-w=' + working_dir,                        # working dir
                 '--user={}'.format(kwargs.get('user', 'root')) if 'user' in kwargs else '',  # user
                 image, cmd)
             env.logger.info(command)
