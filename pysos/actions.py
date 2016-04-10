@@ -29,11 +29,11 @@ import shlex
 import json
 import platform
 import urllib
+import shutil
 import blessings
 from io import BytesIO
 from docker import Client
 from docker.utils import kwargs_from_env
-from shutil import which
 import multiprocessing as mp
 from .utils import env, interpolate, glob_wildcards, downloadURL, fileMD5
 
@@ -157,17 +157,25 @@ class DockerClient:
                         if not os.path.abspath(host_dir).startswith('/Users'):
                             raise RuntimeError('hostdir ({}) under MacOSX must be under /Users to be usable in docker container'.format(host_dir))
                     binds.append('{}:{}'.format(os.path.abspath(host_dir), mnt_dir))
+            # under mac, we by default share /Users within docker
+            if platform.system() == 'Darwin' and not any(x.startswith('/Users:') for x in binds):
+                binds.append('/Users:/Users')
             # we also need to mount the script
             if script and interpreter:
                 binds.append('{}:{}'.format(os.path.join(tempdir, tempscript), '/var/lib/sos/{}'.format(tempscript)))
                 cmd = interpreter.replace('{}', '/var/lib/sos/{}'.format(tempscript))
             else:
                 cmd = ''
-            command = 'docker run -t --rm {} {} {}'.format(' '.join('-v ' +x for x in binds), image, cmd)
+            command = 'docker run -P -it --rm {} {} {} {} {}'.format(
+                ' '.join('-v ' +x for x in binds),          # image
+                '-w=' + kwargs.get('working_dir', '/'),     # working dir
+                '--user={}'.format(kwargs.get('user', 'root')) if 'user' in kwargs else '',  # user
+                image, cmd)
             env.logger.info(command)
             ret = subprocess.call(command, shell=True)
             if ret != 0:
-                raise RuntimeError('Executing script in docker returns an error')
+                shutil.copy(os.path.join(tempdir, tempscript), '.sos')
+                raise RuntimeError('Executing script in docker returns an error. The script has been saved to .sos/{} for debugging purposed.'.format(tempscript))
         return 0
 
 #
@@ -254,7 +262,7 @@ def check_command(cmd, pattern = None):
     and raise an error if command does not exist.'''
     ret_val = 0
     if pattern is None and len(shlex.split(cmd)) == 1:
-        name = which(cmd)
+        name = shutil.which(cmd)
         if not name:
             raise RuntimeError('Command ``{}`` not found!'.format(cmd))
         env.logger.info('Command ``{}`` is located as ``{}``.'.format(cmd, name))
