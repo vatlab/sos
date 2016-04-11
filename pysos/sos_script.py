@@ -902,9 +902,12 @@ class SoS_Step:
                             if not isinstance(kwargs['dynamic'], bool):
                                 raise RuntimeError('Option dynamic can only be True or False. {} provided'.format(kwargs['dynamic']))
                             if kwargs['dynamic']:
-                                if key == 'output':
+                                if key == 'depends' and env.run_mode == 'run':
+                                    # depends need to be resolved now at run mode
+                                    eval('directive_' + key)(*args, **kwargs)
+                                # while output can be resolved later.
+                                elif key == 'output':
                                     env.sos_dict.set('_' + key, DynamicExpression(value))
-                            env.logger.error('here')
                         else:
                             eval('directive_' + key)(*args, **kwargs)
                     except Exception as e:
@@ -944,9 +947,16 @@ class SoS_Step:
             if not all(x is None for x in self._outputs):
                 raise RuntimeError('Output should be specified for all loops.')
             env.sos_dict.set('output', None)
+        elif any(isinstance(x, DynamicExpression) for x in self._outputs):
+            env.sos_dict.set('output', self._outputs)
         else:
             env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
-        env.sos_dict.set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
+        #
+        if any(isinstance(x, DynamicExpression) for x in self._depends):
+            env.sos_dict.set('depends', self._depends)
+        else:
+            env.sos_dict.set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
+        #
         env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
         if env.sos_dict['depends']:
             env.logger.info('depends: ``{}``'.format(shortRepr(env.sos_dict['depends'])))

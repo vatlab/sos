@@ -943,40 +943,57 @@ class RuntimeInfo:
         if self.output_files is None:
             raise RuntimeError('Cannot create runtime signature for unknown output')
         #
-        if self.output_files:
+        if self.output_files and not isinstance(self.output_files, DynamicExpression):
             sig_name = os.path.realpath(os.path.expanduser(self.output_files[0])) + textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
         else:
             sig_name = textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
+        #
+        if self.input_files and not isinstance(self.input_files, DynamicExpression):
+            self.sig_input_files = self.input_files
+        else:
+            self.sig_input_files = []
+        if self.output_files and not isinstance(self.output_files, DynamicExpression):
+            self.sig_output_files = self.output_files
+        else:
+            self.sig_output_files = []
+        if self.dependent_files and not isinstance(self.dependent_files, DynamicExpression):
+            self.sig_dependent_files = self.dependent_files
+        else:
+            self.sig_dependent_files = []
         #
         # If the output path is outside of the current working directory
         rel_path = os.path.relpath(sig_name, os.path.realpath(workdir))
         # if this file is not relative to cache, use global signature file
         if rel_path.startswith('../'):
-            self.sig_file = os.path.join(os.path.expanduser('~/.sos/.runtime'), sig_name.lstrip(os.sep))
+            info_file = os.path.join(os.path.expanduser('~/.sos/.runtime'), sig_name.lstrip(os.sep))
         else:
             # if this file is relative to cache, use local directory
-            self.sig_file = os.path.join('.sos/.runtime', rel_path)
+            info_file = os.path.join('.sos/.runtime', rel_path)
         # path to file
-        sig_path = os.path.split(self.sig_file)[0]
+        sig_path = os.path.split(info_file)[0]
         if not os.path.isdir(sig_path):
             try:
                 os.makedirs(sig_path)
             except Exception as e:
                 raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
-        env.logger.trace('Using signature file {} for output {}'.format(self.sig_file, output_files))
+        env.logger.trace('Using signature file {} for output {}'.format(info_file, output_files))
         if pid is None:
             self.pid = os.getpid()
         else:
             self.pid = pid
-        self.proc_out = '{}.out_{}'.format(self.sig_file, self.pid)
-        self.proc_err = '{}.err_{}'.format(self.sig_file, self.pid)
-        self.proc_lck = '{}.lck'.format(self.sig_file)
-        self.proc_info = '{}.exe_info'.format(self.sig_file)
-        self.proc_cmd = '{}.cmd'.format(self.sig_file)
-        self.proc_done = '{}.done_{}'.format(self.sig_file, self.pid)
-        self.proc_prog = '{}.working_{}'.format(self.sig_file, self.pid)
-        self.manifest = '{}.manifest'.format(self.sig_file)
+        self.proc_info = '{}.exe_info'.format(info_file)
 
+    def add(self, files, file_type):
+        # add signature file if input and output files are dynamic
+        if file_type == 'input':
+            self.sig_input_files.extend(files)
+        elif file_type == 'output':
+            self.sig_output_files.extend(files)
+        elif file_type == 'depends':
+            self.sig_depends_files.extend(files)
+        else:
+            raise RuntimeError('Invalid signature file type')
+        
     def write(self):
         '''Write .exe_info file with signature of script, input, output and dependent files.'''
         if not self.proc_info:
@@ -984,7 +1001,16 @@ class RuntimeInfo:
         env.logger.trace('Write signature {}'.format(self.proc_info))
         with open(self.proc_info, 'w') as md5:
             md5.write('{}\n'.format(textMD5(self.script)))
-            for f in self.input_files + self.output_files + self.dependent_files:
+            md5.write('# input\n')
+            for f in self.sig_input_files:
+                f = os.path.realpath(os.path.expanduser(f))
+                md5.write('{}\t{}\n'.format(f, fileMD5(f)))
+            md5.write('# output\n')
+            for f in self.sig_output_files:
+                f = os.path.realpath(os.path.expanduser(f))
+                md5.write('{}\t{}\n'.format(f, fileMD5(f)))
+            md5.write('# dependent\n')
+            for f in self.sig_dependent_files:
                 f = os.path.realpath(os.path.expanduser(f))
                 md5.write('{}\t{}\n'.format(f, fileMD5(f)))
 
@@ -994,47 +1020,49 @@ class RuntimeInfo:
             env.logger.trace('Fail because of no signature file {}'.format(self.proc_info))
             return False
         #
-        # duplicated files are only tested once.
-        all_files = [os.path.realpath(os.path.expanduser(x)) for x in set(self.input_files + self.output_files + self.dependent_files)]
         # file not exist?
-        if not all(os.path.isfile(x) for x in all_files):
-            env.logger.trace('Fail because of missing one of the files {}'.format(', '.join(all_files)))
+        self.sig_files = self.sig_input_files + self.sig_output_files + self.sig_dependent_files
+        if not all(os.path.isfile(x) for x in self.sig_files):
+            env.logger.trace('Fail because of missing one of the files {}'.format(', '.join(self.sig_files)))
             return False
         #
-        files_checked = {x:False for x in all_files}
+        files_checked = {os.path.realpath(os.path.expanduser(x)):False for x in self.sig_files}
+        res = {'input': [], 'output': [], 'depends': []}
+        cur_type = 'input'
         with open(self.proc_info) as md5:
             cmdMD5 = md5.readline().strip()   # command
             if textMD5(self.script) != cmdMD5:
                 env.logger.trace('Fail because of command change')
                 return False
             for line in md5:
+                if line.startswith('#'):
+                    if line == '# input\n':
+                        cur_type = 'input'
+                    elif line == '# output\n':
+                        cur_type = 'output'
+                    elif line == '# dependent\n':
+                        cur_type = 'depends'
+                    else:
+                        env.logger.error('Unrecognized line in sig file {}'.format(line))
+                    continue
                 try:
                     f, m = line.rsplit('\t', 1)
+                    res[cur_type].append(f)
                     f = os.path.realpath(os.path.expanduser(f))
                 except Exception as e:
                     env.logger.debug('Wrong md5 line {} in {}: {}'.format(line, md5file, e))
                     continue
-                if f not in files_checked:
-                    env.logger.waring('{} not need to be checked'.format(f))
-                    continue
                 if fileMD5(f) != m.strip():
                     env.logger.debug('MD5 mismatch {}'.format(f))
                     return False
-                files_checked[f] = True
+                # for dynamic files, they are in sig file but not in self.sig_files
+                if f in files_checked:
+                    files_checked[f] = True
         #
         if not all(files_checked.values()):
             env.logger.warning('No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y)))
             return False
-        return True
-
-    def clear(self, types=['out', 'err', 'done']):
-        if self.sig_file is None:
-            return
-        for filename in sum([glob.glob(self.sig_file + '.{}_*'.format(x)) for x in types], []):
-            try:
-                os.remove(filename)
-            except Exception as e:
-                env.logger.warning('Fail to remove {}: {}'.format(filename, e))
+        return res
 
 
 #
@@ -1524,7 +1552,7 @@ class DynamicExpression(object):
         return SoS_eval(self.expr, sigil)
 
     def __repr__(self):
-        return self.expr
+        return self.expr.strip()
 
     def __hash__(self):
         raise RuntimeError('Dynamic expression should be evaluated before used.'
