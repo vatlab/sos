@@ -283,6 +283,11 @@ echo 'Echo
         wf = script.workflow()
         # FIXME: syntax error is not reflected outside of the docker
         self.assertRaises(RuntimeError, wf.run)
+        #
+        env.run_mode = 'prepare'
+        # this should give us a warning if RAM is less than 4G
+        wf.run()
+
 
     def testCsh(self):
         '''Test action csh'''

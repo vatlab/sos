@@ -67,6 +67,14 @@ class DockerClient:
         except Exception as e:
             self.client = None
 
+    def total_memory(self, image='ubuntu'):
+        '''Get the available ram fo the docker machine in Kb'''
+        ret = subprocess.check_output(
+            '''docker run -t {} cat /proc/meminfo  | grep MemTotal'''.format(image),
+            shell=True, stdin=subprocess.DEVNULL)
+        # ret: MemTotal:       30208916 kB
+        return int(ret.split()[1])
+
     def _is_image_avail(self, image):
         images = sum([x['RepoTags'] for x in self.client.images()], [])
         return (':' in image and image in images) or \
@@ -132,6 +140,7 @@ class DockerClient:
     def run(self, image, script='', interpreter='', suffix='.sh', **kwargs):
         if self.client is None:
             raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
+        #
         env.logger.debug('docker_run with keyword args {}'.format(kwargs))
         # now, write a temporary file to a tempoary directory under the current directory, this is because
         # we need to share the directory to ...
@@ -243,7 +252,8 @@ class DockerClient:
             env.logger.info(command)
             ret = subprocess.call(command, shell=True)
             if ret != 0:
-                msg = 'The script has been saved to .sos/{} so that you can execute it using the following command:\n{}'.format(tempscript, command.replace(tempdir, '.sos'))
+                msg = 'The script has been saved to .sos/{} so that you can execute it using the following command:\n{}'.format(
+                    tempscript, command.replace(tempdir, os.path.abspath('./.sos')))
                 shutil.copy(os.path.join(tempdir, tempscript), '.sos')
                 if ret == 125:
                     raise RuntimeError('Docker daemon failed (exitcode=125). ' + msg)
@@ -274,6 +284,13 @@ def SoS_Action(run_mode='run'):
             if 'docker_image' in runtime_options and env.run_mode in ('run', 'prepare'):
                 docker = DockerClient()
                 docker.pull(runtime_options['docker_image'])
+                if env.run_mode == 'prepare':
+                    mem = docker.total_memory(runtime_options['docker_image'])
+                    if mem < 4000000: # < 4G
+                        env.logger.warning('Docker machine has {:.1f} GB of total memory and might not be enough for your operation. Please refer to https://github.com/bpeng2000/SOS/wiki/SoS-Docker-guide to adjust the docker machine if needed.'
+                            .format(mem/1024/1024))
+                    else:
+                        env.logger.debug('Docker machine has {:.1f} GB of total memory ram'.format(mem/1024/1024))
             if env.run_mode not in run_mode:
                 return 0
             return func(*args, **non_runtime_options)
