@@ -208,7 +208,7 @@ class WorkflowDict(object):
         if env.run_mode == 'dryrun':
             self._warn(key, value)
         if key in ('input', 'output', 'depends', '_input', '_output', '_depends', '_runtime'):
-            raise ValueError('Variable {} can only be set by SoS')
+            raise ValueError('Variable {} can only be set by SoS'.format(key))
         self.set(key, value)
 
     def check_readonly_vars(self):
@@ -937,11 +937,11 @@ class RuntimeInfo:
         self.script = script if isinstance(script, str) else ''.join(script)
         self.input_files = [input_files] if isinstance(input_files, str) else input_files
         self.output_files = [output_files] if isinstance(output_files, str) else output_files
+        self.dependent_files = [dependent_files] if isinstance(dependent_files, str) else dependent_files
         if self.input_files is None:
             raise RuntimeError('Cannot create runtime signature for unknown input')
         if self.output_files is None:
             raise RuntimeError('Cannot create runtime signature for unknown output')
-        self.dependent_files = dependent_files if isinstance(dependent_files, str) else dependent_files
         #
         if self.output_files:
             sig_name = os.path.realpath(os.path.expanduser(self.output_files[0])) + textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))

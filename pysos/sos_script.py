@@ -362,18 +362,28 @@ def directive_depends(*args, **kwargs):
         if k not in SOS_DEPENDS_OPTIONS:
             raise RuntimeError('Unrecognized depends option {}'.format(k))
     # first *args are filenames
-    dfiles = []
+    tmp = []
     for arg in args:
         if isinstance(arg, str):
-            dfiles.append(arg)
+            tmp.append(arg)
         elif isinstance(arg, Iterable):
             arg = list(arg)
             if not all(isinstance(x, str) for x in arg):
                 raise RuntimeError('Invalid dependent file: {}'.format(arg))
-            dfiles.extend(arg)
+            tmp.extend(arg)
         else:
             raise ValueError('Unrecognizable output type {}'.format(arg))
-
+    #
+    # expand wild card variables
+    dfiles = []
+    for dfile in tmp:
+        if not os.path.isfile(dfile):
+            expanded = sorted(glob.glob(os.path.expanduser(dfile)))
+            if not expanded:
+                raise RuntimeError('{} not exist.'.format(dfile))
+            dfiles.extend(expanded)
+        else:
+            dfiles.append(dfile)
     env.sos_dict.set('_depends', dfiles)
 
 def handle_output_pattern(pattern, ofiles):
@@ -394,20 +404,32 @@ def directive_output(*args, **kwargs):
     for k in kwargs.keys():
         if k not in SOS_OUTPUT_OPTIONS:
             raise RuntimeError('Unrecognized output option {}'.format(k))
-    ofiles = []
+    tmp = []
     for arg in args:
         if isinstance(arg, str):
-            ofiles.append(os.path.expanduser(arg))
+            tmp.append(os.path.expanduser(arg))
         elif isinstance(arg, Iterable):
             arg = list(arg)
             if not all(isinstance(x, str) for x in arg):
                 raise RuntimeError('Invalid output file: {}'.format(arg))
-            ofiles.extend(arg)
+            tmp.extend(arg)
         else:
             raise ValueError('Unrecognizable output type {}'.format(arg))
     #
     if 'pattern' in kwargs:
-        handle_output_pattern(kwargs['pattern'], ofiles)
+        handle_output_pattern(kwargs['pattern'], tmp)
+    #
+    # expand wild card variables
+    ofiles = []
+    for ofile in tmp:
+        if '*' in ofile or '?' in ofile or ('[' in ofile and ']' in ofile):
+            expanded = sorted(glob.glob(os.path.expanduser(ofile)))
+            if not expanded:
+                env.logger.warning('{} does not expand to any valid file.'.format(ofile))
+            ofiles.extend(expanded)
+        else:
+            ofiles.append(ofile)
+    #
     for ofile in ofiles:
         parent_dir = os.path.split(os.path.expanduser(ofile))[0]
         if parent_dir and not os.path.isdir(parent_dir):
@@ -873,7 +895,18 @@ class SoS_Step:
                     # output, depends, and process can be processed multiple times
                     try:
                         args, kwargs = SoS_eval('__null_func__({})'.format(value), self.sigil)
-                        eval('directive_' + key)(*args, **kwargs)
+                        # dynamic output or dependent files
+                        if 'dynamic' in kwargs:
+                            if key not in ('output', 'depends'):
+                                raise RuntimeError('dynamic option is only allowed for step input, output or depends')
+                            if not isinstance(kwargs['dynamic'], bool):
+                                raise RuntimeError('Option dynamic can only be True or False. {} provided'.format(kwargs['dynamic']))
+                            if kwargs['dynamic']:
+                                if key == 'output':
+                                    env.sos_dict.set('_' + key, DynamicExpression(value))
+                            env.logger.error('here')
+                        else:
+                            eval('directive_' + key)(*args, **kwargs)
                     except Exception as e:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
