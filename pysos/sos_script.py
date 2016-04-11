@@ -276,13 +276,13 @@ def directive_input(*args, **kwargs):
         ifiles = []
         for arg in args:
             if isinstance(arg, str):
-                ifiles.append(arg)
+                ifiles.append(os.path.expanduser(arg))
             elif isinstance(arg, Iterable):
                 # in case arg is a Generator, check its type will exhaust it
                 arg = list(arg)
                 if not all(isinstance(x, str) for x in arg):
                     raise RuntimeError('Invalid input file: {}'.format(arg))
-                ifiles.extend(arg)
+                ifiles.extend([os.path.expanduser(x) for x in arg])
             else:
                 raise ValueError('Unrecognizable input type {}'.format(arg))
         env.sos_dict.set('__step_input__', ifiles)
@@ -397,7 +397,7 @@ def directive_output(*args, **kwargs):
     ofiles = []
     for arg in args:
         if isinstance(arg, str):
-            ofiles.append(arg)
+            ofiles.append(os.path.expanduser(arg))
         elif isinstance(arg, Iterable):
             arg = list(arg)
             if not all(isinstance(x, str) for x in arg):

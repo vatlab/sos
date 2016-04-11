@@ -157,33 +157,102 @@ class DockerClient:
                         if not os.path.abspath(host_dir).startswith('/Users'):
                             raise RuntimeError('hostdir ({}) under MacOSX must be under /Users to be usable in docker container'.format(host_dir))
                     binds.append('{}:{}'.format(os.path.abspath(host_dir), mnt_dir))
+            #
+            volumes_opt = ' '.join('-v {}'.format(x) for x in binds)
             # under mac, we by default share /Users within docker
             if platform.system() == 'Darwin' and not any(x.startswith('/Users:') for x in binds):
-                binds.append('/Users:/Users')
-            # we also need to mount the script
-            if script and interpreter:
-                binds.append('{}:{}'.format(os.path.join(tempdir, tempscript), '/var/lib/sos/{}'.format(tempscript)))
-                cmd = interpreter.replace('{}', '/var/lib/sos/{}'.format(tempscript))
-            else:
-                cmd = ''
-            working_dir = '/'
-            if 'working_dir' in kwargs:
-                working_dir = kwargs['working_dir']
-            if not os.path.isabs(working_dir):
-                env.logger.warning('An absolute path is needed for -w option of docker run command. "{}" provided, "{}" used.'
-                    .format(working_dir, os.path.abspath(working_dir)))
-                working_dir = os.path.abspath(working_dir)
+                volumes_opt += ' -v /Users:/Users'
+            if not any(x.startswith('/tmp:') for x in binds):
+                volumes_opt += ' -v /tmp:/tmp'
             #
-            command = 'docker run -P -it --rm {} {} {} {} {}'.format(
-                ' '.join('-v ' +x for x in binds),          # image
-                '-w=' + working_dir,                        # working dir
-                '--user={}'.format(kwargs.get('user', 'root')) if 'user' in kwargs else '',  # user
-                image, cmd)
+            volumes_from_opt = ''
+            if 'volumes_from' in kwargs:
+                if isinstance(kwargs['volumes_from'], str):
+                    volumes_from_opt = '--volumes_from={}'.format(kwargs['volumes_from'])
+                elif isinstance(kwargs['volumes_from'], list):
+                    volumes_from_opt = ' '.join('--volumes_from={}'.format(x) for x in kwargs['volumes_from'])
+                else:
+                    raise RuntimeError('Option volumes_from only accept a string or list of string'.format(kwargs['volumes_from']))
+            # we also need to mount the script
+            cmd_opt = ''
+            if script and interpreter:
+                volumes_opt += ' -v {}:{}'.format(os.path.join(tempdir, tempscript), '/var/lib/sos/{}'.format(tempscript))
+                cmd_opt = interpreter.replace('{}', '/var/lib/sos/{}'.format(tempscript))
+            #
+            working_dir_opt = ''
+            if 'working_dir' in kwargs:
+                if not os.path.isabs(kwargs['working_dir']):
+                    env.logger.warning('An absolute path is needed for -w option of docker run command. "{}" provided, "{}" used.'
+                        .format(kwargs['working_dir'], os.path.abspath(kwargs['working_dir'])))
+                    working_dir_opt = '-w={}'.format(os.path.abspath(kwargs['working_dir'])) 
+                else:
+                    working_dir_opt = '-w={}'.format(kwargs['working_dir'])
+            #
+            env_opt = ''
+            if 'environment' in kwargs:
+                if isinstance(kwargs['environment'], dict):
+                    env_opt = ' '.join('-e {}={}'.format(x,y) for x,y in kwargs['environment'].items())
+                elif isinstance(kwargs['environment'], list):
+                    env_opt = ' '.join('-e {}'.format(x) for x in kwargs['environment'])
+                elif isinstance(kwargs['environment'], str):
+                    env_opt = '-e {}'.format(kwargs['environment'])
+                else:
+                    raise RuntimeError('Invalid value for option environment (str, list, or dict is allowd, {} provided)'.format(kwargs['environment']))
+            #
+            port_opt = ''
+            if 'port' in kwargs:
+                if isinstance(kwargs['port'], (str, int)):
+                    port_opt = '-p {}'.format(kwargs['port'])
+                elif isinstace(kwargs['port'], list):
+                    port_opt = ' '.join('-p {}'.format(x) for x in kwargs['port'])
+                else:
+                    raise RuntimeError('Invalid value for option port (a list of intergers), {} provided'.format(kwargs['port']))
+            #
+            name_opt = ''
+            if 'name' in kwargs:
+                name_opt = '--name={}'.format(kwargs['name'])
+            #
+            stdin_opt = ''
+            if 'stdin_open' in kwargs and kwargs['stdin_optn']:
+                stdin_opt = '-i'
+            #
+            tty_opt = '-t'
+            if 'tty' in kwargs and not kwargs['tty']:
+                tty_opt = ''
+            #
+            user_opt = ''
+            if 'user' in kwargs:
+                user_opt = '-u {}'.format(user)       
+            #
+            extra_opt = ''
+            if 'extra_args' in kwargs:
+                extra_opt = kwargs['extra_args']
+            command = 'docker run -P --rm {} {} {} {} {} {} {} {} {} {} {}'.format(
+                volumes_opt,        # volumes
+                name_opt,           # name
+                stdin_opt,          # stdin_optn
+                tty_opt,            # tty
+                port_opt,           # port
+                working_dir_opt,    # working dir
+                user_opt,           # user
+                env_opt,            # environment
+                extra_opt,          # any extra parameters
+                image,              # image
+                cmd_opt
+                )
             env.logger.info(command)
             ret = subprocess.call(command, shell=True)
             if ret != 0:
+                msg = 'The script has been saved to .sos/{} so that you can execute it using the following command:\n{}'.format(tempscript, command.replace(tempdir, '.sos'))
                 shutil.copy(os.path.join(tempdir, tempscript), '.sos')
-                raise RuntimeError('Executing script in docker returns an error. The script has been saved to .sos/{} for debugging purposed.'.format(tempscript))
+                if ret == 125:
+                    raise RuntimeError('Docker daemon failed (exitcode=125). ' + msg)
+                elif ret == 126:
+                    raise RuntimeError('Failed to invoke specified command (exitcode=126). ' + msg)
+                elif ret == 127:
+                    raise RuntimeError('Failed to locate specified command (exitcode=127). ' + msg)
+                else: 
+                    raise RuntimeError('Executing script in docker returns an error. ' + msg)
         return 0
 
 #
@@ -226,7 +295,7 @@ class SoS_ExecuteScript:
         if 'docker_image' in runtime_options:
             docker = DockerClient()
             docker.run(runtime_options['docker_image'], self.script, self.interpreter, self.suffix, 
-                volumes=runtime_options.get('docker_volumes', []), **kwargs)
+                **kwargs)
         else:
             self.script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=self.suffix, delete=False).name
             with open(self.script_file, 'w') as script_file:
