@@ -73,7 +73,8 @@ class DockerClient:
             '''docker run -t {} cat /proc/meminfo  | grep MemTotal'''.format(image),
             shell=True, stdin=subprocess.DEVNULL)
         # ret: MemTotal:       30208916 kB
-        return int(ret.split()[1])
+        self.tot_mem = int(ret.split()[1])
+        return self.tot_mem
 
     def _is_image_avail(self, image):
         images = sum([x['RepoTags'] for x in self.client.images()], [])
@@ -142,6 +143,7 @@ class DockerClient:
             raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         #
         env.logger.debug('docker_run with keyword args {}'.format(kwargs))
+        #
         # now, write a temporary file to a tempoary directory under the current directory, this is because
         # we need to share the directory to ...
         with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
@@ -173,6 +175,10 @@ class DockerClient:
                 volumes_opt += ' -v /Users:/Users'
             if not any(x.startswith('/tmp:') for x in binds):
                 volumes_opt += ' -v /tmp:/tmp'
+            #
+            mem_limit_opt = ''
+            if 'mem_limit' in kwargs:
+                mem_limit_opt = '--memory={}'.format(kwargs['mem_limit'])
             #
             volumes_from_opt = ''
             if 'volumes_from' in kwargs:
@@ -236,7 +242,7 @@ class DockerClient:
             extra_opt = ''
             if 'extra_args' in kwargs:
                 extra_opt = kwargs['extra_args']
-            command = 'docker run -P --rm {} {} {} {} {} {} {} {} {} {} {}'.format(
+            command = 'docker run -P --rm {} {} {} {} {} {} {} {} {} {} {} {}'.format(
                 volumes_opt,        # volumes
                 name_opt,           # name
                 stdin_opt,          # stdin_optn
@@ -245,6 +251,7 @@ class DockerClient:
                 working_dir_opt,    # working dir
                 user_opt,           # user
                 env_opt,            # environment
+                mem_limit_opt,        # memory limit
                 extra_opt,          # any extra parameters
                 image,              # image
                 cmd_opt
@@ -261,8 +268,12 @@ class DockerClient:
                     raise RuntimeError('Failed to invoke specified command (exitcode=126). ' + msg)
                 elif ret == 127:
                     raise RuntimeError('Failed to locate specified command (exitcode=127). ' + msg)
+                elif ret == 137:
+                    if not hasattr(self, 'tot_mem'):
+                        self.tot_mem = self.total_memory(image)
+                    raise RuntimeError('Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(self.tot_mem/1024/1024) + msg)
                 else: 
-                    raise RuntimeError('Executing script in docker returns an error. ' + msg)
+                    raise RuntimeError('Executing script in docker returns an error (exitcode={}). '.format(ret) + msg)
         return 0
 
 #
