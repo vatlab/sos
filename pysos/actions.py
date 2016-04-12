@@ -194,12 +194,12 @@ class DockerClient:
                 volumes_opt += ' -v {}:{}'.format(os.path.join(tempdir, tempscript), '/var/lib/sos/{}'.format(tempscript))
                 cmd_opt = interpreter.replace('{}', '/var/lib/sos/{}'.format(tempscript))
             #
-            working_dir_opt = ''
+            working_dir_opt = '-w={}'.format(os.path.abspath(os.getcwd()))
             if 'working_dir' in kwargs:
                 if not os.path.isabs(kwargs['working_dir']):
                     env.logger.warning('An absolute path is needed for -w option of docker run command. "{}" provided, "{}" used.'
-                        .format(kwargs['working_dir'], os.path.abspath(kwargs['working_dir'])))
-                    working_dir_opt = '-w={}'.format(os.path.abspath(kwargs['working_dir'])) 
+                        .format(kwargs['working_dir'], os.path.abspath(os.path.expanduser(kwargs['working_dir']))))
+                    working_dir_opt = '-w={}'.format(os.path.abspath(os.path.expanduser(kwargs['working_dir'])))
                 else:
                     working_dir_opt = '-w={}'.format(kwargs['working_dir'])
             #
