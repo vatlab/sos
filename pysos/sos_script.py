@@ -54,7 +54,8 @@ from itertools import tee, combinations
 from . import __version__
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
     dehtml, getTermWidth, interpolate, shortRepr, extract_pattern, expand_pattern, \
-    print_traceback, pickleable, ProgressBar, frozendict, DynamicExpression
+    print_traceback, pickleable, ProgressBar, frozendict, DynamicExpression, \
+    locate_script
 
 from .sos_syntax import *
 
@@ -1324,23 +1325,8 @@ class SoS_Script:
         from a file.
         '''
         if filename:
-            if os.path.isfile(os.path.expanduser(filename)):
-                self.sos_script = os.path.abspath(os.path.expanduser(filename))
-                self.content = SoS_ScriptContent(content, self.sos_script)
-            else: # if it is an URL
-                token = urllib.parse.urlparse(filename)
-                # if no scheme or netloc, the URL is not acceptable
-                if not all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
-                    raise ValueError('{} does not exist and is not a valid URL'.format(filename))
-                self.sos_script = filename
-                try:
-                    local_filename, headers = urllib.request.urlretrieve(filename)
-                    with open(local_filename) as script:
-                        content = script.read()
-                except Exception as e:
-                    env.logger.error(e)
-                    raise ValueError('Failed to open {}'.format(filename))
-                self.content = SoS_ScriptContent(content, self.sos_script)
+            content, self.sos_script = locate_script(filename, start='.')
+            self.content = SoS_ScriptContent(content, self.sos_script)
         else:
             self.sos_script = '<string>'
             self.content = SoS_ScriptContent(content, None)
@@ -1719,11 +1705,14 @@ class SoS_Script:
         if source:
             source = [source] if isinstance(source, str) else source
             for sos_file in source:
-                if not os.path.isfile(sos_file) and self.sos_script != '<string>':
-                    sos_file = os.path.join(os.path.split(self.sos_script)[0], sos_file)
-                if not os.path.isfile(sos_file):
+                try:
+                    if self.sos_script and self.sos_script != '<string>':
+                        content = locate_script(sos_file, start=os.path.split(self.sos_script)[0])
+                    else:
+                        content = locate_script(sos_file)
+                except Exception as e:
                     raise RuntimeError('Source file for nested workflow {} does not exist'.format(sos_file))
-                source_scripts.append(SoS_Script(filename=sos_file))
+                source_scripts.append(SoS_Script(*content))
         # get workflow name from source files
         extra_workflows = list(set(sum([x.workflows for x in source_scripts], [])))
         extra_sections = sum([x.sections for x in source_scripts], [])

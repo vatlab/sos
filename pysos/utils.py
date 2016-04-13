@@ -36,7 +36,7 @@ import zipfile
 import tarfile
 import shutil
 import pickle
-import json
+import yaml
 import token
 import psutil
 import urllib
@@ -1569,3 +1569,60 @@ def get_output(cmd):
             env.logger.error(e.output.decode())
         raise RuntimeError(e)
     return output
+
+# 
+# search a path and locate script and other files
+#
+def locate_script(filename, start=''):
+    # 
+    attemp = os.path.expanduser(filename)
+    if os.path.isfile(attemp):
+        return ('', attemp)
+    #
+    token = urllib.parse.urlparse(filename)
+    # if no scheme or netloc, the URL is not acceptable
+    if all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
+        try:
+            local_filename, headers = urllib.request.urlretrieve(filename)
+            with open(local_filename) as script:
+                content = script.read()
+            #
+            return (content, filename)
+        except Exception as e:
+            env.logger.error(e)
+            raise ValueError('Failed to open {}'.format(filename))
+    #
+    # a search path
+    pathes = [start]
+    sos_config_file = os.path.expanduser('~/.sos/config.json')
+    if os.path.isfile(sos_config_file):
+        try:
+            with open(sos_config_file) as config:
+                cfg = yaml.safe_load(config)
+        except Exception as e:
+            raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format?'.format(sos_config_file))
+        #
+        pathes.extend(cfg.get('sos_path', []))
+    #
+    for path in pathes:
+        if not path:
+            continue
+        attemp = os.path.join(os.path.expanduser(path), os.path.expanduser(filename))
+        if os.path.isfile(attemp):
+            return ('', attemp)
+        # is it an URL?
+        token = urllib.parse.urlparse(path)
+        # if no scheme or netloc, the URL is not acceptable
+        if all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
+            url = path + ('' if path.endswith('/') else '/') + filename
+            try:
+                local_filename, headers = urllib.request.urlretrieve(url)
+                with open(local_filename) as script:
+                    content = script.read()
+                return content, url
+            except Exception as e:
+                pass
+    #
+    raise ValueError('Failed to locate {}'.format(filename))
+
+
