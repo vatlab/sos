@@ -64,6 +64,20 @@ class DockerClient:
         self.client = Client(**kwargs_from_env(assert_hostname=False))
         try:
             self.client.info()
+            # mount the /Volumes folder under mac, please refer to
+            #    https://github.com/bpeng2000/SOS/wiki/SoS-Docker-guide
+            # for details.
+            self.has_volumes = False
+            if platform.system() == 'Darwin':
+                try:
+                    # this command log in to the docker machine, check if /Volumes has been mounted,
+                    # and try to mount it if possible. This requires users to configure 
+                    subprocess.call("""docker-machine ssh "{}" 'mount | grep /Volumes || {{ echo "mounting /Volumes"; sudo mount  -t vboxsf Volumes /Volumes; }}' """.format(os.environ['DOCKER_MACHINE_NAME']),
+                        shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    env.logger.trace('Sucessfully mount /Volumes to virtual machine')
+                    self.has_volumes = True
+                except Exception as e:
+                    env.logger.trace('Failed to mount /Volumes to virtual machine: {}'.format(e))
         except Exception as e:
             self.client = None
 
@@ -165,14 +179,17 @@ class DockerClient:
                     host_dir, mnt_dir = vol.split(':')
                     if platform.system() == 'Darwin':
                         # under Darwin, host_dir must be under /Users
-                        if not os.path.abspath(host_dir).startswith('/Users'):
-                            raise RuntimeError('hostdir ({}) under MacOSX must be under /Users to be usable in docker container'.format(host_dir))
+                        if not os.path.abspath(host_dir).startswith('/Users') and not (self.has_volumes and os.path.abspath(host_dir).startswith('/Volumes')):
+                            raise RuntimeError('hostdir ({}) under MacOSX must be under /Users or /Volumes (if properly configured, see https://github.com/bpeng2000/SOS/wiki/SoS-Docker-guide for details) to be usable in docker container'.format(host_dir))
                     binds.append('{}:{}'.format(os.path.abspath(host_dir), mnt_dir))
             #
             volumes_opt = ' '.join('-v {}'.format(x) for x in binds)
             # under mac, we by default share /Users within docker
-            if platform.system() == 'Darwin' and not any(x.startswith('/Users:') for x in binds):
-                volumes_opt += ' -v /Users:/Users'
+            if platform.system() == 'Darwin':
+                if not any(x.startswith('/Users:') for x in binds):
+                    volumes_opt += ' -v /Users:/Users'
+                if self.has_volumes:
+                    volumes_opt += ' -v /Volumes:/Volumes'
             if not any(x.startswith('/tmp:') for x in binds):
                 volumes_opt += ' -v /tmp:/tmp'
             #
