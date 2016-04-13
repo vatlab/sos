@@ -807,7 +807,7 @@ def SoS_exec(stmts, sigil='${ }'):
     executed = ''
     for code in code_group:
         stmts = ConvertString(code, sigil)
-        env.logger.trace('Executing\n{}'.format(executed))
+        env.logger.trace('Executing\n{}'.format(stmts))
         try:
             if env.run_mode == 'dryrun':
                 # make sure that the expression can be completed in 5 seconds
