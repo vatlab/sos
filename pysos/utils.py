@@ -42,6 +42,7 @@ import psutil
 import urllib
 import pycurl
 import blessings
+import subprocess
 from io import StringIO
 from shlex import quote
 from tokenize import generate_tokens, untokenize
@@ -51,7 +52,7 @@ from html.parser import HTMLParser
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
-__all__ = ['logger', 'interpolate', 'extract_pattern', 'expand_pattern']
+__all__ = ['logger', 'interpolate', 'get_output', 'expand_pattern']
 
 
 class ColoredFormatter(logging.Formatter):
@@ -1557,3 +1558,14 @@ class DynamicExpression(object):
     def __hash__(self):
         raise RuntimeError('Dynamic expression should be evaluated before used.'
             'This is certainly a bug so please report this to SoS developer.')
+
+#
+# A utility function that returns output of a command
+def get_output(cmd):
+    try:
+        output = subprocess.check_output(cmd, shell=True).decode()
+    except subprocess.CalledProcessError as e:
+        if e.output.decode():
+            env.logger.error(e.output.decode())
+        raise RuntimeError(e)
+    return output

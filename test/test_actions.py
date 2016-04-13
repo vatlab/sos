@@ -80,6 +80,59 @@ c=func_both()
         self.assertEqual(env.sos_dict['result'].b, 1)
         self.assertEqual(env.sos_dict['result'].c, 1)
 
+    def testGetOutput(self):
+        '''Test utility function get_output'''
+        script = SoS_Script(r"""
+[0: alias='test']
+ret = get_output('echo blah')
+""")
+        wf = script.workflow()
+        # should be ok
+        wf.run()
+        self.assertEqual(env.sos_dict['test'].ret, 'blah\n')
+        #
+        script = SoS_Script(r"""
+[0]
+get_output('catmouse')
+""")
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        # should fail in dryrun mode
+        self.assertRaises((ExecuteError, RuntimeError), wf.run)
+        #
+        env.run_mode = 'run'
+        wf = script.workflow()
+        # should fail also in run mode
+        self.assertRaises(RuntimeError, wf.run)
+        #
+        script = SoS_Script(r"""
+[0]
+ret = get_output('cat -h')
+""")
+        wf = script.workflow()
+        # this should give a warning and return false
+        self.assertRaises(RuntimeError, wf.run)
+        #
+        # check get_output if the command is stuck
+        env.run_mode = 'dryrun'
+        script = SoS_Script(r"""
+[0]
+get_output('sleep 6')
+""")
+        wf = script.workflow()
+        # this should yield error
+        self.assertRaises((ExecuteError, RuntimeError), wf.run)
+        # even for weird commands such as cat > /dev/null, it should quite
+        # in dryrun mode
+        script = SoS_Script(r"""
+[0]
+get_output('cat > /dev/null')
+""")
+        wf = script.workflow()
+        env.run_mode = 'dryrun'
+        # this should pass
+        self.assertRaises(ExecuteError, wf.run)
+
     def testCheckCommand(self):
         '''Test action check_command'''
         script = SoS_Script(r"""
