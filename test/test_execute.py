@@ -922,5 +922,51 @@ time.sleep(8)
         else:
             os.remove(sos_config_file)
 
+
+
+    def testSearchPath(self):
+        '''Test if any action should exit in five seconds in dryrun mode'''
+        sos_config_file = os.path.expanduser('~/.sos/config.json')
+        move_back = False
+        if os.path.isfile(sos_config_file):
+            move_back = True
+            os.rename(sos_config_file, sos_config_file + '.bak')
+        #
+        with open(sos_config_file, 'w') as sos_config:
+            sos_config.write('''
+#
+# global sos configuration file
+#
+{{
+    "sos_path": ["{0}/crazy_path", "{0}/crazy_path/more_crazy/"]
+}}
+'''.format(os.getcwd()))
+        #
+        if not os.path.isdir('crazy_path'):
+            os.mkdir('crazy_path')
+            os.mkdir('crazy_path/more_crazy')
+        with open('crazy_path/crazy_master.sos', 'w') as crazy:
+            crazy.write('''
+[0]
+sos_run('cc', source='crazy_slave.sos')
+
+''')
+        with open('crazy_path/more_crazy/crazy_slave.sos', 'w') as crazy:
+            crazy.write('''
+[cc_0]
+print('hay, I am crazy')
+''')
+
+        script = SoS_Script(filename='crazy_master.sos')
+        wf = script.workflow()
+        env.run_mode = 'run'
+        #
+        shutil.rmtree('crazy_path')
+        if move_back:
+            os.rename(sos_config_file + '.bak', sos_config_file)
+        else:
+            os.remove(sos_config_file)
+
+
 if __name__ == '__main__':
     unittest.main()
