@@ -42,6 +42,9 @@ if __name__ == '__main__':
     master_parser.add_argument('--version', action='version',
         version='%(prog)s {}'.format(SOS_FULL_VERSION))
     subparsers = master_parser.add_subparsers(title='subcommands')
+    script_help = '''A SoS script that defines one or more workflows. The
+        script can be a filename or a URL from which the content of a SoS
+        will be read.'''
     workflow_spec =  '''Name of the workflow to execute. This option can be
         ignored if the script defines a default workflow (with no name or with
         name `default`) or defines only a single workflow. A subworkflow or a 
@@ -62,8 +65,7 @@ if __name__ == '__main__':
         description='Execute a workflow defined in script',
         epilog=workflow_options,
         help='Execute a SoS script')
-    parser.add_argument('script', metavar='SCRIPT',
-        help='A SoS script that defines one or more workflows.')
+    parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
     parser.add_argument('-j', type=int, metavar='JOBS', default=1, dest='__max_jobs__',
@@ -113,8 +115,7 @@ if __name__ == '__main__':
             if necessary.''',
         epilog=workflow_options,
         help='Execute a SoS script in dryrun mode')
-    parser.add_argument('script', metavar='SCRIPT',
-        help='A SoS script that defines one or more workflows.')
+    parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
     #parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
@@ -129,8 +130,7 @@ if __name__ == '__main__':
             required resources and docker images.''',
         epilog=workflow_options,
         help='Execute a SoS script in prepare mode')
-    parser.add_argument('script', metavar='SCRIPT',
-        help='A SoS script that defines one or more workflows.')
+    parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
     #parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
@@ -146,8 +146,7 @@ if __name__ == '__main__':
             to a specified workflow (which can be a subworkflow or a combined
             workflow) if a workflow is specified.''',
         help='Show details of a SoS script')
-    parser.add_argument('script', metavar='SCRIPT',
-        help='A SoS script that defines one or more workflows.')
+    parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
     addCommonArgs(parser)

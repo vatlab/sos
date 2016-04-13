@@ -24,6 +24,7 @@ import sys
 import re
 import copy
 import yaml
+import urllib
 import atexit
 import glob
 import fnmatch
@@ -1323,16 +1324,32 @@ class SoS_Script:
         from a file.
         '''
         if filename:
-            self.sos_script = os.path.abspath(os.path.expanduser(filename))
-            self.content = SoS_ScriptContent(content, self.sos_script)
-            if not os.path.isfile(self.sos_script):
-                raise ValueError('{} does not exist'.format(filename))
-            with open(self.sos_script) as fp:
-                self._read(fp)
+            if os.path.isfile(os.path.expanduser(filename)):
+                self.sos_script = os.path.abspath(os.path.expanduser(filename))
+                self.content = SoS_ScriptContent(content, self.sos_script)
+            else: # if it is an URL
+                token = urllib.parse.urlparse(filename)
+                # if no scheme or netloc, the URL is not acceptable
+                if not all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
+                    raise ValueError('{} does not exist and is not a valid URL'.format(filename))
+                self.sos_script = filename
+                try:
+                    local_filename, headers = urllib.request.urlretrieve(filename)
+                    with open(local_filename) as script:
+                        content = script.read()
+                except Exception as e:
+                    env.logger.error(e)
+                    raise ValueError('Failed to open {}'.format(filename))
+                self.content = SoS_ScriptContent(content, self.sos_script)
         else:
             self.sos_script = '<string>'
             self.content = SoS_ScriptContent(content, None)
+        # open the file
+        if content:
             with StringIO(content) as fp:
+                self._read(fp)
+        else:
+            with open(self.sos_script) as fp:
                 self._read(fp)
         #
         # workflows in this script, from sections that are not skipped.
