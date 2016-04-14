@@ -137,6 +137,7 @@ def execute_step_process(step_process, global_process, sos_dict, sigil, signatur
             SoS_exec(global_process, sigil)
         # step process
         SoS_exec(step_process, sigil)
+        os.chdir(env.exec_dir)
         if signature:
             signature.write()
     except KeyboardInterrupt:

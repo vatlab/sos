@@ -305,24 +305,27 @@ class RuntimeEnvironments(object):
         self.max_jobs = 1
         self.running_jobs = 0
         # this directory will be used by a lot of processes 
+        self.exec_dir = os.getcwd()
         if not os.path.isdir('.sos'):
             os.mkdir('.sos')
 
     def register_process(self, pid, msg=''):
         '''Register a process used by this SoS instance. It will also be
         used to check resource used.'''
+        proc_file = os.path.join(self.exec_dir, '.sos/proc_{}'.format(pid))
         self.logger.trace('Register {} {}'.format(pid, msg))
-        with open('.sos/proc_{}'.format(pid), 'w') as p:
+        with open(proc_file, 'w') as p:
             p.write(msg)
 
     def deregister_process(self, pid):
-        self.logger.trace('Deregister {}'.format(pid))
-        if os.path.isfile('.sos/proc_{}'.format(pid)):
-            os.remove('.sos/proc_{}'.format(pid))
+        proc_file = os.path.join(self.exec_dir, '.sos/proc_{}'.format(pid))
+        self.logger.trace('Deregister {} at {}'.format(pid, proc_file))
+        if os.path.isfile(proc_file):
+            os.remove(proc_file)
 
     def cleanup(self):
         '''Clean up all running processes'''
-        for p in glob.glob('.sos/proc_*'):
+        for p in glob.glob(os.path.join(self.exec_dir, '.sos/proc_*')):
             pid = int(os.path.basename(p)[5:])
             try:
                 env.logger.trace('Killing {} and all its children'.format(pid))
