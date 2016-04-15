@@ -900,7 +900,7 @@ sos_run(wf)
         self.assertEqual(env.sos_dict['executed'], ['default_parameters', 'default_0', 'a_parameters', 'a_1', 'a_2', 'a_3'])
 
     def testSourceOption(self):
-        '''Test the source section option'''
+        '''Test the source option of sos_run'''
         # nested subworkflow with step option and others
         env.shared_vars = ['executed', 'GLB', 'parB']
         if not os.path.isdir('temp'):
@@ -943,6 +943,50 @@ sos_run('A', source='temp/test.sos')
         self.assertEqual(env.sos_dict['executed'], ['g.b_1', 't.A_parameters', 't.A_1', 't.A_2', 't.A_parameters', 't.A_1', 't.A_2'])
         #
         shutil.rmtree('temp')
+
+    def testSourceDictOption(self):
+        '''Test the dictionary form of source option of sos_run'''
+        # nested subworkflow with step option and others
+        env.shared_vars = ['executed', 'GLB', 'parB']
+        if not os.path.isdir('temp'):
+            os.mkdir('temp')
+        with open('temp/test.sos', 'w') as sos:
+            sos.write('''
+# test sos script
+
+# global definition
+GLB = 5
+if 'executed' in locals():
+    executed.append('t.' + step_name)
+else:
+    executed = ['t.' + step_name]
+
+[parameters]
+parB = 10
+
+[A_1]
+output: _input[0] + 'a1'
+
+[A_2]
+output: _input[0] + 'a2'
+
+''')
+        script = SoS_Script('''
+if 'executed' in locals():
+    executed.append('g.' + step_name)
+else:
+    executed = ['g.' + step_name]
+[b_1: skip=False]
+input: 'a.txt', 'b.txt', group_by='single'
+sos_run('k.A', source={'k':'temp/test.sos'})
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow('b')
+        wf.run()
+        self.assertEqual(env.sos_dict['executed'], ['g.b_1']) 
+        #
+        shutil.rmtree('temp')
+
 
     def testYAMLConfig(self):
         '''Test config file in yaml format'''

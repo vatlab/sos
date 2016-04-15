@@ -58,6 +58,7 @@ _SECTION_NAME_TMPL = '''
 _SUBWORKFLOW_TMPL = '''
     ^\s*                               # leading space
     (?P<name>                          # name
+    ([a-zA-Z]+\.)*                     # optional name
     [a-zA-Z*]                          # cannot start with _ etc
     ([\w\d_]*?))                       # can have _ and digit
     (_(?P<steps>                       # index start from _

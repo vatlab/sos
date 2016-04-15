@@ -1674,7 +1674,7 @@ class SoS_Script:
             self.sections.pop(global_section[0][0])
 
 
-    def workflow(self, workflow_name=None, source=[]):
+    def workflow(self, workflow_name=None, source={}):
         '''Return a workflow with name_step+name_step specified in wf_name
         This function might be called recursively because of nested
         workflow. Additional workflows can be specified in the source parameter.'''
@@ -1704,21 +1704,34 @@ class SoS_Script:
         # check source
         source_scripts = []
         if source:
-            source = [source] if isinstance(source, str) else source
-            for sos_file in source:
-                try:
-                    if self.sos_script and self.sos_script != '<string>':
-                        content = locate_script(sos_file, start=os.path.split(self.sos_script)[0])
-                    else:
-                        content = locate_script(sos_file)
-                except Exception as e:
-                    raise RuntimeError('Source file for nested workflow {} does not exist'.format(sos_file))
-                source_scripts.append(SoS_Script(*content))
+            if isinstance(source, str):
+                source = {'': [source]}
+            elif isinstance(source, dict):
+                source = {x: ([y] if isinstance(y, str) else y) for x,y in source.items()}
+            elif isinstance(source, Sequence):
+                source = {'': source}
+            #
+            for key in source.keys():
+                source_scripts = []
+                for sos_file in source[key]:
+                    try:
+                        if self.sos_script and self.sos_script != '<string>':
+                            content = locate_script(sos_file, start=os.path.split(self.sos_script)[0])
+                        else:
+                            content = locate_script(sos_file)
+                    except Exception as e:
+                        raise RuntimeError('Source file for nested workflow {} does not exist'.format(sos_file))
+                    source_scripts.append(SoS_Script(*content))
+                #
+                source[key] = source_scripts
         # get workflow name from source files
-        extra_workflows = list(set(sum([x.workflows for x in source_scripts], [])))
-        extra_sections = sum([x.sections for x in source_scripts], [])
+        extra_workflows = {name: list(set(sum([x.workflows for x in scripts], []))) for name,scripts in source.items()}
+        extra_workflow_names = []
+        for k,v in extra_workflows.items():
+            extra_workflow_names.extend(['{}.{}'.format(k, x) for x in v])
+        extra_sections = {name: sum([x.sections for x in scripts], []) for name,scripts in source.items()}
         if extra_sections:
-            env.logger.debug('Workflows {} imported'.format(', '.join(extra_workflows)))
+            env.logger.debug('Importing workflows {}'.format(', '.join(extra_workflow_names)))
         #
         if not wf_name:
             if len(self.workflows) == 1:
@@ -1729,13 +1742,17 @@ class SoS_Script:
                 raise ValueError('Name of workflow should be specified because '
                     'the script defines more than one pipelines without a default one. '
                     'Available pipelines are: {}.'.format(', '.join(self.workflows)))
-        elif wf_name not in self.workflows + extra_workflows:
+        elif wf_name not in self.workflows + extra_workflow_names:
             raise ValueError('Workflow {} is undefined. Available workflows are: {}'.format(wf_name,
-                ', '.join(self.workflows + extra_workflows)))
+                ', '.join(self.workflows + extra_workflow_names)))
         # do not send extra parameters of ...
         sections = []
         # look for relevant sections in self.sections and extra sections from another script
-        for section in self.sections + extra_sections:
+        if '.' in wf_name:
+            candidate_sections = extra_sections[wf_name.split('.')[0]]
+        else:
+            candidate_sections = self.sections + extra_sections.get('', [])
+        for section in candidate_sections:
             # skip, skip=True, skip=1 etc are all allowed.
             if 'skip' in section.options and (section.options['skip'] is None or section.options['skip'] is True):
                 continue
@@ -1753,7 +1770,7 @@ class SoS_Script:
                 if fnmatch.fnmatch(wf_name, name):
                     sections.append(section)
                     break
-        return SoS_Workflow(wf_name, allowed_steps, sections, self.workflow_descriptions[wf_name])
+        return SoS_Workflow(wf_name, allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
 
 
     def show(self):
