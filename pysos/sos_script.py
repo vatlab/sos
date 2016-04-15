@@ -1758,7 +1758,7 @@ class SoS_Script:
                 continue
             if section.is_parameters:
                 # include parameter only if they apply to wf_name
-                if wf_name in section.names:
+                if wf_name.split('.')[-1] in section.names:
                     sections.append(section)
                 continue
             if 'target' in section.options:
@@ -1767,10 +1767,9 @@ class SoS_Script:
                 continue
             for name, index in section.names:
                 # exact match or filename like match if name contains * etc
-                if fnmatch.fnmatch(wf_name, name):
-                    sections.append(section)
+                if fnmatch.fnmatch(wf_name.split('.')[-1], name):
                     break
-        return SoS_Workflow(wf_name, allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
+        return SoS_Workflow(wf_name.split('.')[-1], allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
 
 
     def show(self):
