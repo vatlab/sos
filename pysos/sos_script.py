@@ -1728,7 +1728,7 @@ class SoS_Script:
         extra_workflows = {name: list(set(sum([x.workflows for x in scripts], []))) for name,scripts in source.items()}
         extra_workflow_names = []
         for k,v in extra_workflows.items():
-            extra_workflow_names.extend(['{}.{}'.format(k, x) for x in v])
+            extra_workflow_names.extend(['{}.{}'.format(k, x).lstrip('.') for x in v])
         extra_sections = {name: sum([x.sections for x in scripts], []) for name,scripts in source.items()}
         if extra_sections:
             env.logger.debug('Importing workflows {}'.format(', '.join(extra_workflow_names)))
