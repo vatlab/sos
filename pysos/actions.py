@@ -357,7 +357,7 @@ class SoS_ExecuteScript:
 
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
-def sos_run(workflow, source=None):
+def sos_run(workflow, source={}):
     '''Execute a workflow from specified source, input, and output
     By default the workflow is defined in the existing SoS script, but
     extra sos files can be specified from paramter source. The workflow

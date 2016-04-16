@@ -1710,6 +1710,8 @@ class SoS_Script:
                 source = {x: ([y] if isinstance(y, str) else y) for x,y in source.items()}
             elif isinstance(source, Sequence):
                 source = {'': source}
+            else:
+                raise RuntimeError('Invalid value for option source {}'.format(source))
             #
             for key in source.keys():
                 source_scripts = []
@@ -1768,6 +1770,7 @@ class SoS_Script:
             for name, index in section.names:
                 # exact match or filename like match if name contains * etc
                 if fnmatch.fnmatch(wf_name.split('.')[-1], name):
+                    sections.append(section)
                     break
         return SoS_Workflow(wf_name.split('.')[-1], allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
 
