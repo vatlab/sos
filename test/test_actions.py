@@ -380,6 +380,8 @@ csh:
 
     def testZsh(self):
         '''Test action zsh'''
+        if not shutil.which('zsh'):
+            return
         script = SoS_Script(r'''
 [0]
 zsh:
@@ -555,6 +557,8 @@ console.log('Hello ' + args.join(' ') + '!');
 
     def testR(self):
         '''Test action JavaScript'''
+        if not shutil.which('R'):
+            return 
         script = SoS_Script(r'''
 [0]
 R:
@@ -579,6 +583,8 @@ mean(nums)
 
     def testCheckRLibrary(self):
         '''Test action check_R_library'''
+        if not shutil.which('R'):
+            return 
         script = SoS_Script(r'''
 [0]
 check_R_library('edgeR')
