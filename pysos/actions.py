@@ -61,7 +61,9 @@ class DockerClient:
         return cls._instance
 
     def __init__(self):
-        self.client = Client(**kwargs_from_env(assert_hostname=False))
+        kwargs = kwargs_from_env(assert_hostname=False)
+        kwargs.update({'version': 'auto'})
+        self.client = Client(**kwargs)
         try:
             self.client.info()
             # mount the /Volumes folder under mac, please refer to
@@ -79,6 +81,7 @@ class DockerClient:
                 except Exception as e:
                     env.logger.trace('Failed to mount /Volumes to virtual machine: {}'.format(e))
         except Exception as e:
+            env.logger.debug(e)
             self.client = None
 
     def total_memory(self, image='ubuntu'):
