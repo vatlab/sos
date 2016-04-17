@@ -1236,7 +1236,7 @@ class SoS_Workflow:
         #
         # the steps can be executed in the pool (Not implemented)
         # if nested = true, start a new progress bar
-        prog = ProgressBar(self.name, len(self.sections), disp=env.verbosity == 1)
+        prog = ProgressBar(self.name, len(self.sections), disp=env.verbosity == 1 and env.run_mode == 'run')
         for idx, section in enumerate(self.sections):
             # global section will not change _step etc
             if section.is_parameters:
@@ -1837,19 +1837,24 @@ def sos_prepare(args, workflow_args):
 # subcommand run
 #
 def sos_run(args, workflow_args):
-    env.verbosity = args.verbosity
     env.max_jobs = args.__max_jobs__
     # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)
     # default mode: run in dryrun mode
-    if not (args.__rerun__ or args.__prepare__ or args.__dryrun__):
-        args.__run__ = True
+    args.__run__ = not (args.__rerun__ or args.__prepare__ or args.__dryrun__)
+    #
     if args.__run__ or args.__rerun__:
         args.__prepare__ = True
     #
     # always run in dryrun mode
     env.run_mode = 'dryrun'
     env.sig_mode = 'ignore'
+    # if this is not the last step, use verbosity 1 (warning)
+    if args.__prepare__:
+        env.verbosity = min(args.verbosity, 1)
+    else:
+        env.verbosity = args.verbosity
+    #
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
@@ -1859,8 +1864,14 @@ def sos_run(args, workflow_args):
             print_traceback()
         env.logger.error(e)
         sys.exit(1)
-    # then try prepare mode
+    # then prepare mode
     if args.__prepare__:
+        # if this is not the last step, use verbosity 1 (warning)
+        if args.__run__ or args.__rerun__:
+            env.verbosity = min(args.verbosity, 1)
+        else:
+            env.verbosity = args.verbosity
+        #
         env.run_mode = 'prepare'
         if args.__rerun__:
             env.sig_mode = 'ignore'
@@ -1876,6 +1887,7 @@ def sos_run(args, workflow_args):
     # then run mode
     if args.__run__ or args.__rerun__:
         env.run_mode = 'run'
+        env.verbosity = args.verbosity
         if args.__rerun__:
             env.sig_mode = 'ignore'
         try:

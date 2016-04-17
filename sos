@@ -27,7 +27,7 @@ from pysos._version import __version__, SOS_FULL_VERSION
 from pysos.sos_script import sos_run, sos_dryrun, sos_prepare, sos_show
 
 def addCommonArgs(parser):
-    parser.add_argument('-v', '--verbosity', type=int, choices=range(5),
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).'''),
 
