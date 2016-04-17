@@ -54,7 +54,7 @@ from itertools import tee, combinations
 from . import __version__
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
     dehtml, getTermWidth, interpolate, shortRepr, extract_pattern, expand_pattern, \
-    print_traceback, pickleable, ProgressBar, frozendict, DynamicExpression, \
+    print_traceback, pickleable, ProgressBar, frozendict, Undetermined, \
     locate_script
 
 from .sos_syntax import *
@@ -293,20 +293,27 @@ def directive_input(*args, **kwargs):
         ifiles = env.sos_dict['__step_input__']
         # at run mode, if None is specified, assuming empty input
         if ifiles is None:
-            ifiles = []
+            if env.run_mode == 'run':
+                raise RuntimeError('There should be no unknown input at run mode.')
+            else: 
+                # FIXME: behavior undecided here
+                #
+                # in dryrun mode, we do not care about input files
+                # in prepare mode, None input means no output is specified from previous
+                ifiles = []
     # expand files with wildcard characters and check if files exist
     tmp = []
     for ifile in ifiles:
         if os.path.isfile(os.path.expanduser(ifile)):
             tmp.append(ifile)
-        elif env.run_mode == 'run':
+        elif env.run_mode in 'run':
             # in this mode file must exist
             expanded = sorted(glob.glob(os.path.expanduser(ifile)))
             if not expanded:
                 raise RuntimeError('{} not exist.'.format(ifile))
             tmp.extend(expanded)
-        elif env.run_mode == 'dryrun':
-            # FIXME: this should be the 'dynamic' mode
+        elif env.run_mode == 'prepared':
+            # in this mode we can handle Undetermined files
             expanded = sorted(glob.glob(os.path.expanduser(ifile)))
             if expanded:
                 tmp.extend(expanded)
@@ -787,32 +794,37 @@ class SoS_Step:
         # handle these two sections differently
         env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
         env.sos_dict.set('step_name', '{}_{}'.format(self.name, self.index))
+        # used by nested workflow
         env.sos_dict.set('__step_context__', self.context)
-        #
-        # the following is a quick hack to allow directive_input function etc to access
-        # the workflow dictionary
         #
         # these are temporary variables that should be removed if exist
         for var in ('input', 'output', 'depends', '_input', '_depends', '_output'):
             env.sos_dict.pop(var, '')
-
         #
         # default input groups and vars, might be reset by directive input
         if '__step_input__' in env.sos_dict:
-            self._groups = [env.sos_dict['__step_input__']]
+            # in run mode and there is still no input, we should assume no input
+            # this is because in dryrun mode the current step would be rely on all
+            # previous steps so if this step is reached in run mode, all previous mode
+            # must have been executed.
+            if env.sos_dict['__step_input__'] is None and env.run_mode == 'run':
+                self._groups = [[]]
+            else:
+                self._groups = [env.sos_dict['__step_input__']]
         else:
-            self._groups = [None]
+            raise RuntimeError('No step input is defined for step {}_{}'.format(self.name, self.index))
         self._vars = [{}]
         #
-        input_idx = [idx for idx,x in enumerate(self.statements) if x[0] == ':' and x[1] == 'input']
-        if not input_idx:
-            input_idx = None
-        elif len(input_idx) == 1:
-            input_idx = input_idx[0]
+        # look for input statement.
+        input_statement_idx = [idx for idx,x in enumerate(self.statements) if x[0] == ':' and x[1] == 'input']
+        if not input_statement_idx:
+            input_statement_idx = None
+        elif len(input_statement_idx) == 1:
+            input_statement_idx = input_statement_idx[0]
         else:
-            raise RuntimeError('Only one step input is allowed')
+            raise RuntimeError('More than one step input are specified in step {}_{}'.format(self.name, self.index))
         #
-        # execute global process
+        # execute global process, will be done in all run mode
         if self.global_process:
             try:
                 SoS_exec(self.global_process)
@@ -821,10 +833,12 @@ class SoS_Step:
                     print_traceback()
                 raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.global_process, e))
         #
+        # these will be the variables that will be returned as step alias
         public_vars = set()
-        if input_idx is not None:
+        # if there is an input statement, execute the statements before it, and then the statement
+        if input_statement_idx is not None:
             # execute before input stuff
-            for statement in self.statements[:input_idx]:
+            for statement in self.statements[:input_statement_idx]:
                 if statement[0] == '=':
                     key, value = statement[1:]
                     public_vars.add(key)
@@ -839,17 +853,17 @@ class SoS_Step:
                         SoS_exec(statement[1], self.sigil)
                     except Exception as e:
                         raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
-            # input
-            key, value = self.statements[input_idx][1:]
+            # input statement
+            key, value = self.statements[input_statement_idx][1:]
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(value), self.sigil)
                 self._groups, self._vars = directive_input(*args, **kwargs)
             except Exception as e:
                 raise RuntimeError('Failed to process step {} : {} ({})'.format(key, value.strip(), e))
-            input_idx += 1
+            input_statement_idx += 1
         else:
             # assuming everything starts from 0 is after input
-            input_idx = 0
+            input_statement_idx = 0
 
         if None in self._groups:
             if not all(x is None for x in self._groups):
@@ -866,7 +880,7 @@ class SoS_Step:
                 # there is a slight possibility that var is deleted
                 if var in env.sos_dict and pickleable(env.sos_dict[var]):
                     step_info.set(var, env.sos_dict[var])
-            if isinstance(self.options['alias'], DynamicExpression):
+            if isinstance(self.options['alias'], Undetermined):
                 # it is time to evalulate this expression now
                 self.options['alias'] = self.options['alias'].value(self.sigil)
             result[self.options['alias']] = copy.deepcopy(step_info)
@@ -888,7 +902,7 @@ class SoS_Step:
             for key in ('_output', '_depends'):
                 if key in env.sos_dict:
                     env.sos_dict.pop(key)
-            for statement in self.statements[input_idx:]:
+            for statement in self.statements[input_statement_idx:]:
                 if statement[0] == '=':
                     key, value = statement[1:]
                     public_vars.add(key)
@@ -913,7 +927,7 @@ class SoS_Step:
                                     eval('directive_' + key)(*args, **kwargs)
                                 # while output can be resolved later.
                                 elif key == 'output':
-                                    env.sos_dict.set('_' + key, DynamicExpression(value))
+                                    env.sos_dict.set('_' + key, Undetermined(value))
                         else:
                             eval('directive_' + key)(*args, **kwargs)
                     except Exception as e:
@@ -953,12 +967,12 @@ class SoS_Step:
             if not all(x is None for x in self._outputs):
                 raise RuntimeError('Output should be specified for all loops.')
             env.sos_dict.set('output', None)
-        elif any(isinstance(x, DynamicExpression) for x in self._outputs):
+        elif any(isinstance(x, Undetermined) for x in self._outputs):
             env.sos_dict.set('output', self._outputs)
         else:
             env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
         #
-        if any(isinstance(x, DynamicExpression) for x in self._depends):
+        if any(isinstance(x, Undetermined) for x in self._depends):
             env.sos_dict.set('depends', self._depends)
         else:
             env.sos_dict.set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
@@ -1223,6 +1237,7 @@ class SoS_Workflow:
             #
             env.sos_dict.set('CONFIG', frozendict(cfg))
             py_version = sys.version_info
+            # there is no default input for the first step... 
             env.sos_dict.set('__step_input__', [])
             SoS_exec('import os, sys, glob')
             SoS_exec('from pysos import *')
@@ -1244,14 +1259,23 @@ class SoS_Workflow:
                 section.parse_args(args, num_parameters_sections == 1, cmd_name=cmd_name)
                 prog.progress(1)
                 continue
+            # handle skip, which might have to be evaluated till now.
+            # 
+            # Important: 
+            #
+            # Here we require that skip to be evaluatable at dryrun and prepare mode
+            # up until this step. There is to say, it cannot rely on the result of 
+            # an action that is only available till run time (action would return 
+            # Undetermined when executed not in the specified runmode)
+            #
             if 'skip' in section.options:
-                if isinstance(section.options['skip'], DynamicExpression):
+                if isinstance(section.options['skip'], Undetermined):
                     try:
                         val_skip = section.options['skip'].value(section.sigil)
                         if val_skip is None:
                             val_skip = False
                     except Exception as e:
-                        raise RuntimeError('Failed to evaluate value of section option skip={}: {}'.format( section.options['skip'], e))
+                        raise RuntimeError('Failed to evaluate value of section option skip={}: {}'.format(section.options['skip'], e))
                 else:
                     val_skip = section.options['skip']
                 if val_skip is None or val_skip is True:
@@ -1530,7 +1554,7 @@ class SoS_Script:
                                         parsing_errors.append(lineno, line, e)
                                     else:
                                         env.logger.debug('Step option {}={} (line {}) cannot be resolved during parsing.'.format(opt_name, opt_value, lineno))
-                                        opt_value = DynamicExpression(opt_value)
+                                        opt_value = Undetermined(opt_value)
                             if opt_name == 'sigil':
                                 if opt_value.count(' ') != 1 or opt_value[0] in (' ', "'") or \
                                     opt_value[-1] in (' ', "'") or \

@@ -30,7 +30,7 @@ import time
 import shutil
 
 from pysos import *
-from pysos.utils import env, TimeoutException, time_limit
+from pysos.utils import env, TimeoutException, time_limit, Undetermined
 from pysos.sos_script import ExecuteError
 from pysos.actions import DockerClient, DockerException
 
@@ -71,12 +71,12 @@ c=func_both()
         env.run_mode = 'dryrun'
         wf.run()
         self.assertEqual(env.sos_dict['result'].a, 1)
-        self.assertEqual(env.sos_dict['result'].b, 0)
+        self.assertTrue(isinstance(env.sos_dict['result'].b, Undetermined))
         self.assertEqual(env.sos_dict['result'].c, 1)
         #
         env.run_mode = 'run'
         wf.run()
-        self.assertEqual(env.sos_dict['result'].a, 0)
+        self.assertTrue(isinstance(env.sos_dict['result'].a, Undetermined))
         self.assertEqual(env.sos_dict['result'].b, 1)
         self.assertEqual(env.sos_dict['result'].c, 1)
 

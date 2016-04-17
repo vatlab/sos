@@ -947,20 +947,20 @@ class RuntimeInfo:
         if self.output_files is None:
             raise RuntimeError('Cannot create runtime signature for unknown output')
         #
-        if self.output_files and not isinstance(self.output_files, DynamicExpression):
+        if self.output_files and not isinstance(self.output_files, Undetermined):
             sig_name = os.path.realpath(os.path.expanduser(self.output_files[0])) + textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
         else:
             sig_name = textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
         #
-        if self.input_files and not isinstance(self.input_files, DynamicExpression):
+        if self.input_files and not isinstance(self.input_files, Undetermined):
             self.sig_input_files = self.input_files
         else:
             self.sig_input_files = []
-        if self.output_files and not isinstance(self.output_files, DynamicExpression):
+        if self.output_files and not isinstance(self.output_files, Undetermined):
             self.sig_output_files = self.output_files
         else:
             self.sig_output_files = []
-        if self.dependent_files and not isinstance(self.dependent_files, DynamicExpression):
+        if self.dependent_files and not isinstance(self.dependent_files, Undetermined):
             self.sig_dependent_files = self.dependent_files
         else:
             self.sig_dependent_files = []
@@ -1548,7 +1548,7 @@ class frozendict(dict):
 # dynamic expression that cannot be resolved during parsing 
 # at dryrun mode etc, and has to be resolved at run time.
 #
-class DynamicExpression(object):
+class Undetermined(object):
     def __init__(self, expr):
         self.expr = expr
 

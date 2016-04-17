@@ -36,7 +36,7 @@ from docker import Client
 from docker.utils import kwargs_from_env
 from docker.errors import DockerException
 import multiprocessing as mp
-from .utils import env, interpolate, glob_wildcards, downloadURL, fileMD5
+from .utils import env, interpolate, glob_wildcards, downloadURL, fileMD5, Undetermined
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
     'check_command', 'fail_if', 'warn_if', 'download',
@@ -330,7 +330,9 @@ def SoS_Action(run_mode='run'):
                     else:
                         env.logger.debug('Docker machine has {:.1f} GB of total memory ram'.format(mem/1024/1024))
             if env.run_mode not in run_mode:
-                return 0
+                # return dynamic expression when not in run mode, that is to say
+                # the script logic cannot rely on the result of the action
+                return Undetermined(func.__name__)
             return func(*args, **non_runtime_options)
         action_wrapper.run_mode = run_mode
         return action_wrapper

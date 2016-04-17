@@ -31,7 +31,7 @@ import shutil
 
 from pysos import *
 from pysos import __version__
-from pysos.utils import env
+from pysos.utils import env, Undetermined
 from pysos.sos_script import ExecuteError
 import subprocess
 
@@ -625,7 +625,7 @@ a = fail()
         env.shared_vars=['a']
         wf.run()
         # should return 0 in dryrun mode
-        self.assertEqual(env.sos_dict['a'], 0)
+        self.assertTrue(isinstance(env.sos_dict['a'], Undetermined))
         #
 
         env.run_mode = 'run'
