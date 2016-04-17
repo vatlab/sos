@@ -291,6 +291,9 @@ def directive_input(*args, **kwargs):
         env.sos_dict.set('__step_input__', ifiles)
     else:
         ifiles = env.sos_dict['__step_input__']
+        # at run mode, if None is specified, assuming empty input
+        if ifiles is None:
+            ifiles = []
     # expand files with wildcard characters and check if files exist
     tmp = []
     for ifile in ifiles:
