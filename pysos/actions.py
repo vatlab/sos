@@ -235,7 +235,7 @@ class DockerClient:
                 else:
                     raise RuntimeError('Invalid value for option environment (str, list, or dict is allowd, {} provided)'.format(kwargs['environment']))
             #
-            port_opt = ''
+            port_opt = '-P'
             if 'port' in kwargs:
                 if isinstance(kwargs['port'], (str, int)):
                     port_opt = '-p {}'.format(kwargs['port'])
@@ -263,7 +263,13 @@ class DockerClient:
             extra_opt = ''
             if 'extra_args' in kwargs:
                 extra_opt = kwargs['extra_args']
-            command = 'docker run -P --rm {} {} {} {} {} {} {} {} {} {} {} {}'.format(
+            #
+            security_opt = ''
+            if platform.system() == 'Linux':
+                # this is for a selinux problem when /var/sos/script cannot be executed
+                security_opt = '--security-opt label:disable'
+            command = 'docker run --rm {} {} {} {} {} {} {} {} {} {} {} {} {}'.format(
+                security_opt,       # security option
                 volumes_opt,        # volumes
                 name_opt,           # name
                 stdin_opt,          # stdin_optn
