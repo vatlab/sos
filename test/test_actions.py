@@ -32,12 +32,12 @@ import shutil
 from pysos import *
 from pysos.utils import env, TimeoutException, time_limit
 from pysos.sos_script import ExecuteError
-from pysos.actions import DockerClient
+from pysos.actions import DockerClient, DockerException
 
 try:
     with time_limit(2, 'check docker daemon'):
         has_docker = DockerClient().client is not None
-except TimeoutException as e:
+except (TimeoutException, DockerException) as e:
     print('Cannot connect to a docker daemon in 2 seconds. Assuming no docker environment.')
     has_docker = False
 

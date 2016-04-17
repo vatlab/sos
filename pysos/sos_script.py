@@ -1826,7 +1826,7 @@ def sos_dryrun(args, workflow_args):
 #
 def sos_prepare(args, workflow_args):
     args.__max_jobs__ = 1
-    args.__dryrun__ = False
+    args.__dryrun__ = True
     args.__prepare__ = True
     args.__run__ = False
     args.__rerun__ = False
@@ -1841,21 +1841,24 @@ def sos_run(args, workflow_args):
     env.max_jobs = args.__max_jobs__
     # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)
-    # first, run in dryrun mode
-    if not (args.__rerun__ or args.__prepare__ or args.__dryrun__ or args.__run__):
+    # default mode: run in dryrun mode
+    if not (args.__rerun__ or args.__prepare__ or args.__dryrun__):
         args.__run__ = True
-    if args.__dryrun__:
-        env.run_mode = 'dryrun'
-        env.sig_mode = 'ignore'
-        try:
-            script = SoS_Script(filename=args.script)
-            workflow = script.workflow(args.workflow)
-            workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
-        except Exception as e:
-            if args.verbosity and args.verbosity > 2:
-                print_traceback()
-            env.logger.error(e)
-            sys.exit(1)
+    if args.__run__ or args.__rerun__:
+        args.__prepare__ = True
+    #
+    # always run in dryrun mode
+    env.run_mode = 'dryrun'
+    env.sig_mode = 'ignore'
+    try:
+        script = SoS_Script(filename=args.script)
+        workflow = script.workflow(args.workflow)
+        workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
+    except Exception as e:
+        if args.verbosity and args.verbosity > 2:
+            print_traceback()
+        env.logger.error(e)
+        sys.exit(1)
     # then try prepare mode
     if args.__prepare__:
         env.run_mode = 'prepare'

@@ -83,27 +83,21 @@ if __name__ == '__main__':
             CONF in the SoS script being executed.''')
     runmode = parser.add_argument_group(title='Run mode options',
         description='''SoS scripts are by default executed in run mode where all
-            steps are executed. If one or more of the runmode options are
-            specified (e.g. '-d' or '-dpr'), SoS will execute the script in
-            dryrun mode, preparation mode, and run mode if respective options
-            are specified, but will stop if an error occurs at one mode. 
-            This allows you to detect problems and download resources before
-            running a script in full power. ''')
+            the script is run in dryrun mode to check syntax error, prepare mode
+            to prepare resources, and run mode to execute the pipelines. Run mode
+            options allow you to check the script or download resources without
+            actually running the workflow.''')
     runmode.add_argument('-d', action='store_true', dest='__dryrun__',
         help='''Execute the workflow in dryrun mode in which step processes
             are executed normally but with most SoS actions return directly.
             SoS also produces diagnoistic warning messages in this mode.''')
     runmode.add_argument('-p', action='store_true', dest='__prepare__',
-        help='''Execute the workflow in preparation mode in which SoS prepare
-            the execution of workflow by, for example, download required 
-            resources and docker images.''')
-    runmode.add_argument('-r', action='store_true', dest='__run__',
-        help='''Execute the workflow in run mode in which all SoS steps will be
-            executed.''')
+        help='''Execute the workflow in dyrun mode, and then preparation mode 
+            in which SoS prepare the execution of workflow by, for example, 
+            download required resources and docker images.''')
     runmode.add_argument('-f', action='store_true', dest='__rerun__',
-        help='''Execute the workflow in a special run mode that ignores saved runtime
-            signatures and re-execute all the steps. This option overrides '-r'
-            if both are specified.''')
+        help='''Execute the workflow in a special run mode that ignores saved
+            runtime signatures and re-execute all the steps.''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_run)
     #
