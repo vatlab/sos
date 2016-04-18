@@ -54,7 +54,7 @@ from itertools import tee, combinations
 from . import __version__
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
     dehtml, getTermWidth, interpolate, shortRepr, extract_pattern, expand_pattern, \
-    print_traceback, pickleable, ProgressBar, frozendict, Undetermined, \
+    get_traceback, pickleable, ProgressBar, frozendict, Undetermined, \
     locate_script
 
 from .sos_syntax import *
@@ -90,6 +90,7 @@ class ExecuteError(Error):
         Error.__init__(self, 'SoS workflow contains errors: %s' % workflow)
         self.workflow = workflow
         self.errors = []
+        self.traces = []
         self.args = (workflow, )
 
     def append(self, line, msg):
@@ -99,6 +100,7 @@ class ExecuteError(Error):
         else:
             short_line = lines[0][:40] if len(lines[0]) > 40 else lines[0]
         self.errors.append(short_line)
+        self.traces.append(get_traceback())
         self.message += '\n[%s]:\n\t%s' % (short_line, msg)
 
 class StepInfo(object):
@@ -715,7 +717,7 @@ class SoS_Step:
                 SoS_exec(self.global_process)
             except Exception as e:
                 if env.verbosity > 2:
-                    print_traceback()
+                    sys.stderr.write(get_traceback())
                 raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.global_process, e))
 
         def str2bool(v):
@@ -823,7 +825,8 @@ class SoS_Step:
         '''Execute a single step and return results '''
         #
         # handle these two sections differently
-        env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
+        if env.run_mode == 'run':
+            env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
         env.sos_dict.set('step_name', '{}_{}'.format(self.name, self.index))
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.context)
@@ -856,7 +859,7 @@ class SoS_Step:
                 SoS_exec(self.global_process)
             except Exception as e:
                 if env.verbosity > 2:
-                    print_traceback()
+                    sys.stderr.write(get_traceback())
                 raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.global_process, e))
         #
         # these will be the variables that will be returned as step alias
@@ -909,7 +912,8 @@ class SoS_Step:
         # post input
         # output and depends can be processed many times
         step_sig = self.step_signature()
-        env.logger.info('input:   ``{}``'.format(shortRepr(env.sos_dict['input'], noneAsNA=True)))
+        if env.run_mode == 'run':
+            env.logger.info('input:   ``{}``'.format(shortRepr(env.sos_dict['input'], noneAsNA=True)))
         # 
         self._outputs = []
         self._depends = []
@@ -936,34 +940,38 @@ class SoS_Step:
                         args, kwargs = SoS_eval('__null_func__({})'.format(value), self.sigil)
                         # dynamic output or dependent files
                         if 'dynamic' in kwargs:
+                            env.logger.trace('Handling dynamic {}'.format(key))
                             if key not in ('output', 'depends'):
                                 raise RuntimeError('dynamic option is only allowed for step input, output or depends')
                             if not isinstance(kwargs['dynamic'], bool):
                                 raise RuntimeError('Option dynamic can only be True or False. {} provided'.format(kwargs['dynamic']))
                             if kwargs['dynamic']:
-                                if key == 'depends' and env.run_mode == 'run':
+                                if env.run_mode == 'run' and key == 'depends':
                                     # depends need to be resolved now at run mode
                                     eval('directive_' + key)(*args, **kwargs)
-                                # while output can be resolved later.
-                                elif key == 'output':
+                                # in other cases, namely non-run mode and output in run mode
+                                else:
+                                    if len(kwargs) > 1:
+                                        raise RuntimeError('dynamic {} does not accept other options'.format(key))
                                     env.sos_dict.set('_' + key, [Undetermined(value)])
                         else:
                             eval('directive_' + key)(*args, **kwargs)
                     except Exception as e:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
-                    old_run_mode = env.run_mode
                     if '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
                         signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'],
                             env.sos_dict.get('_depends', []))
-                        if env.sig_mode == 'default' and signature.validate():
-                            env.logger.info('Execute statement in dryrun mode and reuse existing output files {}'.format(', '.join(env.sos_dict['_output'])))
-                            env.run_mode = 'dryrun'
+                        if env.sig_mode == 'default':
+                            res = signature.validate()
+                            if res:
+                                env.sos_dict.set('_output', res['output'])
+                                env.logger.debug('_output: {}'.format(res['output']))
+                                env.logger.info('Reuse existing output files ``{}``'.format(shortRepr(env.sos_dict['_output'])))
                     try:
                         SoS_exec(statement[1], self.sigil)
                     except Exception as e:
                         raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
-                    env.run_mode = old_run_mode
             #
             # collect _output and _depends
             if '_output' in env.sos_dict:
@@ -974,6 +982,8 @@ class SoS_Step:
                 self._depends.append(env.sos_dict['_depends'])
             else:
                 self._depends.append([])
+        #
+        env.logger.trace('Executing step process.')
         #
         # if no output directive, assuming UNKNOWN output for each step
         if not self._outputs:
@@ -986,31 +996,36 @@ class SoS_Step:
             if not all(x is None for x in self._outputs):
                 raise RuntimeError('Output should be specified for all loops.')
             env.sos_dict.set('output', None)
+        elif self._outputs and self._outputs[0] and isinstance(self._outputs[0][0], Undetermined):
+            env.sos_dict.set('output', sum(self._outputs, []))
         else:
-            if self._outputs[0] and isinstance(self._outputs[0][0], Undetermined):
-                env.sos_dict.set('output', sum(self._outputs, []))
-            else:
-                env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
+            env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
         #
         if any(isinstance(x, Undetermined) for x in self._depends):
             env.sos_dict.set('depends', self._depends)
         else:
             env.sos_dict.set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
         #
-        env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
-        if env.sos_dict['depends']:
+        if env.sos_dict['output'] and not isinstance(env.sos_dict['output'][0], Undetermined):
+            env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
+        if env.sos_dict['depends'] and not isinstance(env.sos_dict['depends'][0], Undetermined):
             env.logger.info('depends: ``{}``'.format(shortRepr(env.sos_dict['depends'])))
 
         #
+        env.logger.trace('Checking signature (if available).')
         # if the signature matches, the whole step is ignored
         if env.sos_dict['input'] is not None and env.sos_dict['output'] is not None:
             signature = RuntimeInfo(step_sig,
                 env.sos_dict['input'], env.sos_dict['output'], env.sos_dict['depends'])
             if env.run_mode == 'run':
                 if env.sig_mode == 'default':
-                    if signature.validate():
+                    res = signature.validate()
+                    if res:
+                        env.sos_dict.set('input', res['input'])
+                        env.sos_dict.set('output', res['output'])
+                        env.sos_dict.set('depends', res['depends'])
                         # everything matches
-                        env.logger.info('Reusing existing output files {}'.format(', '.join(env.sos_dict['output'])))
+                        env.logger.info('Reusing existing output files ``{}``'.format(shortRepr(env.sos_dict['output'])))
                         return self.collectResult(public_vars)
                 elif env.sig_mode == 'assert':
                     if not signature.validate():
@@ -1057,6 +1072,14 @@ class SoS_Step:
             # so that no process need to be run, we create signature from outside.
             if not self.process:
                 if partial_signature is not None:
+                    if env.sos_dict['_output'] and isinstance(env.sos_dict['_output'][0], Undetermined):
+                        env.logger.trace('Processing output: {}'.format(value))
+                        args, kwargs = SoS_eval('__null_func__({})'.format(value), self.sigil)
+                        # now we should have _output
+                        directive_output(*args)
+                        partial_signature.set(env.sos_dict['_output'], 'output')
+                        env.logger.trace('Reset _output to {}'.format(env.sos_dict['_output']))
+                        self._outputs[idx] = env.sos_dict['_output']
                     partial_signature.write()
                 continue
             #
@@ -1084,7 +1107,7 @@ class SoS_Step:
             except Exception as e:
                 # FIXME: cannot catch exception from subprocesses
                 if env.verbosity > 2:
-                    print_traceback()
+                    sys.stderr.write(get_traceback())
                 raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(self.process, e))
         # check results? This is only meaningful for pool
         if concurrent:
@@ -1104,10 +1127,16 @@ class SoS_Step:
         if not all(x==0 for x in proc_results):
             raise RuntimeError('Step process returns non-zero value')
         if env.run_mode == 'run' and env.sos_dict['output'] is not None:
+            env.logger.trace('Checking output files {}'.format(env.sos_dict['output']))
+            if env.sos_dict['output'] and isinstance(env.sos_dict['output'][0], Undetermined):
+                # at this point self._outputs should be expanded already.
+                env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
+                env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
             for ofile in env.sos_dict['output']:
                 if not os.path.isfile(os.path.expanduser(ofile)):
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
         if signature and env.run_mode == 'run':
+            signature.set(env.sos_dict['output'], 'output')
             signature.write()
         if concurrent:
             # finally, write results back to the master process
@@ -1339,6 +1368,8 @@ class SoS_Workflow:
             # if the job is failed
             if isinstance(res, Exception):
                 # error must have been displayed.
+                if env.verbosity > 2 and hasattr(res, 'traces'):
+                    env.logger.error(res.traces)
                 raise RuntimeError(res)
             #res = section.run()
             for k, v in res.items():
@@ -1874,7 +1905,7 @@ def sos_show(args, workflow_args):
             script.show()
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
-            print_traceback()
+            sys.stderr.write(get_traceback())
         env.logger.error(e)
         sys.exit(1)
 
@@ -1907,6 +1938,7 @@ def sos_prepare(args, workflow_args):
 #
 def sos_run(args, workflow_args):
     env.max_jobs = args.__max_jobs__
+    env.verbosity = args.verbosity
     # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)
     # default mode: run in dryrun mode
@@ -1917,12 +1949,10 @@ def sos_run(args, workflow_args):
     #
     # always run in dryrun mode
     env.run_mode = 'dryrun'
-    env.sig_mode = 'ignore'
     # if this is not the last step, use verbosity 1 (warning)
-    if args.__prepare__:
-        env.verbosity = min(args.verbosity, 1)
-    else:
-        env.verbosity = args.verbosity
+    #if args.__prepare__:
+    #    env.verbosity = min(args.verbosity, 1)
+    #else:
     #
     try:
         script = SoS_Script(filename=args.script)
@@ -1930,33 +1960,31 @@ def sos_run(args, workflow_args):
         workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
-            print_traceback()
+            sys.stderr.write(get_traceback())
         env.logger.error(e)
         sys.exit(1)
     # then prepare mode
     if args.__prepare__:
         # if this is not the last step, use verbosity 1 (warning)
-        if args.__run__ or args.__rerun__:
-            env.verbosity = min(args.verbosity, 1)
-        else:
-            env.verbosity = args.verbosity
+        #if args.__run__ or args.__rerun__:
+        #    env.verbosity = min(args.verbosity, 1)
+        #else:
+        #    env.verbosity = args.verbosity
         #
         env.run_mode = 'prepare'
-        if args.__rerun__:
-            env.sig_mode = 'ignore'
         try:
             script = SoS_Script(filename=args.script)
             workflow = script.workflow(args.workflow)
             workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
         except Exception as e:
             if args.verbosity and args.verbosity > 2:
-                print_traceback()
+                sys.stderr.write(get_traceback())
             env.logger.error(e)
             sys.exit(1)
     # then run mode
     if args.__run__ or args.__rerun__:
         env.run_mode = 'run'
-        env.verbosity = args.verbosity
+        # env.verbosity = args.verbosity
         if args.__rerun__:
             env.sig_mode = 'ignore'
         try:
@@ -1965,6 +1993,6 @@ def sos_run(args, workflow_args):
             workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
         except Exception as e:
             if args.verbosity and args.verbosity > 2:
-                print_traceback()
+                sys.stderr.write(get_traceback())
             env.logger.error(e)
             sys.exit(1)

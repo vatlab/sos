@@ -811,6 +811,8 @@ def SoS_exec(stmts, sigil='${ }'):
     executed = ''
     for code in code_group:
         stmts = ConvertString(code, sigil)
+        if not stmts.strip():
+            continue
         env.logger.trace('Executing\n{}'.format(stmts))
         try:
             if env.run_mode == 'dryrun':
@@ -948,23 +950,10 @@ class RuntimeInfo:
         if self.output_files is None:
             raise RuntimeError('Cannot create runtime signature for unknown output')
         #
-        if self.output_files and not isinstance(self.output_files, Undetermined):
+        if self.output_files and not isinstance(self.output_files[0], Undetermined):
             sig_name = os.path.realpath(os.path.expanduser(self.output_files[0])) + textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
         else:
             sig_name = textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
-        #
-        if self.input_files and not isinstance(self.input_files, Undetermined):
-            self.sig_input_files = self.input_files
-        else:
-            self.sig_input_files = []
-        if self.output_files and not isinstance(self.output_files, Undetermined):
-            self.sig_output_files = self.output_files
-        else:
-            self.sig_output_files = []
-        if self.dependent_files and not isinstance(self.dependent_files, Undetermined):
-            self.sig_dependent_files = self.dependent_files
-        else:
-            self.sig_dependent_files = []
         #
         # If the output path is outside of the current working directory
         rel_path = os.path.relpath(sig_name, os.path.realpath(workdir))
@@ -988,14 +977,15 @@ class RuntimeInfo:
             self.pid = pid
         self.proc_info = '{}.exe_info'.format(info_file)
 
-    def add(self, files, file_type):
+    def set(self, files, file_type):
         # add signature file if input and output files are dynamic
+        env.logger.trace('Set {} of signature to {}'.format(file_type, files))
         if file_type == 'input':
-            self.sig_input_files.extend(files)
+            self.input_files = files
         elif file_type == 'output':
-            self.sig_output_files.extend(files)
+            self.output_files = files
         elif file_type == 'depends':
-            self.sig_depends_files.extend(files)
+            self.depends_files = files
         else:
             raise RuntimeError('Invalid signature file type')
 
@@ -1007,15 +997,21 @@ class RuntimeInfo:
         with open(self.proc_info, 'w') as md5:
             md5.write('{}\n'.format(textMD5(self.script)))
             md5.write('# input\n')
-            for f in self.sig_input_files:
+            for f in self.input_files:
+                if isinstance(f, Undetermined):
+                    raise ValueError('Cannot write signature for undetermined input file')
                 f = os.path.realpath(os.path.expanduser(f))
                 md5.write('{}\t{}\n'.format(f, fileMD5(f)))
             md5.write('# output\n')
-            for f in self.sig_output_files:
+            for f in self.output_files:
+                if isinstance(f, Undetermined):
+                    raise ValueError('Cannot write signature for undetermined output file')
                 f = os.path.realpath(os.path.expanduser(f))
                 md5.write('{}\t{}\n'.format(f, fileMD5(f)))
             md5.write('# dependent\n')
-            for f in self.sig_dependent_files:
+            for f in self.dependent_files:
+                if isinstance(f, Undetermined):
+                    raise ValueError('Cannot write signature for undetermined dependent file')
                 f = os.path.realpath(os.path.expanduser(f))
                 md5.write('{}\t{}\n'.format(f, fileMD5(f)))
 
@@ -1024,14 +1020,15 @@ class RuntimeInfo:
         if not self.proc_info or not os.path.isfile(self.proc_info):
             env.logger.trace('Fail because of no signature file {}'.format(self.proc_info))
             return False
+        env.logger.trace('Validating {}'.format(self.proc_info))
         #
         # file not exist?
-        self.sig_files = self.sig_input_files + self.sig_output_files + self.sig_dependent_files
-        if not all(os.path.isfile(x) for x in self.sig_files):
+        self.sig_files = self.input_files + self.output_files + self.dependent_files
+        if not all(isinstance(x, Undetermined) or os.path.isfile(x) for x in self.sig_files):
             env.logger.trace('Fail because of missing one of the files {}'.format(', '.join(self.sig_files)))
             return False
         #
-        files_checked = {os.path.realpath(os.path.expanduser(x)):False for x in self.sig_files}
+        files_checked = {os.path.realpath(os.path.expanduser(x)):False for x in self.sig_files if not isinstance(x, Undetermined)}
         res = {'input': [], 'output': [], 'depends': []}
         cur_type = 'input'
         with open(self.proc_info) as md5:
@@ -1052,6 +1049,9 @@ class RuntimeInfo:
                     continue
                 try:
                     f, m = line.rsplit('\t', 1)
+                    if not os.path.isfile(f):
+                        env.logger.debug('File {} not exist'.format(f))
+                        return False
                     res[cur_type].append(f)
                     f = os.path.realpath(os.path.expanduser(f))
                 except Exception as e:
@@ -1067,6 +1067,7 @@ class RuntimeInfo:
         if not all(files_checked.values()):
             env.logger.warning('No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y)))
             return False
+        env.logger.trace('Signature matches and returns {}'.format(res))
         return res
 
 
@@ -1202,13 +1203,17 @@ def expand_pattern(pattern):
            fail_dynamic=False, dynamic_fill=None, keep_dynamic=False))
     return ofiles
 
-def print_traceback():
+def get_traceback():
+    output = StringIO()
     exc_type, exc_value, exc_traceback = sys.exc_info()
     #print "*** print_tb:"
-    traceback.print_tb(exc_traceback, limit=1, file=sys.stderr)
+    traceback.print_tb(exc_traceback, limit=1, file=output)
     #print "*** print_exception:"
     traceback.print_exception(exc_type, exc_value, exc_traceback,
-                              limit=5, file=sys.stderr)
+                              limit=5, file=output)
+    result = output.getvalue()
+    output.close()
+    return result
     #print "*** print_exc:"
     #traceback.print_exc()
     #print "*** format_exc, first and last line:"
@@ -1551,13 +1556,15 @@ class frozendict(dict):
 #
 class Undetermined(object):
     def __init__(self, expr):
-        self.expr = expr
+        if not isinstance(expr, str):
+            raise RuntimeError('Undetermined expression has to be a string: "{}" passed'.format(expr))
+        self.expr = expr.strip()
 
     def value(self, sigil='${ }'):
         return SoS_eval(self.expr, sigil)
 
     def __repr__(self):
-        return self.expr.strip()
+        return 'Undetermined({!r})'.format(self.expr)
 
     def __hash__(self):
         raise RuntimeError('Dynamic expression should be evaluated before used.'

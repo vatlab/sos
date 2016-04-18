@@ -295,7 +295,7 @@ cp ${_input} ${_dest}
         env.sig_mode = 'default'
         start = time.time()
         wf.run()
-        self.assertLess(time.time() - start, 1)
+        self.assertLess(time.time() - start, 1.5)
         #
         # change script a little bit
         script = SoS_Script('# comment\n' + text)
