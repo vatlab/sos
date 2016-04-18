@@ -76,7 +76,7 @@ for b in range(5):
         wf = script.workflow()
         wf.run()
         self.assertEqual(env.sos_dict['res'], '01234')
-        # 
+        #
         env.run_mode='dryrun'
         script = SoS_Script(r"""
 [0: alias='res']
@@ -287,7 +287,7 @@ cp ${_input} ${_dest}
         with open('temp/d.txt') as td:
             self.assertTrue(td.read(), 'b.txt')
         self.assertEqual(env.sos_dict['oa'].output, ['temp/c.txt', 'temp/d.txt'])
-        # 
+        #
         # now in assert mode, the signature should be there
         env.sig_mode = 'assert'
         wf.run()
