@@ -141,6 +141,14 @@ def execute_step_process(step_process, global_process, sos_dict, sigil, signatur
         SoS_exec(step_process, sigil)
         os.chdir(env.exec_dir)
         if signature:
+            if env.sos_dict['_output'] and isinstance(env.sos_dict['_output'][0], Undetermined):
+                value = env.sos_dict['_output'].expr
+                env.logger.trace('Processing output: {}'.format(value))
+                args, kwargs = SoS_eval('__null_func__({})'.format(value), self.sigil)
+                # now we should have _output
+                directive_output(*args)
+                signature.set(env.sos_dict['_output'], 'output')
+                env.logger.trace('Reset _output to {}'.format(env.sos_dict['_output']))
             signature.write()
     except KeyboardInterrupt:
         raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
@@ -967,7 +975,7 @@ class SoS_Step:
                             if res:
                                 env.sos_dict.set('_output', res['output'])
                                 env.logger.debug('_output: {}'.format(res['output']))
-                                env.logger.info('Reuse existing output files ``{}``'.format(shortRepr(env.sos_dict['_output'])))
+                                env.logger.debug('Reuse existing output files ``{}``'.format(shortRepr(env.sos_dict['_output'])))
                     try:
                         SoS_exec(statement[1], self.sigil)
                     except Exception as e:
@@ -1071,15 +1079,17 @@ class SoS_Step:
             # now, if output file has already been generated using non-process statement
             # so that no process need to be run, we create signature from outside.
             if not self.process:
+                # if no process, we should be able to figure out undetermined output now
+                if env.sos_dict['_output'] and isinstance(env.sos_dict['_output'][0], Undetermined):
+                    value = env.sos_dict['_output'][0].expr
+                    env.logger.trace('Processing output: {}'.format(value))
+                    args, kwargs = SoS_eval('__null_func__({})'.format(value), self.sigil)
+                    # now we should have _output
+                    directive_output(*args)
+                    env.logger.trace('Reset _output to {}'.format(env.sos_dict['_output']))
+                    self._outputs[idx] = env.sos_dict['_output']
                 if partial_signature is not None:
-                    if env.sos_dict['_output'] and isinstance(env.sos_dict['_output'][0], Undetermined):
-                        env.logger.trace('Processing output: {}'.format(value))
-                        args, kwargs = SoS_eval('__null_func__({})'.format(value), self.sigil)
-                        # now we should have _output
-                        directive_output(*args)
-                        partial_signature.set(env.sos_dict['_output'], 'output')
-                        env.logger.trace('Reset _output to {}'.format(env.sos_dict['_output']))
-                        self._outputs[idx] = env.sos_dict['_output']
+                    partial_signature.set(env.sos_dict['_output'], 'output')
                     partial_signature.write()
                 continue
             #

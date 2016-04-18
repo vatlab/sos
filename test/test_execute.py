@@ -969,6 +969,26 @@ print('hay, I am crazy')
         else:
             os.remove(sos_config_file)
 
+    def testDynamicOutput(self):
+        '''Testing dynamic output'''
+        #
+        if not os.path.isdir('temp'):
+            os.mkdir('temp')
+        #
+        script = SoS_Script('''
+[10: alias='test']
+ofiles = []
+output: ofiles, dynamic=True
+
+for i in range(4):
+    ff = 'temp/something{}.html'.format(i)
+    ofiles.append(ff)
+    with open(ff, 'w') as h:
+       h.write('a')
+''')
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.sos_dict['test'].output, ['/Users/bpeng1/SOS/test/temp/something{}.html'.format(x) for x in range(4)])
 
 if __name__ == '__main__':
     unittest.main()
