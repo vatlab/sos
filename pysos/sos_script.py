@@ -821,16 +821,7 @@ class SoS_Step:
 
     def run(self):
         '''Execute a single step and return results '''
-        # only results will be sent back to the master process
         #
-        # __step_input__:    input of this step
-        # __steo_output__:   output of this step
-        # __step_depends__:  dependent files of this step
-        #
-        # These variables will be used to build execution DAG. In execution mode, these have 
-        # to be real filenames, in other modes, they can be Undetermined.
-        #
-        result = {'__step_input__': None, '__step_output__': None, '__step_depends__': None}
         # handle these two sections differently
         env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
         env.sos_dict.set('step_name', '{}_{}'.format(self.name, self.index))
@@ -913,22 +904,8 @@ class SoS_Step:
             env.sos_dict.set('input', None)
         else:
             env.sos_dict.set('input', list(OrderedDict.fromkeys(sum(self._groups, []))))
-        step_info = StepInfo()
-        step_info.set('step_name', env.sos_dict['step_name'])
-        step_info.set('input', env.sos_dict['input'])
-        if 'alias' in self.options:
-            # the step might be skipped
-            for var in public_vars:
-                # there is a slight possibility that var is deleted
-                if var in env.sos_dict and pickleable(env.sos_dict[var]):
-                    step_info.set(var, env.sos_dict[var])
-            if isinstance(self.options['alias'], Undetermined):
-                # it is time to evalulate this expression now
-                self.options['alias'] = self.options['alias'].value(self.sigil)
-            result[self.options['alias']] = copy.deepcopy(step_info)
-        if not self._groups:
-            env.logger.info('Step {} is skipped because of no input group'.format(self.index))
-            return result
+
+        #
         # post input
         # output and depends can be processed many times
         step_sig = self.step_signature()
@@ -1019,19 +996,10 @@ class SoS_Step:
         else:
             env.sos_dict.set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
         #
-        env.logger.info('outputk:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
+        env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
         if env.sos_dict['depends']:
             env.logger.info('depends: ``{}``'.format(shortRepr(env.sos_dict['depends'])))
-        result['__step_output__'] = env.sos_dict['output']
-        if '__execute_errors__' in env.sos_dict:
-            result['__execute_errors__'] = env.sos_dict['__execute_errors__']
-        if 'alias' in self.options:
-            step_info.set('output', env.sos_dict['output'])
-            step_info.set('depends', env.sos_dict['depends'])
-            for var in public_vars:
-                if var in env.sos_dict and pickleable(env.sos_dict[var]):
-                    step_info.set(var, env.sos_dict[var])
-            result[self.options['alias']] = copy.deepcopy(step_info)
+
         #
         # if the signature matches, the whole step is ignored
         if env.sos_dict['input'] is not None and env.sos_dict['output'] is not None:
@@ -1042,7 +1010,7 @@ class SoS_Step:
                     if signature.validate():
                         # everything matches
                         env.logger.info('Reusing existing output files {}'.format(', '.join(env.sos_dict['output'])))
-                        return result
+                        return self.collectResult(public_vars)
                 elif env.sig_mode == 'assert':
                     if not signature.validate():
                         raise RuntimeError('Signature mismatch.')
@@ -1144,6 +1112,37 @@ class SoS_Step:
             # finally, write results back to the master process
             pool.close()
             pool.join()
+        return self.collectResult(public_vars)
+
+    def collectResult(self, public_vars):
+        # only results will be sent back to the master process
+        #
+        # __step_input__:    input of this step
+        # __steo_output__:   output of this step
+        # __step_depends__:  dependent files of this step
+        result = {
+            '__step_input__': env.sos_dict['input'],
+            '__step_output__': env.sos_dict['output'],
+            '__step_depends__': env.sos_dict['depends'],
+        }
+        if '__execute_errors__' in env.sos_dict:
+            result['__execute_errors__'] = env.sos_dict['__execute_errors__']
+        if 'alias' in self.options:
+            step_info = StepInfo()
+            step_info.set('step_name', env.sos_dict['step_name'])
+            step_info.set('input', env.sos_dict['input'])
+            step_info.set('output', env.sos_dict['output'])
+            step_info.set('depends', env.sos_dict['depends'])
+            # the step might be skipped
+            for var in public_vars:
+                # there is a slight possibility that var is deleted
+                if var in env.sos_dict and pickleable(env.sos_dict[var]):
+                    step_info.set(var, env.sos_dict[var])
+            #
+            if isinstance(self.options['alias'], Undetermined):
+                # it is time to evalulate this expression now
+                self.options['alias'] = self.options['alias'].value(self.sigil)
+            result[self.options['alias']] = copy.deepcopy(step_info)
         return result
 
     def show(self):
