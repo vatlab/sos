@@ -128,6 +128,7 @@ def execute_step_process(step_process, global_process, sos_dict, sigil, signatur
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
     try:
+        env.logger.trace('Executing step with input ``{}`` and output ``{}``'.format(sos_dict['_input'], shortRepr(sos_dict['_output'])))
         os.chdir(workdir)
         # switch context to the new dict and switch back once the with
         # statement ends (or if an exception is raised)
@@ -142,18 +143,19 @@ def execute_step_process(step_process, global_process, sos_dict, sigil, signatur
         os.chdir(env.exec_dir)
         if signature:
             if env.sos_dict['_output'] and isinstance(env.sos_dict['_output'][0], Undetermined):
-                value = env.sos_dict['_output'].expr
+                value = env.sos_dict['_output'][0].expr
                 env.logger.trace('Processing output: {}'.format(value))
-                args, kwargs = SoS_eval('__null_func__({})'.format(value), self.sigil)
+                args, kwargs = SoS_eval('__null_func__({})'.format(value), sigil)
                 # now we should have _output
                 directive_output(*args)
                 signature.set(env.sos_dict['_output'], 'output')
-                env.logger.trace('Reset _output to {}'.format(env.sos_dict['_output']))
+                env.logger.trace('Reset _output to ``{}``'.format(shortRepr(env.sos_dict['_output'])))
             signature.write()
     except KeyboardInterrupt:
         raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
     env.deregister_process(os.getpid())
-    return 0
+    env.logger.trace('Execution completed with output ``{}``'.format(shortRepr(env.sos_dict['_output'])))
+    return {'succ': 0, 'output': env.sos_dict['_output']}
 
 #
 # Functions to handle directives
@@ -968,8 +970,7 @@ class SoS_Step:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
                     if '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
-                        signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'],
-                            env.sos_dict.get('_depends', []))
+                        signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict.get('_depends', []), index=idx)
                         if env.sig_mode == 'default':
                             res = signature.validate()
                             if res:
@@ -1005,6 +1006,8 @@ class SoS_Step:
                 raise RuntimeError('Output should be specified for all loops.')
             env.sos_dict.set('output', None)
         elif self._outputs and self._outputs[0] and isinstance(self._outputs[0][0], Undetermined):
+            # in case of dynamic expression, the same expression can have different
+            # results so we cannot merge them now
             env.sos_dict.set('output', sum(self._outputs, []))
         else:
             env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
@@ -1065,8 +1068,7 @@ class SoS_Step:
             # step is interrupted in the middle.
             partial_signature = None
             if env.sos_dict['_output'] is not None and env.sos_dict['_output'] != env.sos_dict['output'] and env.run_mode == 'run':
-                partial_signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'],
-                    env.sos_dict['_depends'])
+                partial_signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], index=idx)
                 if env.sig_mode == 'default':
                     if partial_signature.validate():
                         # everything matches
@@ -1134,8 +1136,13 @@ class SoS_Step:
                 pool.terminate()
                 pool.join()
                 raise
-        if not all(x==0 for x in proc_results):
-            raise RuntimeError('Step process returns non-zero value')
+        if proc_results:
+            if not all(x['succ']==0 for x in proc_results):
+                raise RuntimeError('Step process returns non-zero value')
+            for idx, res in enumerate(proc_results):
+                if self._outputs[idx] and isinstance(self._outputs[idx][0], Undetermined):
+                    env.logger.trace('Setting _output[{}] from proc output {}'.format(idx, shortRepr(res['output'])))
+                    self._outputs[idx] = res['output']
         if env.run_mode == 'run' and env.sos_dict['output'] is not None:
             env.logger.trace('Checking output files {}'.format(env.sos_dict['output']))
             if env.sos_dict['output'] and isinstance(env.sos_dict['output'][0], Undetermined):

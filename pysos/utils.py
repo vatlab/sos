@@ -930,8 +930,11 @@ class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.
     '''
-    def __init__(self, script, input_files=[], output_files=[], dependent_files = [], pid=None, workdir='.'):
+    def __init__(self, script, input_files=[], output_files=[], dependent_files = [], index=None, pid=None, workdir='.'):
         '''Runtime information for specified output files
+        index:
+            in case of partial output, output files can be the same form (dynamic) so we need index to differntiate
+
         output_files:
             intended output file
 
@@ -953,7 +956,7 @@ class RuntimeInfo:
         if self.output_files and not isinstance(self.output_files[0], Undetermined):
             sig_name = os.path.realpath(os.path.expanduser(self.output_files[0])) + textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
         else:
-            sig_name = textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
+            sig_name = textMD5('{} {} {} {} {}'.format(script, input_files, output_files, dependent_files, index))
         #
         # If the output path is outside of the current working directory
         rel_path = os.path.relpath(sig_name, os.path.realpath(workdir))
@@ -1567,7 +1570,7 @@ class Undetermined(object):
         return 'Undetermined({!r})'.format(self.expr)
 
     def __hash__(self):
-        raise RuntimeError('Dynamic expression should be evaluated before used.'
+        raise RuntimeError('Undetermined expression should be evaluated before used. '
             'This is certainly a bug so please report this to SoS developer.')
 
 #
