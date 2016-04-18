@@ -988,7 +988,7 @@ for i in range(4):
 ''')
         wf = script.workflow()
         wf.run()
-        self.assertEqual(env.sos_dict['test'].output, ['/Users/bpeng1/SOS/test/temp/something{}.html'.format(x) for x in range(4)])
+        self.assertEqual(env.sos_dict['test'].output, ['{}/temp/something{}.html'.format(os.getcwd(), x) for x in range(4)])
 
 if __name__ == '__main__':
     unittest.main()
