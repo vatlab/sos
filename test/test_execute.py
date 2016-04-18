@@ -48,6 +48,8 @@ class TestExecute(unittest.TestCase):
         self.assertEqual(subprocess.call('sos run -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos dryrun -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos dryrun scripts/master.sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
+        # a redirect bug related to blessing
+        self.assertEqual(subprocess.call('sos run scripts/slave1.sos -v1 > /dev/null', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos dryrun file://{}/scripts/master.sos'.format(os.getcwd()), stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
         self.assertEqual(subprocess.call('sos dryrun scripts/master.sos L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos show -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
@@ -74,7 +76,7 @@ for b in range(5):
         wf = script.workflow()
         wf.run()
         self.assertEqual(env.sos_dict['res'], '01234')
-        # 
+        #
         env.run_mode='dryrun'
         script = SoS_Script(r"""
 [0: alias='res']
@@ -285,7 +287,7 @@ cp ${_input} ${_dest}
         with open('temp/d.txt') as td:
             self.assertTrue(td.read(), 'b.txt')
         self.assertEqual(env.sos_dict['oa'].output, ['temp/c.txt', 'temp/d.txt'])
-        # 
+        #
         # now in assert mode, the signature should be there
         env.sig_mode = 'assert'
         wf.run()

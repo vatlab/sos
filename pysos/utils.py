@@ -288,7 +288,7 @@ class RuntimeEnvironments(object):
         #
         # default              (save signature, skip if signature match)
         # ignore_signature     (ignore existing signature but still saves signature)
-        # assert_signature     (should 
+        # assert_signature     (should
         self.sig_mode = 'default'
         #
         # global dictionaries used by SoS during the
@@ -296,7 +296,7 @@ class RuntimeEnvironments(object):
         self.sos_dict = WorkflowDict()
         # variables that are defined in global and parameters sections and are readonly
         self.readonly_vars = set()
-        # 
+        #
         # a list of variables that will be sent back from subprocess
         # in addition to aliased stepinfo. This is designed for testing
         # purposes only
@@ -304,7 +304,7 @@ class RuntimeEnvironments(object):
         # maximum number of concurrent jobs
         self.max_jobs = 1
         self.running_jobs = 0
-        # this directory will be used by a lot of processes 
+        # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
         if not os.path.isdir('.sos'):
             os.mkdir('.sos')
@@ -346,7 +346,7 @@ class RuntimeEnvironments(object):
         if not hasattr(logging, 'TRACE'):
             logging.TRACE = 5
             logging.addLevelName(logging.TRACE, "TRACE")
-        # create a logger, we current use the regular logger but we should 
+        # create a logger, we current use the regular logger but we should
         # switch to multiprocessing.get_logger if we notice trouble in, for example,
         # logging from multiple processes.
         self._logger = logging.getLogger()
@@ -402,7 +402,7 @@ class RuntimeEnvironments(object):
     #
     logfile = property(lambda self: self._logfile, _set_logfile)
 
-   
+
 # set up environment variable and a default logger
 env = RuntimeEnvironments()
 logger = env.logger
@@ -415,7 +415,8 @@ def getTermWidth():
     '''Get the width of current user terminal to properly wrap SoS
     output when well-formatted output is required.
     '''
-    return blessings.Terminal().width
+    width = blessings.Terminal().width
+    return 75 if width is None else width
 
 class _DeHTMLParser(HTMLParser):
     '''This parser analyzes input text, removes HTML tags such as
@@ -880,7 +881,7 @@ class FileSignature:
     decompressed files in case the file is decompressed.'''
     def __init__(self, filename, workdir='.'):
         #
-        sig_name = os.path.realpath(os.path.expanduser(filename)) 
+        sig_name = os.path.realpath(os.path.expanduser(filename))
         self.filenames = [sig_name]
         #
         # If the output path is outside of the current working directory
@@ -902,7 +903,7 @@ class FileSignature:
     def add(self, filename):
         '''add related files to the same signature'''
         self.filenames.append(os.path.abspath(os.path.expanduser(filename)))
-        
+
     def write(self):
         '''Write .file_info file with signature'''
         with open(self.sig_file, 'w') as md5:
@@ -997,7 +998,7 @@ class RuntimeInfo:
             self.sig_depends_files.extend(files)
         else:
             raise RuntimeError('Invalid signature file type')
-        
+
     def write(self):
         '''Write .exe_info file with signature of script, input, output and dependent files.'''
         if not self.proc_info:
@@ -1200,7 +1201,7 @@ def expand_pattern(pattern):
         ofiles.append(apply_wildcards(pattern, card, fill_missing=False,
            fail_dynamic=False, dynamic_fill=None, keep_dynamic=False))
     return ofiles
- 
+
 def print_traceback():
     exc_type, exc_value, exc_traceback = sys.exc_info()
     #print "*** print_tb:"
@@ -1265,14 +1266,14 @@ class ProgressBar:
         #
         self.finished = 0
         self.reset('', totalCount)
-        
+
     def reset(self, msg='', totalCount = None):
         if msg:
             self.message = '{} - {}'.format(self.main, msg)
         self.finished += self.count
         self.count = 0
         self.totalCount = totalCount
-        self.min_progress_count = None if self.totalCount is None else self.totalCount / 1000 
+        self.min_progress_count = None if self.totalCount is None else self.totalCount / 1000
         self.last_progress_count = 0
         self.start_time = None
         self.last_time = None
@@ -1476,7 +1477,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                         sig.add(os.path.join(dest_dir, name))
                         decompressed += 1
             elif tarfile.is_tarfile(dest):
-                with tarfile.open(dest, 'r:*') as tar: 
+                with tarfile.open(dest, 'r:*') as tar:
                     tar.extractall(dest_dir)
                     # only extract files
                     files = [x.name for x in tar.getmembers() if x.isfile()]
@@ -1545,7 +1546,7 @@ class frozendict(dict):
         return "frozendict(%s)" % dict.__repr__(self)
 
 #
-# dynamic expression that cannot be resolved during parsing 
+# dynamic expression that cannot be resolved during parsing
 # at dryrun mode etc, and has to be resolved at run time.
 #
 class Undetermined(object):
@@ -1573,11 +1574,11 @@ def get_output(cmd):
         raise RuntimeError(e)
     return output
 
-# 
+#
 # search a path and locate script and other files
 #
 def locate_script(filename, start=''):
-    # 
+    #
     attemp = os.path.expanduser(filename)
     if os.path.isfile(attemp):
         return ('', attemp)
@@ -1627,5 +1628,3 @@ def locate_script(filename, start=''):
                 pass
     #
     raise ValueError('Failed to locate {}'.format(filename))
-
-
