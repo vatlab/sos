@@ -48,6 +48,8 @@ class TestExecute(unittest.TestCase):
         self.assertEqual(subprocess.call('sos run -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos dryrun -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos dryrun scripts/master.sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
+        # a redirect bug related to blessing
+        self.assertEqual(subprocess.call('sos run scripts/slave1.sos -v1 > /dev/null', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos dryrun file://{}/scripts/master.sos'.format(os.getcwd()), stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
         self.assertEqual(subprocess.call('sos dryrun scripts/master.sos L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos show -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)

@@ -946,7 +946,7 @@ class SoS_Step:
                                     eval('directive_' + key)(*args, **kwargs)
                                 # while output can be resolved later.
                                 elif key == 'output':
-                                    env.sos_dict.set('_' + key, Undetermined(value))
+                                    env.sos_dict.set('_' + key, [Undetermined(value)])
                         else:
                             eval('directive_' + key)(*args, **kwargs)
                     except Exception as e:
@@ -964,7 +964,7 @@ class SoS_Step:
                     except Exception as e:
                         raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
                     env.run_mode = old_run_mode
-
+            #
             # collect _output and _depends
             if '_output' in env.sos_dict:
                 self._outputs.append(env.sos_dict['_output'])
@@ -986,10 +986,11 @@ class SoS_Step:
             if not all(x is None for x in self._outputs):
                 raise RuntimeError('Output should be specified for all loops.')
             env.sos_dict.set('output', None)
-        elif any(isinstance(x, Undetermined) for x in self._outputs):
-            env.sos_dict.set('output', self._outputs)
         else:
-            env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
+            if self._outputs[0] and isinstance(self._outputs[0][0], Undetermined):
+                env.sos_dict.set('output', sum(self._outputs, []))
+            else:
+                env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
         #
         if any(isinstance(x, Undetermined) for x in self._depends):
             env.sos_dict.set('depends', self._depends)
