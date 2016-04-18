@@ -1014,9 +1014,9 @@ class SoS_Step:
         else:
             env.sos_dict.set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
         #
-        if env.sos_dict['output'] and not isinstance(env.sos_dict['output'][0], Undetermined):
+        if env.sos_dict['output'] and not isinstance(env.sos_dict['output'][0], Undetermined) and env.run_mode == 'run':
             env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
-        if env.sos_dict['depends'] and not isinstance(env.sos_dict['depends'][0], Undetermined):
+        if env.sos_dict['depends'] and not isinstance(env.sos_dict['depends'][0], Undetermined) and env.run_mode == 'run':
             env.logger.info('depends: ``{}``'.format(shortRepr(env.sos_dict['depends'])))
 
         #
