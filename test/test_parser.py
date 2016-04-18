@@ -736,7 +736,7 @@ sos_run('a+b')
         wf.run()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'a_1', 'a_2', 'a_3', 'a_4',
             'b_1', 'b_2', 'b_3', 'b_4'])
-        self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], None, None, None, ['b.begin'], None, None, None])
+        self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], [], [], [], ['b.begin'], [], [], []])
         # step will be looped
         script = SoS_Script('''
 if 'executed' in locals():

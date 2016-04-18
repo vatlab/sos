@@ -276,6 +276,11 @@ def directive_input(*args, **kwargs):
             raise RuntimeError('Unrecognized input option {}'.format(k))
     #
     if args:
+        # 
+        # if args are specified, it overrides the default __step_input__
+        # at least point we just put files together and do not worry about
+        # if the files exist
+        #
         ifiles = []
         for arg in args:
             if isinstance(arg, str):
@@ -288,37 +293,51 @@ def directive_input(*args, **kwargs):
                 ifiles.extend([os.path.expanduser(x) for x in arg])
             else:
                 raise ValueError('Unrecognizable input type {}'.format(arg))
-        env.sos_dict.set('__step_input__', ifiles)
     else:
+        #
+        # Otherwise, ifiles are from the system passed '__step_input__'. There
+        # are a few cases
+        #
+        # 1. __step_input__ is determined, which is a list of files, good
+        # 2. __step_input__ is defined but undetermined, this is not possible
+        #    in run mode because in this mode all files should have been 
+        #    determined
+        # 3. __step_input__ is undefined (None), which means there is no 
+        #     input file but the step has to be executed after the previous
+        #     steps. 
+        #
         ifiles = env.sos_dict['__step_input__']
-        # at run mode, if None is specified, assuming empty input
-        if ifiles is None:
-            if env.run_mode == 'run':
-                raise RuntimeError('There should be no unknown input at run mode.')
-            else: 
-                # FIXME: behavior undecided here
-                #
-                # in dryrun mode, we do not care about input files
-                # in prepare mode, None input means no output is specified from previous
-                ifiles = []
+    #
+    # for undetermined file type, we cannot process options
+    #
+    if isinstance(ifiles, Undetermined):
+        if env.run_mode == 'run':
+            raise RuntimeError('Run mode does not accept undetermined input')
+        # if input is undertermined, does not process other options
+        # single group and vars
+        return [[]], [[]]
+    elif ifiles is None:
+        ifiles = []
+    # if files are determined, 
+    #
     # expand files with wildcard characters and check if files exist
     tmp = []
     for ifile in ifiles:
         if os.path.isfile(os.path.expanduser(ifile)):
             tmp.append(ifile)
-        elif env.run_mode in 'run':
+        else:
             # in this mode file must exist
             expanded = sorted(glob.glob(os.path.expanduser(ifile)))
             if not expanded:
-                raise RuntimeError('{} not exist.'.format(ifile))
-            tmp.extend(expanded)
-        elif env.run_mode == 'prepared':
-            # in this mode we can handle Undetermined files
-            expanded = sorted(glob.glob(os.path.expanduser(ifile)))
-            if expanded:
-                tmp.extend(expanded)
+                if env.run_mode == 'prepare':
+                    env.sos_dict['__execute_errors__'].append('input', '{} not exist.'.format(ifile))
+                elif env.run_mode == 'run':
+                    raise RuntimeError('{} not exist'.format(ifile))
+                else:
+                    # in dryrun mode, we do not care about unrecognized file
+                    tmp.append(ifile)
             else:
-                tmp.append(ifile)
+                tmp.extend(expanded)
     #
     ifiles = tmp
     #
@@ -329,6 +348,9 @@ def directive_input(*args, **kwargs):
             ifiles = [x for x in ifiles if any(fnmatch.fnmatch(x, y) for y in kwargs['filetype'])]
         elif callable(kwargs['filetype']):
             ifiles = [x for x in ifiles if kwargs['filetype'](x)]
+    # 
+    # input file is the filtered files
+    env.sos_dict.set('__step_input__', ifiles)
     #
     # handle group_by
     if 'group_by' in kwargs:
@@ -783,6 +805,16 @@ class SoS_Step:
             for key in env.shared_vars:
                 if key in env.sos_dict and key not in res:
                     res[key] = env.sos_dict[key]
+            if env.run_mode == 'run':
+                #if res['__step_input__'] is None:
+                #    raise RuntimeError('Step input cannot be None in run mode')
+                for key in ('__step_input__', '__step_output__', '__step_depends__'):
+                    if res[key] is not None and not isinstance(res[key], list):
+                        raise RuntimeError('Step input, output or depends has to be None or a list of filenames')
+                    if res[key] is not None:
+                        for v in res[key]:
+                            if isinstance(v, Undetermined):
+                                raise RuntimeError('Step input, output, or depends cannot be undetermined in run mode')
             queue.put(res)
         except Exception as e:
             queue.put(e)
@@ -790,7 +822,15 @@ class SoS_Step:
     def run(self):
         '''Execute a single step and return results '''
         # only results will be sent back to the master process
-        result = {'__step_output__': None}
+        #
+        # __step_input__:    input of this step
+        # __steo_output__:   output of this step
+        # __step_depends__:  dependent files of this step
+        #
+        # These variables will be used to build execution DAG. In execution mode, these have 
+        # to be real filenames, in other modes, they can be Undetermined.
+        #
+        result = {'__step_input__': None, '__step_output__': None, '__step_depends__': None}
         # handle these two sections differently
         env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
         env.sos_dict.set('step_name', '{}_{}'.format(self.name, self.index))
@@ -803,16 +843,11 @@ class SoS_Step:
         #
         # default input groups and vars, might be reset by directive input
         if '__step_input__' in env.sos_dict:
-            # in run mode and there is still no input, we should assume no input
-            # this is because in dryrun mode the current step would be rely on all
-            # previous steps so if this step is reached in run mode, all previous mode
-            # must have been executed.
-            if env.sos_dict['__step_input__'] is None and env.run_mode == 'run':
-                self._groups = [[]]
-            else:
-                self._groups = [env.sos_dict['__step_input__']]
+            self._groups = [env.sos_dict['__step_input__']]
         else:
             raise RuntimeError('No step input is defined for step {}_{}'.format(self.name, self.index))
+        #
+        # variables associated with each _input
         self._vars = [{}]
         #
         # look for input statement.
@@ -857,11 +892,18 @@ class SoS_Step:
             key, value = self.statements[input_statement_idx][1:]
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(value), self.sigil)
-                self._groups, self._vars = directive_input(*args, **kwargs)
+                if 'dynamic' in kwargs and env.run_mode != 'run':
+                    env.sos_dict.set('__step_input__', None)
+                    self._groups = None
+                    self._vars = None
+                else:
+                    self._groups, self._vars = directive_input(*args, **kwargs)
             except Exception as e:
                 raise RuntimeError('Failed to process step {} : {} ({})'.format(key, value.strip(), e))
             input_statement_idx += 1
         else:
+            # default case
+            self._groups, self._vars = directive_input()
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
 
@@ -885,7 +927,7 @@ class SoS_Step:
                 self.options['alias'] = self.options['alias'].value(self.sigil)
             result[self.options['alias']] = copy.deepcopy(step_info)
         if not self._groups:
-            env.logger.info('Step {} is skipped'.format(self.index))
+            env.logger.info('Step {} is skipped because of no input group'.format(self.index))
             return result
         # post input
         # output and depends can be processed many times
@@ -977,7 +1019,7 @@ class SoS_Step:
         else:
             env.sos_dict.set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
         #
-        env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
+        env.logger.info('outputk:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
         if env.sos_dict['depends']:
             env.logger.info('depends: ``{}``'.format(shortRepr(env.sos_dict['depends'])))
         result['__step_output__'] = env.sos_dict['output']
@@ -1302,7 +1344,10 @@ class SoS_Workflow:
             for k, v in res.items():
                 if k == '__step_output__':
                     env.sos_dict.set('__step_input__', v)
-                env.sos_dict.set(k, v)
+                elif k == '__step_input__':
+                    continue
+                else:
+                    env.sos_dict.set(k, v)
             prog.progress(1)
         prog.done()
         # at the end
