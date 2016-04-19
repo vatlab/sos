@@ -319,7 +319,7 @@ def directive_input(*args, **kwargs):
         #     steps. 
         #
         ifiles = env.sos_dict['__step_input__']
-    #
+        #
     # for undetermined file type, we cannot process options
     #
     if isinstance(ifiles, Undetermined):
@@ -327,7 +327,7 @@ def directive_input(*args, **kwargs):
             raise RuntimeError('Run mode does not accept undetermined input')
         # if input is undertermined, does not process other options
         # single group and vars
-        return [[]], [[]]
+        return [], []
     elif ifiles is None:
         ifiles = []
     # if files are determined, 
@@ -837,6 +837,10 @@ class SoS_Step:
         # handle these two sections differently
         if env.run_mode == 'run':
             env.logger.info('Execute ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
+        elif env.run_mode == 'dryrun':
+            env.logger.trace('Checking ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
+        else:
+            env.logger.trace('Preparing ``{}_{}``: {}'.format(self.name, self.index, self.comment.strip()))
         env.sos_dict.set('step_name', '{}_{}'.format(self.name, self.index))
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.context)
@@ -893,13 +897,14 @@ class SoS_Step:
                     except Exception as e:
                         raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
             # input statement
+            env.logger.trace('Handling input statement')
             key, value = self.statements[input_statement_idx][1:]
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(value), self.sigil)
                 if 'dynamic' in kwargs and env.run_mode != 'run':
                     env.sos_dict.set('__step_input__', None)
-                    self._groups = None
-                    self._vars = None
+                    self._groups = []
+                    self._vars = []
                 else:
                     self._groups, self._vars = directive_input(*args, **kwargs)
             except Exception as e:
@@ -910,6 +915,14 @@ class SoS_Step:
             self._groups, self._vars = directive_input()
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
+
+        # for dynamic input value and not in run mode,
+        # we cannot do anything
+        if not self._groups:
+            env.sos_dict.set('input', None)
+            env.sos_dict.set('output', None)
+            env.sos_dict.set('depends', None)
+            return self.collectResult([])
 
         if None in self._groups:
             if not all(x is None for x in self._groups):
@@ -925,6 +938,7 @@ class SoS_Step:
         if env.run_mode == 'run':
             env.logger.info('input:   ``{}``'.format(shortRepr(env.sos_dict['input'], noneAsNA=True)))
         # 
+        env.logger.trace('Handling statements after input statement')
         self._outputs = []
         self._depends = []
         for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
@@ -1095,6 +1109,7 @@ class SoS_Step:
                     partial_signature.write()
                 continue
             #
+            env.logger.trace('Executing step process')
             try:
                 if concurrent:
                     proc_results.append(pool.apply_async(
@@ -1143,8 +1158,8 @@ class SoS_Step:
                 if self._outputs[idx] and isinstance(self._outputs[idx][0], Undetermined):
                     env.logger.trace('Setting _output[{}] from proc output {}'.format(idx, shortRepr(res['output'])))
                     self._outputs[idx] = res['output']
+        env.logger.trace('Checking output files {}'.format(env.sos_dict['output']))
         if env.run_mode == 'run' and env.sos_dict['output'] is not None:
-            env.logger.trace('Checking output files {}'.format(env.sos_dict['output']))
             if env.sos_dict['output'] and isinstance(env.sos_dict['output'][0], Undetermined):
                 # at this point self._outputs should be expanded already.
                 env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))

@@ -989,6 +989,40 @@ for i in range(4):
         wf = script.workflow()
         wf.run()
         self.assertEqual(env.sos_dict['test'].output, ['{}/temp/something{}.html'.format(os.getcwd(), x) for x in range(4)])
+        #
+        shutil.rmtree('temp')
+
+    def testDynamicInput(self):
+        '''Testing dynamic input'''
+        #
+        if os.path.isdir('temp'):
+            shutil.rmtree('temp')
+        os.mkdir('temp')
+        #
+        script = SoS_Script('''
+[1]
+
+for i in range(5):
+    run('touch temp/test_${i}.txt')
+
+
+[10: alias='test']
+input: 'temp/*.txt', group_by='single', dynamic=True
+output: 'temp/*.txt.bak', dynamic=True
+
+run:
+touch ${_input}.bak
+''')
+        wf = script.workflow()
+        wf.run()
+        self.assertEqual(env.sos_dict['test'].output, ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
+        # this time we use th existing signature
+        wf.run()
+        self.assertEqual(env.sos_dict['test'].output, ['{}/temp/test_{}.txt.bak'.format(os.getcwd(), x) for x in range(5)])
+        #
+        shutil.rmtree('temp')
+
+
 
 if __name__ == '__main__':
     unittest.main()
