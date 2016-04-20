@@ -270,9 +270,10 @@ class DockerClient:
             if platform.system() == 'Linux':
                 # this is for a selinux problem when /var/sos/script cannot be executed
                 security_opt = '--security-opt label:disable'
-            command = 'docker run --rm {} {} {} {} {} {} {} {} {} {} {} {} {}'.format(
+            command = 'docker run --rm {} {} {} {} {} {} {} {} {} {} {} {} {} {}'.format(
                 security_opt,       # security option
                 volumes_opt,        # volumes
+                volumes_from_opt,   # volumes_from
                 name_opt,           # name
                 stdin_opt,          # stdin_optn
                 tty_opt,            # tty
@@ -280,7 +281,7 @@ class DockerClient:
                 working_dir_opt,    # working dir
                 user_opt,           # user
                 env_opt,            # environment
-                mem_limit_opt,        # memory limit
+                mem_limit_opt,      # memory limit
                 extra_opt,          # any extra parameters
                 image,              # image
                 cmd_opt
