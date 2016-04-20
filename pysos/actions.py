@@ -74,7 +74,7 @@ class DockerClient:
             if platform.system() == 'Darwin':
                 try:
                     # this command log in to the docker machine, check if /Volumes has been mounted,
-                    # and try to mount it if possible. This requires users to configure 
+                    # and try to mount it if possible. This requires users to configure
                     subprocess.call("""docker-machine ssh "{}" 'mount | grep /Volumes || {{ echo "mounting /Volumes"; sudo mount  -t vboxsf Volumes /Volumes; }}' """.format(os.environ['DOCKER_MACHINE_NAME']),
                         shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     env.logger.trace('Sucessfully mount /Volumes to virtual machine')
@@ -134,7 +134,7 @@ class DockerClient:
             raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         env.logger.info('docker import {}'.format(image))
         self.client.import_image(image, **kwargs)
-       
+
     def pull(self, image):
         if not self.client:
             raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
@@ -241,7 +241,7 @@ class DockerClient:
             if 'port' in kwargs:
                 if isinstance(kwargs['port'], (str, int)):
                     port_opt = '-p {}'.format(kwargs['port'])
-                elif isinstace(kwargs['port'], list):
+                elif isinstance(kwargs['port'], list):
                     port_opt = ' '.join('-p {}'.format(x) for x in kwargs['port'])
                 else:
                     raise RuntimeError('Invalid value for option port (a list of intergers), {} provided'.format(kwargs['port']))
@@ -260,7 +260,7 @@ class DockerClient:
             #
             user_opt = ''
             if 'user' in kwargs:
-                user_opt = '-u {}'.format(user)       
+                user_opt = '-u {}'.format(kwargs['user'])
             #
             extra_opt = ''
             if 'extra_args' in kwargs:
@@ -301,7 +301,7 @@ class DockerClient:
                     if not hasattr(self, 'tot_mem'):
                         self.tot_mem = self.total_memory(image)
                     raise RuntimeError('Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(self.tot_mem/1024/1024) + msg)
-                else: 
+                else:
                     raise RuntimeError('Executing script in docker returns an error (exitcode={}). '.format(ret) + msg)
         return 0
 
@@ -353,7 +353,7 @@ class SoS_ExecuteScript:
         runtime_options = env.sos_dict.get('_runtime', {})
         if 'docker_image' in runtime_options:
             docker = DockerClient()
-            docker.run(runtime_options['docker_image'], self.script, self.interpreter, self.suffix, 
+            docker.run(runtime_options['docker_image'], self.script, self.interpreter, self.suffix,
                 **kwargs)
         else:
             self.script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=self.suffix, delete=False).name
@@ -443,7 +443,7 @@ def warn_if(expr, msg=''):
 def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified
-    destination. If `filename.md5` files are downloaded, they are used to 
+    destination. If `filename.md5` files are downloaded, they are used to
     validate downloaded `filename`. Unless otherwise specified, compressed
     files are decompressed.
     '''
@@ -454,7 +454,7 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     #
     if dest_file is not None and len(urls) != 1:
         raise RuntimeError('Only one URL is allowed if a destination file is specified.')
-    # 
+    #
     if dest_file is None:
         filenames = []
         for idx, url in enumerate(urls):
@@ -659,7 +659,7 @@ def check_R_library(name, version = None):
             else:
                 raise RuntimeError('This should not happen: {}'.format(line))
     try:
-        os.remove(self.output_file)
+        os.remove(output_file)
     except:
         pass
     return ret_val
@@ -680,4 +680,3 @@ def docker_commit(**kwargs):
     docker = DockerClient()
     docker.commit(**kwargs)
     return 0
-

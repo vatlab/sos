@@ -48,7 +48,7 @@ from shlex import quote
 from tokenize import generate_tokens, untokenize
 from contextlib import contextmanager
 from html.parser import HTMLParser
-
+from itertools import chain
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
@@ -1058,7 +1058,7 @@ class RuntimeInfo:
                     res[cur_type].append(f)
                     f = os.path.realpath(os.path.expanduser(f))
                 except Exception as e:
-                    env.logger.debug('Wrong md5 line {} in {}: {}'.format(line, md5file, e))
+                    env.logger.debug('Wrong md5 line {} in {}: {}'.format(line, self.proc_info, e))
                     continue
                 if fileMD5(f) != m.strip():
                     env.logger.debug('MD5 mismatch {}'.format(f))
@@ -1151,7 +1151,7 @@ def apply_wildcards(pattern,
         try:
             value = wildcards[name]
             if fail_dynamic and value == dynamic_fill:
-                raise WildcardError(name)
+                raise RuntimeError(name)
             return str(value)  # convert anything into a str
         except KeyError as ex:
             if keep_dynamic:
