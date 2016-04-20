@@ -377,7 +377,12 @@ def sos_run(workflow, source={}):
     extra sos files can be specified from paramter source. The workflow
     will be execute in the current step namespace with _input as workflow
     input. '''
-    env.logger.info('Executing nested workflow {}'.format(workflow))
+    if env.run_mode == 'dryrun':
+        env.logger.debug('Checking nested workflow {}'.format(workflow))
+    elif env.run_mode == 'prepare':
+        env.logger.debug('Preparing nested workflow {}'.format(workflow))
+    else:
+        env.logger.info('Executing nested workflow {}'.format(workflow))
     script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
     wf = script.workflow(workflow, source=source)
     # if wf contains the current step or one of the previous one, this constitute

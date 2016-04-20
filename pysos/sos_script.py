@@ -341,9 +341,9 @@ def directive_input(*args, **kwargs):
             # in this mode file must exist
             expanded = sorted(glob.glob(os.path.expanduser(ifile)))
             if not expanded:
-                if env.run_mode == 'prepare':
-                    env.sos_dict['__execute_errors__'].append('input', '{} not exist.'.format(ifile))
-                elif env.run_mode == 'run':
+                #if env.run_mode == 'prepare':
+                #    env.sos_dict['__execute_errors__'].append('input', '{} not exist.'.format(ifile))
+                if env.run_mode == 'run':
                     raise RuntimeError('{} not exist'.format(ifile))
                 else:
                     # in dryrun mode, we do not care about unrecognized file
