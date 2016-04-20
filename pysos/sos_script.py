@@ -288,7 +288,7 @@ def directive_input(*args, **kwargs):
             raise RuntimeError('Unrecognized input option {}'.format(k))
     #
     if args:
-        # 
+        #
         # if args are specified, it overrides the default __step_input__
         # at least point we just put files together and do not worry about
         # if the files exist
@@ -312,11 +312,11 @@ def directive_input(*args, **kwargs):
         #
         # 1. __step_input__ is determined, which is a list of files, good
         # 2. __step_input__ is defined but undetermined, this is not possible
-        #    in run mode because in this mode all files should have been 
+        #    in run mode because in this mode all files should have been
         #    determined
-        # 3. __step_input__ is undefined (None), which means there is no 
+        # 3. __step_input__ is undefined (None), which means there is no
         #     input file but the step has to be executed after the previous
-        #     steps. 
+        #     steps.
         #
         ifiles = env.sos_dict['__step_input__']
         #
@@ -330,7 +330,7 @@ def directive_input(*args, **kwargs):
         return [], []
     elif ifiles is None:
         ifiles = []
-    # if files are determined, 
+    # if files are determined,
     #
     # expand files with wildcard characters and check if files exist
     tmp = []
@@ -360,7 +360,7 @@ def directive_input(*args, **kwargs):
             ifiles = [x for x in ifiles if any(fnmatch.fnmatch(x, y) for y in kwargs['filetype'])]
         elif callable(kwargs['filetype']):
             ifiles = [x for x in ifiles if kwargs['filetype'](x)]
-    # 
+    #
     # input file is the filtered files
     env.sos_dict.set('__step_input__', ifiles)
     #
@@ -937,7 +937,7 @@ class SoS_Step:
         step_sig = self.step_signature()
         if env.run_mode == 'run':
             env.logger.info('input:   ``{}``'.format(shortRepr(env.sos_dict['input'], noneAsNA=True)))
-        # 
+        #
         env.logger.trace('Handling statements after input statement')
         self._outputs = []
         self._depends = []
@@ -1060,7 +1060,6 @@ class SoS_Step:
             signature = None
         #
         proc_results = []
-        signatures = []
         if '_runtime' in env.sos_dict:
             self.runtime_options = env.sos_dict['_runtime']
         concurrent = env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in self.runtime_options and self.runtime_options['concurrent']
@@ -1213,7 +1212,7 @@ class SoS_Step:
         if self.is_parameters:
             print('Accepted parameters:')
             for k,v,c in self.parameters:
-                paragraphs = dehtml(c).split('\n\n')
+                # paragraphs = dehtml(c).split('\n\n')
                 # FIXME: print paragraphs one by one...
                 text = '{:<16}'.format(k + ':') + (c + ' ' if c else '') + \
                      ('(default: {})'.format(v) if v else '')
@@ -1339,8 +1338,7 @@ class SoS_Workflow:
                     raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format?'.format(config_file))
             #
             env.sos_dict.set('CONFIG', frozendict(cfg))
-            py_version = sys.version_info
-            # there is no default input for the first step... 
+            # there is no default input for the first step...
             env.sos_dict.set('__step_input__', [])
             SoS_exec('import os, sys, glob')
             SoS_exec('from pysos import *')
@@ -1363,12 +1361,12 @@ class SoS_Workflow:
                 prog.progress(1)
                 continue
             # handle skip, which might have to be evaluated till now.
-            # 
-            # Important: 
+            #
+            # Important:
             #
             # Here we require that skip to be evaluatable at dryrun and prepare mode
-            # up until this step. There is to say, it cannot rely on the result of 
-            # an action that is only available till run time (action would return 
+            # up until this step. There is to say, it cannot rely on the result of
+            # an action that is only available till run time (action would return
             # Undetermined when executed not in the specified runmode)
             #
             if 'skip' in section.options:
@@ -1521,8 +1519,6 @@ class SoS_Script:
         comment_block = 1
         # cursect always point to the last section
         cursect = None
-        last_expression = []
-        last_statement = []
         all_step_names = []
         #
         # this ParsingError is a container for all parsing errors. It will be
