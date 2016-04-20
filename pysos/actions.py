@@ -34,7 +34,6 @@ import blessings
 from io import BytesIO
 from docker import Client
 from docker.utils import kwargs_from_env
-from docker.errors import DockerException
 import multiprocessing as mp
 from .utils import env, interpolate, glob_wildcards, downloadURL, fileMD5, Undetermined
 

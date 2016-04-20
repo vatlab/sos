@@ -24,7 +24,6 @@ import sys
 import re
 import copy
 import yaml
-import urllib
 import atexit
 import glob
 import fnmatch
@@ -53,15 +52,16 @@ from itertools import tee, combinations
 
 from . import __version__
 from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, RuntimeInfo, \
-    dehtml, getTermWidth, interpolate, shortRepr, extract_pattern, expand_pattern, \
+    dehtml, getTermWidth, shortRepr, extract_pattern, expand_pattern, \
     get_traceback, pickleable, ProgressBar, frozendict, Undetermined, \
     locate_script
 
-from .sos_syntax import *
+from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
+    SOS_RUNTIME_OPTIONS, SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
+    SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_PARAMETERS_SECTION_NAME, SOS_DIRECTIVE, \
+    SOS_DIRECTIVES, SOS_ASSIGNMENT, SOS_SUBWORKFLOW
 
 __all__ = ['SoS_Script']
-
-from multiprocessing import current_process
 
 class ArgumentError(Error):
     """Raised when an invalid argument is passed."""
@@ -710,7 +710,7 @@ class SoS_Step:
             else:
                 raise RuntimeError('Unrecognized expression type {}'.format(self.category()))
             return True
-        except Exception as e:
+        except Exception:
             return False
 
     def _parse_error(self, msg):
@@ -1853,7 +1853,7 @@ class SoS_Script:
                         else:
                             content = locate_script(sos_file)
                     except Exception as e:
-                        raise RuntimeError('Source file for nested workflow {} does not exist'.format(sos_file))
+                        raise RuntimeError('Source file for nested workflow {} does not exist: {}'.format(sos_file, e))
                     source_scripts.append(SoS_Script(*content))
                 #
                 source[key] = source_scripts

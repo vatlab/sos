@@ -34,7 +34,6 @@ import hashlib
 import gzip
 import zipfile
 import tarfile
-import shutil
 import pickle
 import yaml
 import token
