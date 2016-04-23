@@ -396,7 +396,7 @@ def sos_run(workflow, source={}):
 def execute_script(script, interpreter, suffix, **kwargs):
     return SoS_ExecuteScript(script, interpreter, suffix).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['dryrun'])
 def check_command(cmd, pattern = None):
     '''Raise an exception if output of `cmd` does not match specified `pattern`.
     Multiple patterns can be specified as a list of patterns.
@@ -431,21 +431,21 @@ def check_command(cmd, pattern = None):
                     .format(cmd, ' or '.join(pattern)))
     return ret_val
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'run'])
 def fail_if(expr, msg=''):
     '''Raise an exception with `msg` if condition `expr` is False'''
     if expr:
         raise RuntimeError(msg)
     return 0
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'run'])
 def warn_if(expr, msg=''):
     '''Yield an warning message `msg` if `expr` is False '''
     if expr:
         env.logger.warning(msg)
     return 0
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['prepare'])
 def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified
@@ -569,7 +569,7 @@ def JavaScript(script, **kwargs):
 def R(script, **kwargs):
     return SoS_ExecuteScript(script, 'Rscript --default-packages=methods,utils,stats', '.R').run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['prepare'])
 def check_R_library(name, version = None):
     '''Check existence and version match of R library.
     cran and bioc packages are unique yet might overlap with github.
