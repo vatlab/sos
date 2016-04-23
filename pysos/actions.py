@@ -356,16 +356,17 @@ class SoS_ExecuteScript:
             docker.run(runtime_options['docker_image'], self.script, self.interpreter, self.suffix,
                 **kwargs)
         else:
-            self.script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=self.suffix, delete=False).name
-            with open(self.script_file, 'w') as script_file:
-                script_file.write(self.script)
-            cmd = self.interpreter.replace('{}', shlex.quote(self.script_file))
             try:
+                script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=self.suffix, delete=False).name
+                with open(script_file, 'w') as sfile:
+                    sfile.write(self.script)
+                cmd = self.interpreter.replace('{}', shlex.quote(script_file))
                 p = subprocess.Popen(cmd, shell=True)
-                env.register_process(p.pid, 'Runing {}'.format(self.script_file))
+                env.register_process(p.pid, 'Runing {}'.format(script_file))
                 ret = p.wait()
             finally:
                 env.deregister_process(p.pid)
+                os.remove(script_file)
             if ret != 0:
                 raise RuntimeError('Failed to execute script')
 
