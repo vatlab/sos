@@ -586,6 +586,7 @@ mean(nums)
         '''Test action check_R_library'''
         if not shutil.which('R'):
             return 
+        env.run_mode = 'prepare'
         script = SoS_Script(r'''
 [0]
 check_R_library('edgeR')
@@ -603,7 +604,7 @@ check_R_library('stephens999/ashr')
 check_R_library('edgeRRRR')
 ''')
         wf = script.workflow()
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), wf.run)
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerBuild(self):
@@ -667,6 +668,8 @@ run: docker_image='hello-world', docker_file = 'hello.tar'
         '''Test download of resources'''
         if not os.path.isdir('tmp'):
             os.makedirs('tmp')
+        #
+        env.run_mode = 'prepare'
         #
         for name in ['hapmap_ASW_freq.ann', 'hapmap_ASW_freq-hg18_20100817.DB.gz', 'hapmap_CHB_freq.ann',
                 'vt_quickStartGuide.tar.gz']:

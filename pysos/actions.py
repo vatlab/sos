@@ -396,7 +396,7 @@ def sos_run(workflow, source={}):
 def execute_script(script, interpreter, suffix, **kwargs):
     return SoS_ExecuteScript(script, interpreter, suffix).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun'])
+@SoS_Action(run_mode=['dryrun', 'run'])
 def check_command(cmd, pattern = None):
     '''Raise an exception if output of `cmd` does not match specified `pattern`.
     Multiple patterns can be specified as a list of patterns.
