@@ -795,7 +795,7 @@ class SoS_Step:
     #
     # Execution
     #
-    def step_signature(self):
+    def step_sig(self, related_vars):
         '''return everything that might affect the execution of the step
         namely, global process, step definition etc to create a unique
         signature that might will be changed with the change of SoS script.'''
@@ -934,7 +934,6 @@ class SoS_Step:
         #
         # post input
         # output and depends can be processed many times
-        step_sig = self.step_signature()
         if env.run_mode == 'run':
             env.logger.info('input:   ``{}``'.format(shortRepr(env.sos_dict['input'], noneAsNA=True)))
         #
@@ -984,7 +983,7 @@ class SoS_Step:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
                     if '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
-                        signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict.get('_depends', []), index=idx)
+                        signature = RuntimeInfo(self.step_sig(), env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict.get('_depends', []), index=idx)
                         if env.sig_mode == 'default':
                             res = signature.validate()
                             if res:
@@ -1040,7 +1039,7 @@ class SoS_Step:
         env.logger.trace('Checking signature (if available).')
         # if the signature matches, the whole step is ignored
         if env.sos_dict['input'] is not None and env.sos_dict['output'] is not None:
-            signature = RuntimeInfo(step_sig,
+            signature = RuntimeInfo(self.step_sig(),
                 env.sos_dict['input'], env.sos_dict['output'], env.sos_dict['depends'])
             if env.run_mode == 'run':
                 if env.sig_mode == 'default':
@@ -1081,7 +1080,7 @@ class SoS_Step:
             # step is interrupted in the middle.
             partial_signature = None
             if env.sos_dict['_output'] is not None and env.sos_dict['_output'] != env.sos_dict['output'] and env.run_mode == 'run':
-                partial_signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], index=idx)
+                partial_signature = RuntimeInfo(self.step_sig(v), env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], index=idx)
                 if env.sig_mode == 'default':
                     if partial_signature.validate():
                         # everything matches
