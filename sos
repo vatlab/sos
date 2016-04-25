@@ -24,7 +24,7 @@ import sys
 import argparse
 
 from pysos._version import __version__, SOS_FULL_VERSION
-from pysos.sos_script import sos_run, sos_dryrun, sos_prepare, sos_show
+from pysos.main import sos_run, sos_dryrun, sos_prepare, sos_show, sos_config
 
 def addCommonArgs(parser):
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
@@ -147,6 +147,32 @@ if __name__ == '__main__':
         help=workflow_spec)
     addCommonArgs(parser)
     parser.set_defaults(func=sos_show)
+    #
+    # command config
+    #
+    parser = subparsers.add_parser('config',
+        description='''The config command displays, set, and unset configuration
+            variables defined in global or local configuration files.''')
+    parser.add_argument('-g', '--global', action='store_true', dest='__global_config__',
+        help='''If set, change global (~/.sos/config.json) instead of local
+        (.sos/config.json) configuration''')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--get', nargs='*', metavar='OPTION', dest='__get_config__',
+        help='''Display values of specified configuration. The arguments of this
+        option can be a single configuration option or a list of option. Wildcard
+        characters are allowed to match more options (e.g. '*timeout', quotation
+        is needed to avoid shell expansion). If no option is given, all options
+        will be outputted.''')
+    group.add_argument('--unset', nargs='+', metavar='OPTION',  dest='__unset_config__',
+        help='''Unset (remove) settings for specified options. The arguments of this
+        option can be a single configuration option or a list of option. Wildcard
+        characters are allowed to match more options (e.g. '*timeout', or '*' for
+        all options, quotation is needed to avoid shell expansion).''')
+    group.add_argument('--set', nargs='+', metavar='KEY=VALUE', dest='__set_config__',
+        help='''Set one or more arguments as one or more 'key=value' pairs. The
+        value should be quoted if it is a string.''')
+    addCommonArgs(parser)
+    parser.set_defaults(func=sos_config)
     #
     if len(sys.argv) == 1:
         master_parser.print_help()

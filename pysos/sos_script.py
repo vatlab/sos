@@ -1326,7 +1326,16 @@ class SoS_Workflow:
                     with open(sos_config_file) as config:
                         cfg = yaml.safe_load(config)
                 except Exception as e:
-                    raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format?'.format(sos_config_file))
+                    raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+            #
+            # local config file
+            sos_config_file = '.sos/config.json'
+            if os.path.isfile(sos_config_file):
+                try:
+                    with open(sos_config_file) as config:
+                        cfg = yaml.safe_load(config)
+                except Exception as e:
+                    raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
             #
             if config_file is not None:
                 if not os.path.isfile(config_file):
@@ -1335,7 +1344,7 @@ class SoS_Workflow:
                     with open(config_file) as config:
                         cfg.update(yaml.safe_load(config))
                 except Exception as e:
-                    raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format?'.format(config_file))
+                    raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(config_file, e))
             #
             env.sos_dict.set('CONFIG', frozendict(cfg))
             # there is no default input for the first step...
