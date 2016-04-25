@@ -812,7 +812,13 @@ def SoS_exec(stmts, sigil='${ }'):
         stmts = ConvertString(code, sigil)
         if not stmts.strip():
             continue
-        env.logger.trace('Executing\n{}'.format(stmts))
+        if env.run_mode == 'dryrun':
+            env.logger.trace('Checking\n{}'.format(stmts))
+        elif env.run_mode == 'prepare':
+            env.logger.trace('Preparing\n{}'.format(stmts))
+        else:
+            env.logger.trace('Executing\n{}'.format(stmts))
+        #
         try:
             if env.run_mode == 'dryrun':
                 # make sure that the expression can be completed in 5 seconds

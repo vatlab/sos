@@ -93,7 +93,7 @@ class ExecuteError(Error):
         self.traces = []
         self.args = (workflow, )
 
-    def append(self, line, msg):
+    def append(self, line, error):
         lines = [x for x in line.split('\n') if x.strip()]
         if not lines:
             short_line = '<empty>'
@@ -101,7 +101,10 @@ class ExecuteError(Error):
             short_line = lines[0][:40] if len(lines[0]) > 40 else lines[0]
         self.errors.append(short_line)
         self.traces.append(get_traceback())
-        self.message += '\n[%s]:\n\t%s' % (short_line, msg)
+        if isinstance(error, Exception):
+            self.message += '\n[%s] %s:\n\t%s' % (short_line, error.__class__.__name__, error)
+        else:
+            self.message += '\n[%s]:\n\t%s' % (short_line, error)
 
 class StepInfo(object):
     '''A simple class to hold input, output, and index of step. Its attribute can
@@ -128,7 +131,12 @@ def execute_step_process(step_process, global_process, sos_dict, sigil, signatur
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
     try:
-        env.logger.trace('Executing step with input ``{}`` and output ``{}``'.format(sos_dict['_input'], shortRepr(sos_dict['_output'])))
+        if env.run_mode == 'dryrun':
+            env.logger.trace('Checking step with input ``{}`` and output ``{}``'.format(sos_dict['_input'], shortRepr(sos_dict['_output'])))
+        elif env.run_mode == 'prepare':
+            env.logger.trace('Preparing step with input ``{}`` and output ``{}``'.format(sos_dict['_input'], shortRepr(sos_dict['_output'])))
+        else:
+            env.logger.trace('Executing step with input ``{}`` and output ``{}``'.format(sos_dict['_input'], shortRepr(sos_dict['_output'])))
         os.chdir(workdir)
         # switch context to the new dict and switch back once the with
         # statement ends (or if an exception is raised)
@@ -706,7 +714,15 @@ class SoS_Step:
             elif self.category() == 'statements':
                 compile(''.join(self.values), filename='<string>', mode='exec')
             elif self.category() == 'script':
-                return True
+                if self._action in ['python3', 'process']:
+                    # we only know how to parse python script, but that is good enough
+                    try:
+                        compile(''.join(self._script), filename='<string>', mode='exec')
+                        return True
+                    except:
+                        return False
+                else:
+                    return True
             else:
                 raise RuntimeError('Unrecognized expression type {}'.format(self.category()))
             return True
