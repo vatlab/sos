@@ -140,6 +140,8 @@ def shortRepr(obj, noneAsNA=False):
     '''Return a short representation of obj for clarity.'''
     if obj is None:
         return 'unspecified' if noneAsNA else 'None'
+    elif isinstance(obj, str) and len(obj) > 50:
+        return '{}...'.format(obj[:40])
     elif isinstance(obj, (str, int, float, bool)) or (isinstance(obj, collections.Sequence) \
         and len(obj) <= 2) or len(str(obj)) < 50:
         return repr(obj)
@@ -813,7 +815,13 @@ def SoS_exec(stmts, sigil='${ }'):
         stmts = ConvertString(code, sigil)
         if not stmts.strip():
             continue
-        env.logger.trace('Executing\n{}'.format(stmts))
+        if env.run_mode == 'dryrun':
+            env.logger.trace('Checking\n{}'.format(stmts))
+        elif env.run_mode == 'prepare':
+            env.logger.trace('Preparing\n{}'.format(stmts))
+        else:
+            env.logger.trace('Executing\n{}'.format(stmts))
+        #
         try:
             if env.run_mode == 'dryrun':
                 # make sure that the expression can be completed in 5 seconds
@@ -823,7 +831,11 @@ def SoS_exec(stmts, sigil='${ }'):
                 exec(stmts, env.sos_dict._dict)
         except Exception as e:
             if env.run_mode != 'run':
-                env.sos_dict['__execute_errors__'].append(stmts, e)
+                if isinstance(e, InterpolationError):
+                    if env.run_mode == 'dryrun':
+                        env.logger.warning('Failed to interpolate {}: {}'.format(shortRepr(stmts), e))
+                else:
+                    env.sos_dict['__execute_errors__'].append(stmts, e)
             else:
                 raise
         executed += stmts + '\n'

@@ -26,7 +26,7 @@ import yaml
 import atexit
 import fnmatch
 
-from .utils import env
+from .utils import env, get_traceback
 from .sos_script import SoS_Script
 #
 # subcommmand show
