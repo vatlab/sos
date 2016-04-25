@@ -893,7 +893,7 @@ check_command('a4')
 
     def testDryrunTimeout(self):
         '''Test if any action should exit in five seconds in dryrun mode'''
-        sos_config_file = os.path.expanduser('~/.sos/config.json')
+        sos_config_file = os.path.expanduser('.sos/config.json')
         move_back = False
         if os.path.isfile(sos_config_file):
             move_back = True
@@ -913,8 +913,8 @@ time.sleep(8)
         self.assertRaises(ExecuteError, wf.run)
         #
         # now, if I have a configuration file, the default value can be changed
-        if not os.path.isdir(os.path.expanduser('~/.sos')):
-            os.mkdir(os.path.expanduser('~/.sos'))
+        if not os.path.isdir(os.path.expanduser('.sos')):
+            os.mkdir(os.path.expanduser('.sos'))
         with open(sos_config_file, 'w') as sos_config:
             sos_config.write('''
 #
@@ -936,7 +936,7 @@ time.sleep(8)
 
     def testSearchPath(self):
         '''Test if any action should exit in five seconds in dryrun mode'''
-        sos_config_file = os.path.expanduser('~/.sos/config.json')
+        sos_config_file = os.path.expanduser('.sos/config.json')
         move_back = False
         if os.path.isfile(sos_config_file):
             move_back = True

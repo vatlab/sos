@@ -717,7 +717,7 @@ class SoS_Step:
                 if self._action in ['python3', 'process']:
                     # we only know how to parse python script, but that is good enough
                     try:
-                        compile(''.join(self._script), filename='<string>', mode='exec')
+                        compile(textwrap.dedent(self._script), filename='<string>', mode='exec')
                         return True
                     except:
                         return False
