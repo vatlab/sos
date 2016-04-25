@@ -98,6 +98,10 @@ if __name__ == '__main__':
     runmode.add_argument('-f', action='store_true', dest='__rerun__',
         help='''Execute the workflow in a special run mode that ignores saved
             runtime signatures and re-execute all the steps.''')
+    runmode.add_argument('-F', action='store_true', dest='__construct__',
+        help='''Execute the workflow in a special run mode that re-use existing
+            output files and recontruct runtime signatures if output files
+            exist.''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_run)
     #

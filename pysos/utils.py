@@ -286,8 +286,9 @@ class RuntimeEnvironments(object):
         # signature mode can be
         #
         # default              (save signature, skip if signature match)
-        # ignore_signature     (ignore existing signature but still saves signature)
-        # assert_signature     (should
+        # ignore               (ignore existing signature but still saves signature)
+        # assert               (verify existing signature and fail if signature mismatch)
+        # construct            (reconstruct signature from existing output files)
         self.sig_mode = 'default'
         #
         # global dictionaries used by SoS during the
@@ -1013,6 +1014,7 @@ class RuntimeInfo:
                 if isinstance(f, Undetermined):
                     raise ValueError('Cannot write signature for undetermined dependent file')
                 md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
+        return {'input': self.input_files, 'output': self.output_files, 'depends': self.dependent_files}
 
     def validate(self):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
