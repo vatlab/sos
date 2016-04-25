@@ -142,6 +142,8 @@ def sos_config(args, workflow_args):
     #
     if args.__global_config__:
         config_file = os.path.expanduser('~/.sos/config.json')
+    elif args.__config_file__:
+        config_file = os.path.expanduser(args.__config_file__)
     else:
         config_file = os.path.expanduser('.sos/config.json')
     if args.__get_config__ is not None:

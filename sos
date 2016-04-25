@@ -156,6 +156,9 @@ if __name__ == '__main__':
     parser.add_argument('-g', '--global', action='store_true', dest='__global_config__',
         help='''If set, change global (~/.sos/config.json) instead of local
         (.sos/config.json) configuration''')
+    parser.add_argument('-c', '--config', dest='__config_file__', metavar='CONFIG_FILE',
+        help='''User specified configuration file. This file will not be automatically
+        loaded by SoS but can be specified using option `-c`''')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--get', nargs='*', metavar='OPTION', dest='__get_config__',
         help='''Display values of specified configuration. The arguments of this
