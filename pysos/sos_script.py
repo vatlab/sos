@@ -709,6 +709,7 @@ class SoS_Step:
                 #
                 # a valid syntax but we do want , to continue to the next line
                 if self.values[-1].strip().endswith(','):
+                    self.error_msg = 'Trailing ,'
                     return False
                 compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
             elif self.category() == 'statements':
@@ -719,14 +720,16 @@ class SoS_Step:
                     try:
                         compile(textwrap.dedent(self._script), filename='<string>', mode='exec')
                         return True
-                    except:
+                    except Exception as e:
+                        self.error_msg = repr(e)
                         return False
                 else:
                     return True
             else:
                 raise RuntimeError('Unrecognized expression type {}'.format(self.category()))
             return True
-        except Exception:
+        except Exception as e:
+            self.error_msg = repr(e)
             return False
 
     def _parse_error(self, msg):
@@ -1613,7 +1616,7 @@ class SoS_Script:
                 # check previous expression before a new assignment
                 if cursect:
                     if not cursect.isValid():
-                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category())
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
                     cursect.values = []
                     cursect.finalize()
                 # start a new section
@@ -1727,7 +1730,7 @@ class SoS_Script:
                 # check previous expression before a new directive
                 if cursect:
                     if not cursect.isValid():
-                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category())
+                        parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
                     cursect.values = []
                     # allow multiple process-style actions
                     cursect.wrap_script()
@@ -1761,7 +1764,7 @@ class SoS_Script:
                     cursect = self.sections[-1]
                 # check previous expression before a new assignment
                 if not cursect.isValid():
-                    parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category())
+                    parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
                     continue
                 cursect.values = []
                 #
@@ -1805,7 +1808,7 @@ class SoS_Script:
         # check the last expression before a new directive
         if cursect:
             if not cursect.isValid():
-                parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid ' + cursect.category())
+                parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
             else:
                 cursect.finalize()
         #
