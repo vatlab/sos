@@ -137,7 +137,7 @@ def execute_step_process(step_process, global_process, sos_dict, sigil, signatur
             env.logger.trace('Preparing step with input ``{}`` and output ``{}``'.format(sos_dict['_input'], shortRepr(sos_dict['_output'])))
         else:
             env.logger.trace('Executing step with input ``{}`` and output ``{}``'.format(sos_dict['_input'], shortRepr(sos_dict['_output'])))
-        os.chdir(workdir)
+        os.chdir(os.path.expanduser(workdir))
         # switch context to the new dict and switch back once the with
         # statement ends (or if an exception is raised)
         env.sos_dict.quick_update(sos_dict)
