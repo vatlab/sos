@@ -32,9 +32,10 @@ from collections import OrderedDict
 from collections.abc import Sequence, Iterable
 from itertools import tee, combinations
 
-from .utils import env, Error, SoS_eval, SoS_exec, RuntimeInfo, shortRepr, \
-    extract_pattern, expand_pattern, get_traceback, pickleable, Undetermined
-
+from .utils import env, Error, shortRepr, get_traceback, pickleable
+from .pattern import extract_pattern, expand_pattern
+from .sos_eval import  SoS_eval, SoS_exec, Undetermined
+from .signature import  RuntimeInfo
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 
