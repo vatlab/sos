@@ -27,13 +27,17 @@ import atexit
 import fnmatch
 import webbrowser
 
+from pygments import highlight
+from pygments.lexers import PythonLexer, get_lexer_by_name
+from pygments.formatters import HtmlFormatter
+
 from .utils import env, get_traceback
 from .sos_script import SoS_Script, SoS_Workflow
 from .sos_executor import Sequential_Executor
 #
 # subcommmand show
 #
-def view_script(script, script_file):
+def view_script(script, script_file, style):
 
     if isinstance(script, SoS_Workflow):
         # workflow has
@@ -49,31 +53,49 @@ def view_script(script, script_file):
         #   overall description 
         #   workflow descriptions
         #   sections
-        title = script_file
+        title = os.path.basename(script_file)
+    #
+    # we just get pieces of code, not the complete HTML file.
+    formatter = HtmlFormatter(cssclass="source", full=False)
     #
     html_file = '.sos/{}.html'.format(os.path.basename(script_file))
     with open(html_file, 'w') as html:
-        html.write('''<html>
+        html.write('''<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
 <head>
  <title>{}</title>
+<meta http-equiv="content-type" content="text/html; charset=None">
+<style type="text/css">
+{}
+ </style>
 </head>
-<body>'''.format(title))
+<body>'''.format(title, formatter.get_style_defs()))
         #
+        html.write('<table>\n')
+        if script.sections and script.sections[0].global_process:
+            html.write('<tr><th>')
+            html.write('{}\n'.format(highlight(
+                script.sections[0].global_process,
+                PythonLexer(), formatter)))
+            html.write('</th></tr>')
         for section in script.sections:
-            html.write('<span style="section">')
-            html.write('<span style="header">{}</span>'.format(section.names))
+            html.write('<tr>')
+            html.write('<span style="k">{}</span><br>'.format(section.names))
+            if section.comment:
+                html.write('<span class="cm">{}</span>\n'.format(section.comment))
             for stmt in section.statements:
-                if stmt.comment:
-                    html.write('<span style="comment">{}</span>\n'.format(stmt[1], stmt[2]))
-                if stmts[0] == ':':
-                    html.write('<span style="directive">{}</span>: <span style="python">{}</span>\n'.format(stmt[1], stmt[2]))
-                elif stmts[0] == '=':
-                    html.write('<span style="assignment">{}</span>= <span style="python">{}</span>\n'.format(stmt))
+                if stmt[0] == ':':
+                    html.write('<span style="directive">{}</span>: {}\n'.format(stmt[1], highlight(stmt[2], PythonLexer(), formatter)))
+                elif stmt[0] == '=':
+                    html.write(highlight(stmt[2], PythonLexer(), formatter) + '\n')
                 else:
-                    html.write('<span style="python">{}</span>\n'.format(stmt[1]))
+                    html.write(highlight(stmt[1], PythonLexer(), formatter) + '\n')
             if section.process:
-                html.write('<span style="python">{}</span>\n'.format(process))
-            html.write('</span>\n')   # section
+                html.write(highlight(section.process, PythonLexer(), formatter) + '\n')
+            html.write('</tr>')
+        html.write('\n</table>\n')
+
+
         html.write('''\n</body></html>\n''')
     url = 'file://{}'.format(os.path.abspath(html_file))
     env.logger.info('Viewing {} in a browser'.format(url))
@@ -88,11 +110,11 @@ def sos_show(args, workflow_args):
             if not args.html:
                 workflow.show()
             else:
-                view_script(workflow, args.script)
+                view_script(workflow, args.script, args.style)
         elif not args.html:
             script.show()
         else:
-            view_script(script, args.script)
+            view_script(script, args.script, args.style)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())

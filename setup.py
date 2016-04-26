@@ -50,6 +50,7 @@ setup(name = "sos",
           'docker-py',
           'pycurl',
           'blessings',
+          'pygments',
       ],
     scripts = [
         'sos',
