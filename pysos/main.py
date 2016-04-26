@@ -25,21 +25,74 @@ import sys
 import yaml
 import atexit
 import fnmatch
+import webbrowser
 
 from .utils import env, get_traceback
-from .sos_script import SoS_Script
+from .sos_script import SoS_Script, SoS_Workflow
 from .sos_executor import Sequential_Executor
 #
 # subcommmand show
 #
+def view_script(script, script_file):
+
+    if isinstance(script, SoS_Workflow):
+        # workflow has
+        #   filename
+        #   name
+        #   description
+        #   sections
+        #   auxillary_sections
+        title = script.name
+    else:
+        # script has
+        #   filename
+        #   overall description 
+        #   workflow descriptions
+        #   sections
+        title = script_file
+    #
+    html_file = '.sos/{}.html'.format(os.path.basename(script_file))
+    with open(html_file, 'w') as html:
+        html.write('''<html>
+<head>
+ <title>{}</title>
+</head>
+<body>'''.format(title))
+        #
+        for section in script.sections:
+            html.write('<span style="section">')
+            html.write('<span style="header">{}</span>'.format(section.names))
+            for stmt in section.statements:
+                if stmt.comment:
+                    html.write('<span style="comment">{}</span>\n'.format(stmt[1], stmt[2]))
+                if stmts[0] == ':':
+                    html.write('<span style="directive">{}</span>: <span style="python">{}</span>\n'.format(stmt[1], stmt[2]))
+                elif stmts[0] == '=':
+                    html.write('<span style="assignment">{}</span>= <span style="python">{}</span>\n'.format(stmt))
+                else:
+                    html.write('<span style="python">{}</span>\n'.format(stmt[1]))
+            if section.process:
+                html.write('<span style="python">{}</span>\n'.format(process))
+            html.write('</span>\n')   # section
+        html.write('''\n</body></html>\n''')
+    url = 'file://{}'.format(os.path.abspath(html_file))
+    env.logger.info('Viewing {} in a browser'.format(url))
+    webbrowser.open(url, new=2)
+
+
 def sos_show(args, workflow_args):
     try:
         script = SoS_Script(filename=args.script)
         if args.workflow:
             workflow = script.workflow(args.workflow)
-            workflow.show()
-        else:
+            if not args.html:
+                workflow.show()
+            else:
+                view_script(workflow, args.script)
+        elif not args.html:
             script.show()
+        else:
+            view_script(script, args.script)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -217,4 +270,4 @@ def sos_config(args, workflow_args):
             config.write(yaml.safe_dump(cfg, default_flow_style=False))
         
 
-        
+

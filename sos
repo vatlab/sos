@@ -135,6 +135,7 @@ if __name__ == '__main__':
     parser.set_defaults(func=sos_prepare)
     #
     # command show
+    #
     parser = subparsers.add_parser('show',
         description='''The show command displays details of all workflows
             defined in a script, including description of script, workflow,
@@ -145,6 +146,12 @@ if __name__ == '__main__':
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
+    parser.add_argument('--html', action='store_true',
+        help='''Display the specified script or workflow in a browser
+            with proper syntax highlighting''')
+    parser.add_argument('--style', 
+        help='''Name of the style sheet that will be used to display
+            the script.''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_show)
     #
