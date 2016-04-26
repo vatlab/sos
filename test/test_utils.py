@@ -25,7 +25,8 @@ import unittest
 
 # these functions are normally not available but can be imported 
 # using their names for testing purposes
-from pysos.utils import env, logger, WorkflowDict, extract_pattern, expand_pattern, ProgressBar
+from pysos.utils import env, logger, WorkflowDict, ProgressBar
+from pysos.pattern import extract_pattern, expand_pattern
 from pysos.sos_eval import interpolate, SoS_eval, InterpolationError
 from pysos.actions import downloadURL
 from pysos.sos_script import SoS_Script

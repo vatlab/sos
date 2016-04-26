@@ -39,7 +39,8 @@ from io import BytesIO
 from docker import Client
 from docker.utils import kwargs_from_env
 import multiprocessing as mp
-from .utils import env, glob_wildcards, getTermWidth, ProgressBar
+from .utils import env, getTermWidth, ProgressBar
+from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .signature import FileSignature, fileMD5
 from .sos_executor import Sequential_Executor
