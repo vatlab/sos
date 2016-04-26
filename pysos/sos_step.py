@@ -726,7 +726,18 @@ class Step_Executor:
                 elif env.sig_mode == 'assert':
                     if not signature.validate():
                         raise RuntimeError('Signature mismatch.')
-                # elif env.sig_mode == 'ignore'
+                elif env.sig_mode == 'construct':
+                    try:
+                        res = signature.write()
+                        if res:
+                            env.sos_dict.set('input', res['input'])
+                            env.sos_dict.set('output', res['output'])
+                            env.sos_dict.set('depends', res['depends'])
+                            # everything matches
+                            env.logger.info('Construct signature from existing output files ``{}``'.format(shortRepr(env.sos_dict['output'])))
+                            return self.collectResult(public_vars)
+                    except Exception as e:
+                        env.logger.debug('Failed to reconstruct signature. {}'.format(e))
         else:
             signature = None
         #
@@ -762,6 +773,13 @@ class Step_Executor:
                     if not partial_signature.validate():
                         raise RuntimeError('Signature mismatch for input {} and output {}'.format(
                             ', '.join(env.sos_dict['_input']), ', '.join(env.sos_dict['_output'])))
+                elif env.sig_mode == 'construct':
+                    try:
+                        partial_signature.write()
+                        env.logger.debug('Construct signature from existing output files {}'.format(shortRepr(env.sos_dict['_output'])))
+                        continue
+                    except Exception as e:
+                        env.logger.debug('Failed to reconstruct signature. {}'.format(e))
             # now, if output file has already been generated using non-process statement
             # so that no process need to be run, we create signature from outside.
             if not self.step.process:
