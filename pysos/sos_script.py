@@ -675,6 +675,10 @@ class SoS_Script:
                 # is it an action??
                 if directive_name in SOS_DIRECTIVES:
                     cursect.add_directive(directive_name, directive_value, lineno)
+                #
+                elif directive_name == 'process':
+                    env.logger.warning('Keyword "process" is depredated and will be removed in a later release. Please use "task" instead.')
+                    cursect.add_directive('task', directive_value, lineno)
                 else:
                     # should be in string mode ...
                     cursect.add_directive('task', directive_value, lineno, action=directive_name)
