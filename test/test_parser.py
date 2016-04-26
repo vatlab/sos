@@ -26,7 +26,8 @@ import shutil
 import subprocess
 
 from pysos.utils import env
-from pysos.sos_script import SoS_Script, ParsingError, ArgumentError, ExecuteError
+from pysos.sos_script import SoS_Script, ParsingError, ArgumentError
+from pysos.sos_executor import Sequential_Executor, ExecuteError
 
 class TestParser(unittest.TestCase):
     def setUp(self):
@@ -57,7 +58,7 @@ c = '''a\n
 b'''
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['a'], 'a\n')
         self.assertEqual(env.sos_dict['b'], 'a\n')
         # MAYJOR difference
@@ -69,7 +70,7 @@ c = """a\n
 b"""
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         # Note the difference between """ and ''' quotes
         self.assertEqual(env.sos_dict['c'], 'a\n\nb')
 
@@ -110,10 +111,10 @@ var = 1
 
 ''')
         wf = script.workflow()
-        wf.run(args=['--skip', '0'])
+        Sequential_Executor(wf).run(args=['--skip', '0'])
         self.assertEqual(env.sos_dict['b'].var, 1)
         #
-        wf.run(args=['--skip', '1'])
+        Sequential_Executor(wf).run(args=['--skip', '1'])
         self.assertEqual(env.sos_dict['a'].var, 0)
 
     def testSections(self):
@@ -164,7 +165,7 @@ var = 1
         delattr(env, 'sos_dict')
         script = SoS_Script('''a = b\n[0] ''')
         wf = script.workflow()
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
         # multi-line string literal
         SoS_Script('''a = """
 this is a multi line
@@ -195,9 +196,10 @@ input: 'filename'
 func()
 ''')    
         script = SoS_Script(filename='scripts/section1.sos')
-        self.assertRaises(ArgumentError, script.workflow('chapter_0').run,
+        wf = script.workflow('chapter_0')
+        self.assertRaises(ArgumentError, Sequential_Executor(wf).run,
             args=['--not_exist'])
-        self.assertRaises(ArgumentError, script.workflow('chapter_0').run,
+        self.assertRaises(ArgumentError, Sequential_Executor(wf).run,
             args=['--par1', 'a', 'b'])
         # 
         script = SoS_Script('''
@@ -205,11 +207,14 @@ func()
 a = [1, 2]
 [0]
 ''')    
-        script.workflow().run()
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['a'], [1,2])
-        script.workflow().run(args=['--a', '3'])
+        wf = script.workflow()
+        Sequential_Executor(wf).run(args=['--a', '3'])
         self.assertEqual(env.sos_dict['a'], [3])
-        script.workflow().run(args=['--a', '3', '5'])
+        wf = script.workflow()
+        Sequential_Executor(wf).run(args=['--a', '3', '5'])
         self.assertEqual(env.sos_dict['a'], [3, 5])
         #
         script = SoS_Script('''
@@ -217,11 +222,14 @@ a = [1, 2]
 a = ['a.txt', 'b.txt']
 [0]
 ''')    
-        script.workflow().run()
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['a'], ['a.txt', 'b.txt'])
-        script.workflow().run(args=['--a', '3'])
+        wf = script.workflow()
+        Sequential_Executor(wf).run(args=['--a', '3'])
         self.assertEqual(env.sos_dict['a'], ['3'])
-        script.workflow().run(args=['--a', '3', '5'])
+        wf = script.workflow()
+        Sequential_Executor(wf).run(args=['--a', '3', '5'])
         self.assertEqual(env.sos_dict['a'], ['3', '5'])
         #
         # test parameter using global definition
@@ -231,7 +239,8 @@ a="100"
 [parameters]
 b=str(int(a)+1)
 ''')
-        script.workflow().run()
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], '101')
         #
         env.sos_dict.clear()
@@ -241,7 +250,8 @@ a=100
 [parameters]
 b=a+1
 ''')
-        script.workflow().run()
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], 101)
         #
         script = SoS_Script('''
@@ -251,7 +261,7 @@ a=100
 b=a+1
 ''')
         wf = script.workflow()
-        self.assertRaises(ArgumentError, wf.run, args=['--b', 'a'])
+        self.assertRaises(ArgumentError, Sequential_Executor(wf).run, args=['--b', 'a'])
         #
         script = SoS_Script('''
 a=100
@@ -260,7 +270,7 @@ a=100
 b=a+1.
 ''')
         wf = script.workflow()
-        wf.run(args=['--b', '1000'])
+        Sequential_Executor(wf).run(args=['--b', '1000'])
         #
         self.assertEqual(env.sos_dict['b'], 1000)
         #
@@ -272,7 +282,7 @@ a=100
 b='${a+1}'
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], '101')
         # test alternative sigil
         script = SoS_Script('''
@@ -282,7 +292,7 @@ a=100
 b='[a+1]'
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], '101')
         #
         # argument has hve a value
@@ -295,26 +305,29 @@ b=
 [parameters]
 b = int
 ''')
-        self.assertRaises(ArgumentError, script.workflow().run)
+        wf = script.workflow()
+        self.assertRaises(ArgumentError, Sequential_Executor(wf).run)
         #
         script = SoS_Script('''
 [parameters]
 b = list
 ''')
-        self.assertRaises(ArgumentError, script.workflow().run)
+        wf = script.workflow()
+        self.assertRaises(ArgumentError, Sequential_Executor(wf).run)
         # also require the type
         script = SoS_Script('''
 [parameters]
 b = int
 ''')
-        self.assertRaises(ArgumentError, script.workflow().run, args=['--b', 'file'])
+        wf = script.workflow()
+        self.assertRaises(ArgumentError, Sequential_Executor(wf).run, args=['--b', 'file'])
         #
         script = SoS_Script('''
 [parameters]
 b = int
 ''')
         wf = script.workflow()
-        wf.run(args=['--b', '5'])
+        Sequential_Executor(wf).run(args=['--b', '5'])
         self.assertEqual(env.sos_dict['b'], 5)
         # list is ok
         script = SoS_Script('''
@@ -322,7 +335,7 @@ b = int
 b = list
 ''')
         wf = script.workflow()
-        wf.run(args=['--b', '5'])
+        Sequential_Executor(wf).run(args=['--b', '5'])
         self.assertEqual(env.sos_dict['b'], ['5'])
         # bool
         script = SoS_Script('''
@@ -330,28 +343,28 @@ b = list
 b = bool
 ''')
         wf = script.workflow()
-        wf.run(args=['--b', 't'])
+        Sequential_Executor(wf).run(args=['--b', 't'])
         self.assertEqual(env.sos_dict['b'], True)
         script = SoS_Script('''
 [parameters]
 b = True
 ''')
         wf = script.workflow()
-        wf.run(args=['--b', 'False'])
+        Sequential_Executor(wf).run(args=['--b', 'False'])
         self.assertEqual(env.sos_dict['b'], False)
         script = SoS_Script('''
 [parameters]
 b = True
 ''')
         wf = script.workflow()
-        wf.run(args=['--b', '1'])
+        Sequential_Executor(wf).run(args=['--b', '1'])
         self.assertEqual(env.sos_dict['b'], True)
         script = SoS_Script('''
 [parameters]
 b = bool
 ''')
         wf = script.workflow()
-        wf.run(args=['--b', 'no'])
+        Sequential_Executor(wf).run(args=['--b', 'no'])
         self.assertEqual(env.sos_dict['b'], False)
         #
         # should fail for undefined variables
@@ -359,12 +372,14 @@ b = bool
 [parameters]
 a = 5
 ''')
-        self.assertRaises(ArgumentError, script.workflow().run,
+        wf = script.workflow()
+        self.assertRaises(ArgumentError, Sequential_Executor(wf).run,
             args=['--b', 'file'])
         # and for cases without parameter section
         script = SoS_Script('''
-''')        
-        self.assertRaises(ArgumentError, script.workflow().run,
+''')
+        wf = script.workflow()
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).run,
             args=['--b', 'file'])
 
     def testSectionVariables(self):
@@ -473,6 +488,18 @@ open('something')
 save.put()
 
 ''')
+        # with section head
+        script = SoS_Script('''
+[0]
+input: 'filename',  'filename2', opt=value==1
+python3:
+
+with open('something') as e:
+   e.write("""
+[section]
+""")
+
+''')
         # test dedent
         script = SoS_Script('''
 [0]
@@ -483,9 +510,7 @@ python3:
         logger.warning('Another warning')
 ''')
         wf = script.workflow()
-        wf.run()
-
-
+        Sequential_Executor(wf).run()
 
     def testInput(self):
         '''Test input directive'''
@@ -497,7 +522,8 @@ input: 'a.pdf', files, skip=False
 
 ''')
         env.run_mode = 'dryrun'
-        script.workflow('default').run()
+        wf = script.workflow('default')
+        Sequential_Executor(wf).run()
         #
         # test input types
         script = SoS_Script('''
@@ -509,7 +535,7 @@ output: ('a${x}' for x in _input)
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(sorted(env.sos_dict['test'].input), ['a.txt', 'a0', 'a1', 'b.txt'])
         self.assertEqual(sorted(env.sos_dict['test'].output), ['aa.txt', 'aa0', 'aa1', 'ab.txt'])
 
@@ -529,7 +555,7 @@ executed.append(_input)
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt', 'a3.txt', 'a4.txt']])
         # group_by = 'single'
         script = SoS_Script('''
@@ -543,7 +569,7 @@ executed.append(_input)
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt'], ['a2.txt'], ['a3.txt'], ['a4.txt']])
         # group_by = 'pairs'
         script = SoS_Script('''
@@ -557,7 +583,7 @@ executed.append(_input)
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a3.txt'], ['a2.txt', 'a4.txt']])
         # group_by = 'pairwise'
         script = SoS_Script('''
@@ -571,7 +597,7 @@ executed.append(_input)
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt'], ['a2.txt', 'a3.txt'], ['a3.txt', 'a4.txt']])
         # group_by = 'combinations'
         script = SoS_Script('''
@@ -585,7 +611,7 @@ executed.append(_input)
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt'], ['a1.txt', 'a3.txt'], 
             ['a1.txt', 'a4.txt'], ['a2.txt', 'a3.txt'], ['a2.txt', 'a4.txt'], ['a3.txt', 'a4.txt']])
 
@@ -651,7 +677,7 @@ b = A()()
 ''')
         env.shared_vars=['b']
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], 0)
 
     def testCombinedWorkflow(self):
@@ -680,18 +706,18 @@ input_b1 = input
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('a+b')
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['a_parameters', 'a_1', 'a_2', 'a_3', 'a_4', 'b_parameters', 'b_1', 'b_2', 'b_3', 'b_4'])
         self.assertEqual(env.sos_dict['a'], 1)
         self.assertEqual(env.sos_dict['input_b1'], ['out_a_4'])
         #
         wf = script.workflow('a_ 1-2 + a_4 + b_3-')
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['a_parameters', 'a_1', 'a_2', 'a_parameters', 'a_4', 
             'b_parameters', 'b_3', 'b_4'])
         #
         wf = script.workflow('a+c+d')
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['a_parameters', 'a_1', 'a_2', 'a_3', 'a_4', 'c_parameters', 'c_0', 'd_parameters', 'd_0'])
 
     def testNestedWorkflow(self):
@@ -733,7 +759,7 @@ sos_run('a+b')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'a_1', 'a_2', 'a_3', 'a_4',
             'b_1', 'b_2', 'b_3', 'b_4'])
         self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], [], [], [], ['b.begin'], [], [], []])
@@ -759,7 +785,7 @@ sos_run('a')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'a_1', 'a_2', 'a_1', 'a_2'])
         #self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], ['a.txt.a1'], ['b.txt'], ['b.txt'], ['b.txt.a1']])
         #
@@ -779,7 +805,7 @@ sos_run('a_2')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_2',  'a_2'])
         # allow specifying a single step
         # step will be looped
@@ -797,7 +823,7 @@ sos_run('a_2')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_2', 'a_2'])
         #
         # recursive subworkflow not allowed
@@ -815,7 +841,7 @@ sos_run('a_2+c')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
-        self.assertRaises((ExecuteError, RuntimeError), wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
         #
         # nested subworkflow is allowed
         script = SoS_Script('''
@@ -836,7 +862,7 @@ sos_run('a+b')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('c')
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_1', 'a_2', 'a_3',
             'b_1', 'b_2', 'a_1', 'a_2'])
         #
@@ -861,13 +887,13 @@ input: 'a.txt', 'b.txt', group_by='single'
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('b')
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['b_0', 'a_3', 'a_1', 'a_3', 'a_1'])
         wf = script.workflow('d')
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['d_0', 'a_2', 'a_2'])
         wf = script.workflow('e2')
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['e2_2'])
 
     def testDynamicNestedWorkflow(self):
@@ -893,10 +919,10 @@ sos_run(wf)
         env.shared_vars = ['executed']
         env.run_mode = 'dryrun'
         wf = script.workflow()
-        wf.run(args=['--wf', 'b'])
+        Sequential_Executor(wf).run(args=['--wf', 'b'])
         self.assertEqual(env.sos_dict['executed'], ['default_parameters', 'default_0', 'b_parameters', 'b_1', 'b_2', 'b_3'])
         #
-        wf.run(args=['--wf', 'a'])
+        Sequential_Executor(wf).run(args=['--wf', 'a'])
         self.assertEqual(env.sos_dict['executed'], ['default_parameters', 'default_0', 'a_parameters', 'a_1', 'a_2', 'a_3'])
 
     def testSourceOption(self):
@@ -937,7 +963,7 @@ sos_run('A', source='temp/test.sos')
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('b')
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['GLB'], 5)
         self.assertEqual(env.sos_dict['parB'], 10)
         self.assertEqual(env.sos_dict['executed'], ['g.b_1', 't.A_parameters', 't.A_1', 't.A_2', 't.A_parameters', 't.A_1', 't.A_2'])
@@ -953,7 +979,7 @@ sos_run('k.A', source={'k':'temp/test.sos'})
 ''')
         env.run_mode = 'dryrun'
         wf = script.workflow('b')
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['GLB'], 5)
         self.assertEqual(env.sos_dict['parB'], 10)
         self.assertEqual(env.sos_dict['executed'], ['g.b_1', 't.A_parameters', 't.A_1', 't.A_2', 't.A_parameters', 't.A_1', 't.A_2'])
@@ -989,7 +1015,7 @@ print(CONFIG.StoreOwner)
         # now test the value
         script = SoS_Script(filename='config.sos')
         wf = script.workflow()
-        wf.run(config_file='config.yaml')
+        Sequential_Executor(wf).run(config_file='config.yaml')
         self.assertEqual(env.sos_dict['CONFIG']['Price'], 1.05)
         self.assertEqual(env.sos_dict['CONFIG']['StoreOwner'], 'John Doe')
         self.assertEqual(env.sos_dict['CONFIG']['Fruits'], ['apple', 'banana', 'pear'])

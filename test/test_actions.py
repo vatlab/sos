@@ -31,9 +31,10 @@ import shutil
 
 from pysos import *
 from pysos.utils import env, TimeoutException, time_limit, Undetermined
-from pysos.sos_script import ExecuteError
+from pysos.sos_executor import ExecuteError
 from pysos.actions import DockerClient
 from docker.errors import DockerException
+from pysos.sos_executor import Sequential_Executor
 
 try:
     with time_limit(2, 'check docker daemon'):
@@ -70,13 +71,13 @@ c=func_both()
 """)
         wf = script.workflow()
         env.run_mode = 'dryrun'
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['result'].a, 1)
         self.assertTrue(isinstance(env.sos_dict['result'].b, Undetermined))
         self.assertEqual(env.sos_dict['result'].c, 1)
         #
         env.run_mode = 'run'
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertTrue(isinstance(env.sos_dict['result'].a, Undetermined))
         self.assertEqual(env.sos_dict['result'].b, 1)
         self.assertEqual(env.sos_dict['result'].c, 1)
@@ -89,7 +90,7 @@ ret = get_output('echo blah')
 """)
         wf = script.workflow()
         # should be ok
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].ret, 'blah\n')
         #
         script = SoS_Script(r"""
@@ -99,12 +100,12 @@ get_output('catmouse')
         env.run_mode = 'dryrun'
         wf = script.workflow()
         # should fail in dryrun mode
-        self.assertRaises((ExecuteError, RuntimeError), wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
         #
         env.run_mode = 'run'
         wf = script.workflow()
         # should fail also in run mode
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
         #
         script = SoS_Script(r"""
 [0]
@@ -112,7 +113,7 @@ ret = get_output('cat -h')
 """)
         wf = script.workflow()
         # this should give a warning and return false
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
         #
         # check get_output if the command is stuck
         env.run_mode = 'dryrun'
@@ -122,7 +123,7 @@ get_output('sleep 6')
 """)
         wf = script.workflow()
         # this should yield error
-        self.assertRaises((ExecuteError, RuntimeError), wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
         # even for weird commands such as cat > /dev/null, it should quite
         # in dryrun mode
         script = SoS_Script(r"""
@@ -132,7 +133,7 @@ get_output('cat > /dev/null')
         wf = script.workflow()
         env.run_mode = 'dryrun'
         # this should pass
-        self.assertRaises(ExecuteError, wf.run)
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).run)
 
     def testCheckCommand(self):
         '''Test action check_command'''
@@ -142,7 +143,7 @@ check_command('cat')
 """)
         wf = script.workflow()
         # should be ok
-        wf.run()
+        Sequential_Executor(wf).run()
         #
         script = SoS_Script(r"""
 [0]
@@ -151,12 +152,12 @@ check_command('catmouse')
         env.run_mode = 'dryrun'
         wf = script.workflow()
         # should fail in dryrun mode
-        self.assertRaises((ExecuteError, RuntimeError), wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
         #
         env.run_mode = 'run'
         wf = script.workflow()
         # should fail also in run mode
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
         #
         # should also check command with option
         script = SoS_Script(r"""
@@ -165,7 +166,7 @@ check_command('ls -l')
 """)
         wf = script.workflow()
         # this should pass
-        wf.run()
+        Sequential_Executor(wf).run()
         #
         script = SoS_Script(r"""
 [0]
@@ -173,7 +174,7 @@ fail_if(check_command('cat -h') != 0, 'command return non-zero')
 """)
         wf = script.workflow()
         # this should give a warning and return false
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
         #
         # check check_command is the command is stuck
         env.run_mode = 'dryrun'
@@ -183,7 +184,7 @@ check_command('sleep 4')
 """)
         wf = script.workflow()
         # this should pass
-        wf.run()
+        Sequential_Executor(wf).run()
         #
         script = SoS_Script(r"""
 [0]
@@ -191,7 +192,7 @@ fail_if(check_command('sleep 4') != 0, 'Command time out')
 """)
         wf = script.workflow()
         # this should pass
-        self.assertRaises((ExecuteError, RuntimeError), wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
         #
         # test reading this file
         script = SoS_Script(r"""
@@ -200,13 +201,13 @@ check_command('cat test_actions.py', 'abcde' + 'fgh')
 """)
         wf = script.workflow()
         # should raise an error
-        self.assertRaises((ExecuteError, RuntimeError), wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
         #
         script = SoS_Script(r"""
 check_command('cat test_actions.py', 'testSearchOutput')
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         # even for weird commands such as cat > /dev/null, it should quite
         # in dryrun mode
         script = SoS_Script(r"""
@@ -216,7 +217,7 @@ check_command('cat > /dev/null')
         wf = script.workflow()
         env.run_mode = 'dryrun'
         # this should pass
-        self.assertRaises(ExecuteError, wf.run)
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).run)
 
     def testFailIf(self):
         '''Test action fail if'''
@@ -228,7 +229,7 @@ fail_if(len(input) == 1)
         env.run_mode = 'dryrun'
         wf = script.workflow()
         # should fail in dryrun mode
-        self.assertRaises((ExecuteError, RuntimeError), wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
@@ -237,7 +238,7 @@ fail_if(len(input) == 1)
         env.run_mode = 'dryrun'
         wf = script.workflow()
         # should be ok
-        wf.run()
+        Sequential_Executor(wf).run()
 
     def testWarnIf(self):
         '''Test action fail if'''
@@ -249,8 +250,8 @@ warn_if(len(input) == 1, 'Expect to see a warning message')
         env.run_mode = 'dryrun'
         wf = script.workflow()
         # should see a warning message.
-        wf.run()
-        #self.assertRaises(RuntimeError, wf.run)
+        Sequential_Executor(wf).run()
+        #self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
@@ -259,7 +260,7 @@ warn_if(len(input) == 1)
         env.run_mode = 'dryrun'
         wf = script.workflow()
         # should be silent
-        wf.run()
+        Sequential_Executor(wf).run()
 
     def testRun(self):
         '''Test action run'''
@@ -269,14 +270,14 @@ run:
 echo 'Echo'
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         script = SoS_Script(r'''
 [0]
 run:
 echo 'Echo
 ''')
         wf = script.workflow()
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
 
     def testBash(self):
         '''Test action bash'''
@@ -286,14 +287,14 @@ bash:
 echo 'Echo'
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         script = SoS_Script(r'''
 [0]
 bash:
 echo 'Echo
 ''')
         wf = script.workflow()
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
     
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testBashInDocker(self):
@@ -304,7 +305,7 @@ bash:  docker_image='ubuntu'
 echo 'Echo'
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
 
     def testSh(self):
@@ -315,14 +316,14 @@ sh:
 echo 'Echo'
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         script = SoS_Script(r'''
 [0]
 sh:
 echo 'Echo
 ''')
         wf = script.workflow()
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -336,11 +337,11 @@ echo 'Echo
 ''')
         wf = script.workflow()
         # FIXME: syntax error is not reflected outside of the docker
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
         #
         env.run_mode = 'prepare'
         # this should give us a warning if RAM is less than 4G
-        wf.run()
+        Sequential_Executor(wf).run()
 
 
     def testCsh(self):
@@ -358,7 +359,7 @@ csh:
     end
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         # no test for docker because standard distributions do not have csh
 
     def testTcsh(self):
@@ -376,7 +377,7 @@ csh:
     end
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         # no test for docker because standard distributions do not have tcsh
 
     def testZsh(self):
@@ -389,7 +390,7 @@ zsh:
 echo "Hello World!", $SHELL
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         # cannot test in docker because no first-tier repository
         # provides zsh.
 
@@ -403,7 +404,7 @@ a = {'1': 2}
 print(a)
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testPythonInDocker(self):
@@ -415,7 +416,7 @@ a = {'1': 2}
 print(a)
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
     def testPython3(self):
         script = SoS_Script(r'''
@@ -425,7 +426,7 @@ a = {'1', '2'}
 print(a)
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -439,7 +440,7 @@ a = {'1', '2'}
 print(a)
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
     def testPerl(self):
         '''Test action ruby'''
@@ -452,7 +453,7 @@ use warnings;
 print "hi NAME\n";
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -467,7 +468,7 @@ use warnings;
 print "hi NAME\n";
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
 
     def testRuby(self):
@@ -488,7 +489,7 @@ if ( line2 =~ /Cats(.*)/ )
 end
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -508,7 +509,7 @@ if ( line2 =~ /Cats(.*)/ )
 end
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
     def testNode(self):
         '''Test action ruby'''
@@ -521,7 +522,7 @@ var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         #
         script = SoS_Script(r'''
 [0]
@@ -530,7 +531,7 @@ var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -544,7 +545,7 @@ var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         #
         script = SoS_Script(r'''
 [0]
@@ -554,7 +555,7 @@ var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
     def testR(self):
         '''Test action JavaScript'''
@@ -567,7 +568,7 @@ nums = rnorm(25, mean=100, sd=15)
 mean(nums)
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -580,7 +581,7 @@ nums = rnorm(25, mean=100, sd=15)
 mean(nums)
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
     def testCheckRLibrary(self):
         '''Test action check_R_library'''
@@ -592,19 +593,19 @@ mean(nums)
 check_R_library('edgeR')
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         script = SoS_Script(r'''
 [0]
 check_R_library('stephens999/ashr')
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         script = SoS_Script(r'''
 [0]
 check_R_library('edgeRRRR')
 ''')
         wf = script.workflow()
-        self.assertRaises((ExecuteError, RuntimeError), wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerBuild(self):
@@ -625,7 +626,7 @@ RUN pip install Flask
 WORKDIR /home
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerImage(self):
@@ -643,7 +644,7 @@ run: docker_image='compbio/ngseasy-fastqc:1.0-r001',
     /usr/local/bin/fastqc /input_data/*.fastq --outdir /output_data
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerImageFromFile(self):
@@ -662,7 +663,7 @@ run:
 run: docker_image='hello-world', docker_file = 'hello.tar'
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
     def testDownload(self):
         '''Test download of resources'''
@@ -682,7 +683,7 @@ download(['http://bioinformatics.mdanderson.org/Software/VariantTools/repository
     dest_dir='tmp', decompress=True)
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertTrue(os.path.isfile('tmp/snapshot.proj'))
         self.assertTrue(os.path.isfile('tmp/snapshot_genotype.DB'))
         #
@@ -694,7 +695,7 @@ download: dest_file='tmp/test.ann'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertTrue(os.path.isfile('tmp/test.ann'))
         # test option dest_dir
         script = SoS_Script(r'''
@@ -703,7 +704,7 @@ download: dest_dir='tmp'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq.ann'))
         #
    
@@ -718,13 +719,13 @@ download: dest_dir='tmp', decompress=True
 ''')
         start = time.time()
         wf = script.workflow()
-        self.assertRaises((RuntimeError, ExecuteError), wf.run)
+        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).run)
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq-hg18_20100817.DB'))
         self.assertGreater(time.time() - start, 5)
         # this will be fast
         start = time.time()
         wf = script.workflow()
-        self.assertRaises((RuntimeError, ExecuteError), wf.run)
+        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).run)
         self.assertLess(time.time() - start, 3)
         # 
         # test decompress tar.gz file
@@ -736,7 +737,7 @@ download: dest_dir='tmp', decompress=True
     ${GATK_URL}/1000G_omni2.5.hg19.sites.vcf.idx.gz.md5
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         #
         shutil.rmtree('tmp')
 

@@ -1,0 +1,7 @@
+.sos
+*.swp
+__pycache__
+tmp*
+build
+dist
+*egg-info

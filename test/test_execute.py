@@ -32,7 +32,7 @@ import shutil
 from pysos import *
 from pysos import __version__
 from pysos.utils import env, Undetermined
-from pysos.sos_script import ExecuteError
+from pysos.sos_executor import Sequential_Executor, ExecuteError
 import subprocess
 
 class TestExecute(unittest.TestCase):
@@ -53,6 +53,14 @@ class TestExecute(unittest.TestCase):
         self.assertEqual(subprocess.call('sos dryrun file://{}/scripts/master.sos'.format(os.getcwd()), stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
         self.assertEqual(subprocess.call('sos dryrun scripts/master.sos L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos show -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        #
+        self.assertEqual(subprocess.call('sos config -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos config -g --get', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos config --get', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos config --set "a=5"', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos config --get a', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos config --unset a', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+
 
     def testInterpolation(self):
         '''Test string interpolation during execution'''
@@ -64,7 +72,7 @@ res += '${b}'
 """)
         wf = script.workflow()
         env.shared_vars = ['res']
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], '200')
         #
         script = SoS_Script(r"""
@@ -74,7 +82,7 @@ for b in range(5):
     res += '${b}'
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], '01234')
         #
         env.run_mode='dryrun'
@@ -85,7 +93,7 @@ output: ['{}_{}_processed.txt'.format(x,y) for x,y in zip(name, model)]
 
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'].output,  ['a_1_processed.txt', 'b_2_processed.txt', 'c_2_processed.txt'])
         #
         env.run_mode='dryrun'
@@ -96,7 +104,7 @@ output: ['${x}_${y}_process.txt' for x,y in zip(name, model)]
 
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'].output,  ['a_1_process.txt', 'b_2_process.txt', 'c_2_process.txt'])
         #
         env.run_mode='dryrun'
@@ -110,7 +118,7 @@ output: add_a(['${x}_${y}_process.txt' for x,y in zip(name, model)])
 
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'].output,  ['aa_1_process.txt', 'ab_2_process.txt', 'ac_2_process.txt'])
 
     def testGlobalVars(self):
@@ -118,7 +126,7 @@ output: add_a(['${x}_${y}_process.txt' for x,y in zip(name, model)])
         script = SoS_Script(r"""
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['SOS_VERSION'], __version__)
 
     def testFuncDef(self):
@@ -133,7 +141,7 @@ input: myfunc(['a.txt', 'b.txt'])
 """)
         wf = script.workflow()
         env.run_mode='dryrun'
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].input, ['aa.txt', 'ab.txt'])
         # in nested workflow?
         script = SoS_Script(r"""
@@ -148,7 +156,7 @@ sos_run('mse')
 """)
         wf = script.workflow()
         env.run_mode='dryrun'
-        wf.run()
+        Sequential_Executor(wf).run()
         #
         # Names defined in subworkflow is not returned to the master dict
         self.assertTrue('test' not in env.sos_dict)
@@ -263,7 +271,7 @@ cp ${_input} ${_dest}
         wf = script.workflow('default_0')
         env.sig_mode = 'ignore'
         start = time.time()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertGreater(time.time() - start, 1)
         self.assertTrue(os.path.isfile('temp/a.txt'))
         self.assertTrue(os.path.isfile('temp/b.txt'))
@@ -272,12 +280,12 @@ cp ${_input} ${_dest}
         with open('temp/b.txt') as tb:
             self.assertTrue(tb.read(), 'b.txt')
         env.sig_mode = 'assert'
-        wf.run()
+        Sequential_Executor(wf).run()
         #
         env.sig_mode = 'ignore'
         wf = script.workflow()
         start = time.time()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertGreater(time.time() - start, 1)
         #
         self.assertTrue(os.path.isfile('temp/c.txt'))
@@ -290,23 +298,23 @@ cp ${_input} ${_dest}
         #
         # now in assert mode, the signature should be there
         env.sig_mode = 'assert'
-        wf.run()
+        Sequential_Executor(wf).run()
         #
         env.sig_mode = 'default'
         start = time.time()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertLess(time.time() - start, 1.5)
         #
         # change script a little bit
         script = SoS_Script('# comment\n' + text)
         wf = script.workflow()
         env.sig_mode = 'assert'
-        wf.run()
+        Sequential_Executor(wf).run()
         # add some other variable?
         script = SoS_Script('comment = 1\n' + text)
         wf = script.workflow()
         env.sig_mode = 'assert'
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
 
     def testReexecution(self):
         '''Test -f option of sos run'''
@@ -326,19 +334,19 @@ run('touch ${output}')
         except:
             pass
         start = time.time()
-        wf.run()
+        Sequential_Executor(wf).run()
         # regularly take more than 5 seconds to execute
         self.assertGreater(time.time() - start, 2)
         # now, rerun should be much faster
         start = time.time()
-        wf.run()
+        Sequential_Executor(wf).run()
         # rerun takes less than 1 second
         self.assertLess(time.time() - start, 1)
         #
         # force rerun mode
         env.sig_mode = 'ignore'
         start = time.time()
-        wf.run()
+        Sequential_Executor(wf).run()
         # regularly take more than 5 seconds to execute
         self.assertGreater(time.time() - start, 2)
         env.sig_mode = 'default'
@@ -359,7 +367,7 @@ input: '*.py'
 output: _input
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertTrue('test_execute.py' in env.sos_dict['res'].output)
 
     def testForEach(self):
@@ -383,7 +391,7 @@ counter = counter + 1
 """)
         wf = script.workflow()
         env.shared_vars = ['counter', 'all_names', 'all_loop', 'processed']
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['counter'], 6)
         self.assertEqual(env.sos_dict['all_names'], "a b c a b c ")
         self.assertEqual(env.sos_dict['all_loop'], "1 1 1 2 2 2 ")
@@ -402,7 +410,7 @@ output: res
 processed.append((_par, _res))
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
 
 
@@ -424,7 +432,7 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
 """)
         wf = script.workflow()
         env.shared_vars=['base', 'name', 'par', '_output']
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
@@ -444,7 +452,7 @@ output: pattern=['{base}-{name}-{par}.txt', '{par}.txt']
 """)
         wf = script.workflow()
         env.shared_vars = ['base', 'name', 'par', '_output']
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
@@ -470,7 +478,7 @@ input: oa.input
 output: _input
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['oa'].input, ["a.pdf", 'a.txt', 'b.txt'])
         self.assertEqual(env.sos_dict['ob'].output, ["a.pdf", 'a.txt', 'b.txt'])
 
@@ -488,7 +496,7 @@ output: _input
 
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'].output, ['a.txt', 'b.txt'])
         #
         script = SoS_Script(r"""
@@ -502,7 +510,7 @@ counter += 1
 """)
         wf = script.workflow()
         env.shared_vars=['counter']
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['counter'], 3)
         #
         script = SoS_Script(r"""
@@ -515,7 +523,7 @@ input: 'a.pdf', 'b.html', files, filetype=lambda x: 'a' in x, group_by='single'
 counter += 1
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['counter'], 2)
 
     def testSkip(self):
@@ -532,7 +540,7 @@ input: 'a.pdf', 'b.html', files, skip=counter == 0
 counter += 1
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['counter'], 0)
 
     def testOutputFromInput(self):
@@ -550,7 +558,7 @@ counter += 1
 """)
         wf = script.workflow()
         env.shared_vars = ['counter']
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['step'].output, ['a.txt.bak', 'b.txt.bak'])
 
@@ -566,7 +574,7 @@ with open('test/result.txt', 'w') as res:
        res.write(file + '\n')
 """)
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         with open('result.txt') as res:
             content = [x.strip() for x in res.readlines()]
             self.assertTrue('test_execute.py' in content)
@@ -589,7 +597,7 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 """)
         wf = script.workflow()
         start = time.time()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertGreater(time.time() - start, 9)
         #
         #
@@ -607,7 +615,7 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 """)
         wf = script.workflow()
         start = time.time()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertLess(time.time() - start, 6)
 
     def testRunmode(self):
@@ -625,13 +633,13 @@ a = fail()
         wf = script.workflow()
         env.run_mode = 'dryrun'
         env.shared_vars=['a']
-        wf.run()
+        Sequential_Executor(wf).run()
         # should return 0 in dryrun mode
         self.assertTrue(isinstance(env.sos_dict['a'], Undetermined))
         #
 
         env.run_mode = 'run'
-        wf.run()
+        Sequential_Executor(wf).run()
         # shoulw return 1 in run mode
         self.assertEqual(env.sos_dict['a'], 1)
 
@@ -648,7 +656,7 @@ a += 1
 """)
         wf = script.workflow()
         env.run_mode = 'dryrun'
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
 
     def testReadonlyVarsInParameters(self):
         '''Test vars defined in global section are readonly'''
@@ -669,7 +677,7 @@ sos_run('a+a')
 """)
         wf = script.workflow()
         env.run_mode = 'dryrun'
-        self.assertRaises((ExecuteError, RuntimeError), wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
 
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''
@@ -693,7 +701,7 @@ sos_run('nested')
 """)
         env.max_jobs = 1
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
     def testUserDefinedFunc(self):
         '''Test the use of user-defined functions in SoS script'''
@@ -710,7 +718,7 @@ myfunc()
 """)
         wf = script.workflow()
         env.run_mode = 'dryrun'
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].output, ['a'])
         # User defined function should also work under nested workflows
         # This is difficult because the 'local namespace' is usually
@@ -730,7 +738,7 @@ myfunc()
 """)
         wf = script.workflow()
         env.run_mode = 'dryrun'
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].output, ['a45'])
 
     def testReadOnlyStepVars(self):
@@ -746,7 +754,7 @@ test.output=['ab.txt']
 """)
         wf = script.workflow()
         env.run_mode = 'dryrun'
-        self.assertRaises((RuntimeError, ExecuteError), wf.run)
+        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).run)
 
     def testReadOnlyInputOutputVars(self):
         '''Test readonly input output vars'''
@@ -760,7 +768,7 @@ _output = ['b.txt']
         env.run_mode = 'dryrun'
         # I would like to disallow setting _output directly, but this is
         # not the case now.
-        self.assertRaises(RuntimeError, wf.run)
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
 
     def testLocalNamespace(self):
         '''Test if steps are well separated.'''
@@ -777,7 +785,7 @@ print(a)
         env.run_mode = 'dryrun'
         # I would like to disallow accessing variables defined
         # in other cases.
-        self.assertRaises((RuntimeError, ExecuteError), wf.run)
+        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).run)
         # however, alias should be sent back
         script = SoS_Script(r"""
 [1: alias='shared']
@@ -795,7 +803,7 @@ output: shared.input
         env.run_mode = 'dryrun'
         # I would like to disallow accessing variables defined
         # in other cases.
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['shared'].output, ['b.txt'])
         #
         # this include other variables set in the step
@@ -820,7 +828,7 @@ e = shared.d + 1
         env.run_mode = 'dryrun'
         # I would like to disallow accessing variables defined
         # in other cases.
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['shared'].c, 'c.txt')
         self.assertEqual(env.sos_dict['d'].e, 2)
         #
@@ -846,7 +854,7 @@ shared.d += 1
         env.run_mode = 'dryrun'
         # I would like to disallow accessing variables defined
         # in other cases.
-        self.assertRaises((ExecuteError, RuntimeError), wf.run)
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
 
     def testSklearnImportFailure(self):
         '''Test problem with Sklean when using Celery/multiprocessing'''
@@ -857,7 +865,7 @@ import sklearn
 print(0)
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
 
 
     def testCollectionOfErrors(self):
@@ -878,14 +886,14 @@ check_command('a4')
         env.run_mode = 'dryrun'
         # we should see a single error with 4 messages.
         try:
-            wf.run()
+            Sequential_Executor(wf).run()
         except Exception as e:
             self.assertEqual(len(e.errors), 6)
 
 
     def testDryrunTimeout(self):
         '''Test if any action should exit in five seconds in dryrun mode'''
-        sos_config_file = os.path.expanduser('~/.sos/config.json')
+        sos_config_file = os.path.expanduser('.sos/config.json')
         move_back = False
         if os.path.isfile(sos_config_file):
             move_back = True
@@ -899,14 +907,14 @@ time.sleep(8)
         wf = script.workflow()
         env.run_mode = 'run'
         # this should be ok
-        wf.run()
+        Sequential_Executor(wf).run()
         #
         env.run_mode = 'dryrun'
-        self.assertRaises(ExecuteError, wf.run)
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).run)
         #
         # now, if I have a configuration file, the default value can be changed
-        if not os.path.isdir(os.path.expanduser('~/.sos')):
-            os.mkdir(os.path.expanduser('~/.sos'))
+        if not os.path.isdir(os.path.expanduser('.sos')):
+            os.mkdir(os.path.expanduser('.sos'))
         with open(sos_config_file, 'w') as sos_config:
             sos_config.write('''
 #
@@ -917,7 +925,7 @@ time.sleep(8)
 }
 ''')
         # now we can rerun the script, and it should pass
-        wf.run()
+        Sequential_Executor(wf).run()
         # clean up
         if move_back:
             os.rename(sos_config_file + '.bak', sos_config_file)
@@ -928,7 +936,7 @@ time.sleep(8)
 
     def testSearchPath(self):
         '''Test if any action should exit in five seconds in dryrun mode'''
-        sos_config_file = os.path.expanduser('~/.sos/config.json')
+        sos_config_file = os.path.expanduser('.sos/config.json')
         move_back = False
         if os.path.isfile(sos_config_file):
             move_back = True
@@ -987,7 +995,7 @@ for i in range(4):
        h.write('a')
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].output, ['temp/something{}.html'.format(x) for x in range(4)])
         #
         shutil.rmtree('temp')
@@ -1014,10 +1022,10 @@ run:
 touch ${_input}.bak
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].output, ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
         # this time we use th existing signature
-        wf.run()
+        Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].output, ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
         #
         shutil.rmtree('temp')
