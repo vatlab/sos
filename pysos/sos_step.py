@@ -399,7 +399,7 @@ def directive_output(*args, **kwargs):
             os.makedirs(parent_dir)
     env.sos_dict.set('_output', ofiles)
 
-def directive_process(**kwargs):
+def directive_task(**kwargs):
     env.sos_dict.set('_runtime', {k:v for k,v in kwargs.items() if k in SOS_RUNTIME_OPTIONS})
 
 
@@ -419,7 +419,7 @@ class StepInfo(object):
     def __repr__(self):
         return '{' + ', '.join('{}: {!r}'.format(x,y) for x,y in self.__dict__.items()) + '}'
 
-def execute_step_process(step_process, global_process, sos_dict, sigil, signature, workdir):
+def execute_step_process(step_process, global_def, sos_dict, sigil, signature, workdir):
     '''A function that has a local dictionary (from SoS env.sos_dict),
     a global process, and a step process. The processes are executed
     in a separate process, independent of SoS. This makes it possible
@@ -441,8 +441,8 @@ def execute_step_process(step_process, global_process, sos_dict, sigil, signatur
         SoS_exec('import os, sys, glob')
         SoS_exec('from pysos import *')
         # global
-        if global_process:
-            SoS_exec(global_process, sigil)
+        if global_def:
+            SoS_exec(global_def, sigil)
         # step process
         SoS_exec(step_process, sigil)
         os.chdir(env.exec_dir)
@@ -471,13 +471,13 @@ class Step_Executor:
         '''return everything that might affect the execution of the step
         namely, global process, step definition etc to create a unique
         signature that might will be changed with the change of SoS script.'''
-        result = self.step.global_process
+        result = self.step.global_def
         for statement in self.step.statements:
             if statement[0] in (':', '='):
                 result += '{}: {}\n'.format(statement[1], statement[2])
             else:
                 result += statement[1] + '\n'
-        result += self.step.process
+        result += self.step.task
         return re.sub(r'\s+', ' ', result)
 
     def run_with_queue(self, queue):
@@ -540,13 +540,13 @@ class Step_Executor:
             raise RuntimeError('More than one step input are specified in step {}_{}'.format(self.step.name, self.step.index))
         #
         # execute global process, will be done in all run mode
-        if self.step.global_process:
+        if self.step.global_def:
             try:
-                SoS_exec(self.step.global_process)
+                SoS_exec(self.step.global_def)
             except Exception as e:
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.step.global_process, e))
+                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.step.global_def, e))
         #
         # these will be the variables that will be returned as step alias
         public_vars = set()
@@ -783,7 +783,7 @@ class Step_Executor:
                         env.logger.debug('Failed to reconstruct signature. {}'.format(e))
             # now, if output file has already been generated using non-process statement
             # so that no process need to be run, we create signature from outside.
-            if not self.step.process:
+            if not self.step.task:
                 # if no process, we should be able to figure out undetermined output now
                 if env.sos_dict['_output'] and isinstance(env.sos_dict['_output'][0], Undetermined):
                     value = env.sos_dict['_output'][0].expr
@@ -803,8 +803,8 @@ class Step_Executor:
                 if concurrent:
                     proc_results.append(pool.apply_async(
                         execute_step_process,   # function
-                        (self.step.process,          # process
-                        self.step.global_process,    # global process
+                        (self.step.task,          # process
+                        self.step.global_def,    # global process
                         env.sos_dict.clone_pickleable(),
                         self.step.sigil,
                         partial_signature,
@@ -813,7 +813,7 @@ class Step_Executor:
                     # execute in existing process
                     proc_results.append(
                         execute_step_process(   # function
-                        self.step.process,           # process
+                        self.step.task,           # process
                         '',                     # local execusion, no need to re-run global
                         # do not clone dict
                         env.sos_dict,
@@ -824,7 +824,7 @@ class Step_Executor:
                 # FIXME: cannot catch exception from subprocesses
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(self.step.process, e))
+                raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(self.step.task, e))
         # check results? This is only meaningful for pool
         if concurrent:
             try:

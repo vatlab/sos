@@ -25,9 +25,9 @@ exec(open('pysos/_version.py').read())
 
 setup(name = "sos",
     version = __version__,
-    description = "Script of Scripts (SoS): a workflow system for the execution of scripts in different languages",
+    description = 'Script of Scripts (SoS): a lightweight workflow system for the creation of readable workflows',
     author = 'Bo Peng',
-    url = 'https://github.com/bpeng2000/SOS',
+    url = 'https://github.com/BoPeng/SOS',
     author_email = 'bpeng@mdanderson.org',
     maintainer = 'Bo Peng',
     maintainer_email = 'bpeng@mdanderson.org',
@@ -54,10 +54,5 @@ setup(name = "sos",
     scripts = [
         'sos',
         'sos-runner',
-        ],
-    py_modules = [
-        'pysos.actions',
-        'pysos.utils',
-        'pysos.sos_script',
         ]
 )
