@@ -29,7 +29,7 @@ import time
 import unittest
 import shutil
 
-from pysos import *
+from pysos import SoS_Script
 from pysos import __version__
 from pysos.utils import env, Undetermined
 from pysos.sos_executor import Sequential_Executor, ExecuteError
@@ -968,7 +968,7 @@ print('hay, I am crazy')
 ''')
 
         script = SoS_Script(filename='crazy_master.sos')
-        wf = script.workflow()
+        script.workflow()
         env.run_mode = 'run'
         #
         shutil.rmtree('crazy_path')

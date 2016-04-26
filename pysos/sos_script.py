@@ -20,35 +20,25 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 import os
-import sys
 import re
 import copy
 import fnmatch
-import argparse
 import textwrap
 
 from io import StringIO
 from collections import defaultdict
 from collections.abc import Sequence
 
-from .utils import env, Error, SoS_eval, SoS_exec, dehtml, getTermWidth, \
-    get_traceback, Undetermined, locate_script
+from .utils import env, Error, dehtml, getTermWidth, Undetermined, locate_script
 
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
-    SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_PARAMETERS_SECTION_NAME, SOS_DIRECTIVE, \
-    SOS_DIRECTIVES, SOS_ASSIGNMENT, SOS_SUBWORKFLOW
+    SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_PARAMETERS_SECTION_NAME, \
+    SOS_DIRECTIVE, SOS_DIRECTIVES, SOS_ASSIGNMENT, SOS_SUBWORKFLOW
 
 __all__ = ['SoS_Script']
 
-class ArgumentError(Error):
-    """Raised when an invalid argument is passed."""
-    def __init__(self, msg):
-        Error.__init__(self, msg)
-        self.args = (msg, )
-
 class ParsingError(Error):
-    """Raised when a configuration file does not follow legal syntax."""
-
+    '''Raised when a configuration file does not follow legal syntax.'''
     def __init__(self, filename):
         Error.__init__(self, 'File contains parsing errors: %s' % filename)
         self.filename = filename
@@ -59,18 +49,12 @@ class ParsingError(Error):
         self.errors.append((lineno, line))
         self.message += '\n\t[line %2d]: %s\n%s' % (lineno, line, msg)
 
-#
-# handling of parameters step
-#
-
-
-
 class SoS_Step:
-    #
-    # A single sos step
-    #
+    '''Parser of a SoS step. This class accepts strings sent by the parser, determine
+    their types and add them to appropriate sections (directive, assignment, statement, 
+    scripts etc) '''
     def __init__(self, context=None, names=[], options={}, is_global=False, is_parameters=False):
-        '''A sos step'''
+        '''A sos step '''
         self.context = context
         # A step will not have a name and index until it is copied to separate workflows
         self.name = None
@@ -102,7 +86,6 @@ class SoS_Step:
             self.sigil = self.options['sigil']
         else:
             self.sigil = '${ }'
-
         #
         # string mode to collect all strings as part of an action
         self._action = None
@@ -110,6 +93,7 @@ class SoS_Step:
         self._script = ''
 
     def category(self):
+        '''Determine the category of existing statement'''
         if self.statements:
             if self.statements[-1][0] == '=':
                 return 'expression'
@@ -136,14 +120,54 @@ class SoS_Step:
         else:
             return None
 
-    #
-    # Parsing input
-    #
+    def isValid(self):
+        '''Determine if the statement, expression or directive is valid. Otherwise 
+        the parser will continue until a valid multi-line expression or statement
+        can be found.'''
+        if not self.values:
+            return True
+        try:
+            if self.category() == 'expression':
+                compile(''.join(self.values), filename='<string>', mode='eval')
+            elif self.category() == 'directive':
+                # we add func() because the expression can be multi-line and
+                # can have keyword-argument like options
+                #
+                # However, python considers
+                #
+                #     func('value', )
+                #
+                # a valid syntax but we do want , to continue to the next line
+                if self.values[-1].strip().endswith(','):
+                    self.error_msg = 'Trailing ,'
+                    return False
+                compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
+            elif self.category() == 'statements':
+                compile(''.join(self.values), filename='<string>', mode='exec')
+            elif self.category() == 'script':
+                if self._action in ['python3', 'process']:
+                    # we only know how to parse python script, but that is good enough
+                    try:
+                        compile(textwrap.dedent(self._script), filename='<string>', mode='exec')
+                        return True
+                    except Exception as e:
+                        self.error_msg = repr(e)
+                        return False
+                else:
+                    return True
+            else:
+                raise RuntimeError('Unrecognized expression type {}'.format(self.category()))
+            return True
+        except Exception as e:
+            self.error_msg = repr(e)
+            return False
+
     def empty(self):
         '''If there is no content (comment does not count)'''
         return self.category() is None
 
     def extend(self, line):
+        '''Extend the current directive, expression or script'''
         if self.category() == 'directive':
             self.add_directive(None, line)
         elif self.category() == 'expression':
@@ -258,124 +282,6 @@ class SoS_Step:
         if process_directive:
             self.statements = self.statements[:start_process]
 
-    def isValid(self):
-        if not self.values:
-            return True
-        try:
-            if self.category() == 'expression':
-                compile(''.join(self.values), filename='<string>', mode='eval')
-            elif self.category() == 'directive':
-                # we add func() because the expression can be multi-line and
-                # can have keyword-argument like options
-                #
-                # However, python considers
-                #
-                #     func('value', )
-                #
-                # a valid syntax but we do want , to continue to the next line
-                if self.values[-1].strip().endswith(','):
-                    self.error_msg = 'Trailing ,'
-                    return False
-                compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
-            elif self.category() == 'statements':
-                compile(''.join(self.values), filename='<string>', mode='exec')
-            elif self.category() == 'script':
-                if self._action in ['python3', 'process']:
-                    # we only know how to parse python script, but that is good enough
-                    try:
-                        compile(textwrap.dedent(self._script), filename='<string>', mode='exec')
-                        return True
-                    except Exception as e:
-                        self.error_msg = repr(e)
-                        return False
-                else:
-                    return True
-            else:
-                raise RuntimeError('Unrecognized expression type {}'.format(self.category()))
-            return True
-        except Exception as e:
-            self.error_msg = repr(e)
-            return False
-
-    def _parse_error(self, msg):
-        '''This function will replace error() function in argparse module so that SoS
-        can hijack errors raised from it.'''
-        raise ArgumentError(msg)
-
-    def parse_args(self, args, check_unused=False, cmd_name=''):
-        '''Parse command line arguments and set values to parameters section'''
-        env.logger.debug('Execute ``{}_parameters``'.format(self.name))
-        env.sos_dict.set('step_name', '{}_parameters'.format(self.name))
-        if self.global_process:
-            try:
-                SoS_exec(self.global_process)
-            except Exception as e:
-                if env.verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.global_process, e))
-
-        def str2bool(v):
-            if v.lower() in ('yes', 'true', 't', '1'):
-                return True
-            elif v.lower() in ('no', 'false', 'f', '0'):
-                return False
-            else:
-                raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
-        #
-        parser = argparse.ArgumentParser(prog='sos-runner {}'.format(cmd_name))
-        parser.register('type', 'bool', str2bool)
-        arguments = {}
-        for key, defvalue, comment in self.parameters:
-            try:
-                defvalue = SoS_eval(defvalue, self.sigil)
-                arguments[key] = defvalue
-            except Exception as e:
-                raise RuntimeError('Incorrect default value {} for parameter {}: {}'.format(defvalue, key, e))
-            if isinstance(defvalue, type):
-                if defvalue == bool:
-                    parser.add_argument('--{}'.format(key), type='bool', help=comment, required=True, nargs='?')
-                else:
-                    # if only a type is specified, it is a required document of required type
-                    parser.add_argument('--{}'.format(key), type=str if hasattr(defvalue, '__iter__') else defvalue,
-                        help=comment, required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
-            else:
-                if isinstance(defvalue, bool):
-                    parser.add_argument('--{}'.format(key), type='bool', help=comment,
-                        nargs='?', default=defvalue)
-                else:
-                    if isinstance(defvalue, str):
-                        deftype = str
-                    elif isinstance(defvalue, Sequence):
-                        if len(defvalue) > 0:
-                            deftype = type(defvalue[0])
-                        else:
-                            deftype = str
-                    else:
-                        deftype = type(defvalue)
-                    parser.add_argument('--{}'.format(key), type=deftype, help=comment,
-                        nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
-                        default=defvalue)
-        #
-        parser.error = self._parse_error
-        #
-        # because of the complexity of having combined and nested workflows, we cannot know how
-        # many parameters section a workflow has and therfore have to assume that the unknown parameters
-        # are for other sections.
-        if check_unused:
-            parsed = parser.parse_args(args)
-        else:
-            parsed, unknown = parser.parse_known_args(args)
-            if unknown:
-                env.logger.warning('Unparsed arguments [{}] that might be processed by another combined or nested workflow'
-                    .format(' '.join(unknown)))
-        #
-        arguments.update(vars(parsed))
-        # now change the value with passed values
-        for k, v in arguments.items():
-            env.sos_dict[k] = v
-            # protect variables from being further modified
-            env.readonly_vars.add(k)
-
     def show(self):
         '''Output for command sos show'''
         textWidth = max(60, getTermWidth())
@@ -402,9 +308,8 @@ class SoS_Step:
 
 
 class SoS_Workflow:
-    #
-    # A SoS workflow with multiple steps
-    #
+    '''A SoS workflow with multiple steps. It is created from multiple sections of a SoS script
+    and consists of multiple SoS_Step.'''
     def __init__(self, workflow_name, allowed_steps, sections, description):
         '''create a workflow from its name and a list of SoS_Sections (using name matching)'''
         self.name = workflow_name
@@ -561,7 +466,6 @@ class SoS_Script:
             for name in self.workflows:
                 if lines and lines[0].strip() == name:
                     self.workflow_descriptions[name] += '\n'.join(lines[1:]) + '\n'
-
 
     def _read(self, fp):
         self.sections = []
@@ -827,7 +731,6 @@ class SoS_Script:
             else:
                 # existing one
                 cursect.extend(line)
-
         #
         # check the last expression before a new directive
         if cursect:
@@ -855,7 +758,6 @@ class SoS_Script:
                 section.global_process = global_process
             # remove the global section after inserting it to each step of the process
             self.sections.pop(global_section[0][0])
-
 
     def workflow(self, workflow_name=None, source={}):
         '''Return a workflow with name_step+name_step specified in wf_name
@@ -956,7 +858,6 @@ class SoS_Script:
                     sections.append(section)
                     break
         return SoS_Workflow(wf_name.split('.')[-1], allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
-
 
     def show(self):
         textWidth = max(60, getTermWidth())
