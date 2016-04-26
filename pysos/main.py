@@ -28,6 +28,7 @@ import fnmatch
 
 from .utils import env, get_traceback
 from .sos_script import SoS_Script
+from .sos_executor import Sequential_Executor
 #
 # subcommmand show
 #
@@ -93,7 +94,8 @@ def sos_run(args, workflow_args):
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
-        workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
+        executor = Sequential_Executor(workflow)
+        executor.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -111,7 +113,7 @@ def sos_run(args, workflow_args):
         try:
             script = SoS_Script(filename=args.script)
             workflow = script.workflow(args.workflow)
-            workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
+            executor.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
         except Exception as e:
             if args.verbosity and args.verbosity > 2:
                 sys.stderr.write(get_traceback())
@@ -126,7 +128,8 @@ def sos_run(args, workflow_args):
         try:
             script = SoS_Script(filename=args.script)
             workflow = script.workflow(args.workflow)
-            workflow.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
+            executor = Sequential_Executor(workflow)
+            executor.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
         except Exception as e:
             if args.verbosity and args.verbosity > 2:
                 sys.stderr.write(get_traceback())

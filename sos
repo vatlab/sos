@@ -23,7 +23,7 @@
 import sys
 import argparse
 
-from pysos._version import __version__, SOS_FULL_VERSION
+from pysos._version import SOS_FULL_VERSION
 from pysos.main import sos_run, sos_dryrun, sos_prepare, sos_show, sos_config
 
 def addCommonArgs(parser):

@@ -36,6 +36,7 @@ from docker import Client
 from docker.utils import kwargs_from_env
 import multiprocessing as mp
 from .utils import env, interpolate, glob_wildcards, downloadURL, fileMD5, Undetermined
+from .sos_executor import Sequential_Executor
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
     'check_command', 'fail_if', 'warn_if', 'download',
@@ -390,7 +391,7 @@ def sos_run(workflow, source={}):
     # recusive nested workflow and should not be allowed
     if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections if not x.is_parameters]:
         raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
-    return wf.run(args=env.sos_dict['__args__'], nested=True)
+    return Sequential_Executor(wf).run(args=env.sos_dict['__args__'], nested=True)
 
 @SoS_Action(run_mode=['run'])
 def execute_script(script, interpreter, suffix, **kwargs):

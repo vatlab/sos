@@ -28,6 +28,7 @@ import unittest
 from pysos.utils import env, logger, interpolate, WorkflowDict, SoS_eval, InterpolationError, \
     extract_pattern, expand_pattern, ProgressBar, downloadURL
 from pysos.sos_script import SoS_Script
+from pysos.sos_executor import Sequential_Executor
 
 class TestUtils(unittest.TestCase):
     def setUp(self):
@@ -235,7 +236,7 @@ class TestUtils(unittest.TestCase):
 [5]
 ''')
         wf = script.workflow()
-        wf.run()
+        Sequential_Executor(wf).run()
         # progress bar with nested workflow
         script = SoS_Script('''
 import time
@@ -252,7 +253,7 @@ sos_run('sub')
 [a_5]
 ''')
         wf = script.workflow('a')
-        wf.run()
+        Sequential_Executor(wf).run()
 
 
     def testDownload(self):
