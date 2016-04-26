@@ -22,7 +22,8 @@
 import os
 import sys
 import hashlib
-from .utils import env, Undetermined
+from .utils import env
+from .sos_eval import Undetermined
 
 __all__ = []
 

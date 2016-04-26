@@ -24,3 +24,4 @@ from ._version import *
 from .sos_script import *
 from .utils import *
 from .actions import *
+from .sos_eval import *

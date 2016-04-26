@@ -30,12 +30,18 @@ import json
 import platform
 import urllib
 import shutil
+import pycurl
+import zipfile
+import gzip
+import tarfile
 import blessings
 from io import BytesIO
 from docker import Client
 from docker.utils import kwargs_from_env
 import multiprocessing as mp
-from .utils import env, interpolate, glob_wildcards, downloadURL, fileMD5, Undetermined
+from .utils import env, glob_wildcards, getTermWidth, ProgressBar
+from .sos_eval import interpolate, Undetermined
+from .signature import FileSignature, fileMD5
 from .sos_executor import Sequential_Executor
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
@@ -445,6 +451,96 @@ def warn_if(expr, msg=''):
     if expr:
         env.logger.warning(msg)
     return 0
+
+#
+# download file with progress bar
+#
+def downloadURL(URL, dest, decompress=False, index=None):
+    # use libcurl
+    dest = os.path.abspath(os.path.expanduser(dest))
+    dest_dir, filename = os.path.split(dest)
+    #
+    if not os.path.isdir(dest_dir):
+        os.makedirs(dest_dir)
+    if not os.path.isdir(dest_dir):
+        raise RuntimeError('Failed to create destination directory to download {}'.format(URL))
+    #
+    message = filename
+    if len(message) > 30:
+        message = message[:10] + '...' + message[-16:]
+    #
+    dest_tmp = dest + '.tmp_{}'.format(os.getpid())
+    term_width = getTermWidth()
+    try:
+        env.logger.debug('Download {} to {}'.format(URL, dest))
+        prog = ProgressBar(message, disp=env.verbosity > 1, index=index)
+        sig = FileSignature(dest)
+        if os.path.isfile(dest) and sig.validate():
+            prog.done(message + ': \033[32m use existing {}\033[0m'.format(' '*(term_width - len(message) - 15)))
+            return True
+        #
+        with open(dest_tmp, 'wb') as f:
+            c = pycurl.Curl()
+            c.setopt(pycurl.URL, str(URL))
+            c.setopt(pycurl.WRITEFUNCTION, f.write)
+            c.setopt(pycurl.SSL_VERIFYPEER, False)
+            c.setopt(pycurl.NOPROGRESS, False)
+            c.setopt(pycurl.PROGRESSFUNCTION, prog.curlUpdate)
+            c.perform()
+        if c.getinfo(pycurl.HTTP_CODE) == 404:
+            prog.done(message + ':\033[91m 404 Error {}\033[0m'.format(' '*(term_width - len(message) - 12)))
+            try:
+                os.remove(dest_tmp)
+            except OSError:
+                pass
+            return False
+        os.rename(dest_tmp, dest)
+        decompressed = 0
+        if decompress:
+            if zipfile.is_zipfile(dest):
+                zip = zipfile.ZipFile(dest)
+                zip.extractall(dest_dir)
+                names = zip.namelist()
+                for name in names:
+                    if not os.path.isfile(os.path.join(dest_dir, name)):
+                        return False
+                    else:
+                        sig.add(os.path.join(dest_dir, name))
+                        decompressed += 1
+            elif tarfile.is_tarfile(dest):
+                with tarfile.open(dest, 'r:*') as tar:
+                    tar.extractall(dest_dir)
+                    # only extract files
+                    files = [x.name for x in tar.getmembers() if x.isfile()]
+                    for name in files:
+                        if not os.path.isfile(os.path.join(dest_dir, name)):
+                            return False
+                        else:
+                            sig.add(os.path.join(dest_dir, name))
+                            decompressed += 1
+            elif dest.endswith('.gz'):
+                decomp = dest[:-3]
+                with gzip.open(dest, 'rb') as fin, open(decomp, 'wb') as fout:
+                    buffer = fin.read(100000)
+                    while buffer:
+                        fout.write(buffer)
+                        buffer = fin.read(100000)
+                sig.add(decomp)
+                decompressed += 1
+        decompress_msg = '' if not decompressed else ' ({} file{} decompressed)'.format(
+            decompressed, '' if decompressed <= 1 else 's')
+        prog.done(message + ':\033[32m downloaded{} {}\033[0m'.format(decompress_msg,
+            ' '*(term_width - len(message) - 13 - len(decompress_msg))))
+    except Exception as e:
+        env.logger.error(e)
+        return False
+    finally:
+        # if there is something wrong still remove temporary file
+        if os.path.isfile(dest_tmp):
+            os.remove(dest_tmp)
+    sig.write()
+    return os.path.isfile(dest)
+
 
 @SoS_Action(run_mode=['prepare'])
 def download(URLs, dest_dir='.', dest_file=None, decompress=False):

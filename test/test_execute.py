@@ -31,7 +31,8 @@ import shutil
 
 from pysos import SoS_Script
 from pysos import __version__
-from pysos.utils import env, Undetermined
+from pysos.utils import env
+from pysos.sos_eval import Undetermined
 from pysos.sos_executor import Sequential_Executor, ExecuteError
 import subprocess
 

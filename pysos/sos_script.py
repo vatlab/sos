@@ -29,8 +29,8 @@ from io import StringIO
 from collections import defaultdict
 from collections.abc import Sequence
 
-from .utils import env, Error, dehtml, getTermWidth, Undetermined, locate_script
-
+from .utils import env, Error, dehtml, getTermWidth, locate_script
+from .sos_eval import Undetermined 
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_PARAMETERS_SECTION_NAME, \
     SOS_DIRECTIVE, SOS_DIRECTIVES, SOS_ASSIGNMENT, SOS_SUBWORKFLOW

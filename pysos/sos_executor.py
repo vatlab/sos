@@ -30,8 +30,8 @@ from collections.abc import Sequence
 
 from . import __version__
 from .sos_step import Step_Executor
-from .utils import env, Error, WorkflowDict, SoS_eval, SoS_exec, get_traceback, \
-    ProgressBar, frozendict, Undetermined
+from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, frozendict
+from .sos_eval import Undetermined, SoS_eval, SoS_exec
 
 __all__ = []
 
