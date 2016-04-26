@@ -26,8 +26,8 @@ import shutil
 import subprocess
 
 from pysos.utils import env
-from pysos.sos_script import SoS_Script, ParsingError, ArgumentError
-from pysos.sos_executor import Sequential_Executor, ExecuteError
+from pysos.sos_script import SoS_Script, ParsingError
+from pysos.sos_executor import Sequential_Executor, ArgumentError, ExecuteError
 
 class TestParser(unittest.TestCase):
     def setUp(self):

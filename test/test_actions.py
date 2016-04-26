@@ -29,7 +29,7 @@ import unittest
 import time
 import shutil
 
-from pysos import *
+from pysos import SoS_Script
 from pysos.utils import env, TimeoutException, time_limit, Undetermined
 from pysos.sos_executor import ExecuteError
 from pysos.actions import DockerClient
