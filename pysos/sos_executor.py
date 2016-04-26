@@ -88,13 +88,13 @@ class Sequential_Executor:
         '''Parse command line arguments and set values to parameters section'''
         env.logger.debug('Execute ``{}_parameters``'.format(section.name))
         env.sos_dict.set('step_name', '{}_parameters'.format(section.name))
-        if section.global_process:
+        if section.global_def:
             try:
-                SoS_exec(section.global_process)
+                SoS_exec(section.global_def)
             except Exception as e:
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(section.global_process, e))
+                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(section.global_def, e))
 
         def str2bool(v):
             if v.lower() in ('yes', 'true', 't', '1'):
