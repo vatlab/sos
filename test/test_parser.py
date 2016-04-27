@@ -488,18 +488,6 @@ open('something')
 save.put()
 
 ''')
-        # with section head
-        script = SoS_Script('''
-[0]
-input: 'filename',  'filename2', opt=value==1
-python3:
-
-with open('something') as e:
-   e.write("""
-[section]
-""")
-
-''')
         # test dedent
         script = SoS_Script('''
 [0]
@@ -511,6 +499,20 @@ python3:
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).run()
+        # with section head in the script, 
+        # this will not work even if the embedded
+        # python script is perfectly valid.
+        self.assertRaises(ParsingError, SoS_Script, '''
+[0]
+input: 'filename',  'filename2', opt=value==1
+python3:
+
+with open('something') as e:
+   e.write("""
+[section]
+""")
+
+''')
 
     def testInput(self):
         '''Test input directive'''

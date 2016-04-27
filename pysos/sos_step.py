@@ -613,6 +613,8 @@ class Step_Executor:
         env.logger.trace('Handling statements after input statement')
         self._outputs = []
         self._depends = []
+        #
+        dict_stack = []
         for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
             # other variables
             env.sos_dict.update(v)
@@ -677,6 +679,8 @@ class Step_Executor:
                 self._depends.append(env.sos_dict['_depends'])
             else:
                 self._depends.append([])
+            #
+            dict_stack.append(env.sos_dict.clone_pickleable())
         #
         env.logger.trace('Executing step process.')
         #
@@ -738,6 +742,8 @@ class Step_Executor:
         if concurrent:
             pool = mp.Pool(min(env.max_jobs, len(self._groups)))
         for idx, (g, v, o, d) in enumerate(zip(self._groups, self._vars, self._outputs, self._depends)):
+            if dict_stack:
+                env.sos_dict.quick_update(dict_stack.pop(0))
             env.sos_dict.update(v)
             env.sos_dict.set('_input', g)
             env.sos_dict.set('_output', o)

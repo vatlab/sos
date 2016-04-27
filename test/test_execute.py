@@ -1032,6 +1032,31 @@ touch ${_input}.bak
         shutil.rmtree('temp')
 
 
+    def testAssignmentAfterInput(self):
+        '''Testing assignment after input should be usable inside step process.'''
+        #
+        if os.path.isdir('temp'):
+            shutil.rmtree('temp')
+        os.mkdir('temp')
+        #
+        env.sig_mode = 'ignore'
+        script = SoS_Script('''
+[1]
+rep = range(5)
+input:  for_each='rep'
+output: 'temp/${_rep}.txt'
+
+# ff should change and be usable inside run
+ff = '${_rep}.txt'
+run:
+echo ${ff}
+touch temp/${ff}
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
+        #
+        #shutil.rmtree('temp')
+
 
 if __name__ == '__main__':
     unittest.main()

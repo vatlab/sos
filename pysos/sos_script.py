@@ -145,16 +145,45 @@ class SoS_Step:
             elif self.category() == 'statements':
                 compile(''.join(self.values), filename='<string>', mode='exec')
             elif self.category() == 'script':
-                if self._action in ['python3', 'task']:
-                    # we only know how to parse python script, but that is good enough
-                    try:
-                        compile(textwrap.dedent(self._script), filename='<string>', mode='exec')
-                        return True
-                    except Exception as e:
-                        self.error_msg = repr(e)
-                        return False
-                else:
-                    return True
+                #
+                # We are talking about this script here
+                #
+                # [0]
+                # input: 'filename',  'filename2', opt=value==1
+                # python3:
+                #
+                # with open('something') as e:
+                #   e.write("""
+                # [section]
+                # """)
+                #
+                # The script is obviously valid but [section] takes priority so python3 cannot
+                # get the complete script and fail. We can potentially fix this problem but
+                # we will see another bug, namely, "${}" expand to something that is not
+                # string in the script. That is to say
+                #
+                # [0]
+                # input: 'filename',  'filename2', opt=value==1
+                # python3:
+                #
+                # with open('something') as e:
+                #   a = ${input}
+                #   e.write("""
+                # [section]
+                # """)
+                #
+                # would fail because a=${input} is not a valid statement.
+                #
+                #if self._action in ['python3', 'task']:
+                #    # we only know how to parse python script, but that is good enough
+                #    try:
+                #        compile(textwrap.dedent(self._script), filename='<string>', mode='exec')
+                #        return True
+                #    except Exception as e:
+                #        #self.error_msg = repr(e)
+                #        return False
+                #else:
+                return True
             else:
                 raise RuntimeError('Unrecognized expression type {}'.format(self.category()))
             return True
