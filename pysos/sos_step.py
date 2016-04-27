@@ -100,7 +100,7 @@ def handle_input_group_by(ifiles, group_by):
         return [list(x) for x in combinations(ifiles, 2)]
 
 
-def handle_input_paired_with(paired_with, _groups, _vars):
+def handle_input_paired_with(paired_with, ifiles, _groups, _vars):
     '''Handle input option paired_with'''
     if paired_with is None or not paired_with:
         paired_with = []
@@ -111,7 +111,6 @@ def handle_input_paired_with(paired_with, _groups, _vars):
     else:
         raise ValueError('Unacceptable value for parameter paired_with: {}'.format(paired_with))
     #
-    ifiles = env.sos_dict['__step_input__']
     for wv in paired_with:
         if '.' in wv:
             if wv.split('.')[0] not in env.sos_dict:
@@ -150,7 +149,7 @@ def handle_input_pattern(pattern, ifiles, _groups, _vars):
                 raise RuntimeError('Pattern defined variable {} is not allowed'.format(k))
             env.sos_dict[k] = v
         # also make k, v pair with _input
-        handle_input_paired_with(res.keys(), _groups, _vars)
+        handle_input_paired_with(res.keys(), ifiles, _groups, _vars)
 
 
 def handle_input_for_each(for_each, _groups, _vars):
@@ -198,6 +197,15 @@ def handle_input_for_each(for_each, _groups, _vars):
 
 # directive input
 def directive_input(*args, **kwargs):
+    '''This function handles directive input and all its parameters.
+    It 
+        determines and set __step_input__
+        determines and set pattern variables if needed
+    returns
+        _groups
+        _vars
+    which are groups of _input and related _vars
+    '''
     # first *args are filenames
     for k in kwargs.keys():
         if k not in SOS_INPUT_OPTIONS:
@@ -289,7 +297,7 @@ def directive_input(*args, **kwargs):
     _vars = [{} for x in _groups]
     # handle paired_with
     if 'paired_with' in kwargs:
-        handle_input_paired_with(kwargs['paired_with'], _groups, _vars)
+        handle_input_paired_with(kwargs['paired_with'], ifiles,  _groups, _vars)
     # handle pattern
     if 'pattern' in kwargs:
         handle_input_pattern(kwargs['pattern'], ifiles, _groups, _vars)
@@ -489,9 +497,8 @@ class Step_Executor:
             for key in env.shared_vars:
                 if key in env.sos_dict and key not in res:
                     res[key] = env.sos_dict[key]
+            # in run mode, these variables must be valid (not Undetermined)
             if env.run_mode == 'run':
-                #if res['__step_input__'] is None:
-                #    raise RuntimeError('Step input cannot be None in run mode')
                 for key in ('__step_input__', '__step_output__', '__step_depends__'):
                     if res[key] is not None and not isinstance(res[key], list):
                         raise RuntimeError('Step input, output or depends has to be None or a list of filenames')
@@ -506,30 +513,40 @@ class Step_Executor:
     def run(self):
         '''Execute a single step and return results '''
         #
-        # handle these two sections differently
+        # Step 1: prepare environments
+        #
         if env.run_mode == 'run':
             env.logger.info('Execute ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
         elif env.run_mode == 'dryrun':
             env.logger.trace('Checking ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
         else:
             env.logger.trace('Preparing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
+        #
+        # step_name can be used by step process to determine actions dynamically.
         env.sos_dict.set('step_name', '{}_{}'.format(self.step.name, self.step.index))
-        # used by nested workflow
+        # used by nested workflow to determine content of parental workflow
         env.sos_dict.set('__step_context__', self.step.context)
         #
         # these are temporary variables that should be removed if exist
         for var in ('input', 'output', 'depends', '_input', '_depends', '_output'):
             env.sos_dict.pop(var, '')
         #
-        # default input groups and vars, might be reset by directive input
-        if '__step_input__' in env.sos_dict:
-            self._groups = [env.sos_dict['__step_input__']]
-        else:
-            raise RuntimeError('No step input is defined for step {}_{}'.format(self.step.name, self.step.index))
+        # step 2: execute global process
+        # 
+        if self.step.global_def:
+            try:
+                SoS_exec(self.step.global_def)
+            except Exception as e:
+                if env.verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.step.global_def, e))
         #
-        # variables associated with each _input
-        self._vars = [{}]
+        # step 3: execute statements before step input and then process step input
+        # This step sets variables __step_input__ and input (the same)
+        # and record _groups and _vars
         #
+        # these will be the variables that will be returned as step alias
+        public_vars = set()
         # look for input statement.
         input_statement_idx = [idx for idx,x in enumerate(self.step.statements) if x[0] == ':' and x[1] == 'input']
         if not input_statement_idx:
@@ -539,17 +556,8 @@ class Step_Executor:
         else:
             raise RuntimeError('More than one step input are specified in step {}_{}'.format(self.step.name, self.step.index))
         #
-        # execute global process, will be done in all run mode
-        if self.step.global_def:
-            try:
-                SoS_exec(self.step.global_def)
-            except Exception as e:
-                if env.verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.step.global_def, e))
-        #
-        # these will be the variables that will be returned as step alias
-        public_vars = set()
+        if '__step_input__' not in env.sos_dict:
+            raise RuntimeError('No step input is defined for step {}_{}'.format(self.step.name, self.step.index))
         # if there is an input statement, execute the statements before it, and then the statement
         if input_statement_idx is not None:
             # execute before input stuff
@@ -587,7 +595,7 @@ class Step_Executor:
             self._groups, self._vars = directive_input()
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
-
+        #
         # for dynamic input value and not in run mode,
         # we cannot do anything
         if not self._groups:
@@ -595,28 +603,34 @@ class Step_Executor:
             env.sos_dict.set('output', None)
             env.sos_dict.set('depends', None)
             return self.collectResult([])
-
-        if None in self._groups:
+        elif None in self._groups:
             if not all(x is None for x in self._groups):
                 raise RuntimeError('Either none or all of input groups can be unknown.')
             env.sos_dict.set('input', None)
         else:
             env.sos_dict.set('input', list(OrderedDict.fromkeys(sum(self._groups, []))))
-
         #
-        # post input
-        # output and depends can be processed many times
-        step_sig = self.step_signature()
         if env.run_mode == 'run':
             env.logger.info('input:   ``{}``'.format(shortRepr(env.sos_dict['input'], noneAsNA=True)))
         #
+        # step 4: run step process before the step task. This will determine
+        #
+        # _depends and _outputs
+        #
+        # During this process, the statements might be ignored if signature matches.
+        #
         env.logger.trace('Handling statements after input statement')
+        step_sig = self.step_signature()
+        #
         self._outputs = []
         self._depends = []
-        #
+        # 
+        # We will need to remember the context of each input loop because we will need those
+        # context for the execution of step tasks.
         dict_stack = []
         for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
             # other variables
+            skip_loop_stmt = False
             env.sos_dict.update(v)
             env.sos_dict.set('_input', g)
             env.sos_dict.set('_index', idx)
@@ -657,7 +671,8 @@ class Step_Executor:
                     except Exception as e:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
-                    if '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
+                    # in run mode, check signature and see if all results exist
+                    if env.run_mode == 'run' and '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
                         signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict.get('_depends', []), index=idx)
                         if env.sig_mode == 'default':
                             res = signature.validate()
@@ -665,10 +680,13 @@ class Step_Executor:
                                 env.sos_dict.set('_output', res['output'])
                                 env.logger.debug('_output: {}'.format(res['output']))
                                 env.logger.debug('Reuse existing output files ``{}``'.format(shortRepr(env.sos_dict['_output'])))
-                    try:
-                        SoS_exec(statement[1], self.step.sigil)
-                    except Exception as e:
-                        raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
+                                skip_loop_stmt = True
+                    #
+                    if not skip_loop_stmt:
+                        try:
+                            SoS_exec(statement[1], self.step.sigil)
+                        except Exception as e:
+                            raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
             #
             # collect _output and _depends
             if '_output' in env.sos_dict:
@@ -682,7 +700,8 @@ class Step_Executor:
             #
             dict_stack.append(env.sos_dict.clone_pickleable())
         #
-        env.logger.trace('Executing step process.')
+        # step 5: after executing all non-task process,
+        # determine variables output and depends
         #
         # if no output directive, assuming UNKNOWN output for each step
         if not self._outputs:
@@ -711,9 +730,10 @@ class Step_Executor:
             env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
         if env.sos_dict['depends'] and not isinstance(env.sos_dict['depends'][0], Undetermined) and env.run_mode == 'run':
             env.logger.info('depends: ``{}``'.format(shortRepr(env.sos_dict['depends'])))
-
-        #
         env.logger.trace('Checking signature (if available).')
+        #
+        # Step 6: check overall signature ... return if signature matches
+        #
         # if the signature matches, the whole step is ignored
         if env.sos_dict['input'] is not None and env.sos_dict['output'] is not None:
             signature = RuntimeInfo(step_sig,
@@ -735,6 +755,10 @@ class Step_Executor:
         else:
             signature = None
         #
+        #
+        # Step 7: execute step process. 
+        #
+        env.logger.trace('Executing step process.')
         proc_results = []
         if '_runtime' in env.sos_dict:
             self.runtime_options = env.sos_dict['_runtime']
@@ -742,6 +766,8 @@ class Step_Executor:
         if concurrent:
             pool = mp.Pool(min(env.max_jobs, len(self._groups)))
         for idx, (g, v, o, d) in enumerate(zip(self._groups, self._vars, self._outputs, self._depends)):
+            #
+            # dict_stack records variables assigned between step input and task ...
             if dict_stack:
                 env.sos_dict.quick_update(dict_stack.pop(0))
             env.sos_dict.update(v)
@@ -753,7 +779,6 @@ class Step_Executor:
             env.logger.debug('_input: ``{}``'.format(shortRepr(env.sos_dict['_input'])))
             env.logger.debug('_output: ``{}``'.format(shortRepr(env.sos_dict['_output'])))
             #
-            # action
             # If the users specifies output files for each loop (using ${input} etc, we
             # can try to see if we can create partial signature. This would help if the
             # step is interrupted in the middle.
