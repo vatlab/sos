@@ -132,12 +132,29 @@ def view_script(script, script_file, style):
 <style type="text/css">
 pre {{ margin-top: 0px; margin-bottom: 0px; }}
 {}
+#SoS {
+    box-sizing: border-box;
+    color: rgb(51, 51, 51);
+    height: 6330.86px;
+    overflow-wrap: break-word;
+    table-layout: fixed;
+    width: 958.857px;
+    word-wrap: break-word;
+    column-rule-color: rgb(51, 51, 51);
+    perspective-origin: 479.429px 3165.43px;
+    transform-origin: 479.429px 3165.43px;
+    border-spacing: 0px 0px;
+    font: normal normal normal normal 13px / 18.2px Helvetica, arial, nimbussansl, liberationsans, freesans, clean, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+    outline: rgb(51, 51, 51) none 0px;
+}
+
+
  </style>
 </head>
 <body>'''.format(title, formatter.get_style_defs()))
         #
 
-        html.write('<table class="%stable">' % formatter.cssclass)
+        html.write('<table class="SoS">' % formatter.cssclass)
         if script.sections and script.sections[0].global_def:
             html.write('{}\n'.format(highlight(
                 script.sections[0].global_def,
