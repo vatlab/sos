@@ -143,13 +143,13 @@ pre {{ margin-top: 0px; margin-bottom: 0px; }}
                 script.sections[0].global_def,
                 PythonLexer(), formatter)))
         for section in script.sections:
-            html.write(highlight('[{}]'.format(section.names), PythonLexer(), formatter) + '\n')
+            html.write(highlight('{}'.format(section.name), PythonLexer(), formatter) + '\n')
             if section.comment:
                 html.write(highlight('# ' + section.comment, PythonLexer(), formatter) + '\n')
             for stmt in section.statements:
                 if stmt[0] == ':':
-                    html.write('<span style="directive">{}</span>: {}\n'.format(stmt[1], highlight(stmt[2], PythonLexer(),
-                        HtmlFormatter(cssclass="source", full=False, linenos=True))))
+                    html.write(highlight('{} : {}'.format(stmt[1], stmt[2]), PythonLexer(),
+                        formatter))
                 elif stmt[0] == '=':
                     html.write(highlight(stmt[2], PythonLexer(), formatter) + '\n')
                 else:
