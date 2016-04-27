@@ -34,9 +34,73 @@ from pygments.formatters import HtmlFormatter
 from .utils import env, get_traceback
 from .sos_script import SoS_Script, SoS_Workflow
 from .sos_executor import Sequential_Executor
+from io import StringIO
+
 #
 # subcommmand show
 #
+class ContinuousHtmlFormatter(HtmlFormatter):
+    def _wrap_tablelinenos(self, inner):
+        dummyoutfile = StringIO()
+        lncount = 0
+        for t, line in inner:
+            if t:
+                lncount += 1
+            dummyoutfile.write(line)
+
+        fl = self.linenostart
+        mw = len(str(lncount + fl - 1))
+        sp = self.linenospecial
+        st = self.linenostep
+        la = self.lineanchors
+        aln = self.anchorlinenos
+        nocls = self.noclasses
+        if sp:
+            lines = []
+
+            for i in range(fl, fl+lncount):
+                if i % st == 0:
+                    if i % sp == 0:
+                        if aln:
+                            lines.append('<a href="#%s-%d" class="special">%*d</a>' %
+                                         (la, i, mw, i))
+                        else:
+                            lines.append('<span class="special">%*d</span>' % (mw, i))
+                    else:
+                        if aln:
+                            lines.append('<a href="#%s-%d">%*d</a>' % (la, i, mw, i))
+                        else:
+                            lines.append('%*d' % (mw, i))
+                else:
+                    lines.append('')
+            ls = '\n'.join(lines)
+        else:
+            lines = []
+            for i in range(fl, fl+lncount):
+                if i % st == 0:
+                    if aln:
+                        lines.append('<a href="#%s-%d">%*d</a>' % (la, i, mw, i))
+                    else:
+                        lines.append('%*d' % (mw, i))
+                else:
+                    lines.append('')
+            ls = '\n'.join(lines)
+
+        # in case you wonder about the seemingly redundant <div> here: since the
+        # content in the other cell also is wrapped in a div, some browsers in
+        # some configurations seem to mess up the formatting...
+        if nocls:
+            yield 0, ('<tr><td><div class="linenodiv" '
+                      'style="background-color: #f0f0f0; padding-right: 10px">'
+                      '<pre style="line-height: 125%">' +
+                      ls + '</pre></div></td><td class="code">')
+        else:
+            yield 0, ('<tr><td class="linenos"><div class="linenodiv"><pre>' +
+                      ls + '</pre></div></td><td class="code">')
+        yield 0, dummyoutfile.getvalue()
+        yield 0, '</td></tr>'
+        self.linenostart += lncount
+
 def view_script(script, script_file, style):
 
     if isinstance(script, SoS_Workflow):
@@ -56,9 +120,9 @@ def view_script(script, script_file, style):
         title = os.path.basename(script_file)
     #
     # we just get pieces of code, not the complete HTML file.
-    formatter = HtmlFormatter(cssclass="source", full=False)
     #
     html_file = '.sos/{}.html'.format(os.path.basename(script_file))
+    formatter = ContinuousHtmlFormatter(cssclass="source", full=False, linenos=True)
     with open(html_file, 'w') as html:
         html.write('''<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
@@ -71,31 +135,27 @@ def view_script(script, script_file, style):
 </head>
 <body>'''.format(title, formatter.get_style_defs()))
         #
-        html.write('<table>\n')
-        if script.sections and script.sections[0].global_process:
-            html.write('<tr><th>')
+
+        html.write('<table class="%stable">' % formatter.cssclass)
+        if script.sections and script.sections[0].global_def:
             html.write('{}\n'.format(highlight(
-                script.sections[0].global_process,
+                script.sections[0].global_def,
                 PythonLexer(), formatter)))
-            html.write('</th></tr>')
         for section in script.sections:
-            html.write('<tr>')
-            html.write('<span style="k">{}</span><br>'.format(section.names))
+            html.write(highlight('[{}]'.format(section.names), PythonLexer(), formatter) + '\n')
             if section.comment:
-                html.write('<span class="cm">{}</span>\n'.format(section.comment))
+                html.write(highlight('# ' + section.comment, PythonLexer(), formatter) + '\n')
             for stmt in section.statements:
                 if stmt[0] == ':':
-                    html.write('<span style="directive">{}</span>: {}\n'.format(stmt[1], highlight(stmt[2], PythonLexer(), formatter)))
+                    html.write('<span style="directive">{}</span>: {}\n'.format(stmt[1], highlight(stmt[2], PythonLexer(),
+                        HtmlFormatter(cssclass="source", full=False, linenos=True))))
                 elif stmt[0] == '=':
                     html.write(highlight(stmt[2], PythonLexer(), formatter) + '\n')
                 else:
                     html.write(highlight(stmt[1], PythonLexer(), formatter) + '\n')
-            if section.process:
-                html.write(highlight(section.process, PythonLexer(), formatter) + '\n')
-            html.write('</tr>')
-        html.write('\n</table>\n')
-
-
+            if section.task:
+                html.write(highlight(section.task, PythonLexer(), formatter) + '\n')
+        html.write('</table>')
         html.write('''\n</body></html>\n''')
     url = 'file://{}'.format(os.path.abspath(html_file))
     env.logger.info('Viewing {} in a browser'.format(url))
