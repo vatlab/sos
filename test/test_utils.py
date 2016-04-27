@@ -25,7 +25,7 @@ import unittest
 
 # these functions are normally not available but can be imported 
 # using their names for testing purposes
-from pysos.utils import env, logger, WorkflowDict, ProgressBar
+from pysos.utils import env, logger, WorkflowDict, ProgressBar, text_repr
 from pysos.pattern import extract_pattern, expand_pattern
 from pysos.sos_eval import interpolate, SoS_eval, InterpolationError
 from pysos.actions import downloadURL
@@ -263,6 +263,22 @@ sos_run('sub')
         downloadURL('https://github.com/bpeng2000/SOS/wiki/SoS_March2016.pdf', 'tmp/SoS_March2016.pdf', index=0)
         self.assertTrue(os.path.isfile('tmp/SoS_March2016.pdf'))
         os.remove('tmp/SoS_March2016.pdf')
+
+    def testTextRepr(self):
+        '''Test text_repr'''
+        for text in ['asdf g', 'a \\ng', r'a\nb']:
+            self.assertEqual(text_repr(text), repr(text))
+        self.assertEqual(text_repr(r'''a
+\nb'''), "r'''a\n\\nb'''")
+        self.assertEqual(text_repr(r"""a
+\nb'"""), 'r"""a\n\\nb\'"""')
+        self.assertEqual(text_repr(r"""a
+\nb''"""), 'r"""a\n\\nb\'\'"""')
+        self.assertEqual(text_repr(r"""a
+\nb'''"""), 'r"""a\n\\nb\'\'\'"""')
+        self.assertEqual(text_repr(r"""a
+'''\nb'''"""), 'r"""a\n\'\'\'\\nb\'\'\'"""')
+
 
 if __name__ == '__main__':
     unittest.main()

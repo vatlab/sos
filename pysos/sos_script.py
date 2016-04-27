@@ -29,7 +29,7 @@ from io import StringIO
 from collections import defaultdict
 from collections.abc import Sequence
 
-from .utils import env, Error, dehtml, getTermWidth, locate_script
+from .utils import env, Error, dehtml, getTermWidth, locate_script, text_repr
 from .sos_eval import Undetermined 
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_PARAMETERS_SECTION_NAME, \
@@ -277,7 +277,8 @@ class SoS_Step:
         if self._action is None:
             return
         # _action options can contain both runtime option and action options
-        self.statements.append(['!', '{}({!r},{})'.format(self._action, textwrap.dedent(self._script), self._action_options.strip())])
+        opt = self._action_options.strip()
+        self.statements.append(['!', '{}({}{})'.format(self._action, text_repr(textwrap.dedent(self._script)), (', ' + opt) if opt else '')])
         self._action = None
         self._action_options = None
         self._script = ''

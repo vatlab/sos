@@ -817,3 +817,16 @@ def locate_script(filename, start=''):
                 pass
     #
     raise ValueError('Failed to locate {}'.format(filename))
+
+def text_repr(text):
+    """Rich repr for ``text`` returning unicode, triple quoted if ``multiline``.
+    """
+    if not '\n' in text:
+        return repr(text)
+    elif "'''" not in text and not text.endswith("'"):
+        return "r'''" + text + "'''"
+    elif '"""' not in text and not text.endswith('"'):
+        return 'r"""' + text + '"""'
+    else:
+        # cannot really use triple quote in this case
+        return repr(text)
