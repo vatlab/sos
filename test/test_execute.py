@@ -167,7 +167,7 @@ sos_run('mse')
 import time
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
-process:
+task:
 time.sleep(1)
 run('''echo "a.txt" > 'temp/a.txt' ''')
 run('''echo "b.txt" > 'temp/b.txt' ''')
@@ -177,7 +177,7 @@ dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
 
-process:
+task:
 time.sleep(0.5)
 run(''' cp ${_input} ${_dest} ''')
 """)
@@ -188,7 +188,7 @@ import time
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
 
-process:
+task:
 time.sleep(1)
 run('''echo "a.txt" > 'temp/a.txt' ''')
 run('''echo "b.txt" > 'temp/b.txt' ''')
@@ -198,7 +198,7 @@ dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
 
-process:
+task:
 time.sleep(0.5)
 run(''' cp ${_input} ${_dest} ''')
 """)
@@ -222,7 +222,7 @@ dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
 
-process:
+task:
 time.sleep(0.5)
 run:
 cp ${_input} ${_dest}
@@ -324,7 +324,7 @@ import time
 
 [0]
 output: 'a.txt'
-process:
+task:
 time.sleep(3)
 run('touch ${output}')
 ''')
@@ -568,7 +568,7 @@ counter += 1
         script =  SoS_Script(r"""
 [0]
 
-process: workdir='..'
+task: workdir='..'
 
 with open('test/result.txt', 'w') as res:
    for file in os.listdir('test'):
@@ -590,7 +590,7 @@ with open('test/result.txt', 'w') as res:
 repeat = range(4)
 input: for_each='repeat'
 
-process: concurrent=False
+task: concurrent=False
 
 import time
 time.sleep(_repeat + 1)
@@ -608,7 +608,7 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 repeat = range(4)
 input: for_each='repeat'
 
-process: concurrent=True
+task: concurrent=True
 
 import time
 time.sleep(_repeat + 1)
@@ -693,7 +693,7 @@ print('I am nested ${nested} with seed ${seed}')
 [0]
 reps = range(5)
 input: for_each='reps'
-process: concurrent=True
+task: concurrent=True
 nested = _reps
 seed = random.randint(1, 1000)
 print('Passing ${seed} to ${nested}')
@@ -1031,6 +1031,31 @@ touch ${_input}.bak
         #
         shutil.rmtree('temp')
 
+
+    def testAssignmentAfterInput(self):
+        '''Testing assignment after input should be usable inside step process.'''
+        #
+        if os.path.isdir('temp'):
+            shutil.rmtree('temp')
+        os.mkdir('temp')
+        #
+        env.sig_mode = 'ignore'
+        script = SoS_Script('''
+[1]
+rep = range(5)
+input:  for_each='rep'
+output: 'temp/${_rep}.txt'
+
+# ff should change and be usable inside run
+ff = '${_rep}.txt'
+run:
+echo ${ff}
+touch temp/${ff}
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
+        #
+        #shutil.rmtree('temp')
 
 
 if __name__ == '__main__':

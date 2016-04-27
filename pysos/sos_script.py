@@ -70,8 +70,8 @@ class SoS_Step:
         # everything before step process
         self.statements = []
         # step processes
-        self.global_process = ''
-        self.process = ''
+        self.global_def = ''
+        self.task = ''
         # is it global section? This is a temporary indicator because the global section
         # will be inserted to each step of the workflow.
         self.is_global = is_global
@@ -145,16 +145,45 @@ class SoS_Step:
             elif self.category() == 'statements':
                 compile(''.join(self.values), filename='<string>', mode='exec')
             elif self.category() == 'script':
-                if self._action in ['python3', 'process']:
-                    # we only know how to parse python script, but that is good enough
-                    try:
-                        compile(textwrap.dedent(self._script), filename='<string>', mode='exec')
-                        return True
-                    except Exception as e:
-                        self.error_msg = repr(e)
-                        return False
-                else:
-                    return True
+                #
+                # We are talking about this script here
+                #
+                # [0]
+                # input: 'filename',  'filename2', opt=value==1
+                # python3:
+                #
+                # with open('something') as e:
+                #   e.write("""
+                # [section]
+                # """)
+                #
+                # The script is obviously valid but [section] takes priority so python3 cannot
+                # get the complete script and fail. We can potentially fix this problem but
+                # we will see another bug, namely, "${}" expand to something that is not
+                # string in the script. That is to say
+                #
+                # [0]
+                # input: 'filename',  'filename2', opt=value==1
+                # python3:
+                #
+                # with open('something') as e:
+                #   a = ${input}
+                #   e.write("""
+                # [section]
+                # """)
+                #
+                # would fail because a=${input} is not a valid statement.
+                #
+                #if self._action in ['python3', 'task']:
+                #    # we only know how to parse python script, but that is good enough
+                #    try:
+                #        compile(textwrap.dedent(self._script), filename='<string>', mode='exec')
+                #        return True
+                #    except Exception as e:
+                #        #self.error_msg = repr(e)
+                #        return False
+                #else:
+                return True
             else:
                 raise RuntimeError('Unrecognized expression type {}'.format(self.category()))
             return True
@@ -244,7 +273,7 @@ class SoS_Step:
             self.lineno = lineno
 
     def wrap_script(self):
-        '''convert action: script to process: action(script)'''
+        '''convert action: script to task: action(script)'''
         if self._action is None:
             return
         # _action options can contain both runtime option and action options
@@ -254,33 +283,33 @@ class SoS_Step:
         self._script = ''
 
     def finalize(self):
-        ''' split statement and process by last directive '''
+        ''' split statement and task by last directive '''
         self.wrap_script()
         if not self.statements:
-            self.process = ''
+            self.task = ''
             return
-        process_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'process']
-        if not process_directive:
-            self.process = ''
+        task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
+        if not task_directive:
+            self.task = ''
             return
-        start_process = process_directive[0] + 1
-        # convert statement to process
-        self.process = ''
-        for statement in self.statements[start_process:]:
+        start_task = task_directive[0] + 1
+        # convert statement to task
+        self.task = ''
+        for statement in self.statements[start_task:]:
             if statement[0] == '=':
-                self.process += '{} = {}'.format(statement[1], statement[2])
+                self.task += '{} = {}'.format(statement[1], statement[2])
             elif statement[0] == ':':
                 if statement[1] in ('input', 'output', 'depends'):
-                    raise ValueError('Step process should be defined as the last item in a SoS step')
+                    raise ValueError('Step task should be defined as the last item in a SoS step')
                 elif statement[2].strip():
                     raise ValueError('Runtime options are not allowed for second or more actions in a SoS step')
                 # ignore ...
-                self.process += '\n'
+                self.task += '\n'
             else:
-                self.process += statement[1]
-        # remove process from self.statement
-        if process_directive:
-            self.statements = self.statements[:start_process]
+                self.task += statement[1]
+        # remove task from self.statement
+        if task_directive:
+            self.statements = self.statements[:start_task]
 
     def show(self):
         '''Output for command sos show'''
@@ -675,9 +704,13 @@ class SoS_Script:
                 # is it an action??
                 if directive_name in SOS_DIRECTIVES:
                     cursect.add_directive(directive_name, directive_value, lineno)
+                #
+                elif directive_name == 'process':
+                    env.logger.warning('Keyword "process" is depredated and will be removed in a later release. Please use "task" instead.')
+                    cursect.add_directive('task', directive_value, lineno)
                 else:
                     # should be in string mode ...
-                    cursect.add_directive('process', directive_value, lineno, action=directive_name)
+                    cursect.add_directive('task', directive_value, lineno, action=directive_name)
                 continue
             # if section is string mode?
             if cursect and cursect.isValid() and cursect.category() == 'script':
@@ -746,16 +779,16 @@ class SoS_Script:
         # as the last step, let us insert the global section to all sections
         global_section = [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]
         if global_section:
-            global_process = ''
+            global_def = ''
             for statement in global_section[0][1].statements:
                 if statement[0] == '=':
-                    global_process += '{} = {}\n'.format(statement[1], statement[2])
+                    global_def += '{} = {}\n'.format(statement[1], statement[2])
                     env.readonly_vars.add(statement[1])
                 else:
-                    global_process += statement[1]
+                    global_def += statement[1]
             #
             for section in self.sections:
-                section.global_process = global_process
+                section.global_def = global_def
             # remove the global section after inserting it to each step of the process
             self.sections.pop(global_section[0][0])
 
