@@ -28,6 +28,7 @@ import textwrap
 from io import StringIO
 from collections import defaultdict
 from collections.abc import Sequence
+from subprocess import DEVNULL
 
 from .utils import env, Error, dehtml, getTermWidth, locate_script, text_repr
 from .sos_eval import Undetermined 
@@ -434,7 +435,7 @@ class SoS_ScriptContent:
         self.filename = filename
 
 class SoS_Script:
-    def __init__(self, content='', filename=None):
+    def __init__(self, content='', filename=None, transcript=None):
         '''Parse a sectioned SoS script file. Please refer to the SoS manual
         for detailed specification of this format.
 
@@ -451,6 +452,11 @@ class SoS_Script:
         else:
             self.sos_script = '<string>'
             self.content = SoS_ScriptContent(content, None)
+        # save a parsed version of the script for displaying purpose only
+        if transcript:
+            self.transcript = transcript
+        else:
+            self.transcript = DEVNULL
         # open the file
         if content:
             with StringIO(content) as fp:
@@ -542,6 +548,7 @@ class SoS_Script:
                     # comment add to script
                     else:
                         cursect.extend(line)
+                self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
                 continue
             elif not line.strip():
                 # a blank line start a new comment block if we are still
@@ -554,16 +561,19 @@ class SoS_Script:
                         cursect.extend(line)
                     elif cursect.comment:
                         comment_block += 1
+                self.transcript.write('EMPTY\t{}\t{}'.format(lineno, line))
                 continue
             #
             # a continuation of previous item?
             if line[0].isspace() and cursect is not None and not cursect.empty():
                 cursect.extend(line)
+                self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                 continue
             #
             # is it a continuation of uncompleted assignment or directive?
             if cursect and not cursect.isValid():
                 cursect.extend(line)
+                self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                 continue
             #
             # a new line (start from first column)
@@ -680,6 +690,7 @@ class SoS_Script:
                 all_step_names.extend(step_names)
                 self.sections.append(SoS_Step(self.content, step_names, step_options, is_parameters= step_names and step_names[0][0] == SOS_PARAMETERS_SECTION_NAME))
                 cursect = self.sections[-1]
+                self.transcript.write('SECTION\t{}\t{}'.format(lineno, line))
                 continue
             #
             # directive?
@@ -705,17 +716,21 @@ class SoS_Script:
                 # is it an action??
                 if directive_name in SOS_DIRECTIVES:
                     cursect.add_directive(directive_name, directive_value, lineno)
+                    self.transcript.write('DIRECTIVE\t{}\t{}'.format(lineno, line))
                 #
                 elif directive_name == 'process':
                     env.logger.warning('Keyword "process" is depredated and will be removed in a later release. Please use "task" instead.')
                     cursect.add_directive('task', directive_value, lineno)
+                    self.transcript.write('DIRECTIVE\t{}\t{}'.format(lineno, line))
                 else:
                     # should be in string mode ...
                     cursect.add_directive('task', directive_value, lineno, action=directive_name)
+                    self.transcript.write('SCRIPT_{}\t{}\t{}'.format(directive_name, lineno, line))
                 continue
             # if section is string mode?
             if cursect and cursect.isValid() and cursect.category() == 'script':
                 cursect.extend(line)
+                self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                 continue
             #
             # assignment?
@@ -727,12 +742,14 @@ class SoS_Script:
                 # check previous expression before a new assignment
                 if not cursect.isValid():
                     parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
+                    self.transcript.write('ERROR\t{}\t{}'.format(lineno, line))
                     continue
                 cursect.values = []
                 #
                 var_name = mo.group('var_name')
                 if var_name in SOS_DIRECTIVES:
                     parsing_errors.append(lineno, line, 'directive name cannot be used as variables')
+                    self.transcript.write('ERROR\t{}\t{}'.format(lineno, line))
                     continue
                 # newline should be kept for multi-line assignment
                 var_value = mo.group('var_value') + '\n'
@@ -747,6 +764,7 @@ class SoS_Script:
                 else:
                     # otherwise it is an continuation of the existing action
                     cursect.extend('{} = {}\n'.format(var_name, var_value))
+                self.transcript.write('ASSIGNMENT\t{}\t{}'.format(lineno, line))
                 continue
             #
             # all others?
@@ -754,17 +772,21 @@ class SoS_Script:
                 self.sections.append(SoS_Step(is_global=True))
                 cursect = self.sections[-1]
                 cursect.add_statement(line, lineno)
+                self.transcript.write('STATEMENT\t{}\t{}'.format(lineno, line))
                 continue
             elif cursect.is_parameters:
                 parsing_errors.append(lineno, line, 'Action statement is not allowed in {} section'.format(SOS_PARAMETERS_SECTION_NAME))
+                self.transcript.write('ERROR\t{}\t{}'.format(lineno, line))
                 continue
             #
             if cursect.empty() or cursect.category() != 'statements':
                 # new statement
                 cursect.add_statement(line, lineno)
+                self.transcript.write('STATEMENT\t{}\t{}'.format(lineno, line))
             else:
                 # existing one
                 cursect.extend(line)
+                self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
         #
         # check the last expression before a new directive
         if cursect:
