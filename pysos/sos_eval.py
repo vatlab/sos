@@ -295,9 +295,7 @@ def SoS_eval(expr, sigil='${ }'):
     except Exception as e:
         if env.run_mode != 'run':
             env.sos_dict['__execute_errors__'].append(expr, e)
-            return None
-        else:
-            raise
+        raise env.sos_dict['__execute_errors__']
 
 def SoS_exec(stmts, sigil='${ }'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
