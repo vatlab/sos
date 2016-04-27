@@ -130,6 +130,7 @@ def view_script(script, script_file, style):
  <title>{}</title>
 <meta http-equiv="content-type" content="text/html; charset=None">
 <style type="text/css">
+pre {{ margin-top: 0px; margin-bottom: 0px; }}
 {}
  </style>
 </head>
