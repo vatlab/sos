@@ -559,7 +559,7 @@ class SoS_Script:
                     elif cursect.comment:
                         comment_block += 1
                 if self.transcript:
-                    self.transcript.write('EMPTY\t{}\t{}'.format(lineno, line))
+                    self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                 continue
             #
             # a continuation of previous item?

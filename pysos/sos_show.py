@@ -27,6 +27,9 @@ import atexit
 import fnmatch
 import webbrowser
 
+from io import StringIO
+from textwrap import dedent
+
 from pygments import highlight
 from pygments.lexers import PythonLexer, get_lexer_by_name, guess_lexer
 from pygments.formatters import HtmlFormatter
@@ -34,7 +37,6 @@ from pygments.formatters import HtmlFormatter
 from .utils import env, get_traceback
 from .sos_script import SoS_Script, SoS_Workflow
 from .sos_executor import Sequential_Executor
-from io import StringIO
 
 __all__ = []
 
@@ -217,7 +219,7 @@ pre {
   color: rgba(0,0,0,0.3);
   text-align: right;
   white-space: nowrap;
-  vertical-align: top;
+  vertical-align: bottom;
   cursor: pointer;
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -246,26 +248,31 @@ pre {
   background: #f7f7f7;
 }
 .sos-header {
-  background-color: #f2f8fa;
+  margin-top: 20px;
+  margin-bottom: 0px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  background-color: #C0C0C0;
   border-bottom-color: #dde4e6;
 
 }
 .sos-directive {
-  background-color: #ffdddd;
+  padding-top: 5px;
+  background-color: #fff9ea;
   border-color: #f1c0c0;
 }
 .sos-statement {
-  background-color: #eaffea;
+  background-color: #f2f9fc;
 }
 .sos-error {
-  background: #ffff88;
+  background: #ffdddd;
 }
 .sos-script {
   position: relative;
   padding-right: 10px;
   padding-left: 30px;
   vertical-align: top;
-
+  background-color: #eff0f1;
 }
 
 
@@ -521,7 +528,7 @@ class ContinuousHtmlFormatter(HtmlFormatter):
 def write_content(content_type, content, formatter, html):
     # write content to a file
     old_class = formatter.cssclass
-    if content_type in ('COMMENT', 'EMPTY'):
+    if content_type == 'COMMENT':
         formatter.cssclass = 'source blob-code sos-comment'
         html.write('{}\n'.format(highlight(''.join(content),
             PythonLexer(), formatter)))
@@ -558,7 +565,13 @@ def write_content(content_type, content, formatter, html):
                 lexer = guess_lexer(''.join(content))
             except:
                 lexer = TextLexer()
-        html.write('{}\n'.format(highlight(''.join(content),
+        content = dedent(''.join(content))
+        # ' ' to keep pygments from removing empty lines
+        content = [' ' if x == '' else x for x in content.split('\n')]
+        # seems necessary to get line numbers correct
+        if content[-1] == ' ':
+            content = content[:-1]
+        html.write('{}\n'.format(highlight(('\n'.join(content)),
             lexer, formatter)))
     formatter.cssclass = old_class
 
@@ -588,12 +601,15 @@ def script_to_html(transcript, script_file, html_file):
             next_type = None
             for line in script:
                 line_type, line_no, script_line = line.split('\t', 3)
+                if line_type == 'FOLLOW' and content_type is None:
+                    line_type = 'COMMENT'
                 if content_type == line_type or line_type == 'FOLLOW':
                     if next_type is not None and not script_line.rstrip().endswith(','):
                         formatter.linenostart = content_number
                         write_content(content_type, content, formatter, html)
-                        content = []
+                        content = [script_line]
                         content_type = next_type
+                        content_number = int(line_no)
                         next_type = None
                     else:
                         content.append(script_line)
