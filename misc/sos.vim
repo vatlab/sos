@@ -4,12 +4,11 @@
 "
 " Usage
 "
-" copy to $HOME/.vim/syntax directory and add:
+" copy this file to $HOME/.vim/syntax directory and add
 "
-" au BufNewFile,BufRead SoS set syntax=sos
-" au BufNewFile,BufRead *.sos set syntax=sos
+" autocmd BufNewFile,BufRead *.sos set syntax=sos
 "
-" to your $HOME/.vimrc file
+" to your $HOME/.vimrc (or .gvimrc) file
 "
 " force coloring in a vim session with:
 "
