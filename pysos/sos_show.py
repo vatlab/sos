@@ -724,11 +724,14 @@ def script_to_markdown(transcript, script_file, markdown_file):
             next_type = None
             for line in script:
                 line_type, line_no, script_line = line.split('\t', 3)
+                if line_type == 'FOLLOW' and content_type is None:
+                    line_type = 'COMMENT'                
                 if content_type == line_type or line_type == 'FOLLOW':
                     if next_type is not None and not script_line.rstrip().endswith(','):
                         markdown_content(content_type, content, markdown)
-                        content = []
+                        content = [script_line]
                         content_type = next_type
+                        content_number = int(line_no)
                         next_type = None
                     else:
                         content.append(script_line)
