@@ -440,7 +440,7 @@ template_pre_table = '''
   <div class="file-info">
       %s
       <span class="file-info-divider"></span>
-    %.1f KB
+    %s
   </div>
   <div class="file-actions">
   </div>
@@ -573,7 +573,7 @@ def show_script(transcript, script_file):
         html.write(inline_css)
         # remove background definition so that we can use our own
         html.write('\n'.join(x for x in formatter.get_style_defs().split('\n') if 'background' not in x))
-        html.write(template_pre_table % (os.path.basename(script_file), script_file, os.path.getsize(script_file) / 1024))
+        html.write(template_pre_table % (os.path.basename(script_file), script_file, '{:.1f}'.format(os.path.getsize(script_file) / 1024)))
         #
         html.write('<table class="highlight tab-size js-file-line-container">')
         with open(transcript) as script:
@@ -613,49 +613,39 @@ def show_script(transcript, script_file):
     webbrowser.open(url, new=2)
 
 
-def show_workflow(transcript, script_file):
+def show_workflow(workflow, script_file):
     '''
     Write a HTML file with the transcript of a SOS file.
     '''
     html_file = '.sos/{}.html'.format(os.path.basename(script_file))
     formatter = ContinuousHtmlFormatter(cssclass="source", full=False, linenos=True)
     with open(html_file, 'w') as html:
-        html.write(template_pre_style % os.path.basename(script_file))
+        html.write(template_pre_style % ('{} - {}'.format(os.path.basename(script_file), workflow)))
         html.write(inline_css)
-        html.write(formatter.get_style_defs())
-        html.write(template_pre_table % (os.path.basename(script_file), script_file, os.path.getsize(script_file) / 1024))
+        # remove background definition so that we can use our own
+        html.write('\n'.join(x for x in formatter.get_style_defs().split('\n') if 'background' not in x))
+        html.write(template_pre_table % (os.path.basename(script_file), script_file, ''))
         #
         html.write('<table class="highlight tab-size js-file-line-container">')
-        with open(transcript) as script:
-            content = []
-            content_type = None
-            content_number = None
-            next_type = None
-            for line in script:
-                line_type, line_no, script_line = line.split('\t', 3)
-                if content_type == line_type or line_type == 'FOLLOW':
-                    if next_type is not None and not script_line.rstrip().endswith(','):
-                        formatter.linenostart = content_number
-                        write_content(content_type, content, formatter, html)
-                        content = []
-                        content_type = next_type
-                        next_type = None
-                    else:
-                        content.append(script_line)
+        if workflow.sections and workflow.sections[0].global_def:
+            write_content('STATEMENT', workflow.sections[0].global_def, formatter, html)
+        #
+        for section in workflow.sections:
+            write_content('SECTION', '[{}_{}]'.format(section.name, section.index), formatter, html)
+            #
+            if section.comment:
+                write_content('COMMENT', '#' + section.comment, formatter, html)
+            for stmt in section.statements:
+                if stmt[0] == ':':
+                    write_content('DIRECTIVE', '{} : {}'.format(stmt[1], stmt[2]), formatter, html)
+                elif stmt[0] == '=':
+                    write_content('STATEMENT', '{} = {}'.format(stmt[1], stmt[2]), formatter, html)
                 else:
-                    if content:
-                        formatter.linenostart = content_number
-                        write_content(content_type, content, formatter, html)
-                    if line_type.startswith('SCRIPT_'):
-                        content_type = 'DIRECTIVE'
-                        next_type = line_type[7:]
-                    else:
-                        content_type = line_type
-                    content_number = int(line_no)
-                    content = [script_line]
-        if content:
-            formatter.linenostart = content_number
-            write_content(content_type, content, formatter, html)
+                    write_content('STATEMENT', stmt[1], formatter, html)
+            if section.task:
+                #write_content('DIRECTIVE', 'task:', formatter, html)
+                write_content('STATEMENT', section.task, formatter, html)
+            write_content('COMMENT', '\n\n', formatter, html)
         html.write('</table>')
         html.write(template_post_table)
     url = 'file://{}'.format(os.path.abspath(html_file))
