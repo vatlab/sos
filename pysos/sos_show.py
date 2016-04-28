@@ -26,6 +26,7 @@ import yaml
 import atexit
 import fnmatch
 import webbrowser
+import re
 
 from io import StringIO
 from textwrap import dedent
@@ -694,15 +695,17 @@ def workflow_to_html(workflow, script_file, html_file):
 def markdown_content(content_type, content, fh):
     # write content to a file
     if content_type in ('COMMENT', 'EMPTY'):
-        fh.write('{}\n'.format(''.join(content)))
+        fh.write('{}\n'.format(''.join([x.lstrip('#').strip() + '  \n'
+                                        for x in content if not x.startswith('#!')])))
     elif content_type == 'SECTION':
         fh.write('## {}\n'.format(''.join(content)))
     elif content_type == 'DIRECTIVE':
-        fh.write('{}\n'.format(''.join(content)))
+        fh.write('{}\n'.format(''.join(['**{}**  \n'.format(re.sub(r'(\$|_)', r'`\1`', x).strip())
+                                        for x in content])))
     elif content_type == 'ASSIGNMENT':
-        fh.write('{}\n'.format(''.join(content))),
+        fh.write('```python\n{}\n```\n'.format(''.join(content))),
     elif content_type == 'STATEMENT':
-        fh.write('{}\n'.format(''.join(content))),
+        fh.write('```python\n{}\n```\n'.format(''.join(content))),
     elif content_type == 'ERROR':
         fh.write('{}\n'.format(''.join(content))),
     else:
@@ -774,5 +777,3 @@ def workflow_to_markdown(workflow, script_file, markdown_file):
             markdown_content('COMMENT', '\n\n', markdown)
     #
     env.logger.info('Workflow saved to {}'.format(markdown_file))
-
-
