@@ -242,6 +242,7 @@ pre {
   padding-right: 10px;
   padding-left: 10px;
   vertical-align: top;
+  white-space: nowrap;
 }
 
 .sos-comment {
@@ -262,6 +263,7 @@ pre {
   border-color: #f1c0c0;
 }
 .sos-statement {
+  padding-top: 5px;
   background-color: #f2f9fc;
 }
 .sos-error {
@@ -466,6 +468,8 @@ template_post_table = '''
 
 class ContinuousHtmlFormatter(HtmlFormatter):
     def _wrap_tablelinenos(self, inner):
+        # change wrap_table to do not output '<table' and '</table>' because
+        # we will output several tables and use a single table tag around them.
         dummyoutfile = StringIO()
         lncount = 0
         for t, line in inner:
@@ -526,8 +530,14 @@ class ContinuousHtmlFormatter(HtmlFormatter):
         yield 0, '</td></tr>'
 
 def write_content(content_type, content, formatter, html):
-    # write content to a file
+    # dedent content but still keeps empty lines
     old_class = formatter.cssclass
+    nlines = len(content)
+    content = dedent(''.join(content))
+    # ' ' to keep pygments from removing empty lines
+    # split, merge by \n can introduce one additional line
+    content = [' \n' if x == '' else x + '\n' for x in content.split('\n')][:nlines]
+    #
     if content_type == 'COMMENT':
         formatter.cssclass = 'source blob-code sos-comment'
         html.write('{}\n'.format(highlight(''.join(content),
@@ -565,13 +575,7 @@ def write_content(content_type, content, formatter, html):
                 lexer = guess_lexer(''.join(content))
             except:
                 lexer = TextLexer()
-        content = dedent(''.join(content))
-        # ' ' to keep pygments from removing empty lines
-        content = [' ' if x == '' else x for x in content.split('\n')]
-        # seems necessary to get line numbers correct
-        if content[-1] == ' ':
-            content = content[:-1]
-        html.write('{}\n'.format(highlight(('\n'.join(content)),
+        html.write('{}\n'.format(highlight((''.join(content)),
             lexer, formatter)))
     formatter.cssclass = old_class
 
@@ -591,7 +595,7 @@ def script_to_html(transcript, script_file, html_file):
         html.write(inline_css)
         # remove background definition so that we can use our own
         html.write('\n'.join(x for x in formatter.get_style_defs().split('\n') if 'background' not in x))
-        html.write(template_pre_table % (os.path.basename(script_file), script_file, '{:.1f}'.format(os.path.getsize(script_file) / 1024)))
+        html.write(template_pre_table % (os.path.basename(script_file), script_file, '{:.1f} KB'.format(os.path.getsize(script_file) / 1024)))
         #
         html.write('<table class="highlight tab-size js-file-line-container">')
         with open(transcript) as script:
