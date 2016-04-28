@@ -149,9 +149,6 @@ if __name__ == '__main__':
     parser.add_argument('--html', action='store_true',
         help='''Display the specified script or workflow in a browser
             with proper syntax highlighting''')
-    parser.add_argument('--style', 
-        help='''Name of the style sheet that will be used to display
-            the script.''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_show)
     #

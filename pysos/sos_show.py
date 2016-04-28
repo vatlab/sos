@@ -36,6 +36,8 @@ from .sos_script import SoS_Script, SoS_Workflow
 from .sos_executor import Sequential_Executor
 from io import StringIO
 
+__all__ = []
+
 #
 # subcommmand show
 #
@@ -240,6 +242,33 @@ pre {
   vertical-align: top;
 }
 
+.sos-comment {
+  background: #f7f7f7;
+}
+.sos-header {
+  background-color: #f2f8fa;
+  border-bottom-color: #dde4e6;
+
+}
+.sos-directive {
+  background-color: #ffdddd;
+  border-color: #f1c0c0;
+}
+.sos-statement {
+  background-color: #eaffea;
+}
+.sos-error {
+  background: #ffff88;
+}
+.sos-script {
+  position: relative;
+  padding-right: 10px;
+  padding-left: 30px;
+  vertical-align: top;
+
+}
+
+
 .blob-code-inner {
   overflow: visible;
   font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
@@ -306,6 +335,10 @@ body {
   tab-size: 8;
 }
 
+# override source
+.source {
+  background: auto;
+}
 
 .file {
   position: relative;
@@ -487,25 +520,33 @@ class ContinuousHtmlFormatter(HtmlFormatter):
 
 def write_content(content_type, content, formatter, html):
     # write content to a file
+    old_class = formatter.cssclass
     if content_type in ('COMMENT', 'EMPTY'):
+        formatter.cssclass = 'source blob-code sos-comment'
         html.write('{}\n'.format(highlight(''.join(content),
             PythonLexer(), formatter)))
     elif content_type == 'SECTION':
+        formatter.cssclass = 'source blob-code sos-header'
         html.write('{}\n'.format(highlight(''.join(content),
             PythonLexer(), formatter)))
     elif content_type == 'DIRECTIVE':
+        formatter.cssclass = 'source blob-code sos-directive'
         html.write('{}\n'.format(highlight(''.join(content),
             PythonLexer(), formatter)))
     elif content_type == 'ASSIGNMENT':
+        formatter.cssclass = 'source blob-code sos-statement'
         html.write('{}\n'.format(highlight(''.join(content),
             PythonLexer(), formatter)))
     elif content_type == 'STATEMENT':
+        formatter.cssclass = 'source blob-code sos-statement'
         html.write('{}\n'.format(highlight(''.join(content),
             PythonLexer(), formatter)))
     elif content_type == 'ERROR':
+        formatter.cssclass = 'source blob-code sos-error '
         html.write('{}\n'.format(highlight(''.join(content),
             PythonLexer(), formatter)))
     else:
+        formatter.cssclass = 'source blob-code sos-script '
         if content_type == 'run':
             content_type = 'bash'
         elif content_type == 'node':
@@ -519,8 +560,60 @@ def write_content(content_type, content, formatter, html):
                 lexer = TextLexer()
         html.write('{}\n'.format(highlight(''.join(content),
             lexer, formatter)))
+    formatter.cssclass = old_class
 
-def view_script(transcript, script_file, style):
+def show_script(transcript, script_file):
+    '''
+    Write a HTML file with the transcript of a SOS file.
+    '''
+    html_file = '.sos/{}.html'.format(os.path.basename(script_file))
+    formatter = ContinuousHtmlFormatter(cssclass="source", full=False, linenos=True)
+    with open(html_file, 'w') as html:
+        html.write(template_pre_style % os.path.basename(script_file))
+        html.write(inline_css)
+        # remove background definition so that we can use our own
+        html.write('\n'.join(x for x in formatter.get_style_defs().split('\n') if 'background' not in x))
+        html.write(template_pre_table % (os.path.basename(script_file), script_file, os.path.getsize(script_file) / 1024))
+        #
+        html.write('<table class="highlight tab-size js-file-line-container">')
+        with open(transcript) as script:
+            content = []
+            content_type = None
+            content_number = None
+            next_type = None
+            for line in script:
+                line_type, line_no, script_line = line.split('\t', 3)
+                if content_type == line_type or line_type == 'FOLLOW':
+                    if next_type is not None and not script_line.rstrip().endswith(','):
+                        formatter.linenostart = content_number
+                        write_content(content_type, content, formatter, html)
+                        content = []
+                        content_type = next_type
+                        next_type = None
+                    else:
+                        content.append(script_line)
+                else:
+                    if content:
+                        formatter.linenostart = content_number
+                        write_content(content_type, content, formatter, html)
+                    if line_type.startswith('SCRIPT_'):
+                        content_type = 'DIRECTIVE'
+                        next_type = line_type[7:]
+                    else:
+                        content_type = line_type
+                    content_number = int(line_no)
+                    content = [script_line]
+        if content:
+            formatter.linenostart = content_number
+            write_content(content_type, content, formatter, html)
+        html.write('</table>')
+        html.write(template_post_table)
+    url = 'file://{}'.format(os.path.abspath(html_file))
+    env.logger.info('Viewing {} in a browser'.format(url))
+    webbrowser.open(url, new=2)
+
+
+def show_workflow(transcript, script_file):
     '''
     Write a HTML file with the transcript of a SOS file.
     '''
@@ -568,198 +661,5 @@ def view_script(transcript, script_file, style):
     url = 'file://{}'.format(os.path.abspath(html_file))
     env.logger.info('Viewing {} in a browser'.format(url))
     webbrowser.open(url, new=2)
-
-
-def sos_show(args, workflow_args):
-    try:
-        transcript_file = os.path.join('.sos/{}.transcript'.format(os.path.basename(args.script)))
-        with open(transcript_file, 'w') as transcript:
-            script = SoS_Script(filename=args.script, transcript=transcript)
-        if args.workflow:
-            workflow = script.workflow(args.workflow)
-            if not args.html:
-                workflow.show()
-            else:
-                view_script(workflow, args.script, args.style)
-        elif not args.html:
-            script.show()
-        else:
-            view_script(transcript_file, args.script, args.style)
-    except Exception as e:
-        if args.verbosity and args.verbosity > 2:
-            sys.stderr.write(get_traceback())
-        env.logger.error(e)
-        sys.exit(1)
-
-#
-# subcommand dryrun
-#
-def sos_dryrun(args, workflow_args):
-    args.__max_jobs__ = 1
-    args.__dryrun__ = True
-    args.__prepare__ = False
-    args.__run__ = False
-    args.__rerun__ = False
-    args.__config__ = None
-    sos_run(args, workflow_args)
-
-#
-# subcommand prepare
-#
-def sos_prepare(args, workflow_args):
-    args.__max_jobs__ = 1
-    args.__dryrun__ = True
-    args.__prepare__ = True
-    args.__run__ = False
-    args.__rerun__ = False
-    args.__config__ = None
-    sos_run(args, workflow_args)
-
-#
-# subcommand run
-#
-def sos_run(args, workflow_args):
-    env.max_jobs = args.__max_jobs__
-    env.verbosity = args.verbosity
-    # kill all remainging processes when the master process is killed.
-    atexit.register(env.cleanup)
-    # default mode: run in dryrun mode
-    args.__run__ = not (args.__rerun__ or args.__prepare__ or args.__dryrun__)
-    #
-    if args.__run__ or args.__rerun__:
-        args.__prepare__ = True
-    #
-    # always run in dryrun mode
-    env.run_mode = 'dryrun'
-    # if this is not the last step, use verbosity 1 (warning)
-    #if args.__prepare__:
-    #    env.verbosity = min(args.verbosity, 1)
-    #else:
-    #
-    try:
-        script = SoS_Script(filename=args.script)
-        workflow = script.workflow(args.workflow)
-        executor = Sequential_Executor(workflow)
-        executor.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
-    except Exception as e:
-        if args.verbosity and args.verbosity > 2:
-            sys.stderr.write(get_traceback())
-        env.logger.error(e)
-        sys.exit(1)
-    # then prepare mode
-    if args.__prepare__:
-        # if this is not the last step, use verbosity 1 (warning)
-        #if args.__run__ or args.__rerun__:
-        #    env.verbosity = min(args.verbosity, 1)
-        #else:
-        #    env.verbosity = args.verbosity
-        #
-        env.run_mode = 'prepare'
-        try:
-            script = SoS_Script(filename=args.script)
-            workflow = script.workflow(args.workflow)
-            executor.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
-        except Exception as e:
-            if args.verbosity and args.verbosity > 2:
-                sys.stderr.write(get_traceback())
-            env.logger.error(e)
-            sys.exit(1)
-    # then run mode
-    if args.__run__ or args.__rerun__:
-        env.run_mode = 'run'
-        # env.verbosity = args.verbosity
-        if args.__rerun__:
-            env.sig_mode = 'ignore'
-        try:
-            script = SoS_Script(filename=args.script)
-            workflow = script.workflow(args.workflow)
-            executor = Sequential_Executor(workflow)
-            executor.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
-        except Exception as e:
-            if args.verbosity and args.verbosity > 2:
-                sys.stderr.write(get_traceback())
-            env.logger.error(e)
-            sys.exit(1)
-
-#
-# subcommand config
-#
-def sos_config(args, workflow_args):
-    if workflow_args:
-        raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
-    #
-    if args.__global_config__:
-        config_file = os.path.expanduser('~/.sos/config.json')
-    elif args.__config_file__:
-        config_file = os.path.expanduser(args.__config_file__)
-    else:
-        config_file = os.path.expanduser('.sos/config.json')
-    if args.__get_config__ is not None:
-        if os.path.isfile(config_file):
-            try:
-                with open(config_file) as config:
-                    cfg = yaml.safe_load(config)
-                if cfg is None:
-                    cfg = {}
-            except Exception as e:
-                env.logger.error('Failed to parse sos config file {}, is it in YAML/JSON format? ({}}'.format(config_file, e))
-                sys.exit(1)
-            for option in (args.__get_config__ if args.__get_config__ else ['*']):
-                for k, v in cfg.items():
-                    if fnmatch.fnmatch(k, option):
-                        print('{}\t{!r}'.format(k, v))
-    elif args.__unset_config__:
-        if os.path.isfile(config_file):
-            try:
-                with open(config_file) as config:
-                    cfg = yaml.safe_load(config)
-                if cfg is None:
-                    cfg = {}
-            except Exception as e:
-                env.logger.error('Failed to parse sos config file {}, is it in YAML/JSON format? ({})'.format(config_file, e))
-                sys.exit(1)
-        else:
-            env.logger.error('Config file {} does not exist'.format(config_file))
-        #
-        unset = []
-        for option in args.__unset_config__:
-            for k in cfg.keys():
-                if fnmatch.fnmatch(k, option):
-                    unset.append(k)
-                    print('Unset {}'.format(k))
-        #
-        if unset:
-            for k in set(unset):
-                cfg.pop(k)
-            #
-            if unset:
-                with open(config_file, 'w') as config:
-                    config.write(yaml.safe_dump(cfg, default_flow_style=False))
-    elif args.__set_config__:
-        if os.path.isfile(config_file):
-            try:
-                with open(config_file) as config:
-                    cfg = yaml.safe_load(config)
-                if cfg is None:
-                    cfg = {}
-            except Exception as e:
-                env.logger.error('Failed to sos config file {}, is it in YAML/JSON format? ({})'.format(config_file, e))
-                sys.exit(1)
-        else:
-            cfg = {}
-        #
-        for option in args.__set_config__:
-            k, v = option.split('=', 1)
-            try:
-                v = eval(v)
-            except Exception as e:
-                env.logger.error('Cannot interpret option {}. Please quote the string if it is a string option. ({})'.format(option, e))
-                sys.exit(1)
-            cfg[k] = v
-            print('Set {} to {!r}'.format(k, v))
-        #
-        with open(config_file, 'w') as config:
-            config.write(yaml.safe_dump(cfg, default_flow_style=False))
-
 
 
