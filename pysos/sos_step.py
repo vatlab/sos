@@ -587,12 +587,11 @@ class Step_Executor:
                     self._vars = []
                 else:
                     self._groups, self._vars = directive_input(*args, **kwargs)
-            except ExecuteError as e:
-                # raised underlying an ExecuteError, pass along
-                self._groups = self._vars = []
-                env.sos_dict['__execute_errors__'].append(value, e)
             except Exception as e:
-                raise RuntimeError('Failed to process step {} : {} ({})'.format(key, value.strip(), e))
+                if '__execute_errors__' in env.sos_dict and env.sos_dict['__execute_errors__'].errprs:
+                    raise env.sos_dict['__execute_errors__']
+                else:
+                    raise RuntimeError('Failed to process step {} : {} ({})'.format(key, value.strip(), e))
             input_statement_idx += 1
         else:
             # default case
