@@ -10,7 +10,7 @@ SoS is released under [GPL3](http://www.gnu.org/licenses/gpl-3.0.en.html). It su
 or compile the latest git version with commands
 
 ```
-% git clone https://github.com/bpeng2000/SOS.git
+% git clone https://github.com/BoPeng/SOS.git
 % cd SOS
 % python3 setup.py install
 ```
@@ -24,9 +24,9 @@ create symbolic links of `sos` and `sos-runner` commands in
 `/usr/local/bin`.
 
 Please find more information on **[SoS
-wiki](https://github.com/bpeng2000/SOS/wiki)**, or use the following links
+wiki](https://github.com/BoPeng/SOS/wiki)**, or use the following links
 directly:
 
-* [Quick start guide](https://github.com/bpeng2000/SOS/wiki/Quick-Start)
-* [A presentation about SoS](https://github.com/bpeng2000/SOS/wiki/SoS_March2016.pdf) (updated on Apr. 7th for version 0.5.7)
-* [Complete documentation](https://github.com/bpeng2000/SOS/wiki/Documentation)
+* [Quick start guide](https://github.com/BoPeng/SOS/wiki/Quick-Start)
+* [A presentation about SoS](https://github.com/BoPeng/SOS/wiki/SoS_March2016.pdf) (updated on Apr. 7th for version 0.5.7)
+* [Complete documentation](https://github.com/BoPeng/SOS/wiki/Documentation)
