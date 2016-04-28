@@ -146,9 +146,12 @@ if __name__ == '__main__':
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
-    parser.add_argument('--html', action='store_true',
-        help='''Display the specified script or workflow in a browser
-            with proper syntax highlighting''')
+    parser.add_argument('--html', nargs='?', metavar='FILENAME', const='__BROWSER__',
+        help='''Generate a syntax-highlighted HTML file, write it to a
+            specified file, or view in a browser if no filename is specified.''')
+    parser.add_argument('--markdown', metavar='FILENAME',
+        help='''Generate a markdown version of script and save it to a 
+            specified file.''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_show)
     #

@@ -562,11 +562,16 @@ def write_content(content_type, content, formatter, html):
             lexer, formatter)))
     formatter.cssclass = old_class
 
-def show_script(transcript, script_file):
+#
+# Converter to HTML
+#
+#
+def script_to_html(transcript, script_file, html_file):
     '''
     Write a HTML file with the transcript of a SOS file.
     '''
-    html_file = '.sos/{}.html'.format(os.path.basename(script_file))
+    if html_file == '__BROWSER__':
+        html_file = '.sos/{}.html'.format(os.path.basename(script_file))
     formatter = ContinuousHtmlFormatter(cssclass="source", full=False, linenos=True)
     with open(html_file, 'w') as html:
         html.write(template_pre_style % os.path.basename(script_file))
@@ -608,16 +613,21 @@ def show_script(transcript, script_file):
             write_content(content_type, content, formatter, html)
         html.write('</table>')
         html.write(template_post_table)
-    url = 'file://{}'.format(os.path.abspath(html_file))
-    env.logger.info('Viewing {} in a browser'.format(url))
-    webbrowser.open(url, new=2)
+    #
+    if html_file.startswith('.sos'):
+        url = 'file://{}'.format(os.path.abspath(html_file))
+        env.logger.info('Viewing {} in a browser'.format(url))
+        webbrowser.open(url, new=2)
+    else:
+        env.logger.info('SoS script saved to {}'.format(html_file))
 
 
-def show_workflow(workflow, script_file):
+def workflow_to_html(workflow, script_file, html_file):
     '''
     Write a HTML file with the transcript of a SOS file.
     '''
-    html_file = '.sos/{}.html'.format(os.path.basename(script_file))
+    if html_file == '__BROWSER__':
+        html_file = '.sos/{}.html'.format(os.path.basename(script_file))
     formatter = ContinuousHtmlFormatter(cssclass="source", full=False, linenos=True)
     with open(html_file, 'w') as html:
         html.write(template_pre_style % ('{} - {}'.format(os.path.basename(script_file), workflow)))
@@ -648,8 +658,101 @@ def show_workflow(workflow, script_file):
             write_content('COMMENT', '\n\n', formatter, html)
         html.write('</table>')
         html.write(template_post_table)
-    url = 'file://{}'.format(os.path.abspath(html_file))
-    env.logger.info('Viewing {} in a browser'.format(url))
-    webbrowser.open(url, new=2)
+    #
+    if html_file.startswith('.sos'):
+        url = 'file://{}'.format(os.path.abspath(html_file))
+        env.logger.info('Viewing {} in a browser'.format(url))
+        webbrowser.open(url, new=2)
+    else:
+        env.logger.info('Workflow saved to {}'.format(html_file))
+
+#
+# Converter to Markdown
+#
+#
+
+def markdown_content(content_type, content, fh):
+    # write content to a file
+    if content_type in ('COMMENT', 'EMPTY'):
+        fh.write('{}\n'.format(''.join(content)))
+    elif content_type == 'SECTION':
+        fh.write('## {}\n'.format(''.join(content)))
+    elif content_type == 'DIRECTIVE':
+        fh.write('{}\n'.format(''.join(content)))
+    elif content_type == 'ASSIGNMENT':
+        fh.write('{}\n'.format(''.join(content))),
+    elif content_type == 'STATEMENT':
+        fh.write('{}\n'.format(''.join(content))),
+    elif content_type == 'ERROR':
+        fh.write('{}\n'.format(''.join(content))),
+    else:
+        if content_type == 'run':
+            content_type = 'bash'
+        elif content_type == 'node':
+            content_type = 'JavaScript'
+        fh.write('```{}\n{}```\n'.format(content_type, ''.join(content)))
+
+def script_to_markdown(transcript, script_file, markdown_file):
+    '''
+    Write a HTML file with the transcript of a SOS file.
+    '''
+    with open(markdown_file, 'w') as markdown:
+        # remove background definition so that we can use our own
+        with open(transcript) as script:
+            content = []
+            content_type = None
+            content_number = None
+            next_type = None
+            for line in script:
+                line_type, line_no, script_line = line.split('\t', 3)
+                if content_type == line_type or line_type == 'FOLLOW':
+                    if next_type is not None and not script_line.rstrip().endswith(','):
+                        markdown_content(content_type, content, markdown)
+                        content = []
+                        content_type = next_type
+                        next_type = None
+                    else:
+                        content.append(script_line)
+                else:
+                    if content:
+                        markdown_content(content_type, content, markdown)
+                    if line_type.startswith('SCRIPT_'):
+                        content_type = 'DIRECTIVE'
+                        next_type = line_type[7:]
+                    else:
+                        content_type = line_type
+                    content_number = int(line_no)
+                    content = [script_line]
+        if content:
+            markdown_content(content_type, content, markdown)
+    #
+    env.logger.info('SoS script saved to {}'.format(markdown_file))
+
+
+def workflow_to_markdown(workflow, script_file, markdown_file):
+    '''
+    Write a HTML file with the transcript of a SOS file.
+    '''
+    with open(markdown_file, 'w') as markdown:
+        if workflow.sections and workflow.sections[0].global_def:
+            markdown_content('STATEMENT', workflow.sections[0].global_def, markdown)
+        #
+        for section in workflow.sections:
+            markdown_content('SECTION', '[{}_{}]'.format(section.name, section.index), markdown)
+            #
+            if section.comment:
+                markdown_content('COMMENT', '#' + section.comment, markdown)
+            for stmt in section.statements:
+                if stmt[0] == ':':
+                    markdown_content('DIRECTIVE', '{} : {}'.format(stmt[1], stmt[2]), markdown)
+                elif stmt[0] == '=':
+                    markdown_content('STATEMENT', '{} = {}'.format(stmt[1], stmt[2]), markdown)
+                else:
+                    markdown_content('STATEMENT', stmt[1], markdown)
+            if section.task:
+                markdown_content('STATEMENT', section.task, markdown)
+            markdown_content('COMMENT', '\n\n', markdown)
+    #
+    env.logger.info('Workflow saved to {}'.format(markdown_file))
 
 

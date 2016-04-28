@@ -34,7 +34,7 @@ from pygments.formatters import HtmlFormatter
 from .utils import env, get_traceback
 from .sos_script import SoS_Script, SoS_Workflow
 from .sos_executor import Sequential_Executor
-from .sos_show import show_script, show_workflow
+from .sos_show import script_to_html, workflow_to_html, script_to_markdown, workflow_to_markdown
 from io import StringIO
 
 #
@@ -47,14 +47,19 @@ def sos_show(args, workflow_args):
             script = SoS_Script(filename=args.script, transcript=transcript)
         if args.workflow:
             workflow = script.workflow(args.workflow)
-            if not args.html:
-                workflow.show()
+            if args.html is not None:
+                workflow_to_html(workflow, args.script, args.html)
+            elif args.markdown is not None:
+                workflow_to_markdown(workflow, args.script, args.markdown)
             else:
-                show_workflow(workflow, args.script)
-        elif not args.html:
-            script.show()
+                workflow.show()
         else:
-            show_script(transcript_file, args.script)
+            if args.html is not None:
+                script_to_html(transcript_file, args.script, args.html)
+            elif args.markdown is not None:
+                script_to_markdown(transcript_file, args.script, args.markdown)
+            else:
+                script.show()
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
