@@ -539,7 +539,9 @@ class SoS_Script:
                 else:
                     # in the parameter section, the comments are description
                     # of parameters and are all significant
-                    if cursect.isValid():
+                    if cursect.category() == 'script':
+                        cursect.extend(line)
+                    elif cursect.category() == 'statement' and cursect.isValid():
                         cursect.add_comment(line)
                     # comment add to script
                     else:
@@ -554,7 +556,7 @@ class SoS_Script:
                     comment_block += 1
                     self.descriptions.append('')
                 else:
-                    if cursect.category() == 'statements':
+                    if cursect.category() in ('statements', 'script'):
                         cursect.extend(line)
                     elif cursect.comment:
                         comment_block += 1
