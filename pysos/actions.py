@@ -673,7 +673,8 @@ def JavaScript(script, **kwargs):
 
 @SoS_Action(run_mode='run')
 def R(script, **kwargs):
-    return SoS_ExecuteScript(script, 'Rscript', '.R').run(**kwargs)
+    return SoS_ExecuteScript(script, 'Rscript --default-packages='\
+                             'methods,utils,stats,grDevices,graphics ', '.R').run(**kwargs)
 
 @SoS_Action(run_mode=['prepare'])
 def check_R_library(name, version = None):
@@ -754,7 +755,7 @@ def check_R_library(name, version = None):
             '''.format(repr(x), y)
         version_script += 'write(paste(package, cur_version, "VERSION_MISMATCH"), file = {})'.\
           format(repr(output_file))
-    SoS_ExecuteScript(install_script + version_script, 'Rscript --default-packages=methods,utils,stats', '.R').run()
+    SoS_ExecuteScript(install_script + version_script, 'Rscript --default-packages=utils', '.R').run()
     ret_val = 0
     with open(output_file) as tmp:
         for line in tmp:
