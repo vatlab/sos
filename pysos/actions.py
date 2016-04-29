@@ -27,8 +27,10 @@ import subprocess
 import tempfile
 import shlex
 import json
+import glob
 import platform
 import urllib
+import pypandoc
 import shutil
 import pycurl
 import zipfile
@@ -51,7 +53,8 @@ __all__ = ['SoS_Action', 'execute_script', 'sos_run',
     'python', 'python3',
     'perl', 'ruby', 'node', 'JavaScript',
     'R', 'check_R_library',
-    'docker_build', 'docker_commit'
+    'docker_build', 'docker_commit',
+    'report', 'pandoc'
     ]
 
 from .sos_syntax import SOS_RUNTIME_OPTIONS
@@ -376,7 +379,12 @@ class SoS_ExecuteScript:
                 env.deregister_process(p.pid)
                 os.remove(script_file)
             if ret != 0:
-                raise RuntimeError('Failed to execute script')
+                script_file = os.path.join('.sos/{}_{}{}'.format(self.interpreter.split()[0], os.getpid(), self.suffix))
+                with open(script_file, 'w') as sfile:
+                    sfile.write(self.script)
+                cmd = self.interpreter.replace('{}', shlex.quote(script_file))
+                raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" to test it.'
+                    .format(script_file, cmd))
 
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
@@ -665,7 +673,7 @@ def JavaScript(script, **kwargs):
 
 @SoS_Action(run_mode='run')
 def R(script, **kwargs):
-    return SoS_ExecuteScript(script, 'Rscript --default-packages=methods,utils,stats', '.R').run(**kwargs)
+    return SoS_ExecuteScript(script, 'Rscript', '.R').run(**kwargs)
 
 @SoS_Action(run_mode=['prepare'])
 def check_R_library(name, version = None):
@@ -784,3 +792,52 @@ def docker_commit(**kwargs):
     docker = DockerClient()
     docker.commit(**kwargs)
     return 0
+
+@SoS_Action(run_mode=['dryrun', 'run'])
+def report(script, **kwargs):
+    if 'filename' in kwargs:
+        report_file = kwargs['filename']
+    else:
+        sos_script = env.sos_dict['__step_context__'].filename
+        step = env.sos_dict['step_name']
+        index = 0 if '_index' in env.sos_dict else env.sos_dict['_index']
+        report_file = '.sos/{}_{}_{}.md'.format(os.path.basename(sos_script), step, index)
+        env.logger.trace('Write report to {}'.format(report_file))
+    # write report file (the ${} expressions must have been interpolated.
+    with open(report_file, kwargs['mode'] if 'mode' in kwargs else 'w') as md:
+        md.write(script)
+
+def natural_keys(text):
+    '''
+    alist.sort(key=natural_keys) sorts in human order
+    http://nedbatchelder.com/blog/200712/human_sorting.html
+    (See Toothy's implementation in the comments)
+    '''
+    return [ int(c) if c.isdigit() else c for c in re.split('(\d+)', text) ]
+
+
+@SoS_Action(run_mode='run')
+def pandoc(**kwargs):
+    if 'filename' in kwargs:
+        report_file = kwargs['filename']
+    else:
+        sos_script = env.sos_dict['__step_context__'].filename
+        step_reports = glob.glob('.sos/{}_*.md'.format(os.path.basename(sos_script)))
+        step_reports.sort(key=natural_keys)
+        # merge the files
+        report_file = '{}.md'.format(os.path.basename(sos_script))
+        env.logger.trace('Gathering reports {} to {}'.format(', '.join(step_reports), report_file))
+        with open(report_file, 'w') as combined:
+            for step_report in step_reports:
+                with open(step_report, 'r') as md:
+                    combined.write(md.read())
+    # this is output format
+    format_from = kwargs['format'] if 'format' in kwargs else 'md'
+    format_to = kwargs['to'] if 'to' in kwargs else 'html'
+    conv_output = kwargs['outputfile'] if 'outputfile' in kwargs else '.sos/{}.{}'.format(os.path.basename(sos_script), format_to)
+    filters = kwargs['filters'] if 'filters' in kwargs else []
+    pypandoc.convert(source=report_file, 
+        format=format_from, to=format_to, outputfile=conv_output, #filters=filters,
+        extra_args=['--{}={}'.format(k,v) for k,v in kwargs.items() if k not in ['format', 'outputfile', 'filters']])
+    env.logger.info('Report converted from {} to {}'.format(report_file, conv_output))
+    

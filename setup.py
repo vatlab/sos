@@ -51,6 +51,7 @@ setup(name = "sos",
           'pycurl',
           'blessings',
           'pygments',
+          'pypandoc',
       ],
     scripts = [
         'sos',
