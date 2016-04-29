@@ -44,8 +44,14 @@ def sos_show(args, workflow_args):
     try:
         transcript_file = os.path.join('.sos/{}.transcript'.format(os.path.basename(args.script)))
         with open(transcript_file, 'w') as transcript:
-            script = SoS_Script(filename=args.script, transcript=transcript)
+            try:
+                script = SoS_Script(filename=args.script, transcript=transcript)
+            except Exception as e:
+                script = None
+                env.logger.warning(e)
         if args.workflow:
+            if not script:
+                raise RuntimeError('workflow {} is not available due to syntax error in script {}'.format(args.workflow, args.script))
             workflow = script.workflow(args.workflow)
             if args.html is not None:
                 workflow_to_html(workflow, args.script, args.html)

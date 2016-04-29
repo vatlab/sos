@@ -488,16 +488,6 @@ class Step_Executor:
         result += self.step.task
         return re.sub(r'\s+', ' ', result)
 
-    def _report(self, text):
-        with open(env.sos_dict['__step_report__'], 'a') as report:
-            try:
-                text = '\n'.join('' if x == SOS_REPORT_PREFIX else x[2:] for x in text.split('\n'))
-                res = SoS_eval('{!r}'.format(text), self.step.sigil)
-            except Exception as e:
-                raise RuntimeError('Failed to report {}: {}'.format(shortRepr(text), e))
-            env.logger.trace('report {} to {}'.format(shortRepr(res), env.sos_dict['__step_report__']))
-            report.write(res)
-
     def run_with_queue(self, queue):
         '''Execute the step in a separate process and return the results through a
         queue '''
@@ -585,8 +575,6 @@ class Step_Executor:
                         env.sos_dict[key] = SoS_eval(value, self.step.sigil)
                     except Exception as e:
                         raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
-                elif statement[0] == '%':
-                    self._report(statement[1])
                 elif statement[0] == ':':
                     raise RuntimeError('Step input should be specified before others')
                 else:
@@ -666,8 +654,6 @@ class Step_Executor:
                         env.sos_dict[key] = SoS_eval(value, self.step.sigil)
                     except Exception as e:
                         raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
-                elif statement[0] == '%':
-                    self._report(statement[1])
                 elif statement[0] == ':':
                     key, value = statement[1:]
                     # output, depends, and process can be processed multiple times

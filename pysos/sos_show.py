@@ -251,13 +251,12 @@ pre {
 }
 .sos-report {
   background: #FAFAD2;
-  padding-left: 30px;
+  padding-top: 5px;
 }
 .sos-header {
   margin-top: 20px;
   margin-bottom: 0px;
   padding-top: 5px;
-  padding-bottom: 5px;
   background-color: #C0C0C0;
   border-bottom-color: #dde4e6;
 
@@ -616,7 +615,8 @@ def script_to_html(transcript, script_file, html_file):
             next_type = None
             for line in script:
                 line_type, line_no, script_line = line.split('\t', 3)
-                if line_type == 'FOLLOW' and content_type is None:
+                # Does not follow section because it has to be one line
+                if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
                     line_type = 'COMMENT'
                 if content_type == line_type or line_type == 'FOLLOW':
                     if next_type is not None and not script_line.rstrip().endswith(','):
@@ -740,7 +740,8 @@ def script_to_markdown(transcript, script_file, markdown_file):
             next_type = None
             for line in script:
                 line_type, line_no, script_line = line.split('\t', 3)
-                if line_type == 'FOLLOW' and content_type is None:
+                # Does not follow section because it has to be one line
+                if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
                     line_type = 'COMMENT'                
                 if content_type == line_type or line_type == 'FOLLOW':
                     if next_type is not None and not script_line.rstrip().endswith(','):

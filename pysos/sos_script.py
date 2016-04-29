@@ -30,7 +30,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 
 from .utils import env, Error, dehtml, getTermWidth, locate_script, text_repr
-from .sos_eval import Undetermined 
+from .sos_eval import Undetermined
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_PARAMETERS_SECTION_NAME, \
     SOS_DIRECTIVE, SOS_DIRECTIVES, SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_REPORT_PREFIX
@@ -51,7 +51,7 @@ class ParsingError(Error):
 
 class SoS_Step:
     '''Parser of a SoS step. This class accepts strings sent by the parser, determine
-    their types and add them to appropriate sections (directive, assignment, statement, 
+    their types and add them to appropriate sections (directive, assignment, statement,
     scripts etc) '''
     def __init__(self, context=None, names=[], options={}, is_global=False, is_parameters=False):
         '''A sos step '''
@@ -123,7 +123,7 @@ class SoS_Step:
             return None
 
     def isValid(self):
-        '''Determine if the statement, expression or directive is valid. Otherwise 
+        '''Determine if the statement, expression or directive is valid. Otherwise
         the parser will continue until a valid multi-line expression or statement
         can be found.'''
         if not self.values:
@@ -220,6 +220,7 @@ class SoS_Step:
             self.back_comment += line.lstrip('#').lstrip()
 
     def add_report(self, line):
+        self.wrap_script()
         if self.statements and self.statements[-1][0] == '%':
             self.statements[-1][-1] += line
         else:
@@ -288,7 +289,7 @@ class SoS_Step:
             return
         # _action options can contain both runtime option and action options
         opt = self._action_options.strip()
-        self.statements.append(['!', '{}({}{})'.format(self._action, text_repr(textwrap.dedent(self._script)), (', ' + opt) if opt else '')])
+        self.statements.append(['!', '{}({}{})\n'.format(self._action, text_repr(textwrap.dedent(self._script)), (', ' + opt) if opt else '')])
         self._action = None
         self._action_options = None
         self._script = ''
@@ -299,6 +300,13 @@ class SoS_Step:
         if not self.statements:
             self.task = ''
             return
+        # convert all ! statement to report action
+        for idx, statement in enumerate(self.statements):
+            if statement[0] == '%':
+                # report should be converted to action
+                self.statements[idx] = ['!', 'report({})\n'.format(text_repr(statement[1].
+                    replace(SOS_REPORT_PREFIX + '\n', '\n').replace(SOS_REPORT_PREFIX + ' ', '')))]
+        #
         task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
         if not task_directive:
             self.task = ''
@@ -555,11 +563,10 @@ class SoS_Script:
                         cursect.extend(line)
                         if self.transcript:
                             self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
-                    elif cursect.category() == 'statement' and cursect.isValid():
+                    elif cursect.category() in ('statement', 'expression') and cursect.isValid():
                         cursect.add_comment(line)
                         if self.transcript:
                             self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
-                    # comment add to script
                     else:
                         cursect.extend(line)
                         if self.transcript:
@@ -579,10 +586,22 @@ class SoS_Script:
                 if self.transcript:
                     self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                 continue
-            elif line.startswith(SOS_REPORT_PREFIX + ' ') or line.strip() == SOS_REPORT_PREFIX:
+            elif line.startswith(SOS_REPORT_PREFIX):
+                if len(line) > 1 and (line[1] != ' ' and line[1] != '\n'):
+                    parsing_errors.append(lineno, line, 'Invalid report line: {} symbol should be followed by a space.'.format(SOS_REPORT_PREFIX))
+                    if self.transcript:
+                        self.transcript.write('ERROR\t{}\t{}'.format(lineno, line))
+                    continue
                 if cursect is None:
+                    # global section can have reports, but the reports will be
+                    # written repeatedly, which is not good.
                     self.sections.append(SoS_Step(is_global=True))
-                    cursect = self.sections[-1]       
+                    cursect = self.sections[-1]
+                elif cursect.is_parameters:
+                    parsing_errors.append(lineno, line, 'Report line is not allowed in parameters section')
+                    if self.transcript:
+                        self.transcript.write('ERROR\t{}\t{}'.format(lineno, line))
+                    continue
                 elif not cursect.isValid():
                     parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
                     if self.transcript:
