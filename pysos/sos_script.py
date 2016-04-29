@@ -33,7 +33,7 @@ from .utils import env, Error, dehtml, getTermWidth, locate_script, text_repr
 from .sos_eval import Undetermined 
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_PARAMETERS_SECTION_NAME, \
-    SOS_DIRECTIVE, SOS_DIRECTIVES, SOS_ASSIGNMENT, SOS_SUBWORKFLOW
+    SOS_DIRECTIVE, SOS_DIRECTIVES, SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_REPORT_PREFIX
 
 __all__ = ['SoS_Script']
 
@@ -97,6 +97,8 @@ class SoS_Step:
         if self.statements:
             if self.statements[-1][0] == '=':
                 return 'expression'
+            elif self.statements[-1][0] == '%':
+                return 'report'
             elif self.statements[-1][0] == ':':
                 # a hack. ... to avoid calling isValid recursively
                 def validDirective():
@@ -184,6 +186,8 @@ class SoS_Step:
                 #        return False
                 #else:
                 return True
+            elif self.category() == 'report':
+                return True
             else:
                 raise RuntimeError('Unrecognized expression type {}'.format(self.category()))
             return True
@@ -214,6 +218,12 @@ class SoS_Step:
             self.comment += line.lstrip('#').lstrip()
         else:
             self.back_comment += line.lstrip('#').lstrip()
+
+    def add_report(self, line):
+        if self.statements and self.statements[-1][0] == '%':
+            self.statements[-1][-1] += line
+        else:
+            self.statements.append(['%', line])
 
     def add_assignment(self, key, value, lineno=None):
         '''Assignments are items with '=' type '''
@@ -536,18 +546,24 @@ class SoS_Script:
                         # anything before the first section can be pipeline
                         # description.
                         self.descriptions[-1] += line.lstrip('#').lstrip()
+                    if self.transcript:
+                        self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
                 else:
                     # in the parameter section, the comments are description
                     # of parameters and are all significant
                     if cursect.category() == 'script':
                         cursect.extend(line)
+                        if self.transcript:
+                            self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                     elif cursect.category() == 'statement' and cursect.isValid():
                         cursect.add_comment(line)
+                        if self.transcript:
+                            self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
                     # comment add to script
                     else:
                         cursect.extend(line)
-                if self.transcript:
-                    self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                        if self.transcript:
+                            self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                 continue
             elif not line.strip():
                 # a blank line start a new comment block if we are still
@@ -562,6 +578,19 @@ class SoS_Script:
                         comment_block += 1
                 if self.transcript:
                     self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
+                continue
+            elif line.startswith(SOS_REPORT_PREFIX + ' ') or line.strip() == SOS_REPORT_PREFIX:
+                if cursect is None:
+                    self.sections.append(SoS_Step(is_global=True))
+                    cursect = self.sections[-1]       
+                elif not cursect.isValid():
+                    parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
+                    if self.transcript:
+                        self.transcript.write('ERROR\t{}\t{}'.format(lineno, line))
+                    continue
+                cursect.add_report(line)
+                if self.transcript:
+                    self.transcript.write('REPORT\t{}\t{}'.format(lineno, line))
                 continue
             #
             # a continuation of previous item?

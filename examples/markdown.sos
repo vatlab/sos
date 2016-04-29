@@ -8,19 +8,19 @@
 [1]
 # generate a markdown header. We have to
 # indent the code because of the Title: stuff
-report:
 
-	Title:   Use Markdown in SoS
-	Summary: An example that uses both R and matplotlib
-	Authors: Bo Peng
-
-	## This example demonstrates how to use Markdown in SoS
-
-	This is regular markdown stuff
-
-	```python
-	print('Hello, world')
-	```
+! Title:   Use Markdown in SoS
+! Summary: An example that uses both R and matplotlib
+! Authors: Bo Peng
+!
+! ## This example demonstrates how to use Markdown in SoS
+! This is regular markdown stuff, but with string interpolation
+! 
+! SOS version: ${SOS_VERSION}
+!
+! ```python
+! print('Hello, world')
+! ```
 
 
 [10]

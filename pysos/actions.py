@@ -41,7 +41,7 @@ from io import BytesIO
 from docker import Client
 from docker.utils import kwargs_from_env
 import multiprocessing as mp
-from .utils import env, getTermWidth, ProgressBar
+from .utils import env, getTermWidth, ProgressBar, shortRepr
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .signature import FileSignature, fileMD5
@@ -798,13 +798,10 @@ def report(script, **kwargs):
     if 'filename' in kwargs:
         report_file = kwargs['filename']
     else:
-        sos_script = env.sos_dict['__step_context__'].filename
-        step = env.sos_dict['step_name']
-        index = 0 if '_index' in env.sos_dict else env.sos_dict['_index']
-        report_file = '.sos/{}_{}_{}.md'.format(os.path.basename(sos_script), step, index)
-        env.logger.trace('Write report to {}'.format(report_file))
+        env.logger.trace('report {} to {}'.format(shortRepr(script), env.sos_dict['__step_report__']))
+        report_file = env.sos_dict['__step_report__']
     # write report file (the ${} expressions must have been interpolated.
-    with open(report_file, kwargs['mode'] if 'mode' in kwargs else 'w') as md:
+    with open(report_file, kwargs['mode'] if 'mode' in kwargs else 'a') as md:
         md.write(script)
 
 def natural_keys(text):
@@ -822,7 +819,7 @@ def pandoc(**kwargs):
         report_file = kwargs['filename']
     else:
         sos_script = env.sos_dict['__step_context__'].filename
-        step_reports = glob.glob('.sos/{}_*.md'.format(os.path.basename(sos_script)))
+        step_reports = glob.glob('.sos/report/*')
         step_reports.sort(key=natural_keys)
         # merge the files
         report_file = '{}.md'.format(os.path.basename(sos_script))
