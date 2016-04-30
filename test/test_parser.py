@@ -1065,5 +1065,19 @@ CONFIG.a = 'b'
 ''')
         #
 
+    def testVarOutput(self):
+        '''Test early appearance of variable output'''
+        script = SoS_Script('''
+[0]
+seq = range(3)
+input: for_each='seq'
+output: 'test${_seq}.txt'
+print(output)
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        # this does not work before until we make variable output available sooner
+        Sequential_Executor(wf).run()
+
 if __name__ == '__main__':
     unittest.main()

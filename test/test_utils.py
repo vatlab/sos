@@ -269,16 +269,18 @@ sos_run('sub')
         for text in ['asdf g', 'a \\ng', r'a\nb']:
             self.assertEqual(text_repr(text), repr(text))
         self.assertEqual(text_repr(r'''a
-\nb'''), "r'''a\n\\nb'''")
+\nb'''), "'a\\n\\\\nb'")
         self.assertEqual(text_repr(r"""a
-\nb'"""), 'r"""a\n\\nb\'"""')
+\nb'"""), '"a\\n\\\\nb\'"')
         self.assertEqual(text_repr(r"""a
-\nb''"""), 'r"""a\n\\nb\'\'"""')
+\nb''"""), '"a\\n\\\\nb\'\'"')
         self.assertEqual(text_repr(r"""a
-\nb'''"""), 'r"""a\n\\nb\'\'\'"""')
+\nb'''"""), '"a\\n\\\\nb\'\'\'"')
         self.assertEqual(text_repr(r"""a
-'''\nb'''"""), 'r"""a\n\'\'\'\\nb\'\'\'"""')
-
+'''\nb'''"""), '"a\\n\'\'\'\\\\nb\'\'\'"')
+        self.assertEqual(text_repr(r'''a
+b
+\nc'''), "r'''a\nb\n\\nc'''")
 
 if __name__ == '__main__':
     unittest.main()
