@@ -832,6 +832,9 @@ def pandoc(script=None, output=None, **kwargs):
     #
     # in run mode, collect report and call pandoc
     sos_script = env.sos_dict['__step_context__'].filename
+    # this is the case for stirng input (test only)
+    if sos_script is None:
+        sos_script = 'string_input'
     if script is not None:
         # get a temporary file with the content
         script_file = '{}.md'.format(os.path.basename(sos_script))
@@ -931,6 +934,9 @@ def Rmarkdown(script=None, output=None, **kwargs):
     #
     # in run mode, collect report and call Rmarkdown
     sos_script = env.sos_dict['__step_context__'].filename
+    # this is the case for stirng input (test only)
+    if sos_script is None:
+        sos_script = 'string_input'
     if script is not None:
         # get a temporary file with the content
         script_file = '{}.Rmd'.format(os.path.basename(sos_script))
