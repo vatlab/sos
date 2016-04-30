@@ -570,7 +570,7 @@ class ContinuousHtmlFormatter(HtmlFormatter):
         yield 0, dummyoutfile.getvalue()
         yield 0, '</td></tr>'
 
-def write_content(content_type, content, formatter, html):
+def write_html_content(content_type, content, formatter, html):
     # dedent content but still keeps empty lines
     old_class = formatter.cssclass
     nlines = len(content)
@@ -670,7 +670,7 @@ def script_to_html(transcript, script_file, html_file, style_args):
                 if content_type == line_type or line_type == 'FOLLOW':
                     if next_type is not None and not script_line.rstrip().endswith(','):
                         formatter.linenostart = content_number
-                        write_content(content_type, content, formatter, html)
+                        write_html_content(content_type, content, formatter, html)
                         content = [script_line]
                         content_type = next_type
                         content_number = int(line_no)
@@ -680,7 +680,7 @@ def script_to_html(transcript, script_file, html_file, style_args):
                 else:
                     if content:
                         formatter.linenostart = content_number
-                        write_content(content_type, content, formatter, html)
+                        write_html_content(content_type, content, formatter, html)
                     if line_type.startswith('SCRIPT_'):
                         content_type = 'DIRECTIVE'
                         next_type = line_type[7:]
@@ -690,7 +690,7 @@ def script_to_html(transcript, script_file, html_file, style_args):
                     content = [script_line]
         if content:
             formatter.linenostart = content_number
-            write_content(content_type, content, formatter, html)
+            write_html_content(content_type, content, formatter, html)
         html.write('</table>')
         html.write(template_post_table)
     #
@@ -719,24 +719,24 @@ def workflow_to_html(workflow, script_file, html_file, style_args):
         #
         html.write('<table class="highlight tab-size js-file-line-container">')
         if workflow.sections and workflow.sections[0].global_def:
-            write_content('STATEMENT', workflow.sections[0].global_def, formatter, html)
+            write_html_content('STATEMENT', workflow.sections[0].global_def, formatter, html)
         #
         for section in workflow.sections:
-            write_content('SECTION', '[{}_{}]'.format(section.name, section.index), formatter, html)
+            write_html_content('SECTION', '[{}_{}]'.format(section.name, section.index), formatter, html)
             #
             if section.comment:
-                write_content('COMMENT', '#' + section.comment, formatter, html)
+                write_html_content('COMMENT', '#' + section.comment, formatter, html)
             for stmt in section.statements:
                 if stmt[0] == ':':
-                    write_content('DIRECTIVE', '{} : {}'.format(stmt[1], stmt[2]), formatter, html)
+                    write_html_content('DIRECTIVE', '{} : {}'.format(stmt[1], stmt[2]), formatter, html)
                 elif stmt[0] == '=':
-                    write_content('STATEMENT', '{} = {}'.format(stmt[1], stmt[2]), formatter, html)
+                    write_html_content('STATEMENT', '{} = {}'.format(stmt[1], stmt[2]), formatter, html)
                 else:
-                    write_content('STATEMENT', stmt[1], formatter, html)
+                    write_html_content('STATEMENT', stmt[1], formatter, html)
             if section.task:
-                #write_content('DIRECTIVE', 'task:', formatter, html)
-                write_content('STATEMENT', section.task, formatter, html)
-            write_content('COMMENT', '\n\n', formatter, html)
+                #write_html_content('DIRECTIVE', 'task:', formatter, html)
+                write_html_content('STATEMENT', section.task, formatter, html)
+            write_html_content('COMMENT', '\n\n', formatter, html)
         html.write('</table>')
         html.write(template_post_table)
     #
@@ -775,6 +775,8 @@ def markdown_content(content_type, content, fh):
             content_type = 'bash'
         elif content_type == 'node':
             content_type = 'JavaScript'
+        elif content_type == 'report':
+            content_type == ''
         fh.write('```{}\n{}```\n'.format(content_type, ''.join(content)))
 
 def script_to_markdown(transcript, script_file, markdown_file):
@@ -848,7 +850,7 @@ def workflow_to_markdown(workflow, script_file, markdown_file):
 #
 # Output to terminal
 #
-def term_content(content_type, content, formatter):
+def write_content(content_type, content, formatter, fh):
     #
     nlines = len(content)
     content = dedent(''.join(content))
@@ -857,25 +859,25 @@ def term_content(content_type, content, formatter):
     content = [' \n' if x == '' else x + '\n' for x in content.split('\n')][:nlines]
     #
     if content_type == 'COMMENT':
-        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+        fh.write('{}\n'.format(highlight(''.join(content),
             SoS_Lexer(), formatter)))
     elif content_type in ('REPORT', 'report'):
-        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+        fh.write('{}\n'.format(highlight(''.join(content),
             TextLexer(), formatter)))
     elif content_type == 'SECTION':
-        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+        fh.write('{}\n'.format(highlight(''.join(content),
             SoS_Lexer(), formatter)))
     elif content_type == 'DIRECTIVE':
-        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+        fh.write('{}\n'.format(highlight(''.join(content),
             SoS_Lexer(), formatter)))
     elif content_type == 'ASSIGNMENT':
-        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+        fh.write('{}\n'.format(highlight(''.join(content),
             SoS_Lexer(), formatter)))
     elif content_type == 'STATEMENT':
-        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+        fh.write('{}\n'.format(highlight(''.join(content),
             SoS_Lexer(), formatter)))
     elif content_type == 'ERROR':
-        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+        fh.write('{}\n'.format(highlight(''.join(content),
             SoS_Lexer(), formatter)))
     else:
         if content_type == 'run':
@@ -891,7 +893,7 @@ def term_content(content_type, content, formatter):
                 lexer = guess_lexer(''.join(content))
             except:
                 lexer = TextLexer()
-        sys.stdout.write('{}\n'.format(highlight((''.join(content)),
+        fh.write('{}\n'.format(highlight((''.join(content)),
             lexer, formatter)))
 
 def parse_term_args(style_args):
@@ -925,7 +927,7 @@ def script_to_term(transcript, script_file, style_args):
                 line_type = 'COMMENT'
             if content_type == line_type or line_type == 'FOLLOW':
                 if next_type is not None and not script_line.rstrip().endswith(','):
-                    term_content(content_type, content, formatter)
+                    write_content(content_type, content, formatter, sys.stdout)
                     content = [script_line]
                     content_type = next_type
                     content_number = int(line_no)
@@ -934,7 +936,7 @@ def script_to_term(transcript, script_file, style_args):
                     content.append(script_line)
             else:
                 if content:
-                    term_content(content_type, content, formatter)
+                    write_content(content_type, content, formatter, sys.stdout)
                 if line_type.startswith('SCRIPT_'):
                     content_type = 'DIRECTIVE'
                     next_type = line_type[7:]
@@ -943,7 +945,7 @@ def script_to_term(transcript, script_file, style_args):
                 content_number = int(line_no)
                 content = [script_line]
     if content:
-        term_content(content_type, content, formatter)
+        write_content(content_type, content, formatter, sys.stdout)
 
 
 def workflow_to_term(workflow, script_file, style_args):
@@ -954,20 +956,20 @@ def workflow_to_term(workflow, script_file, style_args):
     env.logger.trace('Using style argument {}'.format(sargs))
     formatter = TerminalFormatter(**sargs)
     if workflow.sections and workflow.sections[0].global_def:
-        term_content('STATEMENT', workflow.sections[0].global_def, formatter)
+        write_content('STATEMENT', workflow.sections[0].global_def, formatter, sys.stdout)
     #
     for section in workflow.sections:
-        term_content('SECTION', '[{}_{}]'.format(section.name, section.index), formatter)
+        write_content('SECTION', '[{}_{}]'.format(section.name, section.index), formatter, sys.stdout)
         #
         if section.comment:
-            term_content('COMMENT', '#' + section.comment, formatter)
+            write_content('COMMENT', '#' + section.comment, formatter, sys.stdout)
         for stmt in section.statements:
             if stmt[0] == ':':
-                term_content('DIRECTIVE', '{} : {}'.format(stmt[1], stmt[2]), formatter)
+                write_content('DIRECTIVE', '{} : {}'.format(stmt[1], stmt[2]), formatter, sys.stdout)
             elif stmt[0] == '=':
-                term_content('STATEMENT', '{} = {}'.format(stmt[1], stmt[2]), formatter)
+                write_content('STATEMENT', '{} = {}'.format(stmt[1], stmt[2]), formatter, sys.stdout)
             else:
-                term_content('STATEMENT', stmt[1], formatter)
+                write_content('STATEMENT', stmt[1], formatter, sys.stdout)
         if section.task:
-            term_content('STATEMENT', section.task, formatter)
-        term_content('COMMENT', '\n\n', formatter)
+            write_content('STATEMENT', section.task, formatter, sys.stdout)
+        write_content('COMMENT', '\n\n', formatter, sys.stdout)
