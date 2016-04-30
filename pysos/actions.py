@@ -60,6 +60,11 @@ __all__ = ['SoS_Action', 'execute_script', 'sos_run',
 from .sos_syntax import SOS_RUNTIME_OPTIONS
 from .sos_script import SoS_Script
 
+def get_actions():
+    # get the name of all actions, which are identified by an attribute
+    # run_mode of the function
+    return [k for k, v in globals().items() if hasattr(v, 'run_mode')]
+
 #
 # docker support
 #

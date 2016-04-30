@@ -32,12 +32,16 @@ from io import StringIO
 from textwrap import dedent
 
 from pygments import highlight
+from pygments.token import Name, Keyword
 from pygments.lexers import PythonLexer, TextLexer, get_lexer_by_name, guess_lexer
 from pygments.formatters import HtmlFormatter
 
 from .utils import env, get_traceback
 from .sos_script import SoS_Script, SoS_Workflow
 from .sos_executor import Sequential_Executor
+from .actions import get_actions
+from .sos_syntax import SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_DEPENDS_OPTIONS, \
+    SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS
 
 __all__ = []
 
@@ -470,6 +474,37 @@ template_post_table = '''
 '''
 
 
+class SoS_Lexer(PythonLexer):
+    """
+    A Python lexer with SOS keywords, used for SoS directive
+    """
+
+    name = 'SoS'
+    aliases = ['sos']
+
+    # override the mimetypes to not inherit them from python
+    mimetypes = []
+    filenames = ['*.sos']
+    mimetypes = ['text/x-sos', 'application/x-sos']
+
+    PythonLexer.tokens['root'].insert(0, (r'(^\w+)\s*:', Keyword.Namespace))
+
+    EXTRA_KEYWORDS = set( SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS +
+        SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS + SOS_SECTION_OPTIONS +
+        get_actions())
+
+    def get_tokens_unprocessed(self, text):
+        for index, token, value in \
+                PythonLexer.get_tokens_unprocessed(self, text):
+            if token is Name and value in self.EXTRA_KEYWORDS:
+                yield index, Keyword.Pseudo, value
+            else:
+                yield index, token, value
+
+    def analyse_text(text):
+        return (shebang_matches(text, r'sos-runner') or \
+            '#fileformat=SOS' in text[:1000])
+
 class ContinuousHtmlFormatter(HtmlFormatter):
     def _wrap_tablelinenos(self, inner):
         # change wrap_table to do not output '<table' and '</table>' because
@@ -545,7 +580,7 @@ def write_content(content_type, content, formatter, html):
     if content_type == 'COMMENT':
         formatter.cssclass = 'source blob-code sos-comment'
         html.write('{}\n'.format(highlight(''.join(content),
-            PythonLexer(), formatter)))
+            SoS_Lexer(), formatter)))
     elif content_type in ('REPORT', 'report'):
         formatter.cssclass = 'source blob-code sos-report'
         html.write('{}\n'.format(highlight(''.join(content),
@@ -553,23 +588,23 @@ def write_content(content_type, content, formatter, html):
     elif content_type == 'SECTION':
         formatter.cssclass = 'source blob-code sos-header'
         html.write('{}\n'.format(highlight(''.join(content),
-            PythonLexer(), formatter)))
+            SoS_Lexer(), formatter)))
     elif content_type == 'DIRECTIVE':
         formatter.cssclass = 'source blob-code sos-directive'
         html.write('{}\n'.format(highlight(''.join(content),
-            PythonLexer(), formatter)))
+            SoS_Lexer(), formatter)))
     elif content_type == 'ASSIGNMENT':
         formatter.cssclass = 'source blob-code sos-statement'
         html.write('{}\n'.format(highlight(''.join(content),
-            PythonLexer(), formatter)))
+            SoS_Lexer(), formatter)))
     elif content_type == 'STATEMENT':
         formatter.cssclass = 'source blob-code sos-statement'
         html.write('{}\n'.format(highlight(''.join(content),
-            PythonLexer(), formatter)))
+            SoS_Lexer(), formatter)))
     elif content_type == 'ERROR':
         formatter.cssclass = 'source blob-code sos-error '
         html.write('{}\n'.format(highlight(''.join(content),
-            PythonLexer(), formatter)))
+            SoS_Lexer(), formatter)))
     else:
         formatter.cssclass = 'source blob-code sos-script '
         if content_type == 'run':
