@@ -859,26 +859,19 @@ def write_content(content_type, content, formatter, fh):
     content = [' \n' if x == '' else x + '\n' for x in content.split('\n')][:nlines]
     #
     if content_type == 'COMMENT':
-        fh.write('{}\n'.format(highlight(''.join(content),
-            SoS_Lexer(), formatter)))
+        fh.write(highlight(''.join(content), SoS_Lexer(), formatter))
     elif content_type in ('REPORT', 'report'):
-        fh.write('{}\n'.format(highlight(''.join(content),
-            TextLexer(), formatter)))
+        fh.write(highlight(''.join(content), TextLexer(), formatter))
     elif content_type == 'SECTION':
-        fh.write('{}\n'.format(highlight(''.join(content),
-            SoS_Lexer(), formatter)))
+        fh.write(highlight(''.join(content), SoS_Lexer(), formatter))
     elif content_type == 'DIRECTIVE':
-        fh.write('{}\n'.format(highlight(''.join(content),
-            SoS_Lexer(), formatter)))
+        fh.write(highlight(''.join(content), SoS_Lexer(), formatter))
     elif content_type == 'ASSIGNMENT':
-        fh.write('{}\n'.format(highlight(''.join(content),
-            SoS_Lexer(), formatter)))
+        fh.write(highlight(''.join(content), SoS_Lexer(), formatter))
     elif content_type == 'STATEMENT':
-        fh.write('{}\n'.format(highlight(''.join(content),
-            SoS_Lexer(), formatter)))
+        fh.write(highlight(''.join(content), SoS_Lexer(), formatter))
     elif content_type == 'ERROR':
-        fh.write('{}\n'.format(highlight(''.join(content),
-            SoS_Lexer(), formatter)))
+        fh.write(highlight(''.join(content), SoS_Lexer(), formatter))
     else:
         if content_type == 'run':
             content_type = 'bash'
@@ -893,12 +886,11 @@ def write_content(content_type, content, formatter, fh):
                 lexer = guess_lexer(''.join(content))
             except:
                 lexer = TextLexer()
-        fh.write('{}\n'.format(highlight((''.join(content)),
-            lexer, formatter)))
+        fh.write(highlight((''.join(content)), lexer, formatter))
 
 def parse_term_args(style_args):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--bg', choices=['light', 'dark'])
+    parser.add_argument('--bg', choices=['light', 'dark'], default='light')
     parser.add_argument('--linenos', action='store_true')
     try:
         args = parser.parse_args(style_args)
@@ -947,7 +939,6 @@ def script_to_term(transcript, script_file, style_args):
     if content:
         write_content(content_type, content, formatter, sys.stdout)
 
-
 def workflow_to_term(workflow, script_file, style_args):
     '''
     Write a workflow to terminal
@@ -972,4 +963,4 @@ def workflow_to_term(workflow, script_file, style_args):
                 write_content('STATEMENT', stmt[1], formatter, sys.stdout)
         if section.task:
             write_content('STATEMENT', section.task, formatter, sys.stdout)
-        write_content('COMMENT', '\n\n', formatter, sys.stdout)
+        write_content('COMMENT', '\n', formatter, sys.stdout)

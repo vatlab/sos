@@ -60,7 +60,7 @@ def sos_show(args, style_args):
             elif args.markdown is not None:
                 workflow_to_markdown(workflow, args.script, args.markdown, style_args)
             elif args.term:
-                workflow_to_term(workflow, args.script, **style_args)
+                workflow_to_term(workflow, args.script, style_args)
             else:
                 workflow.show()
         else:
