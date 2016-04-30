@@ -32,6 +32,8 @@ SOS_DIRECTIVES = ['input', 'output', 'depends', 'task']
 SOS_SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'target']
 SOS_PARAMETERS_SECTION_NAME = 'parameters'
 
+SOS_REPORT_PREFIX = '!'
+
 # Regular expressions for parsing section headers and options
 _SECTION_HEADER_TMPL = r'''
     ^\[\s*                             # [

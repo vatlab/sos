@@ -37,7 +37,7 @@ from .pattern import extract_pattern, expand_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
 from .signature import  RuntimeInfo
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
-    SOS_RUNTIME_OPTIONS
+    SOS_RUNTIME_OPTIONS, SOS_REPORT_PREFIX
 
 __all__ = []
 
@@ -526,6 +526,12 @@ class Step_Executor:
         env.sos_dict.set('step_name', '{}_{}'.format(self.step.name, self.step.index))
         # used by nested workflow to determine content of parental workflow
         env.sos_dict.set('__step_context__', self.step.context)
+        # this is not secure and but let us assume this for now.
+        env.sos_dict.set('__step_report__', '.sos/report/{}_{}.md'.format(self.step.name, self.step.index))
+        if os.path.isfile(env.sos_dict['__step_report__']):
+            # truncate the file
+            with open(env.sos_dict['__step_report__'], 'w'):
+                pass
         #
         # these are temporary variables that should be removed if exist
         for var in ('input', 'output', 'depends', '_input', '_depends', '_output'):

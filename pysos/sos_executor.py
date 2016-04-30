@@ -22,6 +22,7 @@
 import os
 import sys
 import yaml
+import shutil
 import argparse
 
 import multiprocessing as mp
@@ -70,11 +71,7 @@ class ExecuteError(Error):
             self.message += '\n[%s]:\n\t%s' % (short_line, error)
 
 
-
-class Sequential_Executor:
-    #
-    # A SoS workflow with multiple steps
-    #
+class Base_Executor:
     def __init__(self, workflow):
         self.workflow = workflow
 
@@ -209,7 +206,24 @@ class Sequential_Executor:
             env.sos_dict.set('__step_input__', [])
             SoS_exec('import os, sys, glob')
             SoS_exec('from pysos import *')
-            #
+        #
+        if os.path.isdir('.sos/report'):
+            shutil.rmtree('.sos/report')
+        os.makedirs('.sos/report')
+
+
+class Sequential_Executor(Base_Executor):
+    #
+    # A SoS workflow with multiple steps
+    #
+    def __init__(self, workflow):
+        Base_Executor.__init__(self, workflow)
+
+    def run(self, args=[], nested=False, cmd_name='', config_file=None):
+        '''Execute a workflow with specified command line args. If sub is True, this
+        workflow is a nested workflow and be treated slightly differently.
+        '''
+        Base_Executor.run(self, args, nested, cmd_name, config_file)
         #
         # process step of the pipelinp
         #

@@ -32,7 +32,7 @@ from io import StringIO
 from textwrap import dedent
 
 from pygments import highlight
-from pygments.lexers import PythonLexer, get_lexer_by_name, guess_lexer
+from pygments.lexers import PythonLexer, TextLexer, get_lexer_by_name, guess_lexer
 from pygments.formatters import HtmlFormatter
 
 from .utils import env, get_traceback
@@ -249,11 +249,14 @@ pre {
 .sos-comment {
   background: #f7f7f7;
 }
+.sos-report {
+  background: #FAFAD2;
+  padding-top: 5px;
+}
 .sos-header {
   margin-top: 20px;
   margin-bottom: 0px;
   padding-top: 5px;
-  padding-bottom: 5px;
   background-color: #C0C0C0;
   border-bottom-color: #dde4e6;
 
@@ -543,6 +546,10 @@ def write_content(content_type, content, formatter, html):
         formatter.cssclass = 'source blob-code sos-comment'
         html.write('{}\n'.format(highlight(''.join(content),
             PythonLexer(), formatter)))
+    elif content_type in ('REPORT', 'report'):
+        formatter.cssclass = 'source blob-code sos-report'
+        html.write('{}\n'.format(highlight(''.join(content),
+            TextLexer(), formatter)))
     elif content_type == 'SECTION':
         formatter.cssclass = 'source blob-code sos-header'
         html.write('{}\n'.format(highlight(''.join(content),
@@ -569,6 +576,8 @@ def write_content(content_type, content, formatter, html):
             content_type = 'bash'
         elif content_type == 'node':
             content_type = 'JavaScript'
+        elif content_type == 'report':
+            content_type == 'text'
         try:
             lexer = get_lexer_by_name(content_type)
         except:
@@ -606,7 +615,8 @@ def script_to_html(transcript, script_file, html_file):
             next_type = None
             for line in script:
                 line_type, line_no, script_line = line.split('\t', 3)
-                if line_type == 'FOLLOW' and content_type is None:
+                # Does not follow section because it has to be one line
+                if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
                     line_type = 'COMMENT'
                 if content_type == line_type or line_type == 'FOLLOW':
                     if next_type is not None and not script_line.rstrip().endswith(','):
@@ -694,9 +704,11 @@ def workflow_to_html(workflow, script_file, html_file):
 
 def markdown_content(content_type, content, fh):
     # write content to a file
-    if content_type in ('COMMENT', 'EMPTY'):
+    if content_type == 'COMMENT':
         fh.write('{}\n'.format(''.join([x.lstrip('#').strip() + '  \n'
                                         for x in content if not x.startswith('#!')])))
+    elif content_type == 'REPORT':
+        fh.write('{}\n'.format(''.join(content)))
     elif content_type == 'SECTION':
         fh.write('## {}\n'.format(''.join(content)))
     elif content_type == 'DIRECTIVE':
@@ -728,7 +740,8 @@ def script_to_markdown(transcript, script_file, markdown_file):
             next_type = None
             for line in script:
                 line_type, line_no, script_line = line.split('\t', 3)
-                if line_type == 'FOLLOW' and content_type is None:
+                # Does not follow section because it has to be one line
+                if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
                     line_type = 'COMMENT'                
                 if content_type == line_type or line_type == 'FOLLOW':
                     if next_type is not None and not script_line.rstrip().endswith(','):

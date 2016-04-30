@@ -821,7 +821,7 @@ def locate_script(filename, start=''):
 def text_repr(text):
     """Rich repr for ``text`` returning unicode, triple quoted if ``multiline``.
     """
-    if not '\n' in text:
+    if text.count('\n') <= 1:
         return repr(text)
     elif "'''" not in text and not text.endswith("'"):
         return "r'''" + text + "'''"

@@ -54,6 +54,7 @@ highlight link pythonBuiltin	Function
 " parenthetical part of def and class
 syn match sos_section_head "^\[\s*\w\+.*\]\s*$"
 syn match sos_directive "^\(input\|output\|depends\|task|\w\+\)\s*:.*"
+syn match sos_report "\(^! .*$\|^!$\)"
 " match a line with non input/output/depends/task, and ends before a section
 " or another directive
 syn region script 
@@ -62,8 +63,10 @@ syn region script
 
 highlight sos_section_head guibg='Purple' gui=none
 highlight sos_directive guifg='LightBlue' gui=none
+highlight sos_report guifg='LightGreen' gui=none
 highlight script guifg='Gray' gui=none
 
+set comments="! "
 
 let b:current_syntax = "sos"
 
