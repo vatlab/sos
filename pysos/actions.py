@@ -379,7 +379,7 @@ class SoS_ExecuteScript:
                 env.deregister_process(p.pid)
                 os.remove(script_file)
             if ret != 0:
-                script_file = os.path.join('.sos/{}_{}{}'.format(self.interpreter.split()[0], os.getpid(), self.suffix))
+                script_file = os.path.join('.sos/{}_{}{}'.format(self.interpreter.split()[0].split('/')[-1], os.getpid(), self.suffix))
                 with open(script_file, 'w') as sfile:
                     sfile.write(self.script)
                 cmd = self.interpreter.replace('{}', shlex.quote(script_file))

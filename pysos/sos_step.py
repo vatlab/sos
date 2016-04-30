@@ -679,6 +679,21 @@ class Step_Executor:
                             eval('directive_' + key)(*args, **kwargs)
                     except Exception as e:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
+                    #
+                    # we need to reduce output files in case they have been processed multiple times.
+                    #
+                    # The following temporarily set 'output' as an accumulated version of _output
+                    # It will be reset after all the loops are done
+                    #
+                    if '_output' in env.sos_dict and env.sos_dict['_output'] and not isinstance(env.sos_dict['_output'][0], Undetermined):
+                        tmp_outputs = copy.deepcopy(self._outputs)
+                        tmp_outputs.append(env.sos_dict['_output'])
+                        env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(tmp_outputs, []))))
+                    #
+                    if '_depends' in env.sos_dict:
+                        tmp_depends = copy.deepcopy(self._depends)
+                        tmp_depends.append(env.sos_dict['_output'])
+                        env.sos_dict.set('depends', list(OrderedDict.fromkeys(sum(tmp_depends, []))))
                 else:
                     # in run mode, check signature and see if all results exist
                     if env.run_mode == 'run' and '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
@@ -697,7 +712,6 @@ class Step_Executor:
                         except Exception as e:
                             raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
             #
-            # collect _output and _depends
             if '_output' in env.sos_dict:
                 self._outputs.append(env.sos_dict['_output'])
             else:
