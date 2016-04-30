@@ -151,9 +151,10 @@ if __name__ == '__main__':
     parser.add_argument('--html', nargs='?', metavar='FILENAME', const='__BROWSER__',
         help='''Generate a syntax-highlighted HTML file, write it to a
             specified file, or view in a browser if no filename is specified.
-            Additional arguments --linenos and --style can be used to customize
-            style of html output. You can pass an arbitrary name to option --style
-            get a list of available styles.''')
+            Additional argument --raw can be used to specify a URL to raw file,
+            arguments --linenos and --style can be used to customize style of
+            html output. You can pass an arbitrary name to option --style get a
+            list of available styles.''')
     parser.add_argument('--markdown', metavar='FILENAME',
         help='''Generate a markdown version of script and save it to a 
             specified file.''')

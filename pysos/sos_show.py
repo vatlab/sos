@@ -633,6 +633,7 @@ def write_html_content(content_type, content, formatter, html):
 #
 def parse_html_args(style_args):
     parser = argparse.ArgumentParser()
+    parser.add_argument('--raw')
     parser.add_argument('--style', choices=list(get_all_styles()), default='default')
     parser.add_argument('--linenos', action='store_true')
     try:
@@ -648,14 +649,20 @@ def script_to_html(transcript, script_file, html_file, style_args):
     '''
     if html_file == '__BROWSER__':
         html_file = '.sos/{}.html'.format(os.path.basename(script_file))
+    sargs = parse_html_args(style_args)
     formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
-        **parse_html_args(style_args))
+        **{x:y for x,y in sargs.items() if x != 'raw'})
     with open(html_file, 'w') as html:
         html.write(template_pre_style % os.path.basename(script_file))
         html.write(inline_css)
         # remove background definition so that we can use our own
         html.write('\n'.join(x for x in formatter.get_style_defs().split('\n') if 'background' not in x))
-        html.write(template_pre_table % (os.path.basename(script_file), script_file, '{:.1f} KB'.format(os.path.getsize(script_file) / 1024)))
+        if 'raw' in sargs and sargs['raw']:
+            raw_link = '<a href="{}" class="commit-tease-sha">{}</a>'.format(sargs['raw'], script_file)
+        else:
+            raw_link = script_file
+        html.write(template_pre_table % (os.path.basename(script_file), raw_link,
+            '{:.1f} KB'.format(os.path.getsize(script_file) / 1024)))
         #
         html.write('<table class="highlight tab-size js-file-line-container">')
         with open(transcript) as script:
@@ -709,14 +716,19 @@ def workflow_to_html(workflow, script_file, html_file, style_args):
     '''
     if html_file == '__BROWSER__':
         html_file = '.sos/{}.html'.format(os.path.basename(script_file))
+    sargs = parse_html_args(style_args)
     formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
-        **parse_html_args(style_args))
+        **{x:y for x,y in sargs.items() if x != 'raw'})
     with open(html_file, 'w') as html:
         html.write(template_pre_style % ('{} - {}'.format(os.path.basename(script_file), workflow)))
         html.write(inline_css)
         # remove background definition so that we can use our own
         html.write('\n'.join(x for x in formatter.get_style_defs().split('\n') if 'background' not in x))
-        html.write(template_pre_table % (os.path.basename(script_file), script_file, ''))
+        if 'raw' in sargs and sargs['raw']:
+            raw_link = '<a href="{}" class="commit-tease-sha">{}</a>'.format(sargs['raw'], script_file)
+        else:
+            raw_link = script_file
+        html.write(template_pre_table % (os.path.basename(script_file), raw_link, ''))
         #
         html.write('<table class="highlight tab-size js-file-line-container">')
         if workflow.sections and workflow.sections[0].global_def:
