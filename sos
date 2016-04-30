@@ -142,16 +142,25 @@ if __name__ == '__main__':
             steps, and command line parameters. The output can be limited
             to a specified workflow (which can be a subworkflow or a combined
             workflow) if a workflow is specified.''',
+        epilog='''Extra command line argument could be specified to customize
+            the style of html, markdown, and terminal output. ''',
         help='Show details of a SoS script')
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
     parser.add_argument('--html', nargs='?', metavar='FILENAME', const='__BROWSER__',
         help='''Generate a syntax-highlighted HTML file, write it to a
-            specified file, or view in a browser if no filename is specified.''')
+            specified file, or view in a browser if no filename is specified.
+            Additional arguments --linenos and --style can be used to customize
+            style of html output. You can pass an arbitrary name to option --style
+            get a list of available styles.''')
     parser.add_argument('--markdown', metavar='FILENAME',
         help='''Generate a markdown version of script and save it to a 
             specified file.''')
+    parser.add_argument('--term', action='store_true',
+        help='''Output syntax-highlighted script or workflow to the terminal.
+        Additional arguments --bg=light|dark --lineno can be used to
+        customized output.''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_show)
     #

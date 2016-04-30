@@ -34,13 +34,15 @@ from pygments.formatters import HtmlFormatter
 from .utils import env, get_traceback
 from .sos_script import SoS_Script, SoS_Workflow
 from .sos_executor import Sequential_Executor
-from .sos_show import script_to_html, workflow_to_html, script_to_markdown, workflow_to_markdown
+from .sos_show import script_to_html, workflow_to_html, script_to_markdown, \
+    workflow_to_markdown, script_to_term, workflow_to_term
 from io import StringIO
 
 #
 # subcommand show
 #
-def sos_show(args, workflow_args):
+def sos_show(args, style_args):
+    env.verbosity = args.verbosity
     try:
         transcript_file = os.path.join('.sos/{}.transcript'.format(os.path.basename(args.script)))
         with open(transcript_file, 'w') as transcript:
@@ -54,16 +56,20 @@ def sos_show(args, workflow_args):
                 raise RuntimeError('workflow {} is not available due to syntax error in script {}'.format(args.workflow, args.script))
             workflow = script.workflow(args.workflow)
             if args.html is not None:
-                workflow_to_html(workflow, args.script, args.html)
+                workflow_to_html(workflow, args.script, args.html, style_args)
             elif args.markdown is not None:
-                workflow_to_markdown(workflow, args.script, args.markdown)
+                workflow_to_markdown(workflow, args.script, args.markdown, style_args)
+            elif args.term:
+                workflow_to_term(workflow, args.script, **style_args)
             else:
                 workflow.show()
         else:
             if args.html is not None:
-                script_to_html(transcript_file, args.script, args.html)
+                script_to_html(transcript_file, args.script, args.html, style_args)
             elif args.markdown is not None:
-                script_to_markdown(transcript_file, args.script, args.markdown)
+                script_to_markdown(transcript_file, args.script, args.markdown, style_args)
+            elif args.term:
+                script_to_term(transcript_file, args.script, style_args)
             else:
                 script.show()
     except Exception as e:

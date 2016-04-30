@@ -25,6 +25,7 @@ import sys
 import yaml
 import atexit
 import fnmatch
+import argparse
 import webbrowser
 import re
 
@@ -34,7 +35,8 @@ from textwrap import dedent
 from pygments import highlight
 from pygments.token import Name, Keyword
 from pygments.lexers import PythonLexer, TextLexer, get_lexer_by_name, guess_lexer
-from pygments.formatters import HtmlFormatter
+from pygments.formatters import HtmlFormatter, TerminalFormatter
+from pygments.styles import get_all_styles
 
 from .utils import env, get_traceback
 from .sos_script import SoS_Script, SoS_Workflow
@@ -628,13 +630,25 @@ def write_content(content_type, content, formatter, html):
 # Converter to HTML
 #
 #
-def script_to_html(transcript, script_file, html_file):
+def parse_html_args(style_args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--style', choices=list(get_all_styles()))
+    parser.add_argument('--linenos', action='store_true')
+    try:
+        args = parser.parse_args(style_args)
+    except Exception as e:
+        raise RuntimeError('Unrecognized style argument {}: {}'
+            .format(' '.join(style_args), e))
+    return vars(args)
+
+def script_to_html(transcript, script_file, html_file, style_args):
     '''
     Write a HTML file with the transcript of a SOS file.
     '''
     if html_file == '__BROWSER__':
         html_file = '.sos/{}.html'.format(os.path.basename(script_file))
-    formatter = ContinuousHtmlFormatter(cssclass="source", full=False, linenos=True)
+    formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
+        **parse_html_args(style_args))
     with open(html_file, 'w') as html:
         html.write(template_pre_style % os.path.basename(script_file))
         html.write(inline_css)
@@ -688,13 +702,14 @@ def script_to_html(transcript, script_file, html_file):
         env.logger.info('SoS script saved to {}'.format(html_file))
 
 
-def workflow_to_html(workflow, script_file, html_file):
+def workflow_to_html(workflow, script_file, html_file, style_args):
     '''
     Write a HTML file with the transcript of a SOS file.
     '''
     if html_file == '__BROWSER__':
         html_file = '.sos/{}.html'.format(os.path.basename(script_file))
-    formatter = ContinuousHtmlFormatter(cssclass="source", full=False, linenos=True)
+    formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
+        **parse_html_args(style_args))
     with open(html_file, 'w') as html:
         html.write(template_pre_style % ('{} - {}'.format(os.path.basename(script_file), workflow)))
         html.write(inline_css)
@@ -764,7 +779,7 @@ def markdown_content(content_type, content, fh):
 
 def script_to_markdown(transcript, script_file, markdown_file):
     '''
-    Write a HTML file with the transcript of a SOS file.
+    Write a markdown file with the transcript of a SOS file.
     '''
     with open(markdown_file, 'w') as markdown:
         # remove background definition so that we can use our own
@@ -805,7 +820,7 @@ def script_to_markdown(transcript, script_file, markdown_file):
 
 def workflow_to_markdown(workflow, script_file, markdown_file):
     '''
-    Write a HTML file with the transcript of a SOS file.
+    Write a markdown file with the transcript of a SOS file.
     '''
     with open(markdown_file, 'w') as markdown:
         if workflow.sections and workflow.sections[0].global_def:
@@ -828,3 +843,131 @@ def workflow_to_markdown(workflow, script_file, markdown_file):
             markdown_content('COMMENT', '\n\n', markdown)
     #
     env.logger.info('Workflow saved to {}'.format(markdown_file))
+
+
+#
+# Output to terminal
+#
+def term_content(content_type, content, formatter):
+    #
+    nlines = len(content)
+    content = dedent(''.join(content))
+    # ' ' to keep pygments from removing empty lines
+    # split, merge by \n can introduce one additional line
+    content = [' \n' if x == '' else x + '\n' for x in content.split('\n')][:nlines]
+    #
+    if content_type == 'COMMENT':
+        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+            SoS_Lexer(), formatter)))
+    elif content_type in ('REPORT', 'report'):
+        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+            TextLexer(), formatter)))
+    elif content_type == 'SECTION':
+        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+            SoS_Lexer(), formatter)))
+    elif content_type == 'DIRECTIVE':
+        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+            SoS_Lexer(), formatter)))
+    elif content_type == 'ASSIGNMENT':
+        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+            SoS_Lexer(), formatter)))
+    elif content_type == 'STATEMENT':
+        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+            SoS_Lexer(), formatter)))
+    elif content_type == 'ERROR':
+        sys.stdout.write('{}\n'.format(highlight(''.join(content),
+            SoS_Lexer(), formatter)))
+    else:
+        if content_type == 'run':
+            content_type = 'bash'
+        elif content_type == 'node':
+            content_type = 'JavaScript'
+        elif content_type == 'report':
+            content_type == 'text'
+        try:
+            lexer = get_lexer_by_name(content_type)
+        except:
+            try:
+                lexer = guess_lexer(''.join(content))
+            except:
+                lexer = TextLexer()
+        sys.stdout.write('{}\n'.format(highlight((''.join(content)),
+            lexer, formatter)))
+
+def parse_term_args(style_args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--bg', choices=['light', 'dark'])
+    parser.add_argument('--linenos', action='store_true')
+    try:
+        args = parser.parse_args(style_args)
+    except Exception as e:
+        raise RuntimeError('Unrecognized style argument {}: {}'
+            .format(' '.join(style_args), e))
+    return vars(args)
+
+def script_to_term(transcript, script_file, style_args):
+    '''
+    Write script to terminal
+    '''
+    sargs = parse_term_args(style_args)
+    env.logger.trace('Using style argument {}'.format(sargs))
+    formatter = TerminalFormatter(**sargs)
+    # remove background definition so that we can use our own
+    with open(transcript) as script:
+        content = []
+        content_type = None
+        content_number = None
+        next_type = None
+        for line in script:
+            line_type, line_no, script_line = line.split('\t', 3)
+            # Does not follow section because it has to be one line
+            if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
+                line_type = 'COMMENT'
+            if content_type == line_type or line_type == 'FOLLOW':
+                if next_type is not None and not script_line.rstrip().endswith(','):
+                    term_content(content_type, content, formatter)
+                    content = [script_line]
+                    content_type = next_type
+                    content_number = int(line_no)
+                    next_type = None
+                else:
+                    content.append(script_line)
+            else:
+                if content:
+                    term_content(content_type, content, formatter)
+                if line_type.startswith('SCRIPT_'):
+                    content_type = 'DIRECTIVE'
+                    next_type = line_type[7:]
+                else:
+                    content_type = line_type
+                content_number = int(line_no)
+                content = [script_line]
+    if content:
+        term_content(content_type, content, formatter)
+
+
+def workflow_to_term(workflow, script_file, style_args):
+    '''
+    Write a workflow to terminal
+    '''
+    sargs = parse_term_args(style_args)
+    env.logger.trace('Using style argument {}'.format(sargs))
+    formatter = TerminalFormatter(**sargs)
+    if workflow.sections and workflow.sections[0].global_def:
+        term_content('STATEMENT', workflow.sections[0].global_def, formatter)
+    #
+    for section in workflow.sections:
+        term_content('SECTION', '[{}_{}]'.format(section.name, section.index), formatter)
+        #
+        if section.comment:
+            term_content('COMMENT', '#' + section.comment, formatter)
+        for stmt in section.statements:
+            if stmt[0] == ':':
+                term_content('DIRECTIVE', '{} : {}'.format(stmt[1], stmt[2]), formatter)
+            elif stmt[0] == '=':
+                term_content('STATEMENT', '{} = {}'.format(stmt[1], stmt[2]), formatter)
+            else:
+                term_content('STATEMENT', stmt[1], formatter)
+        if section.task:
+            term_content('STATEMENT', section.task, formatter)
+        term_content('COMMENT', '\n\n', formatter)
