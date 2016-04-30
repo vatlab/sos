@@ -59,7 +59,7 @@ syn match sos_report "\(^! .*$\|^!$\)"
 " or another directive
 syn region script 
    \ start="^\(input\|output\|depends\|task\)\@!\w\+\s*:"ms=e+1,hs=e+1
-   \ end="\(^\[\s*\w\+.*\]\s*$\|^\w\+\s*:\)"me=s-1,he=s-1,re=s-1
+   \ end="\(^\[\s*\w\+.*\]\s*$\|^\w\+\s*:\|^! \|^!$\)"me=s-1,he=s-1,re=s-1
 
 highlight sos_section_head guibg='Purple' gui=none
 highlight sos_directive guifg='LightBlue' gui=none
