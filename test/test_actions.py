@@ -671,15 +671,17 @@ run: docker_image='compbio/ngseasy-fastqc:1.0-r001',
         # image from a saved file
         script = SoS_Script(r'''
 [0]
-run:   docker_image='hello-world'
+run:   docker_image='blang/busybox-bash'
 
 [1]
 run:
-    docker save hello-world > hello.tar
+    docker save blang/busybox-bash > hello.tar
     docker rmi -f hello-world
 
 [2]
-run: docker_image='hello-world', docker_file = 'hello.tar'
+run: docker_image='blang/busybox-bash', docker_file = 'hello.tar'
+
+    echo "a"
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).run()
