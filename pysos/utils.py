@@ -744,14 +744,17 @@ class frozendict(dict):
 
 #
 # A utility function that returns output of a command
-def get_output(cmd):
+def get_output(cmd, show_command=False, prompt='$ '):
     try:
         output = subprocess.check_output(cmd, shell=True).decode()
     except subprocess.CalledProcessError as e:
         if e.output.decode():
             env.logger.error(e.output.decode())
         raise RuntimeError(e)
-    return output
+    if show_command:
+        return '{}{}\n{}'.format(prompt, cmd, output)
+    else:
+        return output
 
 #
 # search a path and locate script and other files

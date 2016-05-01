@@ -95,6 +95,24 @@ ret = get_output('echo blah')
         self.assertEqual(env.sos_dict['test'].ret, 'blah\n')
         #
         script = SoS_Script(r"""
+[0: alias='test']
+ret = get_output('echo blah', show_command=True)
+""")
+        wf = script.workflow()
+        # should be ok
+        Sequential_Executor(wf).run()
+        self.assertEqual(env.sos_dict['test'].ret, '$ echo blah\nblah\n')
+        #
+        script = SoS_Script(r"""
+[0: alias='test']
+ret = get_output('echo blah', show_command=True, prompt='% ')
+""")
+        wf = script.workflow()
+        # should be ok
+        Sequential_Executor(wf).run()
+        self.assertEqual(env.sos_dict['test'].ret, '% echo blah\nblah\n')
+        #
+        script = SoS_Script(r"""
 [0]
 get_output('catmouse')
 """)
