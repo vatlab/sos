@@ -616,7 +616,23 @@ executed.append(_input)
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt'], ['a1.txt', 'a3.txt'], 
             ['a1.txt', 'a4.txt'], ['a2.txt', 'a3.txt'], ['a2.txt', 'a4.txt'], ['a3.txt', 'a4.txt']])
+        # group_by chunks specified as integers
+        script = SoS_Script('''
+[0]
 
+executed = []
+input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by=3
+
+executed.append(_input)
+
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
+        self.assertEqual(env.sos_dict['executed'],
+                         [['a1.txt', 'a2.txt', 'a3.txt'],
+                         ['a4.txt', 'a5.txt', 'a6.txt'],
+                         ['a7.txt', 'a8.txt', 'a9.txt']])
 
     def testSectionActions(self):
         '''Test actions of sections'''

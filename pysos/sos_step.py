@@ -98,7 +98,14 @@ def handle_input_group_by(ifiles, group_by):
         return [list(x) for x in zip(f1, f2)]
     elif group_by == 'combinations':
         return [list(x) for x in combinations(ifiles, 2)]
-
+    elif isinstance(group_by, int):
+        if len(ifiles) % group_by != 0:
+            raise ValueError('Size of group_by block has to be divisible by the number of input files: {} provided'
+                .format(len(ifiles)))
+        group_by = max(1, group_by)
+        return [ifiles[i:i + group_by] for i in range(0, len(ifiles), group_by)]
+    else:
+        raise ValueError('Unsupported group_by option ``{}``!'.format(group_by))
 
 def handle_input_paired_with(paired_with, ifiles, _groups, _vars):
     '''Handle input option paired_with'''
