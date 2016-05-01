@@ -98,7 +98,8 @@ def handle_input_group_by(ifiles, group_by):
         return [list(x) for x in zip(f1, f2)]
     elif group_by == 'combinations':
         return [list(x) for x in combinations(ifiles, 2)]
-    elif isinstance(group_by, int):
+    elif isinstance(group_by, int) or group_by.isdigit():
+        group_by = int(group_by)
         if len(ifiles) % group_by != 0:
             raise ValueError('Size of group_by block has to be divisible by the number of input files: {} provided'
                 .format(len(ifiles)))
@@ -601,7 +602,7 @@ class Step_Executor:
                 else:
                     self._groups, self._vars = directive_input(*args, **kwargs)
             except Exception as e:
-                if '__execute_errors__' in env.sos_dict and env.sos_dict['__execute_errors__'].errprs:
+                if '__execute_errors__' in env.sos_dict and env.sos_dict['__execute_errors__'].errors:
                     raise env.sos_dict['__execute_errors__']
                 else:
                     raise RuntimeError('Failed to process step {} : {} ({})'.format(key, value.strip(), e))
