@@ -948,7 +948,7 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
     if env.run_mode == 'dryrun':
         return check_command('Rscript')
     elif env.run_mode == 'prepare':
-        return check_R_library('knitr')
+        return check_R_library('knitr') + check_R_library('rmarkdown')
     #
     # in run mode, collect report and call Rmarkdown
     sos_script = env.sos_dict['__step_context__'].filename
