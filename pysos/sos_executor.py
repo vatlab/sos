@@ -175,6 +175,7 @@ class Base_Executor:
             env.sos_dict.set('__args__', args)
             # initial values
             env.sos_dict.set('SOS_VERSION', __version__)
+            env.sos_dict.set('SOS_SCRIPT', self.workflow.sections[0].context.filename)
             cfg = {}
             sos_config_file = os.path.expanduser('~/.sos/config.json')
             if os.path.isfile(sos_config_file):
@@ -227,6 +228,8 @@ class Base_Executor:
             env.logger.info('Report saved to {}'.format(self.report))
         
     def run(self, args=[], nested=False, cmd_name='', config_file=None):
+        if not self.workflow.sections:
+            return
         self.setup(args, nested, cmd_name, config_file)
         self.execute(args, nested, cmd_name, config_file)
         self.finalize()

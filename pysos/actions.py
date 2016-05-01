@@ -808,15 +808,28 @@ def docker_commit(**kwargs):
     return 0
 
 @SoS_Action(run_mode=['dryrun', 'run'])
-def report(script, **kwargs):
-    if 'filename' in kwargs:
-        report_file = kwargs['filename']
+def report(script=None, from_file=None, to_file=None, mode='a', **kwargs):
+    if to_file is not None:
+        if not to_file:
+            raise RuntimeError('Invalid parameter to_file "{}"'.format(to_file))
+        report_file = to_file
     else:
         env.logger.trace('report {} to {}'.format(shortRepr(script), env.sos_dict['__step_report__']))
         report_file = env.sos_dict['__step_report__']
+    #
+    content = ''
+    if script is not None:
+        content = script
+    if from_file is not None:
+        try:
+            with open(from_file) as rep:
+                content += rep.read().decode()
+        except Exception as e:
+            raise RuntimeError('Failed to import report from {}: {}'.format(from_file, e))
+    #
     # write report file (the ${} expressions must have been interpolated.
-    with open(report_file, kwargs['mode'] if 'mode' in kwargs else 'a') as md:
-        md.write(script)
+    with open(report_file, mode)as md:
+        md.write(content)
 
 
 @SoS_Action(run_mode=['dryrun', 'run'])
@@ -920,15 +933,15 @@ def pandoc(script=None, output=None, **kwargs):
 
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
-def Rmarkdown(script=None, output=None, **kwargs):
+def Rmarkdown(script=None, output_file=None, **kwargs):
     '''This action can be used in three ways
 
     Rmarkdown:   outputfile='report.html'
       script
 
-    Rmarkdown(filename='report.sos', outputfile='report.html')
+    Rmarkdown(filename='report.sos', output_file='report.html')
 
-    Rmarkdown(outputfile='report.html')
+    Rmarkdown(output_file='report.html')
 
     '''
     # if in dryrun mode, check for Rmarkdown command
@@ -960,13 +973,11 @@ def Rmarkdown(script=None, output=None, **kwargs):
                 with open(step_report, 'r') as md:
                     combined.write(md.read())
     # 
-    arg_from = '--from={}'.format(kwargs['from']) if 'from' in kwargs else ''
-    arg_to = '--to={}'.format(kwargs['to']) if 'to' in kwargs else ''
-    if output is None:
-        raise RuntimeError('Parameter output is required for action Rmarkdown')
-    elif not isinstance(output, str):
-        raise RuntimeError('A filename is expected, {} provided'.format(output))
-    arg_output = '--output={}'.format(shlex.quote(output))
+    arg_output_format = ', output_format={}'.format(kwargs['output_format']) if 'output_format' in kwargs else ''
+    if output_file is None:
+        raise RuntimeError('Parameter output_file is required for action Rmarkdown')
+    elif not isinstance(output_file, str):
+        raise RuntimeError('A filename is expected, {} provided'.format(output_file))
     extra_args = ''
     if 'extra_args' in kwargs:
         ea = kwargs['extra_args']
@@ -975,21 +986,29 @@ def Rmarkdown(script=None, output=None, **kwargs):
         elif isintace(ea, Sequence):
             extra_args = ' '.join(list(ea))
         elif isinstance(ea, dict):
-            extra_args = ' '.join('--{}={}'.format(k,v) for k,v in ea.items())
+            extra_args = ' '.join('{}={:r}'.format(k,v) for k,v in ea.items())
+        extra_args = ', ' + extra_args
     #
-    command = 'Rmarkdown {} {} {} {} {{}}'.format(arg_from, arg_to, arg_output, extra_args)
+    #   render(input, output_format = NULL, output_file = NULL, output_dir = NULL,
+    #        output_options = NULL, intermediates_dir = NULL,
+    #        runtime = c("auto", "static", "shiny"),
+    #        clean = TRUE, params = NULL, knit_meta = NULL, envir = parent.frame(),
+    #        run_pandoc = TRUE, quiet = FALSE, encoding = getOption("encoding"))
+    command = '''Rscript -e "rmarkdown::render({{}}, output_file={!r} {} {})" '''.format(
+        output_file, arg_output_format, extra_args)
     try:
-        cmd = command.replace('{}', shlex.quote(script_file))
+        cmd = command.replace('{}', '{!r}'.format(script_file))
         p = subprocess.Popen(cmd, shell=True)
         env.register_process(p.pid, 'Runing {}'.format(script_file))
+        env.logger.info(cmd)
         ret = p.wait()
     finally:
         env.deregister_process(p.pid)
         os.remove(script_file)
     if ret != 0:
-        temp_file = os.path.join('.sos/{}_{}.Rmd'.format(self.interpreter.split()[0], os.getpid()))
+        temp_file = os.path.join('.sos/R_{}.Rmd'.format(os.getpid()))
         shutil.copyfile(script_file, temp_file)
-        cmd = command.replace('{}', shlex.quote(temp_file))
+        cmd = command.replace('{}', '{!r}'.format(temp_file))
         raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" to test it.'
             .format(temp_file, cmd))
-    env.logger.info('Report saved to {}'.format(output))
+    env.logger.info('Report saved to {}'.format(output_file))
