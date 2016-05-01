@@ -102,11 +102,15 @@ class DockerClient:
 
     def total_memory(self, image='ubuntu'):
         '''Get the available ram fo the docker machine in Kb'''
-        ret = subprocess.check_output(
-            '''docker run -t {} cat /proc/meminfo  | grep MemTotal'''.format(image),
-            shell=True, stdin=subprocess.DEVNULL)
-        # ret: MemTotal:       30208916 kB
-        self.tot_mem = int(ret.split()[1])
+        try:
+            ret = subprocess.check_output(
+                '''docker run -t {} cat /proc/meminfo  | grep MemTotal'''.format(image),
+                shell=True, stdin=subprocess.DEVNULL)
+            # ret: MemTotal:       30208916 kB
+            self.tot_mem = int(ret.split()[1])
+        except:
+            # some system does not have cat or grep
+            self.tot_mem = None
         return self.tot_mem
 
     def _is_image_avail(self, image):
@@ -316,7 +320,10 @@ class DockerClient:
                 elif ret == 137:
                     if not hasattr(self, 'tot_mem'):
                         self.tot_mem = self.total_memory(image)
-                    raise RuntimeError('Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(self.tot_mem/1024/1024) + msg)
+                    if self.tot_mem is None:
+                        raise RuntimeError('Script killed by docker. ' + msg)
+                    else:
+                        raise RuntimeError('Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(self.tot_mem/1024/1024) + msg)
                 else:
                     raise RuntimeError('Executing script in docker returns an error (exitcode={}). '.format(ret) + msg)
         return 0
@@ -342,11 +349,12 @@ def SoS_Action(run_mode='run'):
                 docker.pull(runtime_options['docker_image'])
                 if env.run_mode == 'prepare':
                     mem = docker.total_memory(runtime_options['docker_image'])
-                    if mem < 4000000: # < 4G
-                        env.logger.warning('Docker machine has {:.1f} GB of total memory and might not be enough for your operation. Please refer to https://github.com/bpeng2000/SOS/wiki/SoS-Docker-guide to adjust the docker machine if needed.'
-                            .format(mem/1024/1024))
-                    else:
-                        env.logger.debug('Docker machine has {:.1f} GB of total memory ram'.format(mem/1024/1024))
+                    if mem is not None:
+                        if mem < 4000000: # < 4G
+                            env.logger.warning('Docker machine has {:.1f} GB of total memory and might not be enough for your operation. Please refer to https://github.com/bpeng2000/SOS/wiki/SoS-Docker-guide to adjust the docker machine if needed.'
+                                .format(mem/1024/1024))
+                        else:
+                            env.logger.debug('Docker machine has {:.1f} GB of total memory ram'.format(mem/1024/1024))
             if env.run_mode not in run_mode:
                 # return dynamic expression when not in run mode, that is to say
                 # the script logic cannot rely on the result of the action
