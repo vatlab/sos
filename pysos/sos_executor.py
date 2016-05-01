@@ -22,6 +22,7 @@
 import os
 import sys
 import yaml
+import glob
 import shutil
 import argparse
 
@@ -31,7 +32,7 @@ from collections.abc import Sequence
 
 from . import __version__
 from .sos_step import Step_Executor
-from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, frozendict
+from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, frozendict, natural_keys
 from .sos_eval import Undetermined, SoS_eval, SoS_exec
 
 __all__ = []
@@ -72,9 +73,9 @@ class ExecuteError(Error):
 
 
 class Base_Executor:
-    def __init__(self, workflow):
+    def __init__(self, workflow, report):
         self.workflow = workflow
-
+        self.report = report
 
     def _parse_error(self, msg):
         '''This function will replace error() function in argparse module so that SoS
@@ -155,7 +156,7 @@ class Base_Executor:
             # protect variables from being further modified
             env.readonly_vars.add(k)
 
-    def run(self, args=[], nested=False, cmd_name='', config_file=None):
+    def setup(self, args=[], nested=False, cmd_name='', config_file=None):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -211,19 +212,36 @@ class Base_Executor:
             shutil.rmtree('.sos/report')
         os.makedirs('.sos/report')
 
+    def finalize(self):
+        # collect reports and write to a file
+        if env.run_mode != 'run':
+            return
+        step_reports = glob.glob('.sos/report/*')
+        step_reports.sort(key=natural_keys)
+        # merge the files
+        if step_reports:
+            with open(self.report, 'w') as combined:
+                for step_report in step_reports:
+                    with open(step_report, 'r') as md:
+                        combined.write(md.read()) 
+            env.logger.info('Report saved to {}'.format(self.report))
+        
+    def run(self, args=[], nested=False, cmd_name='', config_file=None):
+        self.setup(args, nested, cmd_name, config_file)
+        self.execute(args, nested, cmd_name, config_file)
+        self.finalize()
 
 class Sequential_Executor(Base_Executor):
     #
     # A SoS workflow with multiple steps
     #
-    def __init__(self, workflow):
-        Base_Executor.__init__(self, workflow)
+    def __init__(self, workflow, report=None):
+        Base_Executor.__init__(self, workflow, report)
 
-    def run(self, args=[], nested=False, cmd_name='', config_file=None):
+    def execute(self, args=[], nested=False, cmd_name='', config_file=None):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
-        Base_Executor.run(self, args, nested, cmd_name, config_file)
         #
         # process step of the pipelinp
         #

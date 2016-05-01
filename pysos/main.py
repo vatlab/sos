@@ -160,7 +160,10 @@ def sos_run(args, workflow_args):
         try:
             script = SoS_Script(filename=args.script)
             workflow = script.workflow(args.workflow)
-            executor = Sequential_Executor(workflow)
+            if args.__report__:
+                executor = Sequential_Executor(workflow, report=args.__report__)
+            else:
+                executor = Sequential_Executor(workflow, report='.sos/{}.md'.format(os.path.basename(args.script)))
             executor.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
         except Exception as e:
             if args.verbosity and args.verbosity > 2:
