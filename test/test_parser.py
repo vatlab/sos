@@ -633,6 +633,32 @@ executed.append(_input)
                          [['a1.txt', 'a2.txt', 'a3.txt'],
                          ['a4.txt', 'a5.txt', 'a6.txt'],
                          ['a7.txt', 'a8.txt', 'a9.txt']])
+        # numbr of files should be divisible by group_by
+        script = SoS_Script('''
+[0]
+
+executed = []
+input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by=4
+
+executed.append(_input)
+
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
+        # incorrect value causes an exception
+        script = SoS_Script('''
+[0]
+
+executed = []
+input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by='something'
+
+executed.append(_input)
+
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
 
     def testSectionActions(self):
         '''Test actions of sections'''
