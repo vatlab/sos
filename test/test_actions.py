@@ -658,7 +658,7 @@ run:   docker_image='blang/busybox-bash'
 [1]
 run:
     docker save blang/busybox-bash > hello.tar
-    docker rmi -f hello-world
+    docker rmi -f blang/busybox-bash
 
 [2]
 run: docker_image='blang/busybox-bash', docker_file = 'hello.tar'
