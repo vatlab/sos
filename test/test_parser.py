@@ -188,11 +188,13 @@ string """
         self.assertRaises(ParsingError, SoS_Script,
             '''
 [parameters]
+# comment
 input: 'filename' 
 ''')
         self.assertRaises(ParsingError, SoS_Script,
             '''
 [parameters]
+# comment
 func()
 ''')    
         script = SoS_Script(filename='scripts/section1.sos')
@@ -219,6 +221,8 @@ a = [1, 2]
         #
         script = SoS_Script('''
 [parameters]
+# comment
+# comment
 a = ['a.txt', 'b.txt']
 [0]
 ''')    
@@ -237,6 +241,7 @@ a = ['a.txt', 'b.txt']
 a="100"
 
 [parameters]
+# comment
 b=str(int(a)+1)
 ''')
         wf = script.workflow()
@@ -258,6 +263,7 @@ b=a+1
 a=100
 
 [parameters]
+# comment
 b=a+1
 ''')
         wf = script.workflow()
@@ -279,6 +285,8 @@ b=a+1.
 a=100
 
 [parameters]
+# comment
+
 b='${a+1}'
 ''')
         wf = script.workflow()
@@ -303,6 +311,7 @@ b=
         # if it is a type, must provide value
         script = SoS_Script('''
 [parameters]
+# comment
 b = int
 ''')
         wf = script.workflow()
@@ -340,6 +349,7 @@ b = list
         # bool
         script = SoS_Script('''
 [parameters]
+# comment
 b = bool
 ''')
         wf = script.workflow()

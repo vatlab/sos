@@ -559,16 +559,21 @@ class SoS_Script:
                 else:
                     # in the parameter section, the comments are description
                     # of parameters and are all significant
-                    if cursect.category() == 'script':
+                    if cursect.is_parameters or cursect.empty():
+                        cursect.add_comment(line)
+                        if self.transcript:
+                            self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                    elif cursect.category() == 'script':
                         cursect.extend(line)
                         if self.transcript:
                             self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                     elif cursect.category() in ('statement', 'expression') and cursect.isValid():
+                        # this can be comment or back comment
                         cursect.add_comment(line)
                         if self.transcript:
                             self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
                     else:
-                        cursect.extend(line)
+                        # ignored.
                         if self.transcript:
                             self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                 continue
