@@ -81,6 +81,9 @@ if __name__ == '__main__':
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary 
             CONF in the SoS script being executed.''')
+    parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
+        help='''Name of file a file that record output from report lines
+            (lines starts with !) and report action of the script.''')
     runmode = parser.add_argument_group(title='Run mode options',
         description='''SoS scripts are by default executed in run mode where all
             the script is run in dryrun mode to check syntax error, prepare mode

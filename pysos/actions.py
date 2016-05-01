@@ -41,7 +41,7 @@ from docker import Client
 from collections.abc import Sequence
 from docker.utils import kwargs_from_env
 import multiprocessing as mp
-from .utils import env, getTermWidth, ProgressBar, shortRepr
+from .utils import env, getTermWidth, ProgressBar, shortRepr, natural_keys
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .signature import FileSignature, fileMD5
@@ -817,14 +817,6 @@ def report(script, **kwargs):
     # write report file (the ${} expressions must have been interpolated.
     with open(report_file, kwargs['mode'] if 'mode' in kwargs else 'a') as md:
         md.write(script)
-
-def natural_keys(text):
-    '''
-    alist.sort(key=natural_keys) sorts in human order
-    http://nedbatchelder.com/blog/200712/human_sorting.html
-    (See Toothy's implementation in the comments)
-    '''
-    return [ int(c) if c.isdigit() else c for c in re.split('(\d+)', text) ]
 
 
 @SoS_Action(run_mode=['dryrun', 'run'])

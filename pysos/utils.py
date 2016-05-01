@@ -744,14 +744,17 @@ class frozendict(dict):
 
 #
 # A utility function that returns output of a command
-def get_output(cmd):
+def get_output(cmd, show_command=False, prompt='$ '):
     try:
         output = subprocess.check_output(cmd, shell=True).decode()
     except subprocess.CalledProcessError as e:
         if e.output.decode():
             env.logger.error(e.output.decode())
         raise RuntimeError(e)
-    return output
+    if show_command:
+        return '{}{}\n{}'.format(prompt, cmd, output)
+    else:
+        return output
 
 #
 # search a path and locate script and other files
@@ -830,3 +833,11 @@ def text_repr(text):
     else:
         # cannot really use triple quote in this case
         return repr(text)
+
+def natural_keys(text):
+    '''
+    alist.sort(key=natural_keys) sorts in human order
+    http://nedbatchelder.com/blog/200712/human_sorting.html
+    (See Toothy's implementation in the comments)
+    '''
+    return [ int(c) if c.isdigit() else c for c in re.split('(\d+)', text) ]
