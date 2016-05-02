@@ -275,8 +275,9 @@ class RuntimeEnvironments(object):
         # signature mode can be
         #
         # default              (save signature, skip if signature match)
-        # ignore_signature     (ignore existing signature but still saves signature)
-        # assert_signature     (should
+        # ignore               (ignore existing signature but still saves signature)
+        # assert               (verify existing signature and fail if signature mismatch)
+        # construct            (reconstruct signature from existing output files)
         self.sig_mode = 'default'
         #
         # global dictionaries used by SoS during the
