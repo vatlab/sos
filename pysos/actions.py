@@ -41,6 +41,8 @@ from docker import Client
 from collections.abc import Sequence
 from docker.utils import kwargs_from_env
 import multiprocessing as mp
+import pygments.token as token
+from pygments.lexers import get_lexer_for_filename, guess_lexer
 from .utils import env, getTermWidth, ProgressBar, shortRepr, natural_keys
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
@@ -366,10 +368,11 @@ def SoS_Action(run_mode='run'):
 
 
 class SoS_ExecuteScript:
-    def __init__(self, script, interpreter, suffix):
+    def __init__(self, script, interpreter, suffix, validator=None):
         self.script = script
         self.interpreter = interpreter
         self.suffix = suffix
+        self.validator = validator
 
     def run(self, **kwargs):
         if '{}' not in self.interpreter:
@@ -380,6 +383,24 @@ class SoS_ExecuteScript:
             env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
             with open(debug_script_file, 'w') as sfile:
                 sfile.write(self.script)
+            if self.validator is not None:
+                try:
+                    self.validator(self.script, filename=debug_script_file)
+                except Exception as e:
+                    env.logger.warning('Script {} might contain error: {}'.format(debug_script_file, e))
+            else: # try to use a lexer to validate the code
+                try:
+                    lexer = get_lexer_for_filename(debug_script_file)
+                except:
+                    try:
+                        lexer = guess_lexer(self.script)
+                    except:
+                        lexer = None
+                if lexer is not None:
+                    for item in lexer.get_tokens(self.script):
+                        if item[0] == token.Error:
+                            env.logger.warning('Script {} contains unrecognized token {}'
+                                .format(debug_script_file, item[1]))
             return
         if 'docker_image' in runtime_options:
             docker = DockerClient()
@@ -669,9 +690,12 @@ def sh(script, **kwargs):
 def python(script, **kwargs):
     return SoS_ExecuteScript(script, 'python', '.py').run(**kwargs)
 
+def validatePython3(script, filename=None):
+    compile(script, filename=filename, mode='exec')
+    
 @SoS_Action(run_mode=['prepare', 'run'])
 def python3(script, **kwargs):
-    return SoS_ExecuteScript(script, 'python3', '.py').run(**kwargs)
+    return SoS_ExecuteScript(script, 'python3', '.py', validatePython3).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run'])
 def perl(script, **kwargs):
