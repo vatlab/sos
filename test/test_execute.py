@@ -125,10 +125,13 @@ output: add_a(['${x}_${y}_process.txt' for x,y in zip(name, model)])
     def testGlobalVars(self):
         '''Test SoS defined variables'''
         script = SoS_Script(r"""
+[0]
 """)
         wf = script.workflow()
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['SOS_VERSION'], __version__)
+        # not from a file
+        self.assertEqual(env.sos_dict['SOS_SCRIPT'], None)
 
     def testFuncDef(self):
         '''Test defintion of function that can be used by other steps'''
@@ -312,10 +315,10 @@ cp ${_input} ${_dest}
         env.sig_mode = 'assert'
         Sequential_Executor(wf).run()
         # add some other variable?
-        script = SoS_Script('comment = 1\n' + text)
-        wf = script.workflow()
-        env.sig_mode = 'assert'
-        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
+        #script = SoS_Script('comment = 1\n' + text)
+        #wf = script.workflow()
+        #env.sig_mode = 'assert'
+        #self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
 
     def testReexecution(self):
         '''Test -f option of sos run'''

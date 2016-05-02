@@ -387,6 +387,7 @@ a = 5
             args=['--b', 'file'])
         # and for cases without parameter section
         script = SoS_Script('''
+[0]
 ''')
         wf = script.workflow()
         self.assertRaises(RuntimeError, Sequential_Executor(wf).run,
