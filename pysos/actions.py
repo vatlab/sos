@@ -375,6 +375,12 @@ class SoS_ExecuteScript:
         if '{}' not in self.interpreter:
             self.interpreter += ' {}'
         runtime_options = env.sos_dict.get('_runtime', {})
+        debug_script_file =  os.path.join('.sos/{}{}'.format(env.sos_dict['step_name'], self.suffix))
+        if env.run_mode == 'prepare':
+            env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
+            with open(debug_script_file, 'w') as sfile:
+                sfile.write(self.script)
+            return
         if 'docker_image' in runtime_options:
             docker = DockerClient()
             docker.run(runtime_options['docker_image'], self.script, self.interpreter, self.suffix,
@@ -392,12 +398,11 @@ class SoS_ExecuteScript:
                 env.deregister_process(p.pid)
                 os.remove(script_file)
             if ret != 0:
-                script_file = os.path.join('.sos/{}_{}{}'.format(self.interpreter.split()[0].split('/')[-1], os.getpid(), self.suffix))
-                with open(script_file, 'w') as sfile:
+                with open(debug_script_file, 'w') as sfile:
                     sfile.write(self.script)
-                cmd = self.interpreter.replace('{}', shlex.quote(script_file))
-                raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" to test it.'
-                    .format(script_file, cmd))
+                cmd = self.interpreter.replace('{}', shlex.quote(debug_script_file))
+                raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" under {} to test it.'
+                    .format(debug_script_file, cmd, os.getcwd()))
 
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
@@ -421,7 +426,7 @@ def sos_run(workflow, source={}):
         raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
     return Sequential_Executor(wf).run(args=env.sos_dict['__args__'], nested=True)
 
-@SoS_Action(run_mode=['run'])
+@SoS_Action(run_mode=['prepare', 'run'])
 def execute_script(script, interpreter, suffix, **kwargs):
     return SoS_ExecuteScript(script, interpreter, suffix).run(**kwargs)
 
@@ -636,55 +641,55 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
                     return 1
     return 0
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['prepare', 'run'])
 def run(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/bash', '.sh').run(**kwargs)
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['prepare', 'run'])
 def bash(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/bash', '.sh').run(**kwargs)
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['prepare', 'run'])
 def csh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/csh', '.csh').run(**kwargs)
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['prepare', 'run'])
 def tcsh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/tcsh', '.sh').run(**kwargs)
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['prepare', 'run'])
 def zsh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/zsh', '.zsh').run(**kwargs)
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['prepare', 'run'])
 def sh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/sh', '.sh').run(**kwargs)
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['prepare', 'run'])
 def python(script, **kwargs):
     return SoS_ExecuteScript(script, 'python', '.py').run(**kwargs)
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['prepare', 'run'])
 def python3(script, **kwargs):
     return SoS_ExecuteScript(script, 'python3', '.py').run(**kwargs)
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['prepare', 'run'])
 def perl(script, **kwargs):
     return SoS_ExecuteScript(script, 'perl', '.pl').run(**kwargs)
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['prepare', 'run'])
 def ruby(script, **kwargs):
     return SoS_ExecuteScript(script, 'ruby', '.rb').run(**kwargs)
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['prepare', 'run'])
 def node(script, **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['prepare', 'run'])
 def JavaScript(script, **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['prepare', 'run'])
 def R(script, **kwargs):
     return SoS_ExecuteScript(script, 'Rscript --default-packages='\
                              'methods,utils,stats,grDevices,graphics ', '.R').run(**kwargs)
