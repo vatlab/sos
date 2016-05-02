@@ -747,7 +747,7 @@ def check_R_library(name, version = None):
     installed from github if not available, else from cran or bioc
     '''
     if env.run_mode == 'dryrun':
-        check_command('R')
+        check_command('R', quiet=True)
         return
     output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
     if len(glob_wildcards('{repo}/{pkg}', [name])['repo']):
@@ -821,7 +821,12 @@ def check_R_library(name, version = None):
             '''.format(repr(x), y)
         version_script += 'write(paste(package, cur_version, "VERSION_MISMATCH"), file = {})'.\
           format(repr(output_file))
-    SoS_ExecuteScript(install_script + version_script, 'Rscript --default-packages=utils', '.R').run()
+    # temporarily change the run mode to run to execute script
+    try:
+        env.run_mode = 'run'
+        SoS_ExecuteScript(install_script + version_script, 'Rscript --default-packages=utils', '.R').run()
+    finally:
+        env.run_mode = 'dryrun'
     ret_val = 0
     with open(output_file) as tmp:
         for line in tmp:
