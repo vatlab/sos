@@ -46,7 +46,7 @@ from pygments.lexers import get_lexer_for_filename, guess_lexer
 from .utils import env, getTermWidth, ProgressBar, shortRepr, natural_keys
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
-from .signature import FileSignature, fileMD5
+from .signature import FileSignature, fileMD5, textMD5
 from .sos_executor import Sequential_Executor
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
@@ -671,48 +671,60 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
                     return 1
     return 0
 
+def validate_with_command(cmd):
+    def func(script, filename):
+        '''validate syntax of script with a command'''
+        try:
+            env.logger.trace('Running {} to check syntax of {}'.format(cmd + ' ' + shlex.quote(filename), filename))
+            subprocess.check_output(cmd + ' ' + shlex.quote(filename), stderr=subprocess.STDOUT, shell=True)
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError('Syntax error: {}'.format(e.output.decode()))
+        return 0
+    #
+    return func
+
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def run(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/bash', '.sh').run(**kwargs)
+    return SoS_ExecuteScript(script, '/bin/bash', '.sh', validate_with_command('/bin/bash -n')).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def bash(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/bash', '.sh').run(**kwargs)
+    return SoS_ExecuteScript(script, '/bin/bash', '.sh', validate_with_command('/bin/bash -n')).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def csh(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/csh', '.csh').run(**kwargs)
+    return SoS_ExecuteScript(script, '/bin/csh', '.csh', validate_with_command('/bin/csh -n')).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def tcsh(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/tcsh', '.sh').run(**kwargs)
+    return SoS_ExecuteScript(script, '/bin/tcsh', '.sh', validate_with_command('/bin/tcsh -n')).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def zsh(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/zsh', '.zsh').run(**kwargs)
+    return SoS_ExecuteScript(script, '/bin/zsh', '.zsh', validate_with_command('/bin/zsh -n')).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def sh(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/sh', '.sh').run(**kwargs)
+    return SoS_ExecuteScript(script, '/bin/sh', '.sh', validate_with_command('/bin/sh -n')).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def python(script, **kwargs):
-    return SoS_ExecuteScript(script, 'python', '.py').run(**kwargs)
+    return SoS_ExecuteScript(script, 'python', '.py', validate_with_command('python -m py_compile')).run(**kwargs)
 
-def validatePython3(script, filename=None):
+def validate_python3(script, filename=None):
     compile(script, filename=filename, mode='exec')
     
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def python3(script, **kwargs):
-    return SoS_ExecuteScript(script, 'python3', '.py', validatePython3).run(**kwargs)
+    return SoS_ExecuteScript(script, 'python3', '.py', validate_python3).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def perl(script, **kwargs):
-    return SoS_ExecuteScript(script, 'perl', '.pl').run(**kwargs)
+    return SoS_ExecuteScript(script, 'perl', '.pl', validate_with_command('perl -c')).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def ruby(script, **kwargs):
-    return SoS_ExecuteScript(script, 'ruby', '.rb').run(**kwargs)
+    return SoS_ExecuteScript(script, 'ruby', '.rb', validate_with_command('ruby -c')).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def node(script, **kwargs):
