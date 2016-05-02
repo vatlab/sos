@@ -781,7 +781,7 @@ def locate_script(filename, start=''):
     #
     # a search path
     pathes = [start]
-    sos_config_file = os.path.expanduser('~/.sos/config.json')
+    sos_config_file = os.path.expanduser('~/.sos/config.yaml')
     if os.path.isfile(sos_config_file):
         try:
             with open(sos_config_file) as config:
@@ -791,7 +791,7 @@ def locate_script(filename, start=''):
         #
         pathes.extend(cfg.get('sos_path', []))
     #
-    sos_config_file = '.sos/config.json'
+    sos_config_file = '.sos/config.yaml'
     if os.path.isfile(sos_config_file):
         try:
             with open(sos_config_file) as config:

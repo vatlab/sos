@@ -487,7 +487,7 @@ class Step_Executor:
         '''return everything that might affect the execution of the step
         namely, global process, step definition etc to create a unique
         signature that might will be changed with the change of SoS script.'''
-        result = self.step.global_def
+        result = '' #self.step.global_def
         for statement in self.step.statements:
             if statement[0] in (':', '='):
                 result += '{}: {}\n'.format(statement[1], statement[2])

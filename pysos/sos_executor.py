@@ -177,7 +177,7 @@ class Base_Executor:
             env.sos_dict.set('SOS_VERSION', __version__)
             env.sos_dict.set('SOS_SCRIPT', self.workflow.sections[0].context.filename)
             cfg = {}
-            sos_config_file = os.path.expanduser('~/.sos/config.json')
+            sos_config_file = os.path.expanduser('~/.sos/config.yaml')
             if os.path.isfile(sos_config_file):
                 try:
                     with open(sos_config_file) as config:
@@ -186,7 +186,7 @@ class Base_Executor:
                     raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
             #
             # local config file
-            sos_config_file = '.sos/config.json'
+            sos_config_file = '.sos/config.yaml'
             if os.path.isfile(sos_config_file):
                 try:
                     with open(sos_config_file) as config:
@@ -220,7 +220,7 @@ class Base_Executor:
         step_reports = glob.glob('.sos/report/*')
         step_reports.sort(key=natural_keys)
         # merge the files
-        if step_reports:
+        if step_reports and self.report:
             with open(self.report, 'w') as combined:
                 for step_report in step_reports:
                     with open(step_report, 'r') as md:

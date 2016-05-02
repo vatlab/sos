@@ -181,11 +181,11 @@ def sos_config(args, workflow_args):
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
     #
     if args.__global_config__:
-        config_file = os.path.expanduser('~/.sos/config.json')
+        config_file = os.path.expanduser('~/.sos/config.yaml')
     elif args.__config_file__:
         config_file = os.path.expanduser(args.__config_file__)
     else:
-        config_file = os.path.expanduser('.sos/config.json')
+        config_file = os.path.expanduser('.sos/config.yaml')
     if args.__get_config__ is not None:
         if os.path.isfile(config_file):
             try:
