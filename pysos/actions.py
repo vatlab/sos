@@ -375,6 +375,9 @@ class SoS_ExecuteScript:
         self.validator = validator
 
     def run(self, **kwargs):
+        if env.run_mode == 'dryrun':
+            check_command(self.interpreter.split()[0], quiet=True)
+            return
         if '{}' not in self.interpreter:
             self.interpreter += ' {}'
         runtime_options = env.sos_dict.get('_runtime', {})
@@ -447,22 +450,27 @@ def sos_run(workflow, source={}):
         raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
     return Sequential_Executor(wf).run(args=env.sos_dict['__args__'], nested=True)
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def execute_script(script, interpreter, suffix, **kwargs):
     return SoS_ExecuteScript(script, interpreter, suffix).run(**kwargs)
 
+_check_command_cache = {}
 @SoS_Action(run_mode=['dryrun', 'run'])
-def check_command(cmd, pattern = None):
+def check_command(cmd, pattern = None, quiet=False):
     '''Raise an exception if output of `cmd` does not match specified `pattern`.
     Multiple patterns can be specified as a list of patterns.
     When pattern is None, check the existence of command `cmd`
     and raise an error if command does not exist.'''
+    global _check_command_cache
+    if cmd in _check_command_cache:
+        return _check_command_cache[cmd]
     ret_val = 0
     if pattern is None and len(shlex.split(cmd)) == 1:
         name = shutil.which(cmd)
         if not name:
             raise RuntimeError('Command ``{}`` not found!'.format(cmd))
-        env.logger.info('Command ``{}`` is located as ``{}``.'.format(cmd, name))
+        if not quiet:
+            env.logger.info('Command ``{}`` is located as ``{}``.'.format(cmd, name))
     else:
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True, timeout=2).decode()
@@ -484,6 +492,7 @@ def check_command(cmd, pattern = None):
             if all([re.search(x, output, re.MULTILINE) is None for x in pattern]):
                 raise RuntimeError('Output of command ``{}`` does not match specified regular expression ``{}``.'
                     .format(cmd, ' or '.join(pattern)))
+    _check_command_cache[cmd] = ret_val
     return ret_val
 
 @SoS_Action(run_mode=['dryrun', 'run'])
@@ -662,69 +671,72 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
                     return 1
     return 0
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def run(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/bash', '.sh').run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def bash(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/bash', '.sh').run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def csh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/csh', '.csh').run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def tcsh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/tcsh', '.sh').run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def zsh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/zsh', '.zsh').run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def sh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/sh', '.sh').run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def python(script, **kwargs):
     return SoS_ExecuteScript(script, 'python', '.py').run(**kwargs)
 
 def validatePython3(script, filename=None):
     compile(script, filename=filename, mode='exec')
     
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def python3(script, **kwargs):
     return SoS_ExecuteScript(script, 'python3', '.py', validatePython3).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def perl(script, **kwargs):
     return SoS_ExecuteScript(script, 'perl', '.pl').run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def ruby(script, **kwargs):
     return SoS_ExecuteScript(script, 'ruby', '.rb').run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def node(script, **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def JavaScript(script, **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run'])
+@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def R(script, **kwargs):
     return SoS_ExecuteScript(script, 'Rscript --default-packages='\
                              'methods,utils,stats,grDevices,graphics ', '.R').run(**kwargs)
 
-@SoS_Action(run_mode=['prepare'])
+@SoS_Action(run_mode=['dryrun', 'prepare'])
 def check_R_library(name, version = None):
     '''Check existence and version match of R library.
     cran and bioc packages are unique yet might overlap with github.
     Therefore if the input name is {repo}/{pkg} the package will be
     installed from github if not available, else from cran or bioc
     '''
+    if env.run_mode == 'dryrun':
+        check_command('R')
+        return
     output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
     if len(glob_wildcards('{repo}/{pkg}', [name])['repo']):
         # package is from github
