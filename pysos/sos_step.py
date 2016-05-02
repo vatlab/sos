@@ -5,7 +5,7 @@
 # Please visit https://github.com/bpeng2000/SOS
 #
 # Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
-##
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -792,8 +792,11 @@ class Step_Executor:
                             # everything matches
                             env.logger.info('Construct signature from existing output files ``{}``'.format(shortRepr(env.sos_dict['output'])))
                             return self.collectResult(public_vars)
+                        else:
+                            env.logger.warning('Failed to reconstruct signature for {}'
+                                .format(shortRepr(env.sos_dict['output'])))
                     except Exception as e:
-                        env.logger.debug('Failed to reconstruct signature. {}'.format(e))
+                        env.logger.warning('Failed to reconstruct signature. {}'.format(e))
         else:
             signature = None
         #
