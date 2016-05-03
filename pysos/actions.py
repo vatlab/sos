@@ -738,8 +738,13 @@ def JavaScript(script, **kwargs):
 def R(script, **kwargs):
     return SoS_ExecuteScript(
         script, 'Rscript --default-packages=methods,utils,stats,grDevices,graphics ', '.R',
-        validate_with_command("Rscript -e \"lint = lintr::lint(commandArgs(trailingOnly=TRUE)[1]); "\
-                              "for (i in 1:length(lint)) if (lint[[i]]$'type' == 'error') stop(paste(lint[[i]]$'message', lint[[i]]$'line'))\"")).run(**kwargs)
+        validate_with_command('''Rscript -e 
+            'if (!require(lintr)) install.packages("lintr", repos="http://cran.us.r-project.org", quiet=TRUE);
+            lint = lintr::lint(commandArgs(trailingOnly=TRUE)[1]);
+            for (i in 1:length(lint)) 
+                if (lint[[i]]$"type" == "error")
+                    stop(paste(lint[[i]]$"message", lint[[i]]$"line"))'
+            '''.replace('\n', ' '))).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'prepare'])
 def check_R_library(name, version = None):
