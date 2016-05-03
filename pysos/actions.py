@@ -713,7 +713,7 @@ def python(script, **kwargs):
 
 def validate_python3(script, filename=None):
     compile(script, filename=filename, mode='exec')
-    
+
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def python3(script, **kwargs):
     return SoS_ExecuteScript(script, 'python3', '.py', validate_python3).run(**kwargs)
@@ -736,8 +736,10 @@ def JavaScript(script, **kwargs):
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def R(script, **kwargs):
-    return SoS_ExecuteScript(script, 'Rscript --default-packages='\
-                             'methods,utils,stats,grDevices,graphics ', '.R').run(**kwargs)
+    return SoS_ExecuteScript(
+        script, 'Rscript --default-packages=methods,utils,stats,grDevices,graphics ', '.R',
+        validate_with_command("Rscript -e \"lint = lintr::lint(commandArgs(trailingOnly=TRUE)[1]); "\
+                              "for (i in 1:length(lint)) if (lint[[i]]$'type' == 'error') stop(paste(lint[[i]]$'message', lint[[i]]$'line'))\"")).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'prepare'])
 def check_R_library(name, version = None):
