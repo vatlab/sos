@@ -390,7 +390,7 @@ class SoS_ExecuteScript:
                 try:
                     self.validator(self.script, filename=debug_script_file)
                 except Exception as e:
-                    env.logger.warning('Script {} might contain error: {}'.format(debug_script_file, e))
+                    env.logger.warning('Syntax error found in script {}:\n{}'.format(debug_script_file, e))
             else: # try to use a lexer to validate the code
                 try:
                     lexer = get_lexer_for_filename(debug_script_file)
@@ -678,7 +678,7 @@ def validate_with_command(cmd):
             env.logger.trace('Running {} to check syntax of {}'.format(cmd + ' ' + shlex.quote(filename), filename))
             subprocess.check_output(cmd + ' ' + shlex.quote(filename), stderr=subprocess.STDOUT, shell=True)
         except subprocess.CalledProcessError as e:
-            raise RuntimeError('Syntax error: {}'.format(e.output.decode()))
+            raise RuntimeError('{}'.format(e.output.decode()))
         return 0
     #
     return func
