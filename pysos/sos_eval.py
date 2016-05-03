@@ -376,8 +376,6 @@ def SoS_exec(stmts, sigil='${ }'):
         executed += stmts + '\n'
         # check if the statement has altered any readonly variables
         env.sos_dict.check_readonly_vars()
-    #
-    return executed
 
 #
 # dynamic expression that cannot be resolved during parsing
