@@ -739,7 +739,7 @@ def R(script, **kwargs):
     return SoS_ExecuteScript(
         script, 'Rscript --default-packages=methods,utils,stats,grDevices,graphics ', '.R',
         validate_with_command('''Rscript -e 
-            'if (!require(lintr)) install.packages("lintr", repos="http://cran.us.r-project.org", quiet=TRUE);
+            'if (!suppressWarnings(require(lintr, quietly=TRUE))) install.packages("lintr", repos="http://cran.us.r-project.org", quiet=TRUE);
             lint = lintr::lint(commandArgs(trailingOnly=TRUE)[1]);
             for (i in 1:length(lint)) 
                 if (lint[[i]]$"type" == "error")
