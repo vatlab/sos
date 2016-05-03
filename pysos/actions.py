@@ -390,7 +390,7 @@ class SoS_ExecuteScript:
                 try:
                     self.validator(self.script, filename=debug_script_file)
                 except Exception as e:
-                    env.logger.warning('Script {} might contain error: {}'.format(debug_script_file, e))
+                    env.logger.warning('Syntax error found in script {}:\n{}'.format(debug_script_file, e))
             else: # try to use a lexer to validate the code
                 try:
                     lexer = get_lexer_for_filename(debug_script_file)
@@ -678,7 +678,7 @@ def validate_with_command(cmd):
             env.logger.trace('Running {} to check syntax of {}'.format(cmd + ' ' + shlex.quote(filename), filename))
             subprocess.check_output(cmd + ' ' + shlex.quote(filename), stderr=subprocess.STDOUT, shell=True)
         except subprocess.CalledProcessError as e:
-            raise RuntimeError('Syntax error: {}'.format(e.output.decode()))
+            raise RuntimeError('{}'.format(e.output.decode()))
         return 0
     #
     return func
@@ -713,7 +713,7 @@ def python(script, **kwargs):
 
 def validate_python3(script, filename=None):
     compile(script, filename=filename, mode='exec')
-    
+
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def python3(script, **kwargs):
     return SoS_ExecuteScript(script, 'python3', '.py', validate_python3).run(**kwargs)
@@ -736,8 +736,15 @@ def JavaScript(script, **kwargs):
 
 @SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
 def R(script, **kwargs):
-    return SoS_ExecuteScript(script, 'Rscript --default-packages='\
-                             'methods,utils,stats,grDevices,graphics ', '.R').run(**kwargs)
+    return SoS_ExecuteScript(
+        script, 'Rscript --default-packages=methods,utils,stats,grDevices,graphics ', '.R',
+        validate_with_command('''Rscript -e 
+            'if (!suppressWarnings(require(lintr, quietly=TRUE))) install.packages("lintr", repos="http://cran.us.r-project.org", quiet=TRUE);
+            lint = lintr::lint(commandArgs(trailingOnly=TRUE)[1]);
+            for (i in 1:length(lint)) 
+                if (lint[[i]]$"type" == "error")
+                    stop(paste(lint[[i]]$"message", lint[[i]]$"line"))'
+            '''.replace('\n', ' '))).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'prepare'])
 def check_R_library(name, version = None):

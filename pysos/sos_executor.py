@@ -176,6 +176,9 @@ class Base_Executor:
             # initial values
             env.sos_dict.set('SOS_VERSION', __version__)
             env.sos_dict.set('SOS_SCRIPT', self.workflow.sections[0].context.filename)
+            # passing run_mode to SoS dict so that users can execute blocks of python statements
+            # in different run modes.
+            env.sos_dict.set('run_mode', env.run_mode)
             cfg = {}
             sos_config_file = os.path.expanduser('~/.sos/config.yaml')
             if os.path.isfile(sos_config_file):

@@ -46,7 +46,7 @@ if __name__ == '__main__':
         script can be a filename or a URL from which the content of a SoS will
         be read. If a valid file cannot be located or downloaded, SoS will
         search for the script in a search path specified by variable `sos_path`
-        defined in the global SoS configuration file (~/.sos/config.json).'''
+        defined in the global SoS configuration file (~/.sos/config.yaml).'''
     workflow_spec =  '''Name of the workflow to execute. This option can be
         ignored if the script defines a default workflow (with no name or with
         name `default`) or defines only a single workflow. A subworkflow or a 
@@ -178,11 +178,11 @@ if __name__ == '__main__':
         description='''The config command displays, set, and unset configuration
             variables defined in global or local configuration files.''')
     parser.add_argument('-g', '--global', action='store_true', dest='__global_config__',
-        help='''If set, change global (~/.sos/config.json) instead of local
-        (.sos/config.json) configuration''')
+        help='''If set, change global (~/.sos/config.yaml) instead of local
+        (.sos/config.yaml) configuration''')
     parser.add_argument('-c', '--config', dest='__config_file__', metavar='CONFIG_FILE',
-        help='''User specified configuration file. This file will not be automatically
-        loaded by SoS but can be specified using option `-c`''')
+        help='''User specified configuration file in YAML format. This file will not be
+        automatically loaded by SoS but can be specified using option `-c`''')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--get', nargs='*', metavar='OPTION', dest='__get_config__',
         help='''Display values of specified configuration. The arguments of this
