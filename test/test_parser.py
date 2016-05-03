@@ -1148,6 +1148,20 @@ print(output)
         wf = script.workflow()
         # this does not work before until we make variable output available sooner
         Sequential_Executor(wf).run()
+        # however, output should be the same in task
+        script = SoS_Script('''
+[0]
+seq = range(3)
+input: for_each='seq'
+output: 'test${_seq}.txt'
+assert(len(output), _index + 1)
+task:
+assert(len(output), 3)
+''')
+        env.run_mode = 'dryrun'
+        wf = script.workflow()
+        # this does not work before until we make variable output available sooner
+        Sequential_Executor(wf).run()
 
 if __name__ == '__main__':
     unittest.main()

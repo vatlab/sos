@@ -814,7 +814,11 @@ class Step_Executor:
             #
             # dict_stack records variables assigned between step input and task ...
             if dict_stack:
-                env.sos_dict.quick_update(dict_stack.pop(0))
+                stored_dict = dict_stack.pop(0)
+                # do not update output and depends, which were accumulated
+                stored_dict.pop('output', None)
+                stored_dict.pop('depends', None)
+                env.sos_dict.quick_update(stored_dict)
             env.sos_dict.update(v)
             env.sos_dict.set('_input', g)
             env.sos_dict.set('_output', o)
