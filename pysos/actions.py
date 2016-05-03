@@ -754,8 +754,8 @@ def check_R_library(name, version = None):
     installed from github if not available, else from cran or bioc
     '''
     if env.run_mode == 'dryrun':
-        check_command('R', quiet=True)
-        return
+        check_command('Rscript', quiet=True)
+        return 0
     output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
     if len(glob_wildcards('{repo}/{pkg}', [name])['repo']):
         # package is from github
@@ -1001,7 +1001,7 @@ def pandoc(script=None, output=None, **kwargs):
 def Rmarkdown(script=None, output_file=None, **kwargs):
     '''This action can be used in three ways
 
-    Rmarkdown:   outputfile='report.html'
+    Rmarkdown:   output_file='report.html'
       script
 
     Rmarkdown(filename='report.sos', output_file='report.html')
@@ -1010,9 +1010,7 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
 
     '''
     # if in dryrun mode, check for Rmarkdown command
-    if env.run_mode == 'dryrun':
-        return check_command('Rscript')
-    elif env.run_mode == 'prepare':
+    if env.run_mode in ['dryrun', 'prepare']:
         return check_R_library('knitr') + check_R_library('rmarkdown')
     #
     # in run mode, collect report and call Rmarkdown

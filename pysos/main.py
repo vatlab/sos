@@ -67,7 +67,7 @@ def sos_show(args, style_args):
             if args.html is not None:
                 script_to_html(transcript_file, args.script, args.html, style_args)
             elif args.markdown is not None:
-                script_to_markdown(transcript_file, args.script, args.markdown, style_args)
+                script_to_markdown(transcript_file, args.script, args.markdown)
             elif args.term:
                 script_to_term(transcript_file, args.script, style_args)
             else:
