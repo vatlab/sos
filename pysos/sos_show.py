@@ -671,7 +671,7 @@ def script_to_html(transcript, script_file, html_file, style_args):
             content_number = None
             next_type = None
             for line in script:
-                line_type, line_no, script_line = line.split('\t', 3)
+                line_type, line_no, script_line = line.split('\t', 2)
                 # Does not follow section because it has to be one line
                 if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
                     line_type = 'COMMENT'
@@ -803,7 +803,7 @@ def script_to_markdown(transcript, script_file, markdown_file):
             content_number = None
             next_type = None
             for line in script:
-                line_type, line_no, script_line = line.split('\t', 3)
+                line_type, line_no, script_line = line.split('\t', 2)
                 # Does not follow section because it has to be one line
                 if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
                     line_type = 'COMMENT'
