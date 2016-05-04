@@ -207,6 +207,7 @@ class WorkflowDict(object):
                     if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
                         env.logger.warning('readonly variable {} is changed from {} to {}'
                             .format(key, self._dict[key], self._readonly_vars[key]))
+                        self._readonly_vars[key] = self._dict[key]
                     else:
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
                             .format(key, self._dict[key], self._readonly_vars[key]))
@@ -223,6 +224,7 @@ class WorkflowDict(object):
                     if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
                         env.logger.warning('readonly variable {} is changed from {} to {}'
                             .format(key, self._dict[key], self._readonly_vars[key]))
+                        self._readonly_vars[key] = self._dict[key]
                     else:
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
                             .format(key, self._dict[key], self._readonly_vars[key]))
@@ -230,6 +232,7 @@ class WorkflowDict(object):
                     if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
                         env.logger.warning('readonly variable {} is changed from {} to {}'
                             .format(key, self._dict[key], value))
+                        self._dict[key] = value
                     else:
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
                             .format(key, self._dict[key], value))
