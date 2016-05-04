@@ -63,10 +63,10 @@ class SoS_Magic(Magics):
         else:
             try:
                 # is it an expression?
-                compile(line, '<string>', 'eval')
-                return SoS_eval(line)
+                compile(cell, '<string>', 'eval')
+                return SoS_eval(cell)
             except: # if it is satement
-                return SoS_exec(line)
+                return SoS_exec(cell)
 
 
     @line_cell_magic
@@ -94,6 +94,8 @@ class SoS_Magic(Magics):
     @line_cell_magic
     def sosdict(self, line, cell=None):
         'Magic that displays content of the dictionary'
+        # do not return __builtins__ beacuse it is too long...
+        env.sos_dict._dict.pop('__builtins__', None)
         return env.sos_dict._dict
 
 def load_ipython_extension(ipython):
