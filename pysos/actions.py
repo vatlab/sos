@@ -370,6 +370,16 @@ def SoS_Action(run_mode='run'):
                         return None
                     if kwargs['active'] < 0 and env.sos_dict['_index'] != kwargs['active'] + env.sos_dict['__num_groups__']:
                         return None
+                elif isinstance(kwargs['active'], Sequence):
+                    allowd_index = list([x if x > 0 else env.sos_dict['__num_groups__'] + x for x in kwargs['active'])
+                    if env.sos_dict['_index'] not in allowed_index:
+                        return None
+                elif isinstance(kwargs['active'], slice):
+                    allowed_index = list(range(env.sos_dict['__num_groups__']))[kwargs['active']]
+                    if env.sos_dict['_index'] not in allowed_index:
+                        return None
+                else:
+                    raise RuntimeError('Unacceptable value for option active: {}'.format(kwargs['active']))
             return func(*args, **kwargs)
         action_wrapper.run_mode = run_mode
         return action_wrapper
