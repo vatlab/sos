@@ -55,6 +55,8 @@ class SoS_Magics(Magics):
         SoS_exec('from pysos import *')
         env.sos_dict.set('__interactive__', True)
         self.executor = Interactive_Executor()
+        self.original_keys = set(env.sos_dict._dict.keys())
+        self.original_keys.add('__builtins__')
 
     @line_cell_magic
     def sos(self, line, cell=None):
@@ -118,16 +120,19 @@ class SoS_Magics(Magics):
     def sosdict(self, line):
         'Magic that displays content of the dictionary'
         # do not return __builtins__ beacuse it is too long...
-        if line.strip():
-            env.logger.warning('line {} ignored'.format(line))
-        env.sos_dict._dict.pop('__builtins__', None)
-        return env.sos_dict._dict
-
-    @line_magic
-    def sosreset(self, line):
-        if line.strip():
-            env.logger.warning('line {} ignored'.format(line))
-        self._reset()
+        actions = line.strip().split()
+        if 'reset' in actions:
+            return self._reset()
+        if 'keys' in actions:
+            if 'all' in actions:
+                return env.sos_dict._dict.keys()
+            else:
+                return env.sos_dict._dict.keys() - self.original_keys
+        else:
+            if 'all' in actions:
+                return env.sos_dict._dict
+            else:
+                return {x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys}
 
 def load_ipython_extension(ipython):
     ipython.register_magics(SoS_Magics)

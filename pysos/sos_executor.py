@@ -158,6 +158,37 @@ class Base_Executor:
             # protect variables from being further modified
             env.readonly_vars.add(k)
 
+    def load_config(self, config_file=None):
+        '''load global, local and user-specified config files'''
+        cfg = {}
+        sos_config_file = os.path.expanduser('~/.sos/config.yaml')
+        if os.path.isfile(sos_config_file):
+            try:
+                with open(sos_config_file) as config:
+                    cfg = yaml.safe_load(config)
+            except Exception as e:
+                raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+        #
+        # local config file
+        sos_config_file = '.sos/config.yaml'
+        if os.path.isfile(sos_config_file):
+            try:
+                with open(sos_config_file) as config:
+                    cfg = yaml.safe_load(config)
+            except Exception as e:
+                raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+        #
+        if config_file is not None:
+            if not os.path.isfile(config_file):
+                raise RuntimeError('Config file {} not found'.format(config_file))
+            try:
+                with open(config_file) as config:
+                    cfg.update(yaml.safe_load(config))
+            except Exception as e:
+                raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(config_file, e))
+        #
+        env.sos_dict.set('CONFIG', frozendict(cfg))
+
     def setup(self, args=[], nested=False, cmd_name='', config_file=None):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
@@ -182,34 +213,8 @@ class Base_Executor:
             # passing run_mode to SoS dict so that users can execute blocks of python statements
             # in different run modes.
             env.sos_dict.set('run_mode', env.run_mode)
-            cfg = {}
-            sos_config_file = os.path.expanduser('~/.sos/config.yaml')
-            if os.path.isfile(sos_config_file):
-                try:
-                    with open(sos_config_file) as config:
-                        cfg = yaml.safe_load(config)
-                except Exception as e:
-                    raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-            #
-            # local config file
-            sos_config_file = '.sos/config.yaml'
-            if os.path.isfile(sos_config_file):
-                try:
-                    with open(sos_config_file) as config:
-                        cfg = yaml.safe_load(config)
-                except Exception as e:
-                    raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-            #
-            if config_file is not None:
-                if not os.path.isfile(config_file):
-                    raise RuntimeError('Config file {} not found'.format(config_file))
-                try:
-                    with open(config_file) as config:
-                        cfg.update(yaml.safe_load(config))
-                except Exception as e:
-                    raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(config_file, e))
-            #
-            env.sos_dict.set('CONFIG', frozendict(cfg))
+            # load global, local and user-specified config file
+            self.load_config(config_file)
             # there is no default input for the first step...
             env.sos_dict.set('__step_input__', [])
             SoS_exec('import os, sys, glob')
@@ -327,8 +332,12 @@ class Sequential_Executor(Base_Executor):
                 raise exception
 
 
-class Interactive_Executor:
+class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython'''
+    def __init__(self):
+        # we actually do not have our own workflow, everything is passed from ipython
+        Base_Executor.__init__(self, None, None)
+
     def parse_command_line(self, command_line):
         parser = argparse.ArgumentParser()
         # ignored
@@ -357,9 +366,11 @@ class Interactive_Executor:
         script = SoS_Script(content=block)
         # if there is only a global section
         if not script.sections:
-            # if there is nothing, return
-            env.logger.warning('No SoS step is defined. Execute as statements.')
-            return SoS_exec(block)
+            # if there is no section, but some actions that are seen as part of a
+            # global definition
+            if script.global_def:
+                self.load_config(args.__config__)
+                return SoS_exec(script.global_def)
         #
         if command_line.strip() and not command_line.strip().startswith('-'):
             wf_and_args = command_line.strip().split(None, 1)

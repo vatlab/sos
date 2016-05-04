@@ -875,18 +875,20 @@ class SoS_Script:
         # as the last step, let us insert the global section to all sections
         global_section = [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]
         if global_section:
-            global_def = ''
+            self.global_def = ''
             for statement in global_section[0][1].statements:
                 if statement[0] == '=':
-                    global_def += '{} = {}\n'.format(statement[1], statement[2])
+                    self.global_def += '{} = {}\n'.format(statement[1], statement[2])
                     env.readonly_vars.add(statement[1])
                 else:
-                    global_def += statement[1]
+                    self.global_def += statement[1]
             #
             for section in self.sections:
-                section.global_def = global_def
+                section.global_def = self.global_def
             # remove the global section after inserting it to each step of the process
             self.sections.pop(global_section[0][0])
+        else:
+            self.gloal_def = ''
 
     def workflow(self, workflow_name=None, source={}):
         '''Return a workflow with name_step+name_step specified in wf_name
