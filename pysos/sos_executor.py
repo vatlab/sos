@@ -364,13 +364,6 @@ class Interactive_Executor(Base_Executor):
             return
         # will exit if there is parsing error
         script = SoS_Script(content=block)
-        # if there is only a global section
-        if not script.sections:
-            # if there is no section, but some actions that are seen as part of a
-            # global definition
-            if script.global_def:
-                self.load_config(args.__config__)
-                return SoS_exec(script.global_def)
         #
         if command_line.strip() and not command_line.strip().startswith('-'):
             wf_and_args = command_line.strip().split(None, 1)
@@ -381,6 +374,15 @@ class Interactive_Executor(Base_Executor):
             wf_name = None
         #
         args, workflow_args = self.parse_command_line(command_line)
+        # if there is only a global section
+        if not script.sections:
+            # if there is no section, but some actions that are seen as part of a
+            # global definition
+            if script.global_def:
+                self.load_config(args.__config__)
+                env.sos_dict.set('step_name', '__interactive__')
+                return SoS_exec(script.global_def)
+        #
         # special execution mode
         if args.__dryrun__:
             env.run_mode = 'dryrun'

@@ -364,6 +364,12 @@ def SoS_Action(run_mode='run'):
                 for k,v in kwargs.items():
                     if k in SOS_RUNTIME_OPTIONS:
                         env.logger.warning('Passing runtime option "{0}" to action is deprecated. Please use "task: {0}={1}" before action instead.'.format(k, v))
+            if 'active' in kwargs:
+                if isinstance(kwargs['active'], int):
+                    if kwargs['active'] >= 0 and env.sos_dict['_index'] != kwargs['active']:
+                        return None
+                    if kwargs['active'] < 0 and env.sos_dict['_index'] != kwargs['active'] + env.sos_dict['__num_groups__']:
+                        return None
             return func(*args, **kwargs)
         action_wrapper.run_mode = run_mode
         return action_wrapper

@@ -780,25 +780,31 @@ class SoS_Script:
                 directive_name = mo.group('directive_name')
                 # newline should be kept in case of multi-line directive
                 directive_value = mo.group('directive_value') + '\n'
-                if cursect is None:
-                    parsing_errors.append(lineno, line, 'Directive {} is not allowed out side of a SoS step'.format(directive_name))
-                    continue
-                if cursect.is_parameters:
+                if cursect and cursect.is_parameters:
                     parsing_errors.append(lineno, line, 'Directive {} is not allowed in {} section'.format(directive_name, SOS_PARAMETERS_SECTION_NAME))
                     continue
                 # is it an action??
                 if directive_name in SOS_DIRECTIVES:
+                    if cursect is None:
+                        parsing_errors.append(lineno, line, 'Directive {} is not allowed out side of a SoS step'.format(directive_name))
+                        continue
                     cursect.add_directive(directive_name, directive_value, lineno)
                     if self.transcript:
                         self.transcript.write('DIRECTIVE\t{}\t{}'.format(lineno, line))
                 #
                 elif directive_name == 'process':
                     env.logger.warning('Keyword "process" is depredated and will be removed in a later release. Please use "task" instead.')
+                    if cursect is None:
+                        parsing_errors.append(lineno, line, 'Directive {} is not allowed out side of a SoS step'.format(directive_name))
+                        continue
                     cursect.add_directive('task', directive_value, lineno)
                     if self.transcript:
                         self.transcript.write('DIRECTIVE\t{}\t{}'.format(lineno, line))
                 else:
-                    # should be in string mode ...
+                    # should be in script mode, which is ok for global section
+                    if cursect is None:
+                        self.sections.append(SoS_Step(is_global=True))
+                        cursect = self.sections[-1]
                     cursect.add_script(directive_name, directive_value, lineno)
                     if self.transcript:
                         self.transcript.write('SCRIPT_{}\t{}\t{}'.format(directive_name, lineno, line))

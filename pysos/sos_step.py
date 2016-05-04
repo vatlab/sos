@@ -537,6 +537,8 @@ class Step_Executor:
         env.sos_dict.set('step_name', '{}_{}'.format(self.step.name, self.step.index))
         # used by nested workflow to determine content of parental workflow
         env.sos_dict.set('__step_context__', self.step.context)
+        env.sos_dict.set('_index', 0)
+        env.sos_dict.set('__num_groups__', 1)
         # this is not secure and but let us assume this for now.
         env.sos_dict.set('__step_report__', '.sos/report/{}_{}.md'.format(self.step.name, self.step.index))
         if os.path.isfile(env.sos_dict['__step_report__']):
@@ -648,6 +650,7 @@ class Step_Executor:
         # We will need to remember the context of each input loop because we will need those
         # context for the execution of step tasks.
         dict_stack = []
+        env.sos_dict.set('__num_groups__', len(self._groups))
         for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
             # other variables
             skip_loop_stmt = False

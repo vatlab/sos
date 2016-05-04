@@ -26,7 +26,6 @@ from __future__ import unicode_literals
 
 import os
 import time
-import glob
 import unittest
 import shutil
 
@@ -1059,56 +1058,24 @@ touch temp/${ff}
         wf = script.workflow()
         Sequential_Executor(wf).run()
         #
-        #shutil.rmtree('temp')
+        shutil.rmtree('temp')
 
-    def testUseOfRunmode(self):
-        '''Test the use of run_mode variable in SoS script'''
-        #
-        if os.path.isdir('temp'):
-            shutil.rmtree('temp')
-        os.mkdir('temp')
-        #
-        env.sig_mode = 'ignore'
-        script = SoS_Script('''
-[1: alias='res']
-import random
-for i in range(3):
-    with open('temp/test_${random.randint(1, 100000)}.txt', 'w') as res:
-        res.write(str(i))
-
+    def testActiveActionOption(self):
+        '''Test the active option of actions'''
+[1]
+rep = range(5)
+input: for_each = 'rep'
+output: 'temp/${_rep}.txt'
+# ff should change and be usable inside run
+ff = '${_rep}.txt'
+run:  active=0
+echo ${ff}
+touch temp/${ff}
 ''')
         wf = script.workflow()
-        for run_mode in ('dryrun', 'prepare', 'run'):
-            env.run_mode = run_mode
-            Sequential_Executor(wf).run()
-        # we should have 9 files
-        files = glob.glob('temp/*.txt')
-        self.assertEqual(len(files), 9)
+        Sequential_Executor(wf).run()
         #
-        # now, if we strict to run mode, we should be fine
-        #
-        #
-        if os.path.isdir('temp'):
-            shutil.rmtree('temp')
-        os.mkdir('temp')
-        #
-        env.sig_mode = 'ignore'
-        script = SoS_Script('''
-[1: alias='res']
-import random
-if run_mode == 'run':
-    for i in range(3):
-        with open('temp/test_${random.randint(1, 100000)}.txt', 'w') as res:
-            res.write(str(i))
-
-''')
-        wf = script.workflow()
-        for run_mode in ('dryrun', 'prepare', 'run'):
-            env.run_mode = run_mode
-            Sequential_Executor(wf).run()
-        # we should have 9 files
-        files = glob.glob('temp/*.txt')
-        self.assertEqual(len(files), 3)
+        shutil.rmtree('temp')
 
 
 if __name__ == '__main__':
