@@ -167,7 +167,8 @@ class Base_Executor:
             # Because this workflow might belong to a combined workflow, we do not clear
             # locals before the execution of workflow.
             # Need to choose what to inject to globals
-            env.sos_dict = WorkflowDict()
+            if not (hasattr(env, 'sos_dict') and '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']):
+                env.sos_dict = WorkflowDict()
             if env.run_mode != 'run':
                 env.sos_dict['__execute_errors__'] = ExecuteError(self.workflow.name)
             # inject a few things
