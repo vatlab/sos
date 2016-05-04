@@ -102,8 +102,8 @@ class SoS_Magics(Magics):
         except ClipboardEmpty:
             raise UsageError("The clipboard appears to be empty")
         #
-        print(block)
-        print('\n## -- End pasted text --')
+        print(block.strip())
+        print('## -- End pasted text --')
         try:
             # is it an expression?
             compile(block, '<string>', 'eval')

@@ -395,10 +395,15 @@ class Interactive_Executor(Base_Executor):
         elif args.__construct__:
             env.sig_mode = 'construct'
         #
-        workflow = script.workflow(wf_name)
-        if args.__report__:
-            executor = Sequential_Executor(workflow, report=args.__report__)
-        else:
-            executor = Sequential_Executor(workflow, report='.sos/ipython.md')
-        executor.run(workflow_args, cmd_name='<script> {}'.format(wf_name), config_file=args.__config__)
+        old_verbosity = env.verbosity
+        env.verbosity = args.verbosity
+        try:
+            workflow = script.workflow(wf_name)
+            if args.__report__:
+                executor = Sequential_Executor(workflow, report=args.__report__)
+            else:
+                executor = Sequential_Executor(workflow, report='.sos/ipython.md')
+            executor.run(workflow_args, cmd_name='<script> {}'.format(wf_name), config_file=args.__config__)
+        finally:
+            env.verbosity = old_verbosity
 
