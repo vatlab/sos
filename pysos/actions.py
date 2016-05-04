@@ -46,7 +46,7 @@ from pygments.lexers import get_lexer_for_filename, guess_lexer
 from .utils import env, getTermWidth, ProgressBar, shortRepr, natural_keys
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
-from .signature import FileSignature, fileMD5, textMD5
+from .signature import FileSignature, fileMD5
 from .sos_executor import Sequential_Executor
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
@@ -371,7 +371,7 @@ def SoS_Action(run_mode='run'):
                     if kwargs['active'] < 0 and env.sos_dict['_index'] != kwargs['active'] + env.sos_dict['__num_groups__']:
                         return None
                 elif isinstance(kwargs['active'], Sequence):
-                    allowd_index = list([x if x > 0 else env.sos_dict['__num_groups__'] + x for x in kwargs['active'])
+                    allowed_index = list([x if x > 0 else env.sos_dict['__num_groups__'] + x for x in kwargs['active']])
                     if env.sos_dict['_index'] not in allowed_index:
                         return None
                 elif isinstance(kwargs['active'], slice):
@@ -992,7 +992,7 @@ def pandoc(script=None, output=None, **kwargs):
         ea = kwargs['extra_args']
         if isinstance(ea, str):
             extra_args = ea
-        elif isintace(ea, Sequence):
+        elif isinstance(ea, Sequence):
             extra_args = ' '.join(list(ea))
         elif isinstance(ea, dict):
             extra_args = ' '.join('--{}={}'.format(k,v) for k,v in ea.items())
@@ -1008,7 +1008,7 @@ def pandoc(script=None, output=None, **kwargs):
         env.deregister_process(p.pid)
         os.remove(script_file)
     if ret != 0:
-        temp_file = os.path.join('.sos/{}_{}.md'.format(self.interpreter.split()[0], os.getpid()))
+        temp_file = os.path.join('.sos/{}_{}.md'.format('pandoc', os.getpid()))
         shutil.copyfile(script_file, temp_file)
         cmd = command.replace('{}', shlex.quote(temp_file))
         raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" to test it.'
@@ -1065,7 +1065,7 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
         ea = kwargs['extra_args']
         if isinstance(ea, str):
             extra_args = ea
-        elif isintace(ea, Sequence):
+        elif isinstance(ea, Sequence):
             extra_args = ' '.join(list(ea))
         elif isinstance(ea, dict):
             extra_args = ' '.join('{}={:r}'.format(k,v) for k,v in ea.items())

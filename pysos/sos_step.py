@@ -37,7 +37,7 @@ from .pattern import extract_pattern, expand_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
 from .signature import  RuntimeInfo
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
-    SOS_RUNTIME_OPTIONS, SOS_REPORT_PREFIX
+    SOS_RUNTIME_OPTIONS
 
 __all__ = []
 

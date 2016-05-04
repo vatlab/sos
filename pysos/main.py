@@ -25,18 +25,12 @@ import sys
 import yaml
 import atexit
 import fnmatch
-import webbrowser
-
-from pygments import highlight
-from pygments.lexers import PythonLexer, get_lexer_by_name, guess_lexer
-from pygments.formatters import HtmlFormatter
 
 from .utils import env, get_traceback
-from .sos_script import SoS_Script, SoS_Workflow
+from .sos_script import SoS_Script
 from .sos_executor import Sequential_Executor
 from .sos_show import script_to_html, workflow_to_html, script_to_markdown, \
     workflow_to_markdown, script_to_term, workflow_to_term
-from io import StringIO
 
 #
 # subcommand show

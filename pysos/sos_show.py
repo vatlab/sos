@@ -22,9 +22,6 @@
 
 import os
 import sys
-import yaml
-import atexit
-import fnmatch
 import argparse
 import webbrowser
 import re
@@ -37,10 +34,9 @@ from pygments.token import Name, Keyword
 from pygments.lexers import PythonLexer, TextLexer, get_lexer_by_name, guess_lexer
 from pygments.formatters import HtmlFormatter, TerminalFormatter
 from pygments.styles import get_all_styles
+from pygments.util import shebang_matches
 
-from .utils import env, get_traceback
-from .sos_script import SoS_Script, SoS_Workflow
-from .sos_executor import Sequential_Executor
+from .utils import env
 from .actions import get_actions
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_DEPENDS_OPTIONS, \
     SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS
@@ -800,7 +796,7 @@ def script_to_markdown(transcript, script_file, markdown_file):
         with open(transcript) as script:
             content = []
             content_type = None
-            content_number = None
+            # content_number = None
             next_type = None
             for line in script:
                 line_type, line_no, script_line = line.split('\t', 2)
@@ -812,7 +808,7 @@ def script_to_markdown(transcript, script_file, markdown_file):
                         markdown_content(content_type, content, markdown)
                         content = [script_line]
                         content_type = next_type
-                        content_number = int(line_no)
+                        # content_number = int(line_no)
                         next_type = None
                     else:
                         content.append(script_line)
@@ -824,7 +820,7 @@ def script_to_markdown(transcript, script_file, markdown_file):
                         next_type = line_type[7:]
                     else:
                         content_type = line_type
-                    content_number = int(line_no)
+                    # content_number = int(line_no)
                     content = [script_line]
         if content:
             markdown_content(content_type, content, markdown)
@@ -922,7 +918,7 @@ def script_to_term(transcript, script_file, style_args):
     with open(transcript) as script:
         content = []
         content_type = None
-        content_number = None
+        # content_number = None
         next_type = None
         for line in script:
             line_type, line_no, script_line = line.split('\t', 2)
@@ -934,7 +930,7 @@ def script_to_term(transcript, script_file, style_args):
                     write_content(content_type, content, formatter)
                     content = [script_line]
                     content_type = next_type
-                    content_number = int(line_no)
+                    # content_number = int(line_no)
                     next_type = None
                 else:
                     content.append(script_line)
@@ -946,7 +942,7 @@ def script_to_term(transcript, script_file, style_args):
                     next_type = line_type[7:]
                 else:
                     content_type = line_type
-                content_number = int(line_no)
+                # content_number = int(line_no)
                 content = [script_line]
     if content:
         write_content(content_type, content, formatter)
