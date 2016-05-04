@@ -42,6 +42,8 @@ env.sos_dict = WorkflowDict()
 SoS_exec('from pysos import *')
 
 
+from IPython.core.error import TryNext
+from IPython.lib.clipboard import ClipboardEmpty
 from IPython.core.magic import Magics, magics_class, line_magic, cell_magic, line_cell_magic
 
 # The class MUST call this class decorator at creation time
@@ -50,7 +52,7 @@ class SoS_Magic(Magics):
 
     @line_cell_magic
     def sos(self, line, cell=None):
-        "Magic that works both as %lcmagic and as %%lcmagic"
+        'Magic execute sos expression and statements'
         if cell is None:
             try:
                 # is it an expression?
@@ -66,6 +68,33 @@ class SoS_Magic(Magics):
             except: # if it is satement
                 return SoS_exec(line)
 
+
+    @line_cell_magic
+    def sospaste(self, line, cell=None):
+        'Magic that execute sos expression and statements from clipboard'
+        try:
+            block = self.shell.hooks.clipboard_get()
+        except TryNext as clipboard_exc:
+            message = getattr(clipboard_exc, 'args')
+            if message:
+                error(message[0])
+            else:
+                error('Could not get text from the clipboard.')
+            return
+        except ClipboardEmpty:
+            raise UsageError("The clipboard appears to be empty")
+        # block
+        try:
+            # is it an expression?
+            compile(block, '<string>', 'eval')
+            return SoS_eval(block)
+        except: # if it is satement
+            return SoS_exec(block)
+
+    @line_cell_magic
+    def sosdict(self, line, cell=None):
+        'Magic that displays content of the dictionary'
+        return env.sos_dict._dict
 
 def load_ipython_extension(ipython):
     ipython.register_magics(SoS_Magic)
