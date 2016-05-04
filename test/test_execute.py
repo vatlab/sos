@@ -35,6 +35,7 @@ from pysos import __version__
 from pysos.utils import env
 from pysos.sos_eval import Undetermined
 from pysos.sos_executor import Sequential_Executor, ExecuteError
+from pysos.sos_script import ParsingError
 import subprocess
 
 class TestExecute(unittest.TestCase):
@@ -1155,7 +1156,7 @@ rep = range(5)
 input: for_each = 'rep'
 # ff should change and be usable inside run
 ff = '${_rep}.txt'
-run:  active=1:
+run:  active=slice(1,None)
 echo ${ff}
 touch temp/${ff}
 ''')
@@ -1171,7 +1172,7 @@ rep = range(5)
 input: for_each = 'rep'
 # ff should change and be usable inside run
 ff = '${_rep}.txt'
-run:  active=1:-2
+run:  active=slice(1,-2)
 echo ${ff}
 touch temp/${ff}
 ''')
@@ -1187,7 +1188,7 @@ rep = range(5)
 input: for_each = 'rep'
 # ff should change and be usable inside run
 ff = '${_rep}.txt'
-run:  active=::2
+run:  active=slice(None,None,2)
 echo ${ff}
 touch temp/${ff}
 ''')
@@ -1198,7 +1199,7 @@ touch temp/${ff}
         # test bad indexing
         shutil.rmtree('temp')
         os.mkdir('temp')
-        script = SoS_Script('''
+        self.assertRaises(ParsingError, SoS_Script, '''
 [1]
 rep = range(5)
 input: for_each = 'rep'
@@ -1208,8 +1209,6 @@ run:  active=1,2
 echo ${ff}
 touch temp/${ff}
 ''')
-        wf = script.workflow()
-        self.assertRaise(TypeError, Sequential_Executor(wf).run())
         # clean up
         shutil.rmtree('temp')
 
