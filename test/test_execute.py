@@ -1114,7 +1114,7 @@ if run_mode == 'run':
         if os.path.isdir('temp'):
             shutil.rmtree('temp')
         os.mkdir('temp')
-        #
+        # test first iteration
         script = SoS_Script('''
 [1]
 rep = range(5)
@@ -1127,9 +1127,90 @@ touch temp/${ff}
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).run()
-        files = glob.glob('temp/*.txt')
-        self.assertEqual(len(files), 1)
-        #
+        files = list(glob.glob('temp/*.txt'))
+        self.assertEqual(files, ['temp/0.txt'])
+        # test last iteration
+        shutil.rmtree('temp')
+        os.mkdir('temp')
+        script = SoS_Script('''
+[1]
+rep = range(5)
+input: for_each = 'rep'
+# ff should change and be usable inside run
+ff = '${_rep}.txt'
+run:  active=-1
+echo ${ff}
+touch temp/${ff}
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
+        files = list(glob.glob('temp/*.txt'))
+        self.assertEqual(files, ['temp/4.txt'])
+        # test slicing
+        shutil.rmtree('temp')
+        os.mkdir('temp')
+        script = SoS_Script('''
+[1]
+rep = range(5)
+input: for_each = 'rep'
+# ff should change and be usable inside run
+ff = '${_rep}.txt'
+run:  active=1:
+echo ${ff}
+touch temp/${ff}
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
+        files = sorted(list(glob.glob('temp/*.txt')))
+        self.assertEqual(files, ['temp/1.txt', 'temp/2.txt', 'temp/3.txt', 'temp/4.txt'])
+        shutil.rmtree('temp')
+        os.mkdir('temp')
+        script = SoS_Script('''
+[1]
+rep = range(5)
+input: for_each = 'rep'
+# ff should change and be usable inside run
+ff = '${_rep}.txt'
+run:  active=1:-2
+echo ${ff}
+touch temp/${ff}
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
+        files = sorted(list(glob.glob('temp/*.txt')))
+        self.assertEqual(files, ['temp/1.txt', 'temp/2.txt'])
+        shutil.rmtree('temp')
+        os.mkdir('temp')
+        script = SoS_Script('''
+[1]
+rep = range(5)
+input: for_each = 'rep'
+# ff should change and be usable inside run
+ff = '${_rep}.txt'
+run:  active=::2
+echo ${ff}
+touch temp/${ff}
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
+        files = sorted(list(glob.glob('temp/*.txt')))
+        self.assertEqual(files, ['temp/0.txt', 'temp/2.txt', 'temp/4.txt'])
+        # test bad indexing
+        shutil.rmtree('temp')
+        os.mkdir('temp')
+        script = SoS_Script('''
+[1]
+rep = range(5)
+input: for_each = 'rep'
+# ff should change and be usable inside run
+ff = '${_rep}.txt'
+run:  active=1,2
+echo ${ff}
+touch temp/${ff}
+''')
+        wf = script.workflow()
+        self.assertRaise(TypeError, Sequential_Executor(wf).run())
+        # clean up
         shutil.rmtree('temp')
 
 
