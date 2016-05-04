@@ -340,7 +340,6 @@ def SoS_Action(run_mode='run'):
         def action_wrapper(*args, **kwargs):
             runtime_options = env.sos_dict.get('_runtime', {})
             #
-            non_runtime_options = {k:v for k,v in kwargs.items() if k not in SOS_RUNTIME_OPTIONS}
             # docker files will be downloaded in run or prepare mode
             if 'docker_file' in runtime_options and env.run_mode in ('run', 'prepare'):
                 docker = DockerClient()
@@ -361,7 +360,11 @@ def SoS_Action(run_mode='run'):
                 # return dynamic expression when not in run mode, that is to say
                 # the script logic cannot rely on the result of the action
                 return Undetermined(func.__name__)
-            return func(*args, **non_runtime_options)
+            if env.run_mode == 'dryrun':
+                for k,v in kwargs.items():
+                    if k in SOS_RUNTIME_OPTIONS:
+                        env.logger.warning('Passing runtime option "{0}" to action is deprecated. Please use "task: {0}={1}" before action instead.'.format(k, v))
+            return func(*args, **kwargs)
         action_wrapper.run_mode = run_mode
         return action_wrapper
     return runtime_decorator

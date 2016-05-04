@@ -249,7 +249,7 @@ class SoS_Step:
         if lineno:
             self.lineno = lineno
 
-    def add_directive(self, key, value, lineno=None, action=None):
+    def add_directive(self, key, value, lineno=None):
         '''Assignments are items with ':' type '''
         if key is None:
             # continuation of multi-line directive
@@ -261,9 +261,18 @@ class SoS_Step:
             # new directive
             self.statements.append([':', key, value])
             self.values = [value]
-            if action is not None:
-                self._action = action
-                self._action_options = value
+        self.back_comment = ''
+        if lineno:
+            self.lineno = lineno
+
+    def add_script(self, key, value, lineno=None):
+        '''script starts with key: value'''
+        # we need a fake directive here because the : directive can be multi-line and
+        # we need to borrow the syntax checking of directives here.
+        self.statements.append([':', '__script__', ''])
+        self.values = [value]
+        self._action = key
+        self._action_options = value
         self.back_comment = ''
         if lineno:
             self.lineno = lineno
@@ -289,7 +298,9 @@ class SoS_Step:
             return
         # _action options can contain both runtime option and action options
         opt = self._action_options.strip()
-        self.statements.append(['!', '{}({}{})\n'.format(self._action, text_repr(textwrap.dedent(self._script)), (', ' + opt) if opt else '')])
+        if self.statements[-1][0] != ':' or self.statements[-1][1] != '__script__':
+            raise RuntimeError('Failed to parse script')
+        self.statements[-1] = ['!', '{}({}{})\n'.format(self._action, text_repr(textwrap.dedent(self._script)), (', ' + opt) if opt else '')]
         self._action = None
         self._action_options = None
         self._script = ''
@@ -320,8 +331,8 @@ class SoS_Step:
             elif statement[0] == ':':
                 if statement[1] in ('input', 'output', 'depends'):
                     raise ValueError('Step task should be defined as the last item in a SoS step')
-                elif statement[2].strip():
-                    raise ValueError('Runtime options are not allowed for second or more actions in a SoS step')
+                elif statement[1] == 'task':
+                    raise ValueError('Only one task is allowed for a step')
                 # ignore ...
                 self.task += '\n'
             else:
@@ -788,7 +799,7 @@ class SoS_Script:
                         self.transcript.write('DIRECTIVE\t{}\t{}'.format(lineno, line))
                 else:
                     # should be in string mode ...
-                    cursect.add_directive('task', directive_value, lineno, action=directive_name)
+                    cursect.add_script(directive_name, directive_value, lineno)
                     if self.transcript:
                         self.transcript.write('SCRIPT_{}\t{}\t{}'.format(directive_name, lineno, line))
                 continue

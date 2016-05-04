@@ -416,7 +416,10 @@ def directive_output(*args, **kwargs):
     env.sos_dict.set('_output', ofiles)
 
 def directive_task(**kwargs):
-    env.sos_dict.set('_runtime', {k:v for k,v in kwargs.items() if k in SOS_RUNTIME_OPTIONS})
+    for k,v in kwargs.items():
+        if k not in SOS_RUNTIME_OPTIONS:
+            raise RuntimeError('Unrecognized runtime option {}={}'.format(k, v))
+    env.sos_dict.set('_runtime', kwargs)
 
 
 class StepInfo(object):
