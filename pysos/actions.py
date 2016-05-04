@@ -371,7 +371,7 @@ def SoS_Action(run_mode='run'):
                     if kwargs['active'] < 0 and env.sos_dict['_index'] != kwargs['active'] + env.sos_dict['__num_groups__']:
                         return None
                 elif isinstance(kwargs['active'], Sequence):
-                    allowed_index = list([x if x > 0 else env.sos_dict['__num_groups__'] + x for x in kwargs['active']])
+                    allowed_index = list([x if x >= 0 else env.sos_dict['__num_groups__'] + x for x in kwargs['active']])
                     if env.sos_dict['_index'] not in allowed_index:
                         return None
                 elif isinstance(kwargs['active'], slice):

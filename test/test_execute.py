@@ -1112,93 +1112,7 @@ if run_mode == 'run':
 
     def testActiveActionOption(self):
         '''Test the active option of actions'''
-        if os.path.isdir('temp'):
-            shutil.rmtree('temp')
-        os.mkdir('temp')
-        # test first iteration
-        script = SoS_Script('''
-[1]
-rep = range(5)
-input: for_each = 'rep'
-# ff should change and be usable inside run
-ff = '${_rep}.txt'
-run:  active=0
-echo ${ff}
-touch temp/${ff}
-''')
-        wf = script.workflow()
-        Sequential_Executor(wf).run()
-        files = list(glob.glob('temp/*.txt'))
-        self.assertEqual(files, ['temp/0.txt'])
-        # test last iteration
-        shutil.rmtree('temp')
-        os.mkdir('temp')
-        script = SoS_Script('''
-[1]
-rep = range(5)
-input: for_each = 'rep'
-# ff should change and be usable inside run
-ff = '${_rep}.txt'
-run:  active=-1
-echo ${ff}
-touch temp/${ff}
-''')
-        wf = script.workflow()
-        Sequential_Executor(wf).run()
-        files = list(glob.glob('temp/*.txt'))
-        self.assertEqual(files, ['temp/4.txt'])
-        # test slicing
-        shutil.rmtree('temp')
-        os.mkdir('temp')
-        script = SoS_Script('''
-[1]
-rep = range(5)
-input: for_each = 'rep'
-# ff should change and be usable inside run
-ff = '${_rep}.txt'
-run:  active=slice(1,None)
-echo ${ff}
-touch temp/${ff}
-''')
-        wf = script.workflow()
-        Sequential_Executor(wf).run()
-        files = sorted(list(glob.glob('temp/*.txt')))
-        self.assertEqual(files, ['temp/1.txt', 'temp/2.txt', 'temp/3.txt', 'temp/4.txt'])
-        shutil.rmtree('temp')
-        os.mkdir('temp')
-        script = SoS_Script('''
-[1]
-rep = range(5)
-input: for_each = 'rep'
-# ff should change and be usable inside run
-ff = '${_rep}.txt'
-run:  active=slice(1,-2)
-echo ${ff}
-touch temp/${ff}
-''')
-        wf = script.workflow()
-        Sequential_Executor(wf).run()
-        files = sorted(list(glob.glob('temp/*.txt')))
-        self.assertEqual(files, ['temp/1.txt', 'temp/2.txt'])
-        shutil.rmtree('temp')
-        os.mkdir('temp')
-        script = SoS_Script('''
-[1]
-rep = range(5)
-input: for_each = 'rep'
-# ff should change and be usable inside run
-ff = '${_rep}.txt'
-run:  active=slice(None,None,2)
-echo ${ff}
-touch temp/${ff}
-''')
-        wf = script.workflow()
-        Sequential_Executor(wf).run()
-        files = sorted(list(glob.glob('temp/*.txt')))
-        self.assertEqual(files, ['temp/0.txt', 'temp/2.txt', 'temp/4.txt'])
-        # test bad indexing
-        shutil.rmtree('temp')
-        os.mkdir('temp')
+        # disallow
         self.assertRaises(ParsingError, SoS_Script, '''
 [1]
 rep = range(5)
@@ -1209,8 +1123,37 @@ run:  active=1,2
 echo ${ff}
 touch temp/${ff}
 ''')
-        # clean up
-        shutil.rmtree('temp')
+        #
+        for active, result in [
+            ('0', ['temp/0.txt']),
+            ('-1', ['temp/4.txt']),
+            ('(1,2)', ['temp/1.txt', 'temp/2.txt']),
+            ('[2,3]', ['temp/2.txt', 'temp/3.txt']),
+            ('(0,2,4)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
+            ('slice(1,None)', ['temp/1.txt', 'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
+            ('slice(1,-2)', ['temp/1.txt', 'temp/2.txt']),
+            ('slice(None,None,2)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
+            ]:
+            if os.path.isdir('temp'):
+                shutil.rmtree('temp')
+            os.mkdir('temp')
+            # test first iteration
+            script = SoS_Script('''
+[1]
+rep = range(5)
+input: for_each = 'rep'
+# ff should change and be usable inside run
+ff = '${_rep}.txt'
+run:  active=%s
+echo ${ff}
+touch temp/${ff}
+''' % active)
+            wf = script.workflow()
+            Sequential_Executor(wf).run()
+            files = list(glob.glob('temp/*.txt'))
+            self.assertEqual(files, result)
+            # test last iteration
+            shutil.rmtree('temp')
 
 
 if __name__ == '__main__':
