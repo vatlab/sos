@@ -204,8 +204,12 @@ class WorkflowDict(object):
         for key in env.readonly_vars:
             if key in self._readonly_vars:
                 if self._dict[key] != self._readonly_vars[key]:
-                    raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
-                        .format(key, self._dict[key], self._readonly_vars[key]))
+                    if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+                        env.logger.warning('readonly variable {} is changed from {} to {}'
+                            .format(key, self._dict[key], self._readonly_vars[key]))
+                    else:
+                        raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
+                            .format(key, self._dict[key], self._readonly_vars[key]))
             elif key in self._dict:
                 self._readonly_vars[key] = self._dict[key]
 
@@ -216,11 +220,19 @@ class WorkflowDict(object):
             # if the key already exists
             if key in self._dict:
                 if self._dict[key] != self._readonly_vars[key]:
-                    raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
-                    .format(key, self._dict[key], self._readonly_vars[key]))
+                    if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+                        env.logger.warning('readonly variable {} is changed from {} to {}'
+                            .format(key, self._dict[key], self._readonly_vars[key]))
+                    else:
+                        raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
+                            .format(key, self._dict[key], self._readonly_vars[key]))
                 if value != self._dict[key]:
-                    raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
-                        .format(key, self._dict[key], value))
+                    if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+                        env.logger.warning('readonly variable {} is changed from {} to {}'
+                            .format(key, self._dict[key], value))
+                    else:
+                        raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
+                            .format(key, self._dict[key], value))
 
     def _log(self, key, value):
         env.logger.debug('``{}`` = ``{}``'.format(key, shortRepr(value)))

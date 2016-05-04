@@ -23,6 +23,7 @@ import os
 import sys
 import yaml
 import glob
+import shlex
 import shutil
 import argparse
 
@@ -34,6 +35,7 @@ from . import __version__
 from .sos_step import Step_Executor
 from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, frozendict, natural_keys
 from .sos_eval import Undetermined, SoS_eval, SoS_exec
+from .sos_script import SoS_Script
 
 __all__ = []
 
@@ -323,4 +325,67 @@ class Sequential_Executor(Base_Executor):
             if exception.errors:
                 # if there is any error, raise it
                 raise exception
+
+
+class Interactive_Executor:
+    '''Interactive executor called from by iPython'''
+    def parse_command_line(self, command_line):
+        parser = argparse.ArgumentParser()
+        # ignored
+        parser.add_argument('-j', type=int, metavar='JOBS', default=1, dest='__max_jobs__')
+        # ignored
+        parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
+        # ignored
+        parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE')
+        runmode = parser.add_argument_group(title='Run mode options')
+        runmode.add_argument('-d', action='store_true', dest='__dryrun__')
+        runmode.add_argument('-p', action='store_true', dest='__prepare__')
+        runmode.add_argument('-f', action='store_true', dest='__rerun__')
+        runmode.add_argument('-F', action='store_true', dest='__construct__')
+        parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2)
+        #
+        args, workflow_args = parser.parse_known_args(shlex.split(command_line))
+        return args, workflow_args
+
+    def run_interactive(self, block, command_line=''):
+        '''Execute a block of SoS script that is sent by iPython.'''
+        # first, we try to parse it
+        #
+        if not block.strip():
+            return
+        # will exit if there is parsing error
+        script = SoS_Script(content=block)
+        # if there is only a global section
+        if not script.sections:
+            # if there is nothing, return
+            env.logger.warning('No SoS step is defined. Execute as statements.')
+            return SoS_exec(block)
+        #
+        if command_line.strip() and not command_line.strip().startswith('-'):
+            wf_and_args = command_line.strip().split(None, 1)
+            wf_name = wf_and_args[0]
+            if len(wf_and_args) > 1:
+                command_line = wf_and_args[1]
+        else:
+            wf_name = None
+        #
+        args, workflow_args = self.parse_command_line(command_line)
+        # special execution mode
+        if args.__dryrun__:
+            env.run_mode = 'dryrun'
+        elif args.__prepare__:
+            env.run_mode = 'prepare'
+        else:
+            env.run_mode = 'run'
+        if args.__rerun__:
+            env.sig_mode = 'ignore'
+        elif args.__construct__:
+            env.sig_mode = 'construct'
+        #
+        workflow = script.workflow(wf_name)
+        if args.__report__:
+            executor = Sequential_Executor(workflow, report=args.__report__)
+        else:
+            executor = Sequential_Executor(workflow, report='.sos/ipython.md')
+        executor.run(workflow_args, cmd_name='<script> {}'.format(wf_name), config_file=args.__config__)
 
