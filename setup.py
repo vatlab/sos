@@ -20,7 +20,40 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import os
+import json
 from setuptools import setup
+from distutils import log
+from distutils.command.install import install
+
+try:
+    from jupyter_client.kernelspec import install_kernel_spec
+except ImportError:
+    from IPython.kernel.kernelspec import install_kernel_spec
+from IPython.utils.tempdir import TemporaryDirectory
+
+
+kernel_json = {
+    "argv":         ["python","-m", "pysos.kernel", "-f", "{connection_file}"],
+    "display_name": "SoS"
+}
+
+class InstallWithKernelspec(install):
+    def run(self):
+        # Regular installation
+        install.run(self)
+
+        # Now write the kernelspec
+        with TemporaryDirectory() as td:
+            os.chmod(td, 0o755)  # Starts off as 700, not user readable
+            with open(os.path.join(td, 'kernel.json'), 'w') as f:
+                json.dump(kernel_json, f, sort_keys=True)
+            log.info('Installing IPython kernel spec')
+            try:
+                install_kernel_spec(td, 'sos', user=self.user, replace=True)
+            except:
+                print("Could not install SoS Kernel as %s user" % self.user)
+
 exec(open('pysos/_version.py').read())
 
 setup(name = "sos",
@@ -44,6 +77,7 @@ setup(name = "sos",
         'Programming Language :: Python :: 3 :: Only',
         ],
     packages = ['pysos'],
+    cmdclass={'install': InstallWithKernelspec},
     install_requires=[
           'psutil',
           'pyyaml',

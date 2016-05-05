@@ -121,6 +121,9 @@ class SoS_Magics(Magics):
         'Magic that displays content of the dictionary'
         # do not return __builtins__ beacuse it is too long...
         actions = line.strip().split()
+        for action in actions:
+            if action not in ['reset', 'all', 'keys']:
+                raise RuntimeError('Unrecognized sosdict option {}'.format(action))
         if 'reset' in actions:
             return self._reset()
         if 'keys' in actions:

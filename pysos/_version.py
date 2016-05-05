@@ -30,6 +30,9 @@ if _py_ver.major == 2 or (_py_ver.major == 3 and (_py_ver.minor, _py_ver.micro) 
         .format(_py_ver.major, _py_ver.minor, _py_ver.micro))
 
 
+# version of the SoS language
+__sos_version__ = '1.0'
+# version of the sos command
 __version__ = '0.6.2'
 __py_version__ = '{}.{}.{}'.format(_py_ver.major, _py_ver.minor, _py_ver.micro)
 
