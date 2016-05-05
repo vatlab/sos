@@ -630,7 +630,7 @@ class Step_Executor:
                 raise RuntimeError('Either none or all of input groups can be unknown.')
             env.sos_dict.set('input', None)
         else:
-            env.sos_dict.set('input', list(OrderedDict.fromkeys(sum(self._groups, []))))
+            env.sos_dict.set('input', env.sos_dict['__step_input__'])
         #
         if env.run_mode == 'run':
             env.logger.info('input:   ``{}``'.format(shortRepr(env.sos_dict['input'], noneAsNA=True)))
