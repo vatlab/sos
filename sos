@@ -24,7 +24,7 @@ import sys
 import argparse
 
 from pysos._version import SOS_FULL_VERSION
-from pysos.main import sos_run, sos_dryrun, sos_prepare, sos_show, sos_config
+from pysos.main import sos_run, sos_inspect, sos_prepare, sos_show, sos_config
 
 def addCommonArgs(parser):
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
@@ -86,12 +86,12 @@ if __name__ == '__main__':
             (lines starts with !) and report action of the script.''')
     runmode = parser.add_argument_group(title='Run mode options',
         description='''SoS scripts are by default executed in run mode where all
-            the script is run in dryrun mode to check syntax error, prepare mode
+            the script is run in inspect mode to check syntax error, prepare mode
             to prepare resources, and run mode to execute the pipelines. Run mode
             options allow you to check the script or download resources without
             actually running the workflow.''')
-    runmode.add_argument('-d', action='store_true', dest='__dryrun__',
-        help='''Execute the workflow in dryrun mode in which step processes
+    runmode.add_argument('-i', action='store_true', dest='__inspect__',
+        help='''Execute the workflow in inspect mode in which step processes
             are executed normally but with most SoS actions return directly.
             SoS also produces diagnoistic warning messages in this mode.''')
     runmode.add_argument('-p', action='store_true', dest='__prepare__',
@@ -108,23 +108,23 @@ if __name__ == '__main__':
     addCommonArgs(parser)
     parser.set_defaults(func=sos_run)
     #
-    # command dryrun
-    parser = subparsers.add_parser('dryrun',
-        description='''Execute a workflow in dryrun mode. In comparison to
+    # command inspect
+    parser = subparsers.add_parser('inspect',
+        description='''Execute a workflow in inspect mode. In comparison to
             run mode, SoS does not panic for non-existing input or output
             files, does not execute most SoS actions, and does not save or
             check runtime signatures. It simply goes through the workflow,
             figure out input/output of steps, and produce warning messages
             if necessary.''',
         epilog=workflow_options,
-        help='Execute a SoS script in dryrun mode')
+        help='Execute a SoS script in inspect mode')
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
     #parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
     #    nargs=argparse.REMAINDER, help=workflow_options)
     addCommonArgs(parser)
-    parser.set_defaults(func=sos_dryrun)
+    parser.set_defaults(func=sos_inspect)
     #
     # command prepare
     parser = subparsers.add_parser('prepare',

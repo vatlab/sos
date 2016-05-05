@@ -49,12 +49,12 @@ class TestExecute(unittest.TestCase):
         self.assertEqual(subprocess.call('sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos run -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun scripts/master.sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
+        self.assertEqual(subprocess.call('sos inspect -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos inspect scripts/master.sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
         # a redirect bug related to blessing
         self.assertEqual(subprocess.call('sos run scripts/slave1.sos -v1 > /dev/null', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos dryrun file://{}/scripts/master.sos'.format(os.getcwd()), stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
-        self.assertEqual(subprocess.call('sos dryrun scripts/master.sos L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos inspect file://{}/scripts/master.sos'.format(os.getcwd()), stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
+        self.assertEqual(subprocess.call('sos inspect scripts/master.sos L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos show -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         #
         self.assertEqual(subprocess.call('sos config -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
@@ -88,7 +88,7 @@ for b in range(5):
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], '01234')
         #
-        env.run_mode='dryrun'
+        env.run_mode='inspect'
         script = SoS_Script(r"""
 [0: alias='res']
 input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
@@ -99,7 +99,7 @@ output: ['{}_{}_processed.txt'.format(x,y) for x,y in zip(name, model)]
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'].output,  ['a_1_processed.txt', 'b_2_processed.txt', 'c_2_processed.txt'])
         #
-        env.run_mode='dryrun'
+        env.run_mode='inspect'
         script = SoS_Script(r"""
 [0: alias='res']
 input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
@@ -110,7 +110,7 @@ output: ['${x}_${y}_process.txt' for x,y in zip(name, model)]
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'].output,  ['a_1_process.txt', 'b_2_process.txt', 'c_2_process.txt'])
         #
-        env.run_mode='dryrun'
+        env.run_mode='inspect'
         script = SoS_Script(r"""
 [0: alias='res']
 def add_a(x):
@@ -146,7 +146,7 @@ def myfunc(a):
 input: myfunc(['a.txt', 'b.txt'])
 """)
         wf = script.workflow()
-        env.run_mode='dryrun'
+        env.run_mode='inspect'
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].input, ['aa.txt', 'ab.txt'])
         # in nested workflow?
@@ -161,7 +161,7 @@ input: myfunc(['a.txt', 'b.txt'])
 sos_run('mse')
 """)
         wf = script.workflow()
-        env.run_mode='dryrun'
+        env.run_mode='inspect'
         Sequential_Executor(wf).run()
         #
         # Names defined in subworkflow is not returned to the master dict
@@ -366,7 +366,7 @@ run('touch ${output}')
 
     def testInput(self):
         '''Test input specification'''
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         script = SoS_Script(r"""
 [0:alias='res']
 input: '*.py'
@@ -378,7 +378,7 @@ output: _input
 
     def testForEach(self):
         '''Test for_each option of input'''
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         script = SoS_Script(r"""
 [0]
 files = ['a.txt', 'b.txt']
@@ -426,7 +426,7 @@ processed.append((_par, _res))
 
     def testInputPattern(self):
         '''Test option pattern of step input '''
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         #env.verbosity = 4
         script = SoS_Script(r"""
 [0]
@@ -446,7 +446,7 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
 
     def testOutputPattern(self):
         '''Test option pattern of step output'''
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         #env.verbosity = 4
         script = SoS_Script(r"""
 [0]
@@ -467,7 +467,7 @@ output: pattern=['{base}-{name}-{par}.txt', '{par}.txt']
 
     def testAlias(self):
         '''Test option alias'''
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         script = SoS_Script(r"""
 [0: alias='oa']
 files = ['a.txt', 'b.txt']
@@ -490,7 +490,7 @@ output: _input
 
     def testFileType(self):
         '''Test input option filetype'''
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         script = SoS_Script(r"""
 [0: alias='res']
 files = ['a.txt', 'b.txt']
@@ -534,7 +534,7 @@ counter += 1
 
     def testSkip(self):
         '''Test input option skip'''
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         env.shared_vars = ['counter']
         script = SoS_Script(r"""
 [0]
@@ -551,7 +551,7 @@ counter += 1
 
     def testOutputFromInput(self):
         '''Test deriving output files from input files'''
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         script = SoS_Script(r"""
 [0: alias='step']
 files = ['a.txt', 'b.txt']
@@ -637,10 +637,10 @@ def fail():
 a = fail()
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         env.shared_vars=['a']
         Sequential_Executor(wf).run()
-        # should return 0 in dryrun mode
+        # should return 0 in inspect mode
         self.assertTrue(isinstance(env.sos_dict['a'], Undetermined))
         #
 
@@ -661,7 +661,7 @@ a += 1
 
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
 
     def testReadonlyVarsInParameters(self):
@@ -682,7 +682,7 @@ sos_run('a+a')
 
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
 
     def testPassingVarsToNestedWorkflow(self):
@@ -723,7 +723,7 @@ myfunc()
 
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].output, ['a'])
         # User defined function should also work under nested workflows
@@ -743,7 +743,7 @@ myfunc()
 
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].output, ['a45'])
 
@@ -759,7 +759,7 @@ test.output=['ab.txt']
 
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).run)
 
     def testReadOnlyInputOutputVars(self):
@@ -771,7 +771,7 @@ _output = ['b.txt']
 
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         # I would like to disallow setting _output directly, but this is
         # not the case now.
         self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
@@ -788,7 +788,7 @@ print(a)
 
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         # I would like to disallow accessing variables defined
         # in other cases.
         self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).run)
@@ -806,7 +806,7 @@ output: shared.input
 
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         # I would like to disallow accessing variables defined
         # in other cases.
         Sequential_Executor(wf).run()
@@ -831,7 +831,7 @@ e = shared.d + 1
 
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         # I would like to disallow accessing variables defined
         # in other cases.
         Sequential_Executor(wf).run()
@@ -857,7 +857,7 @@ shared.d += 1
 
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         # I would like to disallow accessing variables defined
         # in other cases.
         self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
@@ -875,7 +875,7 @@ print(0)
 
 
     def testCollectionOfErrors(self):
-        '''Test collection of errors when running in dryrun mode.'''
+        '''Test collection of errors when running in inspect mode.'''
         script = SoS_Script('''
 [0]
 check_command('a1')
@@ -889,7 +889,7 @@ check_command('a4')
 
 ''')
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         # we should see a single error with 4 messages.
         try:
             Sequential_Executor(wf).run()
@@ -898,7 +898,7 @@ check_command('a4')
 
 
     def testDryrunTimeout(self):
-        '''Test if any action should exit in five seconds in dryrun mode'''
+        '''Test if any action should exit in five seconds in inspect mode'''
         sos_config_file = os.path.expanduser('.sos/config.yaml')
         move_back = False
         if os.path.isfile(sos_config_file):
@@ -915,7 +915,7 @@ time.sleep(8)
         # this should be ok
         Sequential_Executor(wf).run()
         #
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         self.assertRaises(ExecuteError, Sequential_Executor(wf).run)
         #
         # now, if I have a configuration file, the default value can be changed
@@ -927,7 +927,7 @@ time.sleep(8)
 # global sos configuration file
 #
 {
-    "sos_dryrun_timeout": 10
+    "sos_inspect_timeout": 10
 }
 ''')
         # now we can rerun the script, and it should pass
@@ -941,7 +941,7 @@ time.sleep(8)
 
 
     def testSearchPath(self):
-        '''Test if any action should exit in five seconds in dryrun mode'''
+        '''Test if any action should exit in five seconds in inspect mode'''
         sos_config_file = os.path.expanduser('.sos/config.yaml')
         move_back = False
         if os.path.isfile(sos_config_file):
@@ -1079,7 +1079,7 @@ for i in range(3):
 ''')
         wf = script.workflow()
         #
-        for run_mode in ('dryrun', 'prepare', 'run'):
+        for run_mode in ('inspect', 'prepare', 'run'):
             env.run_mode = run_mode
             Sequential_Executor(wf).run()
         # we should have 9 files
@@ -1103,7 +1103,7 @@ if run_mode == 'run':
 
 ''')
         wf = script.workflow()
-        for run_mode in ('dryrun', 'prepare', 'run'):
+        for run_mode in ('inspect', 'prepare', 'run'):
             env.run_mode = run_mode
             Sequential_Executor(wf).run()
         # we should have 9 files

@@ -53,25 +53,25 @@ class TestActions(unittest.TestCase):
         script = SoS_Script(r"""
 from pysos import SoS_Action
 
-@SoS_Action(run_mode='dryrun')
-def func_dryrun():
+@SoS_Action(run_mode='inspect')
+def func_inspect():
     return 1
 
 @SoS_Action(run_mode='run')
 def func_run():
     return 1
 
-@SoS_Action(run_mode=['run', 'dryrun'])
+@SoS_Action(run_mode=['run', 'inspect'])
 def func_both():
     return 1
 
 [0:alias='result']
-a=func_dryrun()
+a=func_inspect()
 b=func_run()
 c=func_both()
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['result'].a, 1)
         self.assertTrue(isinstance(env.sos_dict['result'].b, Undetermined))
@@ -116,9 +116,9 @@ ret = get_output('echo blah', show_command=True, prompt='% ')
 [0]
 get_output('catmouse')
 """)
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
-        # should fail in dryrun mode
+        # should fail in inspect mode
         self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
         #
         env.run_mode = 'run'
@@ -135,7 +135,7 @@ ret = get_output('cat -h')
         self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
         #
         # check get_output if the command is stuck
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         script = SoS_Script(r"""
 [0]
 get_output('sleep 6')
@@ -144,13 +144,13 @@ get_output('sleep 6')
         # this should yield error
         self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
         # even for weird commands such as cat > /dev/null, it should quite
-        # in dryrun mode
+        # in inspect mode
         script = SoS_Script(r"""
 [0]
 get_output('cat > /dev/null')
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         # this should pass
         self.assertRaises(ExecuteError, Sequential_Executor(wf).run)
 
@@ -168,9 +168,9 @@ check_command('cat')
 [0]
 check_command('catmouse')
 """)
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
-        # should fail in dryrun mode
+        # should fail in inspect mode
         self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
         #
         env.run_mode = 'run'
@@ -196,7 +196,7 @@ fail_if(check_command('cat -h') != 0, 'command return non-zero')
         self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
         #
         # check check_command is the command is stuck
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         script = SoS_Script(r"""
 [0]
 check_command('sleep 4')
@@ -228,13 +228,13 @@ check_command('cat test_actions.py', 'testSearchOutput')
         wf = script.workflow()
         Sequential_Executor(wf).run()
         # even for weird commands such as cat > /dev/null, it should quite
-        # in dryrun mode
+        # in inspect mode
         script = SoS_Script(r"""
 [0]
 check_command('cat > /dev/null')
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         # this should pass
         self.assertRaises(ExecuteError, Sequential_Executor(wf).run)
 
@@ -245,16 +245,16 @@ check_command('cat > /dev/null')
 input: 'a.txt'
 fail_if(len(input) == 1)
 """)
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
-        # should fail in dryrun mode
+        # should fail in inspect mode
         self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
 fail_if(len(input) == 1)
 """)
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         # should be ok
         Sequential_Executor(wf).run()
@@ -266,7 +266,7 @@ fail_if(len(input) == 1)
 input: 'a.txt'
 warn_if(len(input) == 1, 'Expect to see a warning message')
 """)
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         # should see a warning message.
         Sequential_Executor(wf).run()
@@ -276,7 +276,7 @@ warn_if(len(input) == 1, 'Expect to see a warning message')
 input: 'a.txt', 'b.txt'
 warn_if(len(input) == 1)
 """)
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         # should be silent
         Sequential_Executor(wf).run()
@@ -780,7 +780,7 @@ output: 'myreport.html'
 pandoc(output=_output[0], to='html')
 ''')
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         Sequential_Executor(wf).run()
         env.run_mode = 'prepare'
         Sequential_Executor(wf).run()

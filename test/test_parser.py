@@ -531,7 +531,7 @@ files = ['a.txt', 'b.txt']
 input: 'a.pdf', files, skip=False
 
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow('default')
         Sequential_Executor(wf).run()
         #
@@ -543,7 +543,7 @@ input: {'a.txt', 'b.txt'}, files
 output: ('a${x}' for x in _input)
 
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         Sequential_Executor(wf).run()
         self.assertEqual(sorted(env.sos_dict['test'].input), ['a.txt', 'a0', 'a1', 'b.txt'])
@@ -563,7 +563,7 @@ input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='all'
 executed.append(_input)
 
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt', 'a3.txt', 'a4.txt']])
@@ -577,7 +577,7 @@ input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='single'
 executed.append(_input)
 
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt'], ['a2.txt'], ['a3.txt'], ['a4.txt']])
@@ -591,7 +591,7 @@ input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='pairs'
 executed.append(_input)
 
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a3.txt'], ['a2.txt', 'a4.txt']])
@@ -605,7 +605,7 @@ input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='pairwise'
 executed.append(_input)
 
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt'], ['a2.txt', 'a3.txt'], ['a3.txt', 'a4.txt']])
@@ -619,7 +619,7 @@ input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='combinations'
 executed.append(_input)
 
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt'], ['a1.txt', 'a3.txt'], 
@@ -634,7 +634,7 @@ input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by=3
 executed.append(_input)
 
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'],
@@ -651,7 +651,7 @@ input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by='3'
 executed.append(_input)
 
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'],
@@ -668,7 +668,7 @@ input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by=4
 executed.append(_input)
 
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
         # incorrect value causes an exception
@@ -681,7 +681,7 @@ input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by='something'
 executed.append(_input)
 
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
 
@@ -773,7 +773,7 @@ input_b1 = input
 [c]
 [d]
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow('a+b')
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['a_parameters', 'a_1', 'a_2', 'a_3', 'a_4', 'b_parameters', 'b_1', 'b_2', 'b_3', 'b_4'])
@@ -826,7 +826,7 @@ output: 'b.txt'
 inputs.append(input)
 sos_run('a+b')
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow('c')
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'a_1', 'a_2', 'a_3', 'a_4',
@@ -852,7 +852,7 @@ input: 'a.txt', 'b.txt', group_by='single'
 inputs.append(_input)
 sos_run('a')
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow('c')
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'a_1', 'a_2', 'a_1', 'a_2'])
@@ -872,7 +872,7 @@ else:
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2')
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow('c')
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_2',  'a_2'])
@@ -890,7 +890,7 @@ else:
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2')
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow('c')
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_2', 'a_2'])
@@ -908,7 +908,7 @@ else:
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2+c')
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow('c')
         self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
         #
@@ -929,7 +929,7 @@ sos_run('a_1+a_2')
 input: 'a.txt'
 sos_run('a+b')
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow('c')
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_1', 'a_2', 'a_3',
@@ -954,7 +954,7 @@ sos_run('a_2')
 [e2_2]
 input: 'a.txt', 'b.txt', group_by='single'
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow('b')
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['b_0', 'a_3', 'a_1', 'a_3', 'a_1'])
@@ -986,7 +986,7 @@ wf='a'
 sos_run(wf)
 ''')
         env.shared_vars = ['executed']
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         Sequential_Executor(wf).run(args=['--wf', 'b'])
         self.assertEqual(env.sos_dict['executed'], ['default_parameters', 'default_0', 'b_parameters', 'b_1', 'b_2', 'b_3'])
@@ -1030,7 +1030,7 @@ else:
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('A', source='temp/test.sos')
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow('b')
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['GLB'], 5)
@@ -1046,7 +1046,7 @@ else:
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('k.A', source={'k':'temp/test.sos'})
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow('b')
         Sequential_Executor(wf).run()
         self.assertEqual(env.sos_dict['GLB'], 5)
@@ -1141,7 +1141,7 @@ input: for_each='seq'
 output: 'test${_seq}.txt'
 print(output)
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         # this does not work before until we make variable output available sooner
         Sequential_Executor(wf).run()
@@ -1155,7 +1155,7 @@ assert(len(output), _index + 1)
 task:
 assert(len(output), 3)
 ''')
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
         wf = script.workflow()
         # this does not work before until we make variable output available sooner
         Sequential_Executor(wf).run()

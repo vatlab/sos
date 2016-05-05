@@ -360,7 +360,7 @@ def SoS_Action(run_mode='run'):
                 # return dynamic expression when not in run mode, that is to say
                 # the script logic cannot rely on the result of the action
                 return Undetermined(func.__name__)
-            if env.run_mode == 'dryrun':
+            if env.run_mode == 'inspect':
                 for k,v in kwargs.items():
                     if k in SOS_RUNTIME_OPTIONS:
                         env.logger.warning('Passing runtime option "{0}" to action is deprecated. Please use "task: {0}={1}" before action instead.'.format(k, v))
@@ -394,7 +394,7 @@ class SoS_ExecuteScript:
         self.validator = validator
 
     def run(self, **kwargs):
-        if env.run_mode == 'dryrun':
+        if env.run_mode == 'inspect':
             check_command(self.interpreter.split()[0], quiet=True)
             return
         if '{}' not in self.interpreter:
@@ -448,14 +448,14 @@ class SoS_ExecuteScript:
                     .format(debug_script_file, cmd, os.getcwd()))
 
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def sos_run(workflow, source={}):
     '''Execute a workflow from specified source, input, and output
     By default the workflow is defined in the existing SoS script, but
     extra sos files can be specified from paramter source. The workflow
     will be execute in the current step namespace with _input as workflow
     input. '''
-    if env.run_mode == 'dryrun':
+    if env.run_mode == 'inspect':
         env.logger.debug('Checking nested workflow {}'.format(workflow))
     elif env.run_mode == 'prepare':
         env.logger.debug('Preparing nested workflow {}'.format(workflow))
@@ -469,12 +469,12 @@ def sos_run(workflow, source={}):
         raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
     return Sequential_Executor(wf).run(args=env.sos_dict['__args__'], nested=True)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def execute_script(script, interpreter, suffix, **kwargs):
     return SoS_ExecuteScript(script, interpreter, suffix).run(**kwargs)
 
 _check_command_cache = {}
-@SoS_Action(run_mode=['dryrun', 'run'])
+@SoS_Action(run_mode=['inspect', 'run'])
 def check_command(cmd, pattern = None, quiet=False):
     '''Raise an exception if output of `cmd` does not match specified `pattern`.
     Multiple patterns can be specified as a list of patterns.
@@ -514,14 +514,14 @@ def check_command(cmd, pattern = None, quiet=False):
     _check_command_cache[cmd] = ret_val
     return ret_val
 
-@SoS_Action(run_mode=['dryrun', 'run'])
+@SoS_Action(run_mode=['inspect', 'run'])
 def fail_if(expr, msg=''):
     '''Raise an exception with `msg` if condition `expr` is False'''
     if expr:
         raise RuntimeError(msg)
     return 0
 
-@SoS_Action(run_mode=['dryrun', 'run'])
+@SoS_Action(run_mode=['inspect', 'run'])
 def warn_if(expr, msg=''):
     '''Yield an warning message `msg` if `expr` is False '''
     if expr:
@@ -702,58 +702,58 @@ def validate_with_command(cmd):
     #
     return func
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def run(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/bash', '.sh', validate_with_command('/bin/bash -n')).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def bash(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/bash', '.sh', validate_with_command('/bin/bash -n')).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def csh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/csh', '.csh', validate_with_command('/bin/csh -n')).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def tcsh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/tcsh', '.sh', validate_with_command('/bin/tcsh -n')).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def zsh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/zsh', '.zsh', validate_with_command('/bin/zsh -n')).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def sh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/sh', '.sh', validate_with_command('/bin/sh -n')).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def python(script, **kwargs):
     return SoS_ExecuteScript(script, 'python', '.py', validate_with_command('python -m py_compile')).run(**kwargs)
 
 def validate_python3(script, filename=None):
     compile(script, filename=filename, mode='exec')
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def python3(script, **kwargs):
     return SoS_ExecuteScript(script, 'python3', '.py', validate_python3).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def perl(script, **kwargs):
     return SoS_ExecuteScript(script, 'perl', '.pl', validate_with_command('perl -c')).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def ruby(script, **kwargs):
     return SoS_ExecuteScript(script, 'ruby', '.rb', validate_with_command('ruby -c')).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def node(script, **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def JavaScript(script, **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def R(script, **kwargs):
     return SoS_ExecuteScript(
         script, 'Rscript --default-packages=methods,utils,stats,grDevices,graphics ', '.R',
@@ -765,14 +765,14 @@ def R(script, **kwargs):
                     stop(paste(lint[[i]]$"message", lint[[i]]$"line"))'
             '''.replace('\n', ' '))).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'prepare'])
+@SoS_Action(run_mode=['inspect', 'prepare'])
 def check_R_library(name, version = None):
     '''Check existence and version match of R library.
     cran and bioc packages are unique yet might overlap with github.
     Therefore if the input name is {repo}/{pkg} the package will be
     installed from github if not available, else from cran or bioc
     '''
-    if env.run_mode == 'dryrun':
+    if env.run_mode == 'inspect':
         check_command('Rscript', quiet=True)
         return 0
     output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
@@ -852,7 +852,7 @@ def check_R_library(name, version = None):
         env.run_mode = 'run'
         SoS_ExecuteScript(install_script + version_script, 'Rscript --default-packages=utils', '.R').run()
     finally:
-        env.run_mode = 'dryrun'
+        env.run_mode = 'inspect'
     ret_val = 0
     with open(output_file) as tmp:
         for line in tmp:
@@ -891,7 +891,7 @@ def docker_commit(**kwargs):
     docker.commit(**kwargs)
     return 0
 
-@SoS_Action(run_mode=['dryrun', 'run'])
+@SoS_Action(run_mode=['inspect', 'run'])
 def report(script=None, from_file=None, to_file=None, mode='a', **kwargs):
     if to_file is not None:
         if not to_file:
@@ -916,7 +916,7 @@ def report(script=None, from_file=None, to_file=None, mode='a', **kwargs):
         md.write(content)
 
 
-@SoS_Action(run_mode=['dryrun', 'run'])
+@SoS_Action(run_mode=['inspect', 'run'])
 def pandoc(script=None, output=None, **kwargs):
     '''This action can be used in three ways
 
@@ -928,8 +928,8 @@ def pandoc(script=None, output=None, **kwargs):
     pandoc(outputfile='report.html')
 
     '''
-    # if in dryrun mode, check for pandoc command
-    if env.run_mode == 'dryrun':
+    # if in inspect mode, check for pandoc command
+    if env.run_mode == 'inspect':
         return check_command('pandoc')
     #
     # in run mode, collect report and call pandoc
@@ -1016,7 +1016,7 @@ def pandoc(script=None, output=None, **kwargs):
     env.logger.info('Report saved to {}'.format(output))
 
 
-@SoS_Action(run_mode=['dryrun', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def Rmarkdown(script=None, output_file=None, **kwargs):
     '''This action can be used in three ways
 
@@ -1028,8 +1028,8 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
     Rmarkdown(output_file='report.html')
 
     '''
-    # if in dryrun mode, check for Rmarkdown command
-    if env.run_mode in ['dryrun', 'prepare']:
+    # if in inspect mode, check for Rmarkdown command
+    if env.run_mode in ['inspect', 'prepare']:
         return check_R_library('knitr') + check_R_library('rmarkdown')
     #
     # in run mode, collect report and call Rmarkdown

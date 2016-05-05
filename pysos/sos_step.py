@@ -51,7 +51,7 @@ class ArgumentError(Error):
         self.args = (msg, )
 
 class ExecuteError(Error):
-    """Raised when there are errors in dryrun mode. Such errors are not raised
+    """Raised when there are errors in inspect mode. Such errors are not raised
     immediately, but will be collected and raised at the end """
 
     def __init__(self, workflow):
@@ -277,7 +277,7 @@ def directive_input(*args, **kwargs):
                 if env.run_mode == 'run':
                     raise RuntimeError('{} not exist'.format(ifile))
                 else:
-                    # in dryrun mode, we do not care about unrecognized file
+                    # in inspect mode, we do not care about unrecognized file
                     tmp.append(ifile)
             else:
                 tmp.extend(expanded)
@@ -446,7 +446,7 @@ def execute_step_process(step_process, global_def, sos_dict, sigil, signature, w
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
     try:
-        if env.run_mode == 'dryrun':
+        if env.run_mode == 'inspect':
             env.logger.trace('Checking step with input ``{}`` and output ``{}``'.format(sos_dict['_input'], shortRepr(sos_dict['_output'])))
         elif env.run_mode == 'prepare':
             env.logger.trace('Preparing step with input ``{}`` and output ``{}``'.format(sos_dict['_input'], shortRepr(sos_dict['_output'])))
@@ -527,7 +527,7 @@ class Step_Executor:
         #
         if env.run_mode == 'run':
             env.logger.info('Execute ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
-        elif env.run_mode == 'dryrun':
+        elif env.run_mode == 'inspect':
             env.logger.trace('Checking ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
         else:
             env.logger.trace('Preparing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))

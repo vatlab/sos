@@ -73,11 +73,11 @@ def sos_show(args, style_args):
         sys.exit(1)
 
 #
-# subcommand dryrun
+# subcommand inspect
 #
-def sos_dryrun(args, workflow_args):
+def sos_inspect(args, workflow_args):
     args.__max_jobs__ = 1
-    args.__dryrun__ = True
+    args.__inspect__ = True
     args.__prepare__ = False
     args.__run__ = False
     args.__rerun__ = False
@@ -89,7 +89,7 @@ def sos_dryrun(args, workflow_args):
 #
 def sos_prepare(args, workflow_args):
     args.__max_jobs__ = 1
-    args.__dryrun__ = True
+    args.__inspect__ = True
     args.__prepare__ = True
     args.__run__ = False
     args.__rerun__ = False
@@ -104,14 +104,14 @@ def sos_run(args, workflow_args):
     env.verbosity = args.verbosity
     # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)
-    # default mode: run in dryrun mode
-    args.__run__ = not (args.__rerun__ or args.__prepare__ or args.__dryrun__)
+    # default mode: run in inspect mode
+    args.__run__ = not (args.__rerun__ or args.__prepare__ or args.__inspect__)
     #
     if args.__run__ or args.__rerun__:
         args.__prepare__ = True
     #
-    # always run in dryrun mode
-    env.run_mode = 'dryrun'
+    # always run in inspect mode
+    env.run_mode = 'inspect'
     # if this is not the last step, use verbosity 1 (warning)
     #if args.__prepare__:
     #    env.verbosity = min(args.verbosity, 1)

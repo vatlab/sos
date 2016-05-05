@@ -50,7 +50,7 @@ class ArgumentError(Error):
         self.args = (msg, )
 
 class ExecuteError(Error):
-    """Raised when there are errors in dryrun mode. Such errors are not raised
+    """Raised when there are errors in inspect mode. Such errors are not raised
     immediately, but will be collected and raised at the end """
 
     def __init__(self, workflow):
@@ -277,7 +277,7 @@ class Sequential_Executor(Base_Executor):
             #
             # Important:
             #
-            # Here we require that skip to be evaluatable at dryrun and prepare mode
+            # Here we require that skip to be evaluatable at inspect and prepare mode
             # up until this step. There is to say, it cannot rely on the result of
             # an action that is only available till run time (action would return
             # Undetermined when executed not in the specified runmode)
@@ -347,7 +347,7 @@ class Interactive_Executor(Base_Executor):
         # ignored
         parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE')
         runmode = parser.add_argument_group(title='Run mode options')
-        runmode.add_argument('-d', action='store_true', dest='__dryrun__')
+        runmode.add_argument('-i', action='store_true', dest='__inspect__')
         runmode.add_argument('-p', action='store_true', dest='__prepare__')
         runmode.add_argument('-f', action='store_true', dest='__rerun__')
         runmode.add_argument('-F', action='store_true', dest='__construct__')
@@ -384,8 +384,8 @@ class Interactive_Executor(Base_Executor):
                 return SoS_exec(script.global_def)
         #
         # special execution mode
-        if args.__dryrun__:
-            env.run_mode = 'dryrun'
+        if args.__inspect__:
+            env.run_mode = 'inspect'
         elif args.__prepare__:
             env.run_mode = 'prepare'
         else:
