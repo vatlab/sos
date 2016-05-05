@@ -28,7 +28,6 @@ import fnmatch
 import multiprocessing as mp
 from multiprocessing.pool import AsyncResult
 
-from collections import OrderedDict
 from collections.abc import Sequence, Iterable
 from itertools import tee, combinations
 
@@ -700,14 +699,16 @@ class Step_Executor:
                     # It will be reset after all the loops are done
                     #
                     if '_output' in env.sos_dict and env.sos_dict['_output'] and not isinstance(env.sos_dict['_output'][0], Undetermined):
-                        tmp_outputs = copy.deepcopy(self._outputs)
-                        tmp_outputs.append(env.sos_dict['_output'])
-                        env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(tmp_outputs, []))))
+                        if 'output' not in env.sos_dict:
+                            env.sos_dict.set('output', copy.deepcopy(env.sos_dict['_output']))
+                        elif not self._outputs or env.sos_dict['_output'] != self._outputs[-1]:
+                            env.sos_dict['output'].extend(env.sos_dict['_output'])
                     #
                     if '_depends' in env.sos_dict:
-                        tmp_depends = copy.deepcopy(self._depends)
-                        tmp_depends.append(env.sos_dict['_output'])
-                        env.sos_dict.set('depends', list(OrderedDict.fromkeys(sum(tmp_depends, []))))
+                        if 'depends' not in env.sos_dict:
+                            env.sos_dict.set('depends', copy.deepcopy(env.sos_dict['_depends']))
+                        elif not self._depends or env.sos_dict['_depends'] != self._depends[-1]:
+                            env.sos_dict['depends'].extend(env.sos_dict['_depends'])                        
                 else:
                     # in run mode, check signature and see if all results exist
                     if env.run_mode == 'run' and '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
@@ -751,17 +752,15 @@ class Step_Executor:
             if not all(x is None for x in self._outputs):
                 raise RuntimeError('Output should be specified for all loops.')
             env.sos_dict.set('output', None)
-        elif self._outputs and self._outputs[0] and isinstance(self._outputs[0][0], Undetermined):
-            # in case of dynamic expression, the same expression can have different
-            # results so we cannot merge them now
+        elif len(self._outputs) >= 1 and all(x==self._outputs[0] for x in self._outputs):
+            env.sos_dict.set('output', copy.deepcopy(self._outputs[0]))
+        else:
             env.sos_dict.set('output', sum(self._outputs, []))
-        else:
-            env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
         #
-        if any(isinstance(x, Undetermined) for x in self._depends):
-            env.sos_dict.set('depends', self._depends)
+        if len(self._depends) >= 1 and all(x==self._depends[0] for x in self._depends):
+            env.sos_dict.set('depends', copy.deepcopy(self._depends[0]))
         else:
-            env.sos_dict.set('depends', list(OrderedDict.fromkeys(sum(self._depends, []))))
+            env.sos_dict.set('depends', sum(self._depends, []))
         #
         if env.sos_dict['output'] and not isinstance(env.sos_dict['output'][0], Undetermined) and env.run_mode == 'run':
             env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
