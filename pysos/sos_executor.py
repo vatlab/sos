@@ -235,9 +235,9 @@ class Base_Executor:
             with open(self.report, 'w') as combined:
                 for step_report in step_reports:
                     with open(step_report, 'r') as md:
-                        combined.write(md.read()) 
+                        combined.write(md.read())
             env.logger.info('Report saved to {}'.format(self.report))
-        
+
     def run(self, args=[], nested=False, cmd_name='', config_file=None):
         if not self.workflow.sections:
             return
@@ -355,6 +355,10 @@ class Interactive_Executor(Base_Executor):
         #
         args, workflow_args = parser.parse_known_args(shlex.split(command_line))
         return args, workflow_args
+
+    def parse_script(self, code):
+        '''Used by the kernel to judge if the code is complete'''
+        return SoS_Script(content=code)
 
     def run_interactive(self, block, command_line=''):
         '''Execute a block of SoS script that is sent by iPython.'''

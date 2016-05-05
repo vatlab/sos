@@ -24,6 +24,7 @@ from .utils import env, WorkflowDict
 from ._version import __sos_version__, __version__
 from .sos_eval import SoS_exec, SoS_eval
 from .sos_executor import Interactive_Executor
+from .sos_syntax import SOS_SECTION_HEADER
 
 from ipykernel.kernelbase import Kernel
 
@@ -36,6 +37,9 @@ class SoS_Kernel(Kernel):
         'mimetype': 'text/x-sos',
         'name': 'sos',
         'file_extension': '.sos',
+        # temporarily using python lexer because we do not
+        # sos lexer
+        "pygments_lexer": "python",
     }
     banner = "SoS kernel - script of scripts"
 
@@ -69,6 +73,14 @@ class SoS_Kernel(Kernel):
             except:
                 return self.executor.run_interactive(code, command_line=line)
 
+    def do_inspect(code, cursor_pos, detail_level=0):
+        'Inspect code'
+        return {
+            'status': 'ok',
+            'found': 'true',
+            'data': {x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys},
+            'metadata':''}
+
     def sosdict(self, line):
         'Magic that displays content of the dictionary'
         # do not return __builtins__ beacuse it is too long...
@@ -89,17 +101,49 @@ class SoS_Kernel(Kernel):
             else:
                 return {x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys}
 
+    def do_is_complete(self, code):
+        '''check if new line is in order'''
+        code = code.strip()
+        if not code:
+            return {'status': 'complete', 'indent': ''}
+        if code.endswith(':') or code.endswith(','):
+            return {'status': 'incomplete', 'indent': '  '}
+        lines = code.split('\n')
+        if lines[-1].startswith(' ') or lines[-1].startswith('\t'):
+            empty = [idx for idx,x in lines if x not in (' ', '\t')][0]
+            return {'status': 'incomplete', 'indent': lines[:empty]}
+        if SOS_SECTION_HEADER.match(lines[-1]):
+            return {'status': 'incomplete', 'indent': ''}
+        # check syntax??
+        try:
+            compile(code, '<string>', 'exec')
+            return {'status': 'complete', 'indent': ''}
+        except:
+            try:
+                self.executor.parse_script(code)
+                return {'status': 'complete', 'indent': ''}
+            except:
+                return {'status': 'incomplete', 'indent': ''}
+
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
         mode = 'code'
-        if code.startswith('sosdict') or code.startswith('%sosdict'):
+        if code.startswith('%sosdict'):
             lines = code.split('\n')
-            command_line = lines[0][9:]
+            pieces = lines[0].strip().split(None, 1)
+            if len(pieces) == 2:
+                command_line = pieces[1]
+            else:
+                command_line = ''
             mode = 'dict'
-        elif code.startswith('%%sos') or code.startswith('%sos'):
+        elif code.startswith('%sos'):
             lines = code.split('\n')
-            code = '\n'.lines[1:]
-            command_line = lines[0][6:]
+            code = '\n'.join(lines[1:])
+            pieces = lines[0].strip().split(None, 1)
+            if len(pieces) == 2:
+                command_line = pieces[1]
+            else:
+                command_line = ''
         else:
             command_line = ''
         #
@@ -109,10 +153,13 @@ class SoS_Kernel(Kernel):
             else:
                 res = self.eval_code(code, command_line)
         except Exception as e:
+            stream_content = {'name': 'stderr', 'text': repr(e)}
+            self.send_response(self.iopub_socket, 'stream', stream_content)
             return  {'status': 'error',
-                'ename': type(e),
+                'ename': e.__class__.__name__,
                 'evalue': repr(e),
-                'traceback': []
+                'traceback': [],
+                'execution_count': self.execution_count,
                }
 
         # this is Ok, send result back
@@ -124,7 +171,7 @@ class SoS_Kernel(Kernel):
                 # The base class increments the execution count
                 'execution_count': self.execution_count,
                 'payload': [],
-                'user_expressions': {},
+                'user_expressions': {}, #res,
                }
 
 if __name__ == '__main__':
