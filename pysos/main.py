@@ -100,6 +100,9 @@ def sos_prepare(args, workflow_args):
 # subcommand run
 #
 def sos_run(args, workflow_args):
+    if hasattr(args, '__dryrun__') and args.__dryrun__:
+        env.logger.warning('Option -d (dryrun) is deprecated. Please use -i (inspect) instead')
+        args.__inspect__ = args.__dryrun__
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
     # kill all remainging processes when the master process is killed.

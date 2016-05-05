@@ -90,6 +90,8 @@ if __name__ == '__main__':
             to prepare resources, and run mode to execute the pipelines. Run mode
             options allow you to check the script or download resources without
             actually running the workflow.''')
+    runmode.add_argument('-d', action='store_true', dest='__dryrun__',
+        help=argparse.SUPPRESS)
     runmode.add_argument('-i', action='store_true', dest='__inspect__',
         help='''Execute the workflow in inspect mode in which step processes
             are executed normally but with most SoS actions return directly.
@@ -116,6 +118,7 @@ if __name__ == '__main__':
             check runtime signatures. It simply goes through the workflow,
             figure out input/output of steps, and produce warning messages
             if necessary.''',
+        aliases=['dryrun'],
         epilog=workflow_options,
         help='Execute a SoS script in inspect mode')
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
@@ -143,7 +146,7 @@ if __name__ == '__main__':
     #
     # command show
     #
-    parser = subparsers.add_parser('show',
+    parser = subparsers.add_parser('view',
         description='''The show command displays details of all workflows
             defined in a script, including description of script, workflow,
             steps, and command line parameters. The output can be limited
@@ -151,7 +154,8 @@ if __name__ == '__main__':
             workflow) if a workflow is specified.''',
         epilog='''Extra command line argument could be specified to customize
             the style of html, markdown, and terminal output. ''',
-        help='Show details of a SoS script')
+        aliases=['show'],
+        help='View a SoS script or workflow in various formats')
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
