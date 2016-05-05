@@ -152,9 +152,6 @@ var = 1
         # global section cannot have directive
         self.assertRaises(ParsingError, SoS_Script,
             '''input: 'filename' ''')
-        # or unrecognized directive
-        self.assertRaises(ParsingError, SoS_Script,
-            '''inputs: 'filename' ''')
         # allow definition
         SoS_Script('''a = '1' ''')
         SoS_Script('''a = ['a', 'b'] ''')
