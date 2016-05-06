@@ -1155,6 +1155,69 @@ touch temp/${ff}
             # test last iteration
             shutil.rmtree('temp')
 
+    def testDuplicateIOFiles(self):
+        '''Test interpretation of duplicate input/output/depends'''
+        if os.path.isdir('temp'):
+            shutil.rmtree('temp')
+        os.mkdir('temp')
+        # Test duplicate input
+        os.system('touch temp/1.txt')
+        script = SoS_Script('''
+[1]
+input: ['temp/1.txt' for x in range(5)]
+python:
+with open('temp/{}.input'.format(len([${input!r,}])), 'w') as f: f.write('')
+        ''')
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
+        self.assertTrue(os.path.isfile('temp/5.input'))
+        # Test duplicate output
+        script = SoS_Script('''
+[1]
+output: ['temp/2.txt' for x in range(5)]
+python:
+with open('temp/2.txt', 'w') as f: f.write('')
+with open('temp/{}.output'.format(len([${output!r,}])), 'w') as f: f.write('')
+        ''')
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
+        self.assertTrue(os.path.isfile('temp/5.output'))
+        # Test duplicate depends
+        script = SoS_Script('''
+[1]
+input: 'temp/1.txt'
+depends: ['temp/2.txt' for x in range(5)]
+output: 'temp/3.txt'
+python:
+with open('temp/3.txt', 'w') as f: f.write('')
+with open('temp/{}.depends'.format(len([${depends!r,}])), 'w') as f: f.write('')
+        ''')
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
+        self.assertTrue(os.path.isfile('temp/5.depends'))
+        shutil.rmtree('temp')
+
+    def testOutputInLoop(self):
+        '''Test behavior of ${output} when used in loop'''
+        if os.path.isdir('temp'):
+            shutil.rmtree('temp')
+        os.mkdir('temp')
+        script = SoS_Script('''
+[default]
+s = [x for x in range(5)]
+output_files = ['temp/{}.txt'.format(x) for x in range(5)]
+input: for_each = ['s']
+output: output_files[_index]
+run: active = 0
+rm -f temp/out.log
+run:
+echo ${output} >> temp/out.log
+touch ${output}
+        ''')
+        wf = script.workflow()
+        Sequential_Executor(wf).run()
+        self.assertEqual(len(open('temp/out.log').read().split()), 25)
+        shutil.rmtree('temp')
 
 if __name__ == '__main__':
     unittest.main()
