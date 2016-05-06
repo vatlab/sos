@@ -52,6 +52,8 @@ class InstallWithKernelspec(install):
         # Now write the kernelspec
         with TemporaryDirectory() as td:
             os.chmod(td, 0o755)  # Starts off as 700, not user readable
+            with open('misc/sos_codemirror.js') as src, open(os.path.join(td, 'kernel.js'), 'w') as dest:
+                dest.write(src.read())
             with open(os.path.join(td, 'kernel.json'), 'w') as f:
                 json.dump(kernel_json, f, sort_keys=True)
             try:
