@@ -51,9 +51,7 @@ class SoS_Kernel(Kernel):
         'mimetype': 'text/x-sos',
         'name': 'sos',
         'file_extension': '.sos',
-        # temporarily using python lexer because we do not
-        # sos lexer
-        "pygments_lexer": "python",
+        'pygments_lexer': 'sos',
     }
     banner = "SoS kernel - script of scripts"
 

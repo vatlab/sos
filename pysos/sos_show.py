@@ -41,7 +41,7 @@ from .actions import get_actions
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_DEPENDS_OPTIONS, \
     SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS
 
-__all__ = []
+__all__ = ['SoS_Lexer']
 
 #
 # subcommmand show
@@ -477,7 +477,7 @@ class SoS_Lexer(PythonLexer):
     A Python lexer with SOS keywords, used for SoS directive
     """
 
-    name = 'SoS'
+    name = 'Sript of Scripts'
     aliases = ['sos']
 
     # override the mimetypes to not inherit them from python

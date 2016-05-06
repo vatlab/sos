@@ -91,6 +91,10 @@ setup(name = "sos",
           'blessings',
           'pygments',
       ],
+    entry_points='''
+[pygments.lexers]
+sos = pysos.sos_show:SoS_Lexer
+''',
     scripts = [
         'sos',
         'sos-runner',
