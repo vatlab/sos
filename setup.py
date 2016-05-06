@@ -37,8 +37,9 @@ except:
     ipython = False
 
 kernel_json = {
-    "argv":         ["python","-m", "pysos.kernel", "-f", "{connection_file}"],
-    "display_name": "SoS"
+    "argv":         ["python", "-m", "pysos.kernel", "-f", "{connection_file}"],
+    "display_name": "SoS",
+    "language":     "sos",
 }
 
 class InstallWithKernelspec(install):
@@ -90,6 +91,8 @@ setup(name = "sos",
           'pycurl',
           'blessings',
           'pygments',
+          # for jupyter notebook format conversion
+          'nbformat',
       ],
     entry_points='''
 [pygments.lexers]

@@ -36,6 +36,9 @@ from pygments.formatters import HtmlFormatter, TerminalFormatter
 from pygments.styles import get_all_styles
 from pygments.util import shebang_matches
 
+import nbformat
+from nbformat.v4 import new_code_cell, new_notebook
+
 from .utils import env
 from .actions import get_actions
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_DEPENDS_OPTIONS, \
@@ -854,6 +857,148 @@ def workflow_to_markdown(workflow, script_file, markdown_file):
     #
     env.logger.info('Workflow saved to {}'.format(markdown_file))
 
+
+#
+# Converter to Notebook
+#
+def script_to_notebook(transcript, script_file, notebook_file):
+    '''
+    Write a notebook file with the transcript of a SOS file.
+    '''
+    cells = []
+    cell_count = 1
+    with open(transcript) as script:
+        cell_src_code = []
+        content = []
+        content_type = None
+        # content_number = None
+        next_type = None
+        for line in script:
+            line_type, line_no, script_line = line.split('\t', 2)
+            # Does not follow section because it has to be one line
+            if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
+                line_type = 'COMMENT'
+            if content_type == line_type or line_type == 'FOLLOW':
+                if next_type is not None and not script_line.rstrip().endswith(','):
+                    if content_type == 'SECTION':
+                        # wrap up a cell
+                        cells.append(
+                            new_code_cell(
+                                source=''.join(cell_src_code),
+                                execution_count=cell_count)
+                            )
+                        cell_count += 1
+                        cell_src_code = content
+                    else:
+                        cell_src_code.extend(content)
+                    content = [script_line]
+                    content_type = next_type
+                    # content_number = int(line_no)
+                    next_type = None
+                else:
+                    content.append(script_line)
+            else:
+                if content:
+                    if content_type == 'SECTION':
+                        # wrap up a cell
+                        cells.append(
+                            new_code_cell(
+                                source=''.join(cell_src_code),
+                                execution_count=cell_count)
+                            )
+                        cell_count += 1
+                        cell_src_code = content
+                    else:
+                        cell_src_code.extend(content)
+                if line_type.startswith('SCRIPT_'):
+                    content_type = 'DIRECTIVE'
+                    next_type = line_type[7:]
+                else:
+                    content_type = line_type
+                # content_number = int(line_no)
+                content = [script_line]
+    if content:
+        cells.append(
+             new_code_cell(
+             source=''.join(cell_src_code),
+             execution_count=cell_count)
+        )
+    #
+    nb = new_notebook(cells = cells,
+        metadata = {
+            'kernelspec' : {
+                "display_name": "SoS",
+                "language": "sos",
+                "name": "sos"
+            },
+            "language_info": {
+                "file_extension": ".sos",
+                "mimetype": "text/x-sos",
+                "name": "sos",
+                "pygments_lexer": "python"
+            }
+        }
+    )
+    with open(notebook_file, 'w') as notebook:
+        nbformat.write(nb, notebook, 4)
+    env.logger.info('SoS script saved to {}'.format(notebook_file))
+
+
+def workflow_to_notebook(workflow, script_file, notebook_file):
+    '''
+    Write a notebook file with the transcript of a SOS file.
+    '''
+    cells = []
+    cell_count = 1
+    if workflow.sections and workflow.sections[0].global_def:
+        cells.append(
+            new_code_cell(
+            source = workflow.sections[0].global_def,
+            execution_count=cell_count)
+        )
+        cell_count += 1
+    #
+    for section in workflow.sections:
+        # FIXME: section option is ignored
+        cell_src_code = '[{}_{}]\n'.format(section.name, section.index)
+        #
+        if section.comment:
+            cell_src_code += '# ' + section.comment + '\n'
+        for stmt in section.statements:
+            if stmt[0] == ':':
+                cell_src_code += '{}: {}\n'.format(stmt[1], stmt[2])
+            elif stmt[0] == '=':
+                cell_src_code += '{} = {}\n'.format(stmt[1], stmt[2])
+            else:
+                cell_src_code += stmt[1].strip() + '\n'
+        if section.task:
+            cell_src_code += 'task:\n' + section.task.strip() + '\n'
+        cells.append(
+            new_code_cell(
+            source = cell_src_code,
+            execution_count=cell_count)
+        )
+        cell_count += 1
+    #
+    nb = new_notebook(cells = cells,
+        metadata = {
+            'kernelspec' : {
+                "display_name": "SoS",
+                "language": "sos",
+                "name": "sos"
+            },
+            "language_info": {
+                "file_extension": ".sos",
+                "mimetype": "text/x-sos",
+                "name": "sos",
+                "pygments_lexer": "python"
+            }
+        }
+    )
+    with open(notebook_file, 'w') as notebook:
+        nbformat.write(nb, notebook, 4)
+    #
+    env.logger.info('Workflow saved to {}'.format(notebook_file))
 
 #
 # Output to terminal

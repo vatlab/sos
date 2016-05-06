@@ -30,7 +30,8 @@ from .utils import env, get_traceback
 from .sos_script import SoS_Script
 from .sos_executor import Sequential_Executor
 from .sos_show import script_to_html, workflow_to_html, script_to_markdown, \
-    workflow_to_markdown, script_to_term, workflow_to_term
+    workflow_to_markdown, script_to_notebook, workflow_to_notebook, \
+    script_to_term, workflow_to_term
 
 #
 # subcommand show
@@ -53,6 +54,8 @@ def sos_show(args, style_args):
                 workflow_to_html(workflow, args.script, args.html, style_args)
             elif args.markdown is not None:
                 workflow_to_markdown(workflow, args.script, args.markdown, style_args)
+            elif args.notebook is not None:
+                workflow_to_notebook(workflow, args.script, args.notebook)
             elif args.term:
                 workflow_to_term(workflow, args.script, style_args)
             else:
@@ -62,6 +65,8 @@ def sos_show(args, style_args):
                 script_to_html(transcript_file, args.script, args.html, style_args)
             elif args.markdown is not None:
                 script_to_markdown(transcript_file, args.script, args.markdown)
+            elif args.notebook is not None:
+                script_to_notebook(transcript_file, args.script, args.notebook)
             elif args.term:
                 script_to_term(transcript_file, args.script, style_args)
             else:

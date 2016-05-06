@@ -49,7 +49,7 @@ if __name__ == '__main__':
         defined in the global SoS configuration file (~/.sos/config.yaml).'''
     workflow_spec =  '''Name of the workflow to execute. This option can be
         ignored if the script defines a default workflow (with no name or with
-        name `default`) or defines only a single workflow. A subworkflow or a 
+        name `default`) or defines only a single workflow. A subworkflow or a
         combined workflow can also be specified, where a subworkflow executes a
         subset of workflow (`name_steps` where `steps` can be `n` (a step `n`),
         `-n` (up to step `n`), `n-m` (from step `n` to `m`), and `n-` (from step
@@ -73,13 +73,13 @@ if __name__ == '__main__':
     parser.add_argument('-j', type=int, metavar='JOBS', default=1, dest='__max_jobs__',
         help='''Number of concurrent process allowed. A workflow is by default
             executed sequentially (-j 1). If a greater than 1 number is specified
-            SoS will execute the workflow in parallel mode and execute up to 
+            SoS will execute the workflow in parallel mode and execute up to
             specified processes concurrently. These include looped processes
             within a step (with runtime option `concurrent=True`) and steps with
             non-missing required files.''')
     parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE',
         help='''A configuration file in the format of YAML/JSON. The content
-            of the configuration file will be available as a dictionary 
+            of the configuration file will be available as a dictionary
             CONF in the SoS script being executed.''')
     parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
         help='''Name of file a file that record output from report lines
@@ -97,8 +97,8 @@ if __name__ == '__main__':
             are executed normally but with most SoS actions return directly.
             SoS also produces diagnoistic warning messages in this mode.''')
     runmode.add_argument('-p', action='store_true', dest='__prepare__',
-        help='''Execute the workflow in dyrun mode, and then preparation mode 
-            in which SoS prepare the execution of workflow by, for example, 
+        help='''Execute the workflow in dyrun mode, and then preparation mode
+            in which SoS prepare the execution of workflow by, for example,
             download required resources and docker images.''')
     runmode.add_argument('-f', action='store_true', dest='__rerun__',
         help='''Execute the workflow in a special run mode that ignores saved
@@ -124,14 +124,14 @@ if __name__ == '__main__':
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
-    #parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
+    #parser.add_argument('options', metavar='WORKFLOW_OPTIONS',
     #    nargs=argparse.REMAINDER, help=workflow_options)
     addCommonArgs(parser)
     parser.set_defaults(func=sos_inspect)
     #
     # command prepare
     parser = subparsers.add_parser('prepare',
-        description='''Execute a workflow in prepare mode in which SoS 
+        description='''Execute a workflow in prepare mode in which SoS
             prepares the exeuction of workflow by, for example, download
             required resources and docker images.''',
         epilog=workflow_options,
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
-    #parser.add_argument('options', metavar='WORKFLOW_OPTIONS', 
+    #parser.add_argument('options', metavar='WORKFLOW_OPTIONS',
     #    nargs=argparse.REMAINDER, help=workflow_options)
     addCommonArgs(parser)
     parser.set_defaults(func=sos_prepare)
@@ -154,7 +154,7 @@ if __name__ == '__main__':
             workflow) if a workflow is specified.''',
         epilog='''Extra command line argument could be specified to customize
             the style of html, markdown, and terminal output. ''',
-        aliases=['show'],
+        aliases=['show', 'convert'],
         help='View a SoS script or workflow in various formats')
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
@@ -167,12 +167,15 @@ if __name__ == '__main__':
             html output. You can pass an arbitrary name to option --style get a
             list of available styles.''')
     parser.add_argument('--markdown', metavar='FILENAME',
-        help='''Generate a markdown version of script and save it to a 
+        help='''Generate a markdown version of script and save it to a
             specified file.''')
     parser.add_argument('--term', action='store_true',
         help='''Output syntax-highlighted script or workflow to the terminal.
-        Additional arguments --bg=light|dark --lineno can be used to
-        customized output.''')
+            Additional arguments --bg=light|dark --lineno can be used to
+            customized output.''')
+    parser.add_argument('--notebook', metavar='FILENAME',
+        help='''Convert specified script or workflow to iPython/Jupiter
+            notebook format.''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_show)
     #
