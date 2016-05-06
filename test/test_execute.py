@@ -1202,6 +1202,7 @@ with open('temp/{}.depends'.format(len([${depends!r,}])), 'w') as f: f.write('')
         if os.path.isdir('temp'):
             shutil.rmtree('temp')
         os.mkdir('temp')
+        env.sig_mode = 'ignore'
         script = SoS_Script('''
 [default]
 s = [x for x in range(5)]
@@ -1216,7 +1217,32 @@ touch ${output}
         ''')
         wf = script.workflow()
         Sequential_Executor(wf).run()
-        self.assertEqual(len(open('temp/out.log').read().split()), 25)
+        # without task, output should have 1, 2, 3, 4, 5, respectively, and
+        # the total record files would be 1+2+3+4+5=15
+        # There should be a warning for this.
+        with open('temp/out.log') as out:
+            self.assertEqual(len(out.read().split()), 15)
+        shutil.rmtree('temp')
+        #
+        os.mkdir('temp')
+        script = SoS_Script('''
+[default]
+s = [x for x in range(5)]
+output_files = ['temp/{}.txt'.format(x) for x in range(5)]
+input: for_each = ['s']
+output: output_files[_index]
+run: active = 0
+rm -f temp/out.log
+task:
+run:
+echo ${output} >> temp/out.log
+touch ${output}
+        ''')
+        wf = script.workflow()
+        env.sig_mode = 'ignore'
+        Sequential_Executor(wf).run()
+        with open('temp/out.log') as out:
+            self.assertEqual(len(out.read().split()), 25)
         shutil.rmtree('temp')
 
 if __name__ == '__main__':

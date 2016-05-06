@@ -205,7 +205,7 @@ def handle_input_for_each(for_each, _groups, _vars):
 # directive input
 def directive_input(*args, **kwargs):
     '''This function handles directive input and all its parameters.
-    It 
+    It
         determines and set __step_input__
         determines and set pattern variables if needed
     returns
@@ -233,7 +233,7 @@ def directive_input(*args, **kwargs):
                 arg = list(arg)
                 if not all(isinstance(x, str) for x in arg):
                     raise RuntimeError('Invalid input file: {}'.format(arg))
-                ifiles.extend([os.path.expanduser(x) for x in arg])
+                ifiles.extend(os.path.expanduser(x) for x in arg)
             else:
                 raise ValueError('Unrecognizable input type {}'.format(arg))
     else:
@@ -343,14 +343,14 @@ def directive_depends(*args, **kwargs):
     tmp = []
     for arg in args:
         if isinstance(arg, str):
-            tmp.append(arg)
+            tmp.append(os.path.expanduser(arg))
         elif isinstance(arg, Iterable):
             arg = list(arg)
             if not all(isinstance(x, str) for x in arg):
                 raise RuntimeError('Invalid dependent file: {}'.format(arg))
-            tmp.extend(arg)
+            tmp.extend(os.path.expanduser(x) for x in arg)
         else:
-            raise ValueError('Unrecognizable output type {}'.format(arg))
+            raise ValueError('Unrecognizable dependent type {}'.format(arg))
     #
     # expand wild card variables
     dfiles = []
@@ -358,8 +358,12 @@ def directive_depends(*args, **kwargs):
         if not os.path.isfile(dfile):
             expanded = sorted(glob.glob(os.path.expanduser(dfile)))
             if not expanded:
-                raise RuntimeError('{} not exist.'.format(dfile))
-            dfiles.extend(expanded)
+                if env.run_mode == 'run':
+                    raise RuntimeError('{} not exist.'.format(dfile))
+                else:
+                    dfiles.append(dfile)
+            else:
+                dfiles.extend(expanded)
         else:
             dfiles.append(dfile)
     env.sos_dict.set('_depends', dfiles)
@@ -550,7 +554,7 @@ class Step_Executor:
             env.sos_dict.pop(var, '')
         #
         # step 2: execute global process
-        # 
+        #
         if self.step.global_def:
             try:
                 SoS_exec(self.step.global_def)
@@ -645,7 +649,7 @@ class Step_Executor:
         #
         self._outputs = []
         self._depends = []
-        # 
+        #
         # We will need to remember the context of each input loop because we will need those
         # context for the execution of step tasks.
         dict_stack = []
@@ -698,17 +702,18 @@ class Step_Executor:
                     # The following temporarily set 'output' as an accumulated version of _output
                     # It will be reset after all the loops are done
                     #
-                    if '_output' in env.sos_dict and env.sos_dict['_output'] and not isinstance(env.sos_dict['_output'][0], Undetermined):
-                        if 'output' not in env.sos_dict:
-                            env.sos_dict.set('output', copy.deepcopy(env.sos_dict['_output']))
-                        elif not self._outputs or env.sos_dict['_output'] != self._outputs[-1]:
-                            env.sos_dict['output'].extend(env.sos_dict['_output'])
-                    #
-                    if '_depends' in env.sos_dict:
-                        if 'depends' not in env.sos_dict:
-                            env.sos_dict.set('depends', copy.deepcopy(env.sos_dict['_depends']))
-                        elif not self._depends or env.sos_dict['_depends'] != self._depends[-1]:
-                            env.sos_dict['depends'].extend(env.sos_dict['_depends'])                        
+                    if key == 'output':
+                        if '_output' in env.sos_dict and env.sos_dict['_output'] and not isinstance(env.sos_dict['_output'][0], Undetermined):
+                            if 'output' not in env.sos_dict:
+                                env.sos_dict.set('output', copy.deepcopy(env.sos_dict['_output']))
+                            elif not self._outputs or env.sos_dict['_output'] != self._outputs[-1]:
+                                env.sos_dict['output'].extend(env.sos_dict['_output'])
+                    elif key == 'depends':
+                        if '_depends' in env.sos_dict:
+                            if 'depends' not in env.sos_dict:
+                                env.sos_dict.set('depends', copy.deepcopy(env.sos_dict['_depends']))
+                            elif not self._depends or env.sos_dict['_depends'] != self._depends[-1]:
+                                env.sos_dict['depends'].extend(env.sos_dict['_depends'])
                 else:
                     # in run mode, check signature and see if all results exist
                     if env.run_mode == 'run' and '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
@@ -806,7 +811,7 @@ class Step_Executor:
             signature = None
         #
         #
-        # Step 7: execute step process. 
+        # Step 7: execute step process.
         #
         env.logger.trace('Executing step process.')
         proc_results = []
