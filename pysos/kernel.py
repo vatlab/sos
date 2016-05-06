@@ -119,7 +119,7 @@ class SoS_Kernel(Kernel):
         code = code.strip()
         if not code:
             return {'status': 'complete', 'indent': ''}
-        if any(code.startswith(x) for x in ['%sosdict', 'sosdict', '%sospaste', 'sospaste']):
+        if any(code.startswith(x) for x in ['#sosdict', '#sospaste']):
             return {'status': 'complete', 'indent': ''}
         if code.endswith(':') or code.endswith(','):
             return {'status': 'incomplete', 'indent': '  '}
@@ -130,8 +130,6 @@ class SoS_Kernel(Kernel):
         if SOS_SECTION_HEADER.match(lines[-1]):
             return {'status': 'incomplete', 'indent': ''}
         # check syntax??
-        if any(lines[0].startswith(x) for x in ['%sosdict', 'sosdict', '%sospaste', 'sospaste', '%%sos']):
-            code = '\n'.join(lines[1:])
         try:
             compile(code, '<string>', 'exec')
             return {'status': 'complete', 'indent': ''}
@@ -153,13 +151,11 @@ class SoS_Kernel(Kernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
-
-
         mode = 'code'
-        if code.startswith('%sosdict') or code.startswith('sosdict'):
+        if code.startswith('#sosdict'):
             mode = 'dict'
             command_line = self.get_magic_option(code)
-        elif code.startswith('%sospaste') or code.startswith('sospaste'):
+        elif code.startswith('#sospaste'):
             command_line = self.get_magic_option(code)
             try:
                 code = clipboard_get()
@@ -171,7 +167,7 @@ class SoS_Kernel(Kernel):
             #
             print(code.strip())
             print('## -- End pasted text --')
-        elif code.startswith('%%sos'):
+        elif code.startswith('#sosrun'):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.get_magic_option(code)
