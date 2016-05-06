@@ -20,13 +20,27 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import sys
 from .utils import env, WorkflowDict
 from ._version import __sos_version__, __version__
 from .sos_eval import SoS_exec, SoS_eval
 from .sos_executor import Interactive_Executor
 from .sos_syntax import SOS_SECTION_HEADER
 
+from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_clipboard_get
 from ipykernel.kernelbase import Kernel
+
+def clipboard_get():
+    """ Get text from the clipboard.
+    """
+    if sys.platform == 'darwin':
+        try:
+            return osx_clipboard_get()
+        except:
+            return tkinter_clipboard_get()
+    else:
+        return tkinter_clipboard_get()
+
 
 class SoS_Kernel(Kernel):
     implementation = 'SoS'
@@ -106,6 +120,8 @@ class SoS_Kernel(Kernel):
         code = code.strip()
         if not code:
             return {'status': 'complete', 'indent': ''}
+        if any(code.startswith(x) for x in ['%sosdict', 'sosdict', '%sospaste', 'sospaste']):
+            return {'status': 'complete', 'indent': ''}
         if code.endswith(':') or code.endswith(','):
             return {'status': 'incomplete', 'indent': '  '}
         lines = code.split('\n')
@@ -115,6 +131,8 @@ class SoS_Kernel(Kernel):
         if SOS_SECTION_HEADER.match(lines[-1]):
             return {'status': 'incomplete', 'indent': ''}
         # check syntax??
+        if any(lines[0].startswith(x) for x in ['%sosdict', 'sosdict', '%sospaste', 'sospaste', '%%sos']):
+            code = '\n'.join(lines[1:])
         try:
             compile(code, '<string>', 'exec')
             return {'status': 'complete', 'indent': ''}
@@ -125,25 +143,39 @@ class SoS_Kernel(Kernel):
             except:
                 return {'status': 'incomplete', 'indent': ''}
 
+    def get_magic_option(self, code):
+        lines = code.split('\n')
+        pieces = lines[0].strip().split(None, 1)
+        if len(pieces) == 2:
+            command_line = pieces[1]
+        else:
+            command_line = ''
+        return command_line
+
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
+
+
         mode = 'code'
-        if code.startswith('%sosdict'):
-            lines = code.split('\n')
-            pieces = lines[0].strip().split(None, 1)
-            if len(pieces) == 2:
-                command_line = pieces[1]
-            else:
-                command_line = ''
+        if code.startswith('%sosdict') or code.startswith('sosdict'):
             mode = 'dict'
-        elif code.startswith('%sos'):
+            command_line = self.get_magic_option(code)
+        elif code.startswith('%sospaste') or code.startswith('sospaste'):
+            command_line = self.get_magic_option(code)
+            try:
+                code = clipboard_get()
+            except ClipboardEmpty:
+                raise UsageError("The clipboard appears to be empty")
+            except Exception as e:
+                error('Could not get text from the clipboard. {}'.format(e))
+                return
+            #
+            print(code.strip())
+            print('## -- End pasted text --')
+        elif code.startswith('%%sos'):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
-            pieces = lines[0].strip().split(None, 1)
-            if len(pieces) == 2:
-                command_line = pieces[1]
-            else:
-                command_line = ''
+            command_line = self.get_magic_option(code)
         else:
             command_line = ''
         #
