@@ -52,6 +52,7 @@ class SoS_Kernel(Kernel):
         'name': 'sos',
         'file_extension': '.sos',
         'pygments_lexer': 'sos',
+        "codemirror_mode": 'python',
     }
     banner = "SoS kernel - script of scripts"
 
