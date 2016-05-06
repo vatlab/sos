@@ -24,14 +24,16 @@
 //
 
 
+define(function(){
+    var onload = function(){
 
 (function(mod) {
-  if (typeof exports == "object" && typeof module == "object") // CommonJS
-    mod(require("../../lib/codemirror"));
-  else if (typeof define == "function" && define.amd) // AMD
-    define(["../../lib/codemirror"], mod);
-  else // Plain browser env
-    mod(CodeMirror);
+  //if (typeof exports == "object" && typeof module == "object") // CommonJS
+  // mod(require("../../lib/codemirror"));
+  //else if (typeof define == "function" && define.amd) // AMD
+  //  define(["../../lib/codemirror"], mod);
+  //else // Plain browser env
+  mod(CodeMirror);
 })(function(CodeMirror) {
   "use strict";
 
@@ -49,13 +51,18 @@
                         "classmethod", "compile", "complex", "delattr", "dict", "dir", "divmod",
                         "enumerate", "eval", "filter", "float", "format", "frozenset",
                         "getattr", "globals", "hasattr", "hash", "help", "hex", "id",
-                        "input", "int", "isinstance", "issubclass", "iter", "len",
+                        "int", "isinstance", "issubclass", "iter", "len",
                         "list", "locals", "map", "max", "memoryview", "min", "next",
                         "object", "oct", "open", "ord", "pow", "property", "range",
                         "repr", "reversed", "round", "set", "setattr", "slice",
                         "sorted", "staticmethod", "str", "sum", "super", "tuple",
                         "type", "vars", "zip", "__import__", "NotImplemented",
-                        "Ellipsis", "__debug__"];
+                        "Ellipsis", "__debug__",
+
+						'group_by', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic',
+						'pattern', 'workdir', 'concurrent', 'docker_image', 'docker_file',
+						'alias', 'skip', 'sigil', 'target'
+					];
   CodeMirror.registerHelper("hintWords", "sos", commonKeywords.concat(commonBuiltins));
 
   function top(state) {
@@ -120,7 +127,18 @@
         stream.skipToEnd();
         return "comment";
       }
+	 // BO PENG
+	 // handle report
+	  if (state.beginningOfLine && ch == "!") {
+	    stream.skipToEnd();
+		return "meta";
+		}
 
+	  if (state.beginningOfLine && stream.match(/[a-zA-Z]+:/) ) {
+		// this is VERY premilinary, but better than nothing
+	    stream.skipToEnd();
+		return "meta";
+	  }
       // Handle Number Literals
       if (stream.match(/^[0-9\.]/, false)) {
         var floatLiteral = false;
@@ -262,6 +280,8 @@
       if (state.beginningOfLine && current == "@")
         return stream.match(identifiers, false) ? "meta" : py3 ? "operator" : ERRORCLASS;
 
+
+
       if (/\S/.test(current)) state.beginningOfLine = false;
 
       if ((style == "variable" || style == "builtin")
@@ -273,7 +293,7 @@
         state.dedent += 1;
 
       if (current == "lambda") state.lambda = true;
-      if (current == ":" && !state.lambda && top(state).type == "sos")
+      if (current == ":" && !state.lambda && top(state).type == "py")
         pushPyScope(state);
 
       var delimiter_index = current.length == 1 ? "[({".indexOf(current) : -1;
@@ -285,7 +305,7 @@
         if (top(state).type == current) state.indent = state.scopes.pop().offset - hangingIndent
         else return ERRORCLASS;
       }
-      if (state.dedent > 0 && stream.eol() && top(state).type == "sos") {
+      if (state.dedent > 0 && stream.eol() && top(state).type == "py") {
         if (state.scopes.length > 1) state.scopes.pop();
         state.dedent -= 1;
       }
@@ -341,3 +361,8 @@
   CodeMirror.defineMIME("text/x-sos", "sos");
 
 });
+
+    }
+
+    return {onload:onload}
+})
