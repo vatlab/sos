@@ -21,17 +21,20 @@
 #
 
 import os
-import json
 from setuptools import setup
 from distutils import log
 from distutils.command.install import install
 
 try:
-    from jupyter_client.kernelspec import install_kernel_spec
-except ImportError:
-    from IPython.kernel.kernelspec import install_kernel_spec
-from IPython.utils.tempdir import TemporaryDirectory
-
+    import json
+    try:
+        from jupyter_client.kernelspec import install_kernel_spec
+    except ImportError:
+        from IPython.kernel.kernelspec import install_kernel_spec
+    from IPython.utils.tempdir import TemporaryDirectory
+    ipython = True
+except:
+    ipython = False
 
 kernel_json = {
     "argv":         ["python","-m", "pysos.kernel", "-f", "{connection_file}"],
@@ -43,16 +46,18 @@ class InstallWithKernelspec(install):
         # Regular installation
         install.run(self)
 
+        if not ipython:
+            return
         # Now write the kernelspec
         with TemporaryDirectory() as td:
             os.chmod(td, 0o755)  # Starts off as 700, not user readable
             with open(os.path.join(td, 'kernel.json'), 'w') as f:
                 json.dump(kernel_json, f, sort_keys=True)
-            log.info('Installing IPython kernel spec')
             try:
                 install_kernel_spec(td, 'sos', user=self.user, replace=True)
+                log.info('IPython kernel named "sos" is installed.')
             except:
-                print("Could not install SoS Kernel as %s user" % self.user)
+                log.error("Could not install SoS Kernel as %s user" % self.user)
 
 exec(open('pysos/_version.py').read())
 
