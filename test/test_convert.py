@@ -27,11 +27,11 @@ import subprocess
 
 from pysos.utils import env
 from pysos.sos_script import SoS_Script, ParsingError
-from pysos.sos_show import script_to_html, script_to_markdown, script_to_term, \
-    workflow_to_html, workflow_to_markdown, workflow_to_term
+from pysos.converter import script_to_html, script_to_markdown, script_to_term, script_to_notebook, \
+    workflow_to_html, workflow_to_markdown, workflow_to_term, workflow_to_notebook, notebook_to_script
 
 
-class TestShow(unittest.TestCase):
+class TestConvert(unittest.TestCase):
     def setUp(self):
         env.reset()
         if not os.path.isdir('temp'):
@@ -53,6 +53,10 @@ input: for_each='seq'
 output: 'test${_seq}.txt'
 run:			concurrent=True
     echo 'this is test script'
+
+[10]
+! This is a report
+report('this is action report')
 ''')
         self.scripts = ['temp/script1.sos', 'temp/script2.sos']
 
@@ -73,6 +77,17 @@ run:			concurrent=True
                 script = SoS_Script(filename=script_file, transcript=transcript)
             script_to_markdown('temp/test.transcript', script_file, script_file + '.md')
 
+    def testScriptToAndFromNotebook(self):
+        '''Test sos show script --notebook'''
+        for script_file in self.scripts:
+            with open('temp/test.transcript', 'w') as transcript:
+                script = SoS_Script(filename=script_file, transcript=transcript)
+            script_to_notebook('temp/test.transcript', script_file, script_file + '.ipynb')
+            #
+            notebook_to_script(script_file + '.ipynb', script_file) 
+            notebook_to_script(script_file + '.ipynb', script_file, ['--index', 'yes'])
+            notebook_to_script(script_file + '.ipynb', script_file, ['--index', 'no'])
+
     def testWorkflowToHtml(self):
         '''Test sos show script --html'''
         for script_file in self.scripts:
@@ -86,6 +101,13 @@ run:			concurrent=True
             script = SoS_Script(filename=script_file)
             wf = script.workflow()
             workflow_to_markdown(wf, script_file, script_file + '.md')
+
+    def testWorkflowToNotebook(self):
+        '''Test converting sos script to notebook'''
+        for script_file in self.scripts:
+            script = SoS_Script(filename=script_file)
+            wf = script.workflow()
+            workflow_to_notebook(wf, script_file, script_file + '.ipynb')
 
 if __name__ == '__main__':
     unittest.main()

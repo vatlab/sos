@@ -29,48 +29,54 @@ import fnmatch
 from .utils import env, get_traceback
 from .sos_script import SoS_Script
 from .sos_executor import Sequential_Executor
-from .sos_show import script_to_html, workflow_to_html, script_to_markdown, \
+from .converter import script_to_html, workflow_to_html, script_to_markdown, \
     workflow_to_markdown, script_to_notebook, workflow_to_notebook, \
-    script_to_term, workflow_to_term
+    script_to_term, workflow_to_term, notebook_to_script
 
 #
-# subcommand show
+# subcommand convert
 #
-def sos_show(args, style_args):
+def sos_convert(args, style_args):
     env.verbosity = args.verbosity
+    # convert from ...
     try:
-        transcript_file = os.path.join('.sos/{}.transcript'.format(os.path.basename(args.script)))
-        with open(transcript_file, 'w') as transcript:
-            try:
-                script = SoS_Script(filename=args.script, transcript=transcript)
-            except Exception as e:
-                script = None
-                env.logger.warning(e)
-        if args.workflow:
-            if not script:
-                raise RuntimeError('workflow {} is not available due to syntax error in script {}'.format(args.workflow, args.script))
-            workflow = script.workflow(args.workflow)
-            if args.html is not None:
-                workflow_to_html(workflow, args.script, args.html, style_args)
-            elif args.markdown is not None:
-                workflow_to_markdown(workflow, args.script, args.markdown, style_args)
-            elif args.notebook is not None:
-                workflow_to_notebook(workflow, args.script, args.notebook)
-            elif args.term:
-                workflow_to_term(workflow, args.script, style_args)
-            else:
-                workflow.show()
+        if args.sos:
+            if not args.from_file.endswith('ipynb'):
+                raise RuntimeError('Can only convert from a .ipynb file to SoS script: {} specified.'.format(args.from_file))
+            notebook_to_script(args.from_file, args.sos, style_args)
         else:
-            if args.html is not None:
-                script_to_html(transcript_file, args.script, args.html, style_args)
-            elif args.markdown is not None:
-                script_to_markdown(transcript_file, args.script, args.markdown)
-            elif args.notebook is not None:
-                script_to_notebook(transcript_file, args.script, args.notebook)
-            elif args.term:
-                script_to_term(transcript_file, args.script, style_args)
+            transcript_file = os.path.join('.sos/{}.transcript'.format(os.path.basename(args.from_file)))
+            with open(transcript_file, 'w') as transcript:
+                try:
+                    script = SoS_Script(filename=args.from_file, transcript=transcript)
+                except Exception as e:
+                    script = None
+                    env.logger.warning(e)
+            if args.workflow:
+                if not script:
+                    raise RuntimeError('workflow {} is not available due to syntax error in script {}'.format(args.workflow, args.from_file))
+                workflow = script.workflow(args.workflow)
+                if args.html is not None:
+                    workflow_to_html(workflow, args.from_file, args.html, style_args)
+                elif args.markdown is not None:
+                    workflow_to_markdown(workflow, args.from_file, args.markdown, style_args)
+                elif args.notebook is not None:
+                    workflow_to_notebook(workflow, args.from_file, args.notebook)
+                elif args.term:
+                    workflow_to_term(workflow, args.from_file, style_args)
+                else:
+                    workflow.show()
             else:
-                script.show()
+                if args.html is not None:
+                    script_to_html(transcript_file, args.from_file, args.html, style_args)
+                elif args.markdown is not None:
+                    script_to_markdown(transcript_file, args.from_file, args.markdown)
+                elif args.notebook is not None:
+                    script_to_notebook(transcript_file, args.from_file, args.notebook)
+                elif args.term:
+                    script_to_term(transcript_file, args.from_file, style_args)
+                else:
+                    script.show()
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())

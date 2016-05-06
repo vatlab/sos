@@ -24,7 +24,7 @@ import sys
 import argparse
 
 from pysos._version import SOS_FULL_VERSION
-from pysos.main import sos_run, sos_inspect, sos_prepare, sos_show, sos_config
+from pysos.main import sos_run, sos_inspect, sos_prepare, sos_convert, sos_config
 
 def addCommonArgs(parser):
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
@@ -146,7 +146,7 @@ if __name__ == '__main__':
     #
     # command show
     #
-    parser = subparsers.add_parser('view',
+    parser = subparsers.add_parser('convert',
         description='''The show command displays details of all workflows
             defined in a script, including description of script, workflow,
             steps, and command line parameters. The output can be limited
@@ -154,11 +154,14 @@ if __name__ == '__main__':
             workflow) if a workflow is specified.''',
         epilog='''Extra command line argument could be specified to customize
             the style of html, markdown, and terminal output. ''',
-        aliases=['show', 'convert'],
+        aliases=['show', 'view'],
         help='View a SoS script or workflow in various formats')
-    parser.add_argument('script', metavar='SCRIPT', help=script_help)
+    parser.add_argument('from_file', metavar='FILENAME',
+        help='''File to be converted, can be a SoS script or a Jupyter
+            notebook.''')
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
-        help=workflow_spec)
+        help='''Workflow to be converted if the file being converted is a SoS
+            script.''')
     parser.add_argument('--html', nargs='?', metavar='FILENAME', const='__BROWSER__',
         help='''Generate a syntax-highlighted HTML file, write it to a
             specified file, or view in a browser if no filename is specified.
@@ -176,8 +179,13 @@ if __name__ == '__main__':
     parser.add_argument('--notebook', metavar='FILENAME',
         help='''Convert specified script or workflow to iPython/Jupiter
             notebook format.''')
+    parser.add_argument('--sos', nargs='?', metavar='SCRIPT', const='__STDOUT__',
+        help='''Convert specified Jupyter notebook to SoS format. This converter
+            accepts an parameter --index which can be set to yes (set index to
+            notebook index), no (no index), and auto (default, set index to
+            notebook index if no section head is seen in the notebook.)''')
     addCommonArgs(parser)
-    parser.set_defaults(func=sos_show)
+    parser.set_defaults(func=sos_convert)
     #
     # command config
     #

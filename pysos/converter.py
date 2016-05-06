@@ -42,7 +42,7 @@ from nbformat.v4 import new_code_cell, new_notebook
 from .utils import env
 from .actions import get_actions
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_DEPENDS_OPTIONS, \
-    SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS
+    SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS, SOS_SECTION_HEADER
 
 __all__ = ['SoS_Lexer']
 
@@ -857,6 +857,56 @@ def workflow_to_markdown(workflow, script_file, markdown_file):
     #
     env.logger.info('Workflow saved to {}'.format(markdown_file))
 
+
+#
+# Converter from Notebook
+#
+def parse_sos_args(convert_args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--index', choices=['yes', 'no', 'auto'], default='auto')
+    try:
+        args = parser.parse_args(convert_args)
+    except Exception as e:
+        raise RuntimeError('Unrecognized convert argument {}: {}'
+            .format(' '.join(convert_args), e))
+    return args
+
+def output_notebook_cell(cell, index_mode, count, fh):
+    # we will handle other types of cell later
+    if cell.cell_type == 'code':
+        if index_mode == 'yes' and not SOS_SECTION_HEADER.match(cell.source.split('\n')[0]):
+            if cell.execution_count is None:
+                fh.write('[{}]\n'.format(count))
+            else:
+                fh.write('[{}]\n'.format(cell.execution_count))
+        fh.write(cell.source + '\n')
+    return count if cell.execution_count is None else cell.execution_count
+
+
+def notebook_to_script(notebook_file, sos_file, convert_args=[]):
+    '''
+    convert a ipython notebook.
+    '''
+    index_mode = parse_sos_args(convert_args).index
+    #
+    notebook = nbformat.read(notebook_file, nbformat.NO_CONVERT)
+    # check if users used [] header
+    if index_mode == 'auto':
+        has_header = any(SOS_SECTION_HEADER.match(x.source.split('\n')[0]) for x in notebook.cells if x.cell_type == 'code')
+        if has_header:
+            index_mode = 'no'
+        else:
+            index_mode = 'yes'
+    # FIXME: do we want to check meta data and see if it is SOS format?
+    cnt = 0
+    if sos_file == '__STDOUT__':
+        for cell in notebook.cells:
+            cnt = output_notebook_cell(cell, index_mode, cnt + 1, sys.stdout)
+    else:
+        with open(sos_file, 'w') as sos:
+            for cell in notebook.cells:
+                cnt = output_notebook_cell(cell, index_mode, cnt + 1, sos)
+        env.logger.info('SoS script saved to {}'.format(sos_file))
 
 #
 # Converter to Notebook
