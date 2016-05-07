@@ -20,12 +20,20 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-# cp sos_magic.py to ~/.ipython/extensions/
+# This file must have been copied to ~/.ipython/extensions/ during
+# the installation of SoS (python setup.py install), with a sos
+# profile with pre-loaded sos magics. You can use
 #
-# Run
+#    ipython --profile sos
+#
+# to use sos_magic in a ipython session with sos profile, or run
+#
 #    %load_ext sos_magic
 #
-# after you load ipython, or you can add c.InteractiveShellApp.extensions
+# after you load ipython, or you can add 'sos_magic' to
+#
+#     c.InteractiveShellApp.extensions
+#
 # in ~/.ipython/profile_default/ipython_config.py, something like:
 #
 # c.InteractiveShellApp.extensions = [
