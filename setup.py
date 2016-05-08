@@ -57,11 +57,7 @@ class InstallWithConfigurations(install):
         if not os.path.isdir(vim_dir):
             os.makedirs(vim_dir)
         shutil.copy('misc/sos.vim', vim_file)
-        log.info('\nsos.vim is copied to ~/.vim/syntax. Use')
-        log.info('   set syntax=sos')
-        log.info('in vim/gvim/mvim to enable syntax highlighting, or add')
-        log.info('   autocmd BufNewFile,BufRead *.sos set syntax=sos')
-        log.info('to your ~/.vimrc (~/.gvimrc) file')
+        log.info('\nvim sos syntax installed. Use "set syntax=sos" to enable syntax highlighting.')
 
         if not ipython:
             return
@@ -79,13 +75,7 @@ class InstallWithConfigurations(install):
         shutil.copy('misc/sos_magic.py', ext_file)
         shutil.copy('misc/sos_ipython_profile.py', prof_file)
         #
-        log.info('\nsos ipython magic is installed to {}. Use '.format(ext_dir))
-        log.info('    ipython --profile sos')
-        log.info('to use a profile with pre-loaded sos magic, or use')
-        log.info('    %load_ext sos_magic')
-        log.info('to load it in an ipython interactive shell, or insert sos_magic to')
-        log.info('    c.InteractiveShellApp.extensions')
-        log.info('of {}/ipython_config.py to load it automatically to your default profile.'.format(prof_dir))
+        log.info('ipython sos extension installed. Use "ipython --profile sos" to start ipython with sos magic.')
         #
         # Now write the kernelspec
         with TemporaryDirectory() as td:
@@ -95,11 +85,7 @@ class InstallWithConfigurations(install):
                 json.dump(kernel_json, f, sort_keys=True)
             try:
                 install_kernel_spec(td, 'sos', user=self.user, replace=True)
-                log.info('\nJupyter kernel named "sos" is installed. You can use it by running')
-                log.info('    jupyter qtconsole --kernel sos')
-                log.info('or start a jupyter notebook with command')
-                log.info('    jupyter notebook')
-                log.info('and create a new file with kernel SoS.')
+                log.info('jupyter sos kernel installed. Use "jupyter notebook" to create or open SoS notebooks.')
             except:
                 log.error("\nWARNING: Could not install SoS Kernel as %s user." % self.user)
 
