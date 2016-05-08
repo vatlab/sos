@@ -362,7 +362,7 @@ def SoS_Action(run_mode='run'):
                 return Undetermined(func.__name__)
             if env.run_mode == 'inspect':
                 for k,v in kwargs.items():
-                    if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTION:
+                    if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
                         env.logger.warning('Passing runtime option "{0}" to action is deprecated. Please use "task: {0}={1}" before action instead.'.format(k, v))
             if 'active' in kwargs:
                 if isinstance(kwargs['active'], int):
@@ -386,7 +386,7 @@ def SoS_Action(run_mode='run'):
                 if not os.path.isdir(kwargs['workdir']):
                     os.makedirs(kwargs['workdir'])
                 try:
-                    old = os.getcwd()
+                    olddir = os.getcwd()
                     os.chdir(kwargs['workdir'])
                     res = func(*args, **kwargs)
                 finally:
