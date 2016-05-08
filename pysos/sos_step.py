@@ -817,6 +817,8 @@ class Step_Executor:
         proc_results = []
         if '_runtime' in env.sos_dict:
             self.runtime_options = env.sos_dict['_runtime']
+        else:
+            self.runtime_options = {}
         concurrent = env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in self.runtime_options and self.runtime_options['concurrent']
         if concurrent:
             pool = mp.Pool(min(env.max_jobs, len(self._groups)))
@@ -837,6 +839,22 @@ class Step_Executor:
             env.logger.debug('_idx: ``{}``'.format(idx))
             env.logger.debug('_input: ``{}``'.format(shortRepr(env.sos_dict['_input'])))
             env.logger.debug('_output: ``{}``'.format(shortRepr(env.sos_dict['_output'])))
+            if 'active' in self.runtime_options:
+                if isinstance(self.runtime_options['active'], int):
+                    if self.runtime_options['active'] >= 0 and env.sos_dict['_index'] != self.runtime_options['active']:
+                        continue
+                    if self.runtime_options['active'] < 0 and env.sos_dict['_index'] != self.runtime_options['active'] + env.sos_dict['__num_groups__']:
+                        continue
+                elif isinstance(self.runtime_options['active'], Sequence):
+                    allowed_index = list([x if x >= 0 else env.sos_dict['__num_groups__'] + x for x in self.runtime_options['active']])
+                    if env.sos_dict['_index'] not in allowed_index:
+                        continue
+                elif isinstance(self.runtime_options['active'], slice):
+                    allowed_index = list(range(env.sos_dict['__num_groups__']))[self.runtime_options['active']]
+                    if env.sos_dict['_index'] not in allowed_index:
+                        continue
+                else:
+                    raise RuntimeError('Unacceptable value for option active: {}'.format(self.runtime_options['active']))
             #
             # If the users specifies output files for each loop (using ${input} etc, we
             # can try to see if we can create partial signature. This would help if the

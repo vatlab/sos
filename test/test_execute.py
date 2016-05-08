@@ -1152,6 +1152,28 @@ touch temp/${ff}
             Sequential_Executor(wf).run()
             files = list(glob.glob('temp/*.txt'))
             self.assertEqual(files, result)
+            #
+            # test last iteration
+            shutil.rmtree('temp')
+            #
+            # test active option for task
+            os.mkdir('temp')
+            script = SoS_Script('''
+[1]
+rep = range(5)
+input: for_each = 'rep'
+# ff should change and be usable inside run
+ff = '${_rep}.txt'
+task:  active=%s
+run:
+echo ${ff}
+touch temp/${ff}
+''' % active)
+            wf = script.workflow()
+            Sequential_Executor(wf).run()
+            files = list(glob.glob('temp/*.txt'))
+            self.assertEqual(files, result)
+            #
             # test last iteration
             shutil.rmtree('temp')
 

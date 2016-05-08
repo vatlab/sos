@@ -59,7 +59,7 @@ __all__ = ['SoS_Action', 'execute_script', 'sos_run',
     'report', 'pandoc', 'Rmarkdown',
     ]
 
-from .sos_syntax import SOS_RUNTIME_OPTIONS
+from .sos_syntax import SOS_RUNTIME_OPTIONS, SOS_ACTION_OPTIONS
 from .sos_script import SoS_Script
 
 def get_actions():
@@ -341,15 +341,15 @@ def SoS_Action(run_mode='run'):
             runtime_options = env.sos_dict.get('_runtime', {})
             #
             # docker files will be downloaded in run or prepare mode
-            if 'docker_file' in runtime_options and env.run_mode in ('run', 'prepare'):
+            if 'docker_file' in kwargs and env.run_mode in ('run', 'prepare'):
                 docker = DockerClient()
-                docker.import_image(runtime_options['docker_file'])
+                docker.import_image(kwargs['docker_file'])
             # handle image
-            if 'docker_image' in runtime_options and env.run_mode in ('run', 'prepare'):
+            if 'docker_image' in kwargs and env.run_mode in ('run', 'prepare'):
                 docker = DockerClient()
-                docker.pull(runtime_options['docker_image'])
+                docker.pull(kwargs['docker_image'])
                 if env.run_mode == 'prepare':
-                    mem = docker.total_memory(runtime_options['docker_image'])
+                    mem = docker.total_memory(kwargs['docker_image'])
                     if mem is not None:
                         if mem < 4000000: # < 4G
                             env.logger.warning('Docker machine has {:.1f} GB of total memory and might not be enough for your operation. Please refer to https://github.com/bpeng2000/SOS/wiki/SoS-Docker-guide to adjust the docker machine if needed.'
@@ -362,7 +362,7 @@ def SoS_Action(run_mode='run'):
                 return Undetermined(func.__name__)
             if env.run_mode == 'inspect':
                 for k,v in kwargs.items():
-                    if k in SOS_RUNTIME_OPTIONS:
+                    if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTION:
                         env.logger.warning('Passing runtime option "{0}" to action is deprecated. Please use "task: {0}={1}" before action instead.'.format(k, v))
             if 'active' in kwargs:
                 if isinstance(kwargs['active'], int):
@@ -380,7 +380,20 @@ def SoS_Action(run_mode='run'):
                         return None
                 else:
                     raise RuntimeError('Unacceptable value for option active: {}'.format(kwargs['active']))
-            return func(*args, **kwargs)
+            if 'workdir' in kwargs:
+                if not kwargs['workdir'] or not isinstance(kwargs['workdir'], str):
+                    raise RuntimeError('workdir option should be a path, {} provided'.format(kwargs['workdir']))
+                if not os.path.isdir(kwargs['workdir']):
+                    os.makedirs(kwargs['workdir'])
+                try:
+                    old = os.getcwd()
+                    os.chdir(kwargs['workdir'])
+                    res = func(*args, **kwargs)
+                finally:
+                    os.chdir(olddir)
+            else:
+                res = func(*args, **kwargs)
+            return res
         action_wrapper.run_mode = run_mode
         return action_wrapper
     return runtime_decorator
