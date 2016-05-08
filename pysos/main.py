@@ -150,6 +150,10 @@ def sos_run(args, workflow_args):
         #    env.verbosity = args.verbosity
         #
         env.run_mode = 'prepare'
+        if args.__rerun__:
+            env.sig_mode = 'ignore'
+        elif args.__construct__:
+            env.sig_mode = 'construct'
         try:
             script = SoS_Script(filename=args.script)
             workflow = script.workflow(args.workflow)

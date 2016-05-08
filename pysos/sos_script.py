@@ -602,7 +602,7 @@ class SoS_Script:
                 if self.transcript:
                     self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                 continue
-            elif line.startswith(SOS_REPORT_PREFIX + ''):
+            elif line.startswith(SOS_REPORT_PREFIX):
                 if cursect is None:
                     # global section can have reports, but the reports will be
                     # written repeatedly, which is not good.
@@ -618,11 +618,11 @@ class SoS_Script:
                     if self.transcript:
                         self.transcript.write('ERROR\t{}\t{}'.format(lineno, line))
                     continue
-                elif cursect.category() == 'script':
-                    cursect.extend(line)
-                    if self.transcript:
-                        self.transcript.write('SCRIPT\t{}\t{}'.format(lineno, line))
-                    continue
+                #elif cursect.category() == 'script':
+                #    cursect.extend(line)
+                #    if self.transcript:
+                #        self.transcript.write('SCRIPT\t{}\t{}'.format(lineno, line))
+                #    continue
                 #
                 if len(line) > 1 and (line[1] != ' ' and line[1] != '\n'):
                     parsing_errors.append(lineno, line, 'Invalid report line: {} symbol should be followed by a space.'.format(SOS_REPORT_PREFIX))

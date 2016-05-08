@@ -413,7 +413,7 @@ class SoS_ExecuteScript:
         if '{}' not in self.interpreter:
             self.interpreter += ' {}'
         runtime_options = env.sos_dict.get('_runtime', {})
-        debug_script_file =  os.path.join('.sos/{}{}'.format(env.sos_dict['step_name'], self.suffix))
+        debug_script_file =  os.path.join(env.exec_dir, '.sos/{}{}'.format(env.sos_dict['step_name'], self.suffix))
         if env.run_mode == 'prepare':
             env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
             with open(debug_script_file, 'w') as sfile:
@@ -564,9 +564,17 @@ def downloadURL(URL, dest, decompress=False, index=None):
         env.logger.debug('Download {} to {}'.format(URL, dest))
         prog = ProgressBar(message, disp=env.verbosity > 1, index=index)
         sig = FileSignature(dest)
-        if os.path.isfile(dest) and sig.validate():
-            prog.done(message + ': \033[32m use existing {}\033[0m'.format(' '*(term_width - len(message) - 15)))
-            return True
+        if os.path.isfile(dest):
+            if env.sig_mode == 'construct':
+                prog.done(message + ': \033[32m use existing {}\033[0m'.format(' '*(term_width - len(message) - 15)))
+                sig.write()
+                return True
+            elif env.sig_mode == 'ignore':
+                prog.done(message + ': \033[32m use existing {}\033[0m'.format(' '*(term_width - len(message) - 15)))
+                return True
+            elif sig.validate():
+                prog.done(message + ': \033[32m use existing {}\033[0m'.format(' '*(term_width - len(message) - 15)))
+                return True
         #
         with open(dest_tmp, 'wb') as f:
             c = pycurl.Curl()
