@@ -93,6 +93,7 @@ def sos_inspect(args, workflow_args):
     args.__run__ = False
     args.__rerun__ = False
     args.__config__ = None
+    args.__construct__ = False
     sos_run(args, workflow_args)
 
 #
@@ -100,11 +101,12 @@ def sos_inspect(args, workflow_args):
 #
 def sos_prepare(args, workflow_args):
     args.__max_jobs__ = 1
-    args.__inspect__ = True
+    args.__inspect__ = False
     args.__prepare__ = True
     args.__run__ = False
     args.__rerun__ = False
     args.__config__ = None
+    args.__construct__ = False
     sos_run(args, workflow_args)
 
 #
@@ -118,72 +120,29 @@ def sos_run(args, workflow_args):
     env.verbosity = args.verbosity
     # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)
-    # default mode: run in inspect mode
-    args.__run__ = not (args.__rerun__ or args.__prepare__ or args.__inspect__)
     #
-    if args.__run__ or args.__rerun__:
-        args.__prepare__ = True
-    #
-    # always run in inspect mode
-    env.run_mode = 'inspect'
-    # if this is not the last step, use verbosity 1 (warning)
-    #if args.__prepare__:
-    #    env.verbosity = min(args.verbosity, 1)
-    #else:
+    sig_mode = 'default'
+    run_mode = 'run'
+    if args.__rerun__:
+        sig_mode = 'ignore'
+    if args.__prepare__:
+        run_mode = 'prepare'
+    if args.__inspect__:
+        run_mode = 'inspect'
+    if args.__construct__:
+        sig_mode = 'construct'
     #
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
         executor = Sequential_Executor(workflow)
-        executor.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
+        executor.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__,
+            run_mode=run_mode, sig_mode=sig_mode, verbosity = args.verbosity)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error(e)
         sys.exit(1)
-    # then prepare mode
-    if args.__prepare__:
-        # if this is not the last step, use verbosity 1 (warning)
-        #if args.__run__ or args.__rerun__:
-        #    env.verbosity = min(args.verbosity, 1)
-        #else:
-        #    env.verbosity = args.verbosity
-        #
-        env.run_mode = 'prepare'
-        if args.__rerun__:
-            env.sig_mode = 'ignore'
-        elif args.__construct__:
-            env.sig_mode = 'construct'
-        try:
-            script = SoS_Script(filename=args.script)
-            workflow = script.workflow(args.workflow)
-            executor.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
-        except Exception as e:
-            if args.verbosity and args.verbosity > 2:
-                sys.stderr.write(get_traceback())
-            env.logger.error(e)
-            sys.exit(1)
-    # then run mode
-    if args.__run__ or args.__rerun__:
-        env.run_mode = 'run'
-        # env.verbosity = args.verbosity
-        if args.__rerun__:
-            env.sig_mode = 'ignore'
-        elif args.__construct__:
-            env.sig_mode = 'construct'
-        try:
-            script = SoS_Script(filename=args.script)
-            workflow = script.workflow(args.workflow)
-            if args.__report__:
-                executor = Sequential_Executor(workflow, report=args.__report__)
-            else:
-                executor = Sequential_Executor(workflow, report='.sos/{}.md'.format(os.path.basename(args.script)))
-            executor.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__)
-        except Exception as e:
-            if args.verbosity and args.verbosity > 2:
-                sys.stderr.write(get_traceback())
-            env.logger.error(e)
-            sys.exit(1)
 
 #
 # subcommand config

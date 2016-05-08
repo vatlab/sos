@@ -238,11 +238,42 @@ class Base_Executor:
                         combined.write(md.read())
             env.logger.info('Report saved to {}'.format(self.report))
 
-    def run(self, args=[], nested=False, cmd_name='', config_file=None):
+    def run(self, args=[], nested=False, cmd_name='', config_file=None,
+        run_mode='run', sig_mode='default', verbosity=2):
         if not self.workflow.sections:
             return
-        self.setup(args, nested, cmd_name, config_file)
-        self.execute(args, nested, cmd_name, config_file)
+        if not nested or run_mode == 'inspect':
+            env.run_mode = 'inspect'
+            try:
+                self.setup(args, nested, cmd_name, config_file)
+                self.execute(args, nested, cmd_name, config_file)
+            except Exception as e:
+                if verbosity and verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                env.logger.error(e)
+                raise
+        if run_mode in ['prepare', 'run'] and (not nested or run_mode == 'prepare'):
+            env.run_mode = 'prepare'
+            env.sig_mode = sig_mode
+            try:
+                self.setup(args, nested, cmd_name, config_file)
+                self.execute(args, nested, cmd_name, config_file)
+            except Exception as e:
+                if verbosity and verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                env.logger.error(e)
+                raise
+        if run_mode == 'run' and (not nested or run_mode == 'run'):
+            env.run_mode = 'run'
+            env.sig_mode = sig_mode
+            try:
+                self.setup(args, nested, cmd_name, config_file)
+                self.execute(args, nested, cmd_name, config_file)
+            except Exception as e:
+                if verbosity and verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                env.logger.error(e)
+                raise
         self.finalize()
 
 class Sequential_Executor(Base_Executor):
@@ -369,11 +400,10 @@ class Interactive_Executor(Base_Executor):
         # will exit if there is parsing error
         script = SoS_Script(content=block)
         #
-        if command_line.strip() and not command_line.strip().startswith('-'):
-            wf_and_args = command_line.strip().split(None, 1)
+        if command_line and not command_line.startswith('-'):
+            wf_and_args = command_line.split(None, 1)
             wf_name = wf_and_args[0]
-            if len(wf_and_args) > 1:
-                command_line = wf_and_args[1]
+            command_line = command_line[len(wf_name)+1:]
         else:
             wf_name = None
         #
@@ -387,27 +417,22 @@ class Interactive_Executor(Base_Executor):
                 env.sos_dict.set('step_name', '__interactive__')
                 return SoS_exec(script.global_def)
         #
-        # special execution mode
-        if args.__inspect__:
-            env.run_mode = 'inspect'
-        elif args.__prepare__:
-            env.run_mode = 'prepare'
-        else:
-            env.run_mode = 'run'
+        sig_mode = 'default'
+        run_mode = 'run'
         if args.__rerun__:
-            env.sig_mode = 'ignore'
-        elif args.__construct__:
-            env.sig_mode = 'construct'
+            sig_mode = 'ignore'
+        if args.__prepare__:
+            run_mode = 'prepare'
+        if args.__inspect__:
+            run_mode = 'inspect'
+        if args.__construct__:
+            sig_mode = 'construct'
         #
-        old_verbosity = env.verbosity
-        env.verbosity = args.verbosity
-        try:
-            workflow = script.workflow(wf_name)
-            if args.__report__:
-                executor = Sequential_Executor(workflow, report=args.__report__)
-            else:
-                executor = Sequential_Executor(workflow, report='.sos/ipython.md')
-            executor.run(workflow_args, cmd_name='<script> {}'.format(wf_name), config_file=args.__config__)
-        finally:
-            env.verbosity = old_verbosity
+        workflow = script.workflow(wf_name)
+        if args.__report__:
+            executor = Sequential_Executor(workflow, report=args.__report__)
+        else:
+            executor = Sequential_Executor(workflow, report='.sos/ipython.md')
+        executor.run(workflow_args, cmd_name='<script> {}'.format(wf_name), config_file=args.__config__,
+            run_mode=run_mode, sig_mode=sig_mode, verbosity=args.verbosity)
 

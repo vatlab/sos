@@ -92,7 +92,7 @@ class SoS_Magics(Magics):
                     #    env.logger.warning('{} ignored for statement execution'.format(line))
                     return SoS_exec(cell)
                 except:
-                    return self.executor.run_interactive(cell, command_line=line)
+                    return self.executor.run_interactive(cell, command_line=line.strip())
 
     @line_magic
     def sospaste(self, line):
@@ -122,7 +122,7 @@ class SoS_Magics(Magics):
                 compile(block, '<string>', 'exec')
                 return SoS_exec(block)
             except:
-                return self.executor.run_interactive(block, command_line=line)
+                return self.executor.run_interactive(block, command_line=line.strip())
 
     @line_magic
     def sosdict(self, line):
