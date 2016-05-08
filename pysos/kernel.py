@@ -125,8 +125,10 @@ class SoS_Kernel(Kernel):
             return {'status': 'incomplete', 'indent': '  '}
         lines = code.split('\n')
         if lines[-1].startswith(' ') or lines[-1].startswith('\t'):
-            empty = [idx for idx,x in lines if x not in (' ', '\t')][0]
-            return {'status': 'incomplete', 'indent': lines[:empty]}
+            # if it is a new line, complte
+            empty = [idx for idx,x in enumerate(lines[-1]) if x not in (' ', '\t')][0]
+            return {'status': 'incomplete', 'indent': lines[-1][:empty]}
+        #
         if SOS_SECTION_HEADER.match(lines[-1]):
             return {'status': 'incomplete', 'indent': ''}
         # check syntax??
@@ -138,7 +140,7 @@ class SoS_Kernel(Kernel):
                 self.executor.parse_script(code)
                 return {'status': 'complete', 'indent': ''}
             except:
-                return {'status': 'incomplete', 'indent': ''}
+                return {'status': 'unknown', 'indent': ''}
 
     def get_magic_option(self, code):
         lines = code.split('\n')
