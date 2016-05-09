@@ -338,8 +338,6 @@ def SoS_Action(run_mode='run'):
     run_mode = [run_mode] if isinstance(run_mode, str) else run_mode
     def runtime_decorator(func):
         def action_wrapper(*args, **kwargs):
-            runtime_options = env.sos_dict.get('_runtime', {})
-            #
             # docker files will be downloaded in run or prepare mode
             if 'docker_file' in kwargs and env.run_mode in ('run', 'prepare'):
                 docker = DockerClient()
@@ -412,7 +410,6 @@ class SoS_ExecuteScript:
             return
         if '{}' not in self.interpreter:
             self.interpreter += ' {}'
-        runtime_options = env.sos_dict.get('_runtime', {})
         debug_script_file =  os.path.join(env.exec_dir, '.sos/{}{}'.format(env.sos_dict['step_name'], self.suffix))
         if env.run_mode == 'prepare':
             env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
@@ -437,9 +434,9 @@ class SoS_ExecuteScript:
                             env.logger.warning('Script {} contains unrecognized token {}'
                                 .format(debug_script_file, item[1]))
             return
-        if 'docker_image' in runtime_options:
+        if 'docker_image' in kwargs:
             docker = DockerClient()
-            docker.run(runtime_options['docker_image'], self.script, self.interpreter, self.suffix,
+            docker.run(kwargs['docker_image'], self.script, self.interpreter, self.suffix,
                 **kwargs)
         else:
             try:
