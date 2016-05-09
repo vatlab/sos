@@ -28,6 +28,7 @@ from .sos_executor import Interactive_Executor
 from .sos_syntax import SOS_SECTION_HEADER
 
 from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_clipboard_get
+from IPython.core.error import UsageError
 from ipykernel.kernelbase import Kernel
 
 def clipboard_get():
@@ -86,7 +87,7 @@ class SoS_Kernel(Kernel):
             except:
                 return self.executor.run_interactive(code, command_line=line)
 
-    def do_inspect(code, cursor_pos, detail_level=0):
+    def do_inspect(self, code, cursor_pos, detail_level=0):
         'Inspect code'
         return {
             'status': 'ok',
@@ -164,7 +165,7 @@ class SoS_Kernel(Kernel):
             except ClipboardEmpty:
                 raise UsageError("The clipboard appears to be empty")
             except Exception as e:
-                error('Could not get text from the clipboard. {}'.format(e))
+                env.logger.error('Could not get text from the clipboard: {}'.format(e))
                 return
             #
             print(code.strip())
