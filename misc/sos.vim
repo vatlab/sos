@@ -53,7 +53,7 @@ highlight link pythonBuiltin	Function
 
 " parenthetical part of def and class
 syn match sos_section_head "^\[\s*\w\+.*\]\s*$"
-syn match sos_directive "^\(input\|output\|depends\|task|\w\+\)\s*:.*"
+syn match sos_directive "^\(input\|output\|depends\|task\|\w\+\)\s*:.*"
 syn match sos_report "\(^! .*$\|^!$\)"
 " match a line with non input/output/depends/task, and ends before a section
 " or another directive

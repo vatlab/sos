@@ -410,11 +410,12 @@ class SoS_ExecuteScript:
             return
         if '{}' not in self.interpreter:
             self.interpreter += ' {}'
-        debug_script_file =  os.path.join(env.exec_dir, '.sos/{}{}'.format(env.sos_dict['step_name'], self.suffix))
+        debug_script_file =  os.path.join(env.exec_dir, '.sos/{}_{}{}'.format(env.sos_dict['step_name'],
+            env.sos_dict['_index'], self.suffix))
+        env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
+        with open(debug_script_file, 'w') as sfile:
+            sfile.write(self.script)
         if env.run_mode == 'prepare':
-            env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
-            with open(debug_script_file, 'w') as sfile:
-                sfile.write(self.script)
             if self.validator is not None:
                 try:
                     self.validator(self.script, filename=debug_script_file)
