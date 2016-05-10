@@ -599,7 +599,7 @@ class Step_Executor:
                     try:
                         SoS_exec(statement[1], self.step.sigil)
                     except Exception as e:
-                        raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
+                        raise RuntimeError('Failed to process statement {}: {}'.format(shortRepr(statement[1]), e))
             # input statement
             env.logger.trace('Handling input statement')
             key, value = self.step.statements[input_statement_idx][1:]
@@ -732,7 +732,7 @@ class Step_Executor:
                         try:
                             SoS_exec(statement[1], self.step.sigil)
                         except Exception as e:
-                            raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
+                            raise RuntimeError('Failed to process statement {}: {}'.format(shortRepr(statement[1]), e))
             #
             if '_output' in env.sos_dict:
                 self._outputs.append(env.sos_dict['_output'])

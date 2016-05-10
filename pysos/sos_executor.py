@@ -254,7 +254,6 @@ class Base_Executor:
             except Exception as e:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
-                env.logger.error(e)
                 raise
         if run_mode in ['prepare', 'run'] and (not nested or run_mode == 'prepare'):
             env.run_mode = 'prepare'
@@ -267,7 +266,6 @@ class Base_Executor:
             except Exception as e:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
-                env.logger.error(e)
                 raise
         if run_mode == 'run' and (not nested or run_mode == 'run'):
             env.run_mode = 'run'
@@ -280,7 +278,6 @@ class Base_Executor:
             except Exception as e:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
-                env.logger.error(e)
                 raise
         self.finalize()
 
@@ -350,8 +347,8 @@ class Sequential_Executor(Base_Executor):
             # if the job is failed
             if isinstance(res, Exception):
                 # error must have been displayed.
-                if env.verbosity > 2 and hasattr(res, 'traces'):
-                    env.logger.error(res.traces)
+                #if env.verbosity > 2 and hasattr(res, 'traces'):
+                #    env.logger.error(res.traces)
                 raise RuntimeError(res)
             #res = section.run()
             for k, v in res.items():

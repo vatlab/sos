@@ -128,7 +128,7 @@ def shortRepr(obj, noneAsNA=False):
     if obj is None:
         return 'unspecified' if noneAsNA else 'None'
     elif isinstance(obj, str) and len(obj) > 50:
-        return '{}...'.format(obj[:40])
+        return '{}...'.format(obj[:40].replace('\n', '\\n'))
     elif isinstance(obj, (str, int, float, bool)) or (isinstance(obj, collections.Sequence) \
         and len(obj) <= 2) or len(str(obj)) < 50:
         return repr(obj)
