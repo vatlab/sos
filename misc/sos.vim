@@ -63,12 +63,12 @@ if exists("sos_fold")
   syn region script
      \ start="^\(input\|output\|depends\|task\)\@!\w\+\s*:"hs=e+1
      \ end="\(^\[\s*\w\+.*\]\s*$\|^\w\+\s*:\|^! \|^!$\)"me=s-1,he=s-1,re=s-1
-     \ fold contains=TOP
-     \ containedin=ALL
+     \ fold contains=TOP containedin=ALL
 else
   syn region script
      \ start="^\(input\|output\|depends\|task\)\@!\w\+\s*:"ms=e+1,hs=e+1
      \ end="\(^\[\s*\w\+.*\]\s*$\|^\w\+\s*:\|^! \|^!$\)"me=s-1,he=s-1,re=s-1
+     \ contains=TOP containedin=ALL
 endif
 
 highlight sos_section_head guibg='Purple' gui=none
