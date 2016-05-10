@@ -368,7 +368,9 @@ def SoS_exec(stmts, sigil='${ }'):
             if env.run_mode != 'run':
                 if isinstance(e, InterpolationError):
                     if env.run_mode == 'inspect':
-                        env.logger.warning('Failed to interpolate {}: {}'.format(shortRepr(stmts), e))
+                        # this should not matter in inspect mode because many variables do not yet
+                        # exist...
+                        env.logger.debug('Failed to interpolate {}: {}'.format(shortRepr(stmts), e))
                 else:
                     env.sos_dict['__execute_errors__'].append(stmts, e)
             else:
