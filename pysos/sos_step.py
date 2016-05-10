@@ -590,7 +590,7 @@ class Step_Executor:
                     public_vars.add(key)
                     try:
                         env.sos_dict[key] = SoS_eval(value, self.step.sigil)
-                        trascribe('{} = {}'.format(key, env.sos_dict[key]))
+                        transcribe('{} = {}'.format(key, env.sos_dict[key]))
                     except Exception as e:
                         raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
                 elif statement[0] == ':':
