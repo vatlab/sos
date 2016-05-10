@@ -68,6 +68,7 @@ class SoS_Kernel(Kernel):
         self.executor = Interactive_Executor()
         self.original_keys = set(env.sos_dict._dict.keys())
         self.original_keys.add('__builtins__')
+        self.options = ''
 
     def eval_code(self, code, line):
         code = code.strip()
