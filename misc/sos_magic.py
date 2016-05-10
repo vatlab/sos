@@ -65,6 +65,7 @@ class SoS_Magics(Magics):
         self.executor = Interactive_Executor()
         self.original_keys = set(env.sos_dict._dict.keys())
         self.original_keys.add('__builtins__')
+        self.options = ''
 
     @line_cell_magic
     def sos(self, line, cell=None):
@@ -92,7 +93,7 @@ class SoS_Magics(Magics):
                     #    env.logger.warning('{} ignored for statement execution'.format(line))
                     return SoS_exec(cell)
                 except:
-                    return self.executor.run_interactive(cell, command_line=line.strip())
+                    return self.executor.run_interactive(cell, command_line=self.options + line.strip())
 
     @line_magic
     def sospaste(self, line):
@@ -122,7 +123,21 @@ class SoS_Magics(Magics):
                 compile(block, '<string>', 'exec')
                 return SoS_exec(block)
             except:
-                return self.executor.run_interactive(block, command_line=line.strip())
+                return self.executor.run_interactive(block, command_line=self.options + line.strip())
+
+    @line_magic
+    def sosset(self, line):
+        'Magic that set perminant options for sos and sospaste'
+        # do not return __builtins__ beacuse it is too long...
+        if line.strip():
+            print('sos options set to "{}"'.format(line.strip()))
+            self.options = line.strip() + ' '
+        else:
+            if self.options:
+                print('sos options "{}" is reset to ""').format(self.options.strip())
+                self.options = ''
+            else:
+                print('Usage: set persistent sos options such as -v3 -i (inspect) -p (prepare) -t (transcribe)')
 
     @line_magic
     def sosdict(self, line):

@@ -158,8 +158,19 @@ class SoS_Kernel(Kernel):
         if code.startswith('#sosdict'):
             mode = 'dict'
             command_line = self.get_magic_option(code)
+        elif code.startswith('#sosset'):
+            options = self.get_magic_option(code)
+            if options.strip():
+                print('sos options set to "{}"'.format(options))
+                self.options = options.strip()
+            else:
+                if self.options:
+                    print('sos options "{}" reset to ""'.format(self.options))
+                    self.options = ''
+                else:
+                    print('Usage: set persistent sos options such as -v 3 (debug output) -p (prepare) and -t (transcribe)')
         elif code.startswith('#sospaste'):
-            command_line = self.get_magic_option(code)
+            command_line = self.options + ' ' + self.get_magic_option(code)
             try:
                 code = clipboard_get()
             except ClipboardEmpty:
@@ -173,9 +184,9 @@ class SoS_Kernel(Kernel):
         elif code.startswith('#sosrun'):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
-            command_line = self.get_magic_option(code)
+            command_line = self.options + ' ' + self.get_magic_option(code)
         else:
-            command_line = ''
+            command_line = self.options
         #
         try:
             if mode == 'dict':
