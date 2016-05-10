@@ -32,7 +32,7 @@ from collections.abc import Sequence, Iterable
 from collections import OrderedDict
 from itertools import tee, combinations
 
-from .utils import env, Error, shortRepr, get_traceback, pickleable
+from .utils import env, Error, shortRepr, get_traceback, pickleable, transcribe
 from .pattern import extract_pattern, expand_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
 from .signature import  RuntimeInfo
@@ -995,5 +995,3 @@ class Step_Executor:
             transcribe('{} = {}'.format(self.step.options['alias'], step_info))
             result[self.step.options['alias']] = copy.deepcopy(step_info)
         return result
-
-
