@@ -75,9 +75,10 @@ class ExecuteError(Error):
 
 
 class Base_Executor:
-    def __init__(self, workflow, report):
+    def __init__(self, workflow, report, transcript):
         self.workflow = workflow
         self.report = report
+        self.transcript = transcript
 
     def _parse_error(self, msg):
         '''This function will replace error() function in argparse module so that SoS
@@ -223,6 +224,7 @@ class Base_Executor:
         if os.path.isdir('.sos/report'):
             shutil.rmtree('.sos/report')
         os.makedirs('.sos/report')
+        env.sos_dict.set('__transcript__', None)
 
     def finalize(self):
         # collect reports and write to a file
@@ -246,33 +248,36 @@ class Base_Executor:
             env.run_mode = 'inspect'
             try:
                 self.setup(args, nested, cmd_name, config_file)
+                if run_mode == 'inspect':
+                    env.sos_dict.set('__transcript__', self.transcript)
                 self.execute(args, nested, cmd_name, config_file)
             except Exception as e:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
-                env.logger.error(e)
                 raise
         if run_mode in ['prepare', 'run'] and (not nested or run_mode == 'prepare'):
             env.run_mode = 'prepare'
             env.sig_mode = sig_mode
             try:
                 self.setup(args, nested, cmd_name, config_file)
+                if run_mode == 'prepare':
+                    env.sos_dict.set('__transcript__', self.transcript)
                 self.execute(args, nested, cmd_name, config_file)
             except Exception as e:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
-                env.logger.error(e)
                 raise
         if run_mode == 'run' and (not nested or run_mode == 'run'):
             env.run_mode = 'run'
             env.sig_mode = sig_mode
             try:
                 self.setup(args, nested, cmd_name, config_file)
+                if run_mode == 'run':
+                    env.sos_dict.set('__transcript__', self.transcript)
                 self.execute(args, nested, cmd_name, config_file)
             except Exception as e:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
-                env.logger.error(e)
                 raise
         self.finalize()
 
@@ -280,8 +285,8 @@ class Sequential_Executor(Base_Executor):
     #
     # A SoS workflow with multiple steps
     #
-    def __init__(self, workflow, report=None):
-        Base_Executor.__init__(self, workflow, report)
+    def __init__(self, workflow, report=None, transcript=None):
+        Base_Executor.__init__(self, workflow, report, transcript)
 
     def execute(self, args=[], nested=False, cmd_name='', config_file=None):
         '''Execute a workflow with specified command line args. If sub is True, this
@@ -342,8 +347,8 @@ class Sequential_Executor(Base_Executor):
             # if the job is failed
             if isinstance(res, Exception):
                 # error must have been displayed.
-                if env.verbosity > 2 and hasattr(res, 'traces'):
-                    env.logger.error(res.traces)
+                #if env.verbosity > 2 and hasattr(res, 'traces'):
+                #    env.logger.error(res.traces)
                 raise RuntimeError(res)
             #res = section.run()
             for k, v in res.items():
@@ -367,7 +372,7 @@ class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython'''
     def __init__(self):
         # we actually do not have our own workflow, everything is passed from ipython
-        Base_Executor.__init__(self, None, None)
+        Base_Executor.__init__(self, None, None, None)
 
     def parse_command_line(self, command_line):
         parser = argparse.ArgumentParser()
@@ -377,6 +382,8 @@ class Interactive_Executor(Base_Executor):
         parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
         # ignored
         parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE')
+        parser.add_argument('-t', dest='__transcript__', nargs='?', const='__STDERR__', 
+            metavar='TRANSCRIPT')
         runmode = parser.add_argument_group(title='Run mode options')
         runmode.add_argument('-i', action='store_true', dest='__inspect__')
         runmode.add_argument('-p', action='store_true', dest='__prepare__')
@@ -407,32 +414,48 @@ class Interactive_Executor(Base_Executor):
         else:
             wf_name = None
         #
-        args, workflow_args = self.parse_command_line(command_line)
-        # if there is only a global section
-        if not script.sections:
-            # if there is no section, but some actions that are seen as part of a
-            # global definition
-            if script.global_def:
-                self.load_config(args.__config__)
-                env.sos_dict.set('step_name', '__interactive__')
-                return SoS_exec(script.global_def)
-        #
-        sig_mode = 'default'
-        run_mode = 'run'
-        if args.__rerun__:
-            sig_mode = 'ignore'
-        if args.__prepare__:
-            run_mode = 'prepare'
-        if args.__inspect__:
-            run_mode = 'inspect'
-        if args.__construct__:
-            sig_mode = 'construct'
-        #
-        workflow = script.workflow(wf_name)
-        if args.__report__:
-            executor = Sequential_Executor(workflow, report=args.__report__)
-        else:
-            executor = Sequential_Executor(workflow, report='.sos/ipython.md')
-        executor.run(workflow_args, cmd_name='<script> {}'.format(wf_name), config_file=args.__config__,
-            run_mode=run_mode, sig_mode=sig_mode, verbosity=args.verbosity)
+        try:
+            args, workflow_args = self.parse_command_line(command_line)
+            # if there is only a global section
+            if not script.sections:
+                # if there is no section, but some actions that are seen as part of a
+                # global definition
+                if script.global_def:
+                    env.sig_mode = 'default'
+                    env.run_mode = 'run'
+                    if args.__rerun__:
+                        env.sig_mode = 'ignore'
+                    if args.__prepare__:
+                        env.run_mode = 'prepare'
+                    if args.__inspect__:
+                        env.run_mode = 'inspect'
+                    if args.__construct__:
+                        env.sig_mode = 'construct'
+                    #
+                    self.load_config(args.__config__)
+                    env.sos_dict.set('step_name', '__interactive__')
+                    env.sos_dict.set('__transcript__', args.__transcript__)
+                    return SoS_exec(script.global_def)
+            #
+            sig_mode = 'default'
+            run_mode = 'run'
+            if args.__rerun__:
+                sig_mode = 'ignore'
+            if args.__prepare__:
+                run_mode = 'prepare'
+            if args.__inspect__:
+                run_mode = 'inspect'
+            if args.__construct__:
+                sig_mode = 'construct'
+            #
+            workflow = script.workflow(wf_name)
+            if args.__report__:
+                executor = Sequential_Executor(workflow, report=args.__report__, transcript=args.__transcript__)
+            else:
+                executor = Sequential_Executor(workflow, report='.sos/ipython.md', transcript=args.__transcript__)
+            executor.run(workflow_args, cmd_name='<script> {}'.format(wf_name), config_file=args.__config__,
+                run_mode=run_mode, sig_mode=sig_mode, verbosity=args.verbosity)
+        finally:
+            env.run_mode = 'run'
+            env.sig_mode = 'default'
 

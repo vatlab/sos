@@ -43,7 +43,7 @@ from docker.utils import kwargs_from_env
 import multiprocessing as mp
 import pygments.token as token
 from pygments.lexers import get_lexer_for_filename, guess_lexer
-from .utils import env, getTermWidth, ProgressBar, shortRepr, natural_keys
+from .utils import env, getTermWidth, ProgressBar, shortRepr, natural_keys, transcribe
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .signature import FileSignature, fileMD5
@@ -405,6 +405,7 @@ class SoS_ExecuteScript:
         self.validator = validator
 
     def run(self, **kwargs):
+        transcribe(self.script, action=self.interpreter)
         if env.run_mode == 'inspect':
             check_command(self.interpreter.split()[0], quiet=True)
             return
@@ -777,10 +778,10 @@ def JavaScript(script, **kwargs):
 def R(script, **kwargs):
     return SoS_ExecuteScript(
         script, 'Rscript --default-packages=methods,utils,stats,grDevices,graphics ', '.R',
-        validate_with_command('''Rscript -e 
-            'if (!suppressWarnings(require(lintr, quietly=TRUE))) install.packages("lintr", repos="http://cran.us.r-project.org", quiet=TRUE);
+        validate_with_command('''Rscript -e
+            'if (!suppressWarnings(require(lintr, quietly=TRUE))) quit(save = "no");
             lint = lintr::lint(commandArgs(trailingOnly=TRUE)[1]);
-            for (i in 1:length(lint)) 
+            for (i in 1:length(lint))
                 if (lint[[i]]$"type" == "error")
                     stop(paste(lint[[i]]$"message", lint[[i]]$"line"))'
             '''.replace('\n', ' '))).run(**kwargs)
@@ -975,7 +976,7 @@ def pandoc(script=None, output=None, **kwargs):
                 with open(step_report, 'r') as md:
                     combined.write(md.read())
 # $ pandoc -h
-#                     
+#
 #     # this is output format
 #     pandoc [OPTIONS] [FILES]
 # Input formats:  commonmark, docbook, docx, epub, haddock, html, json*, latex,
@@ -991,12 +992,12 @@ def pandoc(script=None, output=None, **kwargs):
 #                 slideous, slidy, tei, texinfo, textile
 #                 [**for pdf output, use latex or beamer and -o FILENAME.pdf]
 # Options:
-#   -f FORMAT, -r FORMAT  --from=FORMAT, --read=FORMAT                    
-#   -t FORMAT, -w FORMAT  --to=FORMAT, --write=FORMAT                     
-#   -o FILENAME           --output=FILENAME                               
-#                         --data-dir=DIRECTORY                            
-#   -R                    --parse-raw                                     
-#   -S                    --smart                                         
+#   -f FORMAT, -r FORMAT  --from=FORMAT, --read=FORMAT
+#   -t FORMAT, -w FORMAT  --to=FORMAT, --write=FORMAT
+#   -o FILENAME           --output=FILENAME
+#                         --data-dir=DIRECTORY
+#   -R                    --parse-raw
+#   -S                    --smart
 #
 # IGNORED
 #
@@ -1074,7 +1075,7 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
             for step_report in step_reports:
                 with open(step_report, 'r') as md:
                     combined.write(md.read())
-    # 
+    #
     arg_output_format = ', output_format={}'.format(kwargs['output_format']) if 'output_format' in kwargs else ''
     if output_file is None:
         raise RuntimeError('Parameter output_file is required for action Rmarkdown')

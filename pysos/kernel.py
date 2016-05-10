@@ -92,7 +92,7 @@ class SoS_Kernel(Kernel):
         return {
             'status': 'ok',
             'found': 'true',
-            'data': {x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys},
+            'data': {x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys and not x.startswith('__')},
             'metadata':''}
 
     def sosdict(self, line):
@@ -108,12 +108,12 @@ class SoS_Kernel(Kernel):
             if 'all' in actions:
                 return env.sos_dict._dict.keys()
             else:
-                return env.sos_dict._dict.keys() - self.original_keys
+                return {x for x in env.sos_dict._dict.keys() if not x.startswith('__')} - self.original_keys
         else:
             if 'all' in actions:
                 return env.sos_dict._dict
             else:
-                return {x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys}
+                return {x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys and not x.startswith('__')}
 
     def do_is_complete(self, code):
         '''check if new line is in order'''

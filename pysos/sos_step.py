@@ -32,7 +32,7 @@ from collections.abc import Sequence, Iterable
 from collections import OrderedDict
 from itertools import tee, combinations
 
-from .utils import env, Error, shortRepr, get_traceback, pickleable
+from .utils import env, Error, shortRepr, get_traceback, pickleable, transcribe
 from .pattern import extract_pattern, expand_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
 from .signature import  RuntimeInfo
@@ -590,6 +590,7 @@ class Step_Executor:
                     public_vars.add(key)
                     try:
                         env.sos_dict[key] = SoS_eval(value, self.step.sigil)
+                        transcribe('{} = {}'.format(key, env.sos_dict[key]))
                     except Exception as e:
                         raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
                 elif statement[0] == ':':
@@ -598,7 +599,7 @@ class Step_Executor:
                     try:
                         SoS_exec(statement[1], self.step.sigil)
                     except Exception as e:
-                        raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
+                        raise RuntimeError('Failed to process statement {}: {}'.format(shortRepr(statement[1]), e))
             # input statement
             env.logger.trace('Handling input statement')
             key, value = self.step.statements[input_statement_idx][1:]
@@ -731,7 +732,7 @@ class Step_Executor:
                         try:
                             SoS_exec(statement[1], self.step.sigil)
                         except Exception as e:
-                            raise RuntimeError('Failed to process statement {}: {}'.format(statement[1], e))
+                            raise RuntimeError('Failed to process statement {}: {}'.format(shortRepr(statement[1]), e))
             #
             if '_output' in env.sos_dict:
                 self._outputs.append(env.sos_dict['_output'])
@@ -922,7 +923,7 @@ class Step_Executor:
                 # FIXME: cannot catch exception from subprocesses
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(self.step.task, e))
+                raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(shortRepr(self.step.task), e))
         # check results? This is only meaningful for pool
         if concurrent:
             try:
@@ -991,7 +992,6 @@ class Step_Executor:
             if isinstance(self.step.options['alias'], Undetermined):
                 # it is time to evalulate this expression now
                 self.step.options['alias'] = self.step.options['alias'].value(self.step.sigil)
+            transcribe('{} = {}'.format(self.step.options['alias'], step_info))
             result[self.step.options['alias']] = copy.deepcopy(step_info)
         return result
-
-
