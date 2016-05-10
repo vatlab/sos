@@ -78,5 +78,6 @@ highlight script guifg='Gray' gui=none
 
 syn sync fromstart
 setlocal foldmethod=syntax
+setlocal foldminlines=4
 " vim:set tabstop=8 softtabstop=0 expandtab shiftwidth=4 smarttab:
 
