@@ -254,7 +254,7 @@ def directive_input(*args, **kwargs):
         #
     # for undetermined file type, we cannot process options
     #
-    if isinstance(ifiles, Undetermined):
+    if ifiles and isinstance(ifiles[0], Undetermined):
         if env.run_mode == 'run':
             raise RuntimeError('Run mode does not accept undetermined input')
         # if input is undertermined, does not process other options
