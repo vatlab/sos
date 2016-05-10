@@ -6,14 +6,12 @@
 "
 " copy this file to $HOME/.vim/syntax directory and add
 "
-" autocmd BufNewFile,BufRead *.sos set syntax=sos
+"     let sos_fold=1
+"     autocmd BufNewFile,BufRead *.sos set syntax=sos foldcolumn=2
 "
-" to your $HOME/.vimrc (or .gvimrc) file
+" to your $HOME/.vimrc (or .gvimrc) file.
 "
-" force coloring in a vim session with:
-"
-" :set syntax=sos
-"
+" Remove sos_fold=1 line and foldcolumn=2 if you do not want to fold scripts.
 
 " disable python builtin keyword
 let python_no_builtin_highlight = 1
@@ -53,22 +51,32 @@ highlight link pythonBuiltin	Function
 
 " parenthetical part of def and class
 syn match sos_section_head "^\[\s*\w\+.*\]\s*$"
-syn match sos_directive "^\(input\|output\|depends\|task\)\s*:.*"
+syn match sos_directive "^\(input\|output\|depends\|task\)\s*:"
 syn match sos_report "\(^! .*$\|^!$\)"
+
 " match a line with non input/output/depends/task, and ends before a section
 " or another directive
-syn region script 
-   \ start="^\(input\|output\|depends\|task\)\@!\w\+\s*:"ms=e+1,hs=e+1
-   \ end="\(^\[\s*\w\+.*\]\s*$\|^\w\+\s*:\|^! \|^!$\)"me=s-1,he=s-1,re=s-1
+" we cannot put ms=e+1 to start because it will mess up folding...
+" see http://stackoverflow.com/questions/8693721/vim-how-do-i-start-a-syntax-fold-on-the-line-after-a-regexp-match-python-func
+" for details.
+if exists("sos_fold")
+  syn region script
+     \ start="^\(input\|output\|depends\|task\)\@!\w\+\s*:"hs=e+1
+     \ end="\(^\[\s*\w\+.*\]\s*$\|^\w\+\s*:\|^! \|^!$\)"me=s-1,he=s-1,re=s-1
+     \ fold contains=TOP
+     \ containedin=ALL
+else
+  syn region script
+     \ start="^\(input\|output\|depends\|task\)\@!\w\+\s*:"ms=e+1,hs=e+1
+     \ end="\(^\[\s*\w\+.*\]\s*$\|^\w\+\s*:\|^! \|^!$\)"me=s-1,he=s-1,re=s-1
+endif
 
 highlight sos_section_head guibg='Purple' gui=none
-highlight sos_directive guifg='LightBlue' gui=none
+highlight sos_directive guifg='LightBlue' gui=bold
 highlight sos_report guifg='LightGreen' gui=none
 highlight script guifg='Gray' gui=none
 
-set comments="! "
-
-let b:current_syntax = "sos"
-
+syn sync fromstart
+setlocal foldmethod=syntax
 " vim:set tabstop=8 softtabstop=0 expandtab shiftwidth=4 smarttab:
 
