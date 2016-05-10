@@ -923,7 +923,7 @@ class Step_Executor:
                 # FIXME: cannot catch exception from subprocesses
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(self.step.task, e))
+                raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(shortRepr(self.step.task), e))
         # check results? This is only meaningful for pool
         if concurrent:
             try:
