@@ -912,7 +912,7 @@ def docker_commit(**kwargs):
     docker.commit(**kwargs)
     return 0
 
-@SoS_Action(run_mode=['inspect', 'run'])
+@SoS_Action(run_mode='run')
 def report(script=None, from_file=None, to_file=None, mode='a', **kwargs):
     if to_file is not None:
         if not to_file:
