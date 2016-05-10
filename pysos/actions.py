@@ -43,7 +43,7 @@ from docker.utils import kwargs_from_env
 import multiprocessing as mp
 import pygments.token as token
 from pygments.lexers import get_lexer_for_filename, guess_lexer
-from .utils import env, getTermWidth, ProgressBar, shortRepr, natural_keys
+from .utils import env, getTermWidth, ProgressBar, shortRepr, natural_keys, transcribe
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .signature import FileSignature, fileMD5
@@ -405,6 +405,7 @@ class SoS_ExecuteScript:
         self.validator = validator
 
     def run(self, **kwargs):
+        transcribe(self.script, action=self.interpreter)
         if env.run_mode == 'inspect':
             check_command(self.interpreter.split()[0], quiet=True)
             return

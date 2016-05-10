@@ -590,6 +590,7 @@ class Step_Executor:
                     public_vars.add(key)
                     try:
                         env.sos_dict[key] = SoS_eval(value, self.step.sigil)
+                        trascribe('{} = {}'.format(key, env.sos_dict[key]))
                     except Exception as e:
                         raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
                 elif statement[0] == ':':
@@ -991,6 +992,7 @@ class Step_Executor:
             if isinstance(self.step.options['alias'], Undetermined):
                 # it is time to evalulate this expression now
                 self.step.options['alias'] = self.step.options['alias'].value(self.step.sigil)
+            transcribe('{} = {}'.format(self.step.options['alias'], step_info))
             result[self.step.options['alias']] = copy.deepcopy(step_info)
         return result
 

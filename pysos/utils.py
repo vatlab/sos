@@ -857,3 +857,16 @@ def natural_keys(text):
     (See Toothy's implementation in the comments)
     '''
     return [ int(c) if c.isdigit() else c for c in re.split('(\d+)', text) ]
+
+def transcribe(text, action=None):
+    if action is not None:
+        text = '{}:\n{}'.format(action, '    ' + text.replace('\n', '\n    ') + '\n')
+    if '__transcript__' not in env.sos_dict:
+        raise RuntimeError('Transcript not defined')
+    if env.sos_dict['__transcript__'] is None:
+        return
+    if env.sos_dict['__transcript__'] == '__STDERR__':
+        sys.stderr.write(text)
+    else:
+        with open(env.sos_dict['__transcript__'], 'a') as trans:
+            trans.write(text)
