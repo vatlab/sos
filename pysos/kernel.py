@@ -74,6 +74,7 @@ class SoS_Kernel(Kernel):
         self.original_keys.add('__builtins__')
         self.options = ''
         self.kernel = None
+        # FIXME: this should in theory be a MultiKernelManager...
         self.kernels = {}
 
     def do_inspect(self, code, cursor_pos, detail_level=0):
@@ -141,59 +142,12 @@ class SoS_Kernel(Kernel):
             command_line = ''
         return command_line
 
-    def handle_iopub(self, msg_id=''):
-        """Process messages on the IOPub channel
-
-           This method consumes and processes messages on the IOPub channel,
-           such as stdout, stderr, execute_result and status.
-
-           It only displays output that is caused by this session.
-        """
-        while self.KC.iopub_channel.msg_ready():
-            sub_msg = self.KC.iopub_channel.get_msg()
-            msg_type = sub_msg['header']['msg_type']
-            parent = sub_msg["parent_header"]
-            if msg_type == 'status':
-                self._execution_state = sub_msg["content"]["execution_state"]
-            elif msg_type == 'stream':
-                if sub_msg["content"]["name"] == "stdout":
-                    print(sub_msg["content"]["text"], file=io.stdout, end="")
-                    io.stdout.flush()
-                elif sub_msg["content"]["name"] == "stderr":
-                    print(sub_msg["content"]["text"], file=io.stderr, end="")
-                    io.stderr.flush()
-            elif msg_type == 'execute_result':
-                self.execution_count = int(sub_msg["content"]["execution_count"])
-                data = sub_msg["content"]["data"]
-                if 'text/plain' in data:
-                    print(data['text/plain'])
-                else:
-                    print('{} not handled'.format(', '.join(data.keys())))
-                #self.handle_rich_data(format_dict)
-                # taken from DisplayHook.__call__:
-                # This is currently not handled.
-                #hook = self.displayhook
-                #hook.start_displayhook()
-                #hook.write_output_prompt()
-                #hook.write_format_data(format_dict)
-                #hook.log_output(format_dict)
-                #hook.finish_displayhook()
-            elif msg_type == 'display_data':
-                data = sub_msg["content"]["data"]
-                #handled = self.handle_rich_data(data)
-                #if not handled:
-                if 'text/plain' in data:
-                    print(data['text/plain'])
-            elif msg_type == 'execute_input':
-                pass
-            elif msg_type == 'clear_output':
-                print("\r", file=io.stdout, end="")
-            elif msg_type == 'error':
-                for frame in sub_msg["content"]["traceback"]:
-                    print(frame, file=io.stderr)
-
     def run_cell(self, code, store_history):
         #
+        if not self.KM.is_alive():
+            print('Restarting kernel "{}"'.format(self.kernel))
+            self.KM.restart_kernel(now=False)
+            self.KC = self.KM.client()
         # flush stale replies, which could have been ignored, due to missed heartbeats
         while self.KC.shell_channel.msg_ready():
             self.KC.shell_channel.get_msg()
@@ -201,16 +155,22 @@ class SoS_Kernel(Kernel):
         msg_id = self.KC.execute(code, silent=False, store_history=not store_history)
 
         # first thing is wait for any side effects (output, stdin, etc.)
-        self._executing = True
-        self._execution_state = "busy"
-        while self._execution_state != 'idle':
+        _execution_state = "busy"
+        while _execution_state != 'idle':
             # display intermediate print statements, etc.
-            self.handle_iopub(msg_id)
-            time.sleep(0.01)
-
+            while self.KC.iopub_channel.msg_ready():
+                sub_msg = self.KC.iopub_channel.get_msg()
+                msg_type = sub_msg['header']['msg_type']
+                if msg_type == 'execute_input':
+                    continue
+                elif msg_type == 'status':
+                    _execution_state = sub_msg["content"]["execution_state"]
+                # pass along all messages except for execute_input
+                self.session.send(self.iopub_socket, msg_type, sub_msg['content'])
+        # now get the real result
         reply = self.KC.get_shell_msg(timeout=10)
+        # FIXME: not sure if other part of the reply is useful...
         return reply['content']
-
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
@@ -241,12 +201,12 @@ class SoS_Kernel(Kernel):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
-        elif code.startswith('#kernel'):
+        elif code.startswith('#in'):
             options = self.get_magic_option(code)
-            if options == 'sos':
-                options = ''
+            if options == 'R':
+                options = 'ir'
             #
-            if options.strip():
+            if options and options != 'sos':
                 if options != self.kernel:
                     if options in self.kernels:
                         print('Using kernel "{}"'.format(options))
@@ -259,15 +219,14 @@ class SoS_Kernel(Kernel):
                             print('Kernel "{}" started'.format(options))
                             self.KM, self.KC = self.kernels[options]
                             self.kernel = options
-                            self.handle_iopub()
-                        except:
-                            print('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed.'.format(options))
+                        except Exception as e:
+                            print('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}'.format(options, e))
             else:
                 if self.kernel:
                     print('switching back to sos kernel')
                     self.kernel = ''
-                else:
-                    print('Usage: switch current kernel to another Jupyter kernel (e.g. ir for R)')
+                elif options != 'sos':
+                    print('Usage: switch current kernel to another Jupyter kernel (e.g. R or ir for R)')
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
@@ -325,8 +284,16 @@ class SoS_Kernel(Kernel):
                 # The base class increments the execution count
                 'execution_count': self.execution_count,
                 'payload': [],
-                'user_expressions': {}, #res,
+                'user_expressions': {},
                }
+
+    def do_shutdown(self, restart):
+        #
+        for name, (km, kv) in self.kernels.items():
+            try:
+                km.shutdown_kernel(restart=restart)
+            except Exception as e:
+                env.logger.warning('Failed to shutdown kernel {}: {}'.format(name, e))
 
 if __name__ == '__main__':
     from ipykernel.kernelapp import IPKernelApp
