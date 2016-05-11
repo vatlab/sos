@@ -22,6 +22,7 @@
 
 import os
 import sys
+import time
 from .utils import env, WorkflowDict
 from ._version import __sos_version__, __version__
 from .sos_eval import SoS_exec, SoS_eval
@@ -32,6 +33,7 @@ from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_cli
 from IPython.core.error import UsageError
 from ipykernel.kernelbase import Kernel
 from jupyter_client import manager
+from IPython.utils import io
 
 def clipboard_get():
     """ Get text from the clipboard.
@@ -72,6 +74,7 @@ class SoS_Kernel(Kernel):
         self.original_keys.add('__builtins__')
         self.options = ''
         self.kernel = None
+        self.kernels = {}
 
     def do_inspect(self, code, cursor_pos, detail_level=0):
         'Inspect code'
@@ -106,7 +109,7 @@ class SoS_Kernel(Kernel):
         code = code.strip()
         if not code:
             return {'status': 'complete', 'indent': ''}
-        if any(code.startswith(x) for x in ['#sosdict', '#sospaste']):
+        if any(code.startswith(x) for x in ['#dict', '#paste']):
             return {'status': 'complete', 'indent': ''}
         if code.endswith(':') or code.endswith(','):
             return {'status': 'incomplete', 'indent': '  '}
@@ -138,6 +141,77 @@ class SoS_Kernel(Kernel):
             command_line = ''
         return command_line
 
+    def handle_iopub(self, msg_id=''):
+        """Process messages on the IOPub channel
+
+           This method consumes and processes messages on the IOPub channel,
+           such as stdout, stderr, execute_result and status.
+
+           It only displays output that is caused by this session.
+        """
+        while self.KC.iopub_channel.msg_ready():
+            sub_msg = self.KC.iopub_channel.get_msg()
+            msg_type = sub_msg['header']['msg_type']
+            parent = sub_msg["parent_header"]
+            if msg_type == 'status':
+                self._execution_state = sub_msg["content"]["execution_state"]
+            elif msg_type == 'stream':
+                if sub_msg["content"]["name"] == "stdout":
+                    print(sub_msg["content"]["text"], file=io.stdout, end="")
+                    io.stdout.flush()
+                elif sub_msg["content"]["name"] == "stderr":
+                    print(sub_msg["content"]["text"], file=io.stderr, end="")
+                    io.stderr.flush()
+            elif msg_type == 'execute_result':
+                self.execution_count = int(sub_msg["content"]["execution_count"])
+                data = sub_msg["content"]["data"]
+                if 'text/plain' in data:
+                    print(data['text/plain'])
+                else:
+                    print('{} not handled'.format(', '.join(data.keys())))
+                #self.handle_rich_data(format_dict)
+                # taken from DisplayHook.__call__:
+                # This is currently not handled.
+                #hook = self.displayhook
+                #hook.start_displayhook()
+                #hook.write_output_prompt()
+                #hook.write_format_data(format_dict)
+                #hook.log_output(format_dict)
+                #hook.finish_displayhook()
+            elif msg_type == 'display_data':
+                data = sub_msg["content"]["data"]
+                #handled = self.handle_rich_data(data)
+                #if not handled:
+                if 'text/plain' in data:
+                    print(data['text/plain'])
+            elif msg_type == 'execute_input':
+                pass
+            elif msg_type == 'clear_output':
+                print("\r", file=io.stdout, end="")
+            elif msg_type == 'error':
+                for frame in sub_msg["content"]["traceback"]:
+                    print(frame, file=io.stderr)
+
+    def run_cell(self, code, store_history):
+        #
+        # flush stale replies, which could have been ignored, due to missed heartbeats
+        while self.KC.shell_channel.msg_ready():
+            self.KC.shell_channel.get_msg()
+        # executing code in another kernel
+        msg_id = self.KC.execute(code, silent=False, store_history=not store_history)
+
+        # first thing is wait for any side effects (output, stdin, etc.)
+        self._executing = True
+        self._execution_state = "busy"
+        while self._execution_state != 'idle':
+            # display intermediate print statements, etc.
+            self.handle_iopub(msg_id)
+            time.sleep(0.01)
+
+        reply = self.KC.get_shell_msg(timeout=10)
+        return reply['content']
+
+
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
         if code == 'import os\n_pid = os.getpid()':
@@ -150,10 +224,10 @@ class SoS_Kernel(Kernel):
                 'user_expressions': {'_pid': {'data': {'text/plain': os.getpid()}}}
                }
         mode = 'code'
-        if code.startswith('#sosdict'):
+        if code.startswith('#dict'):
             mode = 'dict'
             command_line = self.get_magic_option(code)
-        elif code.startswith('#sosset'):
+        elif code.startswith('#set'):
             options = self.get_magic_option(code)
             if options.strip():
                 print('sos options set to "{}"'.format(options))
@@ -167,16 +241,27 @@ class SoS_Kernel(Kernel):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
-        elif code.startswith('#sosswitch'):
+        elif code.startswith('#kernel'):
             options = self.get_magic_option(code)
+            if options == 'sos':
+                options = ''
+            #
             if options.strip():
-                if self.kernel:
-                    if self.kernel != options:
-                        print('SoS currently does not support more than 1 external kernel')
-                else:
-                    print('switching kernel to "{}"'.format(options))
-                    self.kernel = options.strip()
-                    self.KM, self.KC = manager.start_new_kernel(startup_timeout=60, name=self.kernel)
+                if options != self.kernel:
+                    if options in self.kernels:
+                        print('Using kernel "{}"'.format(options))
+                        self.KM, self.KC = self.kernels[options]
+                        self.kernel = options
+                        self.handle_iopub()
+                    else:
+                        try:
+                            self.kernels[options] = manager.start_new_kernel(startup_timeout=60, kernel_name=options)
+                            print('Kernel "{}" started'.format(options))
+                            self.KM, self.KC = self.kernels[options]
+                            self.kernel = options
+                            self.handle_iopub()
+                        except:
+                            print('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed.'.format(options))
             else:
                 if self.kernel:
                     print('switching back to sos kernel')
@@ -186,7 +271,7 @@ class SoS_Kernel(Kernel):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
-        elif code.startswith('#sospaste'):
+        elif code.startswith('#paste'):
             command_line = self.options + ' ' + self.get_magic_option(code)
             try:
                 code = clipboard_get()
@@ -198,7 +283,7 @@ class SoS_Kernel(Kernel):
             #
             print(code.strip())
             print('## -- End pasted text --')
-        elif code.startswith('#sosrun'):
+        elif code.startswith('#run'):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options + ' ' + self.get_magic_option(code)
@@ -209,35 +294,7 @@ class SoS_Kernel(Kernel):
             if mode == 'dict':
                 res = self.sosdict(command_line)
             elif self.kernel:
-                # executing in another kernel
-                msg_id = self.KC.execute(code, silent, store_history, user_expressions,
-                   allow_stdin=allow_stdin)
-                reply = self.KC.get_shell_msg(timeout=10)
-                env.logger.error(reply['content']['status'])
-                stdout = ''
-                stderr = ''
-                while True:
-                    msg = self.KC.iopub_channel.get_msg(block=True, timeout=1)
-                    msg_type = msg['msg_type']
-                    content = msg['content']
-                    if msg_type == 'status' and content['execution_state'] == 'idle':
-                        # idle message signals end of output
-                        break
-                    elif msg['msg_type'] == 'execute_result':
-                        res = msg['content']
-                        res['status'] = 'ok'
-                        return res
-                    elif msg['msg_type'] == 'stream':
-                        if content['name'] == 'stdout':
-                            stdout += content['text']
-                        elif content['name'] == 'stderr':
-                            stderr += content['text']
-                        else:
-                            raise KeyError("bad stream: %r" % content['name'])
-                    else:
-                        # other output, ignored
-                        pass
-                res = stdout
+                return self.run_cell(code, store_history)
             else:
                 res = self.executor.run_interactive(code, command_line)
         except Exception as e:
