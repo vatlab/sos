@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
+import os
 import sys
 import re
 import signal
@@ -65,10 +66,8 @@ class SoS_String:
     _FORMAT_SPECIFIER_TMPL = r'''
         ^                                   # start of expression
         (?P<expr>.*?)                       # any expression
-        (?P<specifier>
         (?P<conversion>!\s*                 # conversion starting with !
-        [s|r|q]?                            # conversion, q is added by SoS
-        (?P<sep>,)?                         # optional character to join sequences
+        [s|r|q|a|b|,]+                      # conversion, q, a, b, and , are added by SoS
         )?
         (?P<format_spec>:\s*                # format_spec starting with :
         (?P<fill>.?[<>=^])?                 # optional fill|align
@@ -79,7 +78,6 @@ class SoS_String:
         (?P<precision>\.\d+)?               # optional precision
         (?P<type>[bcdeEfFgGnosxX%])?        # optional type
         )?                                  # optional format_spec
-        )?                                  # optional specifier
         \s*$                                # end of tring
         '''
 
@@ -173,18 +171,11 @@ class SoS_String:
                     # is syntax correct?
                     mo = self.FORMAT_SPECIFIER.match(text[:j])
                     if mo:
-                        expr, fmt, sep = mo.group('expr', 'specifier', 'sep')
-                        if sep:
-                            if fmt.startswith('!,'):
-                                fmt = fmt[2:]
-                            else:
-                                fmt = fmt[:2] + fmt[3:]
-                        else:
-                            sep = ' '
+                        expr, fmt, conversion = mo.group('expr', 'format_spec', 'conversion')
                     else:
                         expr = text[:j]
                         fmt = None
-                        sep = None
+                        conversion = None
                     # if the syntax is correct
                     compile(expr, '<string>', 'eval')
                     try:
@@ -192,7 +183,7 @@ class SoS_String:
                     except Exception as e:
                         raise InterpolationError(expr, e)
                     # evaluate the expression and interpolate the next expression
-                    return self._repr(result, fmt, sep) + self.interpolate(text[j+len(self.r):])
+                    return self._repr(result, fmt, conversion) + self.interpolate(text[j+len(self.r):])
                 except Exception as e:
                     self.error_count += 1
                     if self.r not in text[j+1:]:
@@ -204,31 +195,40 @@ class SoS_String:
                     if j > k:
                         return self._interpolate(text[:k] + self._interpolate(text[k+len(self.l):]))
 
-    def _format(self, obj, fmt):
+    def _format(self, obj, fmt, conversion):
         '''Format an object in basic type (not list etc)
         '''
         # handling special !q conversion flag
-        if fmt.startswith('!q'):
-            # special SoS conversion for shell quotation.
-            return self._format(quote(obj), fmt[2:])
-        else:
-            # use
-            return ('{' + fmt + '}').format(obj)
+        if conversion:
+            if isinstance(obj, str):
+                if 'a' in conversion:
+                    obj = os.path.abspath(os.path.expanduser(obj))
+                if 'b' in conversion:
+                    obj = os.path.basename(obj)
+                if 'q' in conversion:
+                    # special SoS conversion for shell quotation.
+                    obj = quote(obj)
+            if 'r' in conversion:
+                obj = repr(obj)
+            if 's' in conversion:
+                obj = str(obj)
+        return ('{' + (fmt if fmt else '') + '}').format(obj)
 
-    def _repr(self, obj, fmt=None, sep=' '):
+    def _repr(self, obj, fmt=None, conversion=None):
         '''Format an object. fmt will be applied to all elements if obj is not
         in a basic type. Callable object cannot be outputed (an InterpolationError
         will be raised).
         '''
         if isinstance(obj, str):
-            return obj if fmt is None else self._format(obj, fmt)
+            return obj if fmt is None and conversion is None else self._format(obj, fmt, conversion)
         elif isinstance(obj, collections.Iterable):
             # the object might be nested...
-            return sep.join([self._repr(x, fmt, sep) for x in obj])
+            sep = ',' if conversion and ',' in conversion else ' '
+            return sep.join([self._repr(x, fmt, conversion) for x in obj])
         elif isinstance(obj, collections.Callable):
             raise InterpolationError(repr(obj), 'Cannot interpolate callable object.')
         else:
-            return repr(obj) if fmt is None else self._format(obj, fmt)
+            return repr(obj) if fmt is None and conversion is None else self._format(obj, fmt, conversion)
 
 def interpolate(text, sigil='${ }', local_dict={}):
     '''Evaluate expressions in `text` marked by specified `sigil` using provided

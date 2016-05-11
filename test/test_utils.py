@@ -137,6 +137,11 @@ class TestUtils(unittest.TestCase):
                 ('{0}var2!r,{1}', "1,2,3.1"),
                 ('{0}c!r,{1}', "'file1','file2','file3'"),
                 ('{0}c!,{1}', "file1,file2,file3"),
+                #
+                # full name by 'a'
+                ('{0}"test_utils.py"!a{1}', os.path.abspath('test_utils.py')),
+                ('{0}"~/test_utils.py"!a{1}', os.path.expanduser('~/test_utils.py')),
+                ('{0}"test/test_utils.py"!b{1}', "test_utils.py"),
             ]:
                 #print('Interpolating "{}" with sigal "{}"'.format(expr.format(l, r).replace('\n', r'\n'), sigil))
                 if isinstance(result, str):
