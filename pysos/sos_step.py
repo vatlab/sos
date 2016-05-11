@@ -884,7 +884,7 @@ class Step_Executor:
             # so that no process need to be run, we create signature from outside.
             if not self.step.task:
                 # if no process, we should be able to figure out undetermined output now
-                if env.sos_dict['_output'] and isinstance(env.sos_dict['_output'][0], Undetermined):
+                if env.sos_dict['_output'] and isinstance(env.sos_dict['_output'][0], Undetermined) and env.run_mode == 'run':
                     value = env.sos_dict['_output'][0].expr
                     env.logger.trace('Processing output: {}'.format(value))
                     args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
