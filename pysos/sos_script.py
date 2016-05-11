@@ -532,6 +532,7 @@ class SoS_Script:
         self.sections = []
         self.format_version = '1.0'
         self.descriptions = []
+        self.gloal_def = ''
         #
         comment_block = 1
         # cursect always point to the last section
@@ -904,8 +905,6 @@ class SoS_Script:
                 section.global_def = self.global_def
             # remove the global section after inserting it to each step of the process
             self.sections.pop(global_section[0][0])
-        else:
-            self.gloal_def = ''
 
     def workflow(self, workflow_name=None, source={}):
         '''Return a workflow with name_step+name_step specified in wf_name

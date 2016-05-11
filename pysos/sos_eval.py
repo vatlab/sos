@@ -345,8 +345,10 @@ def SoS_exec(stmts, sigil='${ }'):
                 code_group.pop(idx+1)
     #
     # execute statements one by one
+    res = None
     executed = ''
-    for code in code_group:
+    code_group = [x for x in code_group if x.strip()]
+    for idx,code in enumerate(code_group):
         stmts = ConvertString(code, sigil)
         if not stmts.strip():
             continue
@@ -361,6 +363,19 @@ def SoS_exec(stmts, sigil='${ }'):
             if env.run_mode == 'inspect':
                 # make sure that the expression can be completed in 5 seconds
                 with time_limit(env.sos_dict['CONFIG'].get('sos_inspect_timeout', 5), stmts):
+                    if idx + 1 == len(code_group):
+                        try:
+                            compile(stmts, '<string>', 'eval')
+                            res = eval(stmts, env.sos_dict._dict)
+                        except:
+                            exec(stmts, env.sos_dict._dict)
+                    else:
+                        exec(stmts, env.sos_dict._dict)
+            elif idx + 1 == len(code_group):
+                try:
+                    compile(stmts, '<string>', 'eval')
+                    res = eval(stmts, env.sos_dict._dict)
+                except:
                     exec(stmts, env.sos_dict._dict)
             else:
                 exec(stmts, env.sos_dict._dict)
@@ -378,6 +393,7 @@ def SoS_exec(stmts, sigil='${ }'):
         executed += stmts + '\n'
         # check if the statement has altered any readonly variables
         env.sos_dict.check_readonly_vars()
+    return res
 
 #
 # dynamic expression that cannot be resolved during parsing

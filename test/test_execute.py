@@ -34,7 +34,7 @@ from pysos import SoS_Script
 from pysos import __version__
 from pysos.utils import env
 from pysos.sos_eval import Undetermined
-from pysos.sos_executor import Sequential_Executor, ExecuteError
+from pysos.sos_executor import Sequential_Executor, Interactive_Executor, ExecuteError
 from pysos.sos_script import ParsingError
 import subprocess
 
@@ -1226,6 +1226,16 @@ touch ${output}
         with open('temp/out.log') as out:
             self.assertEqual(len(out.read().split()), 25)
         shutil.rmtree('temp')
+
+    def testInteractiveExecutor(self):
+        '''interactive'''
+        executor = Interactive_Executor()
+        executor.run_interactive('a=1')
+        self.assertEqual(executor.run_interactive('a'), 1)
+        self.assertEqual(executor.run_interactive('b=a\nb'), 1)
+        executor.run_interactive('run:\necho "a"')
+        self.assertRaises(ExecuteError, executor.run_interactive, 'c')
+
 
 if __name__ == '__main__':
     unittest.main()

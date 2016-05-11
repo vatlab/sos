@@ -35,7 +35,7 @@ from . import __version__
 from .sos_step import Step_Executor
 from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, frozendict, natural_keys
 from .sos_eval import Undetermined, SoS_eval, SoS_exec
-from .sos_script import SoS_Script
+from .sos_script import SoS_Script, SoS_Step, SoS_ScriptContent
 
 __all__ = []
 
@@ -242,7 +242,9 @@ class Base_Executor:
 
     def run(self, args=[], nested=False, cmd_name='', config_file=None,
         run_mode='run', sig_mode='default', verbosity=2):
+        env.verbosity = verbosity
         if not self.workflow.sections:
+            env.logger.trace('Skip because no section is defined')
             return
         if not nested or run_mode == 'inspect':
             env.run_mode = 'inspect'
@@ -435,7 +437,18 @@ class Interactive_Executor(Base_Executor):
                     self.load_config(args.__config__)
                     env.sos_dict.set('step_name', '__interactive__')
                     env.sos_dict.set('__transcript__', args.__transcript__)
-                    return SoS_exec(script.global_def)
+                    # some actions requires this
+                    env.sos_dict.set('_index', 0)
+                    try:
+                        return SoS_exec(script.global_def)
+                    except Exception as e:
+                        env.logger.debug('Failed to execute as global_def: {}'.format(e))
+                        # add an empty section to execute it as a script
+                        section = SoS_Step(SoS_ScriptContent('interactive'), [('default', None)])
+                        section.global_def = script.global_def
+                        script.sections.append(section)
+                else:
+                    return None
             #
             sig_mode = 'default'
             run_mode = 'run'
@@ -456,6 +469,7 @@ class Interactive_Executor(Base_Executor):
             executor.run(workflow_args, cmd_name='<script> {}'.format(wf_name), config_file=args.__config__,
                 run_mode=run_mode, sig_mode=sig_mode, verbosity=args.verbosity)
         finally:
+            env.verbosity = 2
             env.run_mode = 'run'
             env.sig_mode = 'default'
 

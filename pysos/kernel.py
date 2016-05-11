@@ -71,23 +71,6 @@ class SoS_Kernel(Kernel):
         self.original_keys.add('__builtins__')
         self.options = ''
 
-    def eval_code(self, code, line):
-        code = code.strip()
-        try:
-            # is it an expression?
-            compile(code, '<string>', 'eval')
-            #if line.strip():
-            #    env.logger.warning('{} ignored for expression evaluation'.format(line))
-            return SoS_eval(code)
-        except:
-            # is it a list of statement?
-            try:
-                compile(code, '<string>', 'exec')
-                #if line.strip():
-                #    env.logger.warning('{} ignored for statement execution'.format(line))
-                return SoS_exec(code)
-            except:
-                return self.executor.run_interactive(code, command_line=line)
 
     def do_inspect(self, code, cursor_pos, detail_level=0):
         'Inspect code'
@@ -165,7 +148,6 @@ class SoS_Kernel(Kernel):
                 'payload': [],
                 'user_expressions': {'_pid': {'data': {'text/plain': os.getpid()}}}
                }
-        env.logger.warning('GETTING "{}"'.format(code))
         mode = 'code'
         if code.startswith('#sosdict'):
             mode = 'dict'
@@ -181,6 +163,9 @@ class SoS_Kernel(Kernel):
                     self.options = ''
                 else:
                     print('Usage: set persistent sos options such as -v 3 (debug output) -p (prepare) and -t (transcribe)')
+            lines = code.split('\n')
+            code = '\n'.join(lines[1:])
+            command_line = self.options
         elif code.startswith('#sospaste'):
             command_line = self.options + ' ' + self.get_magic_option(code)
             try:
@@ -204,7 +189,7 @@ class SoS_Kernel(Kernel):
             if mode == 'dict':
                 res = self.sosdict(command_line)
             else:
-                res = self.eval_code(code, command_line)
+                res = self.executor.run_interactive(code, command_line)
         except Exception as e:
             stream_content = {'name': 'stderr', 'text': repr(e)}
             self.send_response(self.iopub_socket, 'stream', stream_content)
