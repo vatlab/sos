@@ -20,6 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import os
 import sys
 from .utils import env, WorkflowDict
 from ._version import __sos_version__, __version__
@@ -155,6 +156,16 @@ class SoS_Kernel(Kernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
+        if code == 'import os\n_pid = os.getpid()':
+            # this is a special probing command from vim-ipython. Let us handle it specially
+            # so that vim-python can get the pid.
+            return {'status': 'ok',
+                # The base class increments the execution count
+                'execution_count': None,
+                'payload': [],
+                'user_expressions': {'_pid': {'data': {'text/plain': os.getpid()}}}
+               }
+        env.logger.warning('GETTING "{}"'.format(code))
         mode = 'code'
         if code.startswith('#sosdict'):
             mode = 'dict'
