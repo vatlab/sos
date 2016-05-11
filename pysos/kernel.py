@@ -31,6 +31,7 @@ from .sos_syntax import SOS_SECTION_HEADER
 from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_clipboard_get
 from IPython.core.error import UsageError
 from ipykernel.kernelbase import Kernel
+from jupyter_client import manager
 
 def clipboard_get():
     """ Get text from the clipboard.
@@ -70,7 +71,7 @@ class SoS_Kernel(Kernel):
         self.original_keys = set(env.sos_dict._dict.keys())
         self.original_keys.add('__builtins__')
         self.options = ''
-
+        self.kernel = None
 
     def do_inspect(self, code, cursor_pos, detail_level=0):
         'Inspect code'
@@ -166,6 +167,25 @@ class SoS_Kernel(Kernel):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
+        elif code.startswith('#sosswitch'):
+            options = self.get_magic_option(code)
+            if options.strip():
+                if self.kernel:
+                    if self.kernel != options:
+                        print('SoS currently does not support more than 1 external kernel')
+                else:
+                    print('switching kernel to "{}"'.format(options))
+                    self.kernel = options.strip()
+                    self.KM, self.KC = manager.start_new_kernel(startup_timeout=60, name=self.kernel)
+            else:
+                if self.kernel:
+                    print('switching back to sos kernel')
+                    self.kernel = ''
+                else:
+                    print('Usage: switch current kernel to another Jupyter kernel (e.g. ir for R)')
+            lines = code.split('\n')
+            code = '\n'.join(lines[1:])
+            command_line = self.options
         elif code.startswith('#sospaste'):
             command_line = self.options + ' ' + self.get_magic_option(code)
             try:
@@ -188,6 +208,36 @@ class SoS_Kernel(Kernel):
         try:
             if mode == 'dict':
                 res = self.sosdict(command_line)
+            elif self.kernel:
+                # executing in another kernel
+                msg_id = self.KC.execute(code, silent, store_history, user_expressions,
+                   allow_stdin=allow_stdin)
+                reply = self.KC.get_shell_msg(timeout=10)
+                env.logger.error(reply['content']['status'])
+                stdout = ''
+                stderr = ''
+                while True:
+                    msg = self.KC.iopub_channel.get_msg(block=True, timeout=1)
+                    msg_type = msg['msg_type']
+                    content = msg['content']
+                    if msg_type == 'status' and content['execution_state'] == 'idle':
+                        # idle message signals end of output
+                        break
+                    elif msg['msg_type'] == 'execute_result':
+                        res = msg['content']
+                        res['status'] = 'ok'
+                        return res
+                    elif msg['msg_type'] == 'stream':
+                        if content['name'] == 'stdout':
+                            stdout += content['text']
+                        elif content['name'] == 'stderr':
+                            stderr += content['text']
+                        else:
+                            raise KeyError("bad stream: %r" % content['name'])
+                    else:
+                        # other output, ignored
+                        pass
+                res = stdout
             else:
                 res = self.executor.run_interactive(code, command_line)
         except Exception as e:
