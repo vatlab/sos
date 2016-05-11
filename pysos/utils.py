@@ -762,7 +762,7 @@ class frozendict(dict):
 # A utility function that returns output of a command
 def get_output(cmd, show_command=False, prompt='$ '):
     try:
-        output = subprocess.check_output(cmd, shell=True).decode()
+        output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, shell=True).decode()
     except subprocess.CalledProcessError as e:
         if e.output.decode():
             env.logger.error(e.output.decode())
