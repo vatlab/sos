@@ -25,7 +25,7 @@ import sys
 import time
 from .utils import env, WorkflowDict
 from ._version import __sos_version__, __version__
-from .sos_eval import SoS_exec, SoS_eval
+from .sos_eval import SoS_exec, SoS_eval, interpolate
 from .sos_executor import Interactive_Executor
 from .sos_syntax import SOS_SECTION_HEADER
 
@@ -294,6 +294,15 @@ class SoS_Kernel(Kernel):
             if mode == 'dict':
                 res = self.sosdict(command_line)
             elif self.kernel:
+                # handle string interpolation before sending to the underlying kernel
+                try:
+                    new_code = interpolate(code, sigil='${ }', local_dict=env.sos_dict._dict)
+                    if new_code != code:
+                        print(new_code.strip())
+                        code = new_code
+                        print('## -- End interpolated text --')
+                except Exception as e:
+                    env.logger.warning('Failed to interpolate {}: {}'.format(shortRepr(code), e))
                 return self.run_cell(code, store_history)
             else:
                 res = self.executor.run_interactive(code, command_line)
