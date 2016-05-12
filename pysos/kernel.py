@@ -26,7 +26,7 @@ import base64
 import imghdr
 
 from .utils import env, WorkflowDict, shortRepr
-from .signature import textMD5
+from .signature import textMD5, FileInfo
 from ._version import __sos_version__, __version__
 from .sos_eval import SoS_exec, interpolate
 from .sos_executor import Interactive_Executor
@@ -335,12 +335,12 @@ class SoS_Kernel(Kernel):
                             output_files = []
                         #
                         self.send_response(self.iopub_socket, 'display_data',
-                                    {'data': { 'text/html': 
+                                    {'data': { 'text/html':
                                         HTML('''<table><tr>
-                                            <td>input</td><td>{}</td>
+                                            <th>input</th><td>{}</td>
                                             </tr>
                                             <tr>
-                                            <td>output</td><td>{}</td>
+                                            <td>output</th><td>{}</td>
                                             </tr>
                                             </table>'''.format(
                                             ', '.join('<a href="{0}">{0}</a>'.format(x) for x in input_files),
@@ -354,8 +354,34 @@ class SoS_Kernel(Kernel):
                                 self.send_response(self.iopub_socket, 'display_data', data)
                             elif filename.lower().endswith('.pdf'):
                                 self.send_response(self.iopub_socket, 'display_data',
-                                    {'source': filename, 
+                                    {'source': filename,
                                      'data': { 'text/html': HTML('<iframe src={0} width="600" height="400"></iframe>'.format(filename)).data}})
+                            elif filename.lower().endswith('.csv') or filename.lower().endswith('.tsv'):
+                                try:
+                                    import pandas
+                                    data = pandas.read_csv(filename, nrows=10)
+                                    html = data.to_html()
+                                    self.send_response(self.iopub_socket, 'stream',
+                                         {'name': 'stdout', 'text': filename + '(first 10 rows)\n'})
+                                    self.send_response(self.iopub_socket, 'display_data',
+                                        {'source': filename,
+                                         'data': { 'text/html':
+                                         HTML(html).data}})
+                                except Exception as e:
+                                    #env.logger.warning('Cannot display {}: {}'.format(filename, e))
+                                    self.send_response(self.iopub_socket, 'stream',
+                                         {'name': 'stdout', 'text': repr(e)})
+                            else:
+                                fi = FileInfo(filename)
+                                desc = fi.describe()
+                                if desc:
+                                    self.send_response(self.iopub_socket, 'stream',
+                                         {'name': 'stdout', 'text': filename + ' ({:.1f} KB)'.format(os.path.getsize(filename) / 1024)})
+                                    self.send_response(self.iopub_socket, 'display_data',
+                                        {'source': filename,
+                                         'data': {'text/html':
+                                         HTML('<table><tr><td><pre>{}</pre></td></tr></table>'.format(desc)).data}})
+
             except Exception as e:
                 stream_content = {'name': 'stderr', 'text': repr(e)}
                 self.send_response(self.iopub_socket, 'stream', stream_content)

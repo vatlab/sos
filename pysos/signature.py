@@ -70,6 +70,40 @@ def fileMD5(filename, partial=True):
     return md5.hexdigest()
 
 
+class FileInfo:
+    def __init__(self, filename):
+        self.filename = filename
+
+    def first5(self):
+        try:
+            lines = []
+            with open(self.filename, 'r') as ifile:
+                for i in range(5):
+                    lines.append(ifile.readline())
+            return ''.join(lines)
+        except:
+            return ''
+
+    def gtf(self):
+        return self.first5()
+
+    def gff(self):
+        return self.first5()
+
+    def describe(self):
+        # return description of files
+        fn, ext = os.path.splitext(self.filename)
+        ext = ext.lower()
+        if not ext:
+            return ''
+        if hasattr(self, ext[1:]):
+            return getattr(self, ext[1:])()
+        else:
+            try:
+                return self.first5()
+            except:
+                return ''
+
 class FileSignature:
     '''Record file MD5 information to sign downloaded files, also add
     decompressed files in case the file is decompressed.'''
