@@ -73,9 +73,10 @@ class SoS_Kernel(Kernel):
         self.original_keys = set(env.sos_dict._dict.keys())
         self.original_keys.add('__builtins__')
         self.options = ''
-        self.kernel = None
+        self.kernel = 'sos'
         # FIXME: this should in theory be a MultiKernelManager...
         self.kernels = {}
+        self.original_kernel = None
 
     def do_inspect(self, code, cursor_pos, detail_level=0):
         'Inspect code'
@@ -172,6 +173,29 @@ class SoS_Kernel(Kernel):
         # FIXME: not sure if other part of the reply is useful...
         return reply['content']
 
+    def switch_kernel(self, kernel):
+        if kernel and kernel != 'sos':
+            if kernel != self.kernel:
+                if kernel in self.kernels:
+                    print('Using kernel "{}"'.format(kernel))
+                    self.KM, self.KC = self.kernels[kernel]
+                    self.kernel = kernel
+                else:
+                    try:
+                        self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)
+                        print('Kernel "{}" started'.format(kernel))
+                        self.KM, self.KC = self.kernels[kernel]
+                        self.kernel = kernel
+                    except Exception as e:
+                        print('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}'.format(kernel, e))
+        else:
+            # kerl is None ('') or kernel == 'sos'
+            if self.kernel != 'sos':
+                print('Switching back to sos kernel')
+                self.kernel = 'sos'
+            elif kernel == '':
+                print('Usage: switch current kernel to another Jupyter kernel (e.g. R or ir for R)')
+
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
         if code == 'import os\n_pid = os.getpid()':
@@ -201,32 +225,14 @@ class SoS_Kernel(Kernel):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
-        elif code.startswith('#in'):
+        elif code.startswith('#with') or code.startswith('#use'):
             options = self.get_magic_option(code)
             if options == 'R':
                 options = 'ir'
             #
-            if options and options != 'sos':
-                if options != self.kernel:
-                    if options in self.kernels:
-                        print('Using kernel "{}"'.format(options))
-                        self.KM, self.KC = self.kernels[options]
-                        self.kernel = options
-                        self.handle_iopub()
-                    else:
-                        try:
-                            self.kernels[options] = manager.start_new_kernel(startup_timeout=60, kernel_name=options)
-                            print('Kernel "{}" started'.format(options))
-                            self.KM, self.KC = self.kernels[options]
-                            self.kernel = options
-                        except Exception as e:
-                            print('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}'.format(options, e))
-            else:
-                if self.kernel:
-                    print('switching back to sos kernel')
-                    self.kernel = ''
-                elif options != 'sos':
-                    print('Usage: switch current kernel to another Jupyter kernel (e.g. R or ir for R)')
+            if code.startswith('#with'):
+                self.original_kernel = self.kernel
+            self.switch_kernel(options)
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
@@ -250,42 +256,47 @@ class SoS_Kernel(Kernel):
             command_line = self.options
         #
         try:
-            if mode == 'dict':
-                res = self.sosdict(command_line)
-            elif self.kernel:
-                # handle string interpolation before sending to the underlying kernel
-                try:
-                    new_code = interpolate(code, sigil='${ }', local_dict=env.sos_dict._dict)
-                    if new_code != code:
-                        print(new_code.strip())
-                        code = new_code
-                        print('## -- End interpolated text --')
-                except Exception as e:
-                    env.logger.warning('Failed to interpolate {}: {}'.format(shortRepr(code), e))
-                return self.run_cell(code, store_history)
-            else:
-                res = self.executor.run_interactive(code, command_line)
-        except Exception as e:
-            stream_content = {'name': 'stderr', 'text': repr(e)}
-            self.send_response(self.iopub_socket, 'stream', stream_content)
-            return  {'status': 'error',
-                'ename': e.__class__.__name__,
-                'evalue': repr(e),
-                'traceback': [],
-                'execution_count': self.execution_count,
-               }
+            try:
+                if mode == 'dict':
+                    res = self.sosdict(command_line)
+                elif self.kernel != 'sos':
+                    # handle string interpolation before sending to the underlying kernel
+                    try:
+                        new_code = interpolate(code, sigil='${ }', local_dict=env.sos_dict._dict)
+                        if new_code != code:
+                            print(new_code.strip())
+                            code = new_code
+                            print('## -- End interpolated text --')
+                    except Exception as e:
+                        env.logger.warning('Failed to interpolate {}: {}'.format(shortRepr(code), e))
+                    return self.run_cell(code, store_history)
+                else:
+                    res = self.executor.run_interactive(code, command_line)
+            except Exception as e:
+                stream_content = {'name': 'stderr', 'text': repr(e)}
+                self.send_response(self.iopub_socket, 'stream', stream_content)
+                return  {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': repr(e),
+                    'traceback': [],
+                    'execution_count': self.execution_count,
+                   }
 
-        # this is Ok, send result back
-        if not silent and res is not None:
-            stream_content = {'name': 'stdout', 'text': repr(res)}
-            self.send_response(self.iopub_socket, 'stream', stream_content)
-        #
-        return {'status': 'ok',
-                # The base class increments the execution count
-                'execution_count': self.execution_count,
-                'payload': [],
-                'user_expressions': {},
-               }
+            # this is Ok, send result back
+            if not silent and res is not None:
+                stream_content = {'name': 'stdout', 'text': repr(res)}
+                self.send_response(self.iopub_socket, 'stream', stream_content)
+            #
+            return {'status': 'ok',
+                    # The base class increments the execution count
+                    'execution_count': self.execution_count,
+                    'payload': [],
+                    'user_expressions': {},
+                   }
+        finally:
+            if self.original_kernel is not None:
+                self.switch_kernel(self.original_kernel)
+                self.original_kernel = None
 
     def do_shutdown(self, restart):
         #
