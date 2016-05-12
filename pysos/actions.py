@@ -786,8 +786,10 @@ def JavaScript(script, **kwargs):
 
 @SoS_Action(run_mode=['inspect', 'prepare', 'run'])
 def R(script, **kwargs):
+    # > getOption('defaultPackages')
+    # [1] "datasets"  "utils"     "grDevices" "graphics"  "stats"     "methods"
     return SoS_ExecuteScript(
-        script, 'Rscript --default-packages=methods,utils,stats,grDevices,graphics ', '.R',
+        script, 'Rscript --default-packages=datasets,methods,utils,stats,grDevices,graphics ', '.R',
         validate_with_command('''Rscript -e
             'if (!suppressWarnings(require(lintr, quietly=TRUE))) quit(save = "no");
             lint = lintr::lint(commandArgs(trailingOnly=TRUE)[1]);
