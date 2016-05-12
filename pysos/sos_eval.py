@@ -67,7 +67,7 @@ class SoS_String:
         ^                                   # start of expression
         (?P<expr>.*?)                       # any expression
         (?P<conversion>!\s*                 # conversion starting with !
-        [s|r|q|a|b|,]+                      # conversion, q, a, b, and , are added by SoS
+        [srqabe,]+                          # conversion, q, a, b, and , are added by SoS
         )?
         (?P<format_spec>:\s*                # format_spec starting with :
         (?P<fill>.?[<>=^])?                 # optional fill|align
@@ -201,6 +201,8 @@ class SoS_String:
         # handling special !q conversion flag
         if conversion:
             if isinstance(obj, str):
+                if 'e' in conversion:
+                    obj = os.path.expanduser(obj)
                 if 'a' in conversion:
                     obj = os.path.abspath(os.path.expanduser(obj))
                 if 'b' in conversion:
