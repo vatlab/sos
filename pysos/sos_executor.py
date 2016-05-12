@@ -196,7 +196,7 @@ class Base_Executor:
         '''
         if nested:
             # if this is a subworkflow, we use _input as step input the workflow
-            env.sos_dict.set('__step_input__', env.sos_dict['_input'])
+            env.sos_dict.set('__step_output__', env.sos_dict['_input'])
         else:
             # Because this workflow might belong to a combined workflow, we do not clear
             # locals before the execution of workflow.
@@ -217,7 +217,7 @@ class Base_Executor:
             # load global, local and user-specified config file
             self.load_config(config_file)
             # there is no default input for the first step...
-            env.sos_dict.set('__step_input__', [])
+            env.sos_dict.set('__step_output__', [])
             SoS_exec('import os, sys, glob')
             SoS_exec('from pysos import *')
         #
@@ -253,7 +253,7 @@ class Base_Executor:
                 if run_mode == 'inspect':
                     env.sos_dict.set('__transcript__', self.transcript)
                 self.execute(args, nested, cmd_name, config_file)
-            except Exception as e:
+            except Exception:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
                 raise
@@ -265,7 +265,7 @@ class Base_Executor:
                 if run_mode == 'prepare':
                     env.sos_dict.set('__transcript__', self.transcript)
                 self.execute(args, nested, cmd_name, config_file)
-            except Exception as e:
+            except Exception:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
                 raise
@@ -277,7 +277,7 @@ class Base_Executor:
                 if run_mode == 'run':
                     env.sos_dict.set('__transcript__', self.transcript)
                 self.execute(args, nested, cmd_name, config_file)
-            except Exception as e:
+            except Exception:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
                 raise
@@ -354,12 +354,7 @@ class Sequential_Executor(Base_Executor):
                 raise RuntimeError(res)
             #res = section.run()
             for k, v in res.items():
-                if k == '__step_output__':
-                    env.sos_dict.set('__step_input__', v)
-                elif k == '__step_input__':
-                    continue
-                else:
-                    env.sos_dict.set(k, v)
+                env.sos_dict.set(k, v)
             prog.progress(1)
         prog.done()
         # at the end
@@ -384,7 +379,7 @@ class Interactive_Executor(Base_Executor):
         parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
         # ignored
         parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE')
-        parser.add_argument('-t', dest='__transcript__', nargs='?', const='__STDERR__', 
+        parser.add_argument('-t', dest='__transcript__', nargs='?', const='__STDERR__',
             metavar='TRANSCRIPT')
         runmode = parser.add_argument_group(title='Run mode options')
         runmode.add_argument('-i', action='store_true', dest='__inspect__')
@@ -407,7 +402,14 @@ class Interactive_Executor(Base_Executor):
         if not block.strip():
             return
         # will exit if there is parsing error
-        script = SoS_Script(content=block)
+        try:
+            script = SoS_Script(content=block)
+        except Exception as e:
+            # if a step starts with output: etc, try to add a section head
+            if 'not allowed outside' in repr(e):
+                script = SoS_Script(content = '[0]\n' + block)
+            else:
+                raise
         #
         if command_line and not command_line.startswith('-'):
             wf_and_args = command_line.split(None, 1)
@@ -433,6 +435,8 @@ class Interactive_Executor(Base_Executor):
                         env.run_mode = 'inspect'
                     if args.__construct__:
                         env.sig_mode = 'construct'
+                    for key in ['__step_input__', '__step_output__']:
+                        env.sos_dict.pop(key, None)
                     #
                     self.load_config(args.__config__)
                     env.sos_dict.set('step_name', '__interactive__')
@@ -444,6 +448,7 @@ class Interactive_Executor(Base_Executor):
                     except Exception as e:
                         env.logger.debug('Failed to execute as global_def: {}'.format(e))
                         # add an empty section to execute it as a script
+                        # FIXME: not sure if this a good arrangement...
                         section = SoS_Step(SoS_ScriptContent('interactive'), [('default', None)])
                         section.global_def = script.global_def
                         script.sections.append(section)

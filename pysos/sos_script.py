@@ -787,7 +787,7 @@ class SoS_Script:
                 # is it an action??
                 if directive_name in SOS_DIRECTIVES:
                     if cursect is None:
-                        parsing_errors.append(lineno, line, 'Directive {} is not allowed out side of a SoS step'.format(directive_name))
+                        parsing_errors.append(lineno, line, 'Directive {} is not allowed outside of a SoS step'.format(directive_name))
                         continue
                     cursect.add_directive(directive_name, directive_value, lineno)
                     if self.transcript:
@@ -796,7 +796,7 @@ class SoS_Script:
                 elif directive_name == 'process':
                     env.logger.warning('Keyword "process" is depredated and will be removed in a later release. Please use "task" instead.')
                     if cursect is None:
-                        parsing_errors.append(lineno, line, 'Directive {} is not allowed out side of a SoS step'.format(directive_name))
+                        parsing_errors.append(lineno, line, 'Directive {} is not allowed outside of a SoS step'.format(directive_name))
                         continue
                     cursect.add_directive('task', directive_value, lineno)
                     if self.transcript:

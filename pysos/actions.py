@@ -411,7 +411,7 @@ class SoS_ExecuteScript:
             return
         if '{}' not in self.interpreter:
             self.interpreter += ' {}'
-        debug_script_file =  os.path.join(env.exec_dir, '.sos/{}_{}{}'.format(env.sos_dict['step_name'],
+        debug_script_file = os.path.join(env.exec_dir, '.sos/{}_{}{}'.format(env.sos_dict['step_name'],
             env.sos_dict['_index'], self.suffix))
         env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
         with open(debug_script_file, 'w') as sfile:
@@ -446,9 +446,19 @@ class SoS_ExecuteScript:
                 with open(script_file, 'w') as sfile:
                     sfile.write(self.script)
                 cmd = self.interpreter.replace('{}', shlex.quote(script_file))
-                p = subprocess.Popen(cmd, shell=True)
-                env.register_process(p.pid, 'Runing {}'.format(script_file))
-                ret = p.wait()
+                if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__'] and '__interactive_output__' in env.sos_dict:
+                    # need to catch output
+                    p = subprocess.Popen(cmd, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+                    env.register_process(p.pid, 'Runing {}'.format(script_file))
+                    with open(env.sos_dict['__interactive_output__'], 'wb') as out:
+                        out.write(p.communicate()[0])
+                    ret = p.returncode
+                else:
+                    p = subprocess.Popen(cmd, shell=True)
+                    env.register_process(p.pid, 'Runing {}'.format(script_file))
+                    ret = p.wait()
+            except Exception as e:
+                env.logger.error(e)
             finally:
                 env.deregister_process(p.pid)
                 os.remove(script_file)

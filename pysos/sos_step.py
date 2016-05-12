@@ -578,9 +578,11 @@ class Step_Executor:
             input_statement_idx = input_statement_idx[0]
         else:
             raise RuntimeError('More than one step input are specified in step {}_{}'.format(self.step.name, self.step.index))
-        #
-        if '__step_input__' not in env.sos_dict:
+        # we are using step_output as our input
+        if '__step_output__' not in env.sos_dict:
             raise RuntimeError('No step input is defined for step {}_{}'.format(self.step.name, self.step.index))
+        else:
+            env.sos_dict.set('__step_input__', copy.deepcopy(env.sos_dict['__step_output__']))
         # if there is an input statement, execute the statements before it, and then the statement
         if input_statement_idx is not None:
             # execute before input stuff

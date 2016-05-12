@@ -22,10 +22,13 @@
 
 import os
 import sys
-import time
-from .utils import env, WorkflowDict
+import base64
+import imghdr
+
+from .utils import env, WorkflowDict, shortRepr
+from .signature import textMD5
 from ._version import __sos_version__, __version__
-from .sos_eval import SoS_exec, SoS_eval, interpolate
+from .sos_eval import SoS_exec, interpolate
 from .sos_executor import Interactive_Executor
 from .sos_syntax import SOS_SECTION_HEADER
 
@@ -33,7 +36,6 @@ from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_cli
 from IPython.core.error import UsageError
 from ipykernel.kernelbase import Kernel
 from jupyter_client import manager
-from IPython.utils import io
 
 def clipboard_get():
     """ Get text from the clipboard.
@@ -45,6 +47,29 @@ def clipboard_get():
             return tkinter_clipboard_get()
     else:
         return tkinter_clipboard_get()
+
+def is_image(filename):
+    with open(filename, 'rb') as f:
+        image = f.read()
+    return imghdr.what(None, image) is not None
+
+
+def display_data_for_image(filename):
+    with open(filename, 'rb') as f:
+        image = f.read()
+
+    image_type = imghdr.what(None, image)
+    if image_type is None:
+        raise ValueError("Not a valid image: %s" % image)
+
+    image_data = base64.b64encode(image).decode('ascii')
+    content = {
+        'data': {
+            'image/' + image_type: image_data
+        },
+        'metadata': {}
+    }
+    return content
 
 
 class SoS_Kernel(Kernel):
@@ -146,7 +171,8 @@ class SoS_Kernel(Kernel):
     def run_cell(self, code, store_history):
         #
         if not self.KM.is_alive():
-            print('Restarting kernel "{}"'.format(self.kernel))
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': 'Restarting kernel "{}"\n'.format(self.kernel)})
             self.KM.restart_kernel(now=False)
             self.KC = self.KM.client()
         # flush stale replies, which could have been ignored, due to missed heartbeats
@@ -167,7 +193,9 @@ class SoS_Kernel(Kernel):
                 elif msg_type == 'status':
                     _execution_state = sub_msg["content"]["execution_state"]
                 # pass along all messages except for execute_input
-                self.session.send(self.iopub_socket, msg_type, sub_msg['content'])
+                #self.send_response(self.iopub_socket, 'stream',
+                #            {'name': 'stdout', 'text': msg_type + '\n'})
+                self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
         # now get the real result
         reply = self.KC.get_shell_msg(timeout=10)
         # FIXME: not sure if other part of the reply is useful...
@@ -177,24 +205,29 @@ class SoS_Kernel(Kernel):
         if kernel and kernel != 'sos':
             if kernel != self.kernel:
                 if kernel in self.kernels:
-                    print('Using kernel "{}"'.format(kernel))
+                    #self.send_response(self.iopub_socket, 'stream',
+                    #    {'name': 'stdout', 'text': 'Using kernel "{}"\n'.format(kernel)})
                     self.KM, self.KC = self.kernels[kernel]
                     self.kernel = kernel
                 else:
                     try:
                         self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)
-                        print('Kernel "{}" started'.format(kernel))
+                        #self.send_response(self.iopub_socket, 'stream',
+                        #    {'name': 'stdout', 'text': 'Kernel "{}" started\n'.format(kernel)})
                         self.KM, self.KC = self.kernels[kernel]
                         self.kernel = kernel
                     except Exception as e:
-                        print('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}'.format(kernel, e))
+                        self.send_response(self.iopub_socket, 'stream',
+                            {'name': 'stdout', 'text': 'Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e)})
         else:
             # kerl is None ('') or kernel == 'sos'
             if self.kernel != 'sos':
-                print('Switching back to sos kernel')
+                #self.send_response(self.iopub_socket, 'stream',
+                #    {'name': 'stdout', 'text': 'Switching back to sos kernel\n'})
                 self.kernel = 'sos'
             elif kernel == '':
-                print('Usage: switch current kernel to another Jupyter kernel (e.g. R or ir for R)')
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': 'Usage: switch current kernel to another Jupyter kernel (e.g. R or ir for R)\n'})
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
@@ -214,14 +247,17 @@ class SoS_Kernel(Kernel):
         elif code.startswith('#set'):
             options = self.get_magic_option(code)
             if options.strip():
-                print('sos options set to "{}"'.format(options))
+                #self.send_response(self.iopub_socket, 'stream',
+                #    {'name': 'stdout', 'text': 'sos options set to "{}"\n'.format(options)})
                 self.options = options.strip()
             else:
                 if self.options:
-                    print('sos options "{}" reset to ""'.format(self.options))
+                    #self.send_response(self.iopub_socket, 'stream',
+                    #    {'name': 'stdout', 'text': 'sos options "{}" reset to ""\n'.format(self.options)})
                     self.options = ''
                 else:
-                    print('Usage: set persistent sos options such as -v 3 (debug output) -p (prepare) and -t (transcribe)')
+                    self.send_response(self.iopub_socket, 'stream',
+                        {'name': 'stdout', 'text': 'Usage: set persistent sos options such as -v 3 (debug output) -p (prepare) and -t (transcribe)\n'})
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
@@ -266,12 +302,43 @@ class SoS_Kernel(Kernel):
                         if new_code != code:
                             print(new_code.strip())
                             code = new_code
-                            print('## -- End interpolated text --')
+                            self.send_response(self.iopub_socket, 'stream',
+                                {'name': 'stdout', 'text':
+                                new_code.strip() + '\n## -- End interpolated text --\n'})
                     except Exception as e:
-                        env.logger.warning('Failed to interpolate {}: {}'.format(shortRepr(code), e))
+                        self.send_response(self.iopub_socket, 'stream',
+                                {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(shortRepr(code), e)})
                     return self.run_cell(code, store_history)
                 else:
-                    res = self.executor.run_interactive(code, command_line)
+                    try:
+                        hash_output  = '.sos/{}.out'.format(textMD5(code))
+                        env.sos_dict['__interactive_output__'] = hash_output
+                        res = self.executor.run_interactive(code, command_line)
+                    except KeyboardInterrupt:
+                        return {'status': 'abort', 'execution_count': self.execution_count}
+                    if not silent:
+                        # Send standard output
+                        if os.path.isfile(hash_output):
+                            with open(hash_output, 'br') as out:
+                                output = out.read().decode()
+                            stream_content = {'name': 'stdout', 'text': output}
+                            self.send_response(self.iopub_socket, 'stream', stream_content)
+                        #
+                        if '__step_input__' in env.sos_dict:
+                            input_files = env.sos_dict['__step_input__']
+                            message = {'name': 'stdin', 'text': 'input: {}'.format(', '.join(x for x in input_files))}
+                            self.send_response(self.iopub_socket, 'stream', message)
+                        if '__step_output__' in env.sos_dict:
+                            output_files = env.sos_dict['__step_output__']
+                            message = {'name': 'stdout', 'text': 'output: {}'.format(', '.join(x for x in output_files))}
+                            self.send_response(self.iopub_socket, 'stream', message)
+                        else:
+                            output_files = []
+                        # Send images, if any
+                        for filename in output_files:
+                            if is_image(filename):
+                                data = display_data_for_image(filename)
+                                self.send_response(self.iopub_socket, 'display_data', data)
             except Exception as e:
                 stream_content = {'name': 'stderr', 'text': repr(e)}
                 self.send_response(self.iopub_socket, 'stream', stream_content)
