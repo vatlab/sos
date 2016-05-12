@@ -34,6 +34,7 @@ from .sos_syntax import SOS_SECTION_HEADER
 
 from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_clipboard_get
 from IPython.core.error import UsageError
+from IPython.core.display import HTML
 from ipykernel.kernelbase import Kernel
 from jupyter_client import manager
 
@@ -194,7 +195,7 @@ class SoS_Kernel(Kernel):
                     _execution_state = sub_msg["content"]["execution_state"]
                 # pass along all messages except for execute_input
                 #self.send_response(self.iopub_socket, 'stream',
-                #            {'name': 'stdout', 'text': msg_type + '\n'})
+                #            {'name': 'stdout', 'text': sub_msg + '\n'})
                 self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
         # now get the real result
         reply = self.KC.get_shell_msg(timeout=10)
@@ -326,19 +327,35 @@ class SoS_Kernel(Kernel):
                         #
                         if '__step_input__' in env.sos_dict:
                             input_files = env.sos_dict['__step_input__']
-                            message = {'name': 'stdin', 'text': 'input: {}'.format(', '.join(x for x in input_files))}
-                            self.send_response(self.iopub_socket, 'stream', message)
+                        else:
+                            input_files = []
                         if '__step_output__' in env.sos_dict:
                             output_files = env.sos_dict['__step_output__']
-                            message = {'name': 'stdout', 'text': 'output: {}'.format(', '.join(x for x in output_files))}
-                            self.send_response(self.iopub_socket, 'stream', message)
                         else:
                             output_files = []
+                        #
+                        self.send_response(self.iopub_socket, 'display_data',
+                                    {'data': { 'text/html': 
+                                        HTML('''<table><tr>
+                                            <td>input</td><td>{}</td>
+                                            </tr>
+                                            <tr>
+                                            <td>output</td><td>{}</td>
+                                            </tr>
+                                            </table>'''.format(
+                                            ', '.join('<a href="{0}">{0}</a>'.format(x) for x in input_files),
+                                            ', '.join('<a href="{0}">{0}</a>'.format(x) for x in output_files))).data
+                                        }
+                                    })
                         # Send images, if any
                         for filename in output_files:
                             if is_image(filename):
                                 data = display_data_for_image(filename)
                                 self.send_response(self.iopub_socket, 'display_data', data)
+                            elif filename.lower().endswith('.pdf'):
+                                self.send_response(self.iopub_socket, 'display_data',
+                                    {'source': filename, 
+                                     'data': { 'text/html': HTML('<iframe src={0} width="600" height="400"></iframe>'.format(filename)).data}})
             except Exception as e:
                 stream_content = {'name': 'stderr', 'text': repr(e)}
                 self.send_response(self.iopub_socket, 'stream', stream_content)
