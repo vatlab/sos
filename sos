@@ -180,16 +180,16 @@ if __name__ == '__main__':
             arguments --linenos and --style can be used to customize style of
             html output. You can pass an arbitrary name to option --style get a
             list of available styles.''')
-    parser.add_argument('--markdown', metavar='FILENAME',
-        help='''Generate a markdown version of script and save it to a
-            specified file.''')
+    parser.add_argument('--markdown', nargs='?', metavar='FILENAME', const='__STDOUT__',
+        help='''Convert script or workflow to markdown format and write it to
+            specified file, or standard output if not filename is specified.''')
     parser.add_argument('--term', action='store_true',
         help='''Output syntax-highlighted script or workflow to the terminal.
             Additional arguments --bg=light|dark --lineno can be used to
             customized output.''')
-    parser.add_argument('--notebook', metavar='FILENAME',
-        help='''Convert specified script or workflow to iPython/Jupiter
-            notebook format.''')
+    parser.add_argument('--notebook', nargs='?', metavar='FILENAME', const='__STDOUT__',
+        help='''Convert script or workflow to jupyter notebook format and write
+            it to specified file, or standard output if no filename is specified.''')
     parser.add_argument('--sos', nargs='?', metavar='SCRIPT', const='__STDOUT__',
         help='''Convert specified Jupyter notebook to SoS format. The output
             is the same as you use File -> Download as -> SoS (.sos) from

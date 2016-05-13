@@ -37,7 +37,7 @@ from pygments.styles import get_all_styles
 from pygments.util import shebang_matches
 
 import nbformat
-from nbformat.v4 import new_code_cell, new_notebook
+from nbformat.v4 import new_code_cell, new_markdown_cell, new_notebook
 
 from .utils import env
 from .actions import get_actions
@@ -880,6 +880,29 @@ def notebook_to_script(notebook_file, sos_file, convert_args=[]):
 #
 # Converter to Notebook
 #
+def add_cell(cells, cell_src_code, cell_count):
+    # if a section consist of all report, report it as a markdown cell
+    env.logger.error(cell_src_code)
+    if not cell_src_code:
+        return
+    if (not cell_src_code[0].strip() or SOS_SECTION_HEADER.match(cell_src_code[0])) and \
+        all(not x.strip() or x.startswith('!') for x in cell_src_code[1:]):
+        md = ''
+        for line in cell_src_code:
+            if SOS_SECTION_HEADER.match(line):
+                continue
+            else:
+                md += line[2:]
+        cells.append(new_markdown_cell(source=md))
+        return cell_count
+    else:
+        cells.append(
+             new_code_cell(
+                 source=''.join(cell_src_code),
+                 execution_count=cell_count)
+        )
+        return cell_count
+
 def script_to_notebook(transcript, script_file, notebook_file):
     '''
     Write a notebook file with the transcript of a SOS file.
@@ -894,6 +917,12 @@ def script_to_notebook(transcript, script_file, notebook_file):
         next_type = None
         for line in script:
             line_type, line_no, script_line = line.split('\t', 2)
+            if line_type == 'COMMENT' and script_line.startswith('#!'):
+                continue
+            if line_type == 'COMMENT' and script_line.startswith('#fileformat='):
+                if not script_line[12:].startswith('SOS'):
+                    raise RuntimeError('{} is not a SoS script according to #fileformat line.'.format(script_file))
+                continue
             # Does not follow section because it has to be one line
             if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
                 line_type = 'COMMENT'
@@ -901,11 +930,7 @@ def script_to_notebook(transcript, script_file, notebook_file):
                 if next_type is not None and not script_line.rstrip().endswith(','):
                     if content_type == 'SECTION':
                         # wrap up a cell
-                        cells.append(
-                            new_code_cell(
-                                source=''.join(cell_src_code),
-                                execution_count=cell_count)
-                            )
+                        add_cell(cells, cell_src_code, cell_count)
                         cell_count += 1
                         cell_src_code = content
                     else:
@@ -920,11 +945,7 @@ def script_to_notebook(transcript, script_file, notebook_file):
                 if content:
                     if content_type == 'SECTION':
                         # wrap up a cell
-                        cells.append(
-                            new_code_cell(
-                                source=''.join(cell_src_code),
-                                execution_count=cell_count)
-                            )
+                        add_cell(cells, cell_src_code, cell_count)
                         cell_count += 1
                         cell_src_code = content
                     else:
@@ -937,11 +958,7 @@ def script_to_notebook(transcript, script_file, notebook_file):
                 # content_number = int(line_no)
                 content = [script_line]
     if content:
-        cells.append(
-             new_code_cell(
-             source=''.join(cell_src_code),
-             execution_count=cell_count)
-        )
+        add_cell(cells, cell_src_code, cell_count)
     #
     nb = new_notebook(cells = cells,
         metadata = {
@@ -958,9 +975,12 @@ def script_to_notebook(transcript, script_file, notebook_file):
             }
         }
     )
-    with open(notebook_file, 'w') as notebook:
-        nbformat.write(nb, notebook, 4)
-    env.logger.info('SoS script saved to {}'.format(notebook_file))
+    if notebook_file == '__STDOUT__':
+        nbformat.write(nb, sys.stdout, 4)
+    else:
+        with open(notebook_file, 'w') as notebook:
+            nbformat.write(nb, notebook, 4)
+        env.logger.info('SoS script saved to {}'.format(notebook_file))
 
 
 def workflow_to_notebook(workflow, script_file, notebook_file):

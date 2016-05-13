@@ -37,6 +37,7 @@ from IPython.core.error import UsageError
 from IPython.core.display import HTML
 from ipykernel.kernelbase import Kernel
 from jupyter_client import manager
+
 from io import StringIO
 
 from nbconvert.exporters import Exporter
@@ -91,7 +92,7 @@ class SoS_Exporter(Exporter):
         if cell.cell_type == 'code':
             fh.write(cell.source + '\n')
         elif cell.cell_type == "markdown":
-            fh.write('\n'.join('# ' + x for x in cell.source.split('\n')) + '\n')
+            fh.write('\n'.join('! ' + x for x in cell.source.split('\n')) + '\n')
 
     def from_notebook_node(self, nb, resources, **kwargs):
         #
@@ -103,6 +104,8 @@ class SoS_Exporter(Exporter):
             content = fh.getvalue()
         resources['output_extension'] = '.sos'
         return content, resources
+
+
 
 class SoS_Kernel(Kernel):
     implementation = 'SOS'
