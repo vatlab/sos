@@ -265,6 +265,30 @@ class SoS_Kernel(Kernel):
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Usage: switch current kernel to another Jupyter kernel (e.g. R or ir for R)\n'})
 
+    def restart_kernel(self, kernel):
+        if kernel == 'sos':
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': 'Please use Kernel -> Restart to restart SoS kernel'})
+        elif kernel:
+            if kernel in self.kernels:
+                try:
+                    self.kernels[kernel][0].shutdown_kernel(restart=False)
+                except Exception as e:
+                    env.logger.warning('Failed to shutdown kernel {}: {}'.format(kernel, e))
+            #
+            try:
+                self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': 'Kernel {} {}started'.format(kernel, 're' if kernel in self.kernels else '')})
+                #self.send_response(self.iopub_socket, 'stream',
+                #    {'name': 'stdout', 'text': 'Kernel "{}" started\n'.format(kernel)})
+                if kernel == self.kernel:
+                    self.KM, self.KC = self.kernels[kernel]
+            except Exception as e:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': 'Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e)})
+
+
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
         if code == 'import os\n_pid = os.getpid()':
@@ -297,6 +321,17 @@ class SoS_Kernel(Kernel):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
+        elif code.startswith('#restart'):
+            options = self.get_magic_option(code)
+            if options == 'R':
+                options = 'ir'
+            self.restart_kernel(options)
+            return {'status': 'ok',
+                    # The base class increments the execution count
+                    'execution_count': self.execution_count,
+                    'payload': [],
+                    'user_expressions': {},
+                   }
         elif code.startswith('#with') or code.startswith('#use'):
             options = self.get_magic_option(code)
             if options == 'R':
