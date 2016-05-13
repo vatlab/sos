@@ -125,7 +125,7 @@ setup(name = "sos",
       ],
     entry_points='''
 [pygments.lexers]
-sos = pysos.sos_show:SoS_Lexer
+sos = pysos.sos_convert:SoS_Lexer
 ''',
     scripts = [
         'sos',

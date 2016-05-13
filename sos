@@ -191,10 +191,9 @@ if __name__ == '__main__':
         help='''Convert specified script or workflow to iPython/Jupiter
             notebook format.''')
     parser.add_argument('--sos', nargs='?', metavar='SCRIPT', const='__STDOUT__',
-        help='''Convert specified Jupyter notebook to SoS format. This converter
-            accepts an parameter --index which can be set to yes (set index to
-            notebook index), no (no index), and auto (default, set index to
-            notebook index if no section head is seen in the notebook.)''')
+        help='''Convert specified Jupyter notebook to SoS format. The output
+            is the same as you use File -> Download as -> SoS (.sos) from
+            Jupyter with nbconvert version 4.2.0 or higher.''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_convert)
     #

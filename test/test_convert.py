@@ -85,8 +85,6 @@ report('this is action report')
             script_to_notebook('temp/test.transcript', script_file, script_file + '.ipynb')
             #
             notebook_to_script(script_file + '.ipynb', script_file) 
-            notebook_to_script(script_file + '.ipynb', script_file, ['--index', 'yes'])
-            notebook_to_script(script_file + '.ipynb', script_file, ['--index', 'no'])
 
     def testWorkflowToHtml(self):
         '''Test sos show script --html'''

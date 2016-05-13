@@ -37,6 +37,11 @@ from IPython.core.error import UsageError
 from IPython.core.display import HTML
 from ipykernel.kernelbase import Kernel
 from jupyter_client import manager
+from io import StringIO
+
+from nbconvert.exporters import Exporter
+
+__all__ = ['SoS_Exporter', 'SoS_Kernel']
 
 def clipboard_get():
     """ Get text from the clipboard.
@@ -72,9 +77,35 @@ def display_data_for_image(filename):
     }
     return content
 
+class SoS_Exporter(Exporter):
+    def __init__(self, config=None, **kwargs):
+        self.output_extension = '.sos'
+        self.output_mimetype = 'text/x-sos'
+        Exporter.__init__(self, config, **kwargs)
+
+    def from_notebook_cell(self, cell, fh):
+        if not hasattr(cell, 'execution_count') or cell.execution_count is None:
+            fh.write('\n#cell {}\n'.format(cell.cell_type))
+        else:
+            fh.write('\n#cell {} {}\n'.format(cell.cell_type, cell.execution_count))
+        if cell.cell_type == 'code':
+            fh.write(cell.source + '\n')
+        elif cell.cell_type == "markdown":
+            fh.write('\n'.join('# ' + x for x in cell.source.split('\n')) + '\n')
+
+    def from_notebook_node(self, nb, resources, **kwargs):
+        #
+        with StringIO() as fh:
+            fh.write('#!/usr/bin/env sos-runner\n')
+            fh.write('#fileformat=SOSNB1.0\n')
+            for cell in nb.cells:
+                self.from_notebook_cell(cell, fh)
+            content = fh.getvalue()
+        resources['output_extension'] = '.sos'
+        return content, resources
 
 class SoS_Kernel(Kernel):
-    implementation = 'SoS'
+    implementation = 'SOS'
     implementation_version = __version__
     language = 'sos'
     language_version = __sos_version__
@@ -84,6 +115,7 @@ class SoS_Kernel(Kernel):
         'file_extension': '.sos',
         'pygments_lexer': 'sos',
         'codemirror_mode': 'sos',
+        'nbconvert_exporter': 'pysos.kernel.SoS_Exporter',
     }
     banner = "SoS kernel - script of scripts"
 
