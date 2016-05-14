@@ -90,6 +90,8 @@ class SoS_Exporter(Exporter):
         else:
             fh.write('\n#cell {} {}\n'.format(cell.cell_type, cell.execution_count))
         if cell.cell_type == 'code':
+            if any(cell.source.startswith(x) for x in ('%run', '%restart', '%dict', '%use', '%with', '%set', '%paste')):
+                env.logger.warning('SoS magic "{}" has to remove them before executing the script with sos command.'.format(cell.source.split('\n')[0]))
             fh.write(cell.source + '\n')
         elif cell.cell_type == "markdown":
             fh.write('\n'.join('! ' + x for x in cell.source.split('\n')) + '\n')

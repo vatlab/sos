@@ -882,10 +882,9 @@ def notebook_to_script(notebook_file, sos_file, convert_args=[]):
 #
 def add_cell(cells, cell_src_code, cell_count):
     # if a section consist of all report, report it as a markdown cell
-    env.logger.error(cell_src_code)
     if not cell_src_code:
         return
-    if (not cell_src_code[0].strip() or SOS_SECTION_HEADER.match(cell_src_code[0])) and \
+    if (cell_src_code[0].startswith('!') or not cell_src_code[0].strip() or SOS_SECTION_HEADER.match(cell_src_code[0])) and \
         all(not x.strip() or x.startswith('!') for x in cell_src_code[1:]):
         md = ''
         for line in cell_src_code:
@@ -909,6 +908,7 @@ def script_to_notebook(transcript, script_file, notebook_file):
     '''
     cells = []
     cell_count = 1
+    CELL_LINE = re.compile('^#cell\s+(markdown|code)(\s+\d+\s+)?$')
     with open(transcript) as script:
         cell_src_code = []
         content = []
@@ -917,18 +917,37 @@ def script_to_notebook(transcript, script_file, notebook_file):
         next_type = None
         for line in script:
             line_type, line_no, script_line = line.split('\t', 2)
-            if line_type == 'COMMENT' and script_line.startswith('#!'):
-                continue
-            if line_type == 'COMMENT' and script_line.startswith('#fileformat='):
-                if not script_line[12:].startswith('SOS'):
-                    raise RuntimeError('{} is not a SoS script according to #fileformat line.'.format(script_file))
+            if line_type == 'COMMENT':
+                if script_line.startswith('#!'):
+                    continue
+                if script_line.startswith('#fileformat='):
+                    if not script_line[12:].startswith('SOS'):
+                        raise RuntimeError('{} is not a SoS script according to #fileformat line.'.format(script_file))
+                    continue
+            if CELL_LINE.match(script_line):
+                # eat a new line before the CELL_LINE
+                if content and content[-1] == '\n':
+                    content = content[:-1]
+                if not any(x.strip() for x in content):
+                    continue
+                cell_src_code.extend(content)
+                add_cell(cells, cell_src_code, cell_count)
+                parts = script_line.split()
+                if len(parts) > 2 and parts[2].isdigit():
+                    cell_count = int(parts[2])
+                if parts[1] == 'markdown':
+                    content_type == 'REPORT'
+                else:
+                    content_type == 'SECTION'
+                content = []
+                cell_src_code = []
                 continue
             # Does not follow section because it has to be one line
             if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
                 line_type = 'COMMENT'
             if content_type == line_type or line_type == 'FOLLOW':
                 if next_type is not None and not script_line.rstrip().endswith(','):
-                    if content_type == 'SECTION':
+                    if content_type == 'SECTION' and cell_src_code:
                         # wrap up a cell
                         add_cell(cells, cell_src_code, cell_count)
                         cell_count += 1
@@ -943,7 +962,7 @@ def script_to_notebook(transcript, script_file, notebook_file):
                     content.append(script_line)
             else:
                 if content:
-                    if content_type == 'SECTION':
+                    if content_type == 'SECTION' and cell_src_code:
                         # wrap up a cell
                         add_cell(cells, cell_src_code, cell_count)
                         cell_count += 1
