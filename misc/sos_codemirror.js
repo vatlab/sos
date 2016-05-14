@@ -133,6 +133,11 @@ define(function(){
 	    stream.skipToEnd();
 		return "meta";
 		}
+    // handle magic: FIXME: also need to be at the beginning of text
+	  if (state.beginningOfLine && ch == "%") {
+	    stream.skipToEnd();
+		return "meta";
+		}
 
 	  if (state.beginningOfLine && stream.match(/[a-zA-Z]+:/) ) {
 		// this is VERY premilinary, but better than nothing

@@ -172,7 +172,7 @@ class SoS_Kernel(Kernel):
         code = code.strip()
         if not code:
             return {'status': 'complete', 'indent': ''}
-        if any(code.startswith(x) for x in ['#dict', '#paste']):
+        if any(code.startswith(x) for x in ['%dict', '%paste']):
             return {'status': 'complete', 'indent': ''}
         if code.endswith(':') or code.endswith(','):
             return {'status': 'incomplete', 'indent': '  '}
@@ -301,10 +301,10 @@ class SoS_Kernel(Kernel):
                 'user_expressions': {'_pid': {'data': {'text/plain': os.getpid()}}}
                }
         mode = 'code'
-        if code.startswith('#dict'):
+        if code.startswith('%dict'):
             mode = 'dict'
             command_line = self.get_magic_option(code)
-        elif code.startswith('#set'):
+        elif code.startswith('%set'):
             options = self.get_magic_option(code)
             if options.strip():
                 #self.send_response(self.iopub_socket, 'stream',
@@ -321,7 +321,7 @@ class SoS_Kernel(Kernel):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
-        elif code.startswith('#restart'):
+        elif code.startswith('%restart'):
             options = self.get_magic_option(code)
             if options == 'R':
                 options = 'ir'
@@ -332,18 +332,18 @@ class SoS_Kernel(Kernel):
                     'payload': [],
                     'user_expressions': {},
                    }
-        elif code.startswith('#with') or code.startswith('#use'):
+        elif code.startswith('%with') or code.startswith('%use'):
             options = self.get_magic_option(code)
             if options == 'R':
                 options = 'ir'
             #
-            if code.startswith('#with'):
+            if code.startswith('%with'):
                 self.original_kernel = self.kernel
             self.switch_kernel(options)
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
-        elif code.startswith('#paste'):
+        elif code.startswith('%paste'):
             command_line = self.options + ' ' + self.get_magic_option(code)
             try:
                 code = clipboard_get()
@@ -355,7 +355,7 @@ class SoS_Kernel(Kernel):
             #
             print(code.strip())
             print('## -- End pasted text --')
-        elif code.startswith('#run'):
+        elif code.startswith('%run'):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options + ' ' + self.get_magic_option(code)
@@ -425,7 +425,7 @@ class SoS_Kernel(Kernel):
                             elif filename.lower().endswith('.pdf'):
                                 self.send_response(self.iopub_socket, 'display_data',
                                     {'source': filename,
-                                     'data': { 'text/html': HTML('<iframe src={0} width="600" height="400"></iframe>'.format(filename)).data}})
+                                     'data': { 'text/html': HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}})
                             elif filename.lower().endswith('.csv') or filename.lower().endswith('.tsv'):
                                 try:
                                     import pandas
