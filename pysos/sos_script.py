@@ -482,6 +482,7 @@ class SoS_Script:
             self.content = SoS_ScriptContent(content, None)
         # save a parsed version of the script for displaying purpose only
         self.transcript = transcript
+        self.global_def = ''
         # open the file
         if content:
             with StringIO(content) as fp:
@@ -893,7 +894,6 @@ class SoS_Script:
         # as the last step, let us insert the global section to all sections
         global_section = [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]
         if global_section:
-            self.global_def = ''
             for statement in global_section[0][1].statements:
                 if statement[0] == '=':
                     self.global_def += '{} = {}\n'.format(statement[1], statement[2])
