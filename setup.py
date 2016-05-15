@@ -27,19 +27,6 @@ from setuptools import setup
 from distutils import log
 from setuptools.command.install import install
 
-try:
-    import json
-    try:
-        from jupyter_client.kernelspec import install_kernel_spec
-    except ImportError:
-        from IPython.kernel.kernelspec import install_kernel_spec
-    from IPython.utils.tempdir import TemporaryDirectory
-    from IPython.paths import get_ipython_dir, locate_profile
-    ipython = True
-except:
-    log.info('\nJupyter kernel of SoS is not installed because no Jupyter installation is found.')
-    ipython = False
-
 kernel_json = {
     "argv":         ["python", "-m", "pysos.kernel", "-f", "{connection_file}"],
     "display_name": "SoS",
@@ -59,8 +46,14 @@ class InstallWithConfigurations(install):
         shutil.copy('misc/sos.vim', vim_file)
         log.info('\nvim sos syntax installed. Use "set syntax=sos" to enable syntax highlighting.')
 
-        if not ipython:
-            return
+        # at this point, jupyter and ipython should have been installed.
+        import json
+        try:
+            from jupyter_client.kernelspec import install_kernel_spec
+        except ImportError:
+            from IPython.kernel.kernelspec import install_kernel_spec
+        from IPython.utils.tempdir import TemporaryDirectory
+        from IPython.paths import get_ipython_dir, locate_profile
         #
         # copy ipython magic to ~/.ipython/extensions
         ext_dir = os.path.join(get_ipython_dir(), 'extensions')
@@ -117,12 +110,13 @@ setup(name = "sos",
           'psutil',
           'pyyaml',
           'docker-py',
-          #'pycurl',
           'blessings',
           'pygments',
           # for jupyter notebook format conversion
           'nbformat',
           'nbconvert>=4.2.0',
+          'ipython',
+          'notebook',
       ],
     entry_points='''
 [pygments.lexers]
