@@ -933,6 +933,8 @@ def report(script=None, from_file=None, to_file=None, mode='a', **kwargs):
             raise RuntimeError('Invalid parameter to_file "{}"'.format(to_file))
         report_file = to_file
     else:
+        if '__step_report__' not in env.sos_dict:
+            raise RuntimeError('No __step_report__ in runtime dict')
         env.logger.trace('report {} to {}'.format(shortRepr(script), env.sos_dict['__step_report__']))
         report_file = env.sos_dict['__step_report__']
     #
@@ -947,8 +949,11 @@ def report(script=None, from_file=None, to_file=None, mode='a', **kwargs):
             raise RuntimeError('Failed to import report from {}: {}'.format(from_file, e))
     #
     # write report file (the ${} expressions must have been interpolated.
-    with open(report_file, mode)as md:
-        md.write(content)
+    if report_file == '__STDERR__':
+        sys.stderr.write(content)
+    else:
+        with open(report_file, mode)as md:
+            md.write(content)
 
 
 @SoS_Action(run_mode=['inspect', 'run'])
