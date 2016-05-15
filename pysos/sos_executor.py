@@ -441,6 +441,7 @@ class Interactive_Executor(Base_Executor):
                     self.load_config(args.__config__)
                     env.sos_dict.set('step_name', '__interactive__')
                     env.sos_dict.set('__transcript__', args.__transcript__)
+                    env.sos_dict.set('__step_report__', '__STDERR__')
                     # some actions requires this
                     env.sos_dict.set('_index', 0)
                     try:
