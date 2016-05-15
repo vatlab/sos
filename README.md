@@ -41,6 +41,19 @@ Note that
 create symbolic links of `sos` and `sos-runner` commands in
 `/usr/local/bin`.
 
+If you are using docker, you can run SoS directly using command
+
+```
+% docker run -it mdabioinfo/sos:latest /bin/bash
+```
+or using another container 
+
+```
+% docker run -it mdabioinfo/sos-full:latest /bin/bash
+```
+with [R](https://www.r-project.org/) and [IRkernel](https://github.com/IRkernel/IRkernel), and a running [Jupyter](http://jupyter.org/) server with SoS, python, and R kernels .
+
+
 Please find more information on **[SoS
 wiki](https://github.com/BoPeng/SOS/wiki)**, or use the following links
 directly:
