@@ -31,7 +31,6 @@ import glob
 import platform
 import urllib
 import shutil
-import pycurl
 import zipfile
 import gzip
 import tarfile
@@ -557,7 +556,6 @@ def warn_if(expr, msg=''):
 # download file with progress bar
 #
 def downloadURL(URL, dest, decompress=False, index=None):
-    # use libcurl
     dest = os.path.abspath(os.path.expanduser(dest))
     dest_dir, filename = os.path.split(dest)
     #
@@ -588,21 +586,55 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 prog.done(message + ': \033[32m use existing {}\033[0m'.format(' '*(term_width - len(message) - 15)))
                 return True
         #
+        # Stop using pycurl because of libcurl version compatibility problems
+        # that happen so often and difficult to fix. Error message looks like
+        #
+        # Reason: Incompatible library version: pycurl.cpython-35m-darwin.so
+        # requires version 9.0.0 or later, but libcurl.4.dylib provides version 7.0.0
+        #
+        #with open(dest_tmp, 'wb') as f:
+        #    c = pycurl.Curl()
+        #    c.setopt(pycurl.URL, str(URL))
+        #    c.setopt(pycurl.WRITEFUNCTION, f.write)
+        #    c.setopt(pycurl.SSL_VERIFYPEER, False)
+        #    c.setopt(pycurl.NOPROGRESS, False)
+        #    c.setopt(pycurl.PROGRESSFUNCTION, prog.curlUpdate)
+        #    c.perform()
+        #if c.getinfo(pycurl.HTTP_CODE) == 404:
+        #    prog.done(message + ':\033[91m 404 Error {}\033[0m'.format(' '*(term_width - len(message) - 12)))
+        #    try:
+        #        os.remove(dest_tmp)
+        #    except OSError:
+        #        pass
+        #    return False
         with open(dest_tmp, 'wb') as f:
-            c = pycurl.Curl()
-            c.setopt(pycurl.URL, str(URL))
-            c.setopt(pycurl.WRITEFUNCTION, f.write)
-            c.setopt(pycurl.SSL_VERIFYPEER, False)
-            c.setopt(pycurl.NOPROGRESS, False)
-            c.setopt(pycurl.PROGRESSFUNCTION, prog.curlUpdate)
-            c.perform()
-        if c.getinfo(pycurl.HTTP_CODE) == 404:
-            prog.done(message + ':\033[91m 404 Error {}\033[0m'.format(' '*(term_width - len(message) - 12)))
             try:
-                os.remove(dest_tmp)
-            except OSError:
-                pass
-            return False
+                u = urllib.request.urlopen(str(URL))
+                file_size = int(u.getheader("Content-Length"))
+                file_size_dl = 0
+                block_sz = 8192
+                while True:
+                    buffer = u.read(block_sz)
+                    if not buffer:
+                        break
+                    file_size_dl += len(buffer)
+                    f.write(buffer)
+                    prog.urllibUpdate(file_size, file_size_dl)
+            except urllib.error.HTTPError as e:
+                prog.done(message + ':\033[91m {} Error {}\033[0m'.format(e.code, ' '*(term_width - len(message) - 12)))
+                try:
+                    os.remove(dest_tmp)
+                except OSError:
+                    pass
+                return False
+            except Exception as e:
+                prog.done(message + ':\033[91m {} {}\033[0m'.format(e, ' '*(term_width - len(message) - len(repr(e)))))
+                try:
+                    os.remove(dest_tmp)
+                except OSError:
+                    pass
+                return False
+        #
         os.rename(dest_tmp, dest)
         decompressed = 0
         if decompress:
@@ -705,9 +737,9 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
            if filenames[0]:
                 succ[0] = downloadURL(urls[0], filenames[0], decompress=decompress)
     #
-    for su, url in zip(succ, urls):
-        if not su:
-            env.logger.warning('Failed to download {}'.format(url))
+    #for su, url in zip(succ, urls):
+    #    if not su:
+    #        env.logger.warning('Failed to download {}'.format(url))
     if not all(succ):
         raise RuntimeError('Not all files have been downloaded')
     # if downloaded files contains .md5 signature, use them to validate

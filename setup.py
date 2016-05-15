@@ -117,7 +117,7 @@ setup(name = "sos",
           'psutil',
           'pyyaml',
           'docker-py',
-          'pycurl',
+          #'pycurl',
           'blessings',
           'pygments',
           # for jupyter notebook format conversion

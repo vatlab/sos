@@ -301,6 +301,12 @@ def SoS_eval(expr, sigil='${ }'):
         else:		
             raise
 
+def _is_expr(expr):
+    try:
+        compile(expr, '<string>', 'eval')
+        return True
+    except:
+        return False
 
 def SoS_exec(stmts, sigil='${ }'):
     '''Execute a statement after modifying (convert ' ' string to raw string,
@@ -365,20 +371,12 @@ def SoS_exec(stmts, sigil='${ }'):
             if env.run_mode == 'inspect':
                 # make sure that the expression can be completed in 5 seconds
                 with time_limit(env.sos_dict['CONFIG'].get('sos_inspect_timeout', 5), stmts):
-                    if idx + 1 == len(code_group):
-                        try:
-                            compile(stmts, '<string>', 'eval')
-                            res = eval(stmts, env.sos_dict._dict)
-                        except:
-                            exec(stmts, env.sos_dict._dict)
+                    if idx + 1 == len(code_group) and _is_expr(stmts):
+                        res = eval(stmts, env.sos_dict._dict)
                     else:
                         exec(stmts, env.sos_dict._dict)
-            elif idx + 1 == len(code_group):
-                try:
-                    compile(stmts, '<string>', 'eval')
-                    res = eval(stmts, env.sos_dict._dict)
-                except:
-                    exec(stmts, env.sos_dict._dict)
+            elif idx + 1 == len(code_group) and _is_expr(stmts):
+                res = eval(stmts, env.sos_dict._dict)
             else:
                 exec(stmts, env.sos_dict._dict)
         except Exception as e:

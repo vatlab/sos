@@ -593,11 +593,17 @@ class ProgressBar:
         self.count = count
         self.outputProgress()
 
-    def curlUpdate(self, total, existing, upload_t, upload_d):
+    def urllibUpdate(self, total, existing):
         '''Update called from pycurl'''
         self.count = existing
         self.totalCount = total
         self.outputProgress()
+
+    #def curlUpdate(self, total, existing, upload_t, upload_d):
+    #    '''Update called from pycurl'''
+    #    self.count = existing
+    #    self.totalCount = total
+    #    self.outputProgress()
 
     def progress(self, count):
         self.last_progress_count += count
