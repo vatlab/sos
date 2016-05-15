@@ -238,7 +238,7 @@ class WorkflowDict(object):
                             .format(key, self._dict[key], value))
 
     def _log(self, key, value):
-        env.logger.debug('``{}`` = ``{}``'.format(key, shortRepr(value)))
+        env.logger.debug('Set ``{}`` = ``{}``'.format(key, shortRepr(value)))
 
     def _warn(self, key, value):
         if key.isupper() and key in self._dict and self._dict[key] != value:
@@ -340,7 +340,7 @@ class RuntimeEnvironments(object):
                     child.kill()
                 parent.kill()
             except Exception as e:
-                env.logger.debug(e)
+                env.logger.debug('Failed to clean up running process: {}'.format(e))
             os.remove(p)
 
     #

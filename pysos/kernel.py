@@ -416,6 +416,8 @@ class SoS_Kernel(Kernel):
                             input_files = []
                         if '__step_output__' in env.sos_dict:
                             output_files = env.sos_dict['__step_output__']
+                            if output_files is None:
+                                output_files = []
                         else:
                             output_files = []
                         # use a table to list input and/or output file if exist
