@@ -610,7 +610,10 @@ def downloadURL(URL, dest, decompress=False, index=None):
         with open(dest_tmp, 'wb') as f:
             try:
                 u = urllib.request.urlopen(str(URL))
-                file_size = int(u.getheader("Content-Length"))
+                try:
+                    file_size = int(u.getheader("Content-Length"))
+                except:
+                    file_size = None
                 file_size_dl = 0
                 block_sz = 8192
                 while True:
