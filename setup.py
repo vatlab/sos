@@ -25,7 +25,7 @@ import filecmp
 import shutil
 from setuptools import setup
 from distutils import log
-from distutils.command.install import install
+from setuptools.command.install import install
 
 try:
     import json
@@ -49,7 +49,7 @@ kernel_json = {
 class InstallWithConfigurations(install):
     def run(self):
         # Regular installation
-        install.run(self)
+        install.do_egg_install(self)
 
         # copy sos.vim to .vim
         vim_dir = os.path.expanduser('~/.vim/syntax')
@@ -122,6 +122,7 @@ setup(name = "sos",
           'pygments',
           # for jupyter notebook format conversion
           'nbformat',
+          'nbconvert>=4.2.0',
       ],
     entry_points='''
 [pygments.lexers]
