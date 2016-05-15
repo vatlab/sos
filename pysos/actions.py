@@ -446,12 +446,14 @@ class SoS_ExecuteScript:
                 with open(script_file, 'w') as sfile:
                     sfile.write(self.script)
                 cmd = self.interpreter.replace('{}', shlex.quote(script_file))
-                if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__'] and '__interactive_output__' in env.sos_dict:
-                    # need to catch output
-                    p = subprocess.Popen(cmd, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+                #
+                if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+                    # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
+                    p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
                     env.register_process(p.pid, 'Runing {}'.format(script_file))
-                    with open(env.sos_dict['__interactive_output__'], 'wb') as out:
-                        out.write(p.communicate()[0])
+                    out, err = p.communicate()
+                    sys.stdout.write(out.decode())
+                    sys.stderr.write(err.decode())
                     ret = p.returncode
                 else:
                     p = subprocess.Popen(cmd, shell=True)

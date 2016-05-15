@@ -24,6 +24,7 @@ import os
 import sys
 import base64
 import imghdr
+import contextlib
 
 from .utils import env, WorkflowDict, shortRepr
 from .signature import textMD5, FileInfo
@@ -41,6 +42,16 @@ from jupyter_client import manager
 from io import StringIO
 
 from nbconvert.exporters import Exporter
+
+@contextlib.contextmanager
+def redirect_sos_io():
+    save_stdout = sys.stdout
+    save_stderr = sys.stderr
+    sys.stdout = StringIO()
+    sys.stderr = StringIO()
+    yield
+    sys.stdout = save_stdout
+    sys.stderr = save_stderr
 
 __all__ = ['SoS_Exporter', 'SoS_Kernel']
 
@@ -106,8 +117,6 @@ class SoS_Exporter(Exporter):
             content = fh.getvalue()
         resources['output_extension'] = '.sos'
         return content, resources
-
-
 
 class SoS_Kernel(Kernel):
     implementation = 'SOS'
@@ -293,6 +302,7 @@ class SoS_Kernel(Kernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
+        self.execution_count += 1
         if code == 'import os\n_pid = os.getpid()':
             # this is a special probing command from vim-ipython. Let us handle it specially
             # so that vim-python can get the pid.
@@ -383,19 +393,22 @@ class SoS_Kernel(Kernel):
                                 {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(shortRepr(code), e)})
                     return self.run_cell(code, store_history)
                 else:
-                    try:
-                        hash_output  = '.sos/{}.out'.format(textMD5(code))
-                        env.sos_dict['__interactive_output__'] = hash_output
-                        res = self.executor.run_interactive(code, command_line)
-                    except KeyboardInterrupt:
-                        return {'status': 'abort', 'execution_count': self.execution_count}
+                    with redirect_sos_io():
+                        try:
+                            res = self.executor.run_interactive(code, command_line)
+                            sos_out = sys.stdout.getvalue()
+                            sos_err = sys.stderr.getvalue()
+                        except KeyboardInterrupt:
+                            return {'status': 'abort', 'execution_count': self.execution_count}
+                    #
                     if not silent:
                         # Send standard output
-                        if os.path.isfile(hash_output):
-                            with open(hash_output, 'br') as out:
-                                output = out.read().decode()
-                            stream_content = {'name': 'stdout', 'text': output}
-                            self.send_response(self.iopub_socket, 'stream', stream_content)
+                        if sos_out:
+                            self.send_response(self.iopub_socket, 'stream',
+                                {'name': 'stdout', 'text': sos_out})
+                        if sos_err:
+                            self.send_response(self.iopub_socket, 'stream',
+                                {'name': 'stderr', 'text': sos_err})
                         #
                         if '__step_input__' in env.sos_dict:
                             input_files = env.sos_dict['__step_input__']
@@ -405,16 +418,12 @@ class SoS_Kernel(Kernel):
                             output_files = env.sos_dict['__step_output__']
                         else:
                             output_files = []
-                        #
-                        self.send_response(self.iopub_socket, 'display_data',
+                        # use a table to list input and/or output file if exist
+                        start_out = True
+                        if input_files or output_files:
+                            self.send_response(self.iopub_socket, 'display_data',
                                     {'data': { 'text/html':
-                                        HTML('''<table><tr>
-                                            <th>input</th><td>{}</td>
-                                            </tr>
-                                            <tr>
-                                            <td>output</th><td>{}</td>
-                                            </tr>
-                                            </table>'''.format(
+                                        HTML('''<pre> input: {}\noutput: {}\n</pre>'''.format(
                                             ', '.join('<a href="{0}">{0}</a>'.format(x) for x in input_files),
                                             ', '.join('<a href="{0}">{0}</a>'.format(x) for x in output_files))).data
                                         }
@@ -422,23 +431,30 @@ class SoS_Kernel(Kernel):
                         # Send images, if any
                         for filename in output_files:
                             if is_image(filename):
+                                self.send_response(self.iopub_socket, 'stream',
+                                     {'name': 'stdout', 'text': '> ' + filename + ' ({:.1f} KB)'.format(os.path.getsize(filename) / 1024)})
                                 data = display_data_for_image(filename)
                                 self.send_response(self.iopub_socket, 'display_data', data)
+                                start_out = False
                             elif filename.lower().endswith('.pdf'):
+                                self.send_response(self.iopub_socket, 'stream',
+                                         {'name': 'stdout', 'text': '> ' + filename + ' ({:.1f} KB)'.format(os.path.getsize(filename) / 1024)})
                                 self.send_response(self.iopub_socket, 'display_data',
                                     {'source': filename,
                                      'data': { 'text/html': HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}})
+                                start_out = False
                             elif filename.lower().endswith('.csv') or filename.lower().endswith('.tsv'):
                                 try:
                                     import pandas
                                     data = pandas.read_csv(filename, nrows=10)
                                     html = data.to_html()
                                     self.send_response(self.iopub_socket, 'stream',
-                                         {'name': 'stdout', 'text': filename + '(first 10 rows)\n'})
+                                         {'name': 'stdout', 'text': '> ' +  filename + '(first 10 rows)\n'})
                                     self.send_response(self.iopub_socket, 'display_data',
                                         {'source': filename,
                                          'data': { 'text/html':
                                          HTML(html).data}})
+                                    start_out = False
                                 except Exception as e:
                                     #env.logger.warning('Cannot display {}: {}'.format(filename, e))
                                     self.send_response(self.iopub_socket, 'stream',
@@ -448,11 +464,12 @@ class SoS_Kernel(Kernel):
                                 desc = fi.describe()
                                 if desc:
                                     self.send_response(self.iopub_socket, 'stream',
-                                         {'name': 'stdout', 'text': filename + ' ({:.1f} KB)'.format(os.path.getsize(filename) / 1024)})
+                                         {'name': 'stdout', 'text': '> ' + filename + ' ({:.1f} KB)'.format(os.path.getsize(filename) / 1024)})
                                     self.send_response(self.iopub_socket, 'display_data',
                                         {'source': filename,
                                          'data': {'text/html':
-                                         HTML('<table><tr><td><pre>{}</pre></td></tr></table>'.format(desc)).data}})
+                                         HTML('<pre>{}</pre>'.format(desc)).data}})
+                                    start_out = False
 
             except Exception as e:
                 stream_content = {'name': 'stderr', 'text': repr(e)}
