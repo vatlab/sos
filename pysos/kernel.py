@@ -323,8 +323,8 @@ class SoS_Kernel(Kernel):
                 self.options = options.strip()
             else:
                 if self.options:
-                    #self.send_response(self.iopub_socket, 'stream',
-                    #    {'name': 'stdout', 'text': 'sos options "{}" reset to ""\n'.format(self.options)})
+                    self.send_response(self.iopub_socket, 'stream',
+                        {'name': 'stdout', 'text': 'sos options "{}" reset to ""\n'.format(self.options)})
                     self.options = ''
                 else:
                     self.send_response(self.iopub_socket, 'stream',
