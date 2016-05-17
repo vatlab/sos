@@ -340,21 +340,24 @@ class Sequential_Executor(Base_Executor):
             # 2. for subworkflow, _step.input = _input
             # 3. for second to later step, _step.input = _step.output
             # each section can use a separate process
-            queue = mp.Queue()
-            proc = mp.Process(target=Step_Executor(section).run_with_queue,
-                args=(queue,))
-            proc.start()
-            proc.join()
-            res = queue.get()
-            # if the job is failed
-            if isinstance(res, Exception):
-                # error must have been displayed.
-                #if env.verbosity > 2 and hasattr(res, 'traces'):
-                #    env.logger.error(res.traces)
-                raise RuntimeError(res)
-            #res = section.run()
-            for k, v in res.items():
-                env.sos_dict.set(k, v)
+            if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+                Step_Executor(section).run()
+            else:
+                queue = mp.Queue()
+                proc = mp.Process(target=Step_Executor(section).run_with_queue,
+                    args=(queue,))
+                proc.start()
+                proc.join()
+                res = queue.get()
+                # if the job is failed
+                if isinstance(res, Exception):
+                    # error must have been displayed.
+                    #if env.verbosity > 2 and hasattr(res, 'traces'):
+                    #    env.logger.error(res.traces)
+                    raise RuntimeError(res)
+                #res = section.run()
+                for k, v in res.items():
+                    env.sos_dict.set(k, v)
             prog.progress(1)
         prog.done()
         # at the end
