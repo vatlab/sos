@@ -409,6 +409,11 @@ class SoS_Kernel(Kernel):
                         if sos_err:
                             self.send_response(self.iopub_socket, 'stream',
                                 {'name': 'stderr', 'text': sos_err})
+                        if os.path.isfile(env.sos_dict['__step_report__']):
+                            with open(env.sos_dict['__step_report__']) as sr:
+                                sos_report = sr.read()
+                            self.send_response(self.iopub_socket, 'display_data',
+                                {'data': {'text/markdown': sos_report}})
                         #
                         if '__step_input__' in env.sos_dict:
                             input_files = env.sos_dict['__step_input__']

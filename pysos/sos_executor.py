@@ -378,7 +378,7 @@ class Interactive_Executor(Base_Executor):
         # ignored
         parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
         # ignored
-        parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE')
+        parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', default='.sos/__interactive_report__')
         parser.add_argument('-t', dest='__transcript__', nargs='?', const='__STDERR__',
             metavar='TRANSCRIPT')
         runmode = parser.add_argument_group(title='Run mode options')
@@ -420,6 +420,8 @@ class Interactive_Executor(Base_Executor):
         #
         try:
             args, workflow_args = self.parse_command_line(command_line)
+            if os.path.isfile(args.__report__):
+                os.remove(args.__report__)
             # if there is only a global section
             if not script.sections:
                 # if there is no section, but some actions that are seen as part of a
@@ -441,7 +443,7 @@ class Interactive_Executor(Base_Executor):
                     self.load_config(args.__config__)
                     env.sos_dict.set('step_name', '__interactive__')
                     env.sos_dict.set('__transcript__', args.__transcript__)
-                    env.sos_dict.set('__step_report__', '__STDERR__')
+                    env.sos_dict.set('__step_report__', args.__report__)
                     # some actions requires this
                     env.sos_dict.set('_index', 0)
                     try:
