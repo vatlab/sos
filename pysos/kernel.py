@@ -235,17 +235,17 @@ class SoS_Kernel(Kernel):
             while self.KC.iopub_channel.msg_ready():
                 sub_msg = self.KC.iopub_channel.get_msg()
                 msg_type = sub_msg['header']['msg_type']
-                if msg_type == 'execute_input':
-                    continue
-                elif msg_type == 'status':
+                if msg_type == 'status':
                     _execution_state = sub_msg["content"]["execution_state"]
-                # pass along all messages except for execute_input
-                #self.send_response(self.iopub_socket, 'stream',
-                #            {'name': 'stdout', 'text': sub_msg + '\n'})
+                elif msg_type == 'execute_input':
+                    # override execution count with the master count,
+                    # not sure if it is needed
+                    sub_msg['content']['execution_count'] = self.execution_count
                 self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
         # now get the real result
         reply = self.KC.get_shell_msg(timeout=10)
         # FIXME: not sure if other part of the reply is useful...
+        reply['content']['execution_count'] = self.execution_count
         return reply['content']
 
     def switch_kernel(self, kernel):
@@ -302,7 +302,6 @@ class SoS_Kernel(Kernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
-        self.execution_count += 1
         if code == 'import os\n_pid = os.getpid()':
             # this is a special probing command from vim-ipython. Let us handle it specially
             # so that vim-python can get the pid.
@@ -409,7 +408,7 @@ class SoS_Kernel(Kernel):
                         if sos_err:
                             self.send_response(self.iopub_socket, 'stream',
                                 {'name': 'stderr', 'text': sos_err})
-                        if os.path.isfile(env.sos_dict['__step_report__']):
+                        if '__step_report__' in env.sos_dict and os.path.isfile(env.sos_dict['__step_report__']):
                             with open(env.sos_dict['__step_report__']) as sr:
                                 sos_report = sr.read()
                             self.send_response(self.iopub_socket, 'display_data',

@@ -22,6 +22,9 @@
 import os
 import sys
 import hashlib
+import zipfile
+import tarfile
+import gzip
 from .utils import env
 from .sos_eval import Undetermined
 
@@ -96,13 +99,30 @@ class FileInfo:
         ext = ext.lower()
         if not ext:
             return ''
-        if hasattr(self, ext[1:]):
-            return getattr(self, ext[1:])()
-        else:
-            try:
+        try:
+            # is it a compressed file?
+            if zipfile.is_zipfile(self.filename):
+                zip = zipfile.ZipFile(self.filename)
+                names = zip.namelist()
+                return '\n'.join(names[:10])
+            elif tarfile.is_tarfile(self.filename):
+                with tarfile.open(self.filename, 'r:*') as tar:
+                    # only extract files
+                    files = [x.name for x in tar.getmembers() if x.isfile()]
+                    return '\n'.join(files[:10])
+            elif self.filename.endswith('.gz'):
+                content = b''
+                with gzip.open(self.filename, 'rb') as fin:
+                    for line in range(5):
+                        content += fin.readline()
+                return content.decode()
+            elif hasattr(self, ext[1:]):
+                return getattr(self, ext[1:])()
+            else:
                 return self.first5()
-            except:
-                return ''
+        except Exception as e:
+            env.logger.debug('Failed to get preview of file {}: {}'.format(self.filename, e))
+            return repr(e) #''
 
 class FileSignature:
     '''Record file MD5 information to sign downloaded files, also add
