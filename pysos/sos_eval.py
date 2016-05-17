@@ -225,7 +225,7 @@ class SoS_String:
             return obj if fmt is None and conversion is None else self._format(obj, fmt, conversion)
         elif isinstance(obj, collections.Iterable):
             # the object might be nested...
-            sep = ',' if conversion and ',' in conversion else ' '
+            sep = ', ' if conversion and ',' in conversion else ' '
             return sep.join([self._repr(x, fmt, conversion) for x in obj])
         elif isinstance(obj, collections.Callable):
             raise InterpolationError(repr(obj), 'Cannot interpolate callable object.')
