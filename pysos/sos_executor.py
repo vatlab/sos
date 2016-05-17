@@ -303,7 +303,7 @@ class Sequential_Executor(Base_Executor):
         #
         # the steps can be executed in the pool (Not implemented)
         # if nested = true, start a new progress bar
-        prog = ProgressBar(self.workflow.name, len(self.workflow.sections), disp=env.verbosity == 1 and env.run_mode == 'run')
+        prog = ProgressBar(self.workflow.name, len(self.workflow.sections), disp=len(self.workflow.sections) > 1 and env.verbosity == 1 and env.run_mode == 'run')
         for idx, section in enumerate(self.workflow.sections):
             # global section will not change _step etc
             if section.is_parameters:
@@ -389,7 +389,8 @@ class Interactive_Executor(Base_Executor):
         runmode.add_argument('-p', action='store_true', dest='__prepare__')
         runmode.add_argument('-f', action='store_true', dest='__rerun__')
         runmode.add_argument('-F', action='store_true', dest='__construct__')
-        parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2)
+        # default to 1 to avoid output env.logger.info to notebook
+        parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=1)
         #
         args, workflow_args = parser.parse_known_args(shlex.split(command_line))
         return args, workflow_args
