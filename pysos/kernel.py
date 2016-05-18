@@ -34,6 +34,7 @@ from .sos_eval import SoS_exec, interpolate
 from .sos_executor import Interactive_Executor
 from .sos_syntax import SOS_SECTION_HEADER
 
+from IPython.core.interactiveshell import InteractiveShell
 from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_clipboard_get
 from IPython.core.error import UsageError
 from IPython.core.display import HTML
@@ -150,6 +151,7 @@ class SoS_Kernel(Kernel):
         # FIXME: this should in theory be a MultiKernelManager...
         self.kernels = {}
         self.original_kernel = None
+        self.format_obj = InteractiveShell.instance().display_formatter.format
 
     def do_inspect(self, code, cursor_pos, detail_level=0):
         'Inspect code'
@@ -242,15 +244,10 @@ class SoS_Kernel(Kernel):
                     # override execution count with the master count,
                     # not sure if it is needed
                     sub_msg['content']['execution_count'] = self.execution_count
-                #if msg_type == 'execute_result':
-                #    self.send_response(self.iopub_socket, 'stream',
-                #        {'name': 'stderr', 'text': '\nMSG {} '.format(msg_type) +  repr(sub_msg['content'])})
                 self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
         # now get the real result
         reply = self.KC.get_shell_msg(timeout=10)
         reply['content']['execution_count'] = self.execution_count
-        #self.send_response(self.iopub_socket, 'stream',
-        #    {'name': 'stderr', 'text': '\nRESULT {} '.format(self.execution_count) + repr(reply)})
         return reply['content']
 
     def switch_kernel(self, kernel):
@@ -303,7 +300,6 @@ class SoS_Kernel(Kernel):
             except Exception as e:
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e)})
-
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
@@ -387,14 +383,13 @@ class SoS_Kernel(Kernel):
                     try:
                         new_code = interpolate(code, sigil='${ }', local_dict=env.sos_dict._dict)
                         if new_code != code:
-                            print(new_code.strip())
                             code = new_code
                             self.send_response(self.iopub_socket, 'stream',
                                 {'name': 'stdout', 'text':
                                 new_code.strip() + '\n## -- End interpolated text --\n'})
                     except Exception as e:
                         self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(shortRepr(code), e)})
+                            {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(shortRepr(code), e)})
                     return self.run_cell(code, store_history)
                 else:
                     with redirect_sos_io():
@@ -402,6 +397,18 @@ class SoS_Kernel(Kernel):
                             res = self.executor.run_interactive(code, command_line)
                             sos_out = sys.stdout.getvalue()
                             sos_err = sys.stderr.getvalue()
+                        except Exception:
+                            sos_out = sys.stdout.getvalue()
+                            sos_err = sys.stderr.getvalue()
+                            if sos_out.strip():
+                                self.send_response(self.iopub_socket, 'stream',
+                                    {'name': 'stdout', 'text': sos_out})
+                            if sos_err.strip():
+                                self.send_response(self.iopub_socket, 'stream',
+                                    {'name': 'stderr', 'text': sos_err})
+                            self.send_response(self.iopub_socket, 'display_data',
+                                {'data': { 'text/html': HTML('<hr color="black" width="60%">').data}})
+                            raise
                         except KeyboardInterrupt:
                             return {'status': 'abort', 'execution_count': self.execution_count}
                     #
@@ -439,7 +446,7 @@ class SoS_Kernel(Kernel):
                         if input_files or output_files:
                             if not start_output:
                                 self.send_response(self.iopub_socket, 'display_data',
-                                    {'data': { 'text/html': HTML('<br>').data}})
+                                    {'data': { 'text/html': HTML('<hr color="black" width="60%">').data}})
                             self.send_response(self.iopub_socket, 'display_data',
                                     {'data': { 'text/html':
                                         HTML('''<pre> input: {}\noutput: {}\n</pre>'''.format(
@@ -496,11 +503,10 @@ class SoS_Kernel(Kernel):
 
             # this is Ok, send result back
             if not silent and res is not None:
+                format_dict, md_dict = self.format_obj(res)
                 self.send_response(self.iopub_socket, 'execute_result',
-                    {'execution_count': self.execution_count, 'data': 
-                        {'text/plain': repr(res),
-                        'text/html': HTML('<pre>{}</pre>'.format(pprint.pformat(res))).data},
-                        'metadata': {} })
+                    {'execution_count': self.execution_count, 'data': format_dict,
+                    'metadata': md_dict})
             #
             return {'status': 'ok',
                     # The base class increments the execution count
