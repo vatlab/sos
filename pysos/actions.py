@@ -47,6 +47,7 @@ from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .signature import FileSignature, fileMD5
 from .sos_executor import Sequential_Executor
+from .monitor import ProcessMonitor, summarizeExecution
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
     'check_command', 'fail_if', 'warn_if', 'download',
@@ -449,15 +450,23 @@ class SoS_ExecuteScript:
                 if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
                     p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                    pid = p.pid
+                    m = ProcessMonitor(pid)
+                    m.start()
                     env.register_process(p.pid, 'Runing {}'.format(script_file))
                     out, err = p.communicate()
                     sys.stdout.write(out.decode())
                     sys.stderr.write(err.decode())
                     ret = p.returncode
+                    env.logger.info(summarizeExecution(pid))
                 else:
                     p = subprocess.Popen(cmd, shell=True)
-                    env.register_process(p.pid, 'Runing {}'.format(script_file))
+                    pid = p.pid
+                    m = ProcessMonitor(pid)
+                    m.start()
+                    env.register_process(pid, 'Runing {}'.format(script_file))
                     ret = p.wait()
+                    env.logger.info(summarizeExecution(pid))
             except Exception as e:
                 env.logger.error(e)
             finally:
