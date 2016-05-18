@@ -25,6 +25,7 @@ import sys
 import base64
 import imghdr
 import contextlib
+import pprint
 
 from .utils import env, WorkflowDict, shortRepr
 from .signature import textMD5, FileInfo
@@ -237,15 +238,19 @@ class SoS_Kernel(Kernel):
                 msg_type = sub_msg['header']['msg_type']
                 if msg_type == 'status':
                     _execution_state = sub_msg["content"]["execution_state"]
-                elif msg_type == 'execute_input':
+                elif msg_type in ('execute_input', 'execute_result'):
                     # override execution count with the master count,
                     # not sure if it is needed
                     sub_msg['content']['execution_count'] = self.execution_count
+                #if msg_type == 'execute_result':
+                #    self.send_response(self.iopub_socket, 'stream',
+                #        {'name': 'stderr', 'text': '\nMSG {} '.format(msg_type) +  repr(sub_msg['content'])})
                 self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
         # now get the real result
         reply = self.KC.get_shell_msg(timeout=10)
-        # FIXME: not sure if other part of the reply is useful...
         reply['content']['execution_count'] = self.execution_count
+        #self.send_response(self.iopub_socket, 'stream',
+        #    {'name': 'stderr', 'text': '\nRESULT {} '.format(self.execution_count) + repr(reply)})
         return reply['content']
 
     def switch_kernel(self, kernel):
@@ -400,19 +405,24 @@ class SoS_Kernel(Kernel):
                         except KeyboardInterrupt:
                             return {'status': 'abort', 'execution_count': self.execution_count}
                     #
+                    start_output = True
                     if not silent:
                         # Send standard output
-                        if sos_out:
+                        if sos_out.strip():
                             self.send_response(self.iopub_socket, 'stream',
                                 {'name': 'stdout', 'text': sos_out})
-                        if sos_err:
+                            start_output = False
+                        if sos_err.strip():
                             self.send_response(self.iopub_socket, 'stream',
                                 {'name': 'stderr', 'text': sos_err})
+                            start_output = False
                         if '__step_report__' in env.sos_dict and os.path.isfile(env.sos_dict['__step_report__']):
                             with open(env.sos_dict['__step_report__']) as sr:
                                 sos_report = sr.read()
-                            self.send_response(self.iopub_socket, 'display_data',
-                                {'data': {'text/markdown': sos_report}})
+                            if sos_report.strip():
+                                self.send_response(self.iopub_socket, 'display_data',
+                                    {'data': {'text/markdown': sos_report}})
+                                start_output = False
                         #
                         if '__step_input__' in env.sos_dict:
                             input_files = env.sos_dict['__step_input__']
@@ -427,6 +437,9 @@ class SoS_Kernel(Kernel):
                         # use a table to list input and/or output file if exist
                         start_out = True
                         if input_files or output_files:
+                            if not start_output:
+                                self.send_response(self.iopub_socket, 'display_data',
+                                    {'data': { 'text/html': HTML('<br>').data}})
                             self.send_response(self.iopub_socket, 'display_data',
                                     {'data': { 'text/html':
                                         HTML('''<pre> input: {}\noutput: {}\n</pre>'''.format(
@@ -436,15 +449,13 @@ class SoS_Kernel(Kernel):
                                     })
                         # Send images, if any
                         for filename in output_files:
+                            self.send_response(self.iopub_socket, 'stream',
+                                 {'name': 'stdout', 'text': '\n> ' + filename + ' ({:.1f} KB)'.format(os.path.getsize(filename) / 1024)})
                             if is_image(filename):
-                                self.send_response(self.iopub_socket, 'stream',
-                                     {'name': 'stdout', 'text': '> ' + filename + ' ({:.1f} KB)'.format(os.path.getsize(filename) / 1024)})
                                 data = display_data_for_image(filename)
                                 self.send_response(self.iopub_socket, 'display_data', data)
                                 start_out = False
                             elif filename.lower().endswith('.pdf'):
-                                self.send_response(self.iopub_socket, 'stream',
-                                         {'name': 'stdout', 'text': '> ' + filename + ' ({:.1f} KB)'.format(os.path.getsize(filename) / 1024)})
                                 self.send_response(self.iopub_socket, 'display_data',
                                     {'source': filename,
                                      'data': { 'text/html': HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}})
@@ -454,8 +465,6 @@ class SoS_Kernel(Kernel):
                                     import pandas
                                     data = pandas.read_csv(filename, nrows=10)
                                     html = data.to_html()
-                                    self.send_response(self.iopub_socket, 'stream',
-                                         {'name': 'stdout', 'text': '> ' +  filename + '(first 10 rows)\n'})
                                     self.send_response(self.iopub_socket, 'display_data',
                                         {'source': filename,
                                          'data': { 'text/html':
@@ -469,8 +478,6 @@ class SoS_Kernel(Kernel):
                                 fi = FileInfo(filename)
                                 desc = fi.describe()
                                 if desc:
-                                    self.send_response(self.iopub_socket, 'stream',
-                                         {'name': 'stdout', 'text': '> ' + filename + ' ({:.1f} KB)'.format(os.path.getsize(filename) / 1024)})
                                     self.send_response(self.iopub_socket, 'display_data',
                                         {'source': filename,
                                          'data': {'text/html':
@@ -489,8 +496,11 @@ class SoS_Kernel(Kernel):
 
             # this is Ok, send result back
             if not silent and res is not None:
-                stream_content = {'name': 'stdout', 'text': repr(res)}
-                self.send_response(self.iopub_socket, 'stream', stream_content)
+                self.send_response(self.iopub_socket, 'execute_result',
+                    {'execution_count': self.execution_count, 'data': 
+                        {'text/plain': repr(res),
+                        'text/html': HTML('<pre>{}</pre>'.format(pprint.pformat(res))).data},
+                        'metadata': {} })
             #
             return {'status': 'ok',
                     # The base class increments the execution count
