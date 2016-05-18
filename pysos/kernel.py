@@ -408,20 +408,21 @@ class SoS_Kernel(Kernel):
                     start_output = True
                     if not silent:
                         # Send standard output
-                        if sos_out:
+                        if sos_out.strip():
                             self.send_response(self.iopub_socket, 'stream',
                                 {'name': 'stdout', 'text': sos_out})
                             start_output = False
-                        if sos_err:
+                        if sos_err.strip():
                             self.send_response(self.iopub_socket, 'stream',
                                 {'name': 'stderr', 'text': sos_err})
                             start_output = False
                         if '__step_report__' in env.sos_dict and os.path.isfile(env.sos_dict['__step_report__']):
                             with open(env.sos_dict['__step_report__']) as sr:
                                 sos_report = sr.read()
-                            self.send_response(self.iopub_socket, 'display_data',
-                                {'data': {'text/markdown': sos_report}})
-                            start_output = False
+                            if sos_report.strip():
+                                self.send_response(self.iopub_socket, 'display_data',
+                                    {'data': {'text/markdown': sos_report}})
+                                start_output = False
                         #
                         if '__step_input__' in env.sos_dict:
                             input_files = env.sos_dict['__step_input__']
