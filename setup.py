@@ -44,7 +44,6 @@ class InstallWithConfigurations(install):
         if not os.path.isdir(vim_dir):
             os.makedirs(vim_dir)
         shutil.copy('misc/sos.vim', vim_file)
-        log.info('\nvim sos syntax installed. Use "set syntax=sos" to enable syntax highlighting.')
 
         # at this point, jupyter and ipython should have been installed.
         import json
@@ -68,7 +67,9 @@ class InstallWithConfigurations(install):
         shutil.copy('misc/sos_magic.py', ext_file)
         shutil.copy('misc/sos_ipython_profile.py', prof_file)
         #
-        log.info('ipython sos extension installed. Use "ipython --profile sos" to start ipython with sos magic.')
+        log.info('\nSoS is installed and configured to use with vim, ipython, and Jupyter.')
+        log.info('Use "set syntax=sos" to enable syntax highlighting.')
+        log.info('Use "ipython --profile sos" to start ipython with sos magic.')
         #
         # Now write the kernelspec
         with TemporaryDirectory() as td:
@@ -78,7 +79,7 @@ class InstallWithConfigurations(install):
                 json.dump(kernel_json, f, sort_keys=True)
             try:
                 install_kernel_spec(td, 'sos', user=self.user, replace=True)
-                log.info('jupyter sos kernel installed. Use "jupyter notebook" to create or open SoS notebooks.')
+                log.info('Use "jupyter notebook" to create or open SoS notebooks.')
             except:
                 log.error("\nWARNING: Could not install SoS Kernel as %s user." % self.user)
 
