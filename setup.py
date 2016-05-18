@@ -82,6 +82,7 @@ class InstallWithConfigurations(install):
                 log.info('Use "jupyter notebook" to create or open SoS notebooks.')
             except:
                 log.error("\nWARNING: Could not install SoS Kernel as %s user." % self.user)
+        log.info('And "sos -h" to start using Script of Scripts.')
 
 exec(open('pysos/_version.py').read())
 
