@@ -25,6 +25,7 @@ import sys
 import base64
 import imghdr
 import contextlib
+import pprint
 
 from .utils import env, WorkflowDict, shortRepr
 from .signature import textMD5, FileInfo
@@ -237,15 +238,19 @@ class SoS_Kernel(Kernel):
                 msg_type = sub_msg['header']['msg_type']
                 if msg_type == 'status':
                     _execution_state = sub_msg["content"]["execution_state"]
-                elif msg_type == 'execute_input':
+                elif msg_type in ('execute_input', 'execute_result'):
                     # override execution count with the master count,
                     # not sure if it is needed
                     sub_msg['content']['execution_count'] = self.execution_count
+                #if msg_type == 'execute_result':
+                #    self.send_response(self.iopub_socket, 'stream',
+                #        {'name': 'stderr', 'text': '\nMSG {} '.format(msg_type) +  repr(sub_msg['content'])})
                 self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
         # now get the real result
         reply = self.KC.get_shell_msg(timeout=10)
-        # FIXME: not sure if other part of the reply is useful...
         reply['content']['execution_count'] = self.execution_count
+        #self.send_response(self.iopub_socket, 'stream',
+        #    {'name': 'stderr', 'text': '\nRESULT {} '.format(self.execution_count) + repr(reply)})
         return reply['content']
 
     def switch_kernel(self, kernel):
@@ -490,8 +495,11 @@ class SoS_Kernel(Kernel):
 
             # this is Ok, send result back
             if not silent and res is not None:
-                stream_content = {'name': 'stdout', 'text': repr(res)}
-                self.send_response(self.iopub_socket, 'stream', stream_content)
+                self.send_response(self.iopub_socket, 'execute_result',
+                    {'execution_count': self.execution_count, 'data': 
+                        {'text/plain': repr(res),
+                        'text/html': HTML('<pre>{}</pre>'.format(pprint.pformat(res))).data},
+                        'metadata': {} })
             #
             return {'status': 'ok',
                     # The base class increments the execution count
