@@ -22,9 +22,6 @@
 import os
 import sys
 import hashlib
-import zipfile
-import tarfile
-import gzip
 from .utils import env
 from .sos_eval import Undetermined
 
@@ -72,57 +69,6 @@ def fileMD5(filename, partial=True):
         sys.exit('Failed to read {}: {}'.format(filename, e))
     return md5.hexdigest()
 
-
-class FileInfo:
-    def __init__(self, filename):
-        self.filename = filename
-
-    def first5(self):
-        try:
-            lines = []
-            with open(self.filename, 'r') as ifile:
-                for i in range(5):
-                    lines.append(ifile.readline())
-            return ''.join(lines)
-        except:
-            return ''
-
-    def gtf(self):
-        return self.first5()
-
-    def gff(self):
-        return self.first5()
-
-    def describe(self):
-        # return description of files
-        fn, ext = os.path.splitext(self.filename)
-        ext = ext.lower()
-        if not ext:
-            return ''
-        try:
-            # is it a compressed file?
-            if zipfile.is_zipfile(self.filename):
-                zip = zipfile.ZipFile(self.filename)
-                names = zip.namelist()
-                return '\n'.join(names[:10])
-            elif tarfile.is_tarfile(self.filename):
-                with tarfile.open(self.filename, 'r:*') as tar:
-                    # only extract files
-                    files = [x.name for x in tar.getmembers() if x.isfile()]
-                    return '\n'.join(files[:10])
-            elif self.filename.endswith('.gz'):
-                content = b''
-                with gzip.open(self.filename, 'rb') as fin:
-                    for line in range(5):
-                        content += fin.readline()
-                return content.decode()
-            elif hasattr(self, ext[1:]):
-                return getattr(self, ext[1:])()
-            else:
-                return self.first5()
-        except Exception as e:
-            env.logger.debug('Failed to get preview of file {}: {}'.format(self.filename, e))
-            return repr(e) #''
 
 class FileSignature:
     '''Record file MD5 information to sign downloaded files, also add

@@ -24,11 +24,14 @@ import os
 import sys
 import base64
 import imghdr
+import fnmatch
 import contextlib
-import pprint
+
+import zipfile
+import tarfile
+import gzip
 
 from .utils import env, WorkflowDict, shortRepr
-from .signature import textMD5, FileInfo
 from ._version import __sos_version__, __version__
 from .sos_eval import SoS_exec, interpolate
 from .sos_executor import Interactive_Executor
@@ -68,28 +71,68 @@ def clipboard_get():
     else:
         return tkinter_clipboard_get()
 
-def is_image(filename):
-    with open(filename, 'rb') as f:
-        image = f.read()
-    return imghdr.what(None, image) is not None
 
 
-def display_data_for_image(filename):
-    with open(filename, 'rb') as f:
-        image = f.read()
+class SoS_FilePreviewer():
+    def __init__(self):
+        pass
 
-    image_type = imghdr.what(None, image)
-    if image_type is None:
-        raise ValueError("Not a valid image: %s" % image)
+    def display_data_for_image(self, filename):
+        with open(filename, 'rb') as f:
+            image = f.read()
 
-    image_data = base64.b64encode(image).decode('ascii')
-    content = {
-        'data': {
-            'image/' + image_type: image_data
-        },
-        'metadata': {}
-    }
-    return content
+        image_type = imghdr.what(None, image)
+        image_data = base64.b64encode(image).decode('ascii')
+        return {
+                'image/' + image_type: image_data
+            }
+
+    def preview(self, filename):
+        if imghdr.what(filename) is not None:
+            # image
+            return 'display_data', self.display_data_for_image(filename)
+        elif filename.lower().endswith('.pdf'):
+            return 'display_data', { 'text/html': 
+                HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}
+        elif filename.lower().endswith('.csv') or filename.lower().endswith('.tsv'):
+            try:
+                import pandas
+                data = pandas.read_csv(filename, nrows=10)
+                html = data.to_html()
+                return 'display_data', { 'text/html': HTML(html).data}
+            except Exception:
+                pass
+        # is it a compressed file?
+        if zipfile.is_zipfile(filename):
+            zip = zipfile.ZipFile(filename)
+            names = zip.namelist()
+            return '{} files\n'.format(len(names)) + '\n'.join(names[:5]) + ('\n...' if len(names) > 5 else '')
+        elif tarfile.is_tarfile(filename):
+            with tarfile.open(filename, 'r:*') as tar:
+                # only extract files
+                names = [x.name for x in tar.getmembers() if x.isfile()]
+            return '{} files\n'.format(len(names)) + '\n'.join(names[:5]) + ('\n...' if len(names) > 5 else '')
+        elif filename.endswith('.gz'):
+            content = b''
+            with gzip.open(filename, 'rb') as fin:
+                for line in range(5):
+                    content += fin.readline()
+            try:
+                return content.decode()
+            except:
+                return 'binary data'
+        else:
+            content = b''
+            with open(filename, 'rb') as fin:
+                for line in range(5):
+                    content += fin.readline()
+            try:
+                return content.decode()
+            except:
+                pass
+        return 'binary data'
+
+
 
 class SoS_Exporter(Exporter):
     def __init__(self, config=None, **kwargs):
@@ -152,6 +195,7 @@ class SoS_Kernel(Kernel):
         self.kernels = {}
         self.original_kernel = None
         self.format_obj = InteractiveShell.instance().display_formatter.format
+        self.previewer = {'*': SoS_FilePreviewer().preview }
 
     def do_inspect(self, code, cursor_pos, detail_level=0):
         'Inspect code'
@@ -229,7 +273,7 @@ class SoS_Kernel(Kernel):
         while self.KC.shell_channel.msg_ready():
             self.KC.shell_channel.get_msg()
         # executing code in another kernel
-        msg_id = self.KC.execute(code, silent=False, store_history=not store_history)
+        self.KC.execute(code, silent=False, store_history=not store_history)
 
         # first thing is wait for any side effects (output, stdin, etc.)
         _execution_state = "busy"
@@ -442,7 +486,6 @@ class SoS_Kernel(Kernel):
                         else:
                             output_files = []
                         # use a table to list input and/or output file if exist
-                        start_out = True
                         if input_files or output_files:
                             if not start_output:
                                 self.send_response(self.iopub_socket, 'display_data',
@@ -458,39 +501,31 @@ class SoS_Kernel(Kernel):
                         for filename in output_files:
                             self.send_response(self.iopub_socket, 'stream',
                                  {'name': 'stdout', 'text': '\n> ' + filename + ' ({:.1f} KB)'.format(os.path.getsize(filename) / 1024)})
-                            if is_image(filename):
-                                data = display_data_for_image(filename)
-                                self.send_response(self.iopub_socket, 'display_data', data)
-                                start_out = False
-                            elif filename.lower().endswith('.pdf'):
-                                self.send_response(self.iopub_socket, 'display_data',
-                                    {'source': filename,
-                                     'data': { 'text/html': HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}})
-                                start_out = False
-                            elif filename.lower().endswith('.csv') or filename.lower().endswith('.tsv'):
-                                try:
-                                    import pandas
-                                    data = pandas.read_csv(filename, nrows=10)
-                                    html = data.to_html()
-                                    self.send_response(self.iopub_socket, 'display_data',
-                                        {'source': filename,
-                                         'data': { 'text/html':
-                                         HTML(html).data}})
-                                    start_out = False
-                                except Exception as e:
-                                    #env.logger.warning('Cannot display {}: {}'.format(filename, e))
-                                    self.send_response(self.iopub_socket, 'stream',
-                                         {'name': 'stdout', 'text': repr(e)})
+                            previewer = [x for x in self.previewer.keys() if fnmatch.fnmatch(os.path.basename(filename), x)]
+                            if not previewer:
+                                continue
                             else:
-                                fi = FileInfo(filename)
-                                desc = fi.describe()
-                                if desc:
-                                    self.send_response(self.iopub_socket, 'display_data',
-                                        {'source': filename,
-                                         'data': {'text/html':
-                                         HTML('<pre>{}</pre>'.format(desc)).data}})
-                                    start_out = False
-
+                                # choose the longest matching pattern (e.g. '*' and '*.pdf', choose '*.pdf')
+                                previewer_name = max(previewer, key=len)
+                                previewer_func = self.previewer[previewer_name]
+                                if not previewer_func:
+                                    continue
+                                if not callable(previewer_func):
+                                    raise RuntimeError('Previewer {} is not callable'.format(previewer_name))
+                                try:
+                                    result = previewer_func(filename)
+                                    if not result:
+                                        continue
+                                    if isinstance(result, str):
+                                        self.send_response(self.iopub_socket, 'stream',
+                                            {'name': 'stdout', 'text': '\n'+result})
+                                    else:
+                                        msg_type, msg_data = result
+                                        self.send_response(self.iopub_socket, msg_type,
+                                            {'source': filename, 'data': msg_data})
+                                except Exception as e:
+                                    self.send_response(self.iopub_socket, 'stream',
+                                        {'name': 'stderr', 'text': 'Failed to preview {}: {}'.format(filename, e) })
             except Exception as e:
                 stream_content = {'name': 'stderr', 'text': repr(e)}
                 self.send_response(self.iopub_socket, 'stream', stream_content)
