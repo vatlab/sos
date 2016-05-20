@@ -26,7 +26,6 @@ import yaml
 import atexit
 import fnmatch
 
-from collections import defaultdict
 from .utils import env, get_traceback
 from .sos_script import SoS_Script
 from .sos_executor import Sequential_Executor
@@ -247,9 +246,18 @@ def sos_config(args, workflow_args):
                 new_dv = {}
                 new_dv[key] = dv
                 dv = new_dv
-            # however we can not update 
+            # however we can not update directly and has to merge two
+            # dictionaries. For example, if
+            #
+            # cfg = {'a': {'b': {'d': 2}}, {'c': 1}}
+            #
+            # we need to get
+            #
+            # cfg = {'a': {'b': {'d': 2, 'c': 1}}, {'c': 1}}
+            #
             dict_merge(cfg, dv)
-            print('Set {} to {!r}'.format(k, v))
+            # reporting assignment with existing values
+            print('Set {} to {!r}'.format(k.split('.')[0], cfg[k.split('.')[0]]))
         #
         with open(config_file, 'w') as config:
             config.write(yaml.safe_dump(cfg, default_flow_style=False))
