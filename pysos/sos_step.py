@@ -565,7 +565,7 @@ class Step_Executor:
             except Exception as e:
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(self.step.global_def, e))
+                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(shortRepr(self.step.global_def), e))
         #
         # step 3: execute statements before step input and then process step input
         # This step sets variables __step_input__ and input (the same)

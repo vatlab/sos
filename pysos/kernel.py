@@ -527,11 +527,11 @@ class SoS_Kernel(Kernel):
                                     self.send_response(self.iopub_socket, 'stream',
                                         {'name': 'stderr', 'text': 'Failed to preview {}: {}'.format(filename, e) })
             except Exception as e:
-                stream_content = {'name': 'stderr', 'text': repr(e)}
+                stream_content = {'name': 'stderr', 'text': str(e)}
                 self.send_response(self.iopub_socket, 'stream', stream_content)
                 return  {'status': 'error',
                     'ename': e.__class__.__name__,
-                    'evalue': repr(e),
+                    'evalue': str(e),
                     'traceback': [],
                     'execution_count': self.execution_count,
                    }
