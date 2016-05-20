@@ -222,7 +222,8 @@ if __name__ == '__main__':
         all options, quotation is needed to avoid shell expansion).''')
     group.add_argument('--set', nargs='+', metavar='KEY=VALUE', dest='__set_config__',
         help='''Set one or more arguments as one or more 'key=value' pairs. The
-        value should be quoted if it is a string.''')
+        value should be quoted if it is a string. Use syntax 'A.B=v' to add
+        {'B': v} to dictionary 'A'.''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_config)
     #
