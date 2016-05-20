@@ -34,6 +34,7 @@ or compile the latest git version with commands
 ```
 % git clone https://github.com/BoPeng/SOS.git
 % cd SOS
+% pip3 install sos
 % python3 setup.py install
 ```
 
@@ -64,6 +65,6 @@ wiki](https://github.com/BoPeng/SOS/wiki)**, or use the following links
 directly:
 
 * [Quick start guide](https://github.com/BoPeng/SOS/wiki/Quick-Start)
-* [tutorial](https://github.com/BoPeng/SOS/blob/master/examples/NotebookTutorial.ipynb) and [example](https://github.com/BoPeng/SOS/blob/master/examples/example.ipynb) of Jupyter notebooks.
+* [Tutorial](https://github.com/BoPeng/SOS/blob/master/examples/NotebookTutorial.ipynb) and [example](https://github.com/BoPeng/SOS/blob/master/examples/example.ipynb) of Jupyter notebooks.
 * [A presentation about SoS](https://github.com/BoPeng/SOS/wiki/SoS_March2016.pdf) (updated on Apr. 7th for version 0.5.7)
 * [Complete documentation](https://github.com/BoPeng/SOS/wiki/Documentation)
