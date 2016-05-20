@@ -845,7 +845,7 @@ def R(script, **kwargs):
             '''.replace('\n', ' '))).run(**kwargs)
 
 @SoS_Action(run_mode=['inspect', 'prepare'])
-def check_R_library(name, version = None):
+def check_R_library(name, version = None, repos = 'http://cran.us.r-project.org'):
     '''Check existence and version match of R library.
     cran and bioc packages are unique yet might overlap with github.
     Therefore if the input name is {repo}/{pkg} the package will be
@@ -884,7 +884,7 @@ def check_R_library(name, version = None):
         if (require(package, character.only=TRUE, quietly=TRUE)) {
             write(paste(package, packageVersion(package), "AVAILABLE"), file="${output_file}")
         } else {
-            install.packages(package, repos="http://cran.us.r-project.org",
+            install.packages(package, repos="${repos}",
                 quiet=FALSE)
             # if the package still does not exist
             if (!require(package, character.only=TRUE, quietly=TRUE)) {
