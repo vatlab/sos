@@ -26,6 +26,7 @@ import yaml
 import atexit
 import fnmatch
 
+from collections import defaultdict
 from .utils import env, get_traceback
 from .sos_script import SoS_Script
 from .sos_executor import Sequential_Executor
@@ -149,6 +150,22 @@ def sos_run(args, workflow_args):
 #
 # subcommand config
 #
+def dict_merge(dct, merge_dct):
+    """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
+    updating only top-level keys, dict_merge recurses down into dicts nested
+    to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
+    ``dct``.
+    :param dct: dict onto which the merge is executed
+    :param merge_dct: dct merged into dct
+    :return: None
+    """
+    for k, v in merge_dct.items():
+        if (k in dct and isinstance(dct[k], dict)
+                and isinstance(merge_dct[k], dict)):
+            dict_merge(dct[k], merge_dct[k])
+        else:
+            dct[k] = merge_dct[k]
+
 def sos_config(args, workflow_args):
     if workflow_args:
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
@@ -220,7 +237,18 @@ def sos_config(args, workflow_args):
             except Exception as e:
                 env.logger.error('Cannot interpret option {}. Please quote the string if it is a string option. ({})'.format(option, e))
                 sys.exit(1)
-            cfg[k] = v
+            # say v   = 1
+            #     key = a.b.c
+            #
+            # this gives:
+            #     {'a': {'b': {'c': 1}}}
+            dv = v
+            for key in reversed(k.split('.')):
+                new_dv = {}
+                new_dv[key] = dv
+                dv = new_dv
+            # however we can not update 
+            dict_merge(cfg, dv)
             print('Set {} to {!r}'.format(k, v))
         #
         with open(config_file, 'w') as config:
