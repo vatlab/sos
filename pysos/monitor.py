@@ -87,7 +87,7 @@ def summarizeExecution(pid):
     if count == 0:
         return 
     else:
-        return ('Completed in {:.1f} seconds with {} children and {:.1f}% peak ({:.1f}% avg) CPU and {:.1f} Mb peak ({:.1f} Mb avg) memory usage'
-            .format(run_time, peak_nch, peak_cpu, accu_cpu/count, peak_mem/1024/1024, accu_mem/1024/1024/count))
+        return ('Completed in {:.1f} seconds with {} child{} and {:.1f}% peak ({:.1f}% avg) CPU and {:.1f}Mb peak ({:.1f}Mb avg) memory usage'
+            .format(run_time, peak_nch, 'ren' if peak_nch > 1 else '', peak_cpu, accu_cpu/count, peak_mem/1024/1024, accu_mem/1024/1024/count))
         
 
