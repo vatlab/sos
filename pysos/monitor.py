@@ -60,26 +60,34 @@ class ProcessMonitor(threading.Thread):
                 env.logger.warning(e)
                 break
 
-        
 def summarizeExecution(pid):
     proc_file = os.path.join(env.exec_dir, '.sos/{}.proc'.format(pid))
     if not os.path.isfile(proc_file):
         return ''
     peak_cpu = 0
+    accu_cpu = 0
     peak_mem = 0
+    accu_mem = 0
     peak_nch = 0
     run_time = 0
+    count = 0
     with open(proc_file) as proc:
         for line in proc:
             t, c, m, nch, cc, cm = line.split()
             run_time = float(t)
-            if float(c) > peak_cpu:
+            accu_cpu += float(c) + float(cc)
+            accu_mem += float(m) + float(cm)
+            count += 1
+            if float(c) + float(cc) > peak_cpu:
                 peak_cpu = float(c) + float(cc)
-            if float(m) > peak_mem:
+            if float(m) + float(cm) > peak_mem:
                 peak_mem = float(m) + float(cm)
             if int(nch) > peak_nch:
                 peak_nch = int(nch)
-    return ('Completed in {:.1f} seconds with {} children and {:.2f} % peak CPU and {:.1f} Mb peak memory usage'
-        .format(run_time, peak_nch, peak_cpu * 100, peak_mem/1024/1024))
+    if count == 0:
+        return 
+    else:
+        return ('Completed in {:.1f} seconds with {} children and {:.1f}% peak ({:.1f}% avg) CPU and {:.1f} Mb peak ({:.1f} Mb avg) memory usage'
+            .format(run_time, peak_nch, peak_cpu, accu_cpu/count, peak_mem/1024/1024, accu_mem/1024/1024/count))
         
 
