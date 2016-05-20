@@ -23,15 +23,20 @@ import os
 import psutil
 import threading
 import time
+from datetime import datetime
 from .utils import env
 
 class ProcessMonitor(threading.Thread):
-    def __init__(self, pid, interval=1):
+    def __init__(self, pid, msg='', interval=1):
         threading.Thread.__init__(self)
         self.pid = pid
         self.interval = interval
-        self.start_time = time.time()
         self.proc_file = os.path.join(env.exec_dir, '.sos/{}.proc'.format(self.pid))
+        with open(self.proc_file, 'w') as pd:
+            if msg:
+                pd.write('# {}\n'.format(msg.replace('\n', '\n# ')))
+            pd.write('#started at {}\n#\n'.format(datetime.now().strftime("%A, %d. %B %Y %I:%M%p")))
+            pd.write('#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n')
                  
     def _check(self):
         current_process = psutil.Process(self.pid)
@@ -49,14 +54,14 @@ class ProcessMonitor(threading.Thread):
     def run(self):
         while True:
             try:
-                time.sleep(self.interval)
                 cpu, mem, nch, ch_cpu, ch_mem = self._check()
+                time.sleep(self.interval)
                 with open(self.proc_file, 'a') as pd:
-                    pd.write('{:.4f}\t{:.2f}\t{}\t{}\t{}\t{}\n'.format(time.time() - self.start_time, cpu, mem, nch, ch_cpu, ch_mem))
+                    pd.write('{}\t{:.2f}\t{}\t{}\t{}\t{}\n'.format(time.time(), cpu, mem, nch, ch_cpu, ch_mem))
             except Exception as e:
                 # if the process died, exit the thread
                 #with open(self.proc_file, 'a') as pd:
-                #    pd.write('Proc exited after {} seconds.'.format(time.time() - self.start_time))
+                #    pd.write('Proc exited after {} seconds.'.format(time.time() ))
                 env.logger.warning(e)
                 break
 
@@ -69,12 +74,21 @@ def summarizeExecution(pid):
     peak_mem = 0
     accu_mem = 0
     peak_nch = 0
-    run_time = 0
+    start_time = None
+    end_time = None
     count = 0
     with open(proc_file) as proc:
         for line in proc:
-            t, c, m, nch, cc, cm = line.split()
-            run_time = float(t)
+            if line.startswith('#'):
+                continue
+            try:
+                t, c, m, nch, cc, cm = line.split()
+            except Exception as e:
+                env.logger.warning('Unrecognized resource line "{}": {}'.format(line.strip(), e))
+            if start_time is None:
+                start_time = float(t)
+            else:
+                end_time = float(t)
             accu_cpu += float(c) + float(cc)
             accu_mem += float(m) + float(cm)
             count += 1
@@ -84,10 +98,10 @@ def summarizeExecution(pid):
                 peak_mem = float(m) + float(cm)
             if int(nch) > peak_nch:
                 peak_nch = int(nch)
-    if count == 0:
-        return 
+    if start_time is None or end_time is None:
+        return ''
     else:
-        return ('Completed in {:.1f} seconds with {} children and {:.1f}% peak ({:.1f}% avg) CPU and {:.1f} Mb peak ({:.1f} Mb avg) memory usage'
-            .format(run_time, peak_nch, peak_cpu, accu_cpu/count, peak_mem/1024/1024, accu_mem/1024/1024/count))
+        return ('Completed in {:.1f} seconds with {} child{} and {:.1f}% peak ({:.1f}% avg) CPU and {:.1f}Mb peak ({:.1f}Mb avg) memory usage'
+            .format(end_time - start_time, peak_nch, 'ren' if peak_nch > 1 else '', peak_cpu, accu_cpu/count, peak_mem/1024/1024, accu_mem/1024/1024/count))
         
 

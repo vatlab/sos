@@ -451,7 +451,7 @@ class SoS_ExecuteScript:
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
                     p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
                     pid = p.pid
-                    m = ProcessMonitor(pid)
+                    m = ProcessMonitor(pid, msg=self.script)
                     m.start()
                     env.register_process(p.pid, 'Runing {}'.format(script_file))
                     out, err = p.communicate()
@@ -462,7 +462,7 @@ class SoS_ExecuteScript:
                 else:
                     p = subprocess.Popen(cmd, shell=True)
                     pid = p.pid
-                    m = ProcessMonitor(pid)
+                    m = ProcessMonitor(pid, msg=self.script)
                     m.start()
                     env.register_process(pid, 'Runing {}'.format(script_file))
                     ret = p.wait()
