@@ -33,7 +33,8 @@ from collections.abc import Sequence
 
 from . import __version__
 from .sos_step import Step_Executor
-from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, frozendict, natural_keys
+from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, \
+    frozendict, natural_keys, dict_merge
 from .sos_eval import Undetermined, SoS_eval, SoS_exec
 from .sos_script import SoS_Script, SoS_Step, SoS_ScriptContent
 
