@@ -26,12 +26,13 @@ import yaml
 import atexit
 import fnmatch
 
-from .utils import env, get_traceback
+from .utils import env, get_traceback, dict_merge
 from .sos_script import SoS_Script
 from .sos_executor import Sequential_Executor
 from .converter import script_to_html, workflow_to_html, script_to_markdown, \
     workflow_to_markdown, script_to_notebook, workflow_to_notebook, \
     script_to_term, workflow_to_term, notebook_to_script
+from .sos_syntax import CONFIG_NAME
 
 #
 # subcommand convert
@@ -149,22 +150,6 @@ def sos_run(args, workflow_args):
 #
 # subcommand config
 #
-def dict_merge(dct, merge_dct):
-    """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
-    updating only top-level keys, dict_merge recurses down into dicts nested
-    to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
-    ``dct``.
-    :param dct: dict onto which the merge is executed
-    :param merge_dct: dct merged into dct
-    :return: None
-    """
-    for k, v in merge_dct.items():
-        if (k in dct and isinstance(dct[k], dict)
-                and isinstance(merge_dct[k], dict)):
-            dict_merge(dct[k], merge_dct[k])
-        else:
-            dct[k] = merge_dct[k]
-
 def sos_config(args, workflow_args):
     if workflow_args:
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
@@ -229,35 +214,48 @@ def sos_config(args, workflow_args):
         else:
             cfg = {}
         #
-        for option in args.__set_config__:
-            k, v = option.split('=', 1)
+        if len(args.__set_config__) == 1:
+            env.logger.error('Please specify a value for key {}'.format(args.__set_config__[0]))
+            sys.exit(1)
+        #
+        k = args.__set_config__[0]
+        if not CONFIG_NAME.match(k):
+            env.logger.error('Unacceptable variable name for config file: {}'.format(k))
+            sys.exit(1)
+        #
+        values = []
+        for v in args.__set_config__[1:]:
             try:
                 v = eval(v)
-            except Exception as e:
-                env.logger.error('Cannot interpret option {}. Please quote the string if it is a string option. ({})'.format(option, e))
-                sys.exit(1)
-            # say v   = 1
-            #     key = a.b.c
-            #
-            # this gives:
-            #     {'a': {'b': {'c': 1}}}
-            dv = v
-            for key in reversed(k.split('.')):
-                new_dv = {}
-                new_dv[key] = dv
-                dv = new_dv
-            # however we can not update directly and has to merge two
-            # dictionaries. For example, if
-            #
-            # cfg = {'a': {'b': {'d': 2}}, {'c': 1}}
-            #
-            # we need to get
-            #
-            # cfg = {'a': {'b': {'d': 2, 'c': 1}}, {'c': 1}}
-            #
-            dict_merge(cfg, dv)
-            # reporting assignment with existing values
-            print('Set {} to {!r}'.format(k.split('.')[0], cfg[k.split('.')[0]]))
+            except Exception:
+                env.logger.warning('Value {} is an invalid expression and is treated as a string.'.format(v))
+            values.append(v)
+        #
+        if len(values) == 1:
+            values = values[0]
+        #
+        # say v   = 1
+        #     key = a.b.c
+        #
+        # this gives:
+        #     {'a': {'b': {'c': 1}}}
+        dv = values
+        for key in reversed(k.split('.')):
+            new_dv = {}
+            new_dv[key] = dv
+            dv = new_dv
+        # however we can not update directly and has to merge two
+        # dictionaries. For example, if
+        #
+        # cfg = {'a': {'b': {'d': 2}}, {'c': 1}}
+        #
+        # we need to get
+        #
+        # cfg = {'a': {'b': {'d': 2, 'c': 1}}, {'c': 1}}
+        #
+        dict_merge(cfg, dv)
+        # reporting assignment with existing values
+        print('Set {} to {!r}'.format(k.split('.')[0], cfg[k.split('.')[0]]))
         #
         with open(config_file, 'w') as config:
             config.write(yaml.safe_dump(cfg, default_flow_style=False))

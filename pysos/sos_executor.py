@@ -33,7 +33,8 @@ from collections.abc import Sequence
 
 from . import __version__
 from .sos_step import Step_Executor
-from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, frozendict, natural_keys
+from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, \
+    frozendict, natural_keys, dict_merge
 from .sos_eval import Undetermined, SoS_eval, SoS_exec
 from .sos_script import SoS_Script, SoS_Step, SoS_ScriptContent
 
@@ -175,7 +176,7 @@ class Base_Executor:
         if os.path.isfile(sos_config_file):
             try:
                 with open(sos_config_file) as config:
-                    cfg = yaml.safe_load(config)
+                    dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
         #
@@ -184,7 +185,7 @@ class Base_Executor:
                 raise RuntimeError('Config file {} not found'.format(config_file))
             try:
                 with open(config_file) as config:
-                    cfg.update(yaml.safe_load(config))
+                    dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(config_file, e))
         #

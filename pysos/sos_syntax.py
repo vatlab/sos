@@ -95,7 +95,7 @@ _FORMAT_VERSION_TMPL = r'''
 
 _DIRECTIVE_TMPL = r'''
     ^                                  # from start of line
-    (?P<directive_name>                # 
+    (?P<directive_name>                #
     (?!({})\s*:)                       # not a python keyword followed by : (can be input)
     ({}                                # name of directive
     |[a-zA-Z][\w\d_]*))                #    or action
@@ -109,6 +109,14 @@ _ASSIGNMENT_TMPL = r'''
     \s*=\s*                            # assignment
     (?P<var_value>.*)                  # variable content
     '''
+_CONFIG_NAME = r'''
+   ^
+   [a-zA-Z]                            # first letter must be
+   [a-zA-Z0-9_]*
+   (\.[a-zA-Z]                         # followed by more names separated with '.'
+   [a-zA-Z0-9_]*)*
+   $
+   '''
 
 SOS_SECTION_HEADER = re.compile(_SECTION_HEADER_TMPL, re.VERBOSE)
 SOS_SECTION_NAME = re.compile(_SECTION_NAME_TMPL, re.VERBOSE)
@@ -118,4 +126,5 @@ SOS_FORMAT_LINE = re.compile(_FORMAT_LINE_TMPL, re.VERBOSE)
 SOS_FORMAT_VERSION = re.compile(_FORMAT_VERSION_TMPL, re.VERBOSE)
 SOS_DIRECTIVE = re.compile(_DIRECTIVE_TMPL, re.VERBOSE)
 SOS_ASSIGNMENT = re.compile(_ASSIGNMENT_TMPL, re.VERBOSE)
+CONFIG_NAME = re.compile(_CONFIG_NAME, re.VERBOSE)
 
