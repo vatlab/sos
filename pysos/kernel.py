@@ -400,7 +400,7 @@ class SoS_Kernel(Kernel):
             code = '\n'.join(lines[1:])
             command_line = self.options
         elif code.startswith('%paste'):
-            command_line = self.options + ' ' + self.get_magic_option(code)
+            command_line = (self.options + ' ' + self.get_magic_option(code)).strip()
             try:
                 code = clipboard_get()
             except ClipboardEmpty:
@@ -409,8 +409,8 @@ class SoS_Kernel(Kernel):
                 env.logger.error('Could not get text from the clipboard: {}'.format(e))
                 return
             #
-            print(code.strip())
-            print('## -- End pasted text --')
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': code.strip() + '\n## -- End pasted text --\n'})
         elif code.startswith('%run'):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])

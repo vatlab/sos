@@ -415,7 +415,7 @@ class Interactive_Executor(Base_Executor):
             else:
                 raise
         #
-        if command_line and not command_line.startswith('-'):
+        if command_line.strip() and not command_line.startswith('-'):
             wf_and_args = command_line.split(None, 1)
             wf_name = wf_and_args[0]
             command_line = command_line[len(wf_name)+1:]

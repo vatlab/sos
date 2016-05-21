@@ -452,11 +452,14 @@ def execute_step_process(step_process, global_def, sos_dict, sigil, signature, w
         .format(sos_dict['_input'], sos_dict['_output']))
     try:
         if env.run_mode == 'inspect':
-            env.logger.trace('Checking step with input ``{}`` and output ``{}``'.format(sos_dict['_input'], shortRepr(sos_dict['_output'])))
+            env.logger.trace('Checking step with input ``{}`` and output ``{}`` and signature mode {}'
+                .format(sos_dict['_input'], shortRepr(sos_dict['_output']), env.sig_mode))
         elif env.run_mode == 'prepare':
-            env.logger.trace('Preparing step with input ``{}`` and output ``{}``'.format(sos_dict['_input'], shortRepr(sos_dict['_output'])))
+            env.logger.trace('Preparing step with input ``{}`` and output ``{}`` and signature mode {}'
+                .format(sos_dict['_input'], shortRepr(sos_dict['_output']), env.sig_mode))
         else:
-            env.logger.trace('Executing step with input ``{}`` and output ``{}``'.format(sos_dict['_input'], shortRepr(sos_dict['_output'])))
+            env.logger.trace('Executing step with input ``{}`` and output ``{}`` and signature mode {}'
+                .format(sos_dict['_input'], shortRepr(sos_dict['_output']), env.sig_mode))
         os.chdir(os.path.expanduser(workdir))
         # switch context to the new dict and switch back once the with
         # statement ends (or if an exception is raised)
