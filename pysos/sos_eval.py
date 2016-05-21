@@ -30,7 +30,7 @@ from shlex import quote
 from tokenize import generate_tokens, untokenize
 from contextlib import contextmanager
 
-from .utils import env, Error, shortRepr
+from .utils import env, Error, short_repr
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
@@ -385,7 +385,7 @@ def SoS_exec(stmts, sigil='${ }'):
                     if env.run_mode == 'inspect':
                         # this should not matter in inspect mode because many variables do not yet
                         # exist...
-                        env.logger.debug('Failed to interpolate {}: {}'.format(shortRepr(stmts), e))
+                        env.logger.debug('Failed to interpolate {}: {}'.format(short_repr(stmts), e))
                 else:
                     env.sos_dict['__execute_errors__'].append(stmts, e)
             else:

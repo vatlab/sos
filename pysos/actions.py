@@ -42,7 +42,7 @@ from docker.utils import kwargs_from_env
 import multiprocessing as mp
 import pygments.token as token
 from pygments.lexers import get_lexer_for_filename, guess_lexer
-from .utils import env, getTermWidth, ProgressBar, shortRepr, natural_keys, transcribe
+from .utils import env, getTermWidth, ProgressBar, short_repr, natural_keys, transcribe
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .signature import FileSignature, fileMD5
@@ -979,7 +979,7 @@ def report(script=None, from_file=None, to_file=None, mode='a', **kwargs):
     else:
         if '__step_report__' not in env.sos_dict:
             raise RuntimeError('No __step_report__ in runtime dict')
-        env.logger.trace('report {} to {}'.format(shortRepr(script), env.sos_dict['__step_report__']))
+        env.logger.trace('report {} to {}'.format(short_repr(script), env.sos_dict['__step_report__']))
         report_file = env.sos_dict['__step_report__']
     #
     content = ''

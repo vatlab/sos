@@ -31,6 +31,7 @@ from pysos.sos_eval import interpolate, SoS_eval, InterpolationError
 from pysos.actions import downloadURL
 from pysos.sos_script import SoS_Script
 from pysos.sos_executor import Sequential_Executor
+from pysos.kernel import SoS_FilePreviewer, BioPreviewer
 
 class TestUtils(unittest.TestCase):
     def setUp(self):
@@ -287,6 +288,9 @@ sos_run('sub')
         self.assertEqual(text_repr(r'''a
 b
 \nc'''), "r'''a\nb\n\\nc'''")
+
+    def testPreview(self):
+        '''Test previewer'''
 
 if __name__ == '__main__':
     unittest.main()

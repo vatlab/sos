@@ -39,7 +39,7 @@ from pygments.util import shebang_matches
 import nbformat
 from nbformat.v4 import new_code_cell, new_markdown_cell, new_notebook
 
-from .utils import env
+from .utils import env, pretty_size
 from .actions import get_actions
 from .kernel import SoS_Exporter
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_DEPENDS_OPTIONS, \
@@ -662,7 +662,7 @@ def script_to_html(transcript, script_file, html_file, style_args):
         else:
             raw_link = script_file
         html.write(template_pre_table % (os.path.basename(script_file), raw_link,
-            '{:.1f} KB'.format(os.path.getsize(script_file) / 1024)))
+            pretty_size(os.path.getsize(script_file))))
         #
         html.write('<table class="highlight tab-size js-file-line-container">')
         with open(transcript) as script:

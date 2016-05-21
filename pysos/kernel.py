@@ -31,7 +31,7 @@ import zipfile
 import tarfile
 import gzip
 
-from .utils import env, WorkflowDict, shortRepr
+from .utils import env, WorkflowDict, short_repr, pretty_size
 from ._version import __sos_version__, __version__
 from .sos_eval import SoS_exec, interpolate
 from .sos_executor import Interactive_Executor
@@ -71,8 +71,6 @@ def clipboard_get():
     else:
         return tkinter_clipboard_get()
 
-
-
 class SoS_FilePreviewer():
     def __init__(self):
         pass
@@ -83,16 +81,14 @@ class SoS_FilePreviewer():
 
         image_type = imghdr.what(None, image)
         image_data = base64.b64encode(image).decode('ascii')
-        return {
-                'image/' + image_type: image_data
-            }
+        return { 'image/' + image_type: image_data }
 
     def preview(self, filename):
         if imghdr.what(filename) is not None:
             # image
             return 'display_data', self.display_data_for_image(filename)
         elif filename.lower().endswith('.pdf'):
-            return 'display_data', { 'text/html': 
+            return 'display_data', { 'text/html':
                 HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}
         elif filename.lower().endswith('.csv') or filename.lower().endswith('.tsv'):
             try:
@@ -132,7 +128,50 @@ class SoS_FilePreviewer():
                 pass
         return 'binary data'
 
+class BioPreviewer(SoS_FilePreviewer):
+    def  __init__(self):
+        SoS_FilePreviewer.__init__(self)
 
+    def previewBam(self, filename):
+        try:
+            import pysam
+        except ImportError:
+            return 'pysam is needed to preview bam format'
+        try:
+            res = ''
+            with pysam.AlignmentFile(filename, 'rb') as bam:
+                headers = bam.header
+                for record_type in ('RG', 'PG', 'SQ'):
+                    if record_type not in headers:
+                        continue
+                    else:
+                        records = headers[record_type]
+                    res += record_type + ':\n'
+                    for i, record in enumerate(records):
+                        if type(record) == str:
+                            res += '  ' + short_repr(record) + '\n'
+                        elif type(record) == dict:
+                            res += '  '
+                            for idx, (k, v) in enumerate(record.items()):
+                                if idx < 4:
+                                    res += '{}: {}    '.format(k, short_repr(v))
+                                elif idx == 4:
+                                    res += '...'
+                                    break
+                        if i > 4:
+                            res += '\n  ...\n'
+                            break
+                        else:
+                            res += '\n'
+            return res
+        except Exception as e:
+            return 'failed to preview {}'.format(e)
+
+    def preview(self, filename):
+        if filename.lower().endswith('.bam'):
+            return self.previewBam(filename)
+        else:
+            return SoS_FilePreviewer.preview(filename)
 
 class SoS_Exporter(Exporter):
     def __init__(self, config=None, **kwargs):
@@ -195,7 +234,7 @@ class SoS_Kernel(Kernel):
         self.kernels = {}
         self.original_kernel = None
         self.format_obj = InteractiveShell.instance().display_formatter.format
-        self.previewer = {'*': SoS_FilePreviewer().preview }
+        self.previewer = {'*': SoS_FilePreviewer().preview, '*.bam': BioPreviewer().preview }
 
     def do_inspect(self, code, cursor_pos, detail_level=0):
         'Inspect code'
@@ -433,7 +472,7 @@ class SoS_Kernel(Kernel):
                                 new_code.strip() + '\n## -- End interpolated text --\n'})
                     except Exception as e:
                         self.send_response(self.iopub_socket, 'stream',
-                            {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(shortRepr(code), e)})
+                            {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(short_repr(code), e)})
                     return self.run_cell(code, store_history)
                 else:
                     with redirect_sos_io():
@@ -451,7 +490,11 @@ class SoS_Kernel(Kernel):
                                 self.send_response(self.iopub_socket, 'stream',
                                     {'name': 'stderr', 'text': sos_err})
                             self.send_response(self.iopub_socket, 'display_data',
-                                {'data': { 'text/html': HTML('<hr color="black" width="60%">').data}})
+                                {
+                                    'source': 'SoS',
+                                    'metadata': {},
+                                    'data': { 'text/html': HTML('<hr color="black" width="60%">').data}
+                                })
                             raise
                         except KeyboardInterrupt:
                             return {'status': 'abort', 'execution_count': self.execution_count}
@@ -472,7 +515,11 @@ class SoS_Kernel(Kernel):
                                 sos_report = sr.read()
                             if sos_report.strip():
                                 self.send_response(self.iopub_socket, 'display_data',
-                                    {'data': {'text/markdown': sos_report}})
+                                    {
+                                        'source': 'SoS',
+                                        'metadata': {},
+                                        'data': {'text/markdown': sos_report}
+                                    })
                                 start_output = False
                         #
                         if '__step_input__' in env.sos_dict:
@@ -489,10 +536,17 @@ class SoS_Kernel(Kernel):
                         if input_files or output_files:
                             if not start_output:
                                 self.send_response(self.iopub_socket, 'display_data',
-                                    {'data': { 'text/html': HTML('<hr color="black" width="60%">').data}})
+                                    {
+                                        'source': 'SoS',
+                                        'metadata': {},
+                                        'data': { 'text/html': HTML('<hr color="black" width="60%">').data}
+                                    })
                             self.send_response(self.iopub_socket, 'display_data',
-                                    {'data': { 'text/html':
-                                        HTML('''<pre> input: {}\noutput: {}\n</pre>'''.format(
+                                    {
+                                        'source': 'SoS',
+                                        'metadata': {},
+                                        'data': { 'text/html':
+                                            HTML('''<pre> input: {}\noutput: {}\n</pre>'''.format(
                                             ', '.join('<a href="{0}">{0}</a>'.format(x) for x in input_files),
                                             ', '.join('<a href="{0}">{0}</a>'.format(x) for x in output_files))).data
                                         }
@@ -500,7 +554,7 @@ class SoS_Kernel(Kernel):
                         # Send images, if any
                         for filename in output_files:
                             self.send_response(self.iopub_socket, 'stream',
-                                 {'name': 'stdout', 'text': '\n> ' + filename + ' ({:.1f} KB)'.format(os.path.getsize(filename) / 1024)})
+                                 {'name': 'stdout', 'text': '\n> ' + filename + ' ({})'.format(pretty_size(os.path.getsize(filename)))})
                             previewer = [x for x in self.previewer.keys() if fnmatch.fnmatch(os.path.basename(filename), x)]
                             if not previewer:
                                 continue
@@ -522,7 +576,7 @@ class SoS_Kernel(Kernel):
                                     else:
                                         msg_type, msg_data = result
                                         self.send_response(self.iopub_socket, msg_type,
-                                            {'source': filename, 'data': msg_data})
+                                            {'source': filename, 'data': msg_data, 'metadata': {}})
                                 except Exception as e:
                                     self.send_response(self.iopub_socket, 'stream',
                                         {'name': 'stderr', 'text': 'Failed to preview {}: {}'.format(filename, e) })

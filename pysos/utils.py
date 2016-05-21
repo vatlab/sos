@@ -27,6 +27,7 @@ import time
 import types
 import logging
 import glob
+import math
 import collections
 import traceback
 import pickle
@@ -123,7 +124,7 @@ class ColoredFormatter(logging.Formatter):
         return logging.Formatter.format(self, record)
 
 
-def shortRepr(obj, noneAsNA=False):
+def short_repr(obj, noneAsNA=False):
     '''Return a short representation of obj for clarity.'''
     if obj is None:
         return 'unspecified' if noneAsNA else 'None'
@@ -238,7 +239,7 @@ class WorkflowDict(object):
                             .format(key, self._dict[key], value))
 
     def _log(self, key, value):
-        env.logger.debug('Set ``{}`` = ``{}``'.format(key, shortRepr(value)))
+        env.logger.debug('Set ``{}`` = ``{}``'.format(key, short_repr(value)))
 
     def _warn(self, key, value):
         if key.isupper() and key in self._dict and self._dict[key] != value:
@@ -893,3 +894,9 @@ def dict_merge(dct, merge_dct):
         else:
             dct[k] = merge_dct[k]
 
+# display file size in K, M, G etc automatically. Code copied from
+# http://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
+# for its compact size
+def pretty_size(n,pow=0,b=1024,u='B',pre=['']+[p+'i'for p in'KMGTPEZY']):
+    pow,n=min(int(math.log(max(n*b**pow,1),b)),len(pre)-1),n*b**pow
+    return "%%.%if %%s%%s"%abs(pow%(-pow-1))%(n/b**float(pow),pre[pow],u)

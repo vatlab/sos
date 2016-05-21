@@ -32,7 +32,7 @@ from collections.abc import Sequence, Iterable
 from collections import OrderedDict
 from itertools import tee, combinations
 
-from .utils import env, Error, shortRepr, get_traceback, pickleable, transcribe
+from .utils import env, Error, short_repr, get_traceback, pickleable, transcribe
 from .pattern import extract_pattern, expand_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
 from .signature import  RuntimeInfo
@@ -443,13 +443,13 @@ def execute_step_process(step_process, global_def, sos_dict, sigil, signature, w
     try:
         if env.run_mode == 'inspect':
             env.logger.trace('Checking step with input ``{}`` and output ``{}`` and signature mode {}'
-                .format(sos_dict['_input'], shortRepr(sos_dict['_output']), env.sig_mode))
+                .format(sos_dict['_input'], short_repr(sos_dict['_output']), env.sig_mode))
         elif env.run_mode == 'prepare':
             env.logger.trace('Preparing step with input ``{}`` and output ``{}`` and signature mode {}'
-                .format(sos_dict['_input'], shortRepr(sos_dict['_output']), env.sig_mode))
+                .format(sos_dict['_input'], short_repr(sos_dict['_output']), env.sig_mode))
         else:
             env.logger.trace('Executing step with input ``{}`` and output ``{}`` and signature mode {}'
-                .format(sos_dict['_input'], shortRepr(sos_dict['_output']), env.sig_mode))
+                .format(sos_dict['_input'], short_repr(sos_dict['_output']), env.sig_mode))
         os.chdir(os.path.expanduser(workdir))
         # switch context to the new dict and switch back once the with
         # statement ends (or if an exception is raised)
@@ -470,12 +470,12 @@ def execute_step_process(step_process, global_def, sos_dict, sigil, signature, w
                 # now we should have _output
                 directive_output(*args)
                 signature.set(env.sos_dict['_output'], 'output')
-                env.logger.trace('Reset _output to ``{}``'.format(shortRepr(env.sos_dict['_output'])))
+                env.logger.trace('Reset _output to ``{}``'.format(short_repr(env.sos_dict['_output'])))
             signature.write()
     except KeyboardInterrupt:
         raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
     env.deregister_process(os.getpid())
-    env.logger.trace('Execution completed with output ``{}``'.format(shortRepr(env.sos_dict['_output'])))
+    env.logger.trace('Execution completed with output ``{}``'.format(short_repr(env.sos_dict['_output'])))
     return {'succ': 0, 'output': env.sos_dict['_output']}
 
 
@@ -558,7 +558,7 @@ class Step_Executor:
             except Exception as e:
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(shortRepr(self.step.global_def), e))
+                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(short_repr(self.step.global_def), e))
         #
         # step 3: execute statements before step input and then process step input
         # This step sets variables __step_input__ and input (the same)
@@ -597,7 +597,7 @@ class Step_Executor:
                     try:
                         SoS_exec(statement[1], self.step.sigil)
                     except Exception as e:
-                        raise RuntimeError('Failed to process statement {}: {}'.format(shortRepr(statement[1]), e))
+                        raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
             # input statement
             env.logger.trace('Handling input statement')
             key, value = self.step.statements[input_statement_idx][1:]
@@ -636,7 +636,7 @@ class Step_Executor:
             env.sos_dict.set('input', env.sos_dict['__step_input__'])
         #
         if env.run_mode == 'run':
-            env.logger.info('input:   ``{}``'.format(shortRepr(env.sos_dict['input'], noneAsNA=True)))
+            env.logger.info('input:   ``{}``'.format(short_repr(env.sos_dict['input'], noneAsNA=True)))
         #
         # step 4: run step process before the step task. This will determine
         #
@@ -723,14 +723,14 @@ class Step_Executor:
                             if res:
                                 env.sos_dict.set('_output', res['output'])
                                 env.logger.debug('_output: {}'.format(res['output']))
-                                env.logger.debug('Reuse existing output files ``{}``'.format(shortRepr(env.sos_dict['_output'])))
+                                env.logger.debug('Reuse existing output files ``{}``'.format(short_repr(env.sos_dict['_output'])))
                                 skip_loop_stmt = True
                     #
                     if not skip_loop_stmt:
                         try:
                             SoS_exec(statement[1], self.step.sigil)
                         except Exception as e:
-                            raise RuntimeError('Failed to process statement {}: {}'.format(shortRepr(statement[1]), e))
+                            raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
             #
             if '_output' in env.sos_dict:
                 self._outputs.append(env.sos_dict['_output'])
@@ -768,9 +768,9 @@ class Step_Executor:
             env.sos_dict.set('depends', sum(self._depends, []))
         #
         if env.sos_dict['output'] and not isinstance(env.sos_dict['output'][0], Undetermined) and env.run_mode == 'run':
-            env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
+            env.logger.info('output:  ``{}``'.format(short_repr(env.sos_dict['output'], noneAsNA=True)))
         if env.sos_dict['depends'] and not isinstance(env.sos_dict['depends'][0], Undetermined) and env.run_mode == 'run':
-            env.logger.info('depends: ``{}``'.format(shortRepr(env.sos_dict['depends'])))
+            env.logger.info('depends: ``{}``'.format(short_repr(env.sos_dict['depends'])))
         env.logger.trace('Checking signature (if available).')
         #
         # Step 6: check overall signature ... return if signature matches
@@ -787,7 +787,7 @@ class Step_Executor:
                         env.sos_dict.set('output', res['output'])
                         env.sos_dict.set('depends', res['depends'])
                         # everything matches
-                        env.logger.info('Reusing existing output files ``{}``'.format(shortRepr(env.sos_dict['output'])))
+                        env.logger.info('Reusing existing output files ``{}``'.format(short_repr(env.sos_dict['output'])))
                         return self.collectResult(public_vars)
                 elif env.sig_mode == 'assert':
                     if not signature.validate():
@@ -800,11 +800,11 @@ class Step_Executor:
                             env.sos_dict.set('output', res['output'])
                             env.sos_dict.set('depends', res['depends'])
                             # everything matches
-                            env.logger.info('Construct signature from existing output files ``{}``'.format(shortRepr(env.sos_dict['output'])))
+                            env.logger.info('Construct signature from existing output files ``{}``'.format(short_repr(env.sos_dict['output'])))
                             return self.collectResult(public_vars)
                         else:
                             env.logger.warning('Failed to reconstruct signature for {}'
-                                .format(shortRepr(env.sos_dict['output'])))
+                                .format(short_repr(env.sos_dict['output'])))
                     except Exception as e:
                         env.logger.warning('Failed to reconstruct signature. {}'.format(e))
         else:
@@ -837,8 +837,8 @@ class Step_Executor:
             env.sos_dict.set('_depends', d)
             env.sos_dict.set('_index', idx)
             env.logger.debug('_idx: ``{}``'.format(idx))
-            env.logger.debug('_input: ``{}``'.format(shortRepr(env.sos_dict['_input'])))
-            env.logger.debug('_output: ``{}``'.format(shortRepr(env.sos_dict['_output'])))
+            env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'])))
+            env.logger.debug('_output: ``{}``'.format(short_repr(env.sos_dict['_output'])))
             if 'active' in self.runtime_options:
                 if isinstance(self.runtime_options['active'], int):
                     if self.runtime_options['active'] >= 0 and env.sos_dict['_index'] != self.runtime_options['active']:
@@ -874,7 +874,7 @@ class Step_Executor:
                 elif env.sig_mode == 'construct':
                     try:
                         partial_signature.write()
-                        env.logger.debug('Construct signature from existing output files {}'.format(shortRepr(env.sos_dict['_output'])))
+                        env.logger.debug('Construct signature from existing output files {}'.format(short_repr(env.sos_dict['_output'])))
                         continue
                     except Exception as e:
                         env.logger.debug('Failed to reconstruct signature. {}'.format(e))
@@ -921,7 +921,7 @@ class Step_Executor:
                 # FIXME: cannot catch exception from subprocesses
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(shortRepr(self.step.task), e))
+                raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(short_repr(self.step.task), e))
         # check results? This is only meaningful for pool
         if concurrent:
             try:
@@ -942,14 +942,14 @@ class Step_Executor:
                 raise RuntimeError('Step process returns non-zero value')
             for idx, res in enumerate(proc_results):
                 if self._outputs[idx] and isinstance(self._outputs[idx][0], Undetermined):
-                    env.logger.trace('Setting _output[{}] from proc output {}'.format(idx, shortRepr(res['output'])))
+                    env.logger.trace('Setting _output[{}] from proc output {}'.format(idx, short_repr(res['output'])))
                     self._outputs[idx] = res['output']
         env.logger.trace('Checking output files {}'.format(env.sos_dict['output']))
         if env.run_mode == 'run' and env.sos_dict['output'] is not None:
             if env.sos_dict['output'] and isinstance(env.sos_dict['output'][0], Undetermined):
                 # at this point self._outputs should be expanded already.
                 env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
-                env.logger.info('output:  ``{}``'.format(shortRepr(env.sos_dict['output'], noneAsNA=True)))
+                env.logger.info('output:  ``{}``'.format(short_repr(env.sos_dict['output'], noneAsNA=True)))
             for ofile in env.sos_dict['output']:
                 if not os.path.isfile(os.path.expanduser(ofile)):
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
