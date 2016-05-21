@@ -32,6 +32,7 @@ from .sos_executor import Sequential_Executor
 from .converter import script_to_html, workflow_to_html, script_to_markdown, \
     workflow_to_markdown, script_to_notebook, workflow_to_notebook, \
     script_to_term, workflow_to_term, notebook_to_script
+from .sos_syntax import CONFIG_NAME
 
 #
 # subcommand convert
@@ -229,37 +230,48 @@ def sos_config(args, workflow_args):
         else:
             cfg = {}
         #
-        for option in args.__set_config__:
-            if '=' not in option:
-                env.logger.error('Each item after option --set should be in the format of key=value. "{}" provided.'.format(option))
-                sys.exit(1)
-            k, v = option.split('=', 1)
+        if len(args.__set_config__) == 1:
+            env.logger.error('Please specify a value for key {}'.format(args.__set_config__[0]))
+            sys.exit(1)
+        #
+        k = args.__set_config__[0]
+        if not CONFIG_NAME.match(k):
+            env.logger.error('Unacceptable variable name for config file: {}'.format(k))
+            sys.exit(1)
+        #
+        values = []
+        for v in args.__set_config__[1:]:
             try:
                 v = eval(v)
             except Exception:
                 env.logger.warning('Value {} is an invalid expression and is treated as a string.'.format(v))
-            # say v   = 1
-            #     key = a.b.c
-            #
-            # this gives:
-            #     {'a': {'b': {'c': 1}}}
-            dv = v
-            for key in reversed(k.split('.')):
-                new_dv = {}
-                new_dv[key] = dv
-                dv = new_dv
-            # however we can not update directly and has to merge two
-            # dictionaries. For example, if
-            #
-            # cfg = {'a': {'b': {'d': 2}}, {'c': 1}}
-            #
-            # we need to get
-            #
-            # cfg = {'a': {'b': {'d': 2, 'c': 1}}, {'c': 1}}
-            #
-            dict_merge(cfg, dv)
-            # reporting assignment with existing values
-            print('Set {} to {!r}'.format(k.split('.')[0], cfg[k.split('.')[0]]))
+            values.append(v)
+        #
+        if len(values) == 1:
+            values = values[0]
+        #
+        # say v   = 1
+        #     key = a.b.c
+        #
+        # this gives:
+        #     {'a': {'b': {'c': 1}}}
+        dv = values
+        for key in reversed(k.split('.')):
+            new_dv = {}
+            new_dv[key] = dv
+            dv = new_dv
+        # however we can not update directly and has to merge two
+        # dictionaries. For example, if
+        #
+        # cfg = {'a': {'b': {'d': 2}}, {'c': 1}}
+        #
+        # we need to get
+        #
+        # cfg = {'a': {'b': {'d': 2, 'c': 1}}, {'c': 1}}
+        #
+        dict_merge(cfg, dv)
+        # reporting assignment with existing values
+        print('Set {} to {!r}'.format(k.split('.')[0], cfg[k.split('.')[0]]))
         #
         with open(config_file, 'w') as config:
             config.write(yaml.safe_dump(cfg, default_flow_style=False))

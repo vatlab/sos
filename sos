@@ -220,10 +220,12 @@ if __name__ == '__main__':
         option can be a single configuration option or a list of option. Wildcard
         characters are allowed to match more options (e.g. '*timeout', or '*' for
         all options, quotation is needed to avoid shell expansion).''')
-    group.add_argument('--set', nargs='+', metavar='KEY=VALUE', dest='__set_config__',
-        help='''Set one or more arguments as one or more 'key=value' pairs. The
-        value should be quoted if it is a string. Use syntax 'A.B=v' to add
-        {'B': v} to dictionary 'A'.''')
+    group.add_argument('--set', nargs='+', metavar='KEY VALUE', dest='__set_config__',
+        help='''--set KEY VALUE sets VALUE to variable KEY. The value can be any valid
+        python expression (e.g. 5 for integer 5 and '{"c": 2, "d": 1}' for a dictionary)
+        with invalid expression (e.g. val without quote) considered as string. Syntax
+        'A.B=v' can be used to add {'B': v} to dictionary 'A', and --set KEY VALUE1 VALUE2 ...
+        will create a list with multiple values.''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_config)
     #
