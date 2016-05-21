@@ -60,9 +60,9 @@ class ProcessMonitor(threading.Thread):
                     pd.write('{}\t{:.2f}\t{}\t{}\t{}\t{}\n'.format(time.time(), cpu, mem, nch, ch_cpu, ch_mem))
             except Exception as e:
                 # if the process died, exit the thread
-                #with open(self.proc_file, 'a') as pd:
-                #    pd.write('Proc exited after {} seconds.'.format(time.time() ))
-                env.logger.warning(e)
+                # the warning message is usually:
+                # WARNING: psutil.NoSuchProcess no process found with pid XXXXX
+                #env.logger.warning(e)
                 break
 
 def summarizeExecution(pid):
