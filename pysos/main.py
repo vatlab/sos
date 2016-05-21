@@ -26,7 +26,7 @@ import yaml
 import atexit
 import fnmatch
 
-from .utils import env, get_traceback
+from .utils import env, get_traceback, dict_merge
 from .sos_script import SoS_Script
 from .sos_executor import Sequential_Executor
 from .converter import script_to_html, workflow_to_html, script_to_markdown, \
@@ -150,22 +150,6 @@ def sos_run(args, workflow_args):
 #
 # subcommand config
 #
-def dict_merge(dct, merge_dct):
-    """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
-    updating only top-level keys, dict_merge recurses down into dicts nested
-    to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
-    ``dct``.
-    :param dct: dict onto which the merge is executed
-    :param merge_dct: dct merged into dct
-    :return: None
-    """
-    for k, v in merge_dct.items():
-        if (k in dct and isinstance(dct[k], dict)
-                and isinstance(merge_dct[k], dict)):
-            dict_merge(dct[k], merge_dct[k])
-        else:
-            dct[k] = merge_dct[k]
-
 def sos_config(args, workflow_args):
     if workflow_args:
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
