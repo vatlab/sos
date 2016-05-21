@@ -230,12 +230,14 @@ def sos_config(args, workflow_args):
             cfg = {}
         #
         for option in args.__set_config__:
+            if '=' not in option:
+                env.logger.error('Each item after option --set should be in the format of key=value. "{}" provided.'.format(option))
+                sys.exit(1)
             k, v = option.split('=', 1)
             try:
                 v = eval(v)
-            except Exception as e:
-                env.logger.error('Cannot interpret option {}. Please quote the string if it is a string option. ({})'.format(option, e))
-                sys.exit(1)
+            except Exception:
+                env.logger.warning('Value {} is an invalid expression and is treated as a string.'.format(v))
             # say v   = 1
             #     key = a.b.c
             #
