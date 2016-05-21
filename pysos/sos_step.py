@@ -137,19 +137,6 @@ def handle_input_paired_with(paired_with, ifiles, _groups, _vars):
         for idx, grp in enumerate(_groups):
             _vars[idx]['_' + wv.split('.')[0]] = [file_map[x] for x in grp]
 
-def handle_input_expand_pattern(pattern, ifiles):
-    '''Handle input option pattern'''
-    if pattern is None or not pattern:
-        patterns = []
-    elif isinstance(pattern, str):
-        patterns = [pattern]
-    elif isinstance(pattern, Iterable):
-        patterns = pattern
-    else:
-        raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
-    #
-    for pattern in patterns:
-        ifiles.extend(expand_pattern(pattern))
 
 def handle_input_extract_pattern(pattern, ifiles, _groups, _vars):
     '''Handle input option pattern'''
@@ -327,11 +314,7 @@ def directive_input(*args, **kwargs):
         handle_input_paired_with(kwargs['paired_with'], ifiles,  _groups, _vars)
     # handle pattern
     if 'pattern' in kwargs:
-        env.logger.warning('Input parameter "pattern" is deprecated. Use "extract" instead.')
         handle_input_extract_pattern(kwargs['pattern'], ifiles, _groups, _vars)
-    # handle pattern
-    if 'extract' in kwargs:
-        handle_input_extract_pattern(kwargs['extract'], ifiles, _groups, _vars)
     # handle for_each
     if 'for_each' in kwargs:
         handle_input_for_each(kwargs['for_each'], _groups, _vars)
@@ -392,19 +375,6 @@ def directive_depends(*args, **kwargs):
             dfiles.append(dfile)
     env.sos_dict.set('_depends', dfiles)
 
-def handle_output_expand_pattern(pattern, ofiles):
-    #
-    if pattern is None or not pattern:
-        patterns = []
-    elif isinstance(pattern, str):
-        patterns = [pattern]
-    elif isinstance(pattern, Iterable):
-        patterns = pattern
-    else:
-        raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
-    #
-    for pattern in patterns:
-        ofiles.extend(expand_pattern(pattern))
 
 def directive_output(*args, **kwargs):
     for k in kwargs.keys():
@@ -421,12 +391,6 @@ def directive_output(*args, **kwargs):
             tmp.extend(arg)
         else:
             raise ValueError('Unrecognizable output type {}'.format(arg))
-    #
-    if 'pattern' in kwargs:
-        env.logger.warning('Output parameter "pattern" is deprecated. Use "expand" instead.')
-        handle_output_expand_pattern(kwargs['pattern'], tmp)
-    if 'expand' in kwargs:
-        handle_output_expand_pattern(kwargs['expand'], tmp)
     #
     # expand wild card variables
     ofiles = []
