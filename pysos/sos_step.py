@@ -537,9 +537,7 @@ class Step_Executor:
         env.sos_dict.set('_index', 0)
         env.sos_dict.set('__num_groups__', 1)
         # this is not secure and but let us assume this for now.
-        if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
-            env.sos_dict.set('__step_report__', '__STDERR__')
-        else:
+        if '__step_step__' not in env.sos_dict:
             env.sos_dict.set('__step_report__', '.sos/report/{}_{}.md'.format(self.step.name, self.step.index))
         if os.path.isfile(env.sos_dict['__step_report__']):
             # truncate the file
