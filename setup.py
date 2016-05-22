@@ -39,12 +39,18 @@ class InstallWithConfigurations(install):
         install.do_egg_install(self)
 
         # copy sos.vim to .vim
-        vim_dir = os.path.expanduser('~/.vim/syntax')
-        vim_file = os.path.join(vim_dir, 'sos.vim')
-        if not os.path.isdir(vim_dir):
-            os.makedirs(vim_dir)
-        shutil.copy('misc/sos.vim', vim_file)
-
+        vim_syntax_dir = os.path.expanduser('~/.vim/syntax')
+        vim_syntax_file = os.path.join(vim_syntax_dir, 'sos.vim')
+        if not os.path.isdir(vim_syntax_dir):
+            os.makedirs(vim_syntax_dir)
+        shutil.copy('misc/sos.vim', vim_syntax_file)
+        # copy vim-ipython to .vim/ftplugin
+        vim_plugin_dir = os.path.expanduser('~/.vim/ftplugin/sos')
+        if not os.path.isdir(vim_plugin_dir):
+            os.makedirs(vim_plugin_dir)
+        shutil.copy('misc/vim-ipython/ipy.vim', os.path.join(vim_plugin_dir, 'ipy.vim'))
+        shutil.copy('misc/vim-ipython/vim_ipython.py', os.path.join(vim_plugin_dir, 'vim_ipython.py'))
+        #
         # at this point, jupyter and ipython should have been installed.
         import json
         try:
