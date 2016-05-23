@@ -367,14 +367,14 @@ class SoS_Kernel(Kernel):
                         self.send_response(self.iopub_socket, 'stream',
                             {'name': 'stdout', 'text': 'Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e)})
         else:
-            # kerl is None ('') or kernel == 'sos'
-            if self.kernel != 'sos':
+            # kernel == '' or kernel == 'sos'
+            if kernel == '':
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': 'Kernel "{}" is used.\n'.format(self.kernel)})
+            elif kernel == 'sos':
                 #self.send_response(self.iopub_socket, 'stream',
                 #    {'name': 'stdout', 'text': 'Switching back to sos kernel\n'})
                 self.kernel = 'sos'
-            elif kernel == '':
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': 'Usage: switch current kernel to another Jupyter kernel (e.g. R or ir for R)\n'})
 
     def restart_kernel(self, kernel):
         if kernel == 'sos':
