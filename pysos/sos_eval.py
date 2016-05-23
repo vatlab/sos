@@ -30,7 +30,7 @@ from shlex import quote
 from tokenize import generate_tokens, untokenize
 from contextlib import contextmanager
 
-from .utils import env, Error, short_repr
+from .utils import env, Error, short_repr, DelayedAction
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
@@ -368,6 +368,10 @@ def SoS_exec(stmts, sigil='${ }'):
         else:
             env.logger.trace('Executing\n{}'.format(stmts))
         #
+        if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+            act = DelayedAction(env.logger.warning, 'Running {}'.format(short_repr(code)))
+        else:
+            act = None
         try:
             if env.run_mode == 'inspect':
                 # make sure that the expression can be completed in 5 seconds
@@ -391,6 +395,7 @@ def SoS_exec(stmts, sigil='${ }'):
                     env.sos_dict['__execute_errors__'].append(stmts, e)
             else:
                 raise
+        del act
         executed += stmts + '\n'
         # check if the statement has altered any readonly variables
         env.sos_dict.check_readonly_vars()

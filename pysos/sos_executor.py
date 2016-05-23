@@ -247,13 +247,14 @@ class Base_Executor:
         if not self.workflow.sections:
             env.logger.trace('Skip because no section is defined')
             return
+        DAG = {}
         if not nested or run_mode == 'inspect':
             env.run_mode = 'inspect'
             try:
                 self.setup(args, nested, cmd_name, config_file)
                 if run_mode == 'inspect':
                     env.sos_dict.set('__transcript__', self.transcript)
-                self.execute(args, nested, cmd_name, config_file)
+                self.execute(args, nested, cmd_name, config_file, DAG=DAG)
             except Exception:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
@@ -265,7 +266,7 @@ class Base_Executor:
                 self.setup(args, nested, cmd_name, config_file)
                 if run_mode == 'prepare':
                     env.sos_dict.set('__transcript__', self.transcript)
-                self.execute(args, nested, cmd_name, config_file)
+                self.execute(args, nested, cmd_name, config_file, DAG=DAG)
             except Exception:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
@@ -277,7 +278,7 @@ class Base_Executor:
                 self.setup(args, nested, cmd_name, config_file)
                 if run_mode == 'run':
                     env.sos_dict.set('__transcript__', self.transcript)
-                self.execute(args, nested, cmd_name, config_file)
+                self.execute(args, nested, cmd_name, config_file, DAG=DAG)
             except Exception:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
@@ -291,7 +292,7 @@ class Sequential_Executor(Base_Executor):
     def __init__(self, workflow, report=None, transcript=None):
         Base_Executor.__init__(self, workflow, report, transcript)
 
-    def execute(self, args=[], nested=False, cmd_name='', config_file=None):
+    def execute(self, args=[], nested=False, cmd_name='', config_file=None, DAG={}):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -342,11 +343,11 @@ class Sequential_Executor(Base_Executor):
             # 3. for second to later step, _step.input = _step.output
             # each section can use a separate process
             if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
-                res = Step_Executor(section).run()
+                res = Step_Executor(section).run(DAG)
             else:
                 queue = mp.Queue()
                 proc = mp.Process(target=Step_Executor(section).run_with_queue,
-                    args=(queue,))
+                    args=(queue, DAG))
                 proc.start()
                 proc.join()
                 res = queue.get()
@@ -358,7 +359,10 @@ class Sequential_Executor(Base_Executor):
                 raise RuntimeError(res)
             #res = section.run()
             for k, v in res.items():
-                env.sos_dict.set(k, v)
+                if k == '__dag__':
+                    DAG.update(v)
+                else:
+                    env.sos_dict.set(k, v)
             prog.progress(1)
         prog.done()
         # at the end
@@ -405,6 +409,8 @@ class Interactive_Executor(Base_Executor):
         # first, we try to parse it
         #
         if not block.strip():
+            for key in ['__step_input__', '__step_output__']:
+                env.sos_dict.pop(key, None)
             return
         # will exit if there is parsing error
         try:

@@ -48,15 +48,20 @@ from io import StringIO
 
 from nbconvert.exporters import Exporter
 
-@contextlib.contextmanager
-def redirect_sos_io():
-    save_stdout = sys.stdout
-    save_stderr = sys.stderr
-    sys.stdout = StringIO()
-    sys.stderr = StringIO()
-    yield
-    sys.stdout = save_stdout
-    sys.stderr = save_stderr
+class FlushableStringIO(StringIO):
+    def __init__(self, kernel, name, *args, **kwargs):
+        StringIO.__init__(self, *args, **kwargs)
+        self.kernel = kernel
+        self.name = name
+
+    def flush(self):
+        value = self.getvalue()
+        self.kernel.send_response(self.kernel.iopub_socket, 'stream',
+            {'name': self.name, 'text': value})
+        self.truncate(0)
+        self.seek(0)
+        return len(value.strip())
+
 
 __all__ = ['SoS_Exporter', 'SoS_Kernel']
 
@@ -248,6 +253,16 @@ class SoS_Kernel(Kernel):
         with open(self.report_file, 'w'):
             pass
 
+    @contextlib.contextmanager
+    def redirect_sos_io(self):
+        save_stdout = sys.stdout
+        save_stderr = sys.stderr
+        sys.stdout = FlushableStringIO(self, 'stdout')
+        sys.stderr = FlushableStringIO(self, 'stderr')
+        yield
+        sys.stdout = save_stdout
+        sys.stderr = save_stderr
+
     def do_inspect(self, code, cursor_pos, detail_level=0):
         'Inspect code'
         return {
@@ -364,14 +379,14 @@ class SoS_Kernel(Kernel):
                         self.send_response(self.iopub_socket, 'stream',
                             {'name': 'stdout', 'text': 'Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e)})
         else:
-            # kerl is None ('') or kernel == 'sos'
-            if self.kernel != 'sos':
+            # kernel == '' or kernel == 'sos'
+            if kernel == '':
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': 'Kernel "{}" is used.\n'.format(self.kernel)})
+            elif kernel == 'sos':
                 #self.send_response(self.iopub_socket, 'stream',
                 #    {'name': 'stdout', 'text': 'Switching back to sos kernel\n'})
                 self.kernel = 'sos'
-            elif kernel == '':
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': 'Usage: switch current kernel to another Jupyter kernel (e.g. R or ir for R)\n'})
 
     def restart_kernel(self, kernel):
         if kernel == 'sos':
@@ -487,20 +502,14 @@ class SoS_Kernel(Kernel):
                             {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(short_repr(code), e)})
                     return self.run_cell(code, store_history)
                 else:
-                    with redirect_sos_io():
+                    with self.redirect_sos_io():
                         try:
                             res = self.executor.run_interactive(code, command_line)
-                            sos_out = sys.stdout.getvalue()
-                            sos_err = sys.stderr.getvalue()
+                            sys.stderr.flush()
+                            sys.stdout.flush()
                         except Exception:
-                            sos_out = sys.stdout.getvalue()
-                            sos_err = sys.stderr.getvalue()
-                            if sos_out.strip():
-                                self.send_response(self.iopub_socket, 'stream',
-                                    {'name': 'stdout', 'text': sos_out})
-                            if sos_err.strip():
-                                self.send_response(self.iopub_socket, 'stream',
-                                    {'name': 'stderr', 'text': sos_err})
+                            sys.stderr.flush()
+                            sys.stdout.flush()
                             self.send_response(self.iopub_socket, 'display_data',
                                 {
                                     'source': 'SoS',
@@ -511,17 +520,9 @@ class SoS_Kernel(Kernel):
                         except KeyboardInterrupt:
                             return {'status': 'abort', 'execution_count': self.execution_count}
                     #
-                    start_output = True
                     if not silent:
+                        start_output = True
                         # Send standard output
-                        if sos_out.strip():
-                            self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stdout', 'text': sos_out})
-                            start_output = False
-                        if sos_err.strip():
-                            self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stderr', 'text': sos_err})
-                            start_output = False
                         if '__step_report__' in env.sos_dict and os.path.isfile(env.sos_dict['__step_report__']):
                             with open(env.sos_dict['__step_report__']) as sr:
                                 sos_report = sr.read()
