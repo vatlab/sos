@@ -35,7 +35,7 @@ from itertools import tee, combinations
 from .utils import env, Error, short_repr, get_traceback, pickleable, transcribe
 from .pattern import extract_pattern, expand_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
-from .signature import  RuntimeInfo
+from .signature import  RuntimeInfo, textMD5
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 
@@ -496,15 +496,19 @@ class Step_Executor:
         result += self.step.task
         return re.sub(r'\s+', ' ', result)
 
-    def run_with_queue(self, queue):
+    def step_id(self):
+        return textMD5(self.step_signature())
+
+    def run_with_queue(self, queue, DAG):
         '''Execute the step in a separate process and return the results through a
         queue '''
         try:
-            res = self.run()
+            res = self.run(DAG)
             # shared variables will be sent from subprocess to the master
             for key in env.shared_vars:
                 if key in env.sos_dict and key not in res:
                     res[key] = env.sos_dict[key]
+            res['__dag__'] = DAG
             # in run mode, these variables must be valid (not Undetermined)
             if env.run_mode == 'run':
                 for key in ('__step_input__', '__step_output__', '__step_depends__'):
@@ -518,13 +522,16 @@ class Step_Executor:
         except Exception as e:
             queue.put(e)
 
-    def run(self):
+    def run(self, DAG):
         '''Execute a single step and return results '''
+        step_id = self.step_id()
+        if step_id in DAG and DAG[step_id] == 'skip':
+            return self.collectResult([])
         #
         # Step 1: prepare environments
         #
         if env.run_mode == 'run':
-            env.logger.info('Execute ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
+            env.logger.info('Executing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
         elif env.run_mode == 'inspect':
             env.logger.trace('Checking ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
         else:
@@ -715,8 +722,8 @@ class Step_Executor:
                             elif not self._depends or env.sos_dict['_depends'] != self._depends[-1]:
                                 env.sos_dict['depends'].extend(env.sos_dict['_depends'])
                 else:
-                    # in run mode, check signature and see if all results exist
-                    if env.run_mode == 'run' and '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
+                    # in prepare mode, check signature and see if all results exist
+                    if env.run_mode in ('prepare', 'run') and '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
                         signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict.get('_depends', []), index=idx)
                         if env.sig_mode == 'default':
                             res = signature.validate()
@@ -724,6 +731,7 @@ class Step_Executor:
                                 env.sos_dict.set('_output', res['output'])
                                 env.logger.debug('_output: {}'.format(res['output']))
                                 env.logger.debug('Reuse existing output files ``{}``'.format(short_repr(env.sos_dict['_output'])))
+                                DAG[step_id] = 'skip'
                                 skip_loop_stmt = True
                     #
                     if not skip_loop_stmt:
@@ -795,21 +803,22 @@ class Step_Executor:
                 elif env.sig_mode == 'assert':
                     if not signature.validate():
                         raise RuntimeError('Signature mismatch.')
-                elif env.sig_mode == 'construct':
-                    try:
-                        res = signature.write()
-                        if res:
-                            env.sos_dict.set('input', res['input'])
-                            env.sos_dict.set('output', res['output'])
-                            env.sos_dict.set('depends', res['depends'])
-                            # everything matches
-                            env.logger.info('Construct signature from existing output files ``{}``'.format(short_repr(env.sos_dict['output'])))
-                            return self.collectResult(public_vars)
-                        else:
-                            env.logger.warning('Failed to reconstruct signature for {}'
-                                .format(short_repr(env.sos_dict['output'])))
-                    except Exception as e:
-                        env.logger.warning('Failed to reconstruct signature. {}'.format(e))
+            if env.run_mode == 'prepare' and env.sig_mode == 'construct':
+                try:
+                    res = signature.write()
+                    if res:
+                        env.sos_dict.set('input', res['input'])
+                        env.sos_dict.set('output', res['output'])
+                        env.sos_dict.set('depends', res['depends'])
+                        # everything matches
+                        env.logger.info('Construct signature from existing output files ``{}``'.format(short_repr(env.sos_dict['output'])))
+                        DAG[step_id] = 'skip'
+                        return self.collectResult(public_vars)
+                    else:
+                        env.logger.warning('Failed to reconstruct signature for {}'
+                            .format(short_repr(env.sos_dict['output'])))
+                except Exception as e:
+                    env.logger.warning('Failed to reconstruct signature. {}'.format(e))
         else:
             signature = None
         #
