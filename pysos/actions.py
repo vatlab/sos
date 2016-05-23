@@ -381,11 +381,11 @@ def SoS_Action(run_mode='run'):
             if 'workdir' in kwargs:
                 if not kwargs['workdir'] or not isinstance(kwargs['workdir'], str):
                     raise RuntimeError('workdir option should be a path, {} provided'.format(kwargs['workdir']))
-                if not os.path.isdir(kwargs['workdir']):
-                    os.makedirs(kwargs['workdir'])
+                if not os.path.isdir(os.path.expanduser(kwargs['workdir'])):
+                    os.makedirs(os.path.expanduser(kwargs['workdir']))
                 try:
                     olddir = os.getcwd()
-                    os.chdir(kwargs['workdir'])
+                    os.chdir(os.path.expanduser(kwargs['workdir']))
                     res = func(*args, **kwargs)
                 finally:
                     os.chdir(olddir)

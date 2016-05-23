@@ -240,7 +240,7 @@ class SoS_Kernel(Kernel):
         self.original_kernel = None
         self.format_obj = InteractiveShell.instance().display_formatter.format
         self.previewer = {'*': SoS_FilePreviewer().preview, '*.bam': BioPreviewer().preview }
-        self.report_file = '.sos/_summary_report.md'
+        self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
         env.sos_dict.set('__summary_report__', self.report_file)
         if os.path.isfile(self.report_file):
             os.remove(self.report_file)
@@ -526,7 +526,7 @@ class SoS_Kernel(Kernel):
                             with open(env.sos_dict['__step_report__']) as sr:
                                 sos_report = sr.read()
                             with open(self.report_file, 'a') as summary_report:
-                                summary_report.write(sos_report)
+                                summary_report.write(sos_report + '\n\n')
                             if sos_report.strip():
                                 self.send_response(self.iopub_socket, 'display_data',
                                     {
