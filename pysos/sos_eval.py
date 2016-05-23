@@ -75,6 +75,7 @@ class SoS_String:
         \#?                                 #
         0?                                  #
         (?P<width>\d+)?                     # optional width
+        ,?                                  # optional ,
         (?P<precision>\.\d+)?               # optional precision
         (?P<type>[bcdeEfFgGnosxX%])?        # optional type
         )?                                  # optional format_spec

@@ -135,9 +135,11 @@ class TestUtils(unittest.TestCase):
                 ('{0}file_ws[0]!q{1}', "'d i r/f .txt'"),
                 #
                 # !, joined by ,
-                ('{0}var2!r,{1}', "1,2,3.1"),
-                ('{0}c!r,{1}', "'file1','file2','file3'"),
-                ('{0}c!,{1}', "file1,file2,file3"),
+                ('{0}var2!r,{1}', "1, 2, 3.1"),
+                ('{0}c!r,{1}', "'file1', 'file2', 'file3'"),
+                ('{0}c!,{1}', "file1, file2, file3"),
+                #
+                ('{0}10000:,{1}', "10,000"),
                 #
                 # full name by 'a'
                 ('{0}"test_utils.py"!a{1}', os.path.abspath('test_utils.py')),
