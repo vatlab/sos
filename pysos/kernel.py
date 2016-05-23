@@ -44,6 +44,7 @@ from IPython.core.display import HTML
 from ipykernel.kernelbase import Kernel
 from jupyter_client import manager
 
+from textwrap import dedent
 from io import StringIO
 
 from nbconvert.exporters import Exporter
@@ -490,6 +491,7 @@ class SoS_Kernel(Kernel):
                             {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(short_repr(code), e)})
                     return self.run_cell(code, store_history)
                 else:
+                    code = dedent(code)
                     with self.redirect_sos_io():
                         try:
                             res = self.executor.run_interactive(code, command_line)
