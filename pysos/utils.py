@@ -36,6 +36,7 @@ import psutil
 import urllib
 import blessings
 import subprocess
+import threading
 from io import StringIO
 from html.parser import HTMLParser
 
@@ -129,7 +130,7 @@ def short_repr(obj, noneAsNA=False):
     if obj is None:
         return 'unspecified' if noneAsNA else 'None'
     elif isinstance(obj, str) and len(obj) > 50:
-        return '{}...{}'.format(obj[:30].replace('\n', '\\n'), obj[:10].replace('\n', '\\n'))
+        return '{}...{}'.format(obj[:30].replace('\n', '\\n'), obj[-10:].replace('\n', '\\n'))
     elif isinstance(obj, (str, int, float, bool)) or (isinstance(obj, collections.Sequence) \
         and len(obj) <= 2) or len(str(obj)) < 50:
         return repr(obj)
@@ -900,3 +901,20 @@ def dict_merge(dct, merge_dct):
 def pretty_size(n,pow=0,b=1024,u='B',pre=['']+[p+'i'for p in'KMGTPEZY']):
     pow,n=min(int(math.log(max(n*b**pow,1),b)),len(pre)-1),n*b**pow
     return "%%.%if %%s%%s"%abs(pow%(-pow-1))%(n/b**float(pow),pre[pow],u)
+
+class DelayedAction:
+    '''Call the passed function with param after a few seconds. It is most often 
+    used to display certain message only if an action takes a long time.
+
+        action = delayedAction(env.logger.info, 'This might take a while', 5)
+        some_action_that_might_take_a_while
+        del action
+
+    if the action finishes very quick, the message will not be displayed.    
+    '''
+    def __init__(self, func, param, delay=5):
+        self.timer = threading.Timer(delay, func, (param,))
+        self.timer.start()
+
+    def __del__(self):
+        self.timer.cancel()

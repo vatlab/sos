@@ -775,6 +775,9 @@ class Step_Executor:
         #
         # Step 6: check overall signature ... return if signature matches
         #
+        # output stdout and stderr to notebook in interactive mode
+        sys.stderr.flush()
+        sys.stdout.flush()
         # if the signature matches, the whole step is ignored
         if env.sos_dict['input'] is not None and env.sos_dict['output'] is not None:
             signature = RuntimeInfo(step_sig,
@@ -813,6 +816,9 @@ class Step_Executor:
         #
         # Step 7: execute step process.
         #
+        # output stdout and stderr to notebook in interactive mode
+        sys.stderr.flush()
+        sys.stdout.flush()
         env.logger.trace('Executing step process.')
         proc_results = []
         if '_runtime' in env.sos_dict:
@@ -839,6 +845,9 @@ class Step_Executor:
             env.logger.debug('_idx: ``{}``'.format(idx))
             env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'])))
             env.logger.debug('_output: ``{}``'.format(short_repr(env.sos_dict['_output'])))
+            # output stdout and stderr to notebook in interactive mode
+            sys.stderr.flush()
+            sys.stdout.flush()
             if 'active' in self.runtime_options:
                 if isinstance(self.runtime_options['active'], int):
                     if self.runtime_options['active'] >= 0 and env.sos_dict['_index'] != self.runtime_options['active']:

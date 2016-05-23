@@ -405,6 +405,8 @@ class Interactive_Executor(Base_Executor):
         # first, we try to parse it
         #
         if not block.strip():
+            for key in ['__step_input__', '__step_output__']:
+                env.sos_dict.pop(key, None)
             return
         # will exit if there is parsing error
         try:
