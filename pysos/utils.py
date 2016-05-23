@@ -203,13 +203,19 @@ class WorkflowDict(object):
         self.set(key, value)
 
     def __cmp_values__(self, A, B):
-        C = A == B
-        if isinstance(C, bool):
-            return C
-        elif hasattr(C, '__iter__'):
-            return all(C)
-        else:
-            env.logger.warning('Failed to compare "{}" and "{}"'.format(A, B))
+        try:
+            C = A == B
+            if isinstance(C, bool):
+                return C
+            # numpy has this func
+            if hasattr(C, 'all'):
+                return C.all()
+            elif hasattr(C, '__iter__'):
+                return all(C)
+            else:
+                raise ValueError('Unknown comparison result "{}"'.format(short_repr(C)))
+        except Exception as e:
+            env.logger.warning('Failed to compare "{}" and "{}": {}'.format(short_repr(A), short_repr(B), e))
             return False
 
     def check_readonly_vars(self):
