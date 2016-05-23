@@ -381,11 +381,11 @@ def SoS_Action(run_mode='run'):
             if 'workdir' in kwargs:
                 if not kwargs['workdir'] or not isinstance(kwargs['workdir'], str):
                     raise RuntimeError('workdir option should be a path, {} provided'.format(kwargs['workdir']))
-                if not os.path.isdir(kwargs['workdir']):
-                    os.makedirs(kwargs['workdir'])
+                if not os.path.isdir(os.path.expanduser(kwargs['workdir'])):
+                    os.makedirs(os.path.expanduser(kwargs['workdir']))
                 try:
                     olddir = os.getcwd()
-                    os.chdir(kwargs['workdir'])
+                    os.chdir(os.path.expanduser(kwargs['workdir']))
                     res = func(*args, **kwargs)
                 finally:
                     os.chdir(olddir)
@@ -1028,6 +1028,8 @@ def pandoc(script=None, output=None, **kwargs):
             report.write(script)
     elif 'filename' in kwargs:
         script_file = kwargs['filename']
+    elif '__interactive__' in env.sos_dict and env.sos_dict['__interactive__'] and '__summary_report__' in env.sos_dict:
+        script_file = env.sos_dict['__summary_report__']
     else:
         step_reports = glob.glob('.sos/report/*')
         step_reports.sort(key=natural_keys)
@@ -1128,6 +1130,8 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
             report.write(script)
     elif 'filename' in kwargs:
         script_file = kwargs['filename']
+    elif '__interactive__' in env.sos_dict and env.sos_dict['__interactive__'] and '__summary_report__' in env.sos_dict:
+        script_file = env.sos_dict['__summary_report__']
     else:
         step_reports = glob.glob('.sos/report/*')
         step_reports.sort(key=natural_keys)
@@ -1161,7 +1165,7 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
     #        clean = TRUE, params = NULL, knit_meta = NULL, envir = parent.frame(),
     #        run_pandoc = TRUE, quiet = FALSE, encoding = getOption("encoding"))
     command = '''Rscript -e "rmarkdown::render({{}}, output_file={!r} {} {})" '''.format(
-        output_file, arg_output_format, extra_args)
+        os.path.abspath(output_file), arg_output_format, extra_args)
     try:
         cmd = command.replace('{}', '{!r}'.format(script_file))
         p = subprocess.Popen(cmd, shell=True)

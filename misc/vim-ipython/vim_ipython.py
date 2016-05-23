@@ -360,7 +360,12 @@ def dehtml(text):
     #
     # Do not understand why, but I cannot define the class outside of the 
     # function.
-    from html.parser import HTMLParser
+    try:
+        # python 2
+        from HTMLParser import HTMLParser
+    except ImportError:
+        # python 3
+        from html.parser import HTMLParser
     # added by BoPeng to handle html output from kernel
     class _DeHTMLParser(HTMLParser):
         '''This parser analyzes input text, removes HTML tags such as

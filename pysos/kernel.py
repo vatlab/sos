@@ -31,7 +31,7 @@ import zipfile
 import tarfile
 import gzip
 
-from .utils import env, WorkflowDict, short_repr, pretty_size
+from .utils import env, WorkflowDict, short_repr, pretty_size, dehtml
 from ._version import __sos_version__, __version__
 from .sos_eval import SoS_exec, interpolate
 from .sos_executor import Interactive_Executor
@@ -96,6 +96,11 @@ class SoS_FilePreviewer():
         elif filename.lower().endswith('.pdf'):
             return 'display_data', { 'text/html':
                 HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}
+        elif filename.lower().endswith('.html'):
+            with open(filename) as html:
+                content = html.read()
+            return 'display_data', { 'text/html': content,
+                'text/plain': dehtml(content) }
         elif filename.lower().endswith('.csv') or filename.lower().endswith('.tsv'):
             try:
                 import pandas
@@ -241,6 +246,13 @@ class SoS_Kernel(Kernel):
         self.original_kernel = None
         self.format_obj = InteractiveShell.instance().display_formatter.format
         self.previewer = {'*': SoS_FilePreviewer().preview, '*.bam': BioPreviewer().preview }
+        self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
+        env.sos_dict.set('__summary_report__', self.report_file)
+        if os.path.isfile(self.report_file):
+            os.remove(self.report_file)
+        # touch the file
+        with open(self.report_file, 'w'):
+            pass
 
     @contextlib.contextmanager
     def redirect_sos_io(self):
@@ -516,6 +528,8 @@ class SoS_Kernel(Kernel):
                         if '__step_report__' in env.sos_dict and os.path.isfile(env.sos_dict['__step_report__']):
                             with open(env.sos_dict['__step_report__']) as sr:
                                 sos_report = sr.read()
+                            with open(self.report_file, 'a') as summary_report:
+                                summary_report.write(sos_report + '\n\n')
                             if sos_report.strip():
                                 self.send_response(self.iopub_socket, 'display_data',
                                     {
@@ -550,8 +564,8 @@ class SoS_Kernel(Kernel):
                                         'metadata': {},
                                         'data': { 'text/html':
                                             HTML('''<pre> input: {}\noutput: {}\n</pre>'''.format(
-                                            ', '.join('<a href="{0}">{0}</a>'.format(x) for x in input_files),
-                                            ', '.join('<a href="{0}">{0}</a>'.format(x) for x in output_files))).data
+                                            ', '.join('<a target="_blank" href="{0}">{0}</a>'.format(x) for x in input_files),
+                                            ', '.join('<a target="_blank" href="{0}">{0}</a>'.format(x) for x in output_files))).data
                                         }
                                     })
                         # Send images, if any

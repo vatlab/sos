@@ -386,7 +386,7 @@ class Interactive_Executor(Base_Executor):
         # ignored
         parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
         # ignored
-        parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', default='.sos/__interactive_report__')
+        parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', default='.sos/__step_report.md')
         parser.add_argument('-t', dest='__transcript__', nargs='?', const='__STDERR__',
             metavar='TRANSCRIPT')
         runmode = parser.add_argument_group(title='Run mode options')
