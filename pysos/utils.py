@@ -215,9 +215,6 @@ class WorkflowDict(object):
     def check_readonly_vars(self):
         for key in env.readonly_vars:
             if key in self._readonly_vars:
-                env.logger.error(self._dict[key])
-                env.logger.error(self._readonly_vars[key])
-                env.logger.error(self.__cmp_values__(self._dict[key], self._readonly_vars[key]))
                 if not self.__cmp_values__(self._dict[key], self._readonly_vars[key]):
                     if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
                         env.logger.warning('readonly variable {} is changed from {} to {}'
