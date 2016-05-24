@@ -60,7 +60,7 @@ class TestExecute(unittest.TestCase):
         self.assertEqual(subprocess.call('sos config -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos config -g --get', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos config --get', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos config --set "a=5"', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos config --set a 5', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos config --get a', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos config --unset a', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
 
@@ -439,7 +439,7 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
 
 files = ['a-20.txt', 'b-10.txt']
 input: files, pattern=['{name}-{par}.txt', '{base}.txt']
-output: pattern=['{base}-{name}-{par}.txt', '{par}.txt']
+output: expand_pattern('{base}-{name}-{par}.txt'), expand_pattern('{par}.txt')
 
 """)
         wf = script.workflow()
