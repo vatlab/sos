@@ -96,6 +96,7 @@ def sos_inspect(args, workflow_args):
     args.__config__ = None
     args.__report__ = None
     args.__construct__ = False
+    args.__debug_mode__ = False
     sos_run(args, workflow_args)
 
 #
@@ -110,6 +111,7 @@ def sos_prepare(args, workflow_args):
     args.__config__ = None
     args.__report__ = None
     args.__construct__ = False
+    args.__debug_mode__ = False
     sos_run(args, workflow_args)
 
 #
@@ -138,7 +140,7 @@ def sos_run(args, workflow_args):
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
-        executor = Sequential_Executor(workflow, report=args.__report__, transcript=args.__transcript__)
+        executor = Sequential_Executor(workflow, report=args.__report__, transcript=args.__transcript__, debug=args.__debug_mode__)
         executor.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__,
             run_mode=run_mode, sig_mode=sig_mode, verbosity = args.verbosity)
     except Exception as e:

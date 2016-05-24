@@ -76,10 +76,11 @@ class ExecuteError(Error):
 
 
 class Base_Executor:
-    def __init__(self, workflow, report, transcript):
+    def __init__(self, workflow, report, transcript, debug):
         self.workflow = workflow
         self.report = report
         self.transcript = transcript
+        self.debug = debug
 
     def _parse_error(self, msg):
         '''This function will replace error() function in argparse module so that SoS
@@ -289,8 +290,8 @@ class Sequential_Executor(Base_Executor):
     #
     # A SoS workflow with multiple steps
     #
-    def __init__(self, workflow, report=None, transcript=None):
-        Base_Executor.__init__(self, workflow, report, transcript)
+    def __init__(self, workflow, report=None, transcript=None, debug=False):
+        Base_Executor.__init__(self, workflow, report, transcript, debug)
 
     def execute(self, args=[], nested=False, cmd_name='', config_file=None, DAG={}):
         '''Execute a workflow with specified command line args. If sub is True, this
@@ -342,7 +343,7 @@ class Sequential_Executor(Base_Executor):
             # 2. for subworkflow, _step.input = _input
             # 3. for second to later step, _step.input = _step.output
             # each section can use a separate process
-            if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+            if self.debug or ('__interactive__' in env.sos_dict and env.sos_dict['__interactive__']):
                 res = Step_Executor(section).run(DAG)
             else:
                 queue = mp.Queue()

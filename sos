@@ -97,7 +97,7 @@ if __name__ == '__main__':
             to prepare resources, and run mode to execute the pipelines. Run mode
             options allow you to check the script or download resources without
             actually running the workflow.''')
-    runmode.add_argument('-d', action='store_true', dest='__dryrun__',
+    runmode.add_argument('-d', action='store_true', dest='__debug_mode__',
         help=argparse.SUPPRESS)
     runmode.add_argument('-i', action='store_true', dest='__inspect__',
         help='''Execute the workflow in inspect mode in which step processes
