@@ -525,8 +525,6 @@ class Step_Executor:
     def run(self, DAG):
         '''Execute a single step and return results '''
         step_id = self.step_id()
-        if step_id in DAG and DAG[step_id] == 'skip':
-            return self.collectResult([])
         #
         # Step 1: prepare environments
         #
@@ -554,6 +552,15 @@ class Step_Executor:
         # these are temporary variables that should be removed if exist
         for var in ('input', 'output', 'depends', '_input', '_depends', '_output'):
             env.sos_dict.pop(var, '')
+        #
+        if step_id in DAG and DAG[step_id]['status'] == 'skip':
+            env.sos_dict.set('input',  DAG[step_id]['input'])
+            env.sos_dict.set('output',  DAG[step_id]['output'])
+            env.sos_dict.set('depends',  DAG[step_id]['depends'])
+            public_vars = DAG[step_id]['public_vars'].keys()
+            for x in public_vars:
+                env.sos_dict.set(x, DAG[step_id]['public_vars'][x])
+            return self.collectResult([])
         #
         # step 2: execute global process
         #
@@ -729,7 +736,6 @@ class Step_Executor:
                                 env.sos_dict.set('_output', res['output'])
                                 env.logger.debug('_output: {}'.format(res['output']))
                                 env.logger.debug('Reuse existing output files ``{}``'.format(short_repr(env.sos_dict['_output'])))
-                                DAG[step_id] = 'skip'
                                 skip_loop_stmt = True
                     #
                     if not skip_loop_stmt:
@@ -810,7 +816,8 @@ class Step_Executor:
                         env.sos_dict.set('depends', res['depends'])
                         # everything matches
                         env.logger.info('Construct signature from existing output files ``{}``'.format(short_repr(env.sos_dict['output'])))
-                        DAG[step_id] = 'skip'
+                        DAG[step_id] = {'status': 'skip', 'input': res['input'], 'output': res['output'], 'depends': res['depends'],
+                            'public_vars': {x: env.sos_dict[x] for x in public_vars}}
                         return self.collectResult(public_vars)
                     else:
                         env.logger.warning('Failed to reconstruct signature for {}'
