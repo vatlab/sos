@@ -187,6 +187,8 @@ class SoS_String:
                     return self._repr(result, fmt, conversion) + self.interpolate(text[j+len(self.r):])
                 except Exception as e:
                     self.error_count += 1
+                    if self.error_count > 10:
+                        raise
                     if self.r not in text[j+1:]:
                         raise InterpolationError(text[:j], e)
                     j = text.index(self.r, j+1)
