@@ -560,7 +560,7 @@ class Step_Executor:
             public_vars = DAG[step_id]['public_vars'].keys()
             for x in public_vars:
                 env.sos_dict.set(x, DAG[step_id]['public_vars'][x])
-            return self.collectResult([])
+            return self.collectResult(public_vars)
         #
         # step 2: execute global process
         #
