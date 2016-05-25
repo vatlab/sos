@@ -370,11 +370,11 @@ def SoS_exec(stmts, sigil='${ }'):
         else:
             env.logger.trace('Executing\n{}'.format(stmts))
         #
-        if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
-            act = DelayedAction(env.logger.warning, 'Running {}'.format(short_repr(code)))
-        else:
-            act = None
         try:
+            if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+                act = DelayedAction(env.logger.warning, 'Running {}'.format(short_repr(code)))
+            else:
+                act = None
             if env.run_mode == 'inspect':
                 # make sure that the expression can be completed in 5 seconds
                 with time_limit(env.sos_dict['CONFIG'].get('sos_inspect_timeout', 5), stmts):
@@ -397,7 +397,8 @@ def SoS_exec(stmts, sigil='${ }'):
                     env.sos_dict['__execute_errors__'].append(stmts, e)
             else:
                 raise
-        del act
+        finally:
+            del act
         executed += stmts + '\n'
         # check if the statement has altered any readonly variables
         env.sos_dict.check_readonly_vars()

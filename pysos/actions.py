@@ -1087,12 +1087,24 @@ def pandoc(script=None, output=None, **kwargs):
     try:
         cmd = command.replace('{}', shlex.quote(script_file))
         env.logger.trace('Running command "{}"'.format(cmd))
-        p = subprocess.Popen(cmd, shell=True)
-        env.register_process(p.pid, 'Runing {}'.format(script_file))
-        ret = p.wait()
+        if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+            # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
+            p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            pid = p.pid
+            env.register_process(p.pid, 'Runing {}'.format(script_file))
+            out, err = p.communicate()
+            sys.stdout.write(out.decode())
+            sys.stderr.write(err.decode())
+            ret = p.returncode
+        else:
+            p = subprocess.Popen(cmd, shell=True)
+            pid = p.pid
+            env.register_process(pid, 'Runing {}'.format(script_file))
+            ret = p.wait()
+    except Exception as e:
+        env.logger.error(e)
     finally:
         env.deregister_process(p.pid)
-        os.remove(script_file)
     if ret != 0:
         temp_file = os.path.join('.sos/{}_{}.md'.format('pandoc', os.getpid()))
         shutil.copyfile(script_file, temp_file)
@@ -1168,13 +1180,27 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
         os.path.abspath(output_file), arg_output_format, extra_args)
     try:
         cmd = command.replace('{}', '{!r}'.format(script_file))
-        p = subprocess.Popen(cmd, shell=True)
-        env.register_process(p.pid, 'Runing {}'.format(script_file))
-        env.logger.info(cmd)
-        ret = p.wait()
+        if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+            # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
+            p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            pid = p.pid
+            env.register_process(p.pid, 'Runing {}'.format(script_file))
+            out, err = p.communicate()
+            sys.stdout.write(out.decode())
+            sys.stderr.write(err.decode())
+            ret = p.returncode
+            env.logger.info(summarizeExecution(pid))
+        else:
+            p = subprocess.Popen(cmd, shell=True)
+            pid = p.pid
+            env.register_process(pid, 'Runing {}'.format(script_file))
+            ret = p.wait()
+            env.logger.info(summarizeExecution(pid))
+    except Exception as e:
+        env.logger.error(e)
     finally:
         env.deregister_process(p.pid)
-        os.remove(script_file)
+        # os.remove(script_file)
     if ret != 0:
         temp_file = os.path.join('.sos/R_{}.Rmd'.format(os.getpid()))
         shutil.copyfile(script_file, temp_file)
