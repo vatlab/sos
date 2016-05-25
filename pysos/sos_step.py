@@ -482,8 +482,11 @@ def execute_step_process(step_process, global_def, sos_dict, sigil, signature, w
 class Step_Executor:
     def __init__(self, step):
         self.step = step
+        self.step_sig = self._step_signature()
+        self.step_id = textMD5(self.step_sig)
+        self.public_vars = set()
 
-    def step_signature(self):
+    def _step_signature(self):
         '''return everything that might affect the execution of the step
         namely, global process, step definition etc to create a unique
         signature that might will be changed with the change of SoS script.'''
@@ -495,9 +498,6 @@ class Step_Executor:
                 result += statement[1] + '\n'
         result += self.step.task
         return re.sub(r'\s+', ' ', result)
-
-    def step_id(self):
-        return textMD5(self.step_signature())
 
     def run_with_queue(self, queue, DAG):
         '''Execute the step in a separate process and return the results through a
@@ -522,19 +522,8 @@ class Step_Executor:
         except Exception as e:
             queue.put(e)
 
-    def run(self, DAG):
-        '''Execute a single step and return results '''
-        step_id = self.step_id()
-        #
-        # Step 1: prepare environments
-        #
-        if env.run_mode == 'run':
-            env.logger.info('Executing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
-        elif env.run_mode == 'inspect':
-            env.logger.trace('Checking ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
-        else:
-            env.logger.trace('Preparing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
-        #
+    def prepare_vars(self):
+        ''' setting variables used for the step '''
         # step_name can be used by step process to determine actions dynamically.
         env.sos_dict.set('step_name', '{}_{}'.format(self.step.name, self.step.index))
         # used by nested workflow to determine content of parental workflow
@@ -542,25 +531,49 @@ class Step_Executor:
         env.sos_dict.set('_index', 0)
         env.sos_dict.set('__num_groups__', 1)
         # this is not secure and but let us assume this for now.
-        if '__step_step__' not in env.sos_dict:
+        if '__step_report__' not in env.sos_dict:
             env.sos_dict.set('__step_report__', '.sos/report/{}_{}.md'.format(self.step.name, self.step.index))
         if os.path.isfile(env.sos_dict['__step_report__']):
             # truncate the file
             with open(env.sos_dict['__step_report__'], 'w'):
                 pass
-        #
         # these are temporary variables that should be removed if exist
         for var in ('input', 'output', 'depends', '_input', '_depends', '_output'):
             env.sos_dict.pop(var, '')
+       # we are using step_output as our input
+        if '__step_output__' not in env.sos_dict:
+            raise RuntimeError('No step input is defined for step {}_{}'.format(self.step.name, self.step.index))
+        else:
+            env.sos_dict.set('__step_input__', copy.deepcopy(env.sos_dict['__step_output__']))
+
+    def run(self, DAG):
+        '''Execute a single step and return results '''
+        if self.step_id not in DAG:
+            DAG[self.step_id] = {'status': None}
         #
-        if step_id in DAG and DAG[step_id]['status'] == 'skip':
+        # Step 1: prepare environments
+        #
+        if env.run_mode == 'run':
+            env.logger.info('Executing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
+        else:
+            env.logger.trace('{} ``{}_{}``: {}'.format('Inspecting' if env.run_mode == 'inspect' else 'Preparing', 
+                self.step.name, self.step.index, self.step.comment.strip()))
+        #
+        self.prepare_vars()
+        #
+        # if the step is skipped because of signature match, ignore ...
+        # 
+        # this is possible for skip in prepare mode because of DAG in inspect mode
+        # or skip in run mode because of DAG in prepare mode
+        if DAG[step_id]['status'] == 'skip':
             env.sos_dict.set('input',  DAG[step_id]['input'])
             env.sos_dict.set('output',  DAG[step_id]['output'])
             env.sos_dict.set('depends',  DAG[step_id]['depends'])
-            public_vars = DAG[step_id]['public_vars'].keys()
-            for x in public_vars:
+            self.public_vars = DAG[step_id]['public_vars'].keys()
+            for x in self.public_vars:
                 env.sos_dict.set(x, DAG[step_id]['public_vars'][x])
-            return self.collectResult(public_vars)
+            # the collect result function will return alias to SoS
+            return self.collectResult()
         #
         # step 2: execute global process
         #
@@ -576,8 +589,7 @@ class Step_Executor:
         # This step sets variables __step_input__ and input (the same)
         # and record _groups and _vars
         #
-        # these will be the variables that will be returned as step alias
-        public_vars = set()
+        # this function sets self._groups, self._vars, and __step_input__
         # look for input statement.
         input_statement_idx = [idx for idx,x in enumerate(self.step.statements) if x[0] == ':' and x[1] == 'input']
         if not input_statement_idx:
@@ -586,18 +598,14 @@ class Step_Executor:
             input_statement_idx = input_statement_idx[0]
         else:
             raise RuntimeError('More than one step input are specified in step {}_{}'.format(self.step.name, self.step.index))
-        # we are using step_output as our input
-        if '__step_output__' not in env.sos_dict:
-            raise RuntimeError('No step input is defined for step {}_{}'.format(self.step.name, self.step.index))
-        else:
-            env.sos_dict.set('__step_input__', copy.deepcopy(env.sos_dict['__step_output__']))
+        #
         # if there is an input statement, execute the statements before it, and then the statement
         if input_statement_idx is not None:
             # execute before input stuff
             for statement in self.step.statements[:input_statement_idx]:
                 if statement[0] == '=':
                     key, value = statement[1:]
-                    public_vars.add(key)
+                    self.public_vars.add(key)
                     try:
                         env.sos_dict[key] = SoS_eval(value, self.step.sigil)
                         transcribe('{} = {}'.format(key, env.sos_dict[key]))
@@ -633,13 +641,12 @@ class Step_Executor:
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
         #
-        # for dynamic input value and not in run mode,
-        # we cannot do anything
+        # for dynamic input value and not in run mode, we cannot do anything
         if not self._groups:
             env.sos_dict.set('input', None)
             env.sos_dict.set('output', None)
             env.sos_dict.set('depends', None)
-            return self.collectResult([])
+            return self.collectResult()
         elif None in self._groups:
             if not all(x is None for x in self._groups):
                 raise RuntimeError('Either none or all of input groups can be unknown.')
@@ -650,17 +657,8 @@ class Step_Executor:
         if env.run_mode == 'run':
             env.logger.info('input:   ``{}``'.format(short_repr(env.sos_dict['input'], noneAsNA=True)))
         #
-        # step 4: run step process before the step task. This will determine
-        #
-        # _depends and _outputs
-        #
-        # During this process, the statements might be ignored if signature matches.
-        #
+        # step 4: run step process before the step task. This will determine # _outputs
         env.logger.trace('Handling statements after input statement')
-        step_sig = self.step_signature()
-        #
-        self._outputs = []
-        self._depends = []
         #
         env.sos_dict.set('__num_groups__', len(self._groups))
         # 
@@ -669,23 +667,37 @@ class Step_Executor:
             self.runtime_options = env.sos_dict['_runtime']
         else:
             self.runtime_options = {}
-        concurrent = env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in self.runtime_options and self.runtime_options['concurrent']
+        concurrent = env.max_jobs > 1 and self.step.task and len(self._groups) > 1 and 'concurrent' in self.runtime_options and self.runtime_options['concurrent']
         if concurrent:
             pool = mp.Pool(min(env.max_jobs, len(self._groups)))
-
+        #
+        # default method to handle output files...
+        output_dedup = True
+        self._outputs = [None for x in self._groups]
+        partial_signatures = [None for x in self._groups]
         for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
-            # other variables
-            skip_loop_stmt = False
+            #
+            # if a step is skipped according to DAG, we cannot check signature here because
+            # we do not know output yet.
+            try:
+                if DAG[step_id]['substeps'][idx]['status'] == 'skip':
+                    continue
+            except:
+                # key error, ok ...
+                pass
+            #
             env.sos_dict.update(v)
             env.sos_dict.set('_input', g)
             env.sos_dict.set('_index', idx)
-            for key in ('_output', '_depends'):
-                if key in env.sos_dict:
-                    env.sos_dict.pop(key)
+            env.sos_dict.set('_output', None)
+            env.sos_dict.set('_depends', None)
+            env.sos_dict.set('output', None)
+            env.sos_dict.set('depends', None)
+            #
             for statement in self.step.statements[input_statement_idx:]:
                 if statement[0] == '=':
                     key, value = statement[1:]
-                    public_vars.add(key)
+                    self.public_vars.add(key)
                     try:
                         env.sos_dict[key] = SoS_eval(value, self.step.sigil)
                     except Exception as e:
@@ -695,6 +707,10 @@ class Step_Executor:
                     # output, depends, and process can be processed multiple times
                     try:
                         args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
+                        if key == 'output' and 'dedup' in kwargs:
+                            if not isinstance(kwargs['dedup'], bool):
+                                raise ValueError('Value for option dedup can only be True/False, "{}" provided'.format(kwargs['dedup']))
+                            output_dedup = kwargs['dedup']
                         # dynamic output or dependent files
                         if 'dynamic' in kwargs:
                             env.logger.trace('Handling dynamic {}'.format(key))
@@ -719,38 +735,31 @@ class Step_Executor:
                     # The following set 'output' as an accumulated version of _output
                     #
                     if key == 'output':
-                        if '_output' in env.sos_dict and env.sos_dict['_output'] and not isinstance(env.sos_dict['_output'][0], Undetermined):
-                            if 'output' not in env.sos_dict:
+                        if env.sos_dict['_output'] and not isinstance(env.sos_dict['_output'][0], Undetermined):
+                            if env.sos_dict['output'] is None:
                                 env.sos_dict.set('output', copy.deepcopy(env.sos_dict['_output']))
-                            elif not self._outputs or env.sos_dict['_output'] != self._outputs[-1]:
+                            else:
                                 env.sos_dict['output'].extend(env.sos_dict['_output'])
+                                if output_dedup:
+                                    env.sos_dict['output'] = list(OrderedDict.fromkeys(env.sos_dict['output']))
                     elif key == 'depends':
-                        if '_depends' in env.sos_dict:
-                            if 'depends' not in env.sos_dict:
-                                env.sos_dict.set('depends', copy.deepcopy(env.sos_dict['_depends']))
-                            elif not self._depends or env.sos_dict['_depends'] != self._depends[-1]:
-                                env.sos_dict['depends'].extend(env.sos_dict['_depends'])
+                        if env.sos_dict['depends'] is None:
+                            env.sos_dict.set('depends', copy.deepcopy(env.sos_dict['_depends']))
+                        else:
+                            env.sos_dict['depends'].extend(env.sos_dict['_depends'])
+                            env.sos_dict['depends'] = list(OrderedDict.fromkeys(env.sos_dict['depends']))
                 else:
-                    # in prepare mode, check signature and see if all results exist
-                    if env.run_mode in ('prepare', 'run') and '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
-                        signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict.get('_depends', []), index=idx)
-                        if env.sig_mode == 'default':
-                            res = signature.validate()
-                            if res:
-                                env.sos_dict.set('_output', res['output'])
-                                env.logger.debug('_output: {}'.format(res['output']))
-                                env.logger.debug('Reuse existing output files ``{}``'.format(short_repr(env.sos_dict['_output'])))
-                                skip_loop_stmt = True
-                    #
-                    if not skip_loop_stmt:
-                        try:
-                            SoS_exec(statement[1], self.step.sigil)
-                        except Exception as e:
-                            raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
+                    try:
+                        SoS_exec(statement[1], self.step.sigil)
+                    except Exception as e:
+                        raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
+                # output stdout and stderr to notebook in interactive mode
+                sys.stderr.flush()
+                sys.stdout.flush()
             #
-            # output stdout and stderr to notebook in interactive mode
-            sys.stderr.flush()
-            sys.stdout.flush()
+            # after execution of statements, here comes the tasks ...
+            #
+            # handle active runtime option
             if 'active' in self.runtime_options:
                 if isinstance(self.runtime_options['active'], int):
                     if self.runtime_options['active'] >= 0 and env.sos_dict['_index'] != self.runtime_options['active']:
@@ -768,51 +777,13 @@ class Step_Executor:
                 else:
                     raise RuntimeError('Unacceptable value for option active: {}'.format(self.runtime_options['active']))
             #
-            # If the users specifies output files for each loop (using ${input} etc, we
-            # can try to see if we can create partial signature. This would help if the
-            # step is interrupted in the middle.
-            partial_signature = None
-            if env.sos_dict['_output'] is not None and env.sos_dict['_output'] != env.sos_dict['output'] and env.run_mode == 'run':
-                partial_signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], index=idx)
-                if env.sig_mode == 'default':
-                    if partial_signature.validate():
-                        # everything matches
-                        env.logger.info('Reusing existing output files {}'.format(', '.join(env.sos_dict['_output'])))
-                        continue
-                elif env.sig_mode == 'assert':
-                    if not partial_signature.validate():
-                        raise RuntimeError('Signature mismatch for input {} and output {}'.format(
-                            ', '.join(env.sos_dict['_input']), ', '.join(env.sos_dict['_output'])))
-                elif env.sig_mode == 'construct':
-                    try:
-                        partial_signature.write()
-                        env.logger.debug('Construct signature from existing output files {}'.format(short_repr(env.sos_dict['_output'])))
-                        continue
-                    except Exception as e:
-                        env.logger.debug('Failed to reconstruct signature. {}'.format(e))
-            # now, if output file has already been generated using non-process statement
-            # so that no process need to be run, we create signature from outside.
-            if not self.step.task:
-                # if no process, we should be able to figure out undetermined output now
-                if env.sos_dict['_output'] and isinstance(env.sos_dict['_output'][0], Undetermined) and env.run_mode == 'run':
-                    value = env.sos_dict['_output'][0].expr
-                    env.logger.trace('Processing output: {}'.format(value))
-                    args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
-                    # now we should have _output
-                    directive_output(*args)
-                    env.logger.trace('Reset _output to {}'.format(env.sos_dict['_output']))
-                    self._outputs[idx] = env.sos_dict['_output']
-                if partial_signature is not None:
-                    partial_signature.set(env.sos_dict['_output'], 'output')
-                    partial_signature.write()
-                continue
-            #
+            partial_signature = RuntimeInfo(self.step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], index=idx)
             try:
                 if concurrent:
                     proc_results.append(pool.apply_async(
                         execute_step_process,   # function
-                        (self.step.task,          # process
-                        self.step.global_def,    # global process
+                        (self.step.task,        # task
+                        self.step.global_def,   # global process
                         env.sos_dict.clone_pickleable(),
                         self.step.sigil,
                         partial_signature,
@@ -821,7 +792,7 @@ class Step_Executor:
                     # execute in existing process
                     proc_results.append(
                         execute_step_process(   # function
-                        self.step.task,           # process
+                        self.step.task,         # task
                         '',                     # local execusion, no need to re-run global
                         # do not clone dict
                         env.sos_dict,
@@ -833,37 +804,93 @@ class Step_Executor:
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
                 raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(short_repr(self.step.task), e))
+            #
+            if not concurrent:
+                # if not concurrent, we can save signature right after it is done
+                self.handle_undetermined_partial_output(idx)
+                self.handle_partial_signature(partial_signature, idx, DAG)
         #
-        # step 5: after executing all non-task process,
-        # determine variables output and depends
+        # check results? This is only meaningful for pool
+        if concurrent:
+            try:
+                proc_results = [res.get() if isinstance(res, AsyncResult) else res for res in proc_results]
+            except KeyboardInterrupt:
+                # if keyboard interrupt
+                pool.terminate()
+                pool.join()
+                raise RuntimeError('KeyboardInterrupt fro m {} (master)'.format(os.getpid()))
+            except Exception as e:
+                # if keyboard interrupt etc
+                env.logger.error('Caught {}'.format(e))
+                pool.terminate()
+                pool.join()
+                raise
+            # 
+            pool.close()
+            pool.join()
+            #
+            for idx in enumerate(proc_results):
+                self.handle_undetermined_partial_output(idx)
+                self.handle_partial_signature(idx, DAG)
+        if not all(x['succ']==0 for x in proc_results):
+            raise RuntimeError('Step process returns non-zero value')
         #
-        # if no output directive, assuming UNKNOWN output for each step
-        if not self._outputs:
-            self._outputs = [None for x in self._groups]
-        # if no depends directive, assuming no dependent files for each step
-        if not self._depends:
-            self._depends = [[] for x in self._groups]
-        # we need to reduce output files in case they have been processed multiple times.
-        if None in self._outputs:
-            if not all(x is None for x in self._outputs):
-                raise RuntimeError('Output should be specified for all loops.')
-            env.sos_dict.set('output', None)
-        elif len(self._outputs) >= 1 and all(x==self._outputs[0] for x in self._outputs):
-            env.sos_dict.set('output', copy.deepcopy(self._outputs[0]))
-        else:
-            env.sos_dict.set('output', sum(self._outputs, []))
-        #
-        if len(self._depends) >= 1 and all(x==self._depends[0] for x in self._depends):
-            env.sos_dict.set('depends', copy.deepcopy(self._depends[0]))
-        else:
-            env.sos_dict.set('depends', sum(self._depends, []))
-        #
-        if env.sos_dict['output'] and not isinstance(env.sos_dict['output'][0], Undetermined) and env.run_mode == 'run':
-            env.logger.info('output:  ``{}``'.format(short_repr(env.sos_dict['output'], noneAsNA=True)))
-        if env.sos_dict['depends'] and not isinstance(env.sos_dict['depends'][0], Undetermined) and env.run_mode == 'run':
-            env.logger.info('depends: ``{}``'.format(short_repr(env.sos_dict['depends'])))
-        env.logger.trace('Checking signature (if available).')
-        #
+        self.handle_undetermined_output()
+        self.handle_signature()
+        return self.collectResult()
+
+    def handle_undetermined_partial_output(self, idx):
+        # if _output was undetermined
+        if env.sos_dict['_output'] and isinstance(env.sos_dict['_output'][0], Undetermined) and env.run_mode == 'run':
+            value = env.sos_dict['_output'][0].expr
+            env.logger.trace('Processing output: {}'.format(value))
+            args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
+            # now we should have _output
+            directive_output(*args)
+            env.logger.trace('Reset _output to {}'.format(env.sos_dict['_output']))
+            self._outputs[idx] = env.sos_dict['_output']
+
+    def handle_partial_signature(self, partial_signature, idx, DAG):
+        partial_signature = None
+        if env.sos_dict['_output'] == env.sos_dict['output']:
+            return
+        if env.sig_mode == 'default':
+            if partial_signature.validate():
+                # everything matches
+                env.logger.info('Reusing existing output files {}'.format(', '.join(env.sos_dict['_output'])))
+                if 'substeps' not in DAG[step_id]:
+                    DAG[self.step_id]['substeps'] = {idx: 'skip'}
+                else:
+                    DAG[self.step_id]['substeps'][idx] = 'skip'
+        elif env.sig_mode == 'assert':
+            if not partial_signature.validate():
+                raise RuntimeError('Signature mismatch for input {} and output {}'.format(
+                    ', '.join(env.sos_dict['_input']), ', '.join(env.sos_dict['_output'])))
+        elif env.sig_mode == 'construct':
+            try:
+                partial_signature.write()
+                env.logger.debug('Construct signature from existing output files {}'.format(short_repr(env.sos_dict['_output'])))
+                if 'substeps' not in DAG[step_id]:
+                    DAG[self.step_id]['substeps'] = {idx: 'skip'}
+                else:
+                    DAG[self.step_id]['substeps'][idx] = 'skip'
+            except Exception as e:
+                env.logger.debug('Failed to reconstruct signature. {}'.format(e))
+        if partial_signature is not None:
+            partial_signature.set(env.sos_dict['_output'], 'output')
+            partial_signature.write()
+
+    def handle_undetermined_output():
+        if env.run_mode == 'run' and env.sos_dict['output'] is not None:
+            if env.sos_dict['output'] and isinstance(env.sos_dict['output'][0], Undetermined):
+                # at this point self._outputs should be expanded already.
+                env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
+                env.logger.info('output:  ``{}``'.format(short_repr(env.sos_dict['output'], noneAsNA=True)))
+            for ofile in env.sos_dict['output']:
+                if not os.path.isfile(os.path.expanduser(ofile)):
+                    raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
+
+    def handle_signature(self):
         # if the signature matches, the whole step is ignored
         if env.sos_dict['input'] is not None and env.sos_dict['output'] is not None:
             signature = RuntimeInfo(step_sig,
@@ -882,56 +909,16 @@ class Step_Executor:
                         # everything matches
                         env.logger.info('Construct signature from existing output files ``{}``'.format(short_repr(env.sos_dict['output'])))
                         DAG[step_id] = {'status': 'skip', 'input': res['input'], 'output': res['output'], 'depends': res['depends'],
-                            'public_vars': {x: env.sos_dict[x] for x in public_vars}}
-                        return self.collectResult(public_vars)
+                            'public_vars': {x: env.sos_dict[x] for x in self.public_vars}}
+                        return self.collectResult()
                     else:
                         env.logger.warning('Failed to reconstruct signature for {}'
                             .format(short_repr(env.sos_dict['output'])))
                 except Exception as e:
                     env.logger.warning('Failed to reconstruct signature. {}'.format(e))
-        else:
-            signature = None
-        # check results? This is only meaningful for pool
-        if concurrent:
-            try:
-                proc_results = [res.get() if isinstance(res, AsyncResult) else res for res in proc_results]
-            except KeyboardInterrupt:
-                # if keyboard interrupt
-                pool.terminate()
-                pool.join()
-                raise RuntimeError('KeyboardInterrupt fro m {} (master)'.format(os.getpid()))
-            except Exception as e:
-                # if keyboard interrupt etc
-                env.logger.error('Caught {}'.format(e))
-                pool.terminate()
-                pool.join()
-                raise
-        if proc_results:
-            if not all(x['succ']==0 for x in proc_results):
-                raise RuntimeError('Step process returns non-zero value')
-            for idx, res in enumerate(proc_results):
-                if self._outputs[idx] and isinstance(self._outputs[idx][0], Undetermined):
-                    env.logger.trace('Setting _output[{}] from proc output {}'.format(idx, short_repr(res['output'])))
-                    self._outputs[idx] = res['output']
-        env.logger.trace('Checking output files {}'.format(env.sos_dict['output']))
-        if env.run_mode == 'run' and env.sos_dict['output'] is not None:
-            if env.sos_dict['output'] and isinstance(env.sos_dict['output'][0], Undetermined):
-                # at this point self._outputs should be expanded already.
-                env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
-                env.logger.info('output:  ``{}``'.format(short_repr(env.sos_dict['output'], noneAsNA=True)))
-            for ofile in env.sos_dict['output']:
-                if not os.path.isfile(os.path.expanduser(ofile)):
-                    raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
-        if signature and env.run_mode == 'run':
-            signature.set(env.sos_dict['output'], 'output')
-            signature.write()
-        if concurrent:
-            # finally, write results back to the master process
-            pool.close()
-            pool.join()
-        return self.collectResult(public_vars)
 
-    def collectResult(self, public_vars):
+
+    def collectResult(self):
         # only results will be sent back to the master process
         #
         # __step_input__:    input of this step
@@ -951,7 +938,7 @@ class Step_Executor:
             step_info.set('output', env.sos_dict['output'])
             step_info.set('depends', env.sos_dict['depends'])
             # the step might be skipped
-            for var in public_vars:
+            for var in self.public_vars:
                 # there is a slight possibility that var is deleted
                 if var in env.sos_dict and pickleable(env.sos_dict[var]):
                     step_info.set(var, env.sos_dict[var])
