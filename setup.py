@@ -20,12 +20,12 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import os
-import filecmp
+import sys, os
 import shutil
 from setuptools import setup
 from distutils import log
 from setuptools.command.install import install
+from pysos import __version__
 
 kernel_json = {
     "argv":         ["python", "-m", "pysos.kernel", "-f", "{connection_file}"],
@@ -128,7 +128,7 @@ setup(name = "sos",
       ],
     entry_points='''
 [pygments.lexers]
-sos = pysos.sos_convert:SoS_Lexer
+sos = pysos.converter:SoS_Lexer
 ''',
     scripts = [
         'sos',

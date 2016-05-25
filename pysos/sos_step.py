@@ -33,7 +33,7 @@ from collections import OrderedDict
 from itertools import tee, combinations
 
 from .utils import env, Error, short_repr, get_traceback, pickleable, transcribe
-from .pattern import extract_pattern, expand_pattern
+from .pattern import extract_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
 from .signature import  RuntimeInfo, textMD5
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
