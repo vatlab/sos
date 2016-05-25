@@ -54,9 +54,9 @@ class InstallWithConfigurations(install):
         # at this point, jupyter and ipython should have been installed.
         import json
         try:
-            from jupyter_client.kernelspec import install_kernel_spec
+            from jupyter_client.kernelspec import KernelSpecManager as KS
         except ImportError:
-            from IPython.kernel.kernelspec import install_kernel_spec
+            from ipykernel.kernelspec import KernelSpecManager as KS
         from IPython.utils.tempdir import TemporaryDirectory
         from IPython.paths import get_ipython_dir, locate_profile
         #
@@ -84,7 +84,7 @@ class InstallWithConfigurations(install):
             with open(os.path.join(td, 'kernel.json'), 'w') as f:
                 json.dump(kernel_json, f, sort_keys=True)
             try:
-                install_kernel_spec(td, 'sos', user=self.user, replace=True)
+                KS().install_kernel_spec(td, 'sos', user=self.user, replace=True, prefix=sys.exec_prefix)
                 log.info('Use "jupyter notebook" to create or open SoS notebooks.')
             except:
                 log.error("\nWARNING: Could not install SoS Kernel as %s user." % self.user)
