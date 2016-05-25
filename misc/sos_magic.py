@@ -46,9 +46,9 @@ from pysos.utils import env, WorkflowDict
 from pysos.sos_eval import SoS_exec, SoS_eval
 from pysos.sos_executor import Interactive_Executor
 
-from IPython.core.error import TryNext
+from IPython.core.error import UsageError
 from IPython.lib.clipboard import ClipboardEmpty
-from IPython.core.magic import Magics, magics_class, line_magic, cell_magic, line_cell_magic
+from IPython.core.magic import Magics, magics_class, line_magic, line_cell_magic
 
 # The class MUST call this class decorator at creation time
 @magics_class
@@ -101,13 +101,6 @@ class SoS_Magics(Magics):
         # get and print clipboard content
         try:
             block = self.shell.hooks.clipboard_get()
-        except TryNext as clipboard_exc:
-            message = getattr(clipboard_exc, 'args')
-            if message:
-                error(message[0])
-            else:
-                error('Could not get text from the clipboard.')
-            return
         except ClipboardEmpty:
             raise UsageError("The clipboard appears to be empty")
         #
