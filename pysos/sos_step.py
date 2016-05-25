@@ -565,13 +565,13 @@ class Step_Executor:
         # 
         # this is possible for skip in prepare mode because of DAG in inspect mode
         # or skip in run mode because of DAG in prepare mode
-        if DAG[step_id]['status'] == 'skip':
-            env.sos_dict.set('input',  DAG[step_id]['input'])
-            env.sos_dict.set('output',  DAG[step_id]['output'])
-            env.sos_dict.set('depends',  DAG[step_id]['depends'])
-            self.public_vars = DAG[step_id]['public_vars'].keys()
+        if DAG[self.step_id]['status'] == 'skip':
+            env.sos_dict.set('input',  DAG[self.tep_id]['input'])
+            env.sos_dict.set('output',  DAG[self.tep_id]['output'])
+            env.sos_dict.set('depends',  DAG[self.tep_id]['depends'])
+            self.public_vars = DAG[self.tep_id]['public_vars'].keys()
             for x in self.public_vars:
-                env.sos_dict.set(x, DAG[step_id]['public_vars'][x])
+                env.sos_dict.set(x, DAG[self.tep_id]['public_vars'][x])
             # the collect result function will return alias to SoS
             return self.collectResult()
         #
@@ -680,7 +680,7 @@ class Step_Executor:
             # if a step is skipped according to DAG, we cannot check signature here because
             # we do not know output yet.
             try:
-                if DAG[step_id]['substeps'][idx]['status'] == 'skip':
+                if DAG[self.tep_id]['substeps'][idx]['status'] == 'skip':
                     continue
             except:
                 # key error, ok ...
@@ -809,6 +809,8 @@ class Step_Executor:
                 # if not concurrent, we can save signature right after it is done
                 self.handle_undetermined_partial_output(idx)
                 self.handle_partial_signature(partial_signature, idx, DAG)
+            else:
+                partial_signatures[idx] = partial_signature
         #
         # check results? This is only meaningful for pool
         if concurrent:
@@ -831,7 +833,7 @@ class Step_Executor:
             #
             for idx in enumerate(proc_results):
                 self.handle_undetermined_partial_output(idx)
-                self.handle_partial_signature(idx, DAG)
+                self.handle_partial_signature(partial_signatures[idx], idx, DAG)
         if not all(x['succ']==0 for x in proc_results):
             raise RuntimeError('Step process returns non-zero value')
         #
@@ -858,7 +860,7 @@ class Step_Executor:
             if partial_signature.validate():
                 # everything matches
                 env.logger.info('Reusing existing output files {}'.format(', '.join(env.sos_dict['_output'])))
-                if 'substeps' not in DAG[step_id]:
+                if 'substeps' not in DAG[self.tep_id]:
                     DAG[self.step_id]['substeps'] = {idx: 'skip'}
                 else:
                     DAG[self.step_id]['substeps'][idx] = 'skip'
@@ -870,7 +872,7 @@ class Step_Executor:
             try:
                 partial_signature.write()
                 env.logger.debug('Construct signature from existing output files {}'.format(short_repr(env.sos_dict['_output'])))
-                if 'substeps' not in DAG[step_id]:
+                if 'substeps' not in DAG[self.tep_id]:
                     DAG[self.step_id]['substeps'] = {idx: 'skip'}
                 else:
                     DAG[self.step_id]['substeps'][idx] = 'skip'
@@ -908,7 +910,7 @@ class Step_Executor:
                         env.sos_dict.set('depends', res['depends'])
                         # everything matches
                         env.logger.info('Construct signature from existing output files ``{}``'.format(short_repr(env.sos_dict['output'])))
-                        DAG[step_id] = {'status': 'skip', 'input': res['input'], 'output': res['output'], 'depends': res['depends'],
+                        DAG[self.tep_id] = {'status': 'skip', 'input': res['input'], 'output': res['output'], 'depends': res['depends'],
                             'public_vars': {x: env.sos_dict[x] for x in self.public_vars}}
                         return self.collectResult()
                     else:
