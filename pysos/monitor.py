@@ -58,7 +58,7 @@ class ProcessMonitor(threading.Thread):
                 time.sleep(self.interval)
                 with open(self.proc_file, 'a') as pd:
                     pd.write('{}\t{:.2f}\t{}\t{}\t{}\t{}\n'.format(time.time(), cpu, mem, nch, ch_cpu, ch_mem))
-            except Exception as e:
+            except Exception:
                 # if the process died, exit the thread
                 # the warning message is usually:
                 # WARNING: psutil.NoSuchProcess no process found with pid XXXXX

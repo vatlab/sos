@@ -263,10 +263,6 @@ def directive_input(*args, **kwargs):
     elif ifiles is None:
         ifiles = []
     #
-    # handle pattern
-    if 'expand' in kwargs:
-        ifiles = []
-        handle_input_expand_pattern(kwargs['expand'], ifiles)
     # if files are determined,
     #
     # expand files with wildcard characters and check if files exist
