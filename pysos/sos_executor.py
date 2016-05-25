@@ -378,7 +378,7 @@ class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython'''
     def __init__(self):
         # we actually do not have our own workflow, everything is passed from ipython
-        Base_Executor.__init__(self, None, None, None)
+        Base_Executor.__init__(self, None, None, None, False)
 
     def parse_command_line(self, command_line):
         parser = argparse.ArgumentParser()

@@ -223,8 +223,8 @@ class WorkflowDict(object):
             if key in self._readonly_vars:
                 if not self.__cmp_values__(self._dict[key], self._readonly_vars[key]):
                     if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
-                        env.logger.warning('readonly variable {} is changed from {} to {}'
-                            .format(key, self._dict[key], self._readonly_vars[key]))
+                        env.logger.warning('Readonly variable {} is changed from {} to {}'
+                            .format(key, self._readonly_vars[key], self._dict[key]))
                         self._readonly_vars[key] = self._dict[key]
                     else:
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
@@ -240,15 +240,15 @@ class WorkflowDict(object):
             if key in self._dict:
                 if not self.__cmp_values__(self._dict[key], self._readonly_vars[key]):
                     if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
-                        env.logger.warning('readonly variable {} is changed from {} to {}'
-                            .format(key, self._dict[key], self._readonly_vars[key]))
+                        env.logger.warning('Readonly variable {} is changed from {} to {}'
+                            .format(key, self._readonly_vars[key], self._dict[key]))
                         self._readonly_vars[key] = self._dict[key]
                     else:
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
                             .format(key, self._dict[key], self._readonly_vars[key]))
                 if not self.__cmp_values__(value, self._dict[key]):
                     if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
-                        env.logger.warning('readonly variable {} is changed from {} to {}'
+                        env.logger.warning('Readonly variable {} is changed from {} to {}'
                             .format(key, self._dict[key], value))
                         self._dict[key] = value
                     else:
