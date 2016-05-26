@@ -190,7 +190,7 @@ class SoS_Exporter(Exporter):
             **kwargs):
         self.reorder = reorder
         self.reset_index = reset_index
-        self.add_hearder = add_header
+        self.add_header = add_header
         self.no_index = no_index
         self.remove_magic = remove_magic
         self.md_to_report = md_to_report
@@ -211,9 +211,11 @@ class SoS_Exporter(Exporter):
                     cell.source = '\n'.join(cell.source.split('\n')[1:])
                 else:
                     env.logger.warning('SoS magic "{}" has to remove them before executing the script with sos command.'.format(cell.source.split('\n')[0]))
+            if self.add_header and not any([SOS_SECTION_HEADER.match(x) for x in cell.source.split('\n')]):
+                cell.source = '[{}]\n'.format(idx if self.reset_index else cell.execution_count) + cell.source
             fh.write(cell.source + '\n')
         elif cell.cell_type == "markdown":
-            fh.write('\n'.join('! ' + x for x in cell.source.split('\n')) + '\n')
+            fh.write('\n'.join('! ' + x for x in cell.source.split('\n') if x.strip()) + '\n')
         return idx
 
     def from_notebook_node(self, nb, resources, **kwargs):
