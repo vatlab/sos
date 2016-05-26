@@ -87,15 +87,34 @@ class SoS_FilePreviewer():
 
         image_type = imghdr.what(None, image)
         image_data = base64.b64encode(image).decode('ascii')
-        return { 'image/' + image_type: image_data }
+        if image_type != 'png':
+            try:
+                from wand.image import Image
+                img = Image(filename=filename)
+                return { 'image/' + image_type: image_data,
+                    'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
+            except Exception:
+                return { 'image/' + image_type: image_data }
+        else:
+            return { 'image/' + image_type: image_data }
 
     def preview(self, filename):
         if imghdr.what(filename) is not None:
             # image
             return 'display_data', self.display_data_for_image(filename)
         elif filename.lower().endswith('.pdf'):
-            return 'display_data', { 'text/html':
-                HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}
+            try:
+                # this import will fail even if wand is installed
+                # if imagemagick is not installed properly.
+                from wand.image import Image
+                img = Image(filename=filename)
+                return 'display_data', {
+                    'text/html': HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data,
+                    'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
+            except Exception as e:
+                env.logger.error(e)
+                return 'display_data', { 'text/html':
+                    HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}
         elif filename.lower().endswith('.html'):
             with open(filename) as html:
                 content = html.read()
