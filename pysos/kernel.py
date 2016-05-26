@@ -198,12 +198,13 @@ class SoS_Exporter(Exporter):
         self.output_mimetype = 'text/x-sos'
         Exporter.__init__(self, config, **kwargs)
 
-    def from_notebook_cell(self, cell, fh, idx = None):
+    def from_notebook_cell(self, cell, fh, idx = 0):
         if not hasattr(cell, 'execution_count') or cell.execution_count is None or self.no_index:
             fh.write('\n#cell {}\n'.format(cell.cell_type))
         else:
+            idx += 1
             fh.write('\n#cell {} {}\n'.format(cell.cell_type,
-                                              idx if idx is not None else cell.execution_count))
+                                              idx if self.reset_index else cell.execution_count))
         if cell.cell_type == 'code':
             if any(cell.source.startswith(x) for x in ('%run', '%restart', '%dict', '%use', '%with', '%set', '%paste')):
                 if self.remove_magic:
@@ -213,16 +214,30 @@ class SoS_Exporter(Exporter):
             fh.write(cell.source + '\n')
         elif cell.cell_type == "markdown":
             fh.write('\n'.join('! ' + x for x in cell.source.split('\n')) + '\n')
+        return idx
 
     def from_notebook_node(self, nb, resources, **kwargs):
         #
-        cells = sorted(nb.cells, key = lambda x: x.execution_count
-                       if x.execution_count is not None else len(nb.cells)) if self.reorder else nb.cells
+        if self.reorder:
+            unnumbered_cells = {x: y for x, y in enumerate(nb.cells)
+                              if not hasattr(y, 'execution_count') or y.execution_count is None}
+            numbered_cells = [y for y in nb.cells
+                              if hasattr(y, 'execution_count') and y.execution_count is not None]
+            numbered_cells = sorted(numbered_cells, key = lambda x: x.execution_count)
+            cells = []
+            for idx in range(len(nb.cells)):
+                if idx in unnumbered_cells:
+                    cells.append(unnumbered_cells[idx])
+                else:
+                    cells.append(numbered_cells.pop(0))
+        else:
+            cells = nb.cells
         with StringIO() as fh:
             fh.write('#!/usr/bin/env sos-runner\n')
             fh.write('#fileformat=SOSNB1.0\n')
-            for idx, cell in enumerate(cells):
-                self.from_notebook_cell(cell, fh, idx + 1 if self.reset_index else None)
+            idx = 0
+            for cell in cells:
+                idx = self.from_notebook_cell(cell, fh, idx)
             content = fh.getvalue()
         resources['output_extension'] = '.sos'
         return content, resources
