@@ -143,6 +143,8 @@ class TestUtils(unittest.TestCase):
                 #
                 # full name by 'a'
                 ('{0}"test_utils.py"!a{1}', os.path.abspath('test_utils.py')),
+                ('{0}"a/b/c/test_utils.py"!b{1}', 'test_utils.py'),
+                ('{0}"a/b/c/test_utils.py"!d{1}', 'a/b/c'),
                 ('{0}"~/test_utils.py"!a{1}', os.path.expanduser('~/test_utils.py')),
                 ('{0}"~/test_utils.py"!e{1}', os.path.expanduser('~/test_utils.py')),
                 ('{0}"test/test_utils.py"!b{1}', "test_utils.py"),

@@ -67,7 +67,7 @@ class SoS_String:
         ^                                   # start of expression
         (?P<expr>.*?)                       # any expression
         (?P<conversion>!\s*                 # conversion starting with !
-        [srqabe,]+                          # conversion, q, a, b, and , are added by SoS
+        [srqabde,]+                         # conversion, q, a, b, and , are added by SoS
         )?
         (?P<format_spec>:\s*                # format_spec starting with :
         (?P<fill>.?[<>=^])?                 # optional fill|align
@@ -208,6 +208,8 @@ class SoS_String:
                     obj = os.path.expanduser(obj)
                 if 'a' in conversion:
                     obj = os.path.abspath(os.path.expanduser(obj))
+                if 'd' in conversion:
+                    obj = os.path.dirname(obj)
                 if 'b' in conversion:
                     obj = os.path.basename(obj)
                 if 'q' in conversion:
