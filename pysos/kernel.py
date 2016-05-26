@@ -213,7 +213,7 @@ class SoS_Exporter(Exporter):
                     env.logger.warning('SoS magic "{}" has to remove them before executing the script with sos command.'.format(cell.source.split('\n')[0]))
             if self.add_header and not any([SOS_SECTION_HEADER.match(x) for x in cell.source.split('\n')]):
                 cell.source = '[{}]\n'.format(idx if self.reset_index else cell.execution_count) + cell.source
-            fh.write(cell.source + '\n')
+            fh.write(cell.source.strip() + '\n')
         elif cell.cell_type == "markdown":
             fh.write('\n'.join('! ' + x for x in cell.source.split('\n') if x.strip()) + '\n')
         return idx
