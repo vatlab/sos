@@ -882,9 +882,10 @@ def notebook_to_script(notebook_file, sos_file, convert_args=[]):
     '''
     convert a ipython notebook.
     '''
-    sargs = parse_term_args(convert_args)
-    exporter = SoS_Exporter(reorder=args.reorder, reset_index=args.reset_index, add_header=args.add_header,
-        no_index=args.no_index, remove_magic=args.remove_magic, md_to_report=args.md_to_report)
+    sargs = parse_convert_args(convert_args)
+    exporter = SoS_Exporter(reorder=sargs.reorder, reset_index=sargs.reset_index,
+                            add_header=sargs.add_header, no_index=sargs.no_index,
+                            remove_magic=sargs.remove_magic, md_to_report=sargs.md_to_report)
     notebook = nbformat.read(notebook_file, nbformat.NO_CONVERT)
     output, resource = exporter.from_notebook_node(notebook, {})
     if sos_file == '__STDOUT__':

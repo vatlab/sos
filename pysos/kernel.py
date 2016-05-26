@@ -188,29 +188,41 @@ class SoS_Exporter(Exporter):
     def __init__(self, config=None, reorder=False, reset_index=False, add_header=False,
             no_index=False, remove_magic=False, md_to_report=False,
             **kwargs):
+        self.reorder = reorder
+        self.reset_index = reset_index
+        self.add_hearder = add_header
+        self.no_index = no_index
+        self.remove_magic = remove_magic
+        self.md_to_report = md_to_report
         self.output_extension = '.sos'
         self.output_mimetype = 'text/x-sos'
         Exporter.__init__(self, config, **kwargs)
 
-    def from_notebook_cell(self, cell, fh):
-        if not hasattr(cell, 'execution_count') or cell.execution_count is None:
+    def from_notebook_cell(self, cell, fh, idx = None):
+        if not hasattr(cell, 'execution_count') or cell.execution_count is None or self.no_index:
             fh.write('\n#cell {}\n'.format(cell.cell_type))
         else:
-            fh.write('\n#cell {} {}\n'.format(cell.cell_type, cell.execution_count))
+            fh.write('\n#cell {} {}\n'.format(cell.cell_type,
+                                              idx if idx is not None else cell.execution_count))
         if cell.cell_type == 'code':
             if any(cell.source.startswith(x) for x in ('%run', '%restart', '%dict', '%use', '%with', '%set', '%paste')):
-                env.logger.warning('SoS magic "{}" has to remove them before executing the script with sos command.'.format(cell.source.split('\n')[0]))
+                if self.remove_magic:
+                    cell.source = '\n'.join(cell.source.split('\n')[1:])
+                else:
+                    env.logger.warning('SoS magic "{}" has to remove them before executing the script with sos command.'.format(cell.source.split('\n')[0]))
             fh.write(cell.source + '\n')
         elif cell.cell_type == "markdown":
             fh.write('\n'.join('! ' + x for x in cell.source.split('\n')) + '\n')
 
     def from_notebook_node(self, nb, resources, **kwargs):
         #
+        cells = sorted(nb.cells, key = lambda x: x.execution_count
+                       if x.execution_count is not None else len(nb.cells)) if self.reorder else nb.cells
         with StringIO() as fh:
             fh.write('#!/usr/bin/env sos-runner\n')
             fh.write('#fileformat=SOSNB1.0\n')
-            for cell in nb.cells:
-                self.from_notebook_cell(cell, fh)
+            for idx, cell in enumerate(cells):
+                self.from_notebook_cell(cell, fh, idx + 1 if self.reset_index else None)
             content = fh.getvalue()
         resources['output_extension'] = '.sos'
         return content, resources

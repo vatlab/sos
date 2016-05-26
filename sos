@@ -199,7 +199,7 @@ if __name__ == '__main__':
             Jupyter with nbconvert version 4.2.0 or higher although you can
             customize output using options --reorder (rearrange notebook cells
             with execution order), --reset-index (reset indexes to 1, 2, 3, ..),
-            --add-header (add section header [inedx] if the cell does not start
+            --add-header (add section header [index] if the cell does not start
             with a header), --no-index (does not save cell index), --remove-magic
             (remove cell magic), and --md-to-report (convert markdown cell to
             code cell with report.)''')
