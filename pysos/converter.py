@@ -863,11 +863,28 @@ def workflow_to_markdown(workflow, script_file, markdown_file):
 # Converter from Notebook
 #
 
+def parse_convert_args(convert_args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--reorder', action='store_true')
+    parser.add_argument('--reset-index', action='store_true')
+    parser.add_argument('--add-header', action='store_true')
+    parser.add_argument('--no-index', action='store_true')
+    parser.add_argument('--remove-magic', action='store_true')
+    parser.add_argument('--md-to-report', action='store_true')
+    try:
+        args = parser.parse_args(convert_args)
+    except Exception as e:
+        raise RuntimeError('Unrecognized style argument {}: {}'
+            .format(' '.join(convert_args), e))
+    return args
+
 def notebook_to_script(notebook_file, sos_file, convert_args=[]):
     '''
     convert a ipython notebook.
     '''
-    exporter = SoS_Exporter()
+    sargs = parse_term_args(convert_args)
+    exporter = SoS_Exporter(reorder=args.reorder, reset_index=args.reset_index, add_header=args.add_header,
+        no_index=args.no_index, remove_magic=args.remove_magic, md_to_report=args.md_to_report)
     notebook = nbformat.read(notebook_file, nbformat.NO_CONVERT)
     output, resource = exporter.from_notebook_node(notebook, {})
     if sos_file == '__STDOUT__':

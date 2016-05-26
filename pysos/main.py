@@ -45,6 +45,15 @@ def sos_convert(args, style_args):
             if not args.from_file.endswith('ipynb'):
                 raise RuntimeError('Can only convert from a .ipynb file to SoS script: {} specified.'.format(args.from_file))
             notebook_to_script(args.from_file, args.sos, style_args)
+        elif args.notebook and args.from_file.lower().endswith('.ipynb'):
+            try:
+                sos_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.sos', delete=False).name
+                notebook_to_script(args.from_file, sos_file, style_args)
+                transcript_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.transcript', delete=False).name
+                script_to_notebook(trasncript_file, sos_file, args.notebook)
+            finally:
+                os.remove(sos_file)
+                os.remove(transcript_file)
         else:
             transcript_file = os.path.join('.sos/{}.transcript'.format(os.path.basename(args.from_file)))
             with open(transcript_file, 'w') as transcript:

@@ -185,7 +185,9 @@ class BioPreviewer(SoS_FilePreviewer):
             return SoS_FilePreviewer.preview(filename)
 
 class SoS_Exporter(Exporter):
-    def __init__(self, config=None, **kwargs):
+    def __init__(self, config=None, reorder=False, reset_index=False, add_header=False,
+            no_index=False, remove_magic=False, md_to_report=False,
+            **kwargs):
         self.output_extension = '.sos'
         self.output_mimetype = 'text/x-sos'
         Exporter.__init__(self, config, **kwargs)

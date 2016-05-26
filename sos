@@ -189,11 +189,20 @@ if __name__ == '__main__':
             customized output.''')
     parser.add_argument('--notebook', nargs='?', metavar='FILENAME', const='__STDOUT__',
         help='''Convert script or workflow to jupyter notebook format and write
-            it to specified file, or standard output if no filename is specified.''')
+            it to specified file, or standard output if no filename is specified.
+            If the input file is a notebook, it will be converted to .sos (see
+            option --sos) then to notebook, resetting indexes and removing all
+            output cells.''')
     parser.add_argument('--sos', nargs='?', metavar='SCRIPT', const='__STDOUT__',
         help='''Convert specified Jupyter notebook to SoS format. The output
             is the same as you use File -> Download as -> SoS (.sos) from
-            Jupyter with nbconvert version 4.2.0 or higher.''')
+            Jupyter with nbconvert version 4.2.0 or higher although you can
+            customize output using options --reorder (rearrange notebook cells
+            with execution order), --reset-index (reset indexes to 1, 2, 3, ..),
+            --add-header (add section header [inedx] if the cell does not start
+            with a header), --no-index (does not save cell index), --remove-magic
+            (remove cell magic), and --md-to-report (convert markdown cell to
+            code cell with report.)''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_convert)
     #
