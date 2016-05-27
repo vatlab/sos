@@ -26,6 +26,7 @@ import base64
 import imghdr
 import fnmatch
 import contextlib
+import subprocess
 
 import zipfile
 import tarfile
@@ -547,6 +548,37 @@ class SoS_Kernel(Kernel):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options + ' ' + self.get_magic_option(code)
+        elif code.startswith('%'):
+            # treat as arbitrary shell command
+            lines = [x for x in code.split('\n') if x.strip()]
+            if len(lines) > 1:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stderr', 'text': 'extra lines ignored in temporary shell mode\n'})
+            cmd = lines[0][1:]
+            with self.redirect_sos_io():
+                try:
+                    p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                    out, err = p.communicate()
+                    sys.stdout.write(out.decode())
+                    sys.stderr.write(err.decode())
+                    ret = p.returncode
+                    sys.stderr.flush()
+                    sys.stdout.flush()
+                    return {'status': 'ok',
+                        # The base class increments the execution count
+                        'execution_count': self.execution_count,
+                        'payload': [],
+                        'user_expressions': {},
+                       }
+                except Exception as e:
+                    sys.stderr.flush()
+                    sys.stdout.flush()
+                    return  {'status': 'error',
+                        'ename': e.__class__.__name__,
+                        'evalue': str(e),
+                        'traceback': [],
+                        'execution_count': self.execution_count,
+                       }
         else:
             command_line = self.options
         #
