@@ -43,7 +43,7 @@ def patch_spyder():
     to
 
     ALL_LANGUAGES = {
-                 'Python': ('py', 'pyw', 'python', 'ipy', 'sos'),
+                 'Python': ('py', 'pyw', 'python', 'ipy', 'sos', 'sosnb'),
 
     in spyderlib.utils.sourcecode.
     '''
@@ -53,7 +53,7 @@ def patch_spyder():
         with open(src_file, 'r') as src:
             content = src.read()
         with open(src_file, 'w') as src:
-            src.write(content.replace("'Python': ('py', 'pyw', 'python', 'ipy')", "'Python': ('py', 'pyw', 'python', 'ipy', 'sos')"))
+            src.write(content.replace("'Python': ('py', 'pyw', 'python', 'ipy')", "'Python': ('py', 'pyw', 'python', 'ipy', 'sos', 'sosnb')"))
         log.info('\nAllow spyder to accept .sos as input format.')
     except Exception as e:
         log.info('Failed to patch spyder to accept .sos file.')
