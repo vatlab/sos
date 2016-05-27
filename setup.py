@@ -33,6 +33,31 @@ kernel_json = {
     "language":     "sos",
 }
 
+def patch_spyder():
+    '''spyder does not recognize .sos extension. The only change we need to make it work is to
+    change the following code from
+
+    ALL_LANGUAGES = {
+                 'Python': ('py', 'pyw', 'python', 'ipy'),
+
+    to
+
+    ALL_LANGUAGES = {
+                 'Python': ('py', 'pyw', 'python', 'ipy', 'sos'),
+
+    in spyderlib.utils.sourcecode.
+    '''
+    try:
+        from spyderlib.utils import sourcecode
+        src_file = sourcecode.__file__
+        with open(src_file, 'r') as src:
+            content = src.read()
+        with open(src_file, 'w') as src:
+            src.write(content.replace("'Python': ('py', 'pyw', 'python', 'ipy')", "'Python': ('py', 'pyw', 'python', 'ipy', 'sos')"))
+        log.info('\nAllow spyder to accept .sos as input format.')
+    except Exception as e:
+        log.info('Failed to patch spyder to accept .sos file.')
+
 class InstallWithConfigurations(install):
     def run(self):
         # Regular installation
@@ -70,10 +95,12 @@ class InstallWithConfigurations(install):
         if not os.path.isdir(prof_dir):
             os.makedirs(prof_dir)
         #
+        patch_spyder()
+        #
         shutil.copy('misc/sos_magic.py', ext_file)
         shutil.copy('misc/sos_ipython_profile.py', prof_file)
         #
-        log.info('\nSoS is installed and configured to use with vim, ipython, and Jupyter.')
+        log.info('\nSoS is installed and configured to use with vim, ipython, spyder, and Jupyter.')
         log.info('Use "set syntax=sos" to enable syntax highlighting.')
         log.info('Use "ipython --profile sos" to start ipython with sos magic.')
         #
