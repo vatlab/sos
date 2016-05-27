@@ -909,14 +909,14 @@ def add_cell(cells, cell_src_code, cell_count):
     # if a section consist of all report, report it as a markdown cell
     if not cell_src_code:
         return
-    if (cell_src_code[0].startswith('!') or not cell_src_code[0].strip() or SOS_SECTION_HEADER.match(cell_src_code[0])) and \
-        all(not x.strip() or x.startswith('!') for x in cell_src_code[1:]):
+    if (cell_src_code[0].startswith('#! ') or not cell_src_code[0].strip() or SOS_SECTION_HEADER.match(cell_src_code[0])) and \
+        all(not x.strip() or x.startswith('#! ') for x in cell_src_code[1:]):
         md = ''
         for line in cell_src_code:
             if SOS_SECTION_HEADER.match(line):
                 continue
             else:
-                md += line[2:]
+                md += line[3:]
         cells.append(new_markdown_cell(source=md))
         return cell_count
     else:
@@ -933,7 +933,7 @@ def script_to_notebook(transcript, script_file, notebook_file):
     '''
     cells = []
     cell_count = 1
-    CELL_LINE = re.compile('^#cell\s+(markdown|code)(\s+\d+\s+)?$')
+    CELL_LINE = re.compile('^#%%\s+(markdown|code)(\s+\d+\s+)?$')
     with open(transcript) as script:
         cell_src_code = []
         content = []
@@ -944,6 +944,9 @@ def script_to_notebook(transcript, script_file, notebook_file):
             line_type, line_no, script_line = line.split('\t', 2)
             if line_type == 'COMMENT':
                 if script_line.startswith('#!'):
+                    # shebang line is ignored
+                    if script_line.startswith('#! '):
+                        content.append(script_line)
                     continue
                 if script_line.startswith('#fileformat='):
                     if not script_line[12:].startswith('SOS'):
@@ -961,7 +964,7 @@ def script_to_notebook(transcript, script_file, notebook_file):
                 if len(parts) > 2 and parts[2].isdigit():
                     cell_count = int(parts[2])
                 if parts[1] == 'markdown':
-                    content_type == 'REPORT'
+                    content_type == 'MARKDOWN'
                 else:
                     content_type == 'SECTION'
                 content = []

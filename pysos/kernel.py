@@ -219,10 +219,10 @@ class SoS_Exporter(Exporter):
 
     def from_notebook_cell(self, cell, fh, idx = 0):
         if not hasattr(cell, 'execution_count') or cell.execution_count is None or self.no_index:
-            fh.write('\n#cell {}\n'.format(cell.cell_type))
+            fh.write('\n#%% {}\n'.format(cell.cell_type))
         else:
             idx += 1
-            fh.write('\n#cell {} {}\n'.format(cell.cell_type,
+            fh.write('\n#%% {} {}\n'.format(cell.cell_type,
                                               idx if self.reset_index else cell.execution_count))
         if cell.cell_type == 'code':
             if any(cell.source.startswith(x) for x in ('%run', '%restart', '%dict', '%use', '%with', '%set', '%paste')):
@@ -234,7 +234,7 @@ class SoS_Exporter(Exporter):
                 cell.source = '[{}]\n'.format(idx if self.reset_index else cell.execution_count) + cell.source
             fh.write(cell.source.strip() + '\n')
         elif cell.cell_type == "markdown":
-            fh.write('\n'.join('! ' + x for x in cell.source.split('\n') if x.strip()) + '\n')
+            fh.write('\n'.join('#! ' + x for x in cell.source.split('\n') if x.strip()) + '\n')
         return idx
 
     def from_notebook_node(self, nb, resources, **kwargs):
