@@ -42,7 +42,7 @@ from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_cli
 from IPython.core.error import UsageError
 from IPython.core.display import HTML
 from ipykernel.kernelbase import Kernel
-from jupyter_client import manager
+from jupyter_client import manager, find_connection_file
 
 from textwrap import dedent
 from io import StringIO
@@ -263,6 +263,7 @@ class SoS_Exporter(Exporter):
         resources['output_extension'] = '.sos'
         return content, resources
 
+
 class SoS_Kernel(Kernel):
     implementation = 'SOS'
     implementation_version = __version__
@@ -277,6 +278,7 @@ class SoS_Kernel(Kernel):
         'nbconvert_exporter': 'pysos.kernel.SoS_Exporter',
     }
     banner = "SoS kernel - script of scripts"
+    shell = InteractiveShell.instance()
 
     def __init__(self, **kwargs):
         super(SoS_Kernel, self).__init__(**kwargs)
@@ -291,10 +293,11 @@ class SoS_Kernel(Kernel):
         self.original_keys.add('__builtins__')
         self.options = ''
         self.kernel = 'sos'
+        self.banner = self.banner + '\nConnection file {}'.format(os.path.basename(find_connection_file()))
         # FIXME: this should in theory be a MultiKernelManager...
         self.kernels = {}
         self.original_kernel = None
-        self.format_obj = InteractiveShell.instance().display_formatter.format
+        self.format_obj = self.shell.display_formatter.format
         self.previewer = {'*': SoS_FilePreviewer().preview, '*.bam': BioPreviewer().preview }
         self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
         env.sos_dict.set('__summary_report__', self.report_file)
@@ -477,6 +480,18 @@ class SoS_Kernel(Kernel):
         if code.startswith('%dict'):
             mode = 'dict'
             command_line = self.get_magic_option(code)
+        elif code.startswith('%connect_info'):
+            cfile = find_connection_file()
+            with open(cfile) as conn:
+                conn_info = conn.read()
+            self.send_response(self.iopub_socket, 'stream',
+                  {'name': 'stdout', 'text': 'Connection file: {}\n{}'.format(cfile, conn_info)})
+            return {'status': 'ok',
+                    # The base class increments the execution count
+                    'execution_count': self.execution_count,
+                    'payload': [],
+                    'user_expressions': {},
+                   }
         elif code.startswith('%set'):
             options = self.get_magic_option(code)
             if options.strip():
