@@ -306,7 +306,9 @@ class Sequential_Executor(Base_Executor):
         #
         # the steps can be executed in the pool (Not implemented)
         # if nested = true, start a new progress bar
-        prog = ProgressBar(self.workflow.name, len(self.workflow.sections), disp=len(self.workflow.sections) > 1 and env.verbosity == 1 and env.run_mode == 'run')
+        prog = ProgressBar(self.workflow.name, len(self.workflow.sections),
+            disp=len(self.workflow.sections) > 1 and env.verbosity == 1 and env.run_mode == 'run' \
+            and ('__interactive__' not in env.sos_dict or not env.sos_dict['__interactie__']))
         for idx, section in enumerate(self.workflow.sections):
             # global section will not change _step etc
             if section.is_parameters:
