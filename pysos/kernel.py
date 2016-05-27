@@ -445,14 +445,9 @@ class SoS_Kernel(Kernel):
 
     def restart_kernel(self, kernel):
         if kernel == 'sos':
-            # restart all subkernels and itself
-            kernels = self.kernels
-            self.do_shutdown(restart=True)
+            # cannot restart myself ...
             self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': 'Kernel sos restarted\n'})
-            self.kernels = kernels
-            for kernel in self.kernels:
-                self.restart_kernel(kernel)
+                    {'name': 'stderr', 'text': 'Cannot restart sos kernel from within sos.'})
         elif kernel:
             if kernel in self.kernels:
                 try:
@@ -571,9 +566,10 @@ class SoS_Kernel(Kernel):
                 new_cmd = interpolate(cmd, sigil='${ }', local_dict=env.sos_dict._dict)
                 if new_cmd != cmd:
                     cmd = new_cmd
-                    self.send_response(self.iopub_socket, 'stream',
-                        {'name': 'stdout', 'text':
-                        new_cmd.strip() + '\n## -- End interpolated command --\n'})
+                    if not cmd.startswith('cd ') and not cmd.startswith('cd\t'):
+                        self.send_response(self.iopub_socket, 'stream',
+                            {'name': 'stdout', 'text':
+                            new_cmd.strip() + '\n## -- End interpolated command --\n'})
             except Exception as e:
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(short_repr(cmd), e)})
@@ -582,6 +578,29 @@ class SoS_Kernel(Kernel):
                         'evalue': str(e),
                         'traceback': [],
                         'execution_count': self.execution_count,
+                       }
+            # command cd is handled differently because it is the only one that
+            # has effect on sos.
+            if cmd.startswith('cd ') or cmd.startswith('cd\t'):
+                to_dir = cmd[3:].strip()
+                try:
+                    os.chdir(to_dir)
+                except Exception as e:
+                    self.send_response(self.iopub_socket, 'stream',
+                        {'name': 'stderr', 'text': repr(e)})
+                    return  {'status': 'error',
+                        'ename': e.__class__.__name__,
+                        'evalue': str(e),
+                        'traceback': [],
+                        'execution_count': self.execution_count,
+                       }
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': os.getcwd()})
+                return {'status': 'ok',
+                        # The base class increments the execution count
+                        'execution_count': self.execution_count,
+                        'payload': [],
+                        'user_expressions': {},
                        }
             with self.redirect_sos_io():
                 try:
