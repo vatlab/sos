@@ -679,6 +679,9 @@ class SoS_Kernel(Kernel):
                     {'execution_count': self.execution_count, 'data': format_dict,
                     'metadata': md_dict})
             #
+            # update the underlying shell's namespace with the sos dict so that
+            # spyder's object inspector can view the variable.
+            self.shell.user_ns.update(env.sos_dict._dict)
             return {'status': 'ok',
                     # The base class increments the execution count
                     'execution_count': self.execution_count,
