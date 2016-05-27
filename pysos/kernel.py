@@ -445,8 +445,14 @@ class SoS_Kernel(Kernel):
 
     def restart_kernel(self, kernel):
         if kernel == 'sos':
+            # restart all subkernels and itself
+            kernels = self.kernels
+            self.do_shutdown(restart=True)
             self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': 'Please use Kernel -> Restart to restart SoS kernel'})
+                {'name': 'stdout', 'text': 'Kernel sos restarted\n'})
+            self.kernels = kernels
+            for kernel in self.kernels:
+                self.restart_kernel(kernel)
         elif kernel:
             if kernel in self.kernels:
                 try:
@@ -457,7 +463,7 @@ class SoS_Kernel(Kernel):
             try:
                 self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)
                 self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': 'Kernel {} {}started'.format(kernel, 're' if kernel in self.kernels else '')})
+                    {'name': 'stdout', 'text': 'Kernel {} {}started\n'.format(kernel, 're' if kernel in self.kernels else '')})
                 #self.send_response(self.iopub_socket, 'stream',
                 #    {'name': 'stdout', 'text': 'Kernel "{}" started\n'.format(kernel)})
                 if kernel == self.kernel:
@@ -465,6 +471,10 @@ class SoS_Kernel(Kernel):
             except Exception as e:
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e)})
+        else:
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': 'Specify one of the kernels to restart: sos{}\n'
+                    .format(''.join(', {}'.format(x) for x in self.kernels))})
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
@@ -554,7 +564,25 @@ class SoS_Kernel(Kernel):
             if len(lines) > 1:
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stderr', 'text': 'extra lines ignored in temporary shell mode\n'})
+            #
+            # interpolate command
             cmd = lines[0][1:]
+            try:
+                new_cmd = interpolate(cmd, sigil='${ }', local_dict=env.sos_dict._dict)
+                if new_cmd != cmd:
+                    cmd = new_cmd
+                    self.send_response(self.iopub_socket, 'stream',
+                        {'name': 'stdout', 'text':
+                        new_cmd.strip() + '\n## -- End interpolated command --\n'})
+            except Exception as e:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(short_repr(cmd), e)})
+                return  {'status': 'error',
+                        'ename': e.__class__.__name__,
+                        'evalue': str(e),
+                        'traceback': [],
+                        'execution_count': self.execution_count,
+                       }
             with self.redirect_sos_io():
                 try:
                     p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
