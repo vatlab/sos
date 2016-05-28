@@ -25,6 +25,7 @@ import sys
 import yaml
 import atexit
 import fnmatch
+import tempfile
 
 from .utils import env, get_traceback, dict_merge
 from .sos_script import SoS_Script
@@ -45,6 +46,22 @@ def sos_convert(args, style_args):
             if not args.from_file.endswith('ipynb'):
                 raise RuntimeError('Can only convert from a .ipynb file to SoS script: {} specified.'.format(args.from_file))
             notebook_to_script(args.from_file, args.sos, style_args)
+        elif args.notebook and args.from_file.lower().endswith('.ipynb'):
+            try:
+                sos_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.sos', delete=False).name
+                notebook_to_script(args.from_file, sos_file, style_args)
+                transcript_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.transcript', delete=False).name
+                try:
+                    with open(transcript_file, 'w') as transcript:
+                        script = SoS_Script(filename=sos_file, transcript=transcript)
+                except Exception as e:
+                    script = None
+                    env.logger.warning(e)
+                script_to_notebook(transcript_file, sos_file, args.notebook)
+                sys.exit(0)
+            finally:
+                os.remove(sos_file)
+                os.remove(transcript_file)
         else:
             transcript_file = os.path.join('.sos/{}.transcript'.format(os.path.basename(args.from_file)))
             with open(transcript_file, 'w') as transcript:

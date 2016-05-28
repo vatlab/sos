@@ -87,8 +87,11 @@ if __name__ == '__main__':
             of the configuration file will be available as a dictionary
             CONF in the SoS script being executed.''')
     parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
+        const='__STDOUT__', nargs='?',
         help='''Name of a file that records output from report lines
-            (lines starts with !) and report action of the script.''')
+            (lines starts with !) and report action of the script. Report
+            will be written to standard output if the option is specified
+            without any value.''')
     parser.add_argument('-t', dest='__transcript__', nargs='?',
         metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
@@ -189,11 +192,20 @@ if __name__ == '__main__':
             customized output.''')
     parser.add_argument('--notebook', nargs='?', metavar='FILENAME', const='__STDOUT__',
         help='''Convert script or workflow to jupyter notebook format and write
-            it to specified file, or standard output if no filename is specified.''')
+            it to specified file, or standard output if no filename is specified.
+            If the input file is a notebook, it will be converted to .sos (see
+            option --sos) then to notebook, resetting indexes and removing all
+            output cells.''')
     parser.add_argument('--sos', nargs='?', metavar='SCRIPT', const='__STDOUT__',
         help='''Convert specified Jupyter notebook to SoS format. The output
             is the same as you use File -> Download as -> SoS (.sos) from
-            Jupyter with nbconvert version 4.2.0 or higher.''')
+            Jupyter with nbconvert version 4.2.0 or higher although you can
+            customize output using options --reorder (rearrange notebook cells
+            with execution order), --reset-index (reset indexes to 1, 2, 3, ..),
+            --add-header (add section header [index] if the cell does not start
+            with a header), --no-index (does not save cell index), --remove-magic
+            (remove cell magic), and --md-to-report (convert markdown cell to
+            code cell with report.)''')
     addCommonArgs(parser)
     parser.set_defaults(func=sos_convert)
     #

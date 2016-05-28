@@ -203,28 +203,21 @@ class WorkflowDict(object):
         self.set(key, value)
 
     def __cmp_values__(self, A, B):
-        try:
-            C = A == B
-            if isinstance(C, bool):
-                return C
-            # numpy has this func
-            if hasattr(C, 'all'):
-                return C.all()
-            elif hasattr(C, '__iter__'):
-                return all(C)
-            else:
-                raise ValueError('Unknown comparison result "{}"'.format(short_repr(C)))
-        except Exception as e:
-            env.logger.warning('Failed to compare "{}" and "{}": {}'.format(short_repr(A), short_repr(B), e))
-            return False
+        C = A == B
+        if isinstance(C, bool):
+            return C
+        else:
+            return None
 
     def check_readonly_vars(self):
         for key in env.readonly_vars:
             if key in self._readonly_vars:
-                if not self.__cmp_values__(self._dict[key], self._readonly_vars[key]):
+                cmp_res = self.__cmp_values__(self._dict[key], self._readonly_vars[key])
+                if not cmp_res:
                     if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
-                        env.logger.warning('readonly variable {} is changed from {} to {}'
-                            .format(key, self._dict[key], self._readonly_vars[key]))
+                        if cmp_res is False:
+                            env.logger.warning('Readonly variable {} is changed from {} to {}'
+                                .format(key, self._readonly_vars[key], self._dict[key]))
                         self._readonly_vars[key] = self._dict[key]
                     else:
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
@@ -238,18 +231,22 @@ class WorkflowDict(object):
                 self._readonly_vars[key] = value
             # if the key already exists
             if key in self._dict:
-                if not self.__cmp_values__(self._dict[key], self._readonly_vars[key]):
+                cmp_res = self.__cmp_values__(self._dict[key], self._readonly_vars[key])
+                if not cmp_res:
                     if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
-                        env.logger.warning('readonly variable {} is changed from {} to {}'
-                            .format(key, self._dict[key], self._readonly_vars[key]))
+                        if cmp_res is False:
+                            env.logger.warning('Readonly variable {} is changed from {} to {}'
+                                .format(key, self._readonly_vars[key], self._dict[key]))
                         self._readonly_vars[key] = self._dict[key]
                     else:
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
                             .format(key, self._dict[key], self._readonly_vars[key]))
-                if not self.__cmp_values__(value, self._dict[key]):
+                cmp_res = self.__cmp_values__(value, self._dict[key])
+                if not cmp_res:
                     if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
-                        env.logger.warning('readonly variable {} is changed from {} to {}'
-                            .format(key, self._dict[key], value))
+                        if cmp_res is False:
+                            env.logger.warning('Readonly variable {} is changed from {} to {}'
+                                .format(key, self._dict[key], value))
                         self._dict[key] = value
                     else:
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'

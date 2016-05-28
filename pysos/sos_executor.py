@@ -236,11 +236,16 @@ class Base_Executor:
         step_reports.sort(key=natural_keys)
         # merge the files
         if step_reports and self.report:
-            with open(self.report, 'w') as combined:
-                for step_report in step_reports:
-                    with open(step_report, 'r') as md:
-                        combined.write(md.read())
-            env.logger.info('Report saved to {}'.format(self.report))
+            if self.report == '__STDOUT__':
+                combined = sys.stdout
+            else:
+                combined = open(self.report, 'w')
+            for step_report in step_reports:
+                with open(step_report, 'r') as md:
+                    combined.write(md.read())
+            if self.report != '__STDOUT__':
+                combined.close()
+                env.logger.info('Report saved to {}'.format(self.report))
 
     def run(self, args=[], nested=False, cmd_name='', config_file=None,
         run_mode='run', sig_mode='default', verbosity=2):
@@ -306,7 +311,9 @@ class Sequential_Executor(Base_Executor):
         #
         # the steps can be executed in the pool (Not implemented)
         # if nested = true, start a new progress bar
-        prog = ProgressBar(self.workflow.name, len(self.workflow.sections), disp=len(self.workflow.sections) > 1 and env.verbosity == 1 and env.run_mode == 'run')
+        prog = ProgressBar(self.workflow.name, len(self.workflow.sections),
+            disp=len(self.workflow.sections) > 1 and env.verbosity == 1 and env.run_mode == 'run' \
+            and ('__interactive__' not in env.sos_dict or not env.sos_dict['__interactie__']))
         for idx, section in enumerate(self.workflow.sections):
             # global section will not change _step etc
             if section.is_parameters:

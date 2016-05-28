@@ -795,79 +795,104 @@ def script_to_markdown(transcript, script_file, markdown_file):
     '''
     Write a markdown file with the transcript of a SOS file.
     '''
-    with open(markdown_file, 'w') as markdown:
-        # remove background definition so that we can use our own
-        with open(transcript) as script:
-            content = []
-            content_type = None
-            # content_number = None
-            next_type = None
-            for line in script:
-                line_type, line_no, script_line = line.split('\t', 2)
-                # Does not follow section because it has to be one line
-                if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
-                    line_type = 'COMMENT'
-                if content_type == line_type or line_type == 'FOLLOW':
-                    if next_type is not None and not script_line.rstrip().endswith(','):
-                        markdown_content(content_type, content, markdown)
-                        content = [script_line]
-                        content_type = next_type
-                        # content_number = int(line_no)
-                        next_type = None
-                    else:
-                        content.append(script_line)
-                else:
-                    if content:
-                        markdown_content(content_type, content, markdown)
-                    if line_type.startswith('SCRIPT_'):
-                        content_type = 'DIRECTIVE'
-                        next_type = line_type[7:]
-                    else:
-                        content_type = line_type
-                    # content_number = int(line_no)
+    if markdown_file == '__STDOUT__':
+        markdown = sys.stdout
+    else:
+        markdown = open(markdown_file, 'w')
+    # remove background definition so that we can use our own
+    with open(transcript) as script:
+        content = []
+        content_type = None
+        # content_number = None
+        next_type = None
+        for line in script:
+            line_type, line_no, script_line = line.split('\t', 2)
+            # Does not follow section because it has to be one line
+            if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
+                line_type = 'COMMENT'
+            if content_type == line_type or line_type == 'FOLLOW':
+                if next_type is not None and not script_line.rstrip().endswith(','):
+                    markdown_content(content_type, content, markdown)
                     content = [script_line]
-        if content:
-            markdown_content(content_type, content, markdown)
-    #
-    env.logger.info('SoS script saved to {}'.format(markdown_file))
+                    content_type = next_type
+                    # content_number = int(line_no)
+                    next_type = None
+                else:
+                    content.append(script_line)
+            else:
+                if content:
+                    markdown_content(content_type, content, markdown)
+                if line_type.startswith('SCRIPT_'):
+                    content_type = 'DIRECTIVE'
+                    next_type = line_type[7:]
+                else:
+                    content_type = line_type
+                # content_number = int(line_no)
+                content = [script_line]
+    if content:
+        markdown_content(content_type, content, markdown)
+    if markdown != sys.stdout:
+        env.logger.info('SoS script saved to {}'.format(markdown_file))
 
 
 def workflow_to_markdown(workflow, script_file, markdown_file):
     '''
     Write a markdown file with the transcript of a SOS file.
     '''
-    with open(markdown_file, 'w') as markdown:
-        if workflow.sections and workflow.sections[0].global_def:
-            markdown_content('STATEMENT', workflow.sections[0].global_def, markdown)
-        #
-        for section in workflow.sections:
-            markdown_content('SECTION', '[{}_{}]'.format(section.name, section.index), markdown)
-            #
-            if section.comment:
-                markdown_content('COMMENT', '#' + section.comment, markdown)
-            for stmt in section.statements:
-                if stmt[0] == ':':
-                    markdown_content('DIRECTIVE', '{} : {}'.format(stmt[1], stmt[2]), markdown)
-                elif stmt[0] == '=':
-                    markdown_content('STATEMENT', '{} = {}'.format(stmt[1], stmt[2]), markdown)
-                else:
-                    markdown_content('STATEMENT', stmt[1].strip(), markdown)
-            if section.task:
-                markdown_content('STATEMENT', section.task.strip(), markdown)
-            markdown_content('COMMENT', '\n', markdown)
+    if markdown_file == '__STDOUT__':
+        markdown = sys.stdout
+    else:
+        markdown = open(markdown_file, 'w')
+    if workflow.sections and workflow.sections[0].global_def:
+        markdown_content('STATEMENT', workflow.sections[0].global_def, markdown)
     #
-    env.logger.info('Workflow saved to {}'.format(markdown_file))
+    for section in workflow.sections:
+        markdown_content('SECTION', '[{}_{}]'.format(section.name, section.index), markdown)
+        #
+        if section.comment:
+            markdown_content('COMMENT', '#' + section.comment, markdown)
+        for stmt in section.statements:
+            if stmt[0] == ':':
+                markdown_content('DIRECTIVE', '{} : {}'.format(stmt[1], stmt[2]), markdown)
+            elif stmt[0] == '=':
+                markdown_content('STATEMENT', '{} = {}'.format(stmt[1], stmt[2]), markdown)
+            else:
+                markdown_content('STATEMENT', stmt[1].strip(), markdown)
+        if section.task:
+            markdown_content('STATEMENT', section.task.strip(), markdown)
+        markdown_content('COMMENT', '\n', markdown)
+    #
+    if markdown != sys.stdout:
+        env.logger.info('Workflow saved to {}'.format(markdown_file))
 
 
 #
 # Converter from Notebook
 #
 
+def parse_convert_args(convert_args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--reorder', action='store_true')
+    parser.add_argument('--reset-index', action='store_true')
+    parser.add_argument('--add-header', action='store_true')
+    parser.add_argument('--no-index', action='store_true')
+    parser.add_argument('--remove-magic', action='store_true')
+    parser.add_argument('--md-to-report', action='store_true')
+    try:
+        args = parser.parse_args(convert_args)
+    except Exception as e:
+        raise RuntimeError('Unrecognized style argument {}: {}'
+            .format(' '.join(convert_args), e))
+    return args
+
 def notebook_to_script(notebook_file, sos_file, convert_args=[]):
     '''
     convert a ipython notebook.
     '''
-    exporter = SoS_Exporter()
+    sargs = parse_convert_args(convert_args)
+    exporter = SoS_Exporter(reorder=sargs.reorder, reset_index=sargs.reset_index,
+                            add_header=sargs.add_header, no_index=sargs.no_index,
+                            remove_magic=sargs.remove_magic, md_to_report=sargs.md_to_report)
     notebook = nbformat.read(notebook_file, nbformat.NO_CONVERT)
     output, resource = exporter.from_notebook_node(notebook, {})
     if sos_file == '__STDOUT__':
@@ -884,14 +909,14 @@ def add_cell(cells, cell_src_code, cell_count):
     # if a section consist of all report, report it as a markdown cell
     if not cell_src_code:
         return
-    if (cell_src_code[0].startswith('!') or not cell_src_code[0].strip() or SOS_SECTION_HEADER.match(cell_src_code[0])) and \
-        all(not x.strip() or x.startswith('!') for x in cell_src_code[1:]):
+    if (cell_src_code[0].startswith('#! ') or not cell_src_code[0].strip() or SOS_SECTION_HEADER.match(cell_src_code[0])) and \
+        all(not x.strip() or x.startswith('#! ') for x in cell_src_code[1:]):
         md = ''
         for line in cell_src_code:
             if SOS_SECTION_HEADER.match(line):
                 continue
             else:
-                md += line[2:]
+                md += line[3:]
         cells.append(new_markdown_cell(source=md))
         return cell_count
     else:
@@ -908,7 +933,7 @@ def script_to_notebook(transcript, script_file, notebook_file):
     '''
     cells = []
     cell_count = 1
-    CELL_LINE = re.compile('^#cell\s+(markdown|code)(\s+\d+\s+)?$')
+    CELL_LINE = re.compile('^#%%\s+(markdown|code)(\s+\d+\s+)?$')
     with open(transcript) as script:
         cell_src_code = []
         content = []
@@ -919,6 +944,9 @@ def script_to_notebook(transcript, script_file, notebook_file):
             line_type, line_no, script_line = line.split('\t', 2)
             if line_type == 'COMMENT':
                 if script_line.startswith('#!'):
+                    # shebang line is ignored
+                    if script_line.startswith('#! '):
+                        content.append(script_line)
                     continue
                 if script_line.startswith('#fileformat='):
                     if not script_line[12:].startswith('SOS'):
@@ -936,7 +964,7 @@ def script_to_notebook(transcript, script_file, notebook_file):
                 if len(parts) > 2 and parts[2].isdigit():
                     cell_count = int(parts[2])
                 if parts[1] == 'markdown':
-                    content_type == 'REPORT'
+                    content_type == 'MARKDOWN'
                 else:
                     content_type == 'SECTION'
                 content = []
@@ -977,7 +1005,7 @@ def script_to_notebook(transcript, script_file, notebook_file):
                 # content_number = int(line_no)
                 content = [script_line]
     if content:
-        add_cell(cells, cell_src_code, cell_count)
+        add_cell(cells, content, cell_count)
     #
     nb = new_notebook(cells = cells,
         metadata = {
@@ -1053,10 +1081,13 @@ def workflow_to_notebook(workflow, script_file, notebook_file):
             }
         }
     )
-    with open(notebook_file, 'w') as notebook:
-        nbformat.write(nb, notebook, 4)
-    #
-    env.logger.info('Workflow saved to {}'.format(notebook_file))
+    if notebook_file == '__STDOUT__':
+            nbformat.write(nb, sys.stdout, 4)
+    else:
+        with open(notebook_file, 'w') as notebook:
+            nbformat.write(nb, notebook, 4)
+        #
+        env.logger.info('Workflow saved to {}'.format(notebook_file))
 
 #
 # Output to terminal

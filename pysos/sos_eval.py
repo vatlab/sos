@@ -67,7 +67,7 @@ class SoS_String:
         ^                                   # start of expression
         (?P<expr>.*?)                       # any expression
         (?P<conversion>!\s*                 # conversion starting with !
-        [srqabe,]+                          # conversion, q, a, b, and , are added by SoS
+        [srqabde,]+                         # conversion, q, a, b, and , are added by SoS
         )?
         (?P<format_spec>:\s*                # format_spec starting with :
         (?P<fill>.?[<>=^])?                 # optional fill|align
@@ -208,6 +208,8 @@ class SoS_String:
                     obj = os.path.expanduser(obj)
                 if 'a' in conversion:
                     obj = os.path.abspath(os.path.expanduser(obj))
+                if 'd' in conversion:
+                    obj = os.path.dirname(obj)
                 if 'b' in conversion:
                     obj = os.path.basename(obj)
                 if 'q' in conversion:
@@ -370,11 +372,11 @@ def SoS_exec(stmts, sigil='${ }'):
         else:
             env.logger.trace('Executing\n{}'.format(stmts))
         #
-        if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
-            act = DelayedAction(env.logger.warning, 'Running {}'.format(short_repr(code)))
-        else:
-            act = None
         try:
+            if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+                act = DelayedAction(env.logger.warning, 'Running {}'.format(short_repr(code)))
+            else:
+                act = None
             if env.run_mode == 'inspect':
                 # make sure that the expression can be completed in 5 seconds
                 with time_limit(env.sos_dict['CONFIG'].get('sos_inspect_timeout', 5), stmts):
@@ -397,7 +399,8 @@ def SoS_exec(stmts, sigil='${ }'):
                     env.sos_dict['__execute_errors__'].append(stmts, e)
             else:
                 raise
-        del act
+        finally:
+            del act
         executed += stmts + '\n'
         # check if the statement has altered any readonly variables
         env.sos_dict.check_readonly_vars()
