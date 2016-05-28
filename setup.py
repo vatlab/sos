@@ -58,17 +58,17 @@ def patch_spyder():
     try:
         from spyderlib.utils import sourcecode
         src_file = sourcecode.__file__
-        with open(src_file, 'r') as src:
+        with open(src_file, encoding='utf-8') as src:
             content = src.read()
-        with open(src_file, 'w') as src:
+        with open(src_file, 'w', encoding='utf-8') as src:
             src.write(content.replace("'Python': ('py', 'pyw', 'python', 'ipy')",
                 "'Python': ('py', 'pyw', 'python', 'ipy', 'sos', 'sosnb')"))
         #
         from spyderlib import config
         src_file = config.__file__
-        with open(src_file, 'r') as src:
+        with open(src_file, encoding='utf-8') as src:
             content = src.read()
-        with open(src_file, 'w') as src:
+        with open(src_file, 'w', encoding='utf-8') as src:
             src.write(content.replace('''
     (_("Cython/Pyrex files"), ('.pyx', '.pxd', '.pxi')),
     (_("C files"), ('.c', '.h')),''', '''
@@ -78,7 +78,7 @@ def patch_spyder():
         #
         log.info('\nAllow spyder to accept .sos as input format.')
     except Exception as e:
-        log.info('Failed to patch spyder to accept .sos file.')
+        log.info('Failed to patch spyder to accept .sos file: {}'.format(e))
 
 class InstallWithConfigurations(install):
     def run(self):
