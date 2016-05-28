@@ -299,6 +299,7 @@ class SoS_Kernel(Kernel):
         self.kernels = {}
         self.original_kernel = None
         self.format_obj = self.shell.display_formatter.format
+        self.shell.enable_gui = lambda x: False
         self.previewer = {'*': SoS_FilePreviewer().preview, '*.bam': BioPreviewer().preview }
         self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
         env.sos_dict.set('__summary_report__', self.report_file)
@@ -584,7 +585,7 @@ class SoS_Kernel(Kernel):
             if cmd.startswith('cd ') or cmd.startswith('cd\t'):
                 to_dir = cmd[3:].strip()
                 try:
-                    os.chdir(to_dir)
+                    os.chdir(os.path.expanduser(os.path.expandvars(to_dir)))
                 except Exception as e:
                     self.send_response(self.iopub_socket, 'stream',
                         {'name': 'stderr', 'text': repr(e)})

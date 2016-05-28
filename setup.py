@@ -37,15 +37,23 @@ def patch_spyder():
     '''spyder does not recognize .sos extension. The only change we need to make it work is to
     change the following code from
 
-    ALL_LANGUAGES = {
-                 'Python': ('py', 'pyw', 'python', 'ipy'),
+        ALL_LANGUAGES = {
+                     'Python': ('py', 'pyw', 'python', 'ipy'),
 
     to
 
-    ALL_LANGUAGES = {
-                 'Python': ('py', 'pyw', 'python', 'ipy', 'sos', 'sosnb'),
+        ALL_LANGUAGES = {
+                     'Python': ('py', 'pyw', 'python', 'ipy', 'sos', 'sosnb'),
 
-    in spyderlib.utils.sourcecode.
+    in spyderlib.utils.sourcecode.py, and add 
+
+        (_("SoS files"), ('.sos', '.sosnb')),
+
+    to
+
+        EDIT_FILETYPES = (
+
+    in spyderlib.config.py.
     '''
     try:
         from spyderlib.utils import sourcecode
@@ -53,7 +61,21 @@ def patch_spyder():
         with open(src_file, 'r') as src:
             content = src.read()
         with open(src_file, 'w') as src:
-            src.write(content.replace("'Python': ('py', 'pyw', 'python', 'ipy')", "'Python': ('py', 'pyw', 'python', 'ipy', 'sos', 'sosnb')"))
+            src.write(content.replace("'Python': ('py', 'pyw', 'python', 'ipy')",
+                "'Python': ('py', 'pyw', 'python', 'ipy', 'sos', 'sosnb')"))
+        #
+        from spyderlib import config
+        src_file = config.__file__
+        with open(src_file, 'r') as src:
+            content = src.read()
+        with open(src_file, 'w') as src:
+            src.write(content.replace('''
+    (_("Cython/Pyrex files"), ('.pyx', '.pxd', '.pxi')),
+    (_("C files"), ('.c', '.h')),''', '''
+    (_("Cython/Pyrex files"), ('.pyx', '.pxd', '.pxi')),
+    (_("SoS files"), ('.sos', '.sosnb')),
+    (_("C files"), ('.c', '.h')),'''))
+        #
         log.info('\nAllow spyder to accept .sos as input format.')
     except Exception as e:
         log.info('Failed to patch spyder to accept .sos file.')
