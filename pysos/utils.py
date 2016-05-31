@@ -26,6 +26,7 @@ import copy
 import time
 import types
 import logging
+import shutil
 import glob
 import math
 import collections
@@ -430,13 +431,6 @@ logger = env.logger
 #
 # String formatting
 #
-def getTermWidth():
-    '''Get the width of current user terminal to properly wrap SoS
-    output when well-formatted output is required.
-    '''
-    width = blessings.Terminal().width
-    return 75 if width is None else width
-
 class _DeHTMLParser(HTMLParser):
     '''This parser analyzes input text, removes HTML tags such as
     <p>, <br>, <ul>, <li> etc and returns properly formatted texts.
@@ -574,7 +568,7 @@ class ProgressBar:
         self.main_start_time = time.time()
         self.message = self.main
         # get terminal width
-        self.term_width = getTermWidth()
+        self.term_width = shutil.get_terminal_size((80, 20)).columns
         #
         # total count
         self.count = 0

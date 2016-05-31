@@ -24,12 +24,13 @@ import re
 import copy
 import fnmatch
 import textwrap
+import shutil
 
 from io import StringIO
 from collections import defaultdict
 from collections.abc import Sequence
 
-from .utils import env, Error, dehtml, getTermWidth, locate_script, text_repr
+from .utils import env, Error, dehtml, locate_script, text_repr
 from .sos_eval import Undetermined
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_PARAMETERS_SECTION_NAME, \
@@ -343,7 +344,7 @@ class SoS_Step:
 
     def show(self):
         '''Output for command sos show'''
-        textWidth = max(60, getTermWidth())
+        textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
         if self.is_parameters:
             print('Accepted parameters:')
             for k,v,c in self.parameters:
@@ -435,7 +436,7 @@ class SoS_Workflow:
         self.sections.extend(workflow.sections)
 
     def show(self, parameters=True):
-        textWidth = max(60, getTermWidth())
+        textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
         paragraphs = dehtml(self.description).split('\n\n')
         print('\n'.join(
             textwrap.wrap('{} {}:  {}'.format(
@@ -1007,7 +1008,7 @@ class SoS_Script:
         return SoS_Workflow(wf_name.split('.')[-1], allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
 
     def show(self):
-        textWidth = max(60, getTermWidth())
+        textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
         if self.description:
             # separate \n\n
             for paragraph in dehtml(self.description).split('\n\n'):

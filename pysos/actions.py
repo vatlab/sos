@@ -42,7 +42,7 @@ from docker.utils import kwargs_from_env
 import multiprocessing as mp
 import pygments.token as token
 from pygments.lexers import get_lexer_for_filename, guess_lexer
-from .utils import env, getTermWidth, ProgressBar, short_repr, natural_keys, transcribe
+from .utils import env, ProgressBar, short_repr, natural_keys, transcribe
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .signature import FileSignature, fileMD5
@@ -578,7 +578,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
         message = message[:10] + '...' + message[-16:]
     #
     dest_tmp = dest + '.tmp_{}'.format(os.getpid())
-    term_width = getTermWidth()
+    term_width = shutil.get_terminal_size((80, 20)).columns
     try:
         env.logger.debug('Download {} to {}'.format(URL, dest))
         prog = ProgressBar(message, disp=env.verbosity > 1, index=index)
