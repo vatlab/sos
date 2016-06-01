@@ -245,9 +245,12 @@ def sos_config(args, workflow_args):
         values = []
         for v in args.__set_config__[1:]:
             try:
-                v = eval(v)
+                v_val = eval(v)
+                # test if the value can be saved by yaml
+                yaml.safe_dump(v_val)
+                v = v_val
             except Exception:
-                env.logger.warning('Value {} is an invalid expression and is treated as a string.'.format(v))
+                env.logger.warning('Value "{}" is an invalid expression and is treated as a string.'.format(v))
             values.append(v)
         #
         if len(values) == 1:
