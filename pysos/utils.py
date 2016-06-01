@@ -792,7 +792,7 @@ def get_output(cmd, show_command=False, prompt='$ '):
 #
 def locate_script(filename, start=''):
     #
-    attemp = os.path.expanduser(filename)
+    attemp = os.path.abspath(os.path.expanduser(filename))
     if os.path.isfile(attemp):
         return ('', attemp)
     #
