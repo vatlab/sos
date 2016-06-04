@@ -35,7 +35,11 @@ import pickle
 import yaml
 import psutil
 import urllib
-import blessings
+try:
+    # no ncurse support under windows
+    import blessings
+except:
+    pass 
 import subprocess
 import threading
 from io import StringIO
@@ -561,7 +565,11 @@ class ProgressBar:
             self.main = ''
             self.finished = 0
             return
-        self.index = index
+        # windows system does not support ncurse
+        if sys.platform == 'win32':
+            self.index = None
+        else:
+            self.index = index
         if self.index is not None:
             self.term = blessings.Terminal(stream=sys.stderr)
         self.main = message

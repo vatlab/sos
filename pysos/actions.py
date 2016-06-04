@@ -34,7 +34,11 @@ import shutil
 import zipfile
 import gzip
 import tarfile
-import blessings
+try:
+    # no ncurse support under windows
+    import blessings
+except ImportError:
+    pass
 from io import BytesIO
 from docker import Client
 from collections.abc import Sequence
@@ -740,8 +744,9 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
                     decompress, len(urls) - idx))
             succ = [x.get() if isinstance(x, mp.pool.AsyncResult) else x for x in succ]
         #
-        t = blessings.Terminal(stream=sys.stderr)
-        sys.stderr.write(t.move( t.height, 0)) # + '\n')
+        if sys.platform != 'win32':
+            t = blessings.Terminal(stream=sys.stderr)
+            sys.stderr.write(t.move( t.height, 0)) # + '\n')
     else:
         if dest_file is not None:
             succ[0] = downloadURL(urls[0], dest_file, decompress=decompress)
