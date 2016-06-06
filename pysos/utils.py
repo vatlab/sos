@@ -338,20 +338,20 @@ class RuntimeEnvironments(object):
     def register_process(self, pid, msg=''):
         '''Register a process used by this SoS instance. It will also be
         used to check resource used.'''
-        proc_file = os.path.join(self.exec_dir, '.sos/proc_{}'.format(pid))
+        proc_file = os.path.join(self.exec_dir, '.sos', 'proc_{}'.format(pid))
         self.logger.trace('Register {} {}'.format(pid, msg))
         with open(proc_file, 'w') as p:
             p.write(msg)
 
     def deregister_process(self, pid):
-        proc_file = os.path.join(self.exec_dir, '.sos/proc_{}'.format(pid))
+        proc_file = os.path.join(self.exec_dir, '.sos', 'proc_{}'.format(pid))
         self.logger.trace('Deregister {} at {}'.format(pid, proc_file))
         if os.path.isfile(proc_file):
             os.remove(proc_file)
 
     def cleanup(self):
         '''Clean up all running processes'''
-        for p in glob.glob(os.path.join(self.exec_dir, '.sos/proc_*')):
+        for p in glob.glob(os.path.join(self.exec_dir, '.sos', 'proc_*')):
             pid = int(os.path.basename(p)[5:])
             try:
                 env.logger.trace('Killing {} and all its children'.format(pid))
@@ -821,7 +821,7 @@ def locate_script(filename, start=''):
     #
     # a search path
     pathes = [start]
-    sos_config_file = os.path.expanduser('~/.sos/config.yaml')
+    sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yaml')
     if os.path.isfile(sos_config_file):
         try:
             with open(sos_config_file) as config:
@@ -831,7 +831,7 @@ def locate_script(filename, start=''):
         #
         pathes.extend(cfg.get('sos_path', []))
     #
-    sos_config_file = '.sos/config.yaml'
+    sos_config_file = os.path.join('.sos', 'config.yaml')
     if os.path.isfile(sos_config_file):
         try:
             with open(sos_config_file) as config:

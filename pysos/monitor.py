@@ -31,7 +31,7 @@ class ProcessMonitor(threading.Thread):
         threading.Thread.__init__(self)
         self.pid = pid
         self.interval = interval
-        self.proc_file = os.path.join(env.exec_dir, '.sos/{}.proc'.format(self.pid))
+        self.proc_file = os.path.join(env.exec_dir, '.sos', '{}.proc'.format(self.pid))
         with open(self.proc_file, 'w') as pd:
             if msg:
                 pd.write('# {}\n'.format(msg.replace('\n', '\n# ')))

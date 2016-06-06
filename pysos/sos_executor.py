@@ -164,7 +164,7 @@ class Base_Executor:
     def load_config(self, config_file=None):
         '''load global, local and user-specified config files'''
         cfg = {}
-        sos_config_file = os.path.expanduser('~/.sos/config.yaml')
+        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yaml')
         if os.path.isfile(sos_config_file):
             try:
                 with open(sos_config_file) as config:
@@ -173,7 +173,7 @@ class Base_Executor:
                 raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
         #
         # local config file
-        sos_config_file = '.sos/config.yaml'
+        sos_config_file = os.path.join('.sos', 'config.yaml')
         if os.path.isfile(sos_config_file):
             try:
                 with open(sos_config_file) as config:
@@ -223,16 +223,16 @@ class Base_Executor:
             SoS_exec('import os, sys, glob')
             SoS_exec('from pysos import *')
         #
-        if os.path.isdir('.sos/report'):
-            shutil.rmtree('.sos/report')
-        os.makedirs('.sos/report')
+        if os.path.isdir(os.path.join('.sos', 'report')):
+            shutil.rmtree(os.path.join('.sos', 'report'))
+        os.makedirs(os.path.join('.sos', 'report'))
         env.sos_dict.set('__transcript__', None)
 
     def finalize(self):
         # collect reports and write to a file
         if env.run_mode != 'run':
             return
-        step_reports = glob.glob('.sos/report/*')
+        step_reports = glob.glob(os.path.join('.sos', 'report', '*'))
         step_reports.sort(key=natural_keys)
         # merge the files
         if step_reports and self.report:
@@ -394,7 +394,8 @@ class Interactive_Executor(Base_Executor):
         # ignored
         parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
         # ignored
-        parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', default='.sos/__step_report.md')
+        parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', 
+            default=os.path.join('.sos', '__step_report.md'))
         parser.add_argument('-t', dest='__transcript__', nargs='?', const='__STDERR__',
             metavar='TRANSCRIPT')
         runmode = parser.add_argument_group(title='Run mode options')
@@ -492,7 +493,8 @@ class Interactive_Executor(Base_Executor):
             if args.__report__:
                 executor = Sequential_Executor(workflow, report=args.__report__, transcript=args.__transcript__)
             else:
-                executor = Sequential_Executor(workflow, report='.sos/ipython.md', transcript=args.__transcript__)
+                executor = Sequential_Executor(workflow, report=os.path.join('.sos', 'ipython.md'),
+                    transcript=args.__transcript__)
             executor.run(workflow_args, cmd_name='<script> {}'.format(wf_name), config_file=args.__config__,
                 run_mode=run_mode, sig_mode=sig_mode, verbosity=args.verbosity)
         finally:

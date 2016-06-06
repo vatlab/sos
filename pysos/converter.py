@@ -648,7 +648,7 @@ def script_to_html(transcript, script_file, html_file, style_args):
     Write a HTML file with the transcript of a SOS file.
     '''
     if html_file == '__BROWSER__':
-        html_file = '.sos/{}.html'.format(os.path.basename(script_file))
+        html_file = os.path.join('.sos', '{}.html'.format(os.path.basename(script_file)))
     sargs = parse_html_args(style_args)
     formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
         **{x:y for x,y in sargs.items() if x != 'raw'})
@@ -715,7 +715,7 @@ def workflow_to_html(workflow, script_file, html_file, style_args):
     Write a HTML file with the transcript of a SOS file.
     '''
     if html_file == '__BROWSER__':
-        html_file = '.sos/{}.html'.format(os.path.basename(script_file))
+        html_file = os.path.join('.sos', '{}.html'.format(os.path.basename(script_file)))
     sargs = parse_html_args(style_args)
     formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
         **{x:y for x,y in sargs.items() if x != 'raw'})

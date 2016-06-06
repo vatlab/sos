@@ -415,7 +415,7 @@ class SoS_ExecuteScript:
             return
         if '{}' not in self.interpreter:
             self.interpreter += ' {}'
-        debug_script_file = os.path.join(env.exec_dir, '.sos/{}_{}{}'.format(env.sos_dict['step_name'],
+        debug_script_file = os.path.join(env.exec_dir, '.sos', '{}_{}{}'.format(env.sos_dict['step_name'],
             env.sos_dict['_index'], self.suffix))
         env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
         with open(debug_script_file, 'w') as sfile:
@@ -1036,7 +1036,7 @@ def pandoc(script=None, output=None, **kwargs):
     elif '__interactive__' in env.sos_dict and env.sos_dict['__interactive__'] and '__summary_report__' in env.sos_dict:
         script_file = env.sos_dict['__summary_report__']
     else:
-        step_reports = glob.glob('.sos/report/*')
+        step_reports = glob.glob(os.path.join('.sos', 'report', '*'))
         step_reports.sort(key=natural_keys)
         # merge the files
         script_file = '{}.md'.format(os.path.basename(sos_script))
@@ -1111,7 +1111,7 @@ def pandoc(script=None, output=None, **kwargs):
     finally:
         env.deregister_process(p.pid)
     if ret != 0:
-        temp_file = os.path.join('.sos/{}_{}.md'.format('pandoc', os.getpid()))
+        temp_file = os.path.join('.sos', '{}_{}.md'.format('pandoc', os.getpid()))
         shutil.copyfile(script_file, temp_file)
         cmd = command.replace('{}', shlex.quote(temp_file))
         raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" to test it.'
@@ -1150,7 +1150,7 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
     elif '__interactive__' in env.sos_dict and env.sos_dict['__interactive__'] and '__summary_report__' in env.sos_dict:
         script_file = env.sos_dict['__summary_report__']
     else:
-        step_reports = glob.glob('.sos/report/*')
+        step_reports = glob.glob(os.path.join('.sos', 'report', '*'))
         step_reports.sort(key=natural_keys)
         # merge the files
         script_file = '{}.Rmd'.format(os.path.basename(sos_script))
@@ -1207,7 +1207,7 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
         env.deregister_process(p.pid)
         # os.remove(script_file)
     if ret != 0:
-        temp_file = os.path.join('.sos/R_{}.Rmd'.format(os.getpid()))
+        temp_file = os.path.join('.sos', 'R_{}.Rmd'.format(os.getpid()))
         shutil.copyfile(script_file, temp_file)
         cmd = command.replace('{}', '{!r}'.format(temp_file))
         raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" to test it.'

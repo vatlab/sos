@@ -63,7 +63,7 @@ def sos_convert(args, style_args):
                 os.remove(sos_file)
                 os.remove(transcript_file)
         else:
-            transcript_file = os.path.join('.sos/{}.transcript'.format(os.path.basename(args.from_file)))
+            transcript_file = os.path.join('.sos', '{}.transcript'.format(os.path.basename(args.from_file)))
             with open(transcript_file, 'w') as transcript:
                 try:
                     script = SoS_Script(filename=args.from_file, transcript=transcript)
@@ -174,11 +174,11 @@ def sos_config(args, workflow_args):
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
     #
     if args.__global_config__:
-        config_file = os.path.expanduser('~/.sos/config.yaml')
+        config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yaml')
     elif args.__config_file__:
         config_file = os.path.expanduser(args.__config_file__)
     else:
-        config_file = os.path.expanduser('.sos/config.yaml')
+        config_file = os.path.join('.sos', 'config.yaml')
     if args.__get_config__ is not None:
         if os.path.isfile(config_file):
             try:
