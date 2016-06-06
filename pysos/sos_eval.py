@@ -22,15 +22,13 @@
 import os
 import sys
 import re
-import signal
 import collections
 import token
 from io import StringIO
 from shlex import quote
 from tokenize import generate_tokens, untokenize
-from contextlib import contextmanager
 
-from .utils import env, Error, short_repr, DelayedAction
+from .utils import env, Error, short_repr, DelayedAction, time_limit
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
@@ -272,21 +270,6 @@ def ConvertString(s, sigil):
         result.append((toknum, tokval))
     return untokenize(result)
 
-
-class TimeoutException(Exception):
-    def __init__(self, msg=''):
-        self.msg = msg
-
-@contextmanager
-def time_limit(seconds, msg=''):
-    def signal_handler(signum, frame):
-        raise TimeoutException("Timed out for option {}".format(msg))
-    signal.signal(signal.SIGALRM, signal_handler)
-    signal.alarm(seconds)
-    try:
-        yield
-    finally:
-        signal.alarm(0)
 
 def SoS_eval(expr, sigil='${ }'):
     '''Evaluate an expression after modifying (convert ' ' string to raw string,
