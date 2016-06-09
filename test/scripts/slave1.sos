@@ -13,12 +13,11 @@ if 'executed' in locals() or 'executed' in globals():
 else:
 	executed = ['global/slave1']
 
-[parameters]
 # paramter
-slave1_a = 'a'
-slave2_b = 'b'
+parameter: slave1_a = 'a'
+parameter: slave2_b = 'b'
 # this is a trick parameter to record if the parameter section is defined
-temp = executed.append('parameter/slave1')
+parameter: temp = executed.append('parameter/slave1')
 
 
 [S1_1]

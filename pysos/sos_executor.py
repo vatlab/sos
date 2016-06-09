@@ -305,22 +305,12 @@ class Sequential_Executor(Base_Executor):
         #
         # process step of the pipelinp
         #
-        num_parameters_sections = len([x for x in self.workflow.sections if x.is_parameters])
-        if num_parameters_sections == 0 and args:
-            raise RuntimeError('Unused parameter {}'.format(' '.join(args)))
-        #
         # the steps can be executed in the pool (Not implemented)
         # if nested = true, start a new progress bar
         prog = ProgressBar(self.workflow.name, len(self.workflow.sections),
             disp=len(self.workflow.sections) > 1 and env.verbosity == 1 and env.run_mode == 'run' \
             and ('__interactive__' not in env.sos_dict or not env.sos_dict['__interactie__']))
         for idx, section in enumerate(self.workflow.sections):
-            # global section will not change _step etc
-            if section.is_parameters:
-                # if there is only one parameters section and no nested workflow, check unused section
-                self.parse_args(section, args, num_parameters_sections == 1, cmd_name=cmd_name)
-                prog.progress(1)
-                continue
             # handle skip, which might have to be evaluated till now.
             #
             # Important:

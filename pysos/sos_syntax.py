@@ -29,9 +29,8 @@ SOS_DEPENDS_OPTIONS = ['dynamic']
 SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active']
 SOS_ACTION_OPTIONS = ['workdir', 'docker_image', 'docker_file', 'active']
 
-SOS_DIRECTIVES = ['input', 'output', 'depends', 'task']
+SOS_DIRECTIVES = ['input', 'output', 'depends', 'task', 'parameter']
 SOS_SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'target']
-SOS_PARAMETERS_SECTION_NAME = 'parameters'
 
 SOS_REPORT_PREFIX = '!'
 

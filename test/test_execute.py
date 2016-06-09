@@ -650,9 +650,8 @@ a += 1
 a = 10
 import random
 
-[parameters]
 
-b = random.randint(0, 100000)
+parameter: b = random.randint(0, 100000)
 
 [a_1]
 
