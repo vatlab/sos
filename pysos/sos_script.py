@@ -413,7 +413,8 @@ class SoS_Workflow:
             print('\n'.join(
             textwrap.wrap(paragraph, width=textWidth)
             ))
-        section.show()
+        for section in self.sections:
+            section.show()
 
 class SoS_ScriptContent:
     '''A small class to record the script information to be used by nested
