@@ -1092,24 +1092,6 @@ CONFIG.a = 'b'
         for filename in ['config.sos', 'config.yaml']:
             os.remove(filename)
 
-    def testReport(self):
-        '''Test report lines'''
-        script = SoS_Script('''
-[0]
-! this is report
-!
-! this is another line 
-''')
-        wf = script.workflow()
-        Sequential_Executor(wf).run()
-        #
-        self.assertRaises(ParsingError, SoS_Script, '''
-[parameters]
-! this is report in parameters section, which is not alloed
-[0]
-''')
-        #
-
     def testVarOutput(self):
         '''Test early appearance of variable output'''
         script = SoS_Script('''
