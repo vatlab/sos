@@ -30,8 +30,8 @@ import time
 import shutil
 
 from pysos import SoS_Script
-from pysos.utils import env
-from pysos.sos_eval import TimeoutException, time_limit, Undetermined
+from pysos.utils import env, TimeoutException, time_limit
+from pysos.sos_eval import  Undetermined
 from pysos.sos_executor import ExecuteError
 from pysos.actions import DockerClient
 from docker.errors import DockerException
