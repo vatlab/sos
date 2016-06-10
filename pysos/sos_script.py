@@ -239,13 +239,13 @@ class SoS_Step:
         '''Assignments are items with ':' type '''
         if key is None:
             # continuation of multi-line directive
-            self.statements[-1][-1] += value
+            self.statements[-1][2] += value
             self.values.append(value)
             if self._action is not None:
                 self._action_options += value
         else:
-            # new directive
-            self.statements.append([':', key, value])
+            # new directive, the comment before it are used
+            self.statements.append([':', key, value, self.back_comment])
             self.values = [value]
         self.back_comment = ''
         if lineno:
@@ -264,7 +264,7 @@ class SoS_Step:
             self.lineno = lineno
 
     def add_statement(self, line, lineno=None):
-        '''Assignments are items with ':' type '''
+        '''statements are regular python statements'''
         # there can be only one statement block
         if self.category() != 'statements':
             self.values = [line]
@@ -319,6 +319,8 @@ class SoS_Step:
                     raise ValueError('Step task should be defined as the last item in a SoS step')
                 elif statement[1] == 'task':
                     raise ValueError('Only one task is allowed for a step')
+                elif statement[1] == 'parameter':
+                    raise ValueError('Parameters should be defined before step task')
                 # ignore ...
                 self.task += '\n'
             else:
@@ -531,16 +533,17 @@ class SoS_Script:
                     if self.transcript:
                         self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
                 else:
-                    # in the parameter section, the comments are description
-                    # of parameters and are all significant
+                    # this is description of the section
                     if cursect.empty():
                         cursect.add_comment(line)
                         if self.transcript:
                             self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                    # this is comment in scripts (and perhaps not even comment)
                     elif cursect.category() == 'script':
                         cursect.extend(line)
                         if self.transcript:
                             self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
+                    # this can be comment or back comment
                     elif cursect.category() in ('statement', 'expression') and cursect.isValid():
                         # this can be comment or back comment
                         cursect.add_comment(line)
