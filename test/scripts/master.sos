@@ -13,12 +13,11 @@ if 'executed' in locals() or 'executed' in globals():
 else:
 	executed = ['global/master']
 
-[parameters]
 # paramter
-master_a = 'a'
-master_b = 'b'
+parameter: master_a = 'a'
+parameter: master_b = 'b'
 # this is a trick parameter to record if the parameter section is defined
-temp = executed.append('parameter/master')
+parameter: temp = executed.append('parameter/master')
 
 
 [L_1]
