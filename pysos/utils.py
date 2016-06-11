@@ -26,21 +26,30 @@ import copy
 import time
 import types
 import logging
+import shutil
 import glob
 import math
 import collections
 import traceback
 import pickle
 import yaml
+import signal
 import psutil
 import urllib
-import blessings
+import argparse
+from collections.abc import Sequence
+try:
+    # no ncurse support under windows
+    import blessings
+except:
+    pass
 import subprocess
 import threading
 from io import StringIO
 from html.parser import HTMLParser
+from contextlib import contextmanager
 
-__all__ = ['logger', 'get_output']
+__all__ = ['logger', 'get_output', 'handle_parameter']
 
 
 class ColoredFormatter(logging.Formatter):
@@ -331,20 +340,20 @@ class RuntimeEnvironments(object):
     def register_process(self, pid, msg=''):
         '''Register a process used by this SoS instance. It will also be
         used to check resource used.'''
-        proc_file = os.path.join(self.exec_dir, '.sos/proc_{}'.format(pid))
+        proc_file = os.path.join(self.exec_dir, '.sos', 'proc_{}'.format(pid))
         self.logger.trace('Register {} {}'.format(pid, msg))
         with open(proc_file, 'w') as p:
             p.write(msg)
 
     def deregister_process(self, pid):
-        proc_file = os.path.join(self.exec_dir, '.sos/proc_{}'.format(pid))
+        proc_file = os.path.join(self.exec_dir, '.sos', 'proc_{}'.format(pid))
         self.logger.trace('Deregister {} at {}'.format(pid, proc_file))
         if os.path.isfile(proc_file):
             os.remove(proc_file)
 
     def cleanup(self):
         '''Clean up all running processes'''
-        for p in glob.glob(os.path.join(self.exec_dir, '.sos/proc_*')):
+        for p in glob.glob(os.path.join(self.exec_dir, '.sos', 'proc_*')):
             pid = int(os.path.basename(p)[5:])
             try:
                 env.logger.trace('Killing {} and all its children'.format(pid))
@@ -430,13 +439,6 @@ logger = env.logger
 #
 # String formatting
 #
-def getTermWidth():
-    '''Get the width of current user terminal to properly wrap SoS
-    output when well-formatted output is required.
-    '''
-    width = blessings.Terminal().width
-    return 75 if width is None else width
-
 class _DeHTMLParser(HTMLParser):
     '''This parser analyzes input text, removes HTML tags such as
     <p>, <br>, <ul>, <li> etc and returns properly formatted texts.
@@ -567,14 +569,18 @@ class ProgressBar:
             self.main = ''
             self.finished = 0
             return
-        self.index = index
+        # windows system does not support ncurse
+        if sys.platform == 'win32':
+            self.index = None
+        else:
+            self.index = index
         if self.index is not None:
             self.term = blessings.Terminal(stream=sys.stderr)
         self.main = message
         self.main_start_time = time.time()
         self.message = self.main
         # get terminal width
-        self.term_width = getTermWidth()
+        self.term_width = shutil.get_terminal_size((80, 20)).columns
         #
         # total count
         self.count = 0
@@ -798,7 +804,7 @@ def get_output(cmd, show_command=False, prompt='$ '):
 #
 def locate_script(filename, start=''):
     #
-    attemp = os.path.expanduser(filename)
+    attemp = os.path.abspath(os.path.expanduser(filename))
     if os.path.isfile(attemp):
         return ('', attemp)
     #
@@ -817,7 +823,7 @@ def locate_script(filename, start=''):
     #
     # a search path
     pathes = [start]
-    sos_config_file = os.path.expanduser('~/.sos/config.yaml')
+    sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yaml')
     if os.path.isfile(sos_config_file):
         try:
             with open(sos_config_file) as config:
@@ -827,7 +833,7 @@ def locate_script(filename, start=''):
         #
         pathes.extend(cfg.get('sos_path', []))
     #
-    sos_config_file = '.sos/config.yaml'
+    sos_config_file = os.path.join('.sos', 'config.yaml')
     if os.path.isfile(sos_config_file):
         try:
             with open(sos_config_file) as config:
@@ -916,14 +922,14 @@ def pretty_size(n,pow=0,b=1024,u='B',pre=['']+[p+'i'for p in'KMGTPEZY']):
     return "%%.%if %%s%%s"%abs(pow%(-pow-1))%(n/b**float(pow),pre[pow],u)
 
 class DelayedAction:
-    '''Call the passed function with param after a few seconds. It is most often 
+    '''Call the passed function with param after a few seconds. It is most often
     used to display certain message only if an action takes a long time.
 
         action = delayedAction(env.logger.info, 'This might take a while', 5)
         some_action_that_might_take_a_while
         del action
 
-    if the action finishes very quick, the message will not be displayed.    
+    if the action finishes very quick, the message will not be displayed.
     '''
     def __init__(self, func, param, delay=5):
         self.timer = threading.Timer(delay, func, (param,))
@@ -931,3 +937,109 @@ class DelayedAction:
 
     def __del__(self):
         self.timer.cancel()
+
+
+
+class TimeoutException(Exception):
+    def __init__(self, msg=''):
+        self.msg = msg
+
+@contextmanager
+def time_limit(seconds, msg=''):
+    if sys.platform == 'win32':
+        # windows system does not have signal SIGALARM so we will
+        # have to use a timer approach, which does not work as well
+        # as the signal approach
+        def timeout_func():
+            #env.logger.error('Timed out for operation {}'.format(msg))
+            _thread.interrupt_main()
+
+        timer = threading.Timer(seconds, timeout_func)
+        timer.start()
+        try:
+            yield
+        except KeyboardInterrupt:
+            # important: KeyboardInterrupt does not interrupt time.sleep()
+            # because KeyboardInterrupt is handled by Python interpreter but
+            # time.sleep() calls a system function.
+            raise TimeoutException("Timed out for operation {}".format(msg))
+        finally:
+            # if the action ends in specified time, timer is canceled
+            timer.cancel()
+    else:
+        def signal_handler(signum, frame):
+            raise TimeoutException("Timed out for option {}".format(msg))
+        signal.signal(signal.SIGALRM, signal_handler)
+        signal.alarm(seconds)
+        try:
+            yield
+        finally:
+            signal.alarm(0)
+
+
+class ArgumentError(Error):
+    """Raised when an invalid argument is passed."""
+    def __init__(self, msg):
+        Error.__init__(self, msg)
+        self.args = (msg, )
+
+
+def _parse_error(msg):
+    '''This function will replace error() function in argparse module so that SoS
+    can hijack errors raised from it.'''
+    raise ArgumentError(msg)
+
+
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', '0'):
+        return False
+    else:
+        raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
+
+def handle_parameter(key, defvalue):
+    '''Parse command line arguments and set values to parameters section'''
+    #
+    if not env.sos_dict['__args__']:
+        if isinstance(defvalue, type):
+            raise ArgumentError('Argument {} of type {} is required'.format(key, defvalue))
+        return defvalue
+    parser = argparse.ArgumentParser()
+    parser.register('type', 'bool', str2bool)
+    arguments = {}
+    if isinstance(defvalue, type):
+        if defvalue == bool:
+            parser.add_argument('--{}'.format(key), type='bool', required=True, nargs='?')
+        else:
+            # if only a type is specified, it is a required document of required type
+            parser.add_argument('--{}'.format(key), type=str if hasattr(defvalue, '__iter__') else defvalue,
+                help='', required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
+    else:
+        if isinstance(defvalue, bool):
+            parser.add_argument('--{}'.format(key), type='bool',
+                nargs='?', default=defvalue)
+        else:
+            if isinstance(defvalue, str):
+                deftype = str
+            elif isinstance(defvalue, Sequence):
+                if len(defvalue) > 0:
+                    deftype = type(defvalue[0])
+                else:
+                    deftype = str
+            else:
+                deftype = type(defvalue)
+            parser.add_argument('--{}'.format(key), type=deftype,
+                nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
+                default=defvalue)
+    #
+    parser.error = _parse_error
+    #
+    parsed, unknown = parser.parse_known_args(env.sos_dict['__args__'])
+    if '__unknown_args__' not in env.sos_dict:
+        env.sos_dict.set('__unknown_args__', unknown)
+    else:
+        env.sos_dict.set('__unknown_args__', [x for x in env.sos_dict['__unknown_args__'] if x in unknown])
+    return vars(parsed)[key]
+
+

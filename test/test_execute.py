@@ -643,26 +643,6 @@ a += 1
         wf = script.workflow()
         self.assertRaises(RuntimeError, Sequential_Executor(wf).run, run_mode='inspect')
 
-    def testReadonlyVarsInParameters(self):
-        '''Test vars defined in global section are readonly'''
-        script = SoS_Script(r"""
-
-a = 10
-import random
-
-[parameters]
-
-b = random.randint(0, 100000)
-
-[a_1]
-
-[default]
-sos_run('a+a')
-
-""")
-        wf = script.workflow()
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run, run_mode='inspect')
-
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''
         script = SoS_Script(r"""

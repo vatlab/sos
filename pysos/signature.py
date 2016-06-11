@@ -82,10 +82,10 @@ class FileSignature:
         rel_path = os.path.relpath(sig_name, os.path.realpath(workdir))
         # if this file is not relative to cache, use global signature file
         if rel_path.startswith('../'):
-            self.sig_file = os.path.join(os.path.expanduser('~/.sos/.runtime'), sig_name.lstrip(os.sep) + '.file_info')
+            self.sig_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep) + '.file_info')
         else:
             # if this file is relative to cache, use local directory
-            self.sig_file = os.path.join('.sos/.runtime', rel_path + '.file_info')
+            self.sig_file = os.path.join('.sos', '.runtime', rel_path + '.file_info')
         # path to file
         sig_path = os.path.split(self.sig_file)[0]
         if not os.path.isdir(sig_path):
@@ -154,10 +154,10 @@ class RuntimeInfo:
         rel_path = os.path.relpath(sig_name, os.path.realpath(workdir))
         # if this file is not relative to cache, use global signature file
         if rel_path.startswith('../'):
-            info_file = os.path.join(os.path.expanduser('~/.sos/.runtime'), sig_name.lstrip(os.sep))
+            info_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep))
         else:
             # if this file is relative to cache, use local directory
-            info_file = os.path.join('.sos/.runtime', rel_path)
+            info_file = os.path.join('.sos', '.runtime', rel_path)
         # path to file
         sig_path = os.path.split(info_file)[0]
         if not os.path.isdir(sig_path):

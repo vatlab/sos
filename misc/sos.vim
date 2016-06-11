@@ -51,8 +51,7 @@ highlight link pythonBuiltin	Function
 
 " parenthetical part of def and class
 syn match sos_section_head "^\[\s*\w\+.*\]\s*$"
-syn match sos_directive "^\(input\|output\|depends\|task\)\s*:"
-syn match sos_report "\(^! .*$\|^!$\)"
+syn match sos_directive "^\(input\|output\|depends\|parameter\|task\)\s*:"
 
 " match a line with non input/output/depends/task, and ends before a section
 " or another directive
@@ -61,19 +60,18 @@ syn match sos_report "\(^! .*$\|^!$\)"
 " for details.
 if exists("sos_fold")
   syn region script
-     \ start="^\(input\|output\|depends\|task\)\@!\w\+\s*:"hs=e+1
+     \ start="^\(input\|output\|depends\|parameter\|task\)\@!\w\+\s*:"hs=e+1
      \ end="\(^\[\s*\w\+.*\]\s*$\|^\w\+\s*:\|^! \|^!$\)"me=s-1,he=s-1,re=s-1
      \ fold contains=TOP containedin=ALL
 else
   syn region script
-     \ start="^\(input\|output\|depends\|task\)\@!\w\+\s*:"ms=e+1,hs=e+1
+     \ start="^\(input\|output\|depends\|parameter\|task\)\@!\w\+\s*:"ms=e+1,hs=e+1
      \ end="\(^\[\s*\w\+.*\]\s*$\|^\w\+\s*:\|^! \|^!$\)"me=s-1,he=s-1,re=s-1
      \ contains=TOP containedin=ALL
 endif
 
 highlight sos_section_head guibg='Purple' gui=none
 highlight sos_directive guifg='LightBlue' gui=bold
-highlight sos_report guifg='LightGreen' gui=none
 highlight script guifg='Gray' gui=none
 
 syn sync fromstart

@@ -55,7 +55,6 @@ run:			concurrent=True
     echo 'this is test script'
 
 [10]
-! This is a report
 report('this is action report')
 ''')
         self.scripts = ['temp/script1.sos', 'temp/script2.sos']

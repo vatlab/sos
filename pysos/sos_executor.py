@@ -29,12 +29,10 @@ import argparse
 
 import multiprocessing as mp
 
-from collections.abc import Sequence
-
 from . import __version__
 from .sos_step import Step_Executor
 from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, \
-    frozendict, natural_keys, dict_merge
+    frozendict, natural_keys, dict_merge, ArgumentError
 from .sos_eval import Undetermined, SoS_eval, SoS_exec
 from .sos_script import SoS_Script, SoS_Step, SoS_ScriptContent
 
@@ -82,89 +80,10 @@ class Base_Executor:
         self.transcript = transcript
         self.debug = debug
 
-    def _parse_error(self, msg):
-        '''This function will replace error() function in argparse module so that SoS
-        can hijack errors raised from it.'''
-        raise ArgumentError(msg)
-
-    def parse_args(self, section, args, check_unused=False, cmd_name=''):
-        '''Parse command line arguments and set values to parameters section'''
-        env.logger.debug('Execute ``{}_parameters``'.format(section.name))
-        env.sos_dict.set('step_name', '{}_parameters'.format(section.name))
-        if section.global_def:
-            try:
-                SoS_exec(section.global_def)
-            except Exception as e:
-                if env.verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(section.global_def, e))
-
-        def str2bool(v):
-            if v.lower() in ('yes', 'true', 't', '1'):
-                return True
-            elif v.lower() in ('no', 'false', 'f', '0'):
-                return False
-            else:
-                raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
-        #
-        parser = argparse.ArgumentParser(prog='sos-runner {}'.format(cmd_name))
-        parser.register('type', 'bool', str2bool)
-        arguments = {}
-        for key, defvalue, comment in section.parameters:
-            try:
-                defvalue = SoS_eval(defvalue, section.sigil)
-                arguments[key] = defvalue
-            except Exception as e:
-                raise RuntimeError('Incorrect default value {} for parameter {}: {}'.format(defvalue, key, e))
-            if isinstance(defvalue, type):
-                if defvalue == bool:
-                    parser.add_argument('--{}'.format(key), type='bool', help=comment, required=True, nargs='?')
-                else:
-                    # if only a type is specified, it is a required document of required type
-                    parser.add_argument('--{}'.format(key), type=str if hasattr(defvalue, '__iter__') else defvalue,
-                        help=comment, required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
-            else:
-                if isinstance(defvalue, bool):
-                    parser.add_argument('--{}'.format(key), type='bool', help=comment,
-                        nargs='?', default=defvalue)
-                else:
-                    if isinstance(defvalue, str):
-                        deftype = str
-                    elif isinstance(defvalue, Sequence):
-                        if len(defvalue) > 0:
-                            deftype = type(defvalue[0])
-                        else:
-                            deftype = str
-                    else:
-                        deftype = type(defvalue)
-                    parser.add_argument('--{}'.format(key), type=deftype, help=comment,
-                        nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
-                        default=defvalue)
-        #
-        parser.error = self._parse_error
-        #
-        # because of the complexity of having combined and nested workflows, we cannot know how
-        # many parameters section a workflow has and therfore have to assume that the unknown parameters
-        # are for other sections.
-        if check_unused:
-            parsed = parser.parse_args(args)
-        else:
-            parsed, unknown = parser.parse_known_args(args)
-            if unknown:
-                env.logger.warning('Unparsed arguments [{}] that might be processed by another combined or nested workflow'
-                    .format(' '.join(unknown)))
-        #
-        arguments.update(vars(parsed))
-        # now change the value with passed values
-        for k, v in arguments.items():
-            env.sos_dict[k] = v
-            # protect variables from being further modified
-            env.readonly_vars.add(k)
-
     def load_config(self, config_file=None):
         '''load global, local and user-specified config files'''
         cfg = {}
-        sos_config_file = os.path.expanduser('~/.sos/config.yaml')
+        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yaml')
         if os.path.isfile(sos_config_file):
             try:
                 with open(sos_config_file) as config:
@@ -173,7 +92,7 @@ class Base_Executor:
                 raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
         #
         # local config file
-        sos_config_file = '.sos/config.yaml'
+        sos_config_file = os.path.join('.sos', 'config.yaml')
         if os.path.isfile(sos_config_file):
             try:
                 with open(sos_config_file) as config:
@@ -210,6 +129,7 @@ class Base_Executor:
             # inject a few things
             env.sos_dict.set('__null_func__', __null_func__)
             env.sos_dict.set('__args__', args)
+            env.sos_dict.set('__unknown_args__', args)
             # initial values
             env.sos_dict.set('SOS_VERSION', __version__)
             env.sos_dict.set('SOS_SCRIPT', self.workflow.sections[0].context.filename)
@@ -223,16 +143,17 @@ class Base_Executor:
             SoS_exec('import os, sys, glob')
             SoS_exec('from pysos import *')
         #
-        if os.path.isdir('.sos/report'):
-            shutil.rmtree('.sos/report')
-        os.makedirs('.sos/report')
+        if os.path.isdir(os.path.join('.sos', 'report')):
+            shutil.rmtree(os.path.join('.sos', 'report'))
+        os.makedirs(os.path.join('.sos', 'report'))
         env.sos_dict.set('__transcript__', None)
+        
 
     def finalize(self):
         # collect reports and write to a file
         if env.run_mode != 'run':
             return
-        step_reports = glob.glob('.sos/report/*')
+        step_reports = glob.glob(os.path.join('.sos', 'report', '*'))
         step_reports.sort(key=natural_keys)
         # merge the files
         if step_reports and self.report:
@@ -265,6 +186,8 @@ class Base_Executor:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
                 raise
+            if '__unknown_args__' in env.sos_dict and env.sos_dict['__unknown_args__']:
+                raise ArgumentError('Unhandled command line argument {}'.format(' '.join(env.sos_dict['__unknown_args__'])))
         if run_mode in ['prepare', 'run'] and (not nested or run_mode == 'prepare'):
             env.run_mode = 'prepare'
             env.sig_mode = sig_mode
@@ -305,23 +228,26 @@ class Sequential_Executor(Base_Executor):
         #
         # process step of the pipelinp
         #
-        num_parameters_sections = len([x for x in self.workflow.sections if x.is_parameters])
-        if num_parameters_sections == 0 and args:
-            raise RuntimeError('Unused parameter {}'.format(' '.join(args)))
-        #
         # the steps can be executed in the pool (Not implemented)
         # if nested = true, start a new progress bar
         prog = ProgressBar(self.workflow.name, len(self.workflow.sections),
             disp=len(self.workflow.sections) > 1 and env.verbosity == 1 and env.run_mode == 'run' \
             and ('__interactive__' not in env.sos_dict or not env.sos_dict['__interactie__']))
         for idx, section in enumerate(self.workflow.sections):
-            # global section will not change _step etc
-            if section.is_parameters:
-                # if there is only one parameters section and no nested workflow, check unused section
-                self.parse_args(section, args, num_parameters_sections == 1, cmd_name=cmd_name)
-                prog.progress(1)
-                continue
             # handle skip, which might have to be evaluated till now.
+            #
+            # the global section has to be executed here because step options might need
+            # infomration from it. Also, the variables in the global section should be
+            # global. In addition, the global section has to be executed multiple times
+            # because sections can come from different scripts (nested workflows).
+            if section.global_def:
+                try:
+                    SoS_exec(section.global_def)
+                except Exception as e:
+                    if env.verbosity > 2:
+                        sys.stderr.write(get_traceback())
+                    raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
+                        section.global_def, e))
             #
             # Important:
             #
@@ -394,7 +320,8 @@ class Interactive_Executor(Base_Executor):
         # ignored
         parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
         # ignored
-        parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', default='.sos/__step_report.md')
+        parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', 
+            default=os.path.join('.sos', '__step_report.md'))
         parser.add_argument('-t', dest='__transcript__', nargs='?', const='__STDERR__',
             metavar='TRANSCRIPT')
         runmode = parser.add_argument_group(title='Run mode options')
@@ -437,6 +364,7 @@ class Interactive_Executor(Base_Executor):
         else:
             wf_name = None
         #
+        env.sos_dict.set('__interactive__', 1)
         try:
             args, workflow_args = self.parse_command_line(command_line)
             if os.path.isfile(args.__report__):
@@ -492,7 +420,8 @@ class Interactive_Executor(Base_Executor):
             if args.__report__:
                 executor = Sequential_Executor(workflow, report=args.__report__, transcript=args.__transcript__)
             else:
-                executor = Sequential_Executor(workflow, report='.sos/ipython.md', transcript=args.__transcript__)
+                executor = Sequential_Executor(workflow, report=os.path.join('.sos', 'ipython.md'),
+                    transcript=args.__transcript__)
             executor.run(workflow_args, cmd_name='<script> {}'.format(wf_name), config_file=args.__config__,
                 run_mode=run_mode, sig_mode=sig_mode, verbosity=args.verbosity)
         finally:

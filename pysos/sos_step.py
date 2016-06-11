@@ -45,12 +45,6 @@ def __null_func__(*args, **kwargs):
     '''This is a utility function for the parser'''
     return args, kwargs
 
-class ArgumentError(Error):
-    """Raised when an invalid argument is passed."""
-    def __init__(self, msg):
-        Error.__init__(self, msg)
-        self.args = (msg, )
-
 class ExecuteError(Error):
     """Raised when there are errors in inspect mode. Such errors are not raised
     immediately, but will be collected and raised at the end """
@@ -527,8 +521,8 @@ class Step_Executor:
         env.sos_dict.set('_index', 0)
         env.sos_dict.set('__num_groups__', 1)
         # this is not secure and but let us assume this for now.
-        if '__step_report__' not in env.sos_dict:
-            env.sos_dict.set('__step_report__', '.sos/report/{}_{}.md'.format(self.step.name, self.step.index))
+        if '__step_step__' not in env.sos_dict:
+            env.sos_dict.set('__step_report__', os.path.join('.sos', 'report', '{}_{}.md'.format(self.step.name, self.step.index)))
         if os.path.isfile(env.sos_dict['__step_report__']):
             # truncate the file
             with open(env.sos_dict['__step_report__'], 'w'):
@@ -572,14 +566,16 @@ class Step_Executor:
             return self.collectResult()
         #
         # step 2: execute global process
-        #
-        if self.step.global_def:
-            try:
-                SoS_exec(self.step.global_def)
-            except Exception as e:
-                if env.verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(short_repr(self.step.global_def), e))
+        # This is technically not needed but it is possible that 
+        # global process define something that cannot be easily piped
+        # to the child process. We can look into this later.
+        #if self.step.global_def:
+        #    try:
+        #        SoS_exec(self.step.global_def)
+        #    except Exception as e:
+        #        if env.verbosity > 2:
+        #            sys.stderr.write(get_traceback())
+        #        raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(short_repr(self.step.global_def), e))
         #
         # step 3: execute statements before step input and then process step input
         # This step sets variables __step_input__ and input (the same)
@@ -615,8 +611,8 @@ class Step_Executor:
                     except Exception as e:
                         raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
             # input statement
-            env.logger.trace('Handling input statement')
-            key, value = self.step.statements[input_statement_idx][1:]
+            env.logger.trace('Handling input statement {}'.format(self.step.statements[input_statement_idx]))
+            key, value, _ = self.step.statements[input_statement_idx][1:]
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
                 if 'dynamic' in kwargs and env.run_mode != 'run':
@@ -699,7 +695,7 @@ class Step_Executor:
                     except Exception as e:
                         raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
                 elif statement[0] == ':':
-                    key, value = statement[1:]
+                    key, value, _ = statement[1:]
                     # output, depends, and process can be processed multiple times
                     try:
                         args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)

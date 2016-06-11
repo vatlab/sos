@@ -8,44 +8,49 @@
 
 # we use executed to track the executed steps but this variable might be
 # already defined if it is in a nested script.
-if 'executed' in locals() or 'executed' in globals():
-	executed.append(step_name)
-else:
-	executed = ['global/master']
-
-[parameters]
+if 'executed' not in locals() and 'executed' not in globals():
+    executed = []
 # paramter
-master_a = 'a'
-master_b = 'b'
+parameter: master_a = 'a'
+parameter: master_b = 'b'
 # this is a trick parameter to record if the parameter section is defined
-temp = executed.append('parameter/master')
+parameter: temp = executed.append('parameter/master')
 
 
 [L_1]
+executed.append('slave1/' + step_name)
 # 1st step of pipeline L
 
 [L_2]
+executed.append('slave1/' + step_name)
 # 2st step of pipeline L
 
 [L_3]
+executed.append('slave1/' + step_name)
 # 3rd step of pipeline L
 
 
 [A_1]
+executed.append('slave1/' + step_name)
 sos_run('S1',  source='slave1.sos')
 
 
 [A_2]
+executed.append('slave1/' + step_name)
 sos_run('S2', source='slave2.sos')
 
 [M1]
+executed.append('slave1/' + step_name)
 sos_run('S1 + S2', source=['slave1.sos', 'slave2.sos'])
 
 [M2]
+executed.append('slave1/' + step_name)
 sos_run('S1_1 + S2', source=['slave1.sos', 'slave2.sos'])
 
 [M3]
+executed.append('slave1/' + step_name)
 sos_run('S1_-2 + S2_1', source=['slave1.sos', 'slave2.sos'])
 
 [M3_1]
+executed.append('slave1/' + step_name)
 print(executed)

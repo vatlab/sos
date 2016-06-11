@@ -24,16 +24,17 @@ import re
 import copy
 import fnmatch
 import textwrap
+import shutil
 
 from io import StringIO
 from collections import defaultdict
 from collections.abc import Sequence
 
-from .utils import env, Error, dehtml, getTermWidth, locate_script, text_repr
+from .utils import env, Error, dehtml, locate_script, text_repr
 from .sos_eval import Undetermined
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
-    SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_PARAMETERS_SECTION_NAME, \
-    SOS_DIRECTIVE, SOS_DIRECTIVES, SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_REPORT_PREFIX
+    SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
+    SOS_ASSIGNMENT, SOS_SUBWORKFLOW
 
 __all__ = ['SoS_Script']
 
@@ -53,7 +54,7 @@ class SoS_Step:
     '''Parser of a SoS step. This class accepts strings sent by the parser, determine
     their types and add them to appropriate sections (directive, assignment, statement,
     scripts etc) '''
-    def __init__(self, context=None, names=[], options={}, is_global=False, is_parameters=False):
+    def __init__(self, context=None, names=[], options={}, is_global=False):
         '''A sos step '''
         self.context = context
         # A step will not have a name and index until it is copied to separate workflows
@@ -65,8 +66,6 @@ class SoS_Step:
         self.comment = ''
         # comment at the end of a section that could be a workflow description
         self.back_comment = ''
-        # parameters for parameters section
-        self.parameters = []
         # everything before step process
         self.statements = []
         # step processes
@@ -75,8 +74,6 @@ class SoS_Step:
         # is it global section? This is a temporary indicator because the global section
         # will be inserted to each step of the workflow.
         self.is_global = is_global
-        # is it the parameters section?
-        self.is_parameters = is_parameters
         # indicate the type of input of the last line
         self.values = []
         self.lineno = None
@@ -117,8 +114,6 @@ class SoS_Step:
                     return 'directive'
             else:
                 return 'statements'
-        elif self.parameters:
-            return 'expression'
         else:
             return None
 
@@ -214,7 +209,7 @@ class SoS_Step:
     def add_comment(self, line):
         '''Add comment line'''
         # in parameter section, comments will always be kept
-        if self.is_parameters or self.empty():
+        if self.empty():
             self.comment += line.lstrip('#').lstrip()
         else:
             self.back_comment += line.lstrip('#').lstrip()
@@ -230,20 +225,11 @@ class SoS_Step:
         '''Assignments are items with '=' type '''
         if key is None:
             # continuation of multi-line assignment
-            if self.is_parameters:
-                self.parameters[-1][1] += value
-            else:
-                self.statements[-1][-1] += value
+            self.statements[-1][-1] += value
             self.values.append(value)
         else:
             # new assignment
-            if self.is_parameters:
-                # in assignment section, comments belong to their following
-                # parameter definition
-                self.parameters.append([key, value, self.comment])
-                self.comment = ''
-            else:
-                self.statements.append(['=', key, value])
+            self.statements.append(['=', key, value])
             self.values = [value]
         self.back_comment = ''
         if lineno:
@@ -253,13 +239,13 @@ class SoS_Step:
         '''Assignments are items with ':' type '''
         if key is None:
             # continuation of multi-line directive
-            self.statements[-1][-1] += value
+            self.statements[-1][2] += value
             self.values.append(value)
             if self._action is not None:
                 self._action_options += value
         else:
-            # new directive
-            self.statements.append([':', key, value])
+            # new directive, the comment before it are used
+            self.statements.append([':', key, value, self.back_comment])
             self.values = [value]
         self.back_comment = ''
         if lineno:
@@ -278,7 +264,7 @@ class SoS_Step:
             self.lineno = lineno
 
     def add_statement(self, line, lineno=None):
-        '''Assignments are items with ':' type '''
+        '''statements are regular python statements'''
         # there can be only one statement block
         if self.category() != 'statements':
             self.values = [line]
@@ -311,12 +297,15 @@ class SoS_Step:
         if not self.statements:
             self.task = ''
             return
-        # convert all ! statement to report action
+        # handle parameter
         for idx, statement in enumerate(self.statements):
-            if statement[0] == '%':
-                # report should be converted to action
-                self.statements[idx] = ['!', 'report({})\n'.format(text_repr(statement[1].
-                    replace(SOS_REPORT_PREFIX + '\n', '\n').replace(SOS_REPORT_PREFIX + ' ', '')))]
+            if statement[0] == ':' and statement[1] == 'parameter':
+                if '=' not in statement[2]:
+                    raise ValueError('In valid parameter definition: {}'.format(statement[2]))
+                name, value = statement[2].split('=', 1)
+                if not value.strip():
+                    raise ValueError('In valid parameter definition: {}'.format(statement[2]))
+                self.statements[idx] = ['!', '{} = handle_parameter({!r}, {})\n'.format(name, name.strip(), value)]
         #
         task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
         if not task_directive:
@@ -333,6 +322,8 @@ class SoS_Step:
                     raise ValueError('Step task should be defined as the last item in a SoS step')
                 elif statement[1] == 'task':
                     raise ValueError('Only one task is allowed for a step')
+                elif statement[1] == 'parameter':
+                    raise ValueError('Parameters should be defined before step task')
                 # ignore ...
                 self.task += '\n'
             else:
@@ -343,27 +334,13 @@ class SoS_Step:
 
     def show(self):
         '''Output for command sos show'''
-        textWidth = max(60, getTermWidth())
-        if self.is_parameters:
-            print('Accepted parameters:')
-            for k,v,c in self.parameters:
-                # paragraphs = dehtml(c).split('\n\n')
-                # FIXME: print paragraphs one by one...
-                text = '{:<16}'.format(k + ':') + (c + ' ' if c else '') + \
-                     ('(default: {})'.format(v) if v else '')
-                print('\n'.join(
-                     textwrap.wrap(text,
-                     initial_indent=' '*2,
-                     subsequent_indent=' '*18,
-                     width=textWidth)
-                     ))
-        else:
-            text = '  {:<20}'.format('Step {}_{}:'.format(self.name, self.index)) + self.comment
-            print('\n'.join(
-                textwrap.wrap(text,
-                    width=textWidth,
-                    initial_indent='',
-                    subsequent_indent=' '*22)))
+        textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
+        text = '  {:<20}'.format('Step {}_{}:'.format(self.name, self.index)) + self.comment
+        print('\n'.join(
+            textwrap.wrap(text,
+                width=textWidth,
+                initial_indent='',
+                subsequent_indent=' '*22)))
 
 
 class SoS_Workflow:
@@ -377,12 +354,6 @@ class SoS_Workflow:
         self.auxillary_sections = []
         #
         for section in sections:
-            if section.is_parameters:
-                self.sections.append(copy.deepcopy(section))
-                self.sections[-1].name = workflow_name
-                # for ordering purpose, this section is always after global
-                self.sections[-1].index = -1
-                continue
             for name, index in section.names:
                 if 'target' in section.options:
                     self.auxillary_sections.append(section)
@@ -420,13 +391,13 @@ class SoS_Workflow:
                             all_steps[key] = True
                 else:
                     raise ValueError('Invalid pipeline step item {}'.format(item))
-            # keep only selected steps (and the global and parameters section)
+            # keep only selected steps (and the global section)
             self.sections = [x for x in self.sections if x.index < 0 or all_steps[x.index]]
         #
         env.logger.debug('Workflow {} created with {} sections: {}'
             .format(workflow_name, len(self.sections),
             ', '.join('{}_{}'.format(section.name,
-                    'global' if section.index == -2 else ('parameters' if section.index == -1 else section.index))
+                    'global' if section.index == -2 else section.index)
             for section in self.sections)))
 
     def extend(self, workflow):
@@ -434,8 +405,8 @@ class SoS_Workflow:
         # all sections are simply appended ...
         self.sections.extend(workflow.sections)
 
-    def show(self, parameters=True):
-        textWidth = max(60, getTermWidth())
+    def show(self):
+        textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
         paragraphs = dehtml(self.description).split('\n\n')
         print('\n'.join(
             textwrap.wrap('{} {}:  {}'.format(
@@ -447,13 +418,8 @@ class SoS_Workflow:
             print('\n'.join(
             textwrap.wrap(paragraph, width=textWidth)
             ))
-        for section in [x for x in self.sections if not x.is_parameters]:
+        for section in self.sections:
             section.show()
-        # parameters display at last
-        if parameters:
-            print('\n')
-            for section in [x for x in self.sections if x.is_parameters]:
-                section.show()
 
 class SoS_ScriptContent:
     '''A small class to record the script information to be used by nested
@@ -493,7 +459,7 @@ class SoS_Script:
         #
         # workflows in this script, from sections that are not skipped.
         section_steps = sum([x.names for x in self.sections if \
-            not (x.is_global or x.is_parameters) and \
+            not x.is_global and \
             not ('skip' in x.options and (x.options['skip'] is None or x.options['skip'])) and \
             not ('target' in x.options)], [])
         # (name, None) is auxiliary steps
@@ -501,10 +467,10 @@ class SoS_Script:
         if not self.workflows:
             self.workflows = ['default']
         #
-        # now we need to record the workflows to the global and parameters section so
+        # now we need to record the workflows to the global section so
         # that we know if which has to be included when a subworkflow is used.
         for section in self.sections:
-            if section.is_global or section.is_parameters:
+            if section.is_global:
                 section.names = self.workflows
         #
         # get script descriptions
@@ -570,16 +536,17 @@ class SoS_Script:
                     if self.transcript:
                         self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
                 else:
-                    # in the parameter section, the comments are description
-                    # of parameters and are all significant
-                    if cursect.is_parameters or cursect.empty():
+                    # this is description of the section
+                    if cursect.empty():
                         cursect.add_comment(line)
                         if self.transcript:
                             self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                    # this is comment in scripts (and perhaps not even comment)
                     elif cursect.category() == 'script':
                         cursect.extend(line)
                         if self.transcript:
                             self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
+                    # this can be comment or back comment
                     elif cursect.category() in ('statement', 'expression') and cursect.isValid():
                         # this can be comment or back comment
                         cursect.add_comment(line)
@@ -603,37 +570,6 @@ class SoS_Script:
                         comment_block += 1
                 if self.transcript:
                     self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
-                continue
-            elif line.startswith(SOS_REPORT_PREFIX):
-                if cursect is None:
-                    # global section can have reports, but the reports will be
-                    # written repeatedly, which is not good.
-                    self.sections.append(SoS_Step(is_global=True))
-                    cursect = self.sections[-1]
-                elif cursect.is_parameters:
-                    parsing_errors.append(lineno, line, 'Report line is not allowed in parameters section')
-                    if self.transcript:
-                        self.transcript.write('ERROR\t{}\t{}'.format(lineno, line))
-                    continue
-                elif not cursect.isValid():
-                    parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
-                    if self.transcript:
-                        self.transcript.write('ERROR\t{}\t{}'.format(lineno, line))
-                    continue
-                #elif cursect.category() == 'script':
-                #    cursect.extend(line)
-                #    if self.transcript:
-                #        self.transcript.write('SCRIPT\t{}\t{}'.format(lineno, line))
-                #    continue
-                #
-                if len(line) > 1 and (line[1] != ' ' and line[1] != '\n'):
-                    parsing_errors.append(lineno, line, 'Invalid report line: {} symbol should be followed by a space.'.format(SOS_REPORT_PREFIX))
-                    if self.transcript:
-                        self.transcript.write('ERROR\t{}\t{}'.format(lineno, line))
-                    continue
-                cursect.add_report(line)
-                if self.transcript:
-                    self.transcript.write('REPORT\t{}\t{}'.format(lineno, line))
                 continue
             #
             # a continuation of previous item?
@@ -762,7 +698,7 @@ class SoS_Script:
                         if len(set(prev_names) & set(names)):
                             parsing_errors.append(lineno, line, 'Duplicate section names')
                 all_step_names.extend(step_names)
-                self.sections.append(SoS_Step(self.content, step_names, step_options, is_parameters= step_names and step_names[0][0] == SOS_PARAMETERS_SECTION_NAME))
+                self.sections.append(SoS_Step(self.content, step_names, step_options))
                 cursect = self.sections[-1]
                 if self.transcript:
                     self.transcript.write('SECTION\t{}\t{}'.format(lineno, line))
@@ -782,11 +718,8 @@ class SoS_Script:
                 directive_name = mo.group('directive_name')
                 # newline should be kept in case of multi-line directive
                 directive_value = mo.group('directive_value') + '\n'
-                if cursect and cursect.is_parameters:
-                    parsing_errors.append(lineno, line, 'Directive {} is not allowed in {} section'.format(directive_name, SOS_PARAMETERS_SECTION_NAME))
-                    continue
                 # is it an action??
-                if directive_name in SOS_DIRECTIVES:
+                if directive_name in SOS_DIRECTIVES and directive_name != 'parameter':
                     if cursect is None:
                         parsing_errors.append(lineno, line, 'Directive {} is not allowed outside of a SoS step'.format(directive_name))
                         continue
@@ -803,13 +736,18 @@ class SoS_Script:
                     if self.transcript:
                         self.transcript.write('DIRECTIVE\t{}\t{}'.format(lineno, line))
                 else:
-                    # should be in script mode, which is ok for global section
+                    # should be in script or parameter mode, which is ok for global section
                     if cursect is None:
                         self.sections.append(SoS_Step(is_global=True))
                         cursect = self.sections[-1]
-                    cursect.add_script(directive_name, directive_value, lineno)
-                    if self.transcript:
-                        self.transcript.write('SCRIPT_{}\t{}\t{}'.format(directive_name, lineno, line))
+                    if directive_name == 'parameter':
+                        cursect.add_directive(directive_name, directive_value, lineno)
+                        if self.transcript:
+                            self.transcript.write('DIRECTIVE\t{}\t{}'.format(directive_name, lineno, line))
+                    else:
+                        cursect.add_script(directive_name, directive_value, lineno)
+                        if self.transcript:
+                            self.transcript.write('SCRIPT_{}\t{}\t{}'.format(directive_name, lineno, line))
                 continue
             # if section is string mode?
             if cursect and cursect.isValid() and cursect.category() == 'script':
@@ -863,11 +801,6 @@ class SoS_Script:
                 if self.transcript:
                     self.transcript.write('STATEMENT\t{}\t{}'.format(lineno, line))
                 continue
-            elif cursect.is_parameters:
-                parsing_errors.append(lineno, line, 'Action statement is not allowed in {} section'.format(SOS_PARAMETERS_SECTION_NAME))
-                if self.transcript:
-                    self.transcript.write('ERROR\t{}\t{}'.format(lineno, line))
-                continue
             #
             if cursect.empty() or cursect.category() != 'statements':
                 # new statement
@@ -897,7 +830,10 @@ class SoS_Script:
             for statement in global_section[0][1].statements:
                 if statement[0] == '=':
                     self.global_def += '{} = {}\n'.format(statement[1], statement[2])
-                    env.readonly_vars.add(statement[1])
+                    # for debugging purposes, we sometimes set some global variables as shared
+                    # across steps, which should not be readonly
+                    if statement[1].strip() not in env.shared_vars:
+                        env.readonly_vars.add(statement[1].strip())
                 else:
                     self.global_def += statement[1]
             #
@@ -990,11 +926,6 @@ class SoS_Script:
             # skip, skip=True, skip=1 etc are all allowed.
             if 'skip' in section.options and (section.options['skip'] is None or section.options['skip'] is True):
                 continue
-            if section.is_parameters:
-                # include parameter only if they apply to wf_name
-                if wf_name.split('.')[-1] in section.names:
-                    sections.append(section)
-                continue
             if 'target' in section.options:
                 # section global is shared by all workflows
                 sections.append(section)
@@ -1007,7 +938,7 @@ class SoS_Script:
         return SoS_Workflow(wf_name.split('.')[-1], allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
 
     def show(self):
-        textWidth = max(60, getTermWidth())
+        textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
         if self.description:
             # separate \n\n
             for paragraph in dehtml(self.description).split('\n\n'):
@@ -1017,7 +948,6 @@ class SoS_Script:
         print('\n' + '\n'.join(textwrap.wrap(text, width=textWidth, subsequent_indent=' '*8)))
         for idx, workflow in enumerate(sorted(self.workflows)):
             wf = self.workflow(workflow)
-            # does not define parameters
-            wf.show(parameters=idx == len(self.workflows)-1)
+            wf.show()
             print('')
 

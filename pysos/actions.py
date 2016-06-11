@@ -34,7 +34,11 @@ import shutil
 import zipfile
 import gzip
 import tarfile
-import blessings
+try:
+    # no ncurse support under windows
+    import blessings
+except ImportError:
+    pass
 from io import BytesIO
 from docker import Client
 from collections.abc import Sequence
@@ -42,7 +46,7 @@ from docker.utils import kwargs_from_env
 import multiprocessing as mp
 import pygments.token as token
 from pygments.lexers import get_lexer_for_filename, guess_lexer
-from .utils import env, getTermWidth, ProgressBar, short_repr, natural_keys, transcribe
+from .utils import env, ProgressBar, short_repr, natural_keys, transcribe
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .signature import FileSignature, fileMD5
@@ -411,7 +415,7 @@ class SoS_ExecuteScript:
             return
         if '{}' not in self.interpreter:
             self.interpreter += ' {}'
-        debug_script_file = os.path.join(env.exec_dir, '.sos/{}_{}{}'.format(env.sos_dict['step_name'],
+        debug_script_file = os.path.join(env.exec_dir, '.sos', '{}_{}{}'.format(env.sos_dict['step_name'],
             env.sos_dict['_index'], self.suffix))
         env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
         with open(debug_script_file, 'w') as sfile:
@@ -497,7 +501,7 @@ def sos_run(workflow, source={}):
     wf = script.workflow(workflow, source=source)
     # if wf contains the current step or one of the previous one, this constitute
     # recusive nested workflow and should not be allowed
-    if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections if not x.is_parameters]:
+    if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections]:
         raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
     return Sequential_Executor(wf, transcript=env.sos_dict['__transcript__']).run(args=env.sos_dict['__args__'], nested=True,
         run_mode=env.run_mode, sig_mode=env.sig_mode, verbosity=env.verbosity)
@@ -578,7 +582,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
         message = message[:10] + '...' + message[-16:]
     #
     dest_tmp = dest + '.tmp_{}'.format(os.getpid())
-    term_width = getTermWidth()
+    term_width = shutil.get_terminal_size((80, 20)).columns
     try:
         env.logger.debug('Download {} to {}'.format(URL, dest))
         prog = ProgressBar(message, disp=env.verbosity > 1, index=index)
@@ -740,8 +744,9 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
                     decompress, len(urls) - idx))
             succ = [x.get() if isinstance(x, mp.pool.AsyncResult) else x for x in succ]
         #
-        t = blessings.Terminal(stream=sys.stderr)
-        sys.stderr.write(t.move( t.height, 0)) # + '\n')
+        if sys.platform != 'win32':
+            t = blessings.Terminal(stream=sys.stderr)
+            sys.stderr.write(t.move( t.height, 0)) # + '\n')
     else:
         if dest_file is not None:
             succ[0] = downloadURL(urls[0], dest_file, decompress=decompress)
@@ -1031,7 +1036,7 @@ def pandoc(script=None, output=None, **kwargs):
     elif '__interactive__' in env.sos_dict and env.sos_dict['__interactive__'] and '__summary_report__' in env.sos_dict:
         script_file = env.sos_dict['__summary_report__']
     else:
-        step_reports = glob.glob('.sos/report/*')
+        step_reports = glob.glob(os.path.join('.sos', 'report', '*'))
         step_reports.sort(key=natural_keys)
         # merge the files
         script_file = '{}.md'.format(os.path.basename(sos_script))
@@ -1106,7 +1111,7 @@ def pandoc(script=None, output=None, **kwargs):
     finally:
         env.deregister_process(p.pid)
     if ret != 0:
-        temp_file = os.path.join('.sos/{}_{}.md'.format('pandoc', os.getpid()))
+        temp_file = os.path.join('.sos', '{}_{}.md'.format('pandoc', os.getpid()))
         shutil.copyfile(script_file, temp_file)
         cmd = command.replace('{}', shlex.quote(temp_file))
         raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" to test it.'
@@ -1145,7 +1150,7 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
     elif '__interactive__' in env.sos_dict and env.sos_dict['__interactive__'] and '__summary_report__' in env.sos_dict:
         script_file = env.sos_dict['__summary_report__']
     else:
-        step_reports = glob.glob('.sos/report/*')
+        step_reports = glob.glob(os.path.join('.sos', 'report', '*'))
         step_reports.sort(key=natural_keys)
         # merge the files
         script_file = '{}.Rmd'.format(os.path.basename(sos_script))
@@ -1202,7 +1207,7 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
         env.deregister_process(p.pid)
         # os.remove(script_file)
     if ret != 0:
-        temp_file = os.path.join('.sos/R_{}.Rmd'.format(os.getpid()))
+        temp_file = os.path.join('.sos', 'R_{}.Rmd'.format(os.getpid()))
         shutil.copyfile(script_file, temp_file)
         cmd = command.replace('{}', '{!r}'.format(temp_file))
         raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" to test it.'
