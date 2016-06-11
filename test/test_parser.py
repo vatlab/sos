@@ -341,20 +341,20 @@ parameter: b = bool
         self.assertEqual(env.sos_dict['b'], False)
         #
         # should fail for undefined variables
-        #script = SoS_Script('''
-#parameter: a = 5
-#[0]
-#''')
-#        wf = script.workflow()
-#        self.assertRaises(ArgumentError, Sequential_Executor(wf).run,
-#            args=['--b', 'file'])
+        script = SoS_Script('''
+parameter: a = 5
+[0]
+''')
+        wf = script.workflow()
+        self.assertRaises(ArgumentError, Sequential_Executor(wf).run,
+            args=['--b', 'file'])
         # and for cases without parameter section
-#        script = SoS_Script('''
-#[0]
-#''')
-#        wf = script.workflow()
-#        self.assertRaises(RuntimeError, Sequential_Executor(wf).run,
-#            args=['--b', 'file'])
+        script = SoS_Script('''
+[0]
+''')
+        wf = script.workflow()
+        self.assertRaises(ArgumentError, Sequential_Executor(wf).run,
+            args=['--b', 'file'])
 
     def testSectionVariables(self):
         '''Test variables in sections'''

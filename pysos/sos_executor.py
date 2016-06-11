@@ -32,7 +32,7 @@ import multiprocessing as mp
 from . import __version__
 from .sos_step import Step_Executor
 from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, \
-    frozendict, natural_keys, dict_merge
+    frozendict, natural_keys, dict_merge, ArgumentError
 from .sos_eval import Undetermined, SoS_eval, SoS_exec
 from .sos_script import SoS_Script, SoS_Step, SoS_ScriptContent
 
@@ -129,6 +129,7 @@ class Base_Executor:
             # inject a few things
             env.sos_dict.set('__null_func__', __null_func__)
             env.sos_dict.set('__args__', args)
+            env.sos_dict.set('__unknown_args__', args)
             # initial values
             env.sos_dict.set('SOS_VERSION', __version__)
             env.sos_dict.set('SOS_SCRIPT', self.workflow.sections[0].context.filename)
@@ -185,6 +186,8 @@ class Base_Executor:
                 if verbosity and verbosity > 2:
                     sys.stderr.write(get_traceback())
                 raise
+            if '__unknown_args__' in env.sos_dict and env.sos_dict['__unknown_args__']:
+                raise ArgumentError('Unhandled command line argument {}'.format(' '.join(env.sos_dict['__unknown_args__'])))
         if run_mode in ['prepare', 'run'] and (not nested or run_mode == 'prepare'):
             env.run_mode = 'prepare'
             env.sig_mode = sig_mode
