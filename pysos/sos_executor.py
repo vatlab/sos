@@ -233,6 +233,19 @@ class Sequential_Executor(Base_Executor):
         for idx, section in enumerate(self.workflow.sections):
             # handle skip, which might have to be evaluated till now.
             #
+            # the global section has to be executed here because step options might need
+            # infomration from it. Also, the variables in the global section should be
+            # global. In addition, the global section has to be executed multiple times
+            # because sections can come from different scripts (nested workflows).
+            if section.global_def:
+                try:
+                    SoS_exec(section.global_def)
+                except Exception as e:
+                    if env.verbosity > 2:
+                        sys.stderr.write(get_traceback())
+                    raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
+                        section.global_def, e))
+            #
             # Important:
             #
             # Here we require that skip to be evaluatable at inspect and prepare mode

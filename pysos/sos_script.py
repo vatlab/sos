@@ -300,7 +300,11 @@ class SoS_Step:
         # handle parameter
         for idx, statement in enumerate(self.statements):
             if statement[0] == ':' and statement[1] == 'parameter':
+                if '=' not in statement[2]:
+                    raise ValueError('In valid parameter definition: {}'.format(statement[2]))
                 name, value = statement[2].split('=', 1)
+                if not value.strip():
+                    raise ValueError('In valid parameter definition: {}'.format(statement[2]))
                 self.statements[idx] = ['!', '{} = handle_parameter({!r}, {})\n'.format(name, name.strip(), value)]
         #
         task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
@@ -826,7 +830,10 @@ class SoS_Script:
             for statement in global_section[0][1].statements:
                 if statement[0] == '=':
                     self.global_def += '{} = {}\n'.format(statement[1], statement[2])
-                    env.readonly_vars.add(statement[1])
+                    # for debugging purposes, we sometimes set some global variables as shared
+                    # across steps, which should not be readonly
+                    if statement[1].strip() not in env.shared_vars:
+                        env.readonly_vars.add(statement[1].strip())
                 else:
                     self.global_def += statement[1]
             #

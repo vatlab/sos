@@ -45,12 +45,6 @@ def __null_func__(*args, **kwargs):
     '''This is a utility function for the parser'''
     return args, kwargs
 
-class ArgumentError(Error):
-    """Raised when an invalid argument is passed."""
-    def __init__(self, msg):
-        Error.__init__(self, msg)
-        self.args = (msg, )
-
 class ExecuteError(Error):
     """Raised when there are errors in inspect mode. Such errors are not raised
     immediately, but will be collected and raised at the end """
@@ -559,14 +553,16 @@ class Step_Executor:
             return self.collectResult(public_vars)
         #
         # step 2: execute global process
-        #
-        if self.step.global_def:
-            try:
-                SoS_exec(self.step.global_def)
-            except Exception as e:
-                if env.verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(short_repr(self.step.global_def), e))
+        # This is technically not needed but it is possible that 
+        # global process define something that cannot be easily piped
+        # to the child process. We can look into this later.
+        #if self.step.global_def:
+        #    try:
+        #        SoS_exec(self.step.global_def)
+        #    except Exception as e:
+        #        if env.verbosity > 2:
+        #            sys.stderr.write(get_traceback())
+        #        raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(short_repr(self.step.global_def), e))
         #
         # step 3: execute statements before step input and then process step input
         # This step sets variables __step_input__ and input (the same)

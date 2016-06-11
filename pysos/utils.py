@@ -977,6 +977,13 @@ def time_limit(seconds, msg=''):
             signal.alarm(0)
 
 
+class ArgumentError(Error):
+    """Raised when an invalid argument is passed."""
+    def __init__(self, msg):
+        Error.__init__(self, msg)
+        self.args = (msg, )
+
+
 def _parse_error(msg):
     '''This function will replace error() function in argparse module so that SoS
     can hijack errors raised from it.'''
@@ -995,6 +1002,8 @@ def handle_parameter(key, defvalue):
     '''Parse command line arguments and set values to parameters section'''
     #
     if not env.sos_dict['__args__']:
+        if isinstance(defvalue, type):
+            raise ArgumentError('Argument {} of type {} is required'.format(key, defvalue))
         return defvalue
     parser = argparse.ArgumentParser()
     parser.register('type', 'bool', str2bool)

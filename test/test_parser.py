@@ -224,6 +224,7 @@ a="100"
 
 # comment
 parameter: b=str(int(a)+1)
+[0]
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).run()
@@ -234,6 +235,7 @@ parameter: b=str(int(a)+1)
 a=100
 
 parameter: b=a+1
+[0]
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).run()
@@ -242,16 +244,8 @@ parameter: b=a+1
         script = SoS_Script('''
 a=100
 
-# comment
-parameter: b=a+1
-''')
-        wf = script.workflow()
-        self.assertRaises(ArgumentError, Sequential_Executor(wf).run, args=['--b', 'a'])
-        #
-        script = SoS_Script('''
-a=100
-
 parameter: b=a+1.
+[0]
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).run(args=['--b', '1000'])
@@ -265,6 +259,7 @@ a=100
 # comment
 
 parameter: b='${a+1}'
+[0]
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).run()
@@ -272,30 +267,36 @@ parameter: b='${a+1}'
         #
         # argument has hve a value
         self.assertRaises(ParsingError, SoS_Script, '''
+[0]
 parameter: b=
+
 ''')
         # if it is a type, must provide value
         script = SoS_Script('''
 # comment
 parameter: b = int
+[0]
 ''')
         wf = script.workflow()
-        self.assertRaises(ArgumentError, Sequential_Executor(wf).run)
+        self.assertRaises((ExecuteError, ArgumentError), Sequential_Executor(wf).run)
         #
         script = SoS_Script('''
 parameter: b = list
+[0]
 ''')
         wf = script.workflow()
-        self.assertRaises(ArgumentError, Sequential_Executor(wf).run)
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).run)
         # also require the type
         script = SoS_Script('''
 parameter: b = int
+[0]
 ''')
         wf = script.workflow()
-        self.assertRaises(ArgumentError, Sequential_Executor(wf).run, args=['--b', 'file'])
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).run, args=['--b', 'file'])
         #
         script = SoS_Script('''
 parameter: b = int
+[0]
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).run(args=['--b', '5'])
@@ -303,6 +304,7 @@ parameter: b = int
         # list is ok
         script = SoS_Script('''
 parameter: b = list
+[0]
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).run(args=['--b', '5'])
@@ -311,43 +313,48 @@ parameter: b = list
         script = SoS_Script('''
 # comment
 parameter: b = bool
+[0]
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).run(args=['--b', 't'])
         self.assertEqual(env.sos_dict['b'], True)
         script = SoS_Script('''
 parameter: b = True
+[0]
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).run(args=['--b', 'False'])
         self.assertEqual(env.sos_dict['b'], False)
         script = SoS_Script('''
 parameter: b = True
+[0]
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).run(args=['--b', '1'])
         self.assertEqual(env.sos_dict['b'], True)
         script = SoS_Script('''
 parameter: b = bool
+[0]
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).run(args=['--b', 'no'])
         self.assertEqual(env.sos_dict['b'], False)
         #
         # should fail for undefined variables
-        script = SoS_Script('''
-parameter: a = 5
-''')
-        wf = script.workflow()
-        self.assertRaises(ArgumentError, Sequential_Executor(wf).run,
-            args=['--b', 'file'])
+        #script = SoS_Script('''
+#parameter: a = 5
+#[0]
+#''')
+#        wf = script.workflow()
+#        self.assertRaises(ArgumentError, Sequential_Executor(wf).run,
+#            args=['--b', 'file'])
         # and for cases without parameter section
-        script = SoS_Script('''
-[0]
-''')
-        wf = script.workflow()
-        self.assertRaises(RuntimeError, Sequential_Executor(wf).run,
-            args=['--b', 'file'])
+#        script = SoS_Script('''
+#[0]
+#''')
+#        wf = script.workflow()
+#        self.assertRaises(RuntimeError, Sequential_Executor(wf).run,
+#            args=['--b', 'file'])
 
     def testSectionVariables(self):
         '''Test variables in sections'''
@@ -702,23 +709,31 @@ b = A()()
         env.shared_vars = ['executed', 'input_b1', 'a']
         script = SoS_Script('''
 a0 = 0
-if 'executed' in locals():
-    executed.append(step_name)
-else:
-    executed = [step_name]
+if 'executed' not in locals():
+    executed = []
 parameter: a = a0 + 1
 [a_1]
+executed.append(step_name)
 [a_2]
+executed.append(step_name)
 [a_3]
+executed.append(step_name)
 [a_4]
+executed.append(step_name)
 output: 'out_a_4'
 [b_1]
+executed.append(step_name)
 input_b1 = input
 [b_2]
+executed.append(step_name)
 [b_3]
+executed.append(step_name)
 [b_4]
+executed.append(step_name)
 [c]
+executed.append(step_name)
 [d]
+executed.append(step_name)
 ''')
         wf = script.workflow('a+b')
         Sequential_Executor(wf).run(run_mode='inspect')
@@ -739,34 +754,40 @@ input_b1 = input
         '''Test the creation and execution of combined workfow'''
         env.shared_vars = ['executed', 'inputs']
         script = SoS_Script('''
-if 'executed' in locals():
-    executed.append(step_name)
-else:
-    executed = [step_name]
+if 'executed' not in locals():
+    executed = []
 if 'inputs' not in locals():
     inputs = []
 
-[paramters]
 [a_1]
+executed.append(step_name)
 inputs.append(input)
 [a_2]
+executed.append(step_name)
 inputs.append(input)
 [a_3]
+executed.append(step_name)
 inputs.append(input)
 [a_4]
+executed.append(step_name)
 output: 'a.done'
 inputs.append(input)
 [b_1]
+executed.append(step_name)
 input: 'b.begin'
 inputs.append(input)
 [b_2]
+executed.append(step_name)
 inputs.append(input)
 [b_3]
+executed.append(step_name)
 inputs.append(input)
 [b_4]
+executed.append(step_name)
 output: 'b.txt'
 inputs.append(input)
 [c]
+executed.append(step_name)
 input: 'a.txt'
 output: 'b.txt'
 inputs.append(input)
@@ -779,20 +800,21 @@ sos_run('a+b')
         self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], [], [], [], ['b.begin'], [], [], []])
         # step will be looped
         script = SoS_Script('''
-if 'executed' in locals():
-    executed.append(step_name)
-else:
-    executed = [step_name]
+if 'executed' not in locals():
+    executed = []
 if 'inputs' not in locals():
     inputs = []
 
 [a_1]
+executed.append(step_name)
 output: _input[0] + '.a1'
 inputs.append(input)
 [a_2]
+executed.append(step_name)
 output: _input[0] + '.a2'
 inputs.append(input)
 [c]
+executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 inputs.append(_input)
 sos_run('a')
@@ -805,14 +827,16 @@ sos_run('a')
         # allow specifying a single step
         # step will be looped
         script = SoS_Script('''
-if 'executed' in locals():
-    executed.append(step_name)
-else:
-    executed = [step_name]
+if 'executed' not in locals():
+    executed = []
 [a_1]
+executed.append(step_name)
 [a_2]
+executed.append(step_name)
 [c_0]
+executed.append(step_name)
 [c_1]
+executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2')
 ''')
@@ -822,14 +846,16 @@ sos_run('a_2')
         # allow specifying a single step
         # step will be looped
         script = SoS_Script('''
-if 'executed' in locals():
-    executed.append(step_name)
-else:
-    executed = [step_name]
+if 'executed' not in locals():
+    executed = []
 [a_1]
+executed.append(step_name)
 [a_2]
+executed.append(step_name)
 [c_0]
+executed.append(step_name)
 [c_1]
+executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2')
 ''')
@@ -839,14 +865,16 @@ sos_run('a_2')
         #
         # recursive subworkflow not allowed
         script = SoS_Script('''
-if 'executed' in locals():
-    executed.append(step_name)
-else:
-    executed = [step_name]
+if 'executed' not in locals():
+    executed = []
 [a_1]
+executed.append(step_name)
 [a_2]
+executed.append(step_name)
 [c_0]
+executed.append(step_name)
 [c_1]
+executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2+c')
 ''')
@@ -855,18 +883,23 @@ sos_run('a_2+c')
         #
         # nested subworkflow is allowed
         script = SoS_Script('''
-if 'executed' in locals():
-    executed.append(step_name)
-else:
-    executed = [step_name]
+if 'executed' not in locals():
+    executed = []
 [a_1]
+executed.append(step_name)
 [a_2]
+executed.append(step_name)
 [a_3]
+executed.append(step_name)
 [b_1]
+executed.append(step_name)
 [b_2]
+executed.append(step_name)
 sos_run('a_1+a_2')
 [c_0]
+executed.append(step_name)
 [c_1]
+executed.append(step_name)
 input: 'a.txt'
 sos_run('a+b')
 ''')
@@ -878,20 +911,24 @@ sos_run('a+b')
         #
         # nested subworkflow with step option and others
         script = SoS_Script('''
-if 'executed' in locals():
-    executed.append(step_name)
-else:
-    executed = [step_name]
+if 'executed' not in locals():
+    executed = []
 [a_1]
+executed.append(step_name)
 [a_2]
+executed.append(step_name)
 [a_3]
+executed.append(step_name)
 [b]
+executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_3+a_1')
 [d]
+executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2')
 [e2_2]
+executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 ''')
         wf = script.workflow('b')
@@ -906,24 +943,29 @@ input: 'a.txt', 'b.txt', group_by='single'
 
     def testDynamicNestedWorkflow(self):
         '''Test nested workflow controlled by command line option'''
+        env.shared_vars = ['executed']
         script = SoS_Script('''
-if 'executed' in locals():
-    executed.append(step_name)
-else:
-    executed = [step_name]
+if 'executed' not in locals():
+    executed = []
 parameter: wf='a'
 
 [a_1]
+executed.append(step_name)
 [a_2]
+executed.append(step_name)
 [a_3]
+executed.append(step_name)
 [b_1]
+executed.append(step_name)
 [b_2]
+executed.append(step_name)
 [b_3]
+executed.append(step_name)
 
 [default]
+executed.append(step_name)
 sos_run(wf)
 ''')
-        env.shared_vars = ['executed']
         wf = script.workflow()
         Sequential_Executor(wf).run(args=['--wf', 'b'], run_mode='inspect')
         self.assertEqual(env.sos_dict['executed'], [ 'default_0', 'b_1', 'b_2', 'b_3'])
@@ -943,48 +985,43 @@ sos_run(wf)
 
 # global definition
 GLB = 5
-if 'executed' in locals():
-    executed.append('t.' + step_name)
-else:
-    executed = ['t.' + step_name]
-
 parameter: parB = 10
 
 [A_1]
+executed.append('t.' + step_name)
 output: _input[0] + 'a1'
 
 [A_2]
+executed.append('t.' + step_name)
 output: _input[0] + 'a2'
 
 ''')
         script = SoS_Script('''
-if 'executed' in locals():
-    executed.append('g.' + step_name)
-else:
-    executed = ['g.' + step_name]
+executed = []
+
 [b_1: skip=False]
+executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('A', source='temp/test.sos')
 ''')
+        env.shared_vars = ['executed']
         wf = script.workflow('b')
         Sequential_Executor(wf).run(run_mode='inspect')
-        self.assertEqual(env.sos_dict['GLB'], 5)
-        self.assertEqual(env.sos_dict['parB'], 10)
-        self.assertEqual(env.sos_dict['executed'], ['g.b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
+        #self.assertEqual(env.sos_dict['GLB'], 5)
+        #self.assertEqual(env.sos_dict['parB'], 10)
+        self.assertEqual(env.sos_dict['executed'], ['b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
         #
         script = SoS_Script('''
-if 'executed' in locals():
-    executed.append('g.' + step_name)
-else:
-    executed = ['g.' + step_name]
+executed = []
 [b_1: skip=False]
+executed.append('g.' + step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('k.A', source={'k':'temp/test.sos'})
 ''')
         wf = script.workflow('b')
         Sequential_Executor(wf).run(run_mode='inspect')
-        self.assertEqual(env.sos_dict['GLB'], 5)
-        self.assertEqual(env.sos_dict['parB'], 10)
+        #self.assertEqual(env.sos_dict['GLB'], 5)
+        #self.assertEqual(env.sos_dict['parB'], 10)
         self.assertEqual(env.sos_dict['executed'], ['g.b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
         #
         shutil.rmtree('temp')
