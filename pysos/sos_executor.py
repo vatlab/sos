@@ -29,8 +29,6 @@ import argparse
 
 import multiprocessing as mp
 
-from collections.abc import Sequence
-
 from . import __version__
 from .sos_step import Step_Executor
 from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, \
@@ -81,85 +79,6 @@ class Base_Executor:
         self.report = report
         self.transcript = transcript
         self.debug = debug
-
-    def _parse_error(self, msg):
-        '''This function will replace error() function in argparse module so that SoS
-        can hijack errors raised from it.'''
-        raise ArgumentError(msg)
-
-    def parse_args(self, section, args, check_unused=False, cmd_name=''):
-        '''Parse command line arguments and set values to parameters section'''
-        env.logger.debug('Execute ``{}_parameters``'.format(section.name))
-        env.sos_dict.set('step_name', '{}_parameters'.format(section.name))
-        if section.global_def:
-            try:
-                SoS_exec(section.global_def)
-            except Exception as e:
-                if env.verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(section.global_def, e))
-
-        def str2bool(v):
-            if v.lower() in ('yes', 'true', 't', '1'):
-                return True
-            elif v.lower() in ('no', 'false', 'f', '0'):
-                return False
-            else:
-                raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
-        #
-        parser = argparse.ArgumentParser(prog='sos-runner {}'.format(cmd_name))
-        parser.register('type', 'bool', str2bool)
-        arguments = {}
-        for key, defvalue, comment in section.parameters:
-            try:
-                defvalue = SoS_eval(defvalue, section.sigil)
-                arguments[key] = defvalue
-            except Exception as e:
-                raise RuntimeError('Incorrect default value {} for parameter {}: {}'.format(defvalue, key, e))
-            if isinstance(defvalue, type):
-                if defvalue == bool:
-                    parser.add_argument('--{}'.format(key), type='bool', help=comment, required=True, nargs='?')
-                else:
-                    # if only a type is specified, it is a required document of required type
-                    parser.add_argument('--{}'.format(key), type=str if hasattr(defvalue, '__iter__') else defvalue,
-                        help=comment, required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
-            else:
-                if isinstance(defvalue, bool):
-                    parser.add_argument('--{}'.format(key), type='bool', help=comment,
-                        nargs='?', default=defvalue)
-                else:
-                    if isinstance(defvalue, str):
-                        deftype = str
-                    elif isinstance(defvalue, Sequence):
-                        if len(defvalue) > 0:
-                            deftype = type(defvalue[0])
-                        else:
-                            deftype = str
-                    else:
-                        deftype = type(defvalue)
-                    parser.add_argument('--{}'.format(key), type=deftype, help=comment,
-                        nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
-                        default=defvalue)
-        #
-        parser.error = self._parse_error
-        #
-        # because of the complexity of having combined and nested workflows, we cannot know how
-        # many parameters section a workflow has and therfore have to assume that the unknown parameters
-        # are for other sections.
-        if check_unused:
-            parsed = parser.parse_args(args)
-        else:
-            parsed, unknown = parser.parse_known_args(args)
-            if unknown:
-                env.logger.warning('Unparsed arguments [{}] that might be processed by another combined or nested workflow'
-                    .format(' '.join(unknown)))
-        #
-        arguments.update(vars(parsed))
-        # now change the value with passed values
-        for k, v in arguments.items():
-            env.sos_dict[k] = v
-            # protect variables from being further modified
-            env.readonly_vars.add(k)
 
     def load_config(self, config_file=None):
         '''load global, local and user-specified config files'''
@@ -227,6 +146,7 @@ class Base_Executor:
             shutil.rmtree(os.path.join('.sos', 'report'))
         os.makedirs(os.path.join('.sos', 'report'))
         env.sos_dict.set('__transcript__', None)
+        
 
     def finalize(self):
         # collect reports and write to a file

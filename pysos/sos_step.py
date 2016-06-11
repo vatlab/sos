@@ -607,8 +607,8 @@ class Step_Executor:
                     except Exception as e:
                         raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
             # input statement
-            env.logger.trace('Handling input statement')
-            key, value = self.step.statements[input_statement_idx][1:]
+            env.logger.trace('Handling input statement {}'.format(self.step.statements[input_statement_idx]))
+            key, value, _ = self.step.statements[input_statement_idx][1:]
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
                 if 'dynamic' in kwargs and env.run_mode != 'run':
@@ -680,7 +680,7 @@ class Step_Executor:
                     except Exception as e:
                         raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
                 elif statement[0] == ':':
-                    key, value = statement[1:]
+                    key, value, _ = statement[1:]
                     # output, depends, and process can be processed multiple times
                     try:
                         args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)

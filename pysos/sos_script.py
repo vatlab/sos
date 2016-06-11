@@ -297,6 +297,11 @@ class SoS_Step:
         if not self.statements:
             self.task = ''
             return
+        # handle parameter
+        for idx, statement in enumerate(self.statements):
+            if statement[0] == ':' and statement[1] == 'parameter':
+                name, value = statement[2].split('=', 1)
+                self.statements[idx] = ['!', '{} = handle_parameter({!r}, {})\n'.format(name, name.strip(), value)]
         #
         task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
         if not task_directive:
@@ -710,7 +715,7 @@ class SoS_Script:
                 # newline should be kept in case of multi-line directive
                 directive_value = mo.group('directive_value') + '\n'
                 # is it an action??
-                if directive_name in SOS_DIRECTIVES:
+                if directive_name in SOS_DIRECTIVES and directive_name != 'parameter':
                     if cursect is None:
                         parsing_errors.append(lineno, line, 'Directive {} is not allowed outside of a SoS step'.format(directive_name))
                         continue
@@ -727,13 +732,18 @@ class SoS_Script:
                     if self.transcript:
                         self.transcript.write('DIRECTIVE\t{}\t{}'.format(lineno, line))
                 else:
-                    # should be in script mode, which is ok for global section
+                    # should be in script or parameter mode, which is ok for global section
                     if cursect is None:
                         self.sections.append(SoS_Step(is_global=True))
                         cursect = self.sections[-1]
-                    cursect.add_script(directive_name, directive_value, lineno)
-                    if self.transcript:
-                        self.transcript.write('SCRIPT_{}\t{}\t{}'.format(directive_name, lineno, line))
+                    if directive_name == 'parameter':
+                        cursect.add_directive(directive_name, directive_value, lineno)
+                        if self.transcript:
+                            self.transcript.write('DIRECTIVE\t{}\t{}'.format(directive_name, lineno, line))
+                    else:
+                        cursect.add_script(directive_name, directive_value, lineno)
+                        if self.transcript:
+                            self.transcript.write('SCRIPT_{}\t{}\t{}'.format(directive_name, lineno, line))
                 continue
             # if section is string mode?
             if cursect and cursect.isValid() and cursect.category() == 'script':

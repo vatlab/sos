@@ -36,18 +36,20 @@ import yaml
 import signal
 import psutil
 import urllib
+import argparse
+from collections.abc import Sequence
 try:
     # no ncurse support under windows
     import blessings
 except:
-    pass 
+    pass
 import subprocess
 import threading
 from io import StringIO
 from html.parser import HTMLParser
 from contextlib import contextmanager
 
-__all__ = ['logger', 'get_output']
+__all__ = ['logger', 'get_output', 'handle_parameter']
 
 
 class ColoredFormatter(logging.Formatter):
@@ -920,14 +922,14 @@ def pretty_size(n,pow=0,b=1024,u='B',pre=['']+[p+'i'for p in'KMGTPEZY']):
     return "%%.%if %%s%%s"%abs(pow%(-pow-1))%(n/b**float(pow),pre[pow],u)
 
 class DelayedAction:
-    '''Call the passed function with param after a few seconds. It is most often 
+    '''Call the passed function with param after a few seconds. It is most often
     used to display certain message only if an action takes a long time.
 
         action = delayedAction(env.logger.info, 'This might take a while', 5)
         some_action_that_might_take_a_while
         del action
 
-    if the action finishes very quick, the message will not be displayed.    
+    if the action finishes very quick, the message will not be displayed.
     '''
     def __init__(self, func, param, delay=5):
         self.timer = threading.Timer(delay, func, (param,))
@@ -973,4 +975,58 @@ def time_limit(seconds, msg=''):
             yield
         finally:
             signal.alarm(0)
+
+
+def _parse_error(msg):
+    '''This function will replace error() function in argparse module so that SoS
+    can hijack errors raised from it.'''
+    raise ArgumentError(msg)
+
+
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', '0'):
+        return False
+    else:
+        raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
+
+def handle_parameter(key, defvalue):
+    '''Parse command line arguments and set values to parameters section'''
+    #
+    if not env.sos_dict['__args__']:
+        return defvalue
+    parser = argparse.ArgumentParser()
+    parser.register('type', 'bool', str2bool)
+    arguments = {}
+    if isinstance(defvalue, type):
+        if defvalue == bool:
+            parser.add_argument('--{}'.format(key), type='bool', required=True, nargs='?')
+        else:
+            # if only a type is specified, it is a required document of required type
+            parser.add_argument('--{}'.format(key), type=str if hasattr(defvalue, '__iter__') else defvalue,
+                help='', required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
+    else:
+        if isinstance(defvalue, bool):
+            parser.add_argument('--{}'.format(key), type='bool',
+                nargs='?', default=defvalue)
+        else:
+            if isinstance(defvalue, str):
+                deftype = str
+            elif isinstance(defvalue, Sequence):
+                if len(defvalue) > 0:
+                    deftype = type(defvalue[0])
+                else:
+                    deftype = str
+            else:
+                deftype = type(defvalue)
+            parser.add_argument('--{}'.format(key), type=deftype,
+                nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
+                default=defvalue)
+    #
+    parser.error = _parse_error
+    #
+    parsed, unknown = parser.parse_known_args(env.sos_dict['__args__'])
+    return vars(parsed)[key]
+
 

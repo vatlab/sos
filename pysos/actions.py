@@ -501,7 +501,7 @@ def sos_run(workflow, source={}):
     wf = script.workflow(workflow, source=source)
     # if wf contains the current step or one of the previous one, this constitute
     # recusive nested workflow and should not be allowed
-    if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections if not x.is_parameters]:
+    if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections]:
         raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
     return Sequential_Executor(wf, transcript=env.sos_dict['__transcript__']).run(args=env.sos_dict['__args__'], nested=True,
         run_mode=env.run_mode, sig_mode=env.sig_mode, verbosity=env.verbosity)
