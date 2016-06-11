@@ -361,6 +361,7 @@ class Interactive_Executor(Base_Executor):
         else:
             wf_name = None
         #
+        env.sos_dict.set('__interactive__', 1)
         try:
             args, workflow_args = self.parse_command_line(command_line)
             if os.path.isfile(args.__report__):

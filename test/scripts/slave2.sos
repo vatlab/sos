@@ -8,10 +8,8 @@
 
 # we use executed to track the executed steps but this variable might be
 # already defined if it is in a nested script.
-if 'executed' in locals() or 'executed' in globals():
-	executed.append('slave2/' + step_name)
-else:
-	executed = ['global/slave2']
+if 'executed' not in locals() and 'executed' not in globals():
+    executed = []
 
 # paramter
 parameter: slave2_a = 'a'
@@ -21,13 +19,17 @@ parameter: temp = executed.append('parameter/slave2')
 
 
 [S2_1]
+executed.append('slave1/' + step_name)
 # 1st step of S2
 
 [S2_2]
+executed.append('slave1/' + step_name)
 # 2nd step of S2
 
 [S2_3]
+executed.append('slave1/' + step_name)
 # 3rd step of S2
 
 [S2_4]
+executed.append('slave1/' + step_name)
 # 4th step of S2
