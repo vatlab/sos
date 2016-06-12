@@ -743,7 +743,7 @@ class SoS_Script:
                     if directive_name == 'parameter':
                         cursect.add_directive(directive_name, directive_value, lineno)
                         if self.transcript:
-                            self.transcript.write('DIRECTIVE\t{}\t{}'.format(directive_name, lineno, line))
+                            self.transcript.write('DIRECTIVE\t{}\t{}'.format(lineno, line))
                     else:
                         cursect.add_script(directive_name, directive_value, lineno)
                         if self.transcript:
