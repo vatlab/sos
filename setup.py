@@ -25,7 +25,8 @@ import shutil
 from setuptools import setup
 from distutils import log
 from setuptools.command.install import install
-from pysos import __version__
+with open('pysos/_version.py') as version:
+    exec(version.read())
 
 kernel_json = {
     "argv":         ["python", "-m", "pysos.kernel", "-f", "{connection_file}"],
