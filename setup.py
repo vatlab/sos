@@ -25,6 +25,8 @@ import shutil
 from setuptools import setup
 from distutils import log
 from setuptools.command.install import install
+
+# obtain version of SoS
 with open('pysos/_version.py') as version:
     exec(version.read())
 
