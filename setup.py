@@ -142,8 +142,6 @@ class InstallWithConfigurations(install):
                 log.error("\nWARNING: Could not install SoS Kernel as %s user." % self.user)
         log.info('And "sos -h" to start using Script of Scripts.')
 
-exec(open('pysos/_version.py').read())
-
 setup(name = "sos",
     version = __version__,
     description = 'Script of Scripts (SoS): a lightweight workflow system for the creation of readable workflows',
