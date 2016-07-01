@@ -347,7 +347,11 @@ def SoS_Action(run_mode='run'):
                 docker = DockerClient()
                 docker.import_image(kwargs['docker_file'])
             # handle image
-            if 'docker_image' in kwargs and env.run_mode in ('run', 'prepare'):
+            if 'docker_image' in kwargs:
+                if env.run_mode == 'inspect':
+                    # if the action will be executed in docker
+                    # we do not execute it in inspect mode
+                    return True
                 docker = DockerClient()
                 docker.pull(kwargs['docker_image'])
                 if env.run_mode == 'prepare':

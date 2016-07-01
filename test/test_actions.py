@@ -341,6 +341,8 @@ echo 'Echo
 
     def testCsh(self):
         '''Test action csh'''
+        if not shutil.which('csh'):
+            return
         script = SoS_Script(r'''
 [0]
 csh:
@@ -359,9 +361,11 @@ csh:
 
     def testTcsh(self):
         '''Test action tcsh'''
+        if not shutil.which('tcsh'):
+            return
         script = SoS_Script(r'''
 [0]
-csh:
+tcsh:
     foreach file (*)
         if (-d $file) then
             echo "Skipping $file (is a directory)"
