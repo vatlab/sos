@@ -98,7 +98,11 @@ _DIRECTIVE_TMPL = r'''
     |[a-zA-Z][\w\d_]*))                #    or action
     \s*:\s*                            # followed by :
     (?P<directive_value>               # and values that can be
-    ([_'"a-zA-Z].*)?$)                   # name followed by and values
+    ([^:.|=&@$^<>].*)?$)               # name followed by and values, which can be
+                                       # constant 'a', "b", variable or function call
+                                       # a(), or arbitrary expression (['a'...], dictionary, set
+                                       # etc) which is difficult to match, so we use negative
+                                       # pattern to exclude expressions starting with :, | etc
     '''.format('|'.join(keyword.kwlist), '|'.join(SOS_DIRECTIVES))
 
 _ASSIGNMENT_TMPL = r'''
