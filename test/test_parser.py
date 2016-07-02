@@ -487,6 +487,14 @@ with open('something') as e:
 """)
 
 ''')
+        # scripts with section head-like lines
+        script = SoS_Script('''
+[0]
+R:
+some::function(param)
+''')
+        wf = script.workflow()
+
 
     def testInput(self):
         '''Test input directive'''

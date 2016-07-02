@@ -97,7 +97,8 @@ _DIRECTIVE_TMPL = r'''
     ({}                                # name of directive
     |[a-zA-Z][\w\d_]*))                #    or action
     \s*:\s*                            # followed by :
-    (?P<directive_value>.*)            # and values
+    (?P<directive_value>               # and values that can be
+    ([_'"a-zA-Z].*)?$)                   # name followed by and values
     '''.format('|'.join(keyword.kwlist), '|'.join(SOS_DIRECTIVES))
 
 _ASSIGNMENT_TMPL = r'''
