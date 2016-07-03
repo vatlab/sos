@@ -338,12 +338,12 @@ class DockerClient:
 # A decoration function that allows SoS to replace all SoS actions
 # with a null action.
 #
-def SoS_Action(run_mode='run'):
+def SoS_Action(run_mode=['run', 'interactive']):
     run_mode = [run_mode] if isinstance(run_mode, str) else run_mode
     def runtime_decorator(func):
         def action_wrapper(*args, **kwargs):
             # docker files will be downloaded in run or prepare mode
-            if 'docker_file' in kwargs and env.run_mode in ('run', 'prepare'):
+            if 'docker_file' in kwargs and env.run_mode in ['prepare', 'run', 'interactive']:
                 docker = DockerClient()
                 docker.import_image(kwargs['docker_file'])
             # handle image
@@ -354,7 +354,7 @@ def SoS_Action(run_mode='run'):
                     return True
                 docker = DockerClient()
                 docker.pull(kwargs['docker_image'])
-                if env.run_mode == 'prepare':
+                if env.run_mode in ['prepare', 'interactive']:
                     mem = docker.total_memory(kwargs['docker_image'])
                     if mem is not None:
                         if mem < 4000000: # < 4G
@@ -366,7 +366,7 @@ def SoS_Action(run_mode='run'):
                 # return dynamic expression when not in run mode, that is to say
                 # the script logic cannot rely on the result of the action
                 return Undetermined(func.__name__)
-            if env.run_mode == 'inspect':
+            if env.run_mode in ['inspect', 'interactive']:
                 for k,v in kwargs.items():
                     if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
                         env.logger.warning('Passing runtime option "{0}" to action is deprecated. Please use "task: {0}={1}" before action instead.'.format(k, v))
@@ -414,7 +414,7 @@ class SoS_ExecuteScript:
 
     def run(self, **kwargs):
         transcribe(self.script, action=self.interpreter)
-        if env.run_mode == 'inspect':
+        if env.run_mode in ['inspect', 'interactive']:
             check_command(self.interpreter.split()[0], quiet=True)
             return
         if '{}' not in self.interpreter:
@@ -424,7 +424,7 @@ class SoS_ExecuteScript:
         env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
         with open(debug_script_file, 'w') as sfile:
             sfile.write(self.script)
-        if env.run_mode == 'prepare':
+        if env.run_mode in ['prepare', 'interactive']:
             if self.validator is not None:
                 try:
                     self.validator(self.script, filename=debug_script_file)
@@ -455,7 +455,7 @@ class SoS_ExecuteScript:
                     sfile.write(self.script)
                 cmd = self.interpreter.replace('{}', shlex.quote(script_file))
                 #
-                if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+                if env.run_mode == 'interactive':
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
                     p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
                     pid = p.pid
@@ -488,7 +488,7 @@ class SoS_ExecuteScript:
                     .format(debug_script_file, cmd, os.getcwd()))
 
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def sos_run(workflow, source={}):
     '''Execute a workflow from specified source, input, and output
     By default the workflow is defined in the existing SoS script, but
@@ -499,8 +499,10 @@ def sos_run(workflow, source={}):
         env.logger.debug('Checking nested workflow {}'.format(workflow))
     elif env.run_mode == 'prepare':
         env.logger.debug('Preparing nested workflow {}'.format(workflow))
-    else:
+    elif env.run_mode == 'run':
         env.logger.info('Executing nested workflow {}'.format(workflow))
+    else:
+        raise RuntimeError('Unsupported action in interactive mode')
     script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
     wf = script.workflow(workflow, source=source)
     # if wf contains the current step or one of the previous one, this constitute
@@ -510,12 +512,12 @@ def sos_run(workflow, source={}):
     return Sequential_Executor(wf, transcript=env.sos_dict['__transcript__']).run(args=env.sos_dict['__args__'], nested=True,
         run_mode=env.run_mode, sig_mode=env.sig_mode, verbosity=env.verbosity)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def execute_script(script, interpreter, suffix, **kwargs):
     return SoS_ExecuteScript(script, interpreter, suffix).run(**kwargs)
 
 _check_command_cache = {}
-@SoS_Action(run_mode=['inspect', 'run'])
+@SoS_Action(run_mode=['inspect', 'run', 'interactive'])
 def check_command(cmd, pattern = None, quiet=False):
     '''Raise an exception if output of `cmd` does not match specified `pattern`.
     Multiple patterns can be specified as a list of patterns.
@@ -555,14 +557,14 @@ def check_command(cmd, pattern = None, quiet=False):
     _check_command_cache[cmd] = ret_val
     return ret_val
 
-@SoS_Action(run_mode=['inspect', 'run'])
+@SoS_Action(run_mode=['inspect', 'run', 'interactive'])
 def fail_if(expr, msg=''):
     '''Raise an exception with `msg` if condition `expr` is False'''
     if expr:
         raise RuntimeError(msg)
     return 0
 
-@SoS_Action(run_mode=['inspect', 'run'])
+@SoS_Action(run_mode=['inspect', 'run', 'interactive'])
 def warn_if(expr, msg=''):
     '''Yield an warning message `msg` if `expr` is False '''
     if expr:
@@ -703,7 +705,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
     return os.path.isfile(dest)
 
 
-@SoS_Action(run_mode=['prepare'])
+@SoS_Action(run_mode=['prepare', 'interactive'])
 def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified
@@ -788,58 +790,58 @@ def validate_with_command(cmd):
     #
     return func
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def run(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/bash', '.sh', validate_with_command('/bin/bash -n')).run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def bash(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/bash', '.sh', validate_with_command('/bin/bash -n')).run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def csh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/csh', '.csh', validate_with_command('/bin/csh -n')).run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def tcsh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/tcsh', '.sh', validate_with_command('/bin/tcsh -n')).run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def zsh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/zsh', '.zsh', validate_with_command('/bin/zsh -n')).run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def sh(script, **kwargs):
     return SoS_ExecuteScript(script, '/bin/sh', '.sh', validate_with_command('/bin/sh -n')).run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def python(script, **kwargs):
     return SoS_ExecuteScript(script, 'python', '.py', validate_with_command('python -m py_compile')).run(**kwargs)
 
 def validate_python3(script, filename=None):
     compile(script, filename=filename, mode='exec')
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def python3(script, **kwargs):
     return SoS_ExecuteScript(script, 'python3', '.py', validate_python3).run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def perl(script, **kwargs):
     return SoS_ExecuteScript(script, 'perl', '.pl', validate_with_command('perl -c')).run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def ruby(script, **kwargs):
     return SoS_ExecuteScript(script, 'ruby', '.rb', validate_with_command('ruby -c')).run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def node(script, **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def JavaScript(script, **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def R(script, **kwargs):
     # > getOption('defaultPackages')
     # [1] "datasets"  "utils"     "grDevices" "graphics"  "stats"     "methods"
@@ -853,7 +855,7 @@ def R(script, **kwargs):
                     stop(paste(lint[[i]]$"message", lint[[i]]$"line"))'
             '''.replace('\n', ' '))).run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'interactive'])
 def check_R_library(name, version = None, repos = 'http://cran.us.r-project.org'):
     '''Check existence and version match of R library.
     cran and bioc packages are unique yet might overlap with github.
@@ -963,7 +965,7 @@ def check_R_library(name, version = None, repos = 'http://cran.us.r-project.org'
     return ret_val
 
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['run', 'interactive'])
 def docker_build(dockerfile=None, **kwargs):
     '''docker build command. By default a script is sent to the docker build command but
     you can also specify different parameters defined inu//docker-py.readthedocs.org/en/stable/api/#build
@@ -973,13 +975,13 @@ def docker_build(dockerfile=None, **kwargs):
     return 0
 
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['run', 'interactive'])
 def docker_commit(**kwargs):
     docker = DockerClient()
     docker.commit(**kwargs)
     return 0
 
-@SoS_Action(run_mode='run')
+@SoS_Action(run_mode=['run', 'interactive'])
 def report(script=None, from_file=None, to_file=None, mode='a', **kwargs):
     if to_file is not None:
         if not to_file:
@@ -1009,7 +1011,7 @@ def report(script=None, from_file=None, to_file=None, mode='a', **kwargs):
             md.write(content)
 
 
-@SoS_Action(run_mode=['inspect', 'run'])
+@SoS_Action(run_mode=['inspect', 'run', 'interactive'])
 def pandoc(script=None, output=None, **kwargs):
     '''This action can be used in three ways
 
@@ -1037,7 +1039,7 @@ def pandoc(script=None, output=None, **kwargs):
             report.write(script)
     elif 'filename' in kwargs:
         script_file = kwargs['filename']
-    elif '__interactive__' in env.sos_dict and env.sos_dict['__interactive__'] and '__summary_report__' in env.sos_dict:
+    elif env.run_mode == 'interactive' and '__summary_report__' in env.sos_dict:
         script_file = env.sos_dict['__summary_report__']
     else:
         step_reports = glob.glob(os.path.join('.sos', 'report', '*'))
@@ -1096,7 +1098,7 @@ def pandoc(script=None, output=None, **kwargs):
     try:
         cmd = command.replace('{}', shlex.quote(script_file))
         env.logger.trace('Running command "{}"'.format(cmd))
-        if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+        if env.run_mode == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             pid = p.pid
@@ -1123,7 +1125,7 @@ def pandoc(script=None, output=None, **kwargs):
     env.logger.info('Report saved to {}'.format(output))
 
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run'])
+@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def Rmarkdown(script=None, output_file=None, **kwargs):
     '''This action can be used in three ways
 
@@ -1151,7 +1153,7 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
             report.write(script)
     elif 'filename' in kwargs:
         script_file = kwargs['filename']
-    elif '__interactive__' in env.sos_dict and env.sos_dict['__interactive__'] and '__summary_report__' in env.sos_dict:
+    elif env.run_mode == 'interactive' and '__summary_report__' in env.sos_dict:
         script_file = env.sos_dict['__summary_report__']
     else:
         step_reports = glob.glob(os.path.join('.sos', 'report', '*'))
@@ -1189,7 +1191,7 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
         os.path.abspath(output_file), arg_output_format, extra_args)
     try:
         cmd = command.replace('{}', '{!r}'.format(script_file))
-        if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+        if env.run_mode == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             pid = p.pid

@@ -122,7 +122,7 @@ class Base_Executor:
             # Because this workflow might belong to a combined workflow, we do not clear
             # locals before the execution of workflow.
             # Need to choose what to inject to globals
-            if not (hasattr(env, 'sos_dict') and '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']):
+            if not env.run_mode == 'interactive':
                 env.sos_dict = WorkflowDict()
             if env.run_mode != 'run':
                 env.sos_dict['__execute_errors__'] = ExecuteError(self.workflow.name)
@@ -231,8 +231,7 @@ class Sequential_Executor(Base_Executor):
         # the steps can be executed in the pool (Not implemented)
         # if nested = true, start a new progress bar
         prog = ProgressBar(self.workflow.name, len(self.workflow.sections),
-            disp=len(self.workflow.sections) > 1 and env.verbosity == 1 and env.run_mode == 'run' \
-            and ('__interactive__' not in env.sos_dict or not env.sos_dict['__interactie__']))
+            disp=len(self.workflow.sections) > 1 and env.verbosity == 1 and env.run_mode == 'run')
         for idx, section in enumerate(self.workflow.sections):
             # handle skip, which might have to be evaluated till now.
             #
@@ -276,7 +275,7 @@ class Sequential_Executor(Base_Executor):
             # 2. for subworkflow, _step.input = _input
             # 3. for second to later step, _step.input = _step.output
             # each section can use a separate process
-            if self.debug or ('__interactive__' in env.sos_dict and env.sos_dict['__interactive__']):
+            if self.debug or env.run_mode == 'interactive':
                 res = Step_Executor(section).run(DAG)
             else:
                 queue = mp.Queue()
@@ -364,7 +363,6 @@ class Interactive_Executor(Base_Executor):
         else:
             wf_name = None
         #
-        env.sos_dict.set('__interactive__', 1)
         try:
             args, workflow_args = self.parse_command_line(command_line)
             if os.path.isfile(args.__report__):

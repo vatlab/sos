@@ -356,7 +356,7 @@ def SoS_exec(stmts, sigil='${ }'):
             env.logger.trace('Executing\n{}'.format(stmts))
         #
         try:
-            if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+            if env.run_mode == 'interactive':
                 act = DelayedAction(env.logger.warning, 'Running {}'.format(short_repr(code)))
             else:
                 act = None

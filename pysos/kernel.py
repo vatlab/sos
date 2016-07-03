@@ -288,7 +288,7 @@ class SoS_Kernel(Kernel):
     def _start_sos(self):
         env.sos_dict = WorkflowDict()
         SoS_exec('from pysos import *')
-        env.sos_dict.set('__interactive__', True)
+        env.run_mode = 'interactive'
         self.executor = Interactive_Executor()
         self.original_keys = set(env.sos_dict._dict.keys())
         self.original_keys.add('__builtins__')
