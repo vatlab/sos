@@ -959,7 +959,7 @@ class Step_Executor:
                 if self._outputs[idx] and isinstance(self._outputs[idx][0], Undetermined):
                     env.logger.trace('Setting _output[{}] from proc output {}'.format(idx, short_repr(res['output'])))
                     self._outputs[idx] = res['output']
-        env.logger.trace('Checking output files {}'.format(env.sos_dict['output']))
+        env.logger.trace('Checking output files {}'.format(short_repr(env.sos_dict['output'])))
         if env.run_mode == 'run' and env.sos_dict['output'] is not None:
             if env.sos_dict['output'] and isinstance(env.sos_dict['output'][0], Undetermined):
                 # at this point self._outputs should be expanded already.
