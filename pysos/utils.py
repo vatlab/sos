@@ -45,6 +45,10 @@ except:
     pass
 import subprocess
 import threading
+try:
+    import _thread
+except:
+    import _dummy_thread as _thread
 from io import StringIO
 from html.parser import HTMLParser
 from contextlib import contextmanager

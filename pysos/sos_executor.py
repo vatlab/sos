@@ -42,12 +42,6 @@ def __null_func__(*args, **kwargs):
     '''This is a utility function for the parser'''
     return args, kwargs
 
-class ArgumentError(Error):
-    """Raised when an invalid argument is passed."""
-    def __init__(self, msg):
-        Error.__init__(self, msg)
-        self.args = (msg, )
-
 class ExecuteError(Error):
     """Raised when there are errors in inspect mode. Such errors are not raised
     immediately, but will be collected and raised at the end """
