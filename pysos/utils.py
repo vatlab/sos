@@ -379,8 +379,8 @@ class RuntimeEnvironments(object):
         # logging from multiple processes.
         self._logger = logging.getLogger()
         # clear previous handler
-        for handler in self._logger.handlers:
-            self._logger.removeHandler(handler)
+        while self._logger.hasHandlers():
+            self._logger.removeHandler(self._logger.handlers[0])
         self._logger.setLevel(logging.DEBUG)
         # output to standard output
         cout = logging.StreamHandler()
