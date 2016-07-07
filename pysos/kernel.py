@@ -545,12 +545,13 @@ class SoS_Kernel(Kernel):
                 if item not in env.sos_dict:
                     raise UsageError('Variable {} does not exist'.format(item))
             if self.kernel != 'python':
-                raise UsageError('Can only pass variables to python kernel')
+                raise UsageError('Can only pass variables to non python kernel {}'.format(self.kernel))
             # if it is a python kernel, passing specified SoS variables to it
             sos_data = pickle.dumps({x:env.sos_dict[x] for x in items})
             # this can fail if the underlying python kernel is python 2
-            code = "import pickle\nglobals().update(pickle.loads({!r}))".format(sos_data)
-            self.KC.execute(code, silent=True, store_history=False)
+            self.KC.execute("import pickle\nglobals().update(pickle.loads({!r}))".format(sos_data),
+                silent=True, store_history=False)
+            # first thing is wait for any side effects (output, stdin, etc.)
             _execution_state = "busy"
             while _execution_state != 'idle':
                 # display intermediate print statements, etc.
@@ -559,13 +560,16 @@ class SoS_Kernel(Kernel):
                     msg_type = sub_msg['header']['msg_type']
                     if msg_type == 'status':
                         _execution_state = sub_msg["content"]["execution_state"]
+            lines = code.split('\n')
+            code = '\n'.join(lines[1:])
+            command_line = self.options
         elif code.startswith('%push'):
             items = self.get_magic_option(code).split()
             if self.kernel != 'python':
                 raise UsageError('Can only pass variables to python kernel')
             # if it is a python kernel, passing specified SoS variables to it
-            code = '{{ {} }}'.format(','.join('"{0}":{0}'.format(x) for x in items))
-            self.KC.execute(code, silent=False, store_history=not store_history)
+            self.KC.execute('{{ {} }}'.format(','.join('"{0}":{0}'.format(x) for x in items)),
+                silent=False, store_history=not store_history)
             # first thing is wait for any side effects (output, stdin, etc.)
             _execution_state = "busy"
             while _execution_state != 'idle':
@@ -582,6 +586,9 @@ class SoS_Kernel(Kernel):
                             eval(sub_msg['content']['data']['text/plain'])
                             )
                         break
+            lines = code.split('\n')
+            code = '\n'.join(lines[1:])
+            command_line = self.options
         elif code.startswith('%paste'):
             command_line = (self.options + ' ' + self.get_magic_option(code)).strip()
             try:
