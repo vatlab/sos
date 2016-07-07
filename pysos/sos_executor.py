@@ -35,6 +35,7 @@ from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, \
     frozendict, natural_keys, dict_merge, ArgumentError
 from .sos_eval import Undetermined, SoS_eval, SoS_exec
 from .sos_script import SoS_Script, SoS_Step, SoS_ScriptContent
+from .sos_syntax import SOS_SECTION_HEADER
 
 __all__ = []
 
@@ -167,6 +168,53 @@ class Base_Executor:
             if self.report != '__STDOUT__':
                 combined.close()
                 env.logger.info('Report saved to {}'.format(self.report))
+
+    def run_interactive(self, args=[], nested=False, cmd_name='', config_file=None,
+        run_mode='run', sig_mode='default', verbosity=2):
+        env.verbosity = verbosity
+        if not self.workflow.sections:
+            env.logger.trace('Skip because no section is defined')
+            return
+        DAG = {}
+        if not nested or run_mode == 'inspect':
+            env.run_mode = 'inspect'
+            try:
+                self.setup(args, nested, cmd_name, config_file)
+                if run_mode == 'inspect':
+                    env.sos_dict.set('__transcript__', self.transcript)
+                self.execute(args, nested, cmd_name, config_file, DAG=DAG)
+            except Exception:
+                if verbosity and verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                raise
+            if '__unknown_args__' in env.sos_dict and env.sos_dict['__unknown_args__']:
+                raise ArgumentError('Unhandled command line argument {}'.format(' '.join(env.sos_dict['__unknown_args__'])))
+        if run_mode in ['prepare', 'run'] and (not nested or run_mode == 'prepare'):
+            env.run_mode = 'prepare'
+            env.sig_mode = sig_mode
+            try:
+                self.setup(args, nested, cmd_name, config_file)
+                if run_mode == 'prepare':
+                    env.sos_dict.set('__transcript__', self.transcript)
+                self.execute(args, nested, cmd_name, config_file, DAG=DAG)
+            except Exception:
+                if verbosity and verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                raise
+        if run_mode == 'run' and (not nested or run_mode == 'run'):
+            env.run_mode = 'run'
+            env.sig_mode = sig_mode
+            try:
+                self.setup(args, nested, cmd_name, config_file)
+                if run_mode == 'run':
+                    env.sos_dict.set('__transcript__', self.transcript)
+                self.execute(args, nested, cmd_name, config_file, DAG=DAG)
+            except Exception:
+                if verbosity and verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                raise
+        self.finalize()
+
 
     def run(self, args=[], nested=False, cmd_name='', config_file=None,
         run_mode='run', sig_mode='default', verbosity=2):
@@ -307,7 +355,7 @@ class Sequential_Executor(Base_Executor):
 
 
 class Interactive_Executor(Base_Executor):
-    '''Interactive executor called from by iPython'''
+    '''Interactive executor called from by iPython Jupyter or Spyder'''
     def __init__(self):
         # we actually do not have our own workflow, everything is passed from ipython
         Base_Executor.__init__(self, None, None, None, False)
@@ -346,15 +394,13 @@ class Interactive_Executor(Base_Executor):
             for key in ['__step_input__', '__step_output__']:
                 env.sos_dict.pop(key, None)
             return
-        # will exit if there is parsing error
-        try:
-            script = SoS_Script(content=block)
-        except Exception as e:
-            # if a step starts with output: etc, try to add a section head
-            if 'not allowed outside' in repr(e):
-                script = SoS_Script(content = '[0]\n' + block)
-            else:
-                raise
+        # first check if block contains section header
+        # if there is no section header, add a header so that the block
+        # appears to be a SoS script with one section
+        if not any([SOS_SECTION_HEADER.match(line) for line in block.split()]):
+            block = '[0]\n' + block
+
+        script = SoS_Script(content=block)
         #
         if command_line.strip() and not command_line.startswith('-'):
             wf_and_args = command_line.split(None, 1)
@@ -368,43 +414,9 @@ class Interactive_Executor(Base_Executor):
             if os.path.isfile(args.__report__):
                 os.remove(args.__report__)
             # if there is only a global section
-            if not script.sections:
-                # if there is no section, but some actions that are seen as part of a
-                # global definition
-                if script.global_def:
-                    env.sig_mode = 'default'
-                    env.run_mode = 'run'
-                    if args.__rerun__:
-                        env.sig_mode = 'ignore'
-                    if args.__prepare__:
-                        env.run_mode = 'prepare'
-                    if args.__inspect__:
-                        env.run_mode = 'inspect'
-                    if args.__construct__:
-                        env.sig_mode = 'construct'
-                    for key in ['__step_input__', '__step_output__']:
-                        env.sos_dict.pop(key, None)
-                    #
-                    self.load_config(args.__config__)
-                    env.sos_dict.set('step_name', '__interactive__')
-                    env.sos_dict.set('__transcript__', args.__transcript__)
-                    env.sos_dict.set('__step_report__', args.__report__)
-                    # some actions requires this
-                    env.sos_dict.set('_index', 0)
-                    try:
-                        return SoS_exec(script.global_def)
-                    except Exception as e:
-                        env.logger.debug('Failed to execute as global_def: {}'.format(e))
-                        # add an empty section to execute it as a script
-                        # FIXME: not sure if this a good arrangement...
-                        section = SoS_Step(SoS_ScriptContent('interactive'), [('default', None)])
-                        section.global_def = script.global_def
-                        script.sections.append(section)
-                else:
-                    return None
             #
             sig_mode = 'default'
-            run_mode = 'run'
+            run_mode = 'interactive'
             if args.__rerun__:
                 sig_mode = 'ignore'
             if args.__prepare__:
@@ -420,7 +432,7 @@ class Interactive_Executor(Base_Executor):
             else:
                 executor = Sequential_Executor(workflow, report=os.path.join('.sos', 'ipython.md'),
                     transcript=args.__transcript__)
-            executor.run(workflow_args, cmd_name='<script> {}'.format(wf_name), config_file=args.__config__,
+            executor.run_interactive(workflow_args, cmd_name='<script> {}'.format(wf_name), config_file=args.__config__,
                 run_mode=run_mode, sig_mode=sig_mode, verbosity=args.verbosity)
         finally:
             env.verbosity = 2
