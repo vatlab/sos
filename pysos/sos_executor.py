@@ -277,8 +277,8 @@ class Sequential_Executor(Base_Executor):
                 proc = mp.Process(target=Step_Executor(section).run_with_queue,
                     args=(queue, DAG))
                 proc.start()
-                proc.join()
                 res = queue.get()
+                proc.join()
             # if the job is failed
             if isinstance(res, Exception):
                 # error must have been displayed.
