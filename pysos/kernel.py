@@ -535,20 +535,22 @@ class SoS_Kernel(Kernel):
             #
             if code.startswith('%with'):
                 self.original_kernel = self.kernel
-            items = options.split()
-            self.switch_kernel(items[0] if len(items) > 0 else '')
-            if len(items) > 1:
-                if items[0].startswith('python'):
-                    # if it is a python kernel, passing specified SoS variables to it
-                    sos_data = pickle.dumps({x:env.sos_dict[x] for x in items[1:]})
-                    # this can fail if the underlying python kernel is python 2
-                    code = "import pickle\nglobals().update(pickle.loads({!r}))".format(sos_data)
-                    self.KC.execute(code, silent=True, store_history=False)
-                else:
-                    raise UsageError("Cannot pass variables to non-python kernel.")
+            self.switch_kernel(options)
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
+        elif code.startswith('%pass'):
+            items = self.get_magic_option(code).split()
+            for item in items:
+                if item not in env.sos_dict:
+                    raise UsageError('Variable {} does not exist'.format(item))
+            if self.kernel != 'python':
+                raise UsageError('Can only pass variables to python kernel')
+            # if it is a python kernel, passing specified SoS variables to it
+            sos_data = pickle.dumps({x:env.sos_dict[x] for x in items})
+            # this can fail if the underlying python kernel is python 2
+            code = "import pickle\nglobals().update(pickle.loads({!r}))".format(sos_data)
+            self.KC.execute(code, silent=True, store_history=False)
         elif code.startswith('%paste'):
             command_line = (self.options + ' ' + self.get_magic_option(code)).strip()
             try:
