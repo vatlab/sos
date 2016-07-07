@@ -539,7 +539,7 @@ class SoS_Kernel(Kernel):
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
-        elif code.startswith('%pass'):
+        elif code.startswith('%get'):
             items = self.get_magic_option(code).split()
             for item in items:
                 if item not in env.sos_dict:
@@ -551,6 +551,37 @@ class SoS_Kernel(Kernel):
             # this can fail if the underlying python kernel is python 2
             code = "import pickle\nglobals().update(pickle.loads({!r}))".format(sos_data)
             self.KC.execute(code, silent=True, store_history=False)
+            _execution_state = "busy"
+            while _execution_state != 'idle':
+                # display intermediate print statements, etc.
+                while self.KC.iopub_channel.msg_ready():
+                    sub_msg = self.KC.iopub_channel.get_msg()
+                    msg_type = sub_msg['header']['msg_type']
+                    if msg_type == 'status':
+                        _execution_state = sub_msg["content"]["execution_state"]
+        elif code.startswith('%push'):
+            items = self.get_magic_option(code).split()
+            if self.kernel != 'python':
+                raise UsageError('Can only pass variables to python kernel')
+            # if it is a python kernel, passing specified SoS variables to it
+            code = '{{ {} }}'.format(','.join('"{0}":{0}'.format(x) for x in items))
+            self.KC.execute(code, silent=False, store_history=not store_history)
+            # first thing is wait for any side effects (output, stdin, etc.)
+            _execution_state = "busy"
+            while _execution_state != 'idle':
+                # display intermediate print statements, etc.
+                while self.KC.iopub_channel.msg_ready():
+                    sub_msg = self.KC.iopub_channel.get_msg()
+                    msg_type = sub_msg['header']['msg_type']
+                    if msg_type == 'status':
+                        _execution_state = sub_msg["content"]["execution_state"]
+                    elif msg_type == 'execute_result':
+                        #self.send_response(self.iopub_socket, 'stream',
+                        #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
+                        env.sos_dict.update(
+                            eval(sub_msg['content']['data']['text/plain'])
+                            )
+                        break
         elif code.startswith('%paste'):
             command_line = (self.options + ' ' + self.get_magic_option(code)).strip()
             try:
