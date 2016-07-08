@@ -214,6 +214,31 @@ def R_repr(obj):
     else:
         raise UsageError('{} cannot be converted to R'.format(short_repr(obj)))
 
+# an R function that tries to convert an R object to Python repr
+dputToString_func = '''
+dputToString <- function (obj) {
+  con <- textConnection(NULL,open="w")
+  tryCatch({dput(obj,con);
+           textConnectionValue(con)},
+           finally=close(con))
+}
+'''
+
+def from_R_repr(expr):
+    '''
+    Convert text in the following format to a Python object
+
+    '[1] "structure(list(a = 1, b = \\"a\\"), .Names = c(\\"a\\", \\"b\\"))"'
+    '''
+    try:
+        text = expr[20:-1].split('), .Names')[0].replace('\\', '')
+        convert_funcs = {
+            'c': lambda *args: list(args)
+        }
+        return eval('dict({})'.format(text), convert_funcs)
+    except Exception as e:
+        raise UsageError('Failed to convert {} to Python object'.format(expr))
+
 def python2R(name):
     #
     # return equivalent R representation for python object.
@@ -591,27 +616,53 @@ class SoS_Kernel(Kernel):
             command_line = self.options
         elif code.startswith('%push'):
             items = self.get_magic_option(code).split()
-            if self.kernel != 'python':
+            if self.kernel == 'python':
+                # if it is a python kernel, passing specified SoS variables to it
+                self.KC.execute('{{ {} }}'.format(','.join('"{0}":{0}'.format(x) for x in items)),
+                    silent=False, store_history=not store_history)
+                # first thing is wait for any side effects (output, stdin, etc.)
+                _execution_state = "busy"
+                while _execution_state != 'idle':
+                    # display intermediate print statements, etc.
+                    while self.KC.iopub_channel.msg_ready():
+                        sub_msg = self.KC.iopub_channel.get_msg()
+                        msg_type = sub_msg['header']['msg_type']
+                        if msg_type == 'status':
+                            _execution_state = sub_msg["content"]["execution_state"]
+                        elif msg_type == 'execute_result':
+                            #self.send_response(self.iopub_socket, 'stream',
+                            #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
+                            env.sos_dict.update(
+                                eval(sub_msg['content']['data']['text/plain'])
+                                )
+                            break
+            elif self.kernel == 'ir':
+                # if it is a python kernel, passing specified SoS variables to it
+                self.KC.execute('{}\ndputToString(list({}))'.format(dputToString_func, 
+                    ','.join('{0}={0}'.format(x) for x in items)),
+                    silent=False, store_history=not store_history)
+                # first thing is wait for any side effects (output, stdin, etc.)
+                _execution_state = "busy"
+                while _execution_state != 'idle':
+                    # display intermediate print statements, etc.
+                    while self.KC.iopub_channel.msg_ready():
+                        sub_msg = self.KC.iopub_channel.get_msg()
+                        msg_type = sub_msg['header']['msg_type']
+                        if msg_type == 'status':
+                            _execution_state = sub_msg["content"]["execution_state"]
+                        elif msg_type == 'execute_result':
+                            #self.send_response(self.iopub_socket, 'stream',
+                            #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
+                            try:
+                                env.sos_dict.update(
+                                    from_R_repr(sub_msg['content']['data']['text/plain'])
+                                    )
+                            except Exception as e:
+                                 self.send_response(self.iopub_socket, 'stream',
+                                    {'name': 'stderr', 'text': e})
+                            break
+            else:
                 raise UsageError('Can only pass variables to python kernel')
-            # if it is a python kernel, passing specified SoS variables to it
-            self.KC.execute('{{ {} }}'.format(','.join('"{0}":{0}'.format(x) for x in items)),
-                silent=False, store_history=not store_history)
-            # first thing is wait for any side effects (output, stdin, etc.)
-            _execution_state = "busy"
-            while _execution_state != 'idle':
-                # display intermediate print statements, etc.
-                while self.KC.iopub_channel.msg_ready():
-                    sub_msg = self.KC.iopub_channel.get_msg()
-                    msg_type = sub_msg['header']['msg_type']
-                    if msg_type == 'status':
-                        _execution_state = sub_msg["content"]["execution_state"]
-                    elif msg_type == 'execute_result':
-                        #self.send_response(self.iopub_socket, 'stream',
-                        #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
-                        env.sos_dict.update(
-                            eval(sub_msg['content']['data']['text/plain'])
-                            )
-                        break
             lines = code.split('\n')
             code = '\n'.join(lines[1:])
             command_line = self.options
