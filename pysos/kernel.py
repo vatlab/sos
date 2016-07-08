@@ -32,6 +32,7 @@ import zipfile
 import tarfile
 import gzip
 import pickle
+from collections.abc import Sequence
 
 from .utils import env, WorkflowDict, short_repr, pretty_size, dehtml
 from ._version import __sos_version__, __version__
@@ -204,6 +205,27 @@ class BioPreviewer(SoS_FilePreviewer):
             return self.previewBam(filename)
         else:
             return SoS_FilePreviewer.preview(filename)
+
+def R_repr(obj):
+    if isinstance(obj, (int, float, str)):
+        return repr(obj)
+    elif isinstance(obj, Sequence):
+        return 'c(' + ','.join(R_repr(x) for x in obj) + ')'
+    else:
+        raise UsageError('{} cannot be converted to R'.format(short_repr(obj)))
+
+def python2R(name):
+    #
+    # return equivalent R representation for python object.
+    # This is limited to select python objects but we will obtain
+    # native R object using this method.
+    if name not in env.sos_dict:
+        raise UsageError('{} not exist'.format(name))
+    try:
+        return '{} <- {}'.format(name, R_repr(env.sos_dict[name]))
+    except Exception as e:
+        raise UsageError('Failed to convert variable {} to R: {}'.format(name))
+
 
 class SoS_Exporter(Exporter):
     def __init__(self, config=None, reorder=False, reset_index=False, add_header=False,
@@ -544,13 +566,17 @@ class SoS_Kernel(Kernel):
             for item in items:
                 if item not in env.sos_dict:
                     raise UsageError('Variable {} does not exist'.format(item))
-            if self.kernel != 'python':
-                raise UsageError('Can only pass variables to non python kernel {}'.format(self.kernel))
-            # if it is a python kernel, passing specified SoS variables to it
-            sos_data = pickle.dumps({x:env.sos_dict[x] for x in items})
-            # this can fail if the underlying python kernel is python 2
-            self.KC.execute("import pickle\nglobals().update(pickle.loads({!r}))".format(sos_data),
-                silent=True, store_history=False)
+            if self.kernel == 'python':
+                # if it is a python kernel, passing specified SoS variables to it
+                sos_data = pickle.dumps({x:env.sos_dict[x] for x in items})
+                # this can fail if the underlying python kernel is python 2
+                self.KC.execute("import pickle\nglobals().update(pickle.loads({!r}))".format(sos_data),
+                    silent=True, store_history=False)
+            elif self.kernel == 'ir':
+                sos_data = '\n'.join(python2R(x) for x in items)
+                self.KC.execute(sos_data, silent=True, store_history=False)
+            else:
+                raise UsageError('Can not pass variables to kernel {}'.format(self.kernel))
             # first thing is wait for any side effects (output, stdin, etc.)
             _execution_state = "busy"
             while _execution_state != 'idle':
