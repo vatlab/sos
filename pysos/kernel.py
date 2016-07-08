@@ -659,7 +659,7 @@ class SoS_Kernel(Kernel):
                                     )
                             except Exception as e:
                                  self.send_response(self.iopub_socket, 'stream',
-                                    {'name': 'stderr', 'text': e})
+                                    {'name': 'stderr', 'text': str(e)})
                             break
             else:
                 raise UsageError('Can only pass variables to python kernel')
