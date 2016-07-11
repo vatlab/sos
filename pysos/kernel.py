@@ -632,9 +632,13 @@ class SoS_Kernel(Kernel):
                         elif msg_type == 'execute_result':
                             #self.send_response(self.iopub_socket, 'stream',
                             #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
-                            env.sos_dict.update(
-                                pickle.loads(eval(sub_msg['content']['data']['text/plain']))
-                                )
+                            try:
+                                env.sos_dict.update(
+                                    pickle.loads(eval(sub_msg['content']['data']['text/plain']))
+                                    )
+                            except Exception as e:
+                                self.send_response(self.iopub_socket, 'stream',
+                                    {'name': 'stderr', 'text': 'Failed to push variable {}: {}'.format(', '.join(items), e)})
                             break
             elif self.kernel == 'ir':
                 # if it is a python kernel, passing specified SoS variables to it
