@@ -618,7 +618,7 @@ class SoS_Kernel(Kernel):
             items = self.get_magic_option(code).split()
             if self.kernel == 'python':
                 # if it is a python kernel, passing specified SoS variables to it
-                self.KC.execute('{{ {} }}'.format(','.join('"{0}":{0}'.format(x) for x in items)),
+                self.KC.execute('import pickle\npickle.dumps({{ {} }})'.format(','.join('"{0}":{0}'.format(x) for x in items)),
                     silent=False, store_history=not store_history)
                 # first thing is wait for any side effects (output, stdin, etc.)
                 _execution_state = "busy"
@@ -633,7 +633,7 @@ class SoS_Kernel(Kernel):
                             #self.send_response(self.iopub_socket, 'stream',
                             #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
                             env.sos_dict.update(
-                                eval(sub_msg['content']['data']['text/plain'])
+                                pickle.loads(eval(sub_msg['content']['data']['text/plain']))
                                 )
                             break
             elif self.kernel == 'ir':
