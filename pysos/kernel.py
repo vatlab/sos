@@ -626,8 +626,7 @@ class SoS_Kernel(Kernel):
         else:
             raise UsageError('Can only pass variables to python kernel')
 
-
-    def handle_magic_shell(self, cmd):
+    def handle_shell_commend(self, cmd):
         # interpolate command
         try:
             new_cmd = interpolate(cmd, sigil='${ }', local_dict=env.sos_dict._dict)
@@ -849,9 +848,9 @@ class SoS_Kernel(Kernel):
                 return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.options = old_options
-        elif code.startswith('%'):
+        elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)
-            self.handle_magic_shell(code.split(' ')[0][1:] + ' ' + options)
+            self.handle_shell_command(code.split(' ')[0][1:] + ' ' + options)
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.kernel != 'sos':
             # handle string interpolation before sending to the underlying kernel
