@@ -671,9 +671,7 @@ class SoS_Kernel(Kernel):
         code = dedent(code)
         with self.redirect_sos_io():
             try:
-                res = self.executor.run_interactive(code, self.options)
-                sys.stderr.flush()
-                sys.stdout.flush()
+                res = self.executor.run(code, self.options)
                 self.send_result(res, silent)
             except Exception:
                 sys.stderr.flush()
@@ -687,6 +685,9 @@ class SoS_Kernel(Kernel):
                 raise
             except KeyboardInterrupt:
                 return {'status': 'abort', 'execution_count': self.execution_count}
+            finally:
+                sys.stderr.flush()
+                sys.stdout.flush()
         #
         if not silent:
             start_output = True
@@ -867,8 +868,8 @@ class SoS_Kernel(Kernel):
             return self.run_cell(code, store_history)
         else:
             # run sos
-            self.run_sos_code(code, silent)
             try:
+                self.run_sos_code(code, silent)
                 self.shell.user_ns.update(env.sos_dict._dict)
                 return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
             except Exception as e:

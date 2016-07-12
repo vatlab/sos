@@ -67,8 +67,9 @@ class ExecuteError(Error):
         else:
             self.message += '\n[%s]:\n\t%s' % (short_line, error)
 
-
 class Base_Executor:
+    '''This is the base class of all executor that provides common
+    set up and tear functions for all executors.'''
     def __init__(self, workflow, report, transcript, debug):
         self.workflow = workflow
         self.report = report
@@ -117,7 +118,7 @@ class Base_Executor:
             # Because this workflow might belong to a combined workflow, we do not clear
             # locals before the execution of workflow.
             # Need to choose what to inject to globals
-            if not env.run_mode == 'interactive':
+            if env.run_mode != 'interactive':
                 env.sos_dict = WorkflowDict()
             if env.run_mode != 'run':
                 env.sos_dict['__execute_errors__'] = ExecuteError(self.workflow.name)
@@ -142,7 +143,6 @@ class Base_Executor:
             shutil.rmtree(os.path.join('.sos', 'report'))
         os.makedirs(os.path.join('.sos', 'report'))
         env.sos_dict.set('__transcript__', None)
-        
 
     def finalize(self):
         # collect reports and write to a file
@@ -163,51 +163,12 @@ class Base_Executor:
                 combined.close()
                 env.logger.info('Report saved to {}'.format(self.report))
 
-    def run_interactive(self, args=[], nested=False, cmd_name='', config_file=None,
-        run_mode='run', sig_mode='default', verbosity=2):
-        env.verbosity = verbosity
-        if not self.workflow.sections:
-            env.logger.trace('Skip because no section is defined')
-            return
-        DAG = {}
-        if not nested or run_mode == 'inspect':
-            env.run_mode = 'inspect'
-            try:
-                self.setup(args, nested, cmd_name, config_file)
-                if run_mode == 'inspect':
-                    env.sos_dict.set('__transcript__', self.transcript)
-                self.execute(args, nested, cmd_name, config_file, DAG=DAG)
-            except Exception:
-                if verbosity and verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                raise
-            if '__unknown_args__' in env.sos_dict and env.sos_dict['__unknown_args__']:
-                raise ArgumentError('Unhandled command line argument {}'.format(' '.join(env.sos_dict['__unknown_args__'])))
-        if run_mode in ['prepare', 'run'] and (not nested or run_mode == 'prepare'):
-            env.run_mode = 'prepare'
-            env.sig_mode = sig_mode
-            try:
-                self.setup(args, nested, cmd_name, config_file)
-                if run_mode == 'prepare':
-                    env.sos_dict.set('__transcript__', self.transcript)
-                self.execute(args, nested, cmd_name, config_file, DAG=DAG)
-            except Exception:
-                if verbosity and verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                raise
-        if run_mode == 'run' and (not nested or run_mode == 'run'):
-            env.run_mode = 'run'
-            env.sig_mode = sig_mode
-            try:
-                self.setup(args, nested, cmd_name, config_file)
-                if run_mode == 'run':
-                    env.sos_dict.set('__transcript__', self.transcript)
-                self.execute(args, nested, cmd_name, config_file, DAG=DAG)
-            except Exception:
-                if verbosity and verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                raise
-        self.finalize()
+class Sequential_Executor(Base_Executor):
+    #
+    # A SoS workflow with multiple steps
+    #
+    def __init__(self, workflow, report=None, transcript=None, debug=False):
+        Base_Executor.__init__(self, workflow, report, transcript, debug)
 
 
     def run(self, args=[], nested=False, cmd_name='', config_file=None,
@@ -255,13 +216,6 @@ class Base_Executor:
                     sys.stderr.write(get_traceback())
                 raise
         self.finalize()
-
-class Sequential_Executor(Base_Executor):
-    #
-    # A SoS workflow with multiple steps
-    #
-    def __init__(self, workflow, report=None, transcript=None, debug=False):
-        Base_Executor.__init__(self, workflow, report, transcript, debug)
 
     def execute(self, args=[], nested=False, cmd_name='', config_file=None, DAG={}):
         '''Execute a workflow with specified command line args. If sub is True, this
@@ -380,7 +334,7 @@ class Interactive_Executor(Base_Executor):
         '''Used by the kernel to judge if the code is complete'''
         return SoS_Script(content=code)
 
-    def run_interactive(self, block, command_line=''):
+    def run(self, block, command_line=''):
         '''Execute a block of SoS script that is sent by iPython.'''
         # first, we try to parse it
         #
@@ -411,25 +365,92 @@ class Interactive_Executor(Base_Executor):
             #
             sig_mode = 'default'
             run_mode = 'interactive'
-            if args.__rerun__:
-                sig_mode = 'ignore'
-            if args.__prepare__:
-                run_mode = 'prepare'
-            if args.__inspect__:
-                run_mode = 'inspect'
+            #if args.__rerun__:
+            #    sig_mode = 'ignore'
+            #if args.__prepare__:
+            #    run_mode = 'prepare'
+            #if args.__inspect__:
+            #    run_mode = 'inspect'
             if args.__construct__:
                 sig_mode = 'construct'
             #
-            workflow = script.workflow(wf_name)
-            if args.__report__:
-                executor = Sequential_Executor(workflow, report=args.__report__, transcript=args.__transcript__)
-            else:
-                executor = Sequential_Executor(workflow, report=os.path.join('.sos', 'ipython.md'),
-                    transcript=args.__transcript__)
-            executor.run_interactive(workflow_args, cmd_name='<script> {}'.format(wf_name), config_file=args.__config__,
-                run_mode=run_mode, sig_mode=sig_mode, verbosity=args.verbosity)
+            self.workflow = script.workflow(wf_name)
+            return self.execute_workflow(args=[], nested=False, cmd_name='', config_file=None)
         finally:
             env.verbosity = 2
-            env.run_mode = 'run'
+            env.run_mode = 'interactive'
             env.sig_mode = 'default'
+
+    def execute_workflow(self, args=[], nested=False, cmd_name='', config_file=None):
+        '''Execute a workflow with specified command line args. If sub is True, this
+        workflow is a nested workflow and be treated slightly differently.
+        '''
+        #
+        # process step of the pipelinp
+        self.setup(args, nested, cmd_name, config_file)
+        last_res = None
+        #
+        # the steps can be executed in the pool (Not implemented)
+        # if nested = true, start a new progress bar
+        for idx, section in enumerate(self.workflow.sections):
+            # handle skip, which might have to be evaluated till now.
+            #
+            # the global section has to be executed here because step options might need
+            # infomration from it. Also, the variables in the global section should be
+            # global. In addition, the global section has to be executed multiple times
+            # because sections can come from different scripts (nested workflows).
+            if section.global_def:
+                try:
+                    SoS_exec(section.global_def)
+                except Exception as e:
+                    if env.verbosity > 2:
+                        sys.stderr.write(get_traceback())
+                    raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
+                        section.global_def, e))
+            #
+            # Important:
+            #
+            # Here we require that skip to be evaluatable at inspect and prepare mode
+            # up until this step. There is to say, it cannot rely on the result of
+            # an action that is only available till run time (action would return
+            # Undetermined when executed not in the specified runmode)
+            #
+            if 'skip' in section.options:
+                if isinstance(section.options['skip'], Undetermined):
+                    try:
+                        val_sk =usection.options['skip'].value(section.sigil)
+                        if val_skip is None:
+                            val_skip = False
+                    except Exception as e:
+                        raise RuntimeError('Failed to evaluate value of section option skip={}: {}'.format(section.options['skip'], e))
+                else:
+                    val_skip = section.options['skip']
+                if val_skip is None or val_skip is True:
+                    continue
+                elif val_skip is not False:
+                    raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
+            #
+            # execute section with specified input
+            # 1. for first step of workflow, _step.input=[]
+            # 2. for subworkflow, _step.input = _input
+            # 3. for second to later step, _step.input = _step.output
+            # each section can use a separate process
+            DAG = {}
+            last_res = Step_Executor(section).run_interactive()
+            # if the job is failed
+            if isinstance(last_res, Exception):
+                # error must have been displayed.
+                #if env.verbosity > 2 and hasattr(res, 'traces'):
+                #    env.logger.error(res.traces)
+                raise RuntimeError(last_res)
+        # at the end
+        if not nested and env.run_mode != 'run':
+            exception = env.sos_dict['__execute_errors__']
+            if exception.errors:
+                # if there is any error, raise it
+                raise exception
+        self.finalize()
+        return last_res
+
+
 
