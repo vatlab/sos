@@ -532,12 +532,7 @@ class Step_Executor:
         env.sos_dict.set('_index', 0)
         env.sos_dict.set('__num_groups__', 1)
         # this is not secure and but let us assume this for now.
-        if '__step_step__' not in env.sos_dict:
-            env.sos_dict.set('__step_report__', os.path.join('.sos', 'report', '{}_{}.md'.format(self.step.name, self.step.index)))
-        if os.path.isfile(env.sos_dict['__step_report__']):
-            # truncate the file
-            with open(env.sos_dict['__step_report__'], 'w'):
-                pass
+        self.prepare_report()
         #
         # these are temporary variables that should be removed if exist
         for var in ('input', 'output', 'depends', '_input', '_depends', '_output'):
@@ -1010,11 +1005,18 @@ class Step_Executor:
         return result
 
 
+    def prepare_report(self):
+        if '__step_report__' not in env.sos_dict:
+            env.sos_dict.set('__step_report__', os.path.join('.sos', 'report', '{}_{}.md'.format(self.step.name, self.step.index)))
+        if os.path.isfile(env.sos_dict['__step_report__']):
+            # truncate the file
+            with open(env.sos_dict['__step_report__'], 'w'):
+                pass
+        
     def run_interactive(self):
         '''Execute a single step and return results '''
         # result of last statement to be returned to Jupyter
         last_res = None
-        step_id = self.step_id()
         #
         # Step 1: prepare environments
         env.sos_dict.set('step_name', '{}_{}'.format(self.step.name, self.step.index))
@@ -1022,14 +1024,7 @@ class Step_Executor:
         env.sos_dict.set('__step_context__', self.step.context)
         env.sos_dict.set('_index', 0)
         env.sos_dict.set('__num_groups__', 1)
-        # this is not secure and but let us assume this for now.
-        if '__step_step__' not in env.sos_dict:
-            env.sos_dict.set('__step_report__', os.path.join('.sos', 'report', '{}_{}.md'.format(self.step.name, self.step.index)))
-        if os.path.isfile(env.sos_dict['__step_report__']):
-            # truncate the file
-            with open(env.sos_dict['__step_report__'], 'w'):
-                pass
-        #
+        self.prepare_report()
         # these are temporary variables that should be removed if exist
         for var in ('input', 'output', 'depends', '_input', '_depends', '_output'):
             env.sos_dict.pop(var, '')

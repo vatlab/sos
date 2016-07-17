@@ -499,8 +499,10 @@ def sos_run(workflow, source={}):
         env.logger.debug('Checking nested workflow {}'.format(workflow))
     elif env.run_mode == 'prepare':
         env.logger.debug('Preparing nested workflow {}'.format(workflow))
-    elif env.run_mode in ['run', 'interactive']:
+    elif env.run_mode == 'run':
         env.logger.info('Executing nested workflow {}'.format(workflow))
+    elif env.run_mode == 'interactive':
+        raise RuntimeError('Action sos_run is not supported in interactive mode')
     script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
     wf = script.workflow(workflow, source=source)
     # if wf contains the current step or one of the previous one, this constitute

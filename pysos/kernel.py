@@ -24,6 +24,7 @@ import os
 import sys
 import base64
 import imghdr
+import copy
 import fnmatch
 import contextlib
 import subprocess
@@ -550,7 +551,9 @@ class SoS_Kernel(Kernel):
         items = options.split()
         for item in items:
             if item not in env.sos_dict:
-                raise UsageError('Variable {} does not exist'.format(item))
+                self.send_response(self.iopub_socket, 'stream',
+                     {'name': 'stderr', 'text': 'Variable {} does not exist'.format(item)})
+                return
         if self.kernel == 'python':
             # if it is a python kernel, passing specified SoS variables to it
             sos_data = pickle.dumps({x:env.sos_dict[x] for x in items})
@@ -561,7 +564,9 @@ class SoS_Kernel(Kernel):
             sos_data = '\n'.join(python2R(x) for x in items)
             self.KC.execute(sos_data, silent=True, store_history=False)
         else:
-            raise UsageError('Can not pass variables to kernel {}'.format(self.kernel))
+            self.send_response(self.iopub_socket, 'stream',
+                 {'name': 'stderr', 'text': 'Can not pass variables to kernel {}'.format(self.kernel)})
+            return
         # first thing is wait for any side effects (output, stdin, etc.)
         _execution_state = "busy"
         while _execution_state != 'idle':
@@ -626,7 +631,7 @@ class SoS_Kernel(Kernel):
         else:
             raise UsageError('Can only pass variables to python kernel')
 
-    def handle_shell_commend(self, cmd):
+    def handle_shell_command(self, cmd):
         # interpolate command
         try:
             new_cmd = interpolate(cmd, sigil='${ }', local_dict=env.sos_dict._dict)
@@ -669,8 +674,11 @@ class SoS_Kernel(Kernel):
 
     def run_sos_code(self, code, silent):
         code = dedent(code)
+        last_input = [] if '__step_input__' not in env.sos_dict else copy.deepcopy(env.sos_dict['__step_input__'])
+        last_output = [] if '__step_output__' not in env.sos_dict else copy.deepcopy(env.sos_dict['__step_output__'])
         with self.redirect_sos_io():
             try:
+                # record input and output
                 res = self.executor.run(code, self.options)
                 self.send_result(res, silent)
             except Exception:
@@ -706,11 +714,11 @@ class SoS_Kernel(Kernel):
                         })
                     start_output = False
             #
-            if '__step_input__' in env.sos_dict:
+            if '__step_input__' in env.sos_dict and env.sos_dict['__step_input__'] != last_input:
                 input_files = env.sos_dict['__step_input__']
             else:
                 input_files = []
-            if '__step_output__' in env.sos_dict:
+            if '__step_output__' in env.sos_dict and env.sos_dict['__step_output__'] != last_output:
                 output_files = env.sos_dict['__step_output__']
                 if output_files is None:
                     output_files = []
