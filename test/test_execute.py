@@ -1210,11 +1210,11 @@ touch ${output}
     def testInteractiveExecutor(self):
         '''interactive'''
         executor = Interactive_Executor()
-        executor.run_interactive('a=1')
-        self.assertEqual(executor.run_interactive('a'), 1)
-        self.assertEqual(executor.run_interactive('b=a\nb'), 1)
-        executor.run_interactive('run:\necho "a"')
-        self.assertRaises(ExecuteError, executor.run_interactive, 'c')
+        executor.run('a=1')
+        self.assertEqual(executor.run('a'), 1)
+        self.assertEqual(executor.run('b=a\nb'), 1)
+        executor.run('run:\necho "a"')
+        self.assertRaises(ExecuteError, executor.run, 'c')
 
 
 if __name__ == '__main__':
