@@ -1214,7 +1214,7 @@ touch ${output}
         self.assertEqual(executor.run('a'), 1)
         self.assertEqual(executor.run('b=a\nb'), 1)
         executor.run('run:\necho "a"')
-        self.assertRaises(ExecuteError, executor.run, 'c')
+        self.assertRaises(RuntimeError, executor.run, 'c')
 
 
 if __name__ == '__main__':

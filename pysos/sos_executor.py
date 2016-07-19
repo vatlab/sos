@@ -351,6 +351,7 @@ class Interactive_Executor(Base_Executor):
             block = '[interactive_0]\n' + block
 
         script = SoS_Script(content=block)
+        env.run_mode = 'interactive'
         try:
             args, workflow_args = self.parse_command_line(command_line)
             self.workflow = script.workflow(args.workflow)

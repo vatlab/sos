@@ -283,7 +283,7 @@ def SoS_eval(expr, sigil='${ }'):
         else:
             return eval(expr, env.sos_dict._dict)
     except Exception as e:
-        if env.run_mode != 'run':
+        if env.run_mode not in ['run', 'interactive']:
             env.sos_dict['__execute_errors__'].append(expr, e)
             return None
         else:		
@@ -372,7 +372,7 @@ def SoS_exec(stmts, sigil='${ }'):
             else:
                 exec(stmts, env.sos_dict._dict)
         except Exception as e:
-            if env.run_mode != 'run':
+            if env.run_mode not in ['run', 'interactive']:
                 if isinstance(e, InterpolationError):
                     if env.run_mode == 'inspect':
                         # this should not matter in inspect mode because many variables do not yet
