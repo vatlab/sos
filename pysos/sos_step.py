@@ -249,7 +249,7 @@ def directive_input(*args, **kwargs):
     # for undetermined file type, we cannot process options
     #
     if ifiles and isinstance(ifiles[0], Undetermined):
-        if env.run_mode == 'run':
+        if env.run_mode in ['interactive', 'run']:
             raise RuntimeError('Run mode does not accept undetermined input')
         # if input is undertermined, does not process other options
         # single group and vars
@@ -270,7 +270,7 @@ def directive_input(*args, **kwargs):
             if not expanded:
                 #if env.run_mode == 'prepare':
                 #    env.sos_dict['__execute_errors__'].append('input', '{} not exist.'.format(ifile))
-                if env.run_mode == 'run':
+                if env.run_mode in ['run', 'interactive']:
                     raise RuntimeError('{} not exist'.format(ifile))
                 else:
                     # in inspect mode, we do not care about unrecognized file
@@ -355,7 +355,7 @@ def directive_depends(*args, **kwargs):
         if not os.path.isfile(dfile):
             expanded = sorted(glob.glob(os.path.expanduser(dfile)))
             if not expanded:
-                if env.run_mode == 'run':
+                if env.run_mode in ['interactive', 'run']:
                     raise RuntimeError('{} not exist.'.format(dfile))
                 else:
                     dfiles.append(dfile)
