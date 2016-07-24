@@ -310,8 +310,9 @@ class Interactive_Executor(Base_Executor):
 
     def parse_command_line(self, command_line):
         parser = argparse.ArgumentParser()
-        parser.add_argument('workflow', metavar='WORKFLOW', nargs='?', const='interactive',
-            default='interactive')
+        # no default workflow so it will execute any workflow if the code piece
+        # defines only one workflow
+        parser.add_argument('workflow', metavar='WORKFLOW', nargs='?')
         parser.add_argument('-j', type=int, metavar='JOBS', default=1, dest='__max_jobs__')
         parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
         parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', 

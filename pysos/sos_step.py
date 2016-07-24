@@ -1029,7 +1029,8 @@ class Step_Executor:
         for var in ('input', 'output', 'depends', '_input', '_depends', '_output'):
             env.sos_dict.pop(var, '')
         #
-        # step 2: execute global process
+        # execution of global process is not needed because the processes 
+        # are not separated.
         input_statement_idx = [idx for idx,x in enumerate(self.step.statements) if x[0] == ':' and x[1] == 'input']
         if not input_statement_idx:
             input_statement_idx = None
@@ -1065,12 +1066,7 @@ class Step_Executor:
             key, value, _ = self.step.statements[input_statement_idx][1:]
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
-                if 'dynamic' in kwargs and env.run_mode != 'run':
-                    env.sos_dict.set('__step_input__', None)
-                    self._groups = []
-                    self._vars = []
-                else:
-                    self._groups, self._vars = directive_input(*args, **kwargs)
+                self._groups, self._vars = directive_input(*args, **kwargs)
             except Exception as e:
                 if '__execute_errors__' in env.sos_dict and env.sos_dict['__execute_errors__'].errors:
                     raise env.sos_dict['__execute_errors__']
@@ -1083,22 +1079,9 @@ class Step_Executor:
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
         #
-        # for dynamic input value and not in run mode,
-        # we cannot do anything
-        if not self._groups:
-            env.sos_dict.set('input', None)
-            env.sos_dict.set('output', None)
-            env.sos_dict.set('depends', None)
-            return last_res
-        elif None in self._groups:
-            if not all(x is None for x in self._groups):
-                raise RuntimeError('Either none or all of input groups can be unknown.')
-            env.sos_dict.set('input', None)
-        else:
-            env.sos_dict.set('input', env.sos_dict['__step_input__'])
+        env.sos_dict.set('input', env.sos_dict['__step_input__'])
         #
-        if env.run_mode == 'run':
-            env.logger.info('input:   ``{}``'.format(short_repr(env.sos_dict['input'], noneAsNA=True)))
+        env.logger.info('input:   ``{}``'.format(short_repr(env.sos_dict['input'], noneAsNA=True)))
         #
         # step 4: run step process before the step task. This will determine
         #
@@ -1112,9 +1095,11 @@ class Step_Executor:
         self._outputs = []
         self._depends = []
         #
-        # We will need to remember the context of each input loop because we will need those
-        # context for the execution of step tasks.
-        dict_stack = []
+        proc_results = []
+        if '_runtime' in env.sos_dict:
+            self.runtime_options = env.sos_dict['_runtime']
+        else:
+            self.runtime_options = {}
         env.sos_dict.set('__num_groups__', len(self._groups))
         for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
             # other variables
@@ -1137,24 +1122,7 @@ class Step_Executor:
                     # output, depends, and process can be processed multiple times
                     try:
                         args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
-                        # dynamic output or dependent files
-                        if 'dynamic' in kwargs:
-                            env.logger.trace('Handling dynamic {}'.format(key))
-                            if key not in ('output', 'depends'):
-                                raise RuntimeError('dynamic option is only allowed for step input, output or depends')
-                            if not isinstance(kwargs['dynamic'], bool):
-                                raise RuntimeError('Option dynamic can only be True or False. {} provided'.format(kwargs['dynamic']))
-                            if kwargs['dynamic']:
-                                if env.run_mode == 'run' and key == 'depends':
-                                    # depends need to be resolved now at run mode
-                                    eval('directive_' + key)(*args, **kwargs)
-                                # in other cases, namely non-run mode and output in run mode
-                                else:
-                                    if len(kwargs) > 1:
-                                        raise RuntimeError('dynamic {} does not accept other options'.format(key))
-                                    env.sos_dict.set('_' + key, [Undetermined(value)])
-                        else:
-                            eval('directive_' + key)(*args, **kwargs)
+                        eval('directive_' + key)(*args, **kwargs)
                     except Exception as e:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                     #
@@ -1177,7 +1145,7 @@ class Step_Executor:
                                 env.sos_dict['depends'].extend(env.sos_dict['_depends'])
                 else:
                     # in prepare mode, check signature and see if all results exist
-                    if env.run_mode in ('prepare', 'run') and '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
+                    if '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
                         signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict.get('_depends', []), index=idx)
                         if env.sig_mode == 'default':
                             res = signature.validate()
@@ -1228,9 +1196,9 @@ class Step_Executor:
         else:
             env.sos_dict.set('depends', sum(self._depends, []))
         #
-        if env.sos_dict['output'] and not isinstance(env.sos_dict['output'][0], Undetermined) and env.run_mode == 'run':
+        if env.sos_dict['output']:
             env.logger.info('output:  ``{}``'.format(short_repr(env.sos_dict['output'], noneAsNA=True)))
-        if env.sos_dict['depends'] and not isinstance(env.sos_dict['depends'][0], Undetermined) and env.run_mode == 'run':
+        if env.sos_dict['depends']:
             env.logger.info('depends: ``{}``'.format(short_repr(env.sos_dict['depends'])))
         env.logger.trace('Checking signature (if available).')
         #
@@ -1243,20 +1211,19 @@ class Step_Executor:
         if env.sos_dict['input'] is not None and env.sos_dict['output'] is not None:
             signature = RuntimeInfo(step_sig,
                 env.sos_dict['input'], env.sos_dict['output'], env.sos_dict['depends'])
-            if env.run_mode == 'run':
-                if env.sig_mode == 'default':
-                    res = signature.validate()
-                    if res:
-                        env.sos_dict.set('input', res['input'])
-                        env.sos_dict.set('output', res['output'])
-                        env.sos_dict.set('depends', res['depends'])
-                        # everything matches
-                        env.logger.info('Reusing existing output files ``{}``'.format(short_repr(env.sos_dict['output'])))
-                        return last_res
-                elif env.sig_mode == 'assert':
-                    if not signature.validate():
-                        raise RuntimeError('Signature mismatch.')
-            if env.run_mode == 'prepare' and env.sig_mode == 'construct':
+            if env.sig_mode == 'default':
+                res = signature.validate()
+                if res:
+                    env.sos_dict.set('input', res['input'])
+                    env.sos_dict.set('output', res['output'])
+                    env.sos_dict.set('depends', res['depends'])
+                    # everything matches
+                    env.logger.info('Reusing existing output files ``{}``'.format(short_repr(env.sos_dict['output'])))
+                    return last_res
+            elif env.sig_mode == 'assert':
+                if not signature.validate():
+                    raise RuntimeError('Signature mismatch.')
+            elif env.sig_mode == 'construct':
                 try:
                     res = signature.write()
                     if res:
@@ -1271,41 +1238,10 @@ class Step_Executor:
                             .format(short_repr(env.sos_dict['output'])))
                 except Exception as e:
                     env.logger.warning('Failed to reconstruct signature. {}'.format(e))
-        else:
-            signature = None
         #
-        #
-        # Step 7: execute step process.
-        #
-        # output stdout and stderr to notebook in interactive mode
-        sys.stderr.flush()
-        sys.stdout.flush()
-        env.logger.trace('Executing step process.')
-        proc_results = []
-        if '_runtime' in env.sos_dict:
-            self.runtime_options = env.sos_dict['_runtime']
-        else:
-            self.runtime_options = {}
         concurrent = env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in self.runtime_options and self.runtime_options['concurrent']
         if concurrent:
             pool = mp.Pool(min(env.max_jobs, len(self._groups)))
-        for idx, (g, v, o, d) in enumerate(zip(self._groups, self._vars, self._outputs, self._depends)):
-            #
-            # dict_stack records variables assigned between step input and task ...
-            if dict_stack:
-                stored_dict = dict_stack.pop(0)
-                # do not update output and depends, which were accumulated
-                stored_dict.pop('output', None)
-                stored_dict.pop('depends', None)
-                env.sos_dict.quick_update(stored_dict)
-            env.sos_dict.update(v)
-            env.sos_dict.set('_input', g)
-            env.sos_dict.set('_output', o)
-            env.sos_dict.set('_depends', d)
-            env.sos_dict.set('_index', idx)
-            env.logger.debug('_idx: ``{}``'.format(idx))
-            env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'])))
-            env.logger.debug('_output: ``{}``'.format(short_repr(env.sos_dict['_output'])))
             # output stdout and stderr to notebook in interactive mode
             sys.stderr.flush()
             sys.stdout.flush()
@@ -1330,7 +1266,7 @@ class Step_Executor:
             # can try to see if we can create partial signature. This would help if the
             # step is interrupted in the middle.
             partial_signature = None
-            if env.sos_dict['_output'] is not None and env.sos_dict['_output'] != env.sos_dict['output'] and env.run_mode == 'run':
+            if env.sos_dict['_output'] is not None and env.sos_dict['_output'] != env.sos_dict['output']:
                 partial_signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], index=idx)
                 if env.sig_mode == 'default':
                     if partial_signature.validate():
@@ -1352,8 +1288,8 @@ class Step_Executor:
             # so that no process need to be run, we create signature from outside.
             if not self.step.task:
                 # if no process, we should be able to figure out undetermined output now
-                if env.sos_dict['_output'] and isinstance(env.sos_dict['_output'][0], Undetermined) and env.run_mode == 'run':
-                    value = env.sos_dict['_output'][0].expr
+                if env.sos_dict['_output']:
+                    value = env.sos_dict['_output'][0]
                     env.logger.trace('Processing output: {}'.format(value))
                     args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
                     # now we should have _output
@@ -1415,7 +1351,7 @@ class Step_Executor:
                     env.logger.trace('Setting _output[{}] from proc output {}'.format(idx, short_repr(res['output'])))
                     self._outputs[idx] = res['output']
         env.logger.trace('Checking output files {}'.format(short_repr(env.sos_dict['output'])))
-        if env.run_mode == 'run' and env.sos_dict['output'] is not None:
+        if env.sos_dict['output'] is not None:
             if env.sos_dict['output'] and isinstance(env.sos_dict['output'][0], Undetermined):
                 # at this point self._outputs should be expanded already.
                 env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
@@ -1423,7 +1359,7 @@ class Step_Executor:
             for ofile in env.sos_dict['output']:
                 if not os.path.isfile(os.path.expanduser(ofile)):
                     raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
-        if signature and env.run_mode == 'run':
+        if signature:
             signature.set(env.sos_dict['output'], 'output')
             signature.write()
         if concurrent:
