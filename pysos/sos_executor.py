@@ -39,8 +39,10 @@ from .sos_syntax import SOS_SECTION_HEADER
 
 __all__ = []
 
+
 def __null_func__(*args, **kwargs):
-    '''This is a utility function for the parser'''
+    '''This function will be passed to SoS's namespace and be executed
+    to evaluate functions of input, output, and depends directives.'''
     return args, kwargs
 
 class ExecuteError(Error):
@@ -165,11 +167,9 @@ class Base_Executor:
 
 class Sequential_Executor(Base_Executor):
     #
-    # A SoS workflow with multiple steps
-    #
+    # Execute a workflow sequentially in batch mode
     def __init__(self, workflow, report=None, transcript=None, debug=False):
         Base_Executor.__init__(self, workflow, report, transcript, debug)
-
 
     def run(self, args=[], nested=False, cmd_name='', config_file=None,
         run_mode='run', sig_mode='default', verbosity=2):
@@ -271,22 +271,21 @@ class Sequential_Executor(Base_Executor):
             # 2. for subworkflow, _step.input = _input
             # 3. for second to later step, _step.input = _step.output
             # each section can use a separate process
-            if self.debug or env.run_mode == 'interactive':
-                res = Step_Executor(section).run(DAG)
+            queue = mp.Queue()
+            if env.run_mode == 'inspection':
+                executor = Inspection_Step_Executor(section, queue, DAG)
+            elif env.run_mode == 'prepare':
+                executor = Prepare_Step_Executor(section, queue, DAG)
             else:
-                queue = mp.Queue()
-                proc = mp.Process(target=Step_Executor(section).run_with_queue,
-                    args=(queue, DAG))
-                proc.start()
-                res = queue.get()
-                proc.join()
+                executor = Run_Step_Executor(section, queue, DAG)
+            proc = mp.Process(target=executor.run)
+            proc.start()
+            res = queue.get()
+            proc.join()
             # if the job is failed
             if isinstance(res, Exception):
-                # error must have been displayed.
-                #if env.verbosity > 2 and hasattr(res, 'traces'):
-                #    env.logger.error(res.traces)
                 raise RuntimeError(res)
-            #res = section.run()
+            #
             for k, v in res.items():
                 if k == '__dag__':
                     DAG.update(v)
