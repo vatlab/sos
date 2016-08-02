@@ -31,7 +31,6 @@ from pysos.sos_eval import interpolate, SoS_eval, InterpolationError
 from pysos.actions import downloadURL
 from pysos.sos_script import SoS_Script
 from pysos.sos_executor import Sequential_Executor
-from pysos.kernel import SoS_FilePreviewer, BioPreviewer
 
 class TestUtils(unittest.TestCase):
     def setUp(self):

@@ -545,7 +545,6 @@ class Base_Step_Executor:
                     self.execute(statement[1])
             # input statement
             self.handle_input_directive(self.step.statements[input_statement_idx][2])
-                def handle_input_directive(self, stmt):
             self.log('input statement', stmt)
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(stmt), self.step.sigil)
@@ -656,13 +655,11 @@ class Base_Step_Executor:
                                 env.sos_dict.set('_output', res['output'])
                                 env.logger.debug('_output: {}'.format(res['output']))
                                 env.logger.debug('Reuse existing output files ``{}``'.format(short_repr(env.sos_dict['_output'])))
-                                skip_loop_stmt = True
                     #
-                    if not skip_loop_stmt:
-                        try:
-                            SoS_exec(statement[1], self.step.sigil)
-                        except Exception as e:
-                            raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
+                    try:
+                        SoS_exec(statement[1], self.step.sigil)
+                    except Exception as e:
+                        raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
             #
             if '_output' in env.sos_dict:
                 self._outputs.append(env.sos_dict['_output'])
@@ -880,10 +877,10 @@ class Interactive_Step_Executor(Base_Step_Executor):
     def log(self, stage=None):
         return
 
-class Inspection_Step_Executor(Base_Step_Executor):
-    def __init__(self, step):
-        env.run_mode = 'inspection'
+class Inspect_Step_Executor(Base_Step_Executor):
+    def __init__(self, step, queue):
         Base_Step_Executor.__init__(self, step)
+        self.queue = queue
 
     def log(self, stage, msg=None):
         if stage == 'start':
