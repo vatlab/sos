@@ -118,125 +118,131 @@ class Base_Step_Executor:
         self.step_signature = self.get_step_signature()
         self.step_id = textMD5(self.step_signature)
 
-    # directive input
-    def directive_input(self, *args, **kwargs):
-        '''This function handles directive input and all its parameters.
-        It
-            determines and set __step_input__
-            determines and set pattern variables if needed
-        returns
-            _groups
-            _vars
-        which are groups of _input and related _vars
+    #
+    # The following functions should be redefined in an executor
+    # because it may behave differently in different modes.
+    #
+    def expand_input_files(self, *args, **kwargs):
+        '''Process input files (perhaps a pattern) to determine input
+        files.
+
+        ret: 
+            Return a file list or Undertermined.
         '''
-        # Nested functions to handle different parameters of input directive
-        def handle_group_by(ifiles, group_by):
-            '''Handle input option group_by'''
-            if group_by == 'single':
-                return [[x] for x in ifiles]
-            elif group_by == 'all':
-                # default option
-                return [ifiles]
-            elif group_by == 'pairs':
-                if len(ifiles) % 2 != 0:
-                    raise ValueError('Paired group_by has to have even number of input files: {} provided'
-                        .format(len(ifiles)))
-                return list(list(x) for x in zip(ifiles[:len(ifiles)//2], ifiles[len(ifiles)//2:]))
-            elif group_by == 'pairwise':
-                f1, f2 = tee(ifiles)
-                next(f2, None)
-                return [list(x) for x in zip(f1, f2)]
-            elif group_by == 'combinations':
-                return [list(x) for x in combinations(ifiles, 2)]
-            elif isinstance(group_by, int) or group_by.isdigit():
-                group_by = int(group_by)
-                if len(ifiles) % group_by != 0:
-                    raise ValueError('Size of group_by block has to be divisible by the number of input files: {} provided'
-                        .format(len(ifiles)))
-                group_by = max(1, group_by)
-                return [ifiles[i:i + group_by] for i in range(0, len(ifiles), group_by)]
-            else:
-                raise ValueError('Unsupported group_by option ``{}``!'.format(group_by))
+        raise RuntimeError('Undefined virtual function.')
 
-        def handle_paired_with(paired_with, ifiles, _groups, _vars):
-            '''Handle input option paired_with'''
-            if paired_with is None or not paired_with:
-                paired_with = []
-            elif isinstance(paired_with, str):
-                paired_with = [paired_with]
-            elif isinstance(paired_with, Iterable):
-                paired_with = paired_with
+    # Nested functions to handle different parameters of input directive
+    @staticmethod
+    def handle_group_by(ifiles, group_by):
+        '''Handle input option group_by'''
+        if group_by == 'single':
+            return [[x] for x in ifiles]
+        elif group_by == 'all':
+            # default option
+            return [ifiles]
+        elif group_by == 'pairs':
+            if len(ifiles) % 2 != 0:
+                raise ValueError('Paired group_by has to have even number of input files: {} provided'
+                    .format(len(ifiles)))
+            return list(list(x) for x in zip(ifiles[:len(ifiles)//2], ifiles[len(ifiles)//2:]))
+        elif group_by == 'pairwise':
+            f1, f2 = tee(ifiles)
+            next(f2, None)
+            return [list(x) for x in zip(f1, f2)]
+        elif group_by == 'combinations':
+            return [list(x) for x in combinations(ifiles, 2)]
+        elif isinstance(group_by, int) or group_by.isdigit():
+            group_by = int(group_by)
+            if len(ifiles) % group_by != 0:
+                raise ValueError('Size of group_by block has to be divisible by the number of input files: {} provided'
+                    .format(len(ifiles)))
+            group_by = max(1, group_by)
+            return [ifiles[i:i + group_by] for i in range(0, len(ifiles), group_by)]
+        else:
+            raise ValueError('Unsupported group_by option ``{}``!'.format(group_by))
+    
+    @staticmethod
+    def handle_paired_with(paired_with, ifiles, _groups, _vars):
+        '''Handle input option paired_with'''
+        if paired_with is None or not paired_with:
+            paired_with = []
+        elif isinstance(paired_with, str):
+            paired_with = [paired_with]
+        elif isinstance(paired_with, Iterable):
+            paired_with = paired_with
+        else:
+            raise ValueError('Unacceptable value for parameter paired_with: {}'.format(paired_with))
+        #
+        for wv in paired_with:
+            if '.' in wv:
+                if wv.split('.')[0] not in env.sos_dict:
+                    raise ValueError('Variable {} does not exist.'.format(wv))
+                values = getattr(env.sos_dict[wv.split('.')[0]], wv.split('.', 1)[-1])
             else:
-                raise ValueError('Unacceptable value for parameter paired_with: {}'.format(paired_with))
-            #
-            for wv in paired_with:
-                if '.' in wv:
-                    if wv.split('.')[0] not in env.sos_dict:
-                        raise ValueError('Variable {} does not exist.'.format(wv))
-                    values = getattr(env.sos_dict[wv.split('.')[0]], wv.split('.', 1)[-1])
-                else:
-                    if wv not in env.sos_dict:
-                        raise ValueError('Variable {} does not exist.'.format(wv))
-                    values = env.sos_dict[wv]
-                if isinstance(values, str) or not isinstance(values, Iterable):
-                    raise ValueError('with_var variable {} is not a sequence ("{}")'.format(wv, values))
-                if len(values) != len(ifiles):
-                    raise ValueError('Length of variable {} (length {}) should match the number of input files (length {}).'
-                        .format(wv, len(values), len(ifiles)))
-                file_map = {x:y for x,y in zip(ifiles, values)}
-                for idx, grp in enumerate(_groups):
-                    _vars[idx]['_' + wv.split('.')[0]] = [file_map[x] for x in grp]
+                if wv not in env.sos_dict:
+                    raise ValueError('Variable {} does not exist.'.format(wv))
+                values = env.sos_dict[wv]
+            if isinstance(values, str) or not isinstance(values, Iterable):
+                raise ValueError('with_var variable {} is not a sequence ("{}")'.format(wv, values))
+            if len(values) != len(ifiles):
+                raise ValueError('Length of variable {} (length {}) should match the number of input files (length {}).'
+                    .format(wv, len(values), len(ifiles)))
+            file_map = {x:y for x,y in zip(ifiles, values)}
+            for idx, grp in enumerate(_groups):
+                _vars[idx]['_' + wv.split('.')[0]] = [file_map[x] for x in grp]
 
-        def handle_extract_pattern(pattern, ifiles, _groups, _vars):
-            '''Handle input option pattern'''
-            if pattern is None or not pattern:
-                patterns = []
-            elif isinstance(pattern, str):
-                patterns = [pattern]
-            elif isinstance(pattern, Iterable):
-                patterns = pattern
-            else:
-                raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
-            #
-            for pattern in patterns:
-                res = extract_pattern(pattern, ifiles)
-                # now, assign the variables to env
-                for k, v in res.items():
-                    if k in ('input', 'output', 'depends') or k.startswith('_'):
-                        raise RuntimeError('Pattern defined variable {} is not allowed'.format(k))
-                    env.sos_dict[k] = v
-                # also make k, v pair with _input
-                Base_Step_Executor.handle_input_paired_with(res.keys(), ifiles, _groups, _vars)
+    @staticmethod
+    def handle_extract_pattern(pattern, ifiles, _groups, _vars):
+        '''Handle input option pattern'''
+        if pattern is None or not pattern:
+            patterns = []
+        elif isinstance(pattern, str):
+            patterns = [pattern]
+        elif isinstance(pattern, Iterable):
+            patterns = pattern
+        else:
+            raise ValueError('Unacceptable value for parameter pattern: {}'.format(pattern))
+        #
+        for pattern in patterns:
+            res = extract_pattern(pattern, ifiles)
+            # now, assign the variables to env
+            for k, v in res.items():
+                if k in ('input', 'output', 'depends') or k.startswith('_'):
+                    raise RuntimeError('Pattern defined variable {} is not allowed'.format(k))
+                env.sos_dict[k] = v
+            # also make k, v pair with _input
+            Base_Step_Executor.handle_input_paired_with(res.keys(), ifiles, _groups, _vars)
 
-        def handle_for_each(for_each, _groups, _vars):
-            if for_each is None or not for_each:
-                for_each = []
-            elif isinstance(for_each, str):
-                for_each = [for_each]
-            elif isinstance(for_each, Sequence):
-                for_each = for_each
-            else:
-                raise ValueError('Unacceptable value for parameter for_each: {}'.format(for_each))
+    @staticmethod
+    def handle_for_each(for_each, _groups, _vars):
+        if for_each is None or not for_each:
+            for_each = []
+        elif isinstance(for_each, str):
+            for_each = [for_each]
+        elif isinstance(for_each, Sequence):
+            for_each = for_each
+        else:
+            raise ValueError('Unacceptable value for parameter for_each: {}'.format(for_each))
+        #
+        for fe_all in for_each:
+            loop_size = None
+            for fe in fe_all.split(','):
+                values = env.sos_dict[fe]
+                if not isinstance(values, Sequence):
+                    raise ValueError('for_each variable {} is not a sequence ("{}")'.format(fe, values))
+                if loop_size is None:
+                    loop_size = len(values)
+                elif loop_size != len(values):
+                    raise ValueError('Length of variable {} (length {}) should match the length of variable {} (length {}).'
+                        .format(fe, len(values), fe_all.split(',')[0], loop_size))
+            # expand
+            _tmp_groups = copy.deepcopy(_groups)
+            _groups.clear()
+            for i in range(loop_size):
+                _groups.extend(_tmp_groups)
             #
-            for fe_all in for_each:
-                loop_size = None
-                for fe in fe_all.split(','):
-                    values = env.sos_dict[fe]
-                    if not isinstance(values, Sequence):
-                        raise ValueError('for_each variable {} is not a sequence ("{}")'.format(fe, values))
-                    if loop_size is None:
-                        loop_size = len(values)
-                    elif loop_size != len(values):
-                        raise ValueError('Length of variable {} (length {}) should match the length of variable {} (length {}).'
-                            .format(fe, len(values), fe_all.split(',')[0], loop_size))
-                # expand
-                _tmp_groups = copy.deepcopy(_groups)
-                _groups.clear()
-                for i in range(loop_size):
-                    _groups.extend(_tmp_groups)
-                #
-                _tmp_vars = copy.deepcopy(_vars)
-                _vars.clear()
+            _tmp_vars = copy.deepcopy(_vars)
+            _vars.clear()
                 for vidx in range(loop_size):
                     for idx in range(len(_tmp_vars)):
                         for fe in fe_all.split(','):
@@ -250,88 +256,23 @@ class Base_Step_Executor:
                                 _tmp_vars[idx]['_' + fe] = env.sos_dict[fe][vidx]
                     _vars.extend(copy.deepcopy(_tmp_vars))
 
-        # these are temporary variables that should be removed if exist. These variables
-        # will only exist if 
-        for var in ('input', 'output', 'depends', '_input', '_depends', '_output'):
-            env.sos_dict.pop(var, '')
-        # we are using step_output as our input
-        if '__step_output__' not in env.sos_dict:
-            env.sos_dict.set('__step_input__', None)
-        else:
-            env.sos_dict.set('__step_input__', copy.deepcopy(env.sos_dict['__step_output__']))
-     
-        # first *args are filenames
+    # directive input
+    def process_input_args(self, ifiles, **kwargs):
+        '''This function handles directive input and all its parameters.
+        It
+            determines and set __step_input__
+            determines and set pattern variables if needed
+        returns
+            _groups
+            _vars
+        which are groups of _input and related _vars
+        '''
+        if isinstance(ifiles, Undetermined):
+            return [Undetermined], [{}]
+
         for k in kwargs.keys():
             if k not in SOS_INPUT_OPTIONS:
                 raise RuntimeError('Unrecognized input option {}'.format(k))
-        #
-        if args:
-            #
-            # if args are specified, it overrides the default __step_input__
-            # at least point we just put files together and do not worry about
-            # if the files exist
-            #
-            ifiles = []
-            for arg in args:
-                if isinstance(arg, str):
-                    ifiles.append(os.path.expanduser(arg))
-                elif isinstance(arg, Iterable):
-                    # in case arg is a Generator, check its type will exhaust it
-                    arg = list(arg)
-                    if not all(isinstance(x, str) for x in arg):
-                        raise RuntimeError('Invalid input file: {}'.format(arg))
-                    ifiles.extend(os.path.expanduser(x) for x in arg)
-                else:
-                    raise ValueError('Unrecognizable input type {}'.format(arg))
-        else:
-            #
-            # Otherwise, ifiles are from the system passed '__step_input__'. There
-            # are a few cases
-            #
-            # 1. __step_input__ is determined, which is a list of files, good
-            # 2. __step_input__ is defined but undetermined, this is not possible
-            #    in run mode because in this mode all files should have been
-            #    determined
-            # 3. __step_input__ is undefined (None), which means there is no
-            #     input file but the step has to be executed after the previous
-            #     steps.
-            #
-            ifiles = env.sos_dict['__step_input__']
-            #
-        # for undetermined file type, we cannot process options
-        #
-        if ifiles and isinstance(ifiles[0], Undetermined):
-            if env.run_mode in ['interactive', 'run']:
-                raise RuntimeError('Run mode does not accept undetermined input')
-            # if input is undertermined, does not process other options
-            # single group and vars
-            return [], []
-        elif ifiles is None:
-            ifiles = []
-        #
-        # if files are determined,
-        #
-        # expand files with wildcard characters and check if files exist
-        tmp = []
-        for ifile in ifiles:
-            if os.path.isfile(os.path.expanduser(ifile)):
-                tmp.append(ifile)
-            else:
-                # in this mode file must exist
-                expanded = sorted(glob.glob(os.path.expanduser(ifile)))
-                if not expanded:
-                    #if env.run_mode == 'prepare':
-                    #    env.sos_dict['__execute_errors__'].append('input', '{} not exist.'.format(ifile))
-                    if env.run_mode in ['run', 'interactive']:
-                        raise RuntimeError('{} not exist'.format(ifile))
-                    else:
-                        # in inspect mode, we do not care about unrecognized file
-                        tmp.append(ifile)
-                else:
-                    tmp.extend(expanded)
-        #
-        ifiles = tmp
-        #
         #
         if 'filetype' in kwargs:
             if isinstance(kwargs['filetype'], str):
@@ -544,20 +485,17 @@ class Base_Step_Executor:
                 else:
                     self.execute(statement[1])
             # input statement
-            self.handle_input_directive(self.step.statements[input_statement_idx][2])
             self.log('input statement', stmt)
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(stmt), self.step.sigil)
-                self._groups, self._vars = self.directive_input(*args, **kwargs)
+                input_files = self.expand_input_files(*args, **kwargs)
+                self._groups, self._vars = self.process_input_args(input_files, **kwargs)
             except Exception as e:
                 if '__execute_errors__' in env.sos_dict and env.sos_dict['__execute_errors__'].errors:
                     raise env.sos_dict['__execute_errors__']
                 else:
                     raise RuntimeError('Failed to process step {} : {} ({})'.format(key, value.strip(), e))
 
-
-
-            # for dynamic input value and not in run mode,
             # we cannot do anything
             if not self._groups:
                 env.sos_dict.set('input', None)
@@ -869,44 +807,103 @@ class Queued_Step_Executor(Base_Step_Executor):
         return result
 
 
-class Interactive_Step_Executor(Base_Step_Executor):
-    def __init__(self, step):
-        env.run_mode = 'interactive'
-        Base_Step_Executor.__init__(self, step)
-    
-    def log(self, stage=None):
-        return
+
 
 class Inspect_Step_Executor(Base_Step_Executor):
     def __init__(self, step, queue):
         Base_Step_Executor.__init__(self, step)
         self.queue = queue
 
+    def expand_input_files(self, *args, **kwargs):
+        if 'dynamic' in kwargs:
+            env.sos_dict.set('__step_input__', None)
+            return Undetermined()
+ 
+        if ifiles and isinstance(ifiles[0], Undetermined):
+            return Undetermined()
+
+        if args:
+            # if args are specified, it overrides the default __step_input__
+            ifiles = []
+            for arg in args:
+                if isinstance(arg, str):
+                    ifiles.append(os.path.expanduser(arg))
+                elif isinstance(arg, Iterable):
+                    # in case arg is a Generator, check its type will exhaust it
+                    arg = list(arg)
+                    if not all(isinstance(x, str) for x in arg):
+                        raise RuntimeError('Invalid input file: {}'.format(arg))
+                    raise ValueError('Unrecognizable input type {}'.format(arg))
+        else:
+            # Otherwise, ifiles are from the system passed '__step_output__'.
+            if '__step_output__' in env.sos_dict and env.sos_dict['__step_output__'] is not None:
+                ifiles = env.sos_dict['__step_output__']
+            else:
+                ifiles = []
+
+        # expand files with wildcard characters and check if files exist
+        tmp = []
+        for ifile in ifiles:
+            if os.path.isfile(os.path.expanduser(ifile)):
+                tmp.append(ifile)
+            else:
+                expanded = sorted(glob.glob(os.path.expanduser(ifile)))
+                if not expanded:
+                    tmp.append(ifile)
+                else:
+                    tmp.extend(expanded)
+        return tmp
+
     def log(self, stage, msg=None):
         if stage == 'start':
             env.logger.trace('Inspecting ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
         
-    def handle_input_directive(self, stmt):
-        self.log('input statement', stmt)
-        try:
-            args, kwargs = SoS_eval('__null_func__({})'.format(stmt), self.step.sigil)
-            if 'dynamic' in kwargs and env.run_mode != 'run':
-                env.sos_dict.set('__step_input__', None)
-                self._groups = []
-                self._vars = []
-            else:
-                self._groups, self._vars = directive_input(*args, **kwargs)
-        except Exception as e:
-            if '__execute_errors__' in env.sos_dict and env.sos_dict['__execute_errors__'].errors:
-                raise env.sos_dict['__execute_errors__']
-            else:
-                raise RuntimeError('Failed to process step {} : {} ({})'.format(key, value.strip(), e))
-
 
 class Prepare_Step_Executor(Base_Step_Executor):
     def __init__(self, step):
         env.run_mode = 'prepare'
         Base_Step_Executor.__init__(self, step)
+
+    def expand_input_files(self, *args, **kwargs):
+        # this function is identical to expand_input_file for Inspect_Step_Executor
+        if 'dynamic' in kwargs:
+            env.sos_dict.set('__step_input__', None)
+            return Undetermined()
+ 
+        if args:
+            # if args are specified, it overrides the default __step_input__
+            ifiles = []
+            for arg in args:
+                if isinstance(arg, str):
+                    ifiles.append(os.path.expanduser(arg))
+                elif isinstance(arg, Iterable):
+                    # in case arg is a Generator, check its type will exhaust it
+                    arg = list(arg)
+                    if not all(isinstance(x, str) for x in arg):
+                        raise RuntimeError('Invalid input file: {}'.format(arg))
+                    raise ValueError('Unrecognizable input type {}'.format(arg))
+        else:
+            # Otherwise, ifiles are from the system passed '__step_output__'.
+            if '__step_output__' in env.sos_dict and env.sos_dict['__step_output__'] is not None:
+                ifiles = env.sos_dict['__step_output__']
+            else:
+                ifiles = []
+
+        if ifiles and isinstance(ifiles[0], Undetermined):
+            return Undetermined()
+
+        # expand files with wildcard characters and check if files exist
+        tmp = []
+        for ifile in ifiles:
+            if os.path.isfile(os.path.expanduser(ifile)):
+                tmp.append(ifile)
+            else:
+                expanded = sorted(glob.glob(os.path.expanduser(ifile)))
+                if not expanded:
+                    tmp.append(ifile)
+                else:
+                    tmp.extend(expanded)
+        return tmp
 
     def log(self, stage=0):
         if stage == 'start':
@@ -929,3 +926,91 @@ class Run_Step_Executor(Base_Step_Executor):
         Base_Step_Executor.assign(self, key, value)
         public_keys[key] = env.sos_dict[key]
         transcribe('{} = {}'.format(key, env.sos_dict[key]))
+
+    def expand_input_files(self, *args, **kwargs):
+        # We ignore 'dynamic' option in run mode
+        # we are using step_output as our input
+        if args:
+            # if args are specified, it overrides the default __step_input__
+            ifiles = []
+            for arg in args:
+                if isinstance(arg, str):
+                    ifiles.append(os.path.expanduser(arg))
+                elif isinstance(arg, Iterable):
+                    # in case arg is a Generator, check its type will exhaust it
+                    arg = list(arg)
+                    if not all(isinstance(x, str) for x in arg):
+                        raise RuntimeError('Invalid input file: {}'.format(arg))
+                    raise ValueError('Unrecognizable input type {}'.format(arg))
+        else:
+            # Otherwise, ifiles are from the system passed '__step_output__'.
+            if '__step_output__' in env.sos_dict and env.sos_dict['__step_output__'] is not None:
+                ifiles = env.sos_dict['__step_output__']
+            else:
+                ifiles = [] 
+        #
+        if ifiles and isinstance(ifiles[0], Undetermined):
+            raise RuntimeError('Run mode does not accept undetermined input')
+        #
+        # if files are determined,
+        #
+        # expand files with wildcard characters and check if files exist
+        tmp = []
+        for ifile in ifiles:
+            if os.path.isfile(os.path.expanduser(ifile)):
+                tmp.append(ifile)
+            else:
+                # in this mode file must exist
+                expanded = sorted(glob.glob(os.path.expanduser(ifile)))
+                if not expanded:
+                    raise RuntimeError('{} not exist'.format(ifile))
+                tmp.extend(expanded)
+        return tmp
+
+class Interactive_Step_Executor(Base_Step_Executor):
+    def __init__(self, step):
+        env.run_mode = 'interactive'
+        Base_Step_Executor.__init__(self, step)
+    
+    def expand_input_files(self, *args, **kwargs):
+        # We ignore 'dynamic' option in run mode
+        # we are using step_output as our input
+        if args:
+            # if args are specified, it overrides the default __step_input__
+            ifiles = []
+            for arg in args:
+                if isinstance(arg, str):
+                    ifiles.append(os.path.expanduser(arg))
+                elif isinstance(arg, Iterable):
+                    # in case arg is a Generator, check its type will exhaust it
+                    arg = list(arg)
+                    if not all(isinstance(x, str) for x in arg):
+                        raise RuntimeError('Invalid input file: {}'.format(arg))
+                    raise ValueError('Unrecognizable input type {}'.format(arg))
+        else:
+            # Otherwise, ifiles are from the system passed '__step_output__'.
+            if '__step_output__' in env.sos_dict and env.sos_dict['__step_output__'] is not None:
+                ifiles = env.sos_dict['__step_output__']
+            else:
+                ifiles = [] 
+        #
+        if ifiles and isinstance(ifiles[0], Undetermined):
+            raise RuntimeError('Run mode does not accept undetermined input')
+        #
+        # if files are determined,
+        #
+        # expand files with wildcard characters and check if files exist
+        tmp = []
+        for ifile in ifiles:
+            if os.path.isfile(os.path.expanduser(ifile)):
+                tmp.append(ifile)
+            else:
+                # in this mode file must exist
+                expanded = sorted(glob.glob(os.path.expanduser(ifile)))
+                if not expanded:
+                    raise RuntimeError('{} not exist'.format(ifile))
+                tmp.extend(expanded)
+        return tmp
+
+    def log(self, stage=None):
+        return

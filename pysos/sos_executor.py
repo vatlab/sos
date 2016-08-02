@@ -121,6 +121,32 @@ class Base_Executor:
         #
         env.sos_dict.set('CONFIG', frozendict(cfg))
 
+    def skip(self, section):
+        if section.global_def:
+            try:
+                SoS_exec(section.global_def)
+            except Exception as e:
+                if env.verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
+                    section.global_def, e))
+        #
+        if 'skip' in section.options:
+            if isinstance(section.options['skip'], Undetermined):
+                try:
+                    val_skip = section.options['skip'].value(section.sigil)
+                    if val_skip is None:
+                        val_skip = False
+                except Exception as e:
+                    raise RuntimeError('Failed to evaluate value of section option skip={}: {}'.format(section.options['skip'], e))
+            else:
+                val_skip = section.options['skip']
+            if val_skip is None or val_skip is True:
+                return True
+            elif val_skip is not False:
+                raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
+        return False
+
     def inspect(self, nested=False):
         '''Run the script in inspect mode to check for errors.'''
         env.run_mode = 'inspect'
@@ -130,39 +156,8 @@ class Base_Executor:
 
         # process steps of the pipeline
         for idx, section in enumerate(self.workflow.sections):
-            # handle skip, which might have to be evaluated till now.
-            #
-            # the global section has to be executed here because step options might need
-            # information from it. Also, the variables in the global section should be
-            # global. In addition, the global section has to be executed multiple times
-            # because sections can come from different scripts (nested workflows).
-            if section.global_def:
-                try:
-                    SoS_exec(section.global_def)
-                except Exception as e:
-                    if env.verbosity > 2:
-                        sys.stderr.write(get_traceback())
-                    raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
-                        section.global_def, e))
-            #
-            # Here we require that skip to be evaluatable at inspect and prepare mode
-            # up until this step. There is to say, it cannot rely on the result of
-            # an action that is only available till run time (action would return
-            # Undetermined when executed not in the specified runmode)
-            if 'skip' in section.options:
-                if isinstance(section.options['skip'], Undetermined):
-                    try:
-                        val_skip = section.options['skip'].value(section.sigil)
-                        if val_skip is None:
-                            val_skip = False
-                    except Exception as e:
-                        raise RuntimeError('Failed to evaluate value of section option skip={}: {}'.format(section.options['skip'], e))
-                else:
-                    val_skip = section.options['skip']
-                if val_skip is None or val_skip is True:
-                    continue
-                elif val_skip is not False:
-                    raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
+            if self.skip(section):
+                continue
             #
             # execute section with specified input
             queue = mp.Queue()
@@ -195,48 +190,13 @@ class Base_Executor:
         #
         # the steps can be executed in the pool (Not implemented)
         # if nested = true, start a new progress bar
-        DAG = {}
         for idx, section in enumerate(self.workflow.sections):
-            # handle skip, which might have to be evaluated till now.
-            #
-            # the global section has to be executed here because step options might need
-            # infomration from it. Also, the variables in the global section should be
-            # global. In addition, the global section has to be executed multiple times
-            # because sections can come from different scripts (nested workflows).
-            if section.global_def:
-                try:
-                    SoS_exec(section.global_def)
-                except Exception as e:
-                    if env.verbosity > 2:
-                        sys.stderr.write(get_traceback())
-                    raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
-                        section.global_def, e))
-            #
-            # Important:
-            #
-            # Here we require that skip to be evaluatable at inspect and prepare mode
-            # up until this step. There is to say, it cannot rely on the result of
-            # an action that is only available till run time (action would return
-            # Undetermined when executed not in the specified runmode)
-            #
-            if 'skip' in section.options:
-                if isinstance(section.options['skip'], Undetermined):
-                    try:
-                        val_skip = section.options['skip'].value(section.sigil)
-                        if val_skip is None:
-                            val_skip = False
-                    except Exception as e:
-                        raise RuntimeError('Failed to evaluate value of section option skip={}: {}'.format(section.options['skip'], e))
-                else:
-                    val_skip = section.options['skip']
-                if val_skip is None or val_skip is True:
-                    continue
-                elif val_skip is not False:
-                    raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
+            if self.skip(section):
+                continue
             #
             # execute section with specified input
             queue = mp.Queue()
-            executor = Prepare_Step_Executor(section, queue, DAG)
+            executor = Prepare_Step_Executor(section, queue)
             proc = mp.Process(target=executor.run)
             proc.start()
             res = queue.get()
@@ -246,10 +206,7 @@ class Base_Executor:
                 raise RuntimeError(res)
             #
             for k, v in res.items():
-                if k == '__dag__':
-                    DAG.update(v)
-                else:
-                    env.sos_dict.set(k, v)
+                env.sos_dict.set(k, v)
             prog.progress(1)
         prog.done()
         # at the end
@@ -266,7 +223,7 @@ class Sequential_Executor(Base_Executor):
     def __init__(self, workflow, args=[], config_file=None):
         Base_Executor.__init__(self, workflow, args, config_file, new_dict=True)
 
-    def run(self, DAG=None, nested=False):
+    def run(self, nested=False):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -277,43 +234,11 @@ class Sequential_Executor(Base_Executor):
         prog = ProgressBar(self.workflow.name, len(self.workflow.sections),
             disp=len(self.workflow.sections) > 1 and env.verbosity == 1)
         for idx, section in enumerate(self.workflow.sections):
-            # handle skip, which might have to be evaluated till now.
-            #
-            # the global section has to be executed here because step options might need
-            # infomration from it. Also, the variables in the global section should be
-            # global. In addition, the global section has to be executed multiple times
-            # because sections can come from different scripts (nested workflows).
-            if section.global_def:
-                try:
-                    SoS_exec(section.global_def)
-                except Exception as e:
-                    if env.verbosity > 2:
-                        sys.stderr.write(get_traceback())
-                    raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
-                        section.global_def, e))
-            #
-            if 'skip' in section.options:
-                if isinstance(section.options['skip'], Undetermined):
-                    try:
-                        val_skip = section.options['skip'].value(section.sigil)
-                        if val_skip is None:
-                            val_skip = False
-                    except Exception as e:
-                        raise RuntimeError('Failed to evaluate value of section option skip={}: {}'.format(section.options['skip'], e))
-                else:
-                    val_skip = section.options['skip']
-                if val_skip is None or val_skip is True:
-                    continue
-                elif val_skip is not False:
-                    raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
-            #
+            if self.skip(section):
+                continue
             # execute section with specified input
-            # 1. for first step of workflow, _step.input=[]
-            # 2. for subworkflow, _step.input = _input
-            # 3. for second to later step, _step.input = _step.output
-            # each section can use a separate process
             queue = mp.Queue()
-            executor = Run_Step_Executor(section, queue, DAG)
+            executor = Run_Step_Executor(section, queue)
             proc = mp.Process(target=executor.run)
             proc.start()
             res = queue.get()
@@ -323,10 +248,7 @@ class Sequential_Executor(Base_Executor):
                 raise RuntimeError(res)
             #
             for k, v in res.items():
-                if k == '__dag__':
-                    DAG.update(v)
-                else:
-                    env.sos_dict.set(k, v)
+                env.sos_dict.set(k, v)
             prog.progress(1)
         prog.done()
         # at the end

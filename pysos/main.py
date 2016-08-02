@@ -168,8 +168,8 @@ def sos_run(args, workflow_args):
         workflow = script.workflow(args.workflow)
         executor = Sequential_Executor(workflow, args=workflow_args, config_file=args.__config__)
         executor.inspect()
-        DAG = executor.prepare()
-        executor.run(DAG)
+        executor.prepare()
+        executor.run()
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
