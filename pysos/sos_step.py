@@ -302,20 +302,20 @@ class Base_Step_Executor:
         #
         # handle group_by
         if 'group_by' in kwargs:
-            _groups = handle_input_group_by(ifiles, kwargs['group_by'])
+            _groups = Base_Step_Executor.handle_group_by(ifiles, kwargs['group_by'])
         else:
             _groups = [ifiles]
         #
         _vars = [{} for x in _groups]
         # handle paired_with
         if 'paired_with' in kwargs:
-            handle_input_paired_with(kwargs['paired_with'], ifiles,  _groups, _vars)
+            Base_Step_Executor.handle_paired_with(kwargs['paired_with'], ifiles,  _groups, _vars)
         # handle pattern
         if 'pattern' in kwargs:
-            handle_input_extract_pattern(kwargs['pattern'], ifiles, _groups, _vars)
+            Base_Step_Executor.handle_extract_pattern(kwargs['pattern'], ifiles, _groups, _vars)
         # handle for_each
         if 'for_each' in kwargs:
-            handle_input_for_each(kwargs['for_each'], _groups, _vars)
+            Base_Step_Executor.handle_for_each(kwargs['for_each'], _groups, _vars)
         #
         if 'skip' in kwargs:
             if callable(kwargs['skip']):
@@ -536,6 +536,7 @@ class Base_Step_Executor:
             # other variables
             env.sos_dict.update(v)
             env.sos_dict.set('_input', g)
+            self.log('_input')
             env.sos_dict.set('_index', idx)
             for statement in self.step.statements[input_statement_idx:]:
                 if statement[0] == '=':
@@ -629,8 +630,6 @@ class Base_Step_Executor:
         self.log('output')
         return self.collectResult()
 
-
-
 class Queued_Step_Executor(Base_Step_Executor):
     # this class execute the step in a separate process
     # and returns result using a queue
@@ -716,6 +715,12 @@ class Inspect_Step_Executor(Queued_Step_Executor):
     def log(self, stage, msg=None):
         if stage == 'start':
             env.logger.trace('Inspecting ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
+        elif stage == 'input statement':
+            env.logger.trace('Processing input statement ``{}``'.format(msg))
+        elif stage == 'input':
+            env.logger.debug('input: ``{}``'.format(short_repr(env.sos_dict['input'], noneAsNA=True)))
+        elif stage == '_input':
+            env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'], noneAsNA=True)))
 
 
 class Prepare_Step_Executor(Queued_Step_Executor):
@@ -758,6 +763,8 @@ class Run_Step_Executor(Queued_Step_Executor):
             env.logger.info('Executing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
         elif stage == 'input statement':
             env.logger.trace('Handling input statement {}'.format(msg))
+        elif stage == '_input':
+            env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'], noneAsNA=True)))
         elif stage == 'input':
             env.logger.info('input:   ``{}``'.format(short_repr(env.sos_dict['input'], noneAsNA=True)))
         elif stage == 'output':

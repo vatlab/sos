@@ -28,6 +28,7 @@ import tempfile
 import shlex
 import json
 import glob
+import copy
 import platform
 import urllib
 import shutil
@@ -502,7 +503,7 @@ def sos_run(workflow, source={}):
     if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections]:
         raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
     # for nested workflow, _input would becomes the input of workflow.
-    env.sos_dict.set('__step_output__', env.sos_dict['_input'])
+    env.sos_dict.set('__step_output__', copy.deepcopy(env.sos_dict['_input']))
     if env.run_mode == 'inspect':
         env.logger.debug('Checking nested workflow {}'.format(workflow))
         return Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).inspect()

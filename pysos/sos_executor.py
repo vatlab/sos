@@ -80,14 +80,14 @@ class Base_Executor:
         if new_dict:
             env.sos_dict = WorkflowDict()
 
-        # inject a few things
-        env.sos_dict.set('__null_func__', __null_func__)
-        env.sos_dict.set('__args__', args)
-        env.sos_dict.set('__unknown_args__', args)
-        # initial values
-        env.sos_dict.set('SOS_VERSION', __version__)
-        env.sos_dict.set('__step_output__', [])
-        env.sos_dict.set('__execute_errors__', ExecuteError('' if self.workflow is None else self.workflow.name))
+            # inject a few things
+            env.sos_dict.set('__null_func__', __null_func__)
+            env.sos_dict.set('__args__', args)
+            env.sos_dict.set('__unknown_args__', args)
+            # initial values
+            env.sos_dict.set('SOS_VERSION', __version__)
+            env.sos_dict.set('__step_output__', [])
+            env.sos_dict.set('__execute_errors__', ExecuteError('' if self.workflow is None else self.workflow.name))
 
         # load configuration files
         cfg = {}
