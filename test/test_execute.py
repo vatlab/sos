@@ -641,7 +641,7 @@ a += 1
 
 """)
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Sequential_Executor(wf).run, run_mode='inspect')
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).inspect()
 
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''
@@ -813,7 +813,7 @@ shared.d += 1
         wf = script.workflow()
         # I would like to disallow accessing variables defined
         # in other cases.
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run, run_mode='inspect')
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect()
 
     def testSklearnImportFailure(self):
         '''Test problem with Sklean when using Celery/multiprocessing'''
@@ -864,7 +864,7 @@ time.sleep(8)
 ''')
         wf = script.workflow()
         #
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).run, run_mode='inspect')
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).inspect()
         #
         # now, if I have a configuration file, the default value can be changed
         if not os.path.isdir(os.path.expanduser('.sos')):
