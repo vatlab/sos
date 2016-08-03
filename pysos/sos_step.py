@@ -488,6 +488,7 @@ class Base_Step_Executor:
             self.log('input statement', stmt)
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(stmt), self.step.sigil)
+                # Files will be expanded differently with different running modes
                 input_files = self.expand_input_files(*args, **kwargs)
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
             except Exception as e:
@@ -502,12 +503,6 @@ class Base_Step_Executor:
                 env.sos_dict.set('output', None)
                 env.sos_dict.set('depends', None)
                 return self.collectResult([])
-            elif None in self._groups:
-                if not all(x is None for x in self._groups):
-                    raise RuntimeError('Either none or all of input groups can be unknown.')
-                env.sos_dict.set('input', None)
-            else:
-                env.sos_dict.set('input', env.sos_dict['__step_input__'])
             input_statement_idx += 1
         else:
             # default case
@@ -516,9 +511,11 @@ class Base_Step_Executor:
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
 
+        env.sos_dict.set('input', env.sos_dict['__step_input__'])
         self.log('input')
         
-        concurrent = env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in self.runtime_options and self.runtime_options['concurrent']
+        concurrent = env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in self.runtime_options \
+            and self.runtime_options['concurrent']
         if concurrent:
             pool = mp.Pool(min(env.max_jobs, len(self._groups)))
         # run steps after input statement, which will be run multiple times for each input 
@@ -608,64 +605,6 @@ class Base_Step_Executor:
             else:
                 self._depends.append([])
             #
-            dict_stack.append(env.sos_dict.clone_pickleable())
-
-            if 'active' in self.runtime_options:
-                if isinstance(self.runtime_options['active'], int):
-                    if self.runtime_options['active'] >= 0 and env.sos_dict['_index'] != self.runtime_options['active']:
-                        continue
-                    if self.runtime_options['active'] < 0 and env.sos_dict['_index'] != self.runtime_options['active'] + env.sos_dict['__num_groups__']:
-                        continue
-                elif isinstance(self.runtime_options['active'], Sequence):
-                    allowed_index = list([x if x >= 0 else env.sos_dict['__num_groups__'] + x for x in self.runtime_options['active']])
-                    if env.sos_dict['_index'] not in allowed_index:
-                        continue
-                elif isinstance(self.runtime_options['active'], slice):
-                    allowed_index = list(range(env.sos_dict['__num_groups__']))[self.runtime_options['active']]
-                    if env.sos_dict['_index'] not in allowed_index:
-                        continue
-                else:
-                    raise RuntimeError('Unacceptable value for option active: {}'.format(self.runtime_options['active']))
-            #
-            # If the users specifies output files for each loop (using ${input} etc, we
-            # can try to see if we can create partial signature. This would help if the
-            # step is interrupted in the middle.
-            partial_signature = None
-            if env.sos_dict['_output'] is not None and env.sos_dict['_output'] != env.sos_dict['output'] and env.run_mode == 'run':
-                partial_signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], index=idx)
-                if env.sig_mode == 'default':
-                    if partial_signature.validate():
-                        # everything matches
-                        env.logger.info('Reusing existing output files {}'.format(', '.join(env.sos_dict['_output'])))
-                        continue
-                elif env.sig_mode == 'assert':
-                    if not partial_signature.validate():
-                        raise RuntimeError('Signature mismatch for input {} and output {}'.format(
-                            ', '.join(env.sos_dict['_input']), ', '.join(env.sos_dict['_output'])))
-                elif env.sig_mode == 'construct':
-                    try:
-                        partial_signature.write()
-                        env.logger.debug('Construct signature from existing output files {}'.format(short_repr(env.sos_dict['_output'])))
-                        continue
-                    except Exception as e:
-                        env.logger.debug('Failed to reconstruct signature. {}'.format(e))
-            # now, if output file has already been generated using non-process statement
-            # so that no process need to be run, we create signature from outside.
-            if not self.step.task:
-                # if no process, we should be able to figure out undetermined output now
-                if env.sos_dict['_output'] and isinstance(env.sos_dict['_output'][0], Undetermined) and env.run_mode == 'run':
-                    value = env.sos_dict['_output'][0].expr
-                    env.logger.trace('Processing output: {}'.format(value))
-                    args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
-                    # now we should have _output
-                    directive_output(*args)
-                    env.logger.trace('Reset _output to {}'.format(env.sos_dict['_output']))
-                    self._outputs[idx] = env.sos_dict['_output']
-                if partial_signature is not None:
-                    partial_signature.set(env.sos_dict['_output'], 'output')
-                    partial_signature.write()
-                continue
-            #
             env.logger.trace('Executing step process')
             try:
                 if concurrent:
@@ -693,6 +632,9 @@ class Base_Step_Executor:
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
                 raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(short_repr(self.step.task), e))
+            #
+            # endfor loop for each input group
+            #
         # check results? This is only meaningful for pool
         if concurrent:
             try:
@@ -715,24 +657,12 @@ class Base_Step_Executor:
                 if self._outputs[idx] and isinstance(self._outputs[idx][0], Undetermined):
                     env.logger.trace('Setting _output[{}] from proc output {}'.format(idx, short_repr(res['output'])))
                     self._outputs[idx] = res['output']
-        env.logger.trace('Checking output files {}'.format(short_repr(env.sos_dict['output'])))
-        if env.run_mode == 'run' and env.sos_dict['output'] is not None:
-            if env.sos_dict['output'] and isinstance(env.sos_dict['output'][0], Undetermined):
-                # at this point self._outputs should be expanded already.
-                env.sos_dict.set('output', list(OrderedDict.fromkeys(sum(self._outputs, []))))
-                env.logger.info('output:  ``{}``'.format(short_repr(env.sos_dict['output'], noneAsNA=True)))
-            for ofile in env.sos_dict['output']:
-                if not os.path.isfile(os.path.expanduser(ofile)):
-                    raise RuntimeError('Output file {} does not exist after completion of action'.format(ofile))
-        if signature and env.run_mode == 'run':
-            signature.set(env.sos_dict['output'], 'output')
-            signature.write()
+        #
         if concurrent:
             # finally, write results back to the master process
             pool.close()
             pool.join()
         return self.collectResult(public_vars)
-
 
 
     def prepare_report(self):
