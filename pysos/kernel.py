@@ -53,7 +53,6 @@ from textwrap import dedent
 from io import StringIO
 
 
-
 class FlushableStringIO(StringIO):
     def __init__(self, kernel, name, *args, **kwargs):
         StringIO.__init__(self, *args, **kwargs)
@@ -639,8 +638,8 @@ class SoS_Kernel(Kernel):
         if not silent:
             start_output = True
             # Send standard output
-            if '__step_report__' in env.sos_dict and os.path.isfile(env.sos_dict['__step_report__']):
-                with open(env.sos_dict['__step_report__']) as sr:
+            if os.path.isfile('.sos/report.md'):
+                with open('.sos/report.md') as sr:
                     sos_report = sr.read()
                 with open(self.report_file, 'a') as summary_report:
                     summary_report.write(sos_report + '\n\n')

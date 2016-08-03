@@ -82,7 +82,7 @@ class StepInfo(object):
     def __repr__(self):
         return '{' + ', '.join('{}: {!r}'.format(x,y) for x,y in self.__dict__.items()) + '}'
 
-def execute_task(task, global_def, sos_dict, sigil, workdir):
+def execute_task(task, global_def, sos_dict, sigil):
     '''A function that execute specified task within a local dictionary 
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
@@ -90,7 +90,8 @@ def execute_task(task, global_def, sos_dict, sigil, workdir):
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
     try:
-        os.chdir(os.path.expanduser(workdir))
+        if 'workdir' in sos_dict:
+            os.chdir(os.path.expanduser(sos_dict['workdir']))
         env.sos_dict.quick_update(sos_dict)
         SoS_exec('import os, sys, glob')
         SoS_exec('from pysos import *')
@@ -105,9 +106,7 @@ def execute_task(task, global_def, sos_dict, sigil, workdir):
     except KeyboardInterrupt:
         raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
     env.deregister_process(os.getpid())
-    env.logger.trace('Execution completed with output ``{}``'.format(short_repr(env.sos_dict['_output'])))
     return {'succ': 0, 'output': env.sos_dict['_output']}
-
 
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
@@ -124,6 +123,22 @@ class Base_Step_Executor:
     #
     def expand_input_files(self, *args, **kwargs):
         '''Process input files (perhaps a pattern) to determine input files.
+
+        ret: 
+            Return a file list or Undertermined.
+        '''
+        raise RuntimeError('Undefined virtual function.')
+
+    def expand_depends_files(self, *args, **kwargs):
+        '''Process dependent files (perhaps a pattern) to determine input files.
+
+        ret: 
+            Return a file list or Undertermined.
+        '''
+        raise RuntimeError('Undefined virtual function.')
+
+    def expand_output_files(self, *args, **kwargs):
+        '''Process output files (perhaps a pattern) to determine input files.
 
         ret: 
             Return a file list or Undertermined.
@@ -323,79 +338,51 @@ class Base_Step_Executor:
                 _vars = []
         return _groups, _vars
 
-    def directive_depends(self, *args, **kwargs):
-        '''handle directive depends'''
+    def process_depends_args(self, dfiles, **kwargs):
         for k in kwargs.keys():
             if k not in SOS_DEPENDS_OPTIONS:
                 raise RuntimeError('Unrecognized depends option {}'.format(k))
-        # first *args are filenames
-        tmp = []
-        for arg in args:
-            if isinstance(arg, str):
-                tmp.append(os.path.expanduser(arg))
-            elif isinstance(arg, Iterable):
-                arg = list(arg)
-                if not all(isinstance(x, str) for x in arg):
-                    raise RuntimeError('Invalid dependent file: {}'.format(arg))
-                tmp.extend(os.path.expanduser(x) for x in arg)
-            else:
-                raise ValueError('Unrecognizable dependent type {}'.format(arg))
-        #
-        # expand wild card variables
-        dfiles = []
-        for dfile in tmp:
-            if not os.path.isfile(dfile):
-                expanded = sorted(glob.glob(os.path.expanduser(dfile)))
-                if not expanded:
-                    if env.run_mode in ['interactive', 'run']:
-                        raise RuntimeError('{} not exist.'.format(dfile))
-                    else:
-                        dfiles.append(dfile)
-                else:
-                    dfiles.extend(expanded)
-            else:
-                dfiles.append(dfile)
         env.sos_dict.set('_depends', dfiles)
+        if env.sos_dict['depends'] is None:
+            env.sos_dict.set('depends', copy.deepcopy(dfiles))
+        elif env.sos_dict['depends'] != dfiles:
+            env.sos_dict['depends'].extend(dfiles)
 
-
-    def directive_output(self, *args, **kwargs):
+    def process_output_args(self, ofiles, **kwargs):
         for k in kwargs.keys():
             if k not in SOS_OUTPUT_OPTIONS:
                 raise RuntimeError('Unrecognized output option {}'.format(k))
-        tmp = []
-        for arg in args:
-            if isinstance(arg, str):
-                tmp.append(os.path.expanduser(arg))
-            elif isinstance(arg, Iterable):
-                arg = list(arg)
-                if not all(isinstance(x, str) for x in arg):
-                    raise RuntimeError('Invalid output file: {}'.format(arg))
-                tmp.extend(arg)
-            else:
-                raise ValueError('Unrecognizable output type {}'.format(arg))
-        #
-        # expand wild card variables
-        ofiles = []
-        for ofile in tmp:
-            if '*' in ofile or '?' in ofile or ('[' in ofile and ']' in ofile):
-                expanded = sorted(glob.glob(os.path.expanduser(ofile)))
-                if not expanded:
-                    env.logger.warning('{} does not expand to any valid file.'.format(ofile))
-                ofiles.extend(expanded)
-            else:
-                ofiles.append(ofile)
-        #
+        # create directory
         for ofile in ofiles:
             parent_dir = os.path.split(os.path.expanduser(ofile))[0]
             if parent_dir and not os.path.isdir(parent_dir):
                 os.makedirs(parent_dir)
+        # set variables
         env.sos_dict.set('_output', ofiles)
+        if env.sos_dict['output'] is None:
+            env.sos_dict.set('output', copy.deepcopy(ofiles))
+        elif env.sos_dict['output'] != ofiles:
+            env.sos_dict['output'].extend(ofiles)
 
-    def directive_task(self, **kwargs):
+    def process_task_args(self, **kwargs):
         for k,v in kwargs.items():
             if k not in SOS_RUNTIME_OPTIONS:
                 raise RuntimeError('Unrecognized runtime option {}={}'.format(k, v))
         env.sos_dict.set('_runtime', kwargs)
+
+    def check_signature(self):
+        return False
+        #if env.run_mode in ('prepare', 'run') and '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
+        #                signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict.get('_depends', []), index=idx)
+        #                if env.sig_mode == 'default':
+        #                    res = signature.validate()
+        #                    if res:
+        #                        env.sos_dict.set('_output', res['output'])
+        #                        env.logger.debug('_output: {}'.format(res['output']))
+        #                        env.logger.debug('Reuse existing output files ``{}``'.format(short_repr(env.sos_dict['_output'])))
+ 
+    def reevaluate_output(self):
+        pass
 
     def get_step_signature(self):
         '''returns a signature of the step. Change of the step content will
@@ -427,6 +414,35 @@ class Base_Step_Executor:
             SoS_exec(stmt, self.step.sigil)
         except Exception as e:
             raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(stmt), e))
+
+    def collectResult(self):
+        # only results will be sent back to the master process
+        #
+        # __step_input__:    input of this step
+        # __steo_output__:   output of this step
+        # __step_depends__:  dependent files of this step
+        result = {
+            '__step_input__': env.sos_dict['input'],
+            '__step_output__': env.sos_dict['output'],
+            '__step_depends__': env.sos_dict['depends'],
+        }
+        if '__execute_errors__' in env.sos_dict:
+            result['__execute_errors__'] = env.sos_dict['__execute_errors__']
+        if 'alias' in self.step.options:
+            step_info = StepInfo()
+            step_info.set('step_name', env.sos_dict['step_name'])
+            step_info.set('input', env.sos_dict['input'])
+            step_info.set('output', env.sos_dict['output'])
+            step_info.set('depends', env.sos_dict['depends'])
+            # the step might be skipped
+            for statement in self.step.statements:
+                if statement[0] == '=' and statement[1] in env.sos_dict and pickleable(env.sos_dict[statement[1]]):
+                    step_info.set(statement[1], env.sos_dict[statement[1]])
+            if isinstance(self.step.options['alias'], Undetermined):
+                # it is time to evalulate this expression now
+                self.step.options['alias'] = self.step.options['alias'].value(self.step.sigil)
+            result[self.step.options['alias']] = copy.deepcopy(step_info)
+        return result
 
     def run(self):
         '''Execute a single step and return results. The result for batch mode is the
@@ -509,11 +525,9 @@ class Base_Step_Executor:
 
         self.log('input')
         
-        self.runtime_options = {}
-        concurrent = env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in self.runtime_options \
-            and self.runtime_options['concurrent']
-        if concurrent:
-            pool = mp.Pool(min(env.max_jobs, len(self._groups)))
+        # we do not know if we should create a pool yet, because we do not know the option
+        # of directive task
+        pool = None
         proc_results = []
         # run steps after input statement, which will be run multiple times for each input 
         # group.
@@ -536,85 +550,53 @@ class Base_Step_Executor:
                     try:
                         args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
                         # dynamic output or dependent files
-                        if 'dynamic' in kwargs:
-                            env.logger.trace('Handling dynamic {}'.format(key))
-                            if key not in ('output', 'depends'):
-                                raise RuntimeError('dynamic option is only allowed for step input, output or depends')
-                            if not isinstance(kwargs['dynamic'], bool):
-                                raise RuntimeError('Option dynamic can only be True or False. {} provided'.format(kwargs['dynamic']))
-                            if kwargs['dynamic']:
-                                if env.run_mode == 'run' and key == 'depends':
-                                    # depends need to be resolved now at run mode
-                                    eval('directive_' + key)(*args, **kwargs)
-                                # in other cases, namely non-run mode and output in run mode
-                                else:
-                                    if len(kwargs) > 1:
-                                        raise RuntimeError('dynamic {} does not accept other options'.format(key))
-                                    env.sos_dict.set('_' + key, [Undetermined(value)])
-                        elif key == 'output':
-                            self.directive_output(*args, **kwargs)
+                        if key == 'output':
+                            ofiles = self.expand_output_files(value, *args, **kwargs)
+                            # ofiles can be Undertermined
+                            self.process_output_args(ofiles, **kwargs)
                         elif key == 'depends':
-                            self.directive_depends(*args, **kwargs)
+                            dfiles = self.expand_depends_files(*args, **kwargs)
+                            # dfiles can be Undertermined
+                            self.process_depends_args(dfiles, **kwargs)
+                        elif key == 'task':
+                            self.process_task_args(*args, **kwargs)
+                            # if concurrent is set, create a pool object
+                            if env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in kwargs and kwargs['concurrent']:
+                                pool = mp.Pool(min(env.max_jobs, len(self._groups)))
                         else:
                             raise RuntimeError('Unrecognized directive {}'.format(key))
                     except Exception as e:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
-                    #
-                    # we need to reduce output files in case they have been processed multiple times.
-                    #
-                    # The following temporarily set 'output' as an accumulated version of _output
-                    # It will be reset after all the loops are done
-                    #
-                    if key == 'output':
-                        if '_output' in env.sos_dict and env.sos_dict['_output'] and not isinstance(env.sos_dict['_output'][0], Undetermined):
-                            if 'output' not in env.sos_dict:
-                                env.sos_dict.set('output', copy.deepcopy(env.sos_dict['_output']))
-                            elif not self._outputs or env.sos_dict['_output'] != self._outputs[-1]:
-                                env.sos_dict['output'].extend(env.sos_dict['_output'])
-                    elif key == 'depends':
-                        if '_depends' in env.sos_dict:
-                            if 'depends' not in env.sos_dict:
-                                env.sos_dict.set('depends', copy.deepcopy(env.sos_dict['_depends']))
-                            elif not self._depends or env.sos_dict['_depends'] != self._depends[-1]:
-                                env.sos_dict['depends'].extend(env.sos_dict['_depends'])
                 else:
-                    # in prepare mode, check signature and see if all results exist
-                    if env.run_mode in ('prepare', 'run') and '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
-                        signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict.get('_depends', []), index=idx)
-                        if env.sig_mode == 'default':
-                            res = signature.validate()
-                            if res:
-                                env.sos_dict.set('_output', res['output'])
-                                env.logger.debug('_output: {}'.format(res['output']))
-                                env.logger.debug('Reuse existing output files ``{}``'.format(short_repr(env.sos_dict['_output'])))
-                    #
-                    try:
-                        SoS_exec(statement[1], self.step.sigil)
-                    except Exception as e:
-                        raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
-            #
+                    if not self.check_signature():
+                        try:
+                            SoS_exec(statement[1], self.step.sigil)
+                        except Exception as e:
+                            raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
+            # finally, tasks..
             if not self.step.task:
                 continue
-            env.logger.trace('Executing step process')
+
+            self.log('task')
             try:
-                if concurrent:
+                if pool:
                     proc_results.append(pool.apply_async(
-                        execute_task,   # function
-                        (self.step.task,         # process
+                        execute_task,            # function
+                        (self.step.task,         # task
                         self.step.global_def,    # global process
                         env.sos_dict.clone_pickleable(),
-                        self.step.sigil,
-                        self.runtime_options['workdir'] if 'workdir' in self.runtime_options else os.getcwd())))
+                        self.step.sigil
+                        )))
                 else:
                     # execute in existing process
                     proc_results.append(
-                        execute_task(   # function
-                        self.step.task,           # process
-                        '',                     # local execusion, no need to re-run global
+                        execute_task(             # function
+                        self.step.task,           # task
+                        '',                       # local execusion, no need to re-run global
                         # do not clone dict
                         env.sos_dict,
-                        self.step.sigil,
-                        self.runtime_options['workdir'] if 'workdir' in self.runtime_options else os.getcwd()))
+                        self.step.sigil
+                        ))
             except Exception as e:
                 # FIXME: cannot catch exception from subprocesses
                 if env.verbosity > 2:
@@ -624,71 +606,30 @@ class Base_Step_Executor:
             # endfor loop for each input group
             #
         # check results? This is only meaningful for pool
-        if concurrent:
+        if pool:
             try:
                 proc_results = [res.get() if isinstance(res, AsyncResult) else res for res in proc_results]
             except KeyboardInterrupt:
                 # if keyboard interrupt
-                pool.terminate()
-                pool.join()
                 raise RuntimeError('KeyboardInterrupt fro m {} (master)'.format(os.getpid()))
             except Exception as e:
                 # if keyboard interrupt etc
                 env.logger.error('Caught {}'.format(e))
-                pool.terminate()
-                pool.join()
                 raise
-        if proc_results:
-            if not all(x['succ']==0 for x in proc_results):
-                raise RuntimeError('Step process returns non-zero value')
-            for idx, res in enumerate(proc_results):
-                if self._outputs[idx]: # and isinstance(self._outputs[idx][0], Undetermined):
-                    env.logger.trace('Setting _output[{}] from proc output {}'.format(idx, short_repr(res['output'])))
-                    self._outputs[idx] = res['output']
-        #
-        if concurrent:
-            # finally, write results back to the master process
-            pool.close()
-            pool.join()
+            finally:
+                # finally, write results back to the master process
+                pool.terminate()
+                pool.close()
+                pool.join()
+        # check results
+        if not all(x['succ'] == 0 for x in proc_results):
+            raise RuntimeError('Step process returns non-zero value')
+        # if output is Undetermined, re-evalulate it
+        self.reevaluate_output()
+        self.log('output')
         return self.collectResult()
 
 
-    def prepare_report(self):
-        if '__step_report__' not in env.sos_dict:
-            env.sos_dict.set('__step_report__', os.path.join('.sos', 'report', '{}_{}.md'.format(self.step.name, self.step.index)))
-        if os.path.isfile(env.sos_dict['__step_report__']):
-            # truncate the file
-            with open(env.sos_dict['__step_report__'], 'w'):
-                pass
-
-    def collectResult(self):
-        # only results will be sent back to the master process
-        #
-        # __step_input__:    input of this step
-        # __steo_output__:   output of this step
-        # __step_depends__:  dependent files of this step
-        result = {
-            '__step_input__': env.sos_dict['input'],
-            '__step_output__': env.sos_dict['output'],
-            '__step_depends__': env.sos_dict['depends'],
-        }
-        if '__execute_errors__' in env.sos_dict:
-            result['__execute_errors__'] = env.sos_dict['__execute_errors__']
-        if 'alias' in self.step.options:
-            step_info = StepInfo()
-            step_info.set('step_name', env.sos_dict['step_name'])
-            step_info.set('input', env.sos_dict['input'])
-            step_info.set('output', env.sos_dict['output'])
-            step_info.set('depends', env.sos_dict['depends'])
-            # the step might be skipped
-            for statement in self.step.statements:
-                if statement[0] == '=' and statement[1] in env.sos_dict and pickleable(env.sos_dict[statement[1]]):
-                    step_info.set(statement[1], env.sos_dict[statement[1]])
-            if isinstance(self.step.options['alias'], Undetermined):
-                # it is time to evalulate this expression now
-                self.step.options['alias'] = self.step.options['alias'].value(self.step.sigil)
-            result[self.step.options['alias']] = copy.deepcopy(step_info)
-        return result
 
 class Queued_Step_Executor(Base_Step_Executor):
     # this class execute the step in a separate process
@@ -710,7 +651,7 @@ class Queued_Step_Executor(Base_Step_Executor):
                 sys.stderr.write(get_traceback())
             self.queue.put(e)
 
-def _expand_files(ignore_unknown, *args):
+def _expand_file_list(ignore_unknown, *args):
     ifiles = []
     for arg in args:
         if isinstance(arg, str):
@@ -719,8 +660,10 @@ def _expand_files(ignore_unknown, *args):
             # in case arg is a Generator, check its type will exhaust it
             arg = list(arg)
             if not all(isinstance(x, str) for x in arg):
-                raise RuntimeError('Invalid input file: {}'.format(arg))
+                raise RuntimeError('Invalid file: {}'.format(arg))
             ifiles.extend(arg)
+        else:
+            raise RuntimeError('Unrecognized file: {}'.format(arg))
 
     # expand files with wildcard characters and check if files exist
     tmp = []
@@ -751,12 +694,24 @@ class Inspect_Step_Executor(Queued_Step_Executor):
     def expand_input_files(self, *args, **kwargs):
         if 'dynamic' in kwargs:
             return Undetermined()
- 
         # if unspecified, use __step_output__ as input (default)
         if not args:
             return env.sos_dict['input']
+        else:
+            return _expand_file_list(True, *args)
 
-        return _expand_file_list(True, *args)
+    def expand_depends_files(self, *args, **kwargs):
+        '''handle directive depends'''
+        if 'dynamic' in kwargs:
+            return Undetermined()
+        else:
+            return _expand_file_list(True, *args)
+
+    def expand_output_files(self, value, *args, **kwargs):
+        if 'dynamic' in kwargs:
+            return Undetermined(value)
+        else:
+            return _expand_file_list(True, *args)
 
     def log(self, stage, msg=None):
         if stage == 'start':
@@ -771,11 +726,22 @@ class Prepare_Step_Executor(Queued_Step_Executor):
     def expand_input_files(self, *args, **kwargs):
         if 'dynamic' in kwargs:
             return Undetermined()
- 
         # if unspecified, use __step_output__ as input (default)
         if not args:
             return env.sos_dict['input']
+        else:
+            return _expand_file_list(True, *args)
 
+    def expand_depends_files(self, *args, **kwargs):
+        '''handle directive depends'''
+        if 'dynamic' in kwargs:
+            return Undetermined()
+        else:
+            return _expand_file_list(True, *args)
+
+    def expand_output_files(self, value, *args, **kwargs):
+        if 'dynamic' in kwargs:
+            return Undetermined(value)
         return _expand_file_list(True, *args)
 
     def log(self, stage=0):
@@ -794,6 +760,8 @@ class Run_Step_Executor(Queued_Step_Executor):
             env.logger.trace('Handling input statement {}'.format(msg))
         elif stage == 'input':
             env.logger.info('input:   ``{}``'.format(short_repr(env.sos_dict['input'], noneAsNA=True)))
+        elif stage == 'output':
+            env.logger.info('output:   ``{}``'.format(short_repr(env.sos_dict['output'], noneAsNA=True)))
 
     def assign(self, key, value):
         Base_Step_Executor.assign(self, key, value)
@@ -805,8 +773,22 @@ class Run_Step_Executor(Queued_Step_Executor):
         # if unspecified, use __step_output__ as input (default)
         if not args:
             return env.sos_dict['input']
+        else:
+            return _expand_file_list(False, *args)
 
-        return _expand_file_list(False, *args)
+    def expand_output_files(self, value, *args, **kwargs):
+        return _expand_file_list(True, *args)
+
+    def expand_depends_files(self, *args, **kwargs):
+        '''handle directive depends'''
+        return _expand_file_list(True, *args)
+
+    def reevaluate_output(self):
+        if isinstance(env.sos_dict['output'], Undetermined):
+            # re-process the output statement to determine output files
+            args, kwargs = SoS_eval('__null_func__({})'.format(env.sos_dict['output'].expr), self.step.sigil)
+            kwargs.pop('dynamic', None)
+            env.sos_dict.set('output', self.expand_output_files(value, *args, **kwargs))
 
 
 class Interactive_Step_Executor(Base_Step_Executor):
@@ -819,8 +801,15 @@ class Interactive_Step_Executor(Base_Step_Executor):
         # if unspecified, use __step_output__ as input (default)
         if not args:
             return env.sos_dict['input']
+        else:
+            return _expand_file_list(False, *args)
 
-        return _expand_file_list(False, *args)
+    def expand_depends_files(self, *args, **kwargs):
+        '''handle directive depends'''
+        return _expand_file_list(True, *args)
+
+    def expand_output_files(self, value, *args, **kwargs):
+        return _expand_file_list(True, *args)
 
     def log(self, stage=None):
         return

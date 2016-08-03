@@ -991,10 +991,7 @@ def report(script=None, from_file=None, to_file=None, mode='a', **kwargs):
             raise RuntimeError('Invalid parameter to_file "{}"'.format(to_file))
         report_file = to_file
     else:
-        if '__step_report__' not in env.sos_dict:
-            raise RuntimeError('No __step_report__ in runtime dict')
-        env.logger.trace('report {} to {}'.format(short_repr(script), env.sos_dict['__step_report__']))
-        report_file = env.sos_dict['__step_report__']
+        report_file = '.sos/report.md'
     #
     content = ''
     if script is not None:
