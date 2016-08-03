@@ -506,7 +506,7 @@ input: 'a.pdf', files, skip=False
 
 ''')
         wf = script.workflow('default')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         #
         # test input types
         script = SoS_Script('''
@@ -517,7 +517,7 @@ output: ('a${x}' for x in _input)
 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(sorted(env.sos_dict['test'].input), ['a.txt', 'a0', 'a1', 'b.txt'])
         self.assertEqual(sorted(env.sos_dict['test'].output), ['aa.txt', 'aa0', 'aa1', 'ab.txt'])
 
@@ -536,7 +536,7 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt', 'a3.txt', 'a4.txt']])
         # group_by = 'single'
         script = SoS_Script('''
@@ -549,7 +549,7 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt'], ['a2.txt'], ['a3.txt'], ['a4.txt']])
         # group_by = 'pairs'
         script = SoS_Script('''
@@ -562,7 +562,7 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a3.txt'], ['a2.txt', 'a4.txt']])
         # group_by = 'pairwise'
         script = SoS_Script('''
@@ -575,7 +575,7 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt'], ['a2.txt', 'a3.txt'], ['a3.txt', 'a4.txt']])
         # group_by = 'combinations'
         script = SoS_Script('''
@@ -588,7 +588,7 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt'], ['a1.txt', 'a3.txt'], 
             ['a1.txt', 'a4.txt'], ['a2.txt', 'a3.txt'], ['a2.txt', 'a4.txt'], ['a3.txt', 'a4.txt']])
         # group_by chunks specified as integers
@@ -602,7 +602,7 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'],
                          [['a1.txt', 'a2.txt', 'a3.txt'],
                          ['a4.txt', 'a5.txt', 'a6.txt'],
@@ -618,7 +618,7 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'],
                          [['a1.txt', 'a2.txt', 'a3.txt'],
                          ['a4.txt', 'a5.txt', 'a6.txt'],
@@ -744,18 +744,18 @@ executed.append(step_name)
 executed.append(step_name)
 ''')
         wf = script.workflow('a+b')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'], ['a_1', 'a_2', 'a_3', 'a_4', 'b_1', 'b_2', 'b_3', 'b_4'])
         self.assertEqual(env.sos_dict['a'], 1)
         self.assertEqual(env.sos_dict['input_b1'], ['out_a_4'])
         #
         wf = script.workflow('a_ 1-2 + a_4 + b_3-')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'], ['a_1', 'a_2', 'a_4', 
             'b_3', 'b_4'])
         #
         wf = script.workflow('a+c+d')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'], ['a_1', 'a_2', 'a_3', 'a_4', 'c_0', 'd_0'])
 
     def testNestedWorkflow(self):
@@ -802,7 +802,7 @@ inputs.append(input)
 sos_run('a+b')
 ''')
         wf = script.workflow('c')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'a_1', 'a_2', 'a_3', 'a_4',
             'b_1', 'b_2', 'b_3', 'b_4'])
         self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], [], [], [], ['b.begin'], [], [], []])
@@ -828,7 +828,7 @@ inputs.append(_input)
 sos_run('a')
 ''')
         wf = script.workflow('c')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'a_1', 'a_2', 'a_1', 'a_2'])
         #self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], ['a.txt.a1'], ['b.txt'], ['b.txt'], ['b.txt.a1']])
         #
@@ -849,7 +849,7 @@ input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2')
 ''')
         wf = script.workflow('c')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_2',  'a_2'])
         # allow specifying a single step
         # step will be looped
@@ -868,7 +868,7 @@ input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2')
 ''')
         wf = script.workflow('c')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_2', 'a_2'])
         #
         # recursive subworkflow not allowed
@@ -912,7 +912,7 @@ input: 'a.txt'
 sos_run('a+b')
 ''')
         wf = script.workflow('c')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'c_1', 'a_1', 'a_2', 'a_3',
             'b_1', 'b_2', 'a_1', 'a_2'])
         #
@@ -940,13 +940,13 @@ executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 ''')
         wf = script.workflow('b')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'], ['b_0', 'a_3', 'a_1', 'a_3', 'a_1'])
         wf = script.workflow('d')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'], ['d_0', 'a_2', 'a_2'])
         wf = script.workflow('e2')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['executed'], ['e2_2'])
 
     def testDynamicNestedWorkflow(self):
@@ -1014,7 +1014,7 @@ sos_run('A', source='temp/test.sos')
 ''')
         env.shared_vars = ['executed']
         wf = script.workflow('b')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         #self.assertEqual(env.sos_dict['GLB'], 5)
         #self.assertEqual(env.sos_dict['parB'], 10)
         self.assertEqual(env.sos_dict['executed'], ['b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
@@ -1027,7 +1027,7 @@ input: 'a.txt', 'b.txt', group_by='single'
 sos_run('k.A', source={'k':'temp/test.sos'})
 ''')
         wf = script.workflow('b')
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         #self.assertEqual(env.sos_dict['GLB'], 5)
         #self.assertEqual(env.sos_dict['parB'], 10)
         self.assertEqual(env.sos_dict['executed'], ['g.b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
@@ -1104,7 +1104,7 @@ print(output)
 ''')
         wf = script.workflow()
         # this does not work before until we make variable output available sooner
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         # however, output should be the same in task
         script = SoS_Script('''
 [0]
@@ -1117,7 +1117,7 @@ assert(len(output), 3)
 ''')
         wf = script.workflow()
         # this does not work before until we make variable output available sooner
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)

@@ -95,7 +95,7 @@ output: ['{}_{}_processed.txt'.format(x,y) for x,y in zip(name, model)]
 
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['res'].output,  ['a_1_processed.txt', 'b_2_processed.txt', 'c_2_processed.txt'])
         #
         script = SoS_Script(r"""
@@ -105,7 +105,7 @@ output: ['${x}_${y}_process.txt' for x,y in zip(name, model)]
 
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['res'].output,  ['a_1_process.txt', 'b_2_process.txt', 'c_2_process.txt'])
         #
         script = SoS_Script(r"""
@@ -118,7 +118,7 @@ output: add_a(['${x}_${y}_process.txt' for x,y in zip(name, model)])
 
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['res'].output,  ['aa_1_process.txt', 'ab_2_process.txt', 'ac_2_process.txt'])
 
     def testGlobalVars(self):
@@ -127,7 +127,7 @@ output: add_a(['${x}_${y}_process.txt' for x,y in zip(name, model)])
 [0]
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['SOS_VERSION'], __version__)
         # not from a file
         self.assertEqual(env.sos_dict['SOS_SCRIPT'], None)
@@ -143,7 +143,7 @@ def myfunc(a):
 input: myfunc(['a.txt', 'b.txt'])
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['test'].input, ['aa.txt', 'ab.txt'])
         # in nested workflow?
         script = SoS_Script(r"""
@@ -157,7 +157,7 @@ input: myfunc(['a.txt', 'b.txt'])
 sos_run('mse')
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         #
         # Names defined in subworkflow is not returned to the master dict
         self.assertTrue('test' not in env.sos_dict)
@@ -362,7 +362,7 @@ input: '*.py'
 output: _input
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertTrue('test_execute.py' in env.sos_dict['res'].output)
 
     def testForEach(self):
@@ -385,7 +385,7 @@ counter = counter + 1
 """)
         wf = script.workflow()
         env.shared_vars = ['counter', 'all_names', 'all_loop', 'processed']
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['counter'], 6)
         self.assertEqual(env.sos_dict['all_names'], "a b c a b c ")
         self.assertEqual(env.sos_dict['all_loop'], "1 1 1 2 2 2 ")
@@ -404,7 +404,7 @@ output: res
 processed.append((_par, _res))
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
 
 
@@ -425,7 +425,7 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
 """)
         wf = script.workflow()
         env.shared_vars=['base', 'name', 'par', '_output']
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
@@ -444,7 +444,7 @@ output: expand_pattern('{base}-{name}-{par}.txt'), expand_pattern('{par}.txt')
 """)
         wf = script.workflow()
         env.shared_vars = ['base', 'name', 'par', '_output']
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
@@ -469,7 +469,7 @@ input: oa.input
 output: _input
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['oa'].input, ["a.pdf", 'a.txt', 'b.txt'])
         self.assertEqual(env.sos_dict['ob'].output, ["a.pdf", 'a.txt', 'b.txt'])
 
@@ -486,7 +486,7 @@ output: _input
 
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['res'].output, ['a.txt', 'b.txt'])
         #
         script = SoS_Script(r"""
@@ -500,7 +500,7 @@ counter += 1
 """)
         wf = script.workflow()
         env.shared_vars=['counter']
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['counter'], 3)
         #
         script = SoS_Script(r"""
@@ -513,7 +513,7 @@ input: 'a.pdf', 'b.html', files, filetype=lambda x: 'a' in x, group_by='single'
 counter += 1
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['counter'], 2)
 
     def testSkip(self):
@@ -529,7 +529,7 @@ input: 'a.pdf', 'b.html', files, skip=counter == 0
 counter += 1
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['counter'], 0)
 
     def testOutputFromInput(self):
@@ -546,7 +546,7 @@ counter += 1
 """)
         wf = script.workflow()
         env.shared_vars = ['counter']
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['step'].output, ['a.txt.bak', 'b.txt.bak'])
 
@@ -621,7 +621,7 @@ a = fail()
 """)
         wf = script.workflow()
         env.shared_vars=['a']
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         # should return 0 in inspect mode
         self.assertTrue(isinstance(env.sos_dict['a'], Undetermined))
         #
@@ -681,7 +681,7 @@ myfunc()
 
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['test'].output, ['a'])
         # User defined function should also work under nested workflows
         # This is difficult because the 'local namespace' is usually
@@ -700,7 +700,7 @@ myfunc()
 
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['test'].output, ['a45'])
 
     def testReadOnlyStepVars(self):
@@ -764,7 +764,7 @@ output: shared.input
         wf = script.workflow()
         # I would like to disallow accessing variables defined
         # in other cases.
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['shared'].output, ['b.txt'])
         #
         # this include other variables set in the step
@@ -788,7 +788,7 @@ e = shared.d + 1
         wf = script.workflow()
         # I would like to disallow accessing variables defined
         # in other cases.
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['shared'].c, 'c.txt')
         self.assertEqual(env.sos_dict['d'].e, 2)
         #
@@ -844,7 +844,7 @@ check_command('a4')
         wf = script.workflow()
         # we should see a single error with 4 messages.
         try:
-            Sequential_Executor(wf).run(run_mode='inspect')
+            Sequential_Executor(wf).inspect()
         except Exception as e:
             self.assertEqual(len(e.errors), 6)
 

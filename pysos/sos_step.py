@@ -267,7 +267,7 @@ class Base_Step_Executor:
         which are groups of _input and related _vars
         '''
         if isinstance(ifiles, Undetermined):
-            return [Undetermined], [{}]
+            return [Undertermined()], [{}]
 
         for k in kwargs.keys():
             if k not in SOS_INPUT_OPTIONS:
@@ -282,7 +282,8 @@ class Base_Step_Executor:
                 ifiles = [x for x in ifiles if kwargs['filetype'](x)]
         #
         # input file is the filtered files
-        env.sos_dict.set('__step_input__', ifiles)
+        env.sos_dict.set('input', ifiles)
+        env.sos_dict.set('_input', ifiles)
         #
         # handle group_by
         if 'group_by' in kwargs:
@@ -322,8 +323,7 @@ class Base_Step_Executor:
                 _vars = []
         return _groups, _vars
 
-
-    def directive_depends(*args, **kwargs):
+    def directive_depends(self, *args, **kwargs):
         '''handle directive depends'''
         for k in kwargs.keys():
             if k not in SOS_DEPENDS_OPTIONS:
@@ -358,7 +358,7 @@ class Base_Step_Executor:
         env.sos_dict.set('_depends', dfiles)
 
 
-    def directive_output(*args, **kwargs):
+    def directive_output(self, *args, **kwargs):
         for k in kwargs.keys():
             if k not in SOS_OUTPUT_OPTIONS:
                 raise RuntimeError('Unrecognized output option {}'.format(k))
@@ -391,7 +391,7 @@ class Base_Step_Executor:
                 os.makedirs(parent_dir)
         env.sos_dict.set('_output', ofiles)
 
-    def directive_task(**kwargs):
+    def directive_task(self, **kwargs):
         for k,v in kwargs.items():
             if k not in SOS_RUNTIME_OPTIONS:
                 raise RuntimeError('Unrecognized runtime option {}={}'.format(k, v))
@@ -484,38 +484,29 @@ class Base_Step_Executor:
                 else:
                     self.execute(statement[1])
             # input statement
+            stmt = self.step.statements[input_statement_idx][2]
             self.log('input statement', stmt)
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(stmt), self.step.sigil)
                 # Files will be expanded differently with different running modes
                 input_files = self.expand_input_files(*args, **kwargs)
+                if isinstance(input_files, Undetermined):
+                    return self.collectResult()
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
             except Exception as e:
                 if '__execute_errors__' in env.sos_dict and env.sos_dict['__execute_errors__'].errors:
                     raise env.sos_dict['__execute_errors__']
                 else:
-                    raise RuntimeError('Failed to process step {} : {} ({})'.format(key, value.strip(), e))
+                    raise RuntimeError('Failed to process input statement {}: {}'.format(stmt, e))
 
-            # we cannot do anything
-            if not self._groups:
-                env.sos_dict.set('input', None)
-                env.sos_dict.set('output', None)
-                env.sos_dict.set('depends', None)
-                return self.collectResult([])
             input_statement_idx += 1
         else:
             # default case
-            self._groups = [[]]
+            self._groups = [env.sos_dict['input']]
             self._vars = [{}]
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
-            #
-            if '__step_output__' in env.sos_dict and env.sos_dict['__step_output__'] is not None:
-                env.sos_dict.set('__step_input__', copy.deepcopy(env.sos_dict['__step_output__']))
-            else:
-                env.sos_dict.set('__step_input__', None)
 
-        env.sos_dict.set('input', env.sos_dict['__step_input__'])
         self.log('input')
         
         self.runtime_options = {}
@@ -560,8 +551,12 @@ class Base_Step_Executor:
                                     if len(kwargs) > 1:
                                         raise RuntimeError('dynamic {} does not accept other options'.format(key))
                                     env.sos_dict.set('_' + key, [Undetermined(value)])
+                        elif key == 'output':
+                            self.directive_output(*args, **kwargs)
+                        elif key == 'depends':
+                            self.directive_depends(*args, **kwargs)
                         else:
-                            eval('directive_' + key)(*args, **kwargs)
+                            raise RuntimeError('Unrecognized directive {}'.format(key))
                     except Exception as e:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                     #
@@ -686,11 +681,9 @@ class Base_Step_Executor:
             step_info.set('output', env.sos_dict['output'])
             step_info.set('depends', env.sos_dict['depends'])
             # the step might be skipped
-            #for var in public_vars:
-                # there is a slight possibility that var is deleted
-            #    if var in env.sos_dict and pickleable(env.sos_dict[var]):
-            #        step_info.set(var, env.sos_dict[var])
-            #
+            for statement in self.step.statements:
+                if statement[0] == '=' and statement[1] in env.sos_dict and pickleable(env.sos_dict[statement[1]]):
+                    step_info.set(statement[1], env.sos_dict[statement[1]])
             if isinstance(self.step.options['alias'], Undetermined):
                 # it is time to evalulate this expression now
                 self.step.options['alias'] = self.step.options['alias'].value(self.step.sigil)
@@ -717,54 +710,58 @@ class Queued_Step_Executor(Base_Step_Executor):
                 sys.stderr.write(get_traceback())
             self.queue.put(e)
 
+def _expand_files(ignore_unknown, *args):
+    ifiles = []
+    for arg in args:
+        if isinstance(arg, str):
+            ifiles.append(os.path.expanduser(arg))
+        elif isinstance(arg, Iterable):
+            # in case arg is a Generator, check its type will exhaust it
+            arg = list(arg)
+            if not all(isinstance(x, str) for x in arg):
+                raise RuntimeError('Invalid input file: {}'.format(arg))
+            ifiles.extend(arg)
+
+    # expand files with wildcard characters and check if files exist
+    tmp = []
+    for ifile in ifiles:
+        if os.path.isfile(os.path.expanduser(ifile)):
+            tmp.append(ifile)
+        else:
+            expanded = sorted(glob.glob(os.path.expanduser(ifile)))
+            # no matching file ... but this is not a problem at the
+            # inspection stage. 
+            #
+            # NOTE: if a DAG is given, the input file can be output from
+            # a previous step..
+            #
+            if not expanded:
+                if not ignore_unknown:
+                    raise RuntimeError('{} not exist'.format(ifile))
+                else:
+                    tmp.append(ifile)
+            else:
+                tmp.extend(expanded)
+    return tmp
+
 class Inspect_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
         Queued_Step_Executor.__init__(self, step, queue)
 
     def expand_input_files(self, *args, **kwargs):
         if 'dynamic' in kwargs:
-            env.sos_dict.set('__step_input__', None)
             return Undetermined()
  
-        if ifiles and isinstance(ifiles[0], Undetermined):
-            return Undetermined()
+        # if unspecified, use __step_output__ as input (default)
+        if not args:
+            return env.sos_dict['input']
 
-        if args:
-            # if args are specified, it overrides the default __step_input__
-            ifiles = []
-            for arg in args:
-                if isinstance(arg, str):
-                    ifiles.append(os.path.expanduser(arg))
-                elif isinstance(arg, Iterable):
-                    # in case arg is a Generator, check its type will exhaust it
-                    arg = list(arg)
-                    if not all(isinstance(x, str) for x in arg):
-                        raise RuntimeError('Invalid input file: {}'.format(arg))
-                    raise ValueError('Unrecognizable input type {}'.format(arg))
-        else:
-            # Otherwise, ifiles are from the system passed '__step_output__'.
-            if '__step_output__' in env.sos_dict and env.sos_dict['__step_output__'] is not None:
-                ifiles = env.sos_dict['__step_output__']
-            else:
-                ifiles = []
-
-        # expand files with wildcard characters and check if files exist
-        tmp = []
-        for ifile in ifiles:
-            if os.path.isfile(os.path.expanduser(ifile)):
-                tmp.append(ifile)
-            else:
-                expanded = sorted(glob.glob(os.path.expanduser(ifile)))
-                if not expanded:
-                    tmp.append(ifile)
-                else:
-                    tmp.extend(expanded)
-        return tmp
+        return _expand_file_list(True, *args)
 
     def log(self, stage, msg=None):
         if stage == 'start':
             env.logger.trace('Inspecting ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
-        
+
 
 class Prepare_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
@@ -772,45 +769,14 @@ class Prepare_Step_Executor(Queued_Step_Executor):
         Queued_Step_Executor.__init__(self, step, queue)
 
     def expand_input_files(self, *args, **kwargs):
-        # this function is identical to expand_input_file for Inspect_Step_Executor
         if 'dynamic' in kwargs:
-            env.sos_dict.set('__step_input__', None)
             return Undetermined()
  
-        if args:
-            # if args are specified, it overrides the default __step_input__
-            ifiles = []
-            for arg in args:
-                if isinstance(arg, str):
-                    ifiles.append(os.path.expanduser(arg))
-                elif isinstance(arg, Iterable):
-                    # in case arg is a Generator, check its type will exhaust it
-                    arg = list(arg)
-                    if not all(isinstance(x, str) for x in arg):
-                        raise RuntimeError('Invalid input file: {}'.format(arg))
-                    raise ValueError('Unrecognizable input type {}'.format(arg))
-        else:
-            # Otherwise, ifiles are from the system passed '__step_output__'.
-            if '__step_output__' in env.sos_dict and env.sos_dict['__step_output__'] is not None:
-                ifiles = env.sos_dict['__step_output__']
-            else:
-                ifiles = []
+        # if unspecified, use __step_output__ as input (default)
+        if not args:
+            return env.sos_dict['input']
 
-        if ifiles and isinstance(ifiles[0], Undetermined):
-            return Undetermined()
-
-        # expand files with wildcard characters and check if files exist
-        tmp = []
-        for ifile in ifiles:
-            if os.path.isfile(os.path.expanduser(ifile)):
-                tmp.append(ifile)
-            else:
-                expanded = sorted(glob.glob(os.path.expanduser(ifile)))
-                if not expanded:
-                    tmp.append(ifile)
-                else:
-                    tmp.extend(expanded)
-        return tmp
+        return _expand_file_list(True, *args)
 
     def log(self, stage=0):
         if stage == 'start':
@@ -836,43 +802,12 @@ class Run_Step_Executor(Queued_Step_Executor):
 
     def expand_input_files(self, *args, **kwargs):
         # We ignore 'dynamic' option in run mode
-        # we are using step_output as our input
-        if args:
-            # if args are specified, it overrides the default __step_input__
-            ifiles = []
-            for arg in args:
-                if isinstance(arg, str):
-                    ifiles.append(os.path.expanduser(arg))
-                elif isinstance(arg, Iterable):
-                    # in case arg is a Generator, check its type will exhaust it
-                    arg = list(arg)
-                    if not all(isinstance(x, str) for x in arg):
-                        raise RuntimeError('Invalid input file: {}'.format(arg))
-                    raise ValueError('Unrecognizable input type {}'.format(arg))
-        else:
-            # Otherwise, ifiles are from the system passed '__step_output__'.
-            if '__step_output__' in env.sos_dict and env.sos_dict['__step_output__'] is not None:
-                ifiles = env.sos_dict['__step_output__']
-            else:
-                ifiles = [] 
-        #
-        if ifiles and isinstance(ifiles[0], Undetermined):
-            raise RuntimeError('Run mode does not accept undetermined input')
-        #
-        # if files are determined,
-        #
-        # expand files with wildcard characters and check if files exist
-        tmp = []
-        for ifile in ifiles:
-            if os.path.isfile(os.path.expanduser(ifile)):
-                tmp.append(ifile)
-            else:
-                # in this mode file must exist
-                expanded = sorted(glob.glob(os.path.expanduser(ifile)))
-                if not expanded:
-                    raise RuntimeError('{} not exist'.format(ifile))
-                tmp.extend(expanded)
-        return tmp
+        # if unspecified, use __step_output__ as input (default)
+        if not args:
+            return env.sos_dict['input']
+
+        return _expand_file_list(False, *args)
+
 
 class Interactive_Step_Executor(Base_Step_Executor):
     def __init__(self, step):
@@ -881,43 +816,11 @@ class Interactive_Step_Executor(Base_Step_Executor):
     
     def expand_input_files(self, *args, **kwargs):
         # We ignore 'dynamic' option in run mode
-        # we are using step_output as our input
-        if args:
-            # if args are specified, it overrides the default __step_input__
-            ifiles = []
-            for arg in args:
-                if isinstance(arg, str):
-                    ifiles.append(os.path.expanduser(arg))
-                elif isinstance(arg, Iterable):
-                    # in case arg is a Generator, check its type will exhaust it
-                    arg = list(arg)
-                    if not all(isinstance(x, str) for x in arg):
-                        raise RuntimeError('Invalid input file: {}'.format(arg))
-                    raise ValueError('Unrecognizable input type {}'.format(arg))
-        else:
-            # Otherwise, ifiles are from the system passed '__step_output__'.
-            if '__step_output__' in env.sos_dict and env.sos_dict['__step_output__'] is not None:
-                ifiles = env.sos_dict['__step_output__']
-            else:
-                ifiles = [] 
-        #
-        if ifiles and isinstance(ifiles[0], Undetermined):
-            raise RuntimeError('Run mode does not accept undetermined input')
-        #
-        # if files are determined,
-        #
-        # expand files with wildcard characters and check if files exist
-        tmp = []
-        for ifile in ifiles:
-            if os.path.isfile(os.path.expanduser(ifile)):
-                tmp.append(ifile)
-            else:
-                # in this mode file must exist
-                expanded = sorted(glob.glob(os.path.expanduser(ifile)))
-                if not expanded:
-                    raise RuntimeError('{} not exist'.format(ifile))
-                tmp.extend(expanded)
-        return tmp
+        # if unspecified, use __step_output__ as input (default)
+        if not args:
+            return env.sos_dict['input']
+
+        return _expand_file_list(False, *args)
 
     def log(self, stage=None):
         return

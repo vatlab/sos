@@ -87,9 +87,7 @@ class Base_Executor:
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__step_output__', [])
-        SoS_exec('import os, sys, glob')
-        SoS_exec('from pysos import *')
-        env.sos_dict['__execute_errors__'] = ExecuteError('' if self.workflow is None else self.workflow.name)
+        env.sos_dict.set('__execute_errors__', ExecuteError('' if self.workflow is None else self.workflow.name))
 
         if self.workflow:
             env.sos_dict.set('SOS_SCRIPT', self.workflow.sections[0].context.filename)
@@ -103,7 +101,6 @@ class Base_Executor:
                     cfg = yaml.safe_load(config)
             except Exception as e:
                 raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-        #
         # local config file
         sos_config_file = os.path.join('.sos', 'config.yaml')
         if os.path.isfile(sos_config_file):
@@ -112,7 +109,7 @@ class Base_Executor:
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-        #
+        # user-specified configuration file.
         if config_file is not None:
             if not os.path.isfile(config_file):
                 raise RuntimeError('Config file {} not found'.format(config_file))
@@ -121,8 +118,11 @@ class Base_Executor:
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(config_file, e))
-        #
+        # set config to CONFIG 
         env.sos_dict.set('CONFIG', frozendict(cfg))
+
+        SoS_exec('import os, sys, glob')
+        SoS_exec('from pysos import *')
 
     def skip(self, section):
         if section.global_def:
@@ -272,8 +272,6 @@ class Interactive_Executor(Base_Executor):
         parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
         parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', 
             default=os.path.join('.sos', '__step_report.md'))
-        parser.add_argument('-t', dest='__transcript__', nargs='?', const='__STDERR__',
-            metavar='TRANSCRIPT')
         runmode = parser.add_argument_group(title='Run mode options')
         runmode.add_argument('-f', action='store_true', dest='__rerun__')
         runmode.add_argument('-F', action='store_true', dest='__construct__')

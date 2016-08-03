@@ -892,15 +892,8 @@ def natural_keys(text):
 def transcribe(text, action=None):
     if action is not None:
         text = '{}:\n{}'.format(action, '    ' + text.replace('\n', '\n    ') + '\n')
-    if '__transcript__' not in env.sos_dict:
-        raise RuntimeError('Transcript not defined')
-    if env.sos_dict['__transcript__'] is None:
-        return
-    if env.sos_dict['__transcript__'] == '__STDERR__':
-        sys.stderr.write(text)
-    else:
-        with open(env.sos_dict['__transcript__'], 'a') as trans:
-            trans.write(text)
+    with open('.sos/transcript.txt', 'a') as trans:
+        trans.write(text)
 
 def dict_merge(dct, merge_dct):
     """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
