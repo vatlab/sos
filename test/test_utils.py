@@ -229,7 +229,7 @@ class TestUtils(unittest.TestCase):
 
     def testProgressBar(self):
         '''Test progress bar'''
-        env.verbosity = 1
+        env.verbosity = 2
         prog = ProgressBar('test', 100)
         for i in range(100):
             prog.update(i)
@@ -292,8 +292,6 @@ sos_run('sub')
 b
 \nc'''), "r'''a\nb\n\\nc'''")
 
-    def testPreview(self):
-        '''Test previewer'''
 
 if __name__ == '__main__':
     unittest.main()

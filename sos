@@ -86,22 +86,20 @@ if __name__ == '__main__':
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary
             CONF in the SoS script being executed.''')
-    parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
-        const='__STDOUT__', nargs='?',
-        help='''Name of a file that records output from report lines
-            (lines starts with !) and report action of the script. Report
-            will be written to standard output if the option is specified
-            without any value.''')
-    parser.add_argument('-t', dest='__transcript__', nargs='?',
-        metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
+    #parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
+    #    const='__STDOUT__', nargs='?',
+    #    help='''Name of a file that records output from report lines
+    #        (lines starts with !) and report action of the script. Report
+    #        will be written to standard output if the option is specified
+    #        without any value.''')
+    #parser.add_argument('-t', dest='__transcript__', nargs='?',
+    #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
         description='''SoS scripts are by default executed in run mode where all
             the script is run in inspect mode to check syntax error, prepare mode
             to prepare resources, and run mode to execute the pipelines. Run mode
             options allow you to check the script or download resources without
             actually running the workflow.''')
-    runmode.add_argument('-d', action='store_true', dest='__debug_mode__',
-        help=argparse.SUPPRESS)
     runmode.add_argument('-i', action='store_true', dest='__inspect__',
         help='''Execute the workflow in inspect mode in which step processes
             are executed normally but with most SoS actions return directly.
@@ -135,8 +133,6 @@ if __name__ == '__main__':
         help=workflow_spec)
     #parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
-    #parser.add_argument('options', metavar='WORKFLOW_OPTIONS',
-    #    nargs=argparse.REMAINDER, help=workflow_options)
     parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE',
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary
@@ -173,8 +169,6 @@ if __name__ == '__main__':
             exist.''')
     #parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
-    #parser.add_argument('options', metavar='WORKFLOW_OPTIONS',
-    #    nargs=argparse.REMAINDER, help=workflow_options)
     addCommonArgs(parser)
     parser.set_defaults(func=sos_prepare)
     #

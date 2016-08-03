@@ -82,7 +82,7 @@ class StepInfo(object):
     def __repr__(self):
         return '{' + ', '.join('{}: {!r}'.format(x,y) for x,y in self.__dict__.items()) + '}'
 
-def execute_task(task, global_def, sos_dict, sigil, signature, workdir):
+def execute_task(task, global_def, sos_dict, sigil, workdir):
     '''A function that execute specified task within a local dictionary 
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
@@ -243,18 +243,18 @@ class Base_Step_Executor:
             #
             _tmp_vars = copy.deepcopy(_vars)
             _vars.clear()
-                for vidx in range(loop_size):
-                    for idx in range(len(_tmp_vars)):
-                        for fe in fe_all.split(','):
-                            if '.' in fe:
-                                if fe.split('.')[0] not in env.sos_dict:
-                                    raise ValueError('Variable {} does not exist.'.format(fe))
-                                _tmp_vars[idx]['_' + fe.split('.')[0]] = getattr(env.sos_dict[fe.split('.')[0]], fe.split('.', 1)[-1])[vidx]
-                            else:
-                                if fe not in env.sos_dict:
-                                    raise ValueError('Variable {} does not exist.'.format(fe))
-                                _tmp_vars[idx]['_' + fe] = env.sos_dict[fe][vidx]
-                    _vars.extend(copy.deepcopy(_tmp_vars))
+            for vidx in range(loop_size):
+                for idx in range(len(_tmp_vars)):
+                    for fe in fe_all.split(','):
+                        if '.' in fe:
+                            if fe.split('.')[0] not in env.sos_dict:
+                                raise ValueError('Variable {} does not exist.'.format(fe))
+                            _tmp_vars[idx]['_' + fe.split('.')[0]] = getattr(env.sos_dict[fe.split('.')[0]], fe.split('.', 1)[-1])[vidx]
+                        else:
+                            if fe not in env.sos_dict:
+                                raise ValueError('Variable {} does not exist.'.format(fe))
+                            _tmp_vars[idx]['_' + fe] = env.sos_dict[fe][vidx]
+                _vars.extend(copy.deepcopy(_tmp_vars))
 
     # directive input
     def process_input_args(self, ifiles, **kwargs):
@@ -510,14 +510,21 @@ class Base_Step_Executor:
             self._vars = [{}]
             # assuming everything starts from 0 is after input
             input_statement_idx = 0
+            #
+            if '__step_output__' in env.sos_dict and env.sos_dict['__step_output__'] is not None:
+                env.sos_dict.set('__step_input__', copy.deepcopy(env.sos_dict['__step_output__']))
+            else:
+                env.sos_dict.set('__step_input__', None)
 
         env.sos_dict.set('input', env.sos_dict['__step_input__'])
         self.log('input')
         
+        self.runtime_options = {}
         concurrent = env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in self.runtime_options \
             and self.runtime_options['concurrent']
         if concurrent:
             pool = mp.Pool(min(env.max_jobs, len(self._groups)))
+        proc_results = []
         # run steps after input statement, which will be run multiple times for each input 
         # group.
         env.sos_dict.set('__num_groups__', len(self._groups))
@@ -526,9 +533,6 @@ class Base_Step_Executor:
             env.sos_dict.update(v)
             env.sos_dict.set('_input', g)
             env.sos_dict.set('_index', idx)
-            for key in ('_output', '_depends'):
-                if key in env.sos_dict:
-                    env.sos_dict.pop(key)
             for statement in self.step.statements[input_statement_idx:]:
                 if statement[0] == '=':
                     key, value = statement[1:]
@@ -596,36 +600,25 @@ class Base_Step_Executor:
                     except Exception as e:
                         raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
             #
-            if '_output' in env.sos_dict:
-                self._outputs.append(env.sos_dict['_output'])
-            else:
-                self._outputs.append(None)
-            if '_depends' in env.sos_dict:
-                self._depends.append(env.sos_dict['_depends'])
-            else:
-                self._depends.append([])
-            #
             env.logger.trace('Executing step process')
             try:
                 if concurrent:
                     proc_results.append(pool.apply_async(
-                        execute_step_process,   # function
+                        execute_task,   # function
                         (self.step.task,          # process
                         self.step.global_def,    # global process
                         env.sos_dict.clone_pickleable(),
                         self.step.sigil,
-                        partial_signature,
                         self.runtime_options['workdir'] if 'workdir' in self.runtime_options else os.getcwd())))
                 else:
                     # execute in existing process
                     proc_results.append(
-                        execute_step_process(   # function
+                        execute_task(   # function
                         self.step.task,           # process
                         '',                     # local execusion, no need to re-run global
                         # do not clone dict
                         env.sos_dict,
                         self.step.sigil,
-                        partial_signature,
                         self.runtime_options['workdir'] if 'workdir' in self.runtime_options else os.getcwd()))
             except Exception as e:
                 # FIXME: cannot catch exception from subprocesses
@@ -654,7 +647,7 @@ class Base_Step_Executor:
             if not all(x['succ']==0 for x in proc_results):
                 raise RuntimeError('Step process returns non-zero value')
             for idx, res in enumerate(proc_results):
-                if self._outputs[idx] and isinstance(self._outputs[idx][0], Undetermined):
+                if self._outputs[idx]: # and isinstance(self._outputs[idx][0], Undetermined):
                     env.logger.trace('Setting _output[{}] from proc output {}'.format(idx, short_repr(res['output'])))
                     self._outputs[idx] = res['output']
         #
@@ -672,37 +665,6 @@ class Base_Step_Executor:
             # truncate the file
             with open(env.sos_dict['__step_report__'], 'w'):
                 pass
-
-
-
-class Queued_Step_Executor(Base_Step_Executor):
-    # this class execute the step in a separate process
-    # and returns result using a queue
-    def __init__(self, step, queue, DAG):
-        Base_Step_Executor.__init__(self, step)
-        self.queue = queue
-        self.DAG = DAG
-
-    def run(self):
-        try:
-            res = self.run(DAG)
-            # shared variables will be sent from subprocess to the master
-            for key in env.shared_vars:
-                if key in env.sos_dict and key not in res:
-                    res[key] = env.sos_dict[key]
-            res['__dag__'] = DAG
-            # in run mode, these variables must be valid (not Undetermined)
-            if env.run_mode == 'run':
-                for key in ('__step_input__', '__step_output__', '__step_depends__'):
-                    if res[key] is not None and not isinstance(res[key], list):
-                        raise RuntimeError('Step input, output or depends has to be None or a list of filenames')
-                    if res[key] is not None:
-                        for v in res[key]:
-                            if isinstance(v, Undetermined):
-                                raise RuntimeError('Step input, output, or depends cannot be undetermined in run mode')
-            queue.put(res)
-        except Exception as e:
-            queue.put(e)
 
     def collectResult(self, public_vars):
         # only results will be sent back to the master process
@@ -736,13 +698,29 @@ class Queued_Step_Executor(Base_Step_Executor):
             result[self.step.options['alias']] = copy.deepcopy(step_info)
         return result
 
-
-
-
-class Inspect_Step_Executor(Base_Step_Executor):
+class Queued_Step_Executor(Base_Step_Executor):
+    # this class execute the step in a separate process
+    # and returns result using a queue
     def __init__(self, step, queue):
         Base_Step_Executor.__init__(self, step)
         self.queue = queue
+
+    def run(self):
+        try:
+            res = Base_Step_Executor.run(self)
+            # shared variables will be sent from subprocess to the master
+            for key in env.shared_vars:
+                if key in env.sos_dict and key not in res:
+                    res[key] = env.sos_dict[key]
+            self.queue.put(res)
+        except Exception as e:
+            if env.verbosity > 2:
+                sys.stderr.write(get_traceback())
+            self.queue.put(e)
+
+class Inspect_Step_Executor(Queued_Step_Executor):
+    def __init__(self, step, queue):
+        Queued_Step_Executor.__init__(self, step, queue)
 
     def expand_input_files(self, *args, **kwargs):
         if 'dynamic' in kwargs:
@@ -789,10 +767,10 @@ class Inspect_Step_Executor(Base_Step_Executor):
             env.logger.trace('Inspecting ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
         
 
-class Prepare_Step_Executor(Base_Step_Executor):
-    def __init__(self, step):
+class Prepare_Step_Executor(Queued_Step_Executor):
+    def __init__(self, step, queue):
         env.run_mode = 'prepare'
-        Base_Step_Executor.__init__(self, step)
+        Queued_Step_Executor.__init__(self, step, queue)
 
     def expand_input_files(self, *args, **kwargs):
         # this function is identical to expand_input_file for Inspect_Step_Executor
@@ -839,10 +817,10 @@ class Prepare_Step_Executor(Base_Step_Executor):
         if stage == 'start':
             env.logger.trace('Preparing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
 
-class Run_Step_Executor(Base_Step_Executor):
-    def __init__(self, step):
+class Run_Step_Executor(Queued_Step_Executor):
+    def __init__(self, step, queue):
         env.run_mode = 'run'
-        Base_Step_Executor.__init__(self, step)
+        Queued_Step_Executor.__init__(self, step, queue)
 
     def log(self, stage=None, msg=None):
         if stage == 'start':

@@ -72,24 +72,27 @@ class ExecuteError(Error):
 class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
-    def __init__(self, workflow, args=[], config_file=None, new_dict=True):
+    def __init__(self, workflow=None, args=[], config_file=None, new_dict=True):
         self.workflow = workflow
 
         # if creating a new dictionary, set it up with some basic varibles
         # and functions
         if new_dict:
             env.sos_dict = WorkflowDict()
+
+        # inject a few things
+        env.sos_dict.set('__null_func__', __null_func__)
+        env.sos_dict.set('__args__', args)
+        env.sos_dict.set('__unknown_args__', args)
+        # initial values
+        env.sos_dict.set('SOS_VERSION', __version__)
+        env.sos_dict.set('__step_output__', [])
+        SoS_exec('import os, sys, glob')
+        SoS_exec('from pysos import *')
+
+        if self.workflow:
             env.sos_dict['__execute_errors__'] = ExecuteError(self.workflow.name)
-            # inject a few things
-            env.sos_dict.set('__null_func__', __null_func__)
-            env.sos_dict.set('__args__', args)
-            env.sos_dict.set('__unknown_args__', args)
-            # initial values
-            env.sos_dict.set('SOS_VERSION', __version__)
             env.sos_dict.set('SOS_SCRIPT', self.workflow.sections[0].context.filename)
-            env.sos_dict.set('__step_output__', [])
-            SoS_exec('import os, sys, glob')
-            SoS_exec('from pysos import *')
 
         # load configuration files
         cfg = {}
@@ -263,7 +266,7 @@ class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
     def __init__(self):
         # we actually do not have our own workflow, everything is passed from ipython
-        Base_Executor.__init__(self, None, None, None, False)
+        Base_Executor.__init__(self, new_dict=False)
 
     def parse_command_line(self, command_line):
         parser = argparse.ArgumentParser()
@@ -324,33 +327,26 @@ class Interactive_Executor(Base_Executor):
             if os.path.isfile(args.__report__):
                 os.remove(args.__report__)
 
-            return self.execute_workflow(args=[], config_file=args.__config__)
+            # this is the result returned by the workflow, if the
+            # last stement is an expression.
+            last_res = None
+            #
+            for idx, section in enumerate(self.workflow.sections):
+                if 'skip' in section.options:
+                    val_skip = section.options['skip']
+                    if val_skip is None or val_skip is True:
+                        continue
+                    elif val_skip is not False:
+                        raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
+                #
+                last_res = Interactive_Step_Executor(section).run_interactive()
+                # if the step is failed
+                if isinstance(last_res, Exception):
+                    raise RuntimeError(last_res)
+            return last_res
         finally:
             env.verbosity = 1
             env.sig_mode = 'default'
-
-    def execute_workflow(self, args=[], config_file=None):
-        '''Execute a workflow with specified command line args. '''
-        #
-        # process step of the pipelinp
-        self.setup(args, False, config_file)
-        # this is the result returned by the workflow, if the
-        # last stement is an expression.
-        last_res = None
-        #
-        for idx, section in enumerate(self.workflow.sections):
-            if 'skip' in section.options:
-                val_skip = section.options['skip']
-                if val_skip is None or val_skip is True:
-                    continue
-                elif val_skip is not False:
-                    raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
-            #
-            last_res = Step_Executor(section).run_interactive()
-            # if the step is failed
-            if isinstance(last_res, Exception):
-                raise RuntimeError(last_res)
-        return last_res
 
 
 
