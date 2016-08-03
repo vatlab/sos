@@ -110,7 +110,7 @@ var = 1
 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run(args=['--skip', '0'])
+        Sequential_Executor(wf, args=['--skip', '0']).run()
         self.assertEqual(env.sos_dict['b'].var, 1)
         #
         Sequential_Executor(wf).run(args=['--skip', '1'])
@@ -1120,4 +1120,6 @@ assert(len(output), 3)
         Sequential_Executor(wf).run(run_mode='inspect')
 
 if __name__ == '__main__':
+    #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
+    #unittest.TextTestRunner().run(suite)
     unittest.main()

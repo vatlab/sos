@@ -89,9 +89,9 @@ class Base_Executor:
         env.sos_dict.set('__step_output__', [])
         SoS_exec('import os, sys, glob')
         SoS_exec('from pysos import *')
+        env.sos_dict['__execute_errors__'] = ExecuteError('' if self.workflow is None else self.workflow.name)
 
         if self.workflow:
-            env.sos_dict['__execute_errors__'] = ExecuteError(self.workflow.name)
             env.sos_dict.set('SOS_SCRIPT', self.workflow.sections[0].context.filename)
 
         # load configuration files
@@ -150,7 +150,7 @@ class Base_Executor:
                 raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
         return False
 
-    def inspect(self, nested=False):
+    def inspect(self):
         '''Run the script in inspect mode to check for errors.'''
         env.run_mode = 'inspect'
         # passing run_mode to SoS dict so that users can execute blocks of
@@ -176,13 +176,12 @@ class Base_Executor:
             for k, v in res.items():
                 env.sos_dict.set(k, v)
         # at the end
-        if not nested:
-            exception = env.sos_dict['__execute_errors__']
-            if exception.errors:
-                # if there is any error, raise it
-                raise exception
+        exception = env.sos_dict['__execute_errors__']
+        if exception.errors:
+            # if there is any error, raise it
+            raise exception
 
-    def prepare(self, nested=False):
+    def prepare(self):
         '''Run the script in prepare mode to prepare resources.'''
         env.run_mode = 'prepare'
         # passing run_mode to SoS dict so that users can execute blocks of
@@ -210,23 +209,20 @@ class Base_Executor:
             #
             for k, v in res.items():
                 env.sos_dict.set(k, v)
-            prog.progress(1)
-        prog.done()
         # at the end
-        if not nested and env.run_mode != 'run':
-            exception = env.sos_dict['__execute_errors__']
-            if exception.errors:
-                # if there is any error, raise it
-                raise exception
+        exception = env.sos_dict['__execute_errors__']
+        if exception.errors:
+            # if there is any error, raise it
+            raise exception
 
 
 class Sequential_Executor(Base_Executor):
     #
     # Execute a workflow sequentially in batch mode
-    def __init__(self, workflow, args=[], config_file=None):
-        Base_Executor.__init__(self, workflow, args, config_file, new_dict=True)
+    def __init__(self, workflow, args=[], config_file=None, nested=False):
+        Base_Executor.__init__(self, workflow, args, config_file, new_dict=not nested)
 
-    def run(self, nested=False):
+    def run(self):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -255,11 +251,10 @@ class Sequential_Executor(Base_Executor):
             prog.progress(1)
         prog.done()
         # at the end
-        if not nested and env.run_mode != 'run':
-            exception = env.sos_dict['__execute_errors__']
-            if exception.errors:
-                # if there is any error, raise it
-                raise exception
+        exception = env.sos_dict['__execute_errors__']
+        if exception.errors:
+            # if there is any error, raise it
+            raise exception
 
 
 class Interactive_Executor(Base_Executor):

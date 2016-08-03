@@ -38,14 +38,14 @@ from pygments.util import shebang_matches
 
 import nbformat
 from nbformat.v4 import new_code_cell, new_markdown_cell, new_notebook
+from nbconvert.exporters import Exporter
 
 from .utils import env, pretty_size
 from .actions import get_actions
-from .kernel import SoS_Exporter
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_DEPENDS_OPTIONS, \
     SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS, SOS_SECTION_HEADER
 
-__all__ = ['SoS_Lexer']
+__all__ = ['SoS_Lexer', 'SoS_Exporter']
 
 #
 # subcommmand show
@@ -884,6 +884,70 @@ def parse_convert_args(convert_args):
         raise RuntimeError('Unrecognized style argument {}: {}'
             .format(' '.join(convert_args), e))
     return args
+
+
+# This class cannot be defined in .kernel because it would cause some 
+# weird problem with unittesting not able to resolve __main__
+class SoS_Exporter(Exporter):
+    def __init__(self, config=None, reorder=False, reset_index=False, add_header=False,
+            no_index=False, remove_magic=False, md_to_report=False,
+            **kwargs):
+        self.reorder = reorder
+        self.reset_index = reset_index
+        self.add_header = add_header
+        self.no_index = no_index
+        self.remove_magic = remove_magic
+        self.md_to_report = md_to_report
+        self.output_extension = '.sos'
+        self.output_mimetype = 'text/x-sos'
+        Exporter.__init__(self, config, **kwargs)
+
+    def from_notebook_cell(self, cell, fh, idx = 0):
+        if not hasattr(cell, 'execution_count') or cell.execution_count is None or self.no_index:
+            fh.write('\n#%% {}\n'.format(cell.cell_type))
+        else:
+            idx += 1
+            fh.write('\n#%% {} {}\n'.format(cell.cell_type,
+                                              idx if self.reset_index else cell.execution_count))
+        if cell.cell_type == 'code':
+            if any(cell.source.startswith(x) for x in ('%run', '%restart', '%dict', '%use', '%with', '%set', '%paste')):
+                if self.remove_magic:
+                    cell.source = '\n'.join(cell.source.split('\n')[1:])
+                else:
+                    env.logger.warning('SoS magic "{}" has to remove them before executing the script with sos command.'.format(cell.source.split('\n')[0]))
+            if self.add_header and not any([SOS_SECTION_HEADER.match(x) for x in cell.source.split('\n')]):
+                cell.source = '[{}]\n'.format(idx if self.reset_index else cell.execution_count) + cell.source
+            fh.write(cell.source.strip() + '\n')
+        elif cell.cell_type == "markdown":
+            fh.write('\n'.join('#! ' + x for x in cell.source.split('\n') if x.strip()) + '\n')
+        return idx
+
+    def from_notebook_node(self, nb, resources, **kwargs):
+        #
+        if self.reorder:
+            unnumbered_cells = {x: y for x, y in enumerate(nb.cells)
+                              if not hasattr(y, 'execution_count') or y.execution_count is None}
+            numbered_cells = [y for y in nb.cells
+                              if hasattr(y, 'execution_count') and y.execution_count is not None]
+            numbered_cells = sorted(numbered_cells, key = lambda x: x.execution_count)
+            cells = []
+            for idx in range(len(nb.cells)):
+                if idx in unnumbered_cells:
+                    cells.append(unnumbered_cells[idx])
+                else:
+                    cells.append(numbered_cells.pop(0))
+        else:
+            cells = nb.cells
+        with StringIO() as fh:
+            fh.write('#!/usr/bin/env sos-runner\n')
+            fh.write('#fileformat=SOSNB1.0\n')
+            idx = 0
+            for cell in cells:
+                idx = self.from_notebook_cell(cell, fh, idx)
+            content = fh.getvalue()
+        resources['output_extension'] = '.sos'
+        return content, resources
+
 
 def notebook_to_script(notebook_file, sos_file, convert_args=[]):
     '''

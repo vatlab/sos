@@ -30,7 +30,6 @@ from pysos.sos_script import SoS_Script, ParsingError
 from pysos.converter import script_to_html, script_to_markdown, script_to_term, script_to_notebook, \
     workflow_to_html, workflow_to_markdown, workflow_to_term, workflow_to_notebook, notebook_to_script
 
-
 class TestConvert(unittest.TestCase):
     def setUp(self):
         env.reset()
@@ -107,5 +106,7 @@ report('this is action report')
             workflow_to_notebook(wf, script_file, script_file + '.ipynb')
 
 if __name__ == '__main__':
+    #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestConvert)
+    #unittest.TextTestRunner().run(suite)
     unittest.main()
 

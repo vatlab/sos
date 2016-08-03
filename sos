@@ -24,7 +24,7 @@ import sys
 import argparse
 
 from pysos._version import SOS_FULL_VERSION
-from pysos.main import sos_run, sos_inspect, sos_prepare, sos_convert, sos_config
+from pysos.main import cmd_run, cmd_inspect, cmd_prepare, cmd_convert, cmd_config
 
 def addCommonArgs(parser):
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
@@ -116,7 +116,7 @@ if __name__ == '__main__':
             output files and recontruct runtime signatures if output files
             exist.''')
     addCommonArgs(parser)
-    parser.set_defaults(func=sos_run)
+    parser.set_defaults(func=cmd_run)
     #
     # command inspect
     parser = subparsers.add_parser('inspect',
@@ -138,7 +138,7 @@ if __name__ == '__main__':
             of the configuration file will be available as a dictionary
             CONF in the SoS script being executed.''')
     addCommonArgs(parser)
-    parser.set_defaults(func=sos_inspect)
+    parser.set_defaults(func=cmd_inspect)
     #
     # command prepare
     parser = subparsers.add_parser('prepare',
@@ -170,7 +170,7 @@ if __name__ == '__main__':
     #parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     addCommonArgs(parser)
-    parser.set_defaults(func=sos_prepare)
+    parser.set_defaults(func=cmd_prepare)
     #
     # command show
     #
@@ -221,7 +221,7 @@ if __name__ == '__main__':
             (remove cell magic), and --md-to-report (convert markdown cell to
             code cell with report.)''')
     addCommonArgs(parser)
-    parser.set_defaults(func=sos_convert)
+    parser.set_defaults(func=cmd_convert)
     #
     # command config
     #
@@ -253,7 +253,7 @@ if __name__ == '__main__':
         'A.B=v' can be used to add {'B': v} to dictionary 'A', and --set KEY VALUE1 VALUE2 ...
         will create a list with multiple values.''')
     addCommonArgs(parser)
-    parser.set_defaults(func=sos_config)
+    parser.set_defaults(func=cmd_config)
     #
     if len(sys.argv) == 1:
         master_parser.print_help()

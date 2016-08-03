@@ -38,7 +38,7 @@ from .sos_syntax import CONFIG_NAME
 #
 # subcommand convert
 #
-def sos_convert(args, style_args):
+def cmd_convert(args, style_args):
     env.verbosity = args.verbosity
     # convert from ...
     try:
@@ -104,7 +104,7 @@ def sos_convert(args, style_args):
 #
 # subcommand inspect
 #
-def sos_inspect(args, workflow_args):
+def cmd_inspect(args, workflow_args):
     env.verbosity = args.verbosity
     try:
         script = SoS_Script(filename=args.script)
@@ -120,7 +120,7 @@ def sos_inspect(args, workflow_args):
 #
 # subcommand prepare
 #
-def sos_prepare(args, workflow_args):
+def cmd_prepare(args, workflow_args):
     env.verbosity = args.verbosity
 
     if args.__rerun__:
@@ -145,10 +145,10 @@ def sos_prepare(args, workflow_args):
 #
 # subcommand run
 #
-def sos_run(args, workflow_args):
-    if run_mode == 'inspect':
+def cmd_run(args, workflow_args):
+    if args.__inspect__:
         return sos_inspect(args, workflow_args)
-    elif run_mode == 'prepare':
+    elif args.__prepare__:
         return sos_prepare(args, workflow_args)
     #
     env.max_jobs = args.__max_jobs__
@@ -179,7 +179,7 @@ def sos_run(args, workflow_args):
 #
 # subcommand config
 #
-def sos_config(args, workflow_args):
+def cmd_config(args, workflow_args):
     if workflow_args:
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
     #

@@ -123,8 +123,7 @@ class Base_Step_Executor:
     # because it may behave differently in different modes.
     #
     def expand_input_files(self, *args, **kwargs):
-        '''Process input files (perhaps a pattern) to determine input
-        files.
+        '''Process input files (perhaps a pattern) to determine input files.
 
         ret: 
             Return a file list or Undertermined.
@@ -398,8 +397,6 @@ class Base_Step_Executor:
                 raise RuntimeError('Unrecognized runtime option {}={}'.format(k, v))
         env.sos_dict.set('_runtime', kwargs)
 
-
-
     def get_step_signature(self):
         '''returns a signature of the step. Change of the step content will
         lead to the invalidation of the signature, which will then cause the
@@ -443,6 +440,8 @@ class Base_Step_Executor:
         # * step_name:  name of the step, can be used by step process to determine 
         #               actions dynamically.
         env.sos_dict.set('step_name', '{}_{}'.format(self.step.name, self.step.index))
+        # used by nested workflow
+        env.sos_dict.set('__step_context__', self.step.context)
 
         # * input:      input files, which should be __step_output__ if it is defined, or
         #               None otherwise. 
@@ -536,7 +535,6 @@ class Base_Step_Executor:
             for statement in self.step.statements[input_statement_idx:]:
                 if statement[0] == '=':
                     key, value = statement[1:]
-                    public_vars.add(key)
                     try:
                         env.sos_dict[key] = SoS_eval(value, self.step.sigil)
                     except Exception as e:
@@ -600,12 +598,14 @@ class Base_Step_Executor:
                     except Exception as e:
                         raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
             #
+            if not self.step.task:
+                continue
             env.logger.trace('Executing step process')
             try:
                 if concurrent:
                     proc_results.append(pool.apply_async(
                         execute_task,   # function
-                        (self.step.task,          # process
+                        (self.step.task,         # process
                         self.step.global_def,    # global process
                         env.sos_dict.clone_pickleable(),
                         self.step.sigil,
@@ -655,7 +655,7 @@ class Base_Step_Executor:
             # finally, write results back to the master process
             pool.close()
             pool.join()
-        return self.collectResult(public_vars)
+        return self.collectResult()
 
 
     def prepare_report(self):
@@ -666,7 +666,7 @@ class Base_Step_Executor:
             with open(env.sos_dict['__step_report__'], 'w'):
                 pass
 
-    def collectResult(self, public_vars):
+    def collectResult(self):
         # only results will be sent back to the master process
         #
         # __step_input__:    input of this step
@@ -686,15 +686,14 @@ class Base_Step_Executor:
             step_info.set('output', env.sos_dict['output'])
             step_info.set('depends', env.sos_dict['depends'])
             # the step might be skipped
-            for var in public_vars:
+            #for var in public_vars:
                 # there is a slight possibility that var is deleted
-                if var in env.sos_dict and pickleable(env.sos_dict[var]):
-                    step_info.set(var, env.sos_dict[var])
+            #    if var in env.sos_dict and pickleable(env.sos_dict[var]):
+            #        step_info.set(var, env.sos_dict[var])
             #
             if isinstance(self.step.options['alias'], Undetermined):
                 # it is time to evalulate this expression now
                 self.step.options['alias'] = self.step.options['alias'].value(self.step.sigil)
-            transcribe('{} = {}'.format(self.step.options['alias'], step_info))
             result[self.step.options['alias']] = copy.deepcopy(step_info)
         return result
 

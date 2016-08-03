@@ -495,14 +495,6 @@ def sos_run(workflow, source={}):
     extra sos files can be specified from paramter source. The workflow
     will be execute in the current step namespace with _input as workflow
     input. '''
-    if env.run_mode == 'inspect':
-        env.logger.debug('Checking nested workflow {}'.format(workflow))
-    elif env.run_mode == 'prepare':
-        env.logger.debug('Preparing nested workflow {}'.format(workflow))
-    elif env.run_mode == 'run':
-        env.logger.info('Executing nested workflow {}'.format(workflow))
-    elif env.run_mode == 'interactive':
-        raise RuntimeError('Action sos_run is not supported in interactive mode')
     script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
     wf = script.workflow(workflow, source=source)
     # if wf contains the current step or one of the previous one, this constitute
@@ -511,8 +503,17 @@ def sos_run(workflow, source={}):
         raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
     # for nested workflow, _input would becomes the input of workflow.
     env.sos_dict.set('__step_output__', env.sos_dict['_input'])
-    return Sequential_Executor(wf, transcript=env.sos_dict['__transcript__']).run(args=env.sos_dict['__args__'], nested=True,
-        run_mode=env.run_mode, sig_mode=env.sig_mode, verbosity=env.verbosity)
+    if env.run_mode == 'inspect':
+        env.logger.debug('Checking nested workflow {}'.format(workflow))
+        return Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).inspect()
+    elif env.run_mode == 'prepare':
+        env.logger.debug('Preparing nested workflow {}'.format(workflow))
+        return Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
+    elif env.run_mode == 'run':
+        env.logger.info('Executing nested workflow {}'.format(workflow))
+        return Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).run()
+    elif env.run_mode == 'interactive':
+        raise RuntimeError('Action sos_run is not supported in interactive mode')
 
 @SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
 def execute_script(script, interpreter, suffix, **kwargs):

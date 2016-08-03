@@ -349,11 +349,11 @@ def SoS_exec(stmts, sigil='${ }'):
         if not stmts.strip():
             continue
         if env.run_mode == 'inspect':
-            env.logger.trace('Checking\n{}'.format(stmts))
+            env.logger.trace('Checking statement:\n{}'.format(stmts))
         elif env.run_mode == 'prepare':
-            env.logger.trace('Preparing\n{}'.format(stmts))
+            env.logger.trace('Preparing statement:\n{}'.format(stmts))
         else:
-            env.logger.trace('Executing\n{}'.format(stmts))
+            env.logger.trace('Executing statement:\n{}'.format(stmts))
         #
         try:
             if env.run_mode == 'interactive':
