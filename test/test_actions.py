@@ -122,7 +122,7 @@ ret = get_output('cat -h')
 """)
         wf = script.workflow()
         # this should give a warning and return false
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).run)
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).inspect)
         #
         # check get_output if the command is stuck
         script = SoS_Script(r"""
@@ -603,7 +603,7 @@ check_R_library('stephens999/ashr')
 check_R_library('edgeRRRR')
 ''')
         wf = script.workflow()
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).prepare)
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerBuild(self):
@@ -702,7 +702,7 @@ download: dest_dir='tmp'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        Sequential_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq.ann'))
         #
    
@@ -717,13 +717,13 @@ download: dest_dir='tmp', decompress=True
 ''')
         start = time.time()
         wf = script.workflow()
-        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).run)
+        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).prepare)
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq-hg18_20100817.DB'))
         self.assertGreater(time.time() - start, 5)
         # this will be fast
         start = time.time()
         wf = script.workflow()
-        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).run)
+        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).prepare)
         self.assertLess(time.time() - start, 3)
         # 
         # test decompress tar.gz file
@@ -735,7 +735,7 @@ download: dest_dir='tmp', decompress=True
     ${GATK_URL}/1000G_omni2.5.hg19.sites.vcf.idx.gz.md5
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        Sequential_Executor(wf).prepare()
         #
         shutil.rmtree('tmp')
 

@@ -89,9 +89,6 @@ class Base_Executor:
         env.sos_dict.set('__step_output__', [])
         env.sos_dict.set('__execute_errors__', ExecuteError('' if self.workflow is None else self.workflow.name))
 
-        if self.workflow:
-            env.sos_dict.set('SOS_SCRIPT', self.workflow.sections[0].context.filename)
-
         # load configuration files
         cfg = {}
         sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yaml')
