@@ -275,7 +275,8 @@ cp ${_input} ${_dest}
         # only the first step
         wf = script.workflow('default_0')
         start = time.time()
-        Sequential_Executor(wf).run(sig_mode='ignore')
+        env.sig_mode = 'ignore'
+        Sequential_Executor(wf).run()
         self.assertGreater(time.time() - start, 1)
         self.assertTrue(os.path.isfile('temp/a.txt'))
         self.assertTrue(os.path.isfile('temp/b.txt'))
@@ -283,11 +284,13 @@ cp ${_input} ${_dest}
             self.assertTrue(ta.read(), 'a.txt')
         with open('temp/b.txt') as tb:
             self.assertTrue(tb.read(), 'b.txt')
-        Sequential_Executor(wf).run(sig_mode='assert')
+        env.sig_mode = 'assert'
+        Sequential_Executor(wf).run()
         #
         wf = script.workflow()
         start = time.time()
-        Sequential_Executor(wf).run(sig_mode='ignore')
+        env.sig_mode = 'assert'
+        Sequential_Executor(wf).run()
         self.assertGreater(time.time() - start, 1)
         #
         self.assertTrue(os.path.isfile('temp/c.txt'))
@@ -299,16 +302,19 @@ cp ${_input} ${_dest}
         self.assertEqual(env.sos_dict['oa'].output, ['temp/c.txt', 'temp/d.txt'])
         #
         # now in assert mode, the signature should be there
-        Sequential_Executor(wf).run(sig_mode='assert')
+        env.sig_mode = 'assert'
+        Sequential_Executor(wf).run()
         #
         start = time.time()
-        Sequential_Executor(wf).run(sig_mode='default')
+        env.sig_mode = 'default'
+        Sequential_Executor(wf).run()
         self.assertLess(time.time() - start, 1.5)
         #
         # change script a little bit
         script = SoS_Script('# comment\n' + text)
         wf = script.workflow()
-        Sequential_Executor(wf).run(sig_mode='assert')
+        env.sig_mode = 'assert'
+        Sequential_Executor(wf).run()
         # add some other variable?
         #script = SoS_Script('comment = 1\n' + text)
         #wf = script.workflow()
@@ -345,7 +351,8 @@ if run_mode == 'run':
         #
         # force rerun mode
         start = time.time()
-        Sequential_Executor(wf).run(sig_mode='ignore')
+        eng.sig_mode = 'ignore'
+        Sequential_Executor(wf).run()
         # regularly take more than 5 seconds to execute
         self.assertGreater(time.time() - start, 2)
         try:
@@ -641,7 +648,7 @@ a += 1
 
 """)
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Sequential_Executor(wf).inspect()
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).inspect)
 
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''
@@ -813,7 +820,7 @@ shared.d += 1
         wf = script.workflow()
         # I would like to disallow accessing variables defined
         # in other cases.
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect()
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect)
 
     def testSklearnImportFailure(self):
         '''Test problem with Sklean when using Celery/multiprocessing'''
@@ -864,7 +871,7 @@ time.sleep(8)
 ''')
         wf = script.workflow()
         #
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).inspect()
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).inspect)
         #
         # now, if I have a configuration file, the default value can be changed
         if not os.path.isdir(os.path.expanduser('.sos')):
@@ -1202,7 +1209,8 @@ echo ${output} >> temp/out.log
 touch ${output}
         ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run(sig_mode='ignore')
+        env.sig_mode = 'ignore'
+        Sequential_Executor(wf).run()
         with open('temp/out.log') as out:
             self.assertEqual(len(out.read().split()), 25)
         shutil.rmtree('temp')

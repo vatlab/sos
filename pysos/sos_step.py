@@ -225,7 +225,7 @@ class Base_Step_Executor:
                     raise RuntimeError('Pattern defined variable {} is not allowed'.format(k))
                 env.sos_dict[k] = v
             # also make k, v pair with _input
-            Base_Step_Executor.handle_input_paired_with(res.keys(), ifiles, _groups, _vars)
+            Base_Step_Executor.handle_paired_with(res.keys(), ifiles, _groups, _vars)
 
     @staticmethod
     def handle_for_each(for_each, _groups, _vars):
@@ -772,7 +772,6 @@ class Run_Step_Executor(Queued_Step_Executor):
 
     def assign(self, key, value):
         Base_Step_Executor.assign(self, key, value)
-        public_keys[key] = env.sos_dict[key]
         transcribe('{} = {}'.format(key, env.sos_dict[key]))
 
     def expand_input_files(self, *args, **kwargs):

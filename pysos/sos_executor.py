@@ -223,6 +223,10 @@ class Sequential_Executor(Base_Executor):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
+        env.run_mode = 'run'
+        # passing run_mode to SoS dict so that users can execute blocks of
+        # python statements in different run modes.
+        env.sos_dict.set('run_mode', env.run_mode)
         # process step of the pipelinp
         #
         # the steps can be executed in the pool (Not implemented)
