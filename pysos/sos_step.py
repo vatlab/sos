@@ -402,7 +402,7 @@ class Base_Step_Executor:
 
     def execute(self, stmt):
         try:
-            SoS_exec(stmt, self.step.sigil)
+            self.last_res = SoS_exec(stmt, self.step.sigil)
         except Exception as e:
             raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(stmt), e))
 
@@ -439,6 +439,8 @@ class Base_Step_Executor:
         '''Execute a single step and return results. The result for batch mode is the
         input, output etc returned as alias, and for interactive mode is the return value
         of the last expression. '''
+        # return value of the last executed statement
+        self.last_res = None
         #
         self.log('start')
         # 
@@ -538,11 +540,7 @@ class Base_Step_Executor:
             env.sos_dict.set('_index', idx)
             for statement in self.step.statements[input_statement_idx:]:
                 if statement[0] == '=':
-                    key, value = statement[1:]
-                    try:
-                        env.sos_dict[key] = SoS_eval(value, self.step.sigil)
-                    except Exception as e:
-                        raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
+                    self.assign(statement[1], statement[2])
                 elif statement[0] == ':':
                     key, value, _ = statement[1:]
                     # output, depends, and process can be processed multiple times
@@ -586,11 +584,7 @@ class Base_Step_Executor:
                     except Exception as e:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
-                    try:
-                        SoS_exec(statement[1], self.step.sigil)
-                    except Exception as e:
-                        raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
-
+                    self.execute(statement[1])
             # if this index is skipped, go directly to the next one
             if skip_index:
                 skip_index = False
@@ -860,3 +854,6 @@ class Interactive_Step_Executor(Base_Step_Executor):
 
     def log(self, stage=None, msg=None):
         return
+
+    def collectResult(self):
+        return self.last_res

@@ -333,7 +333,7 @@ class Interactive_Executor(Base_Executor):
                     elif val_skip is not False:
                         raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
                 #
-                last_res = Interactive_Step_Executor(section).run_interactive()
+                last_res = Interactive_Step_Executor(section).run()
                 # if the step is failed
                 if isinstance(last_res, Exception):
                     raise RuntimeError(last_res)

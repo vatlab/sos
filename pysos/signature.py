@@ -219,8 +219,11 @@ class RuntimeInfo:
         env.logger.trace('Validating {}'.format(self.proc_info))
         #
         # file not exist?
+        if isinstance(self.output_files, Undetermined):
+            env.logger.trace('Fail because of undetermined output files.')
+            return False
         self.sig_files = self.input_files + self.output_files + self.dependent_files
-        if not all(isinstance(x, Undetermined) or os.path.isfile(x) for x in self.sig_files):
+        if not all(os.path.isfile(x) for x in self.sig_files):
             env.logger.trace('Fail because of missing one of the files {}'.format(', '.join(self.sig_files)))
             return False
         #
