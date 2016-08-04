@@ -90,8 +90,8 @@ def execute_task(task, global_def, sos_dict, sigil):
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
     try:
-        if 'workdir' in sos_dict:
-            os.chdir(os.path.expanduser(sos_dict['workdir']))
+        if '_runtime' in sos_dict and 'workdir' in sos_dict['_runtime']:
+            os.chdir(os.path.expanduser(sos_dict['_runtime']['workdir']))
         env.sos_dict.quick_update(sos_dict)
         SoS_exec('import os, sys, glob')
         SoS_exec('from pysos import *')
@@ -137,13 +137,13 @@ class Base_Step_Executor:
         '''
         raise RuntimeError('Undefined virtual function.')
 
-    def expand_output_files(self, *args, **kwargs):
+    def expand_output_files(self, value, *args, **kwargs):
         '''Process output files (perhaps a pattern) to determine input files.
-
-        ret: 
-            Return a file list or Undertermined.
         '''
-        raise RuntimeError('Undefined virtual function.')
+        if 'dynamic' in kwargs:
+            return Undetermined(value)
+        else:
+            return _expand_file_list(True, *args)
 
     # Nested functions to handle different parameters of input directive
     @staticmethod
@@ -353,10 +353,11 @@ class Base_Step_Executor:
             if k not in SOS_OUTPUT_OPTIONS:
                 raise RuntimeError('Unrecognized output option {}'.format(k))
         # create directory
-        for ofile in ofiles:
-            parent_dir = os.path.split(os.path.expanduser(ofile))[0]
-            if parent_dir and not os.path.isdir(parent_dir):
-                os.makedirs(parent_dir)
+        if not isinstance(ofiles, Undetermined):
+            for ofile in ofiles:
+                parent_dir = os.path.split(os.path.expanduser(ofile))[0]
+                if parent_dir and not os.path.isdir(parent_dir):
+                    os.makedirs(parent_dir)
         # set variables
         env.sos_dict.set('_output', ofiles)
         if env.sos_dict['output'] is None:
@@ -470,10 +471,11 @@ class Base_Step_Executor:
         if '__step_output__' not in env.sos_dict:
             env.sos_dict.set('input', None)
         else:
-            if env.sos_dict['__step_output__'] is not None and not isinstance(env.sos_dict['__step_output__'], list):
-                raise RuntimeError('__step_output__ can only be None or a list of files.')
+            if env.sos_dict['__step_output__'] is not None and not isinstance(env.sos_dict['__step_output__'], (list, Undetermined)):
+                raise RuntimeError('__step_output__ can only be None, Undetermined, or a list of files.')
             env.sos_dict.set('input', copy.deepcopy(env.sos_dict['__step_output__']))
 
+        # input can be Undetermined from undetermined output from last step
         env.sos_dict.set('_input', copy.deepcopy(env.sos_dict['input']))
         env.sos_dict.set('output', None)
         env.sos_dict.set('_output', None)
@@ -706,12 +708,6 @@ class Inspect_Step_Executor(Queued_Step_Executor):
         else:
             return _expand_file_list(True, *args)
 
-    def expand_output_files(self, value, *args, **kwargs):
-        if 'dynamic' in kwargs:
-            return Undetermined(value)
-        else:
-            return _expand_file_list(True, *args)
-
     def log(self, stage, msg=None):
         if stage == 'start':
             env.logger.trace('Inspecting ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
@@ -743,11 +739,6 @@ class Prepare_Step_Executor(Queued_Step_Executor):
             return Undetermined()
         else:
             return _expand_file_list(True, *args)
-
-    def expand_output_files(self, value, *args, **kwargs):
-        if 'dynamic' in kwargs:
-            return Undetermined(value)
-        return _expand_file_list(True, *args)
 
     def log(self, stage=0):
         if stage == 'start':
@@ -782,9 +773,6 @@ class Run_Step_Executor(Queued_Step_Executor):
         else:
             return _expand_file_list(False, *args)
 
-    def expand_output_files(self, value, *args, **kwargs):
-        return _expand_file_list(True, *args)
-
     def expand_depends_files(self, *args, **kwargs):
         '''handle directive depends'''
         return _expand_file_list(True, *args)
@@ -794,7 +782,7 @@ class Run_Step_Executor(Queued_Step_Executor):
             # re-process the output statement to determine output files
             args, kwargs = SoS_eval('__null_func__({})'.format(env.sos_dict['output'].expr), self.step.sigil)
             kwargs.pop('dynamic', None)
-            env.sos_dict.set('output', self.expand_output_files(value, *args, **kwargs))
+            env.sos_dict.set('output', self.expand_output_files('', *args, **kwargs))
 
 
 class Interactive_Step_Executor(Base_Step_Executor):

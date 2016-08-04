@@ -129,8 +129,6 @@ output: add_a(['${x}_${y}_process.txt' for x,y in zip(name, model)])
         wf = script.workflow()
         Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['SOS_VERSION'], __version__)
-        # not from a file
-        self.assertEqual(env.sos_dict['SOS_SCRIPT'], None)
 
     def testFuncDef(self):
         '''Test defintion of function that can be used by other steps'''
@@ -161,205 +159,6 @@ sos_run('mse')
         #
         # Names defined in subworkflow is not returned to the master dict
         self.assertTrue('test' not in env.sos_dict)
-
-    def testSignature(self):
-        self._testSignature(r"""
-import time
-[*_0]
-output: 'temp/a.txt', 'temp/b.txt'
-task:
-if run_mode == 'run':
-   time.sleep(1)
-   run('''echo "a.txt" > 'temp/a.txt' ''')
-   run('''echo "b.txt" > 'temp/b.txt' ''')
-
-[1: alias='oa']
-dest = ['temp/c.txt', 'temp/d.txt']
-input: group_by='single', paired_with='dest'
-output: _dest
-
-task:
-if run_mode == 'run':
-    time.sleep(0.5)
-    run(''' cp ${_input} ${_dest} ''')
-""")
-        #
-        env.max_jobs = 4
-        self._testSignature(r"""
-import time
-[*_0]
-output: 'temp/a.txt', 'temp/b.txt'
-
-task:
-if run_mode == 'run':
-    time.sleep(1)
-    run('''echo "a.txt" > 'temp/a.txt' ''')
-    run('''echo "b.txt" > 'temp/b.txt' ''')
-
-[1: alias='oa']
-dest = ['temp/c.txt', 'temp/d.txt']
-input: group_by='single', paired_with='dest'
-output: _dest
-
-task:
-if run_mode == 'run':
-   time.sleep(0.5)
-   run(''' cp ${_input} ${_dest} ''')
-""")
-        # script format
-        env.max_jobs = 4
-        self._testSignature(r"""
-import time
-[*_0]
-output: 'temp/a.txt', 'temp/b.txt'
-
-run:
-sleep 1
-echo "a.txt" > 'temp/a.txt'
-
-run:
-
-echo "b.txt" > 'temp/b.txt'
-
-[1: alias='oa']
-dest = ['temp/c.txt', 'temp/d.txt']
-input: group_by='single', paired_with='dest'
-output: _dest
-
-task:
-if run_mode == 'run':
-    time.sleep(0.5)
-run:
-cp ${_input} ${_dest}
-""")
-        # reset env mode
-        env.sig_mode = 'default'
-        shutil.rmtree('temp')
-
-
-    def testSignatureWithoutOutput(self):
-        # signature without output file
-        self._testSignature(r"""
-import time
-[*_0]
-output: []
-
-run:
-sleep 1
-[ -d temp ] || mkdir temp
-echo "a.txt" > 'temp/a.txt'
-
-run:
-
-echo "b.txt" > 'temp/b.txt'
-
-[1: alias='oa']
-dest = ['temp/c.txt', 'temp/d.txt']
-input: 'temp/a.txt', 'temp/b.txt', group_by='single', paired_with='dest'
-output: _dest
-
-run:
-sleep 0.5
-cp ${_input} ${_dest}
-""")
-        # reset env mode
-        env.sig_mode = 'default'
-        shutil.rmtree('temp')
-
-
-
-    def _testSignature(self, text):
-        '''Test recognizing the format of SoS script'''
-        script = SoS_Script(text)
-        #
-        # only the first step
-        wf = script.workflow('default_0')
-        start = time.time()
-        env.sig_mode = 'ignore'
-        Sequential_Executor(wf).run()
-        self.assertGreater(time.time() - start, 1)
-        self.assertTrue(os.path.isfile('temp/a.txt'))
-        self.assertTrue(os.path.isfile('temp/b.txt'))
-        with open('temp/a.txt') as ta:
-            self.assertTrue(ta.read(), 'a.txt')
-        with open('temp/b.txt') as tb:
-            self.assertTrue(tb.read(), 'b.txt')
-        env.sig_mode = 'assert'
-        Sequential_Executor(wf).run()
-        #
-        wf = script.workflow()
-        start = time.time()
-        env.sig_mode = 'assert'
-        Sequential_Executor(wf).run()
-        self.assertGreater(time.time() - start, 1)
-        #
-        self.assertTrue(os.path.isfile('temp/c.txt'))
-        self.assertTrue(os.path.isfile('temp/d.txt'))
-        with open('temp/c.txt') as tc:
-            self.assertTrue(tc.read(), 'a.txt')
-        with open('temp/d.txt') as td:
-            self.assertTrue(td.read(), 'b.txt')
-        self.assertEqual(env.sos_dict['oa'].output, ['temp/c.txt', 'temp/d.txt'])
-        #
-        # now in assert mode, the signature should be there
-        env.sig_mode = 'assert'
-        Sequential_Executor(wf).run()
-        #
-        start = time.time()
-        env.sig_mode = 'default'
-        Sequential_Executor(wf).run()
-        self.assertLess(time.time() - start, 1.5)
-        #
-        # change script a little bit
-        script = SoS_Script('# comment\n' + text)
-        wf = script.workflow()
-        env.sig_mode = 'assert'
-        Sequential_Executor(wf).run()
-        # add some other variable?
-        #script = SoS_Script('comment = 1\n' + text)
-        #wf = script.workflow()
-        #env.sig_mode = 'assert'
-        #self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
-
-    def testReexecution(self):
-        '''Test -f option of sos run'''
-        script = SoS_Script('''
-import time
-
-[0]
-output: 'a.txt'
-task:
-if run_mode == 'run':
-   time.sleep(3)
-   run('touch ${output}')
-''')
-        wf = script.workflow()
-        try:
-            # remove existing output if exists
-            os.remove('a.txt')
-        except:
-            pass
-        start = time.time()
-        Sequential_Executor(wf).run()
-        # regularly take more than 5 seconds to execute
-        self.assertGreater(time.time() - start, 2)
-        # now, rerun should be much faster
-        start = time.time()
-        Sequential_Executor(wf).run()
-        # rerun takes less than 1 second
-        self.assertLess(time.time() - start, 1)
-        #
-        # force rerun mode
-        start = time.time()
-        eng.sig_mode = 'ignore'
-        Sequential_Executor(wf).run()
-        # regularly take more than 5 seconds to execute
-        self.assertGreater(time.time() - start, 2)
-        try:
-            # remove existing output if exists
-            os.remove('a.txt')
-        except:
-            pass
 
     def testInput(self):
         '''Test input specification'''
@@ -856,7 +655,7 @@ check_command('a4')
             self.assertEqual(len(e.errors), 6)
 
 
-    def testDryrunTimeout(self):
+    def testInspectTimeout(self):
         '''Test if any action should exit in five seconds in inspect mode'''
         sos_config_file = os.path.expanduser('.sos/config.yaml')
         move_back = False
@@ -1223,6 +1022,206 @@ touch ${output}
         self.assertEqual(executor.run('b=a\nb'), 1)
         executor.run('run:\necho "a"')
         self.assertRaises(RuntimeError, executor.run, 'c')
+
+
+    def testSignature(self):
+        self._testSignature(r"""
+import time
+[*_0]
+output: 'temp/a.txt', 'temp/b.txt'
+task:
+if run_mode == 'run':
+   time.sleep(1)
+   run('''echo "a.txt" > 'temp/a.txt' ''')
+   run('''echo "b.txt" > 'temp/b.txt' ''')
+
+[1: alias='oa']
+dest = ['temp/c.txt', 'temp/d.txt']
+input: group_by='single', paired_with='dest'
+output: _dest
+
+task:
+if run_mode == 'run':
+    time.sleep(0.5)
+    run(''' cp ${_input} ${_dest} ''')
+""")
+        #
+        env.max_jobs = 4
+        self._testSignature(r"""
+import time
+[*_0]
+output: 'temp/a.txt', 'temp/b.txt'
+
+task:
+if run_mode == 'run':
+    time.sleep(1)
+    run('''echo "a.txt" > 'temp/a.txt' ''')
+    run('''echo "b.txt" > 'temp/b.txt' ''')
+
+[1: alias='oa']
+dest = ['temp/c.txt', 'temp/d.txt']
+input: group_by='single', paired_with='dest'
+output: _dest
+
+task:
+if run_mode == 'run':
+   time.sleep(0.5)
+   run(''' cp ${_input} ${_dest} ''')
+""")
+        # script format
+        env.max_jobs = 4
+        self._testSignature(r"""
+import time
+[*_0]
+output: 'temp/a.txt', 'temp/b.txt'
+
+run:
+sleep 1
+echo "a.txt" > 'temp/a.txt'
+
+run:
+
+echo "b.txt" > 'temp/b.txt'
+
+[1: alias='oa']
+dest = ['temp/c.txt', 'temp/d.txt']
+input: group_by='single', paired_with='dest'
+output: _dest
+
+task:
+if run_mode == 'run':
+    time.sleep(0.5)
+run:
+cp ${_input} ${_dest}
+""")
+        # reset env mode
+        env.sig_mode = 'default'
+        shutil.rmtree('temp')
+
+
+    def testSignatureWithoutOutput(self):
+        # signature without output file
+        self._testSignature(r"""
+import time
+[*_0]
+output: []
+
+run:
+sleep 1
+[ -d temp ] || mkdir temp
+echo "a.txt" > 'temp/a.txt'
+
+run:
+
+echo "b.txt" > 'temp/b.txt'
+
+[1: alias='oa']
+dest = ['temp/c.txt', 'temp/d.txt']
+input: 'temp/a.txt', 'temp/b.txt', group_by='single', paired_with='dest'
+output: _dest
+
+run:
+sleep 0.5
+cp ${_input} ${_dest}
+""")
+        # reset env mode
+        env.sig_mode = 'default'
+        shutil.rmtree('temp')
+
+
+
+    def _testSignature(self, text):
+        '''Test recognizing the format of SoS script'''
+        script = SoS_Script(text)
+        #
+        # only the first step
+        wf = script.workflow('default_0')
+        start = time.time()
+        env.sig_mode = 'ignore'
+        Sequential_Executor(wf).run()
+        self.assertGreater(time.time() - start, 1)
+        self.assertTrue(os.path.isfile('temp/a.txt'))
+        self.assertTrue(os.path.isfile('temp/b.txt'))
+        with open('temp/a.txt') as ta:
+            self.assertTrue(ta.read(), 'a.txt')
+        with open('temp/b.txt') as tb:
+            self.assertTrue(tb.read(), 'b.txt')
+        env.sig_mode = 'assert'
+        Sequential_Executor(wf).run()
+        #
+        wf = script.workflow()
+        start = time.time()
+        env.sig_mode = 'assert'
+        Sequential_Executor(wf).run()
+        self.assertGreater(time.time() - start, 1)
+        #
+        self.assertTrue(os.path.isfile('temp/c.txt'))
+        self.assertTrue(os.path.isfile('temp/d.txt'))
+        with open('temp/c.txt') as tc:
+            self.assertTrue(tc.read(), 'a.txt')
+        with open('temp/d.txt') as td:
+            self.assertTrue(td.read(), 'b.txt')
+        self.assertEqual(env.sos_dict['oa'].output, ['temp/c.txt', 'temp/d.txt'])
+        #
+        # now in assert mode, the signature should be there
+        env.sig_mode = 'assert'
+        Sequential_Executor(wf).run()
+        #
+        start = time.time()
+        env.sig_mode = 'default'
+        Sequential_Executor(wf).run()
+        self.assertLess(time.time() - start, 1.5)
+        #
+        # change script a little bit
+        script = SoS_Script('# comment\n' + text)
+        wf = script.workflow()
+        env.sig_mode = 'assert'
+        Sequential_Executor(wf).run()
+        # add some other variable?
+        #script = SoS_Script('comment = 1\n' + text)
+        #wf = script.workflow()
+        #env.sig_mode = 'assert'
+        #self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
+
+    def testReexecution(self):
+        '''Test -f option of sos run'''
+        script = SoS_Script('''
+import time
+
+[0]
+output: 'a.txt'
+task:
+if run_mode == 'run':
+   time.sleep(3)
+   run('touch ${output}')
+''')
+        wf = script.workflow()
+        try:
+            # remove existing output if exists
+            os.remove('a.txt')
+        except:
+            pass
+        start = time.time()
+        Sequential_Executor(wf).run()
+        # regularly take more than 5 seconds to execute
+        self.assertGreater(time.time() - start, 2)
+        # now, rerun should be much faster
+        start = time.time()
+        Sequential_Executor(wf).run()
+        # rerun takes less than 1 second
+        self.assertLess(time.time() - start, 1)
+        #
+        # force rerun mode
+        start = time.time()
+        eng.sig_mode = 'ignore'
+        Sequential_Executor(wf).run()
+        # regularly take more than 5 seconds to execute
+        self.assertGreater(time.time() - start, 2)
+        try:
+            # remove existing output if exists
+            os.remove('a.txt')
+        except:
+            pass
 
 
 if __name__ == '__main__':
