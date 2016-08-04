@@ -121,7 +121,7 @@ class Base_Step_Executor:
     # The following functions should be redefined in an executor
     # because it may behave differently in different modes.
     #
-    def expand_input_files(self, *args, **kwargs):
+    def expand_input_files(self, value, *args, **kwargs):
         '''Process input files (perhaps a pattern) to determine input files.
 
         ret: 
@@ -362,7 +362,7 @@ class Base_Step_Executor:
         env.sos_dict.set('_output', ofiles)
         if env.sos_dict['output'] is None:
             env.sos_dict.set('output', copy.deepcopy(ofiles))
-        elif env.sos_dict['output'] != ofiles:
+        elif not isinstance(env.sos_dict['output'], Undetermined) and env.sos_dict['output'] != ofiles:
             env.sos_dict['output'].extend(ofiles)
 
     def process_task_args(self, **kwargs):
@@ -507,7 +507,7 @@ class Base_Step_Executor:
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(stmt), self.step.sigil)
                 # Files will be expanded differently with different running modes
-                input_files = self.expand_input_files(*args, **kwargs)
+                input_files = self.expand_input_files(stmt, *args, **kwargs)
                 if isinstance(input_files, Undetermined):
                     return self.collectResult()
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
@@ -579,6 +579,25 @@ class Base_Step_Executor:
             # finally, tasks..
             if not self.step.task:
                 continue
+
+            # check if the task is active
+            if '_runtime' in env.sos_dict and 'active' in env.sos_dict['_runtime']:
+                active = env.sos_dict['_runtime']['active']
+                if isinstance(active, int):
+                    if active >= 0 and env.sos_dict['_index'] != active:
+                        continue
+                    if active < 0 and env.sos_dict['_index'] != active + env.sos_dict['__num_groups__']:
+                        continue
+                elif isinstance(active, Sequence):
+                    allowed_index = list([x if x >= 0 else env.sos_dict['__num_groups__'] + x for x in active])
+                    if env.sos_dict['_index'] not in allowed_index:
+                        continue
+                elif isinstance(active, slice):
+                    allowed_index = list(range(env.sos_dict['__num_groups__']))[active]
+                    if env.sos_dict['_index'] not in allowed_index:
+                        continue
+                else:
+                    raise RuntimeError('Unacceptable value for option active: {}'.format(active))
 
             self.log('task')
             try:
@@ -692,9 +711,9 @@ class Inspect_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
         Queued_Step_Executor.__init__(self, step, queue)
 
-    def expand_input_files(self, *args, **kwargs):
+    def expand_input_files(self, value, *args, **kwargs):
         if 'dynamic' in kwargs:
-            return Undetermined()
+            return Undetermined(value)
         # if unspecified, use __step_output__ as input (default)
         if not args:
             return env.sos_dict['input']
@@ -724,9 +743,9 @@ class Prepare_Step_Executor(Queued_Step_Executor):
         env.run_mode = 'prepare'
         Queued_Step_Executor.__init__(self, step, queue)
 
-    def expand_input_files(self, *args, **kwargs):
+    def expand_input_files(self, value, *args, **kwargs):
         if 'dynamic' in kwargs:
-            return Undetermined()
+            return Undetermined(value)
         # if unspecified, use __step_output__ as input (default)
         if not args:
             return env.sos_dict['input']
@@ -740,7 +759,7 @@ class Prepare_Step_Executor(Queued_Step_Executor):
         else:
             return _expand_file_list(True, *args)
 
-    def log(self, stage=0):
+    def log(self, stage=0, msg=None):
         if stage == 'start':
             env.logger.trace('Preparing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
 
@@ -765,7 +784,7 @@ class Run_Step_Executor(Queued_Step_Executor):
         Base_Step_Executor.assign(self, key, value)
         transcribe('{} = {}'.format(key, env.sos_dict[key]))
 
-    def expand_input_files(self, *args, **kwargs):
+    def expand_input_files(self, value, *args, **kwargs):
         # We ignore 'dynamic' option in run mode
         # if unspecified, use __step_output__ as input (default)
         if not args:
@@ -790,7 +809,7 @@ class Interactive_Step_Executor(Base_Step_Executor):
         env.run_mode = 'interactive'
         Base_Step_Executor.__init__(self, step)
     
-    def expand_input_files(self, *args, **kwargs):
+    def expand_input_files(self, value, *args, **kwargs):
         # We ignore 'dynamic' option in run mode
         # if unspecified, use __step_output__ as input (default)
         if not args:
@@ -805,5 +824,5 @@ class Interactive_Step_Executor(Base_Step_Executor):
     def expand_output_files(self, value, *args, **kwargs):
         return _expand_file_list(True, *args)
 
-    def log(self, stage=None):
+    def log(self, stage=None, msg=None):
         return

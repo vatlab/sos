@@ -830,7 +830,10 @@ for i in range(3):
 ''')
         wf = script.workflow()
         #
-        Sequential_Executor(wf).run()
+        executor = Sequential_Executor(wf)
+        executor.inspect()
+        executor.prepare()
+        executor.run()
         # we should have 9 files
         files = glob.glob('temp/*.txt')
         self.assertEqual(len(files), 9)
