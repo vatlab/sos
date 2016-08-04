@@ -563,7 +563,7 @@ class Base_Step_Executor:
                                         ofiles = res['output']
                                         skip_index = True
                                 elif env.sig_mode == 'assert':
-                                    if not inspect_or_prepare and not signatures[idx].validate():
+                                    if not self.inspect_or_prepare and not signatures[idx].validate():
                                         raise RuntimeError('Signature mismatch.')
                                 elif env.sig_mode == 'construct':
                                     if signatures[idx].write():
@@ -676,7 +676,7 @@ class Base_Step_Executor:
             # if output is no longer Undetermined, set it to output
             # of each signature
             for sig in signatures:
-                sig.set('output', env.sos_dict['output'])
+                sig.set(env.sos_dict['output'], 'output')
         #
         for sig in signatures:
             if sig is not None:

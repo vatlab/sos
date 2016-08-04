@@ -1128,6 +1128,8 @@ cp ${_input} ${_dest}
         wf = script.workflow('default_0')
         start = time.time()
         env.sig_mode = 'ignore'
+        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run()
         self.assertGreater(time.time() - start, 1)
         self.assertTrue(os.path.isfile('temp/a.txt'))
@@ -1137,11 +1139,15 @@ cp ${_input} ${_dest}
         with open('temp/b.txt') as tb:
             self.assertTrue(tb.read(), 'b.txt')
         env.sig_mode = 'assert'
+        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run()
         #
         wf = script.workflow()
         start = time.time()
-        env.sig_mode = 'assert'
+        env.sig_mode = 'ignore'
+        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run()
         self.assertGreater(time.time() - start, 1)
         #
@@ -1155,10 +1161,14 @@ cp ${_input} ${_dest}
         #
         # now in assert mode, the signature should be there
         env.sig_mode = 'assert'
+        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run()
         #
         start = time.time()
         env.sig_mode = 'default'
+        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run()
         self.assertLess(time.time() - start, 1.5)
         #
@@ -1166,6 +1176,8 @@ cp ${_input} ${_dest}
         script = SoS_Script('# comment\n' + text)
         wf = script.workflow()
         env.sig_mode = 'assert'
+        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run()
         # add some other variable?
         #script = SoS_Script('comment = 1\n' + text)
@@ -1203,7 +1215,7 @@ if run_mode == 'run':
         #
         # force rerun mode
         start = time.time()
-        eng.sig_mode = 'ignore'
+        env.sig_mode = 'ignore'
         Sequential_Executor(wf).run()
         # regularly take more than 5 seconds to execute
         self.assertGreater(time.time() - start, 2)

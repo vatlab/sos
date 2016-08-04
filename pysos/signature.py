@@ -138,27 +138,26 @@ class RuntimeInfo:
         else:
             self.input_files = input_files
 
-        if not isinstance(dependent_files, (list, Undetermined)):
+        if dependent_files is None:
+            self.dependent_files = []
+        elif not isinstance(dependent_files, (list, Undetermined)):
             raise RuntimeError('Dependent files must be a list of filenames or Undetermined for runtime signature.')
         else:
             self.dependent_files = dependent_files
 
+        if not isinstance(output_files, (list, Undetermined)):
+            raise RuntimeError('Dependent files must be a list of filenames or Undetermined for runtime signature.')
+        else:
+            self.output_files = output_files
+        
         self.index = index
         self.sig_files = []
-        #
-        if isinstance(output_files, Undetermined):
-            self.sig_files = self.sig_file(output_files)
-        elif isinstance(output_files, list):
-            self.sig_files = [self.sig_file(x) for x in output_files]
-        else:
-            raise RuntimeError('Output files must be a list of filenames or Undetermined for runtime signature.')
 
-    def sig_file(self, filename):
-        if isinstance(filename, Undetermined):
-            sig_name = 'Dynamic_' + textMD5('{} {} {} {} {}'.format(self.script, self.input_files, filename, self.dependent_files, self.index))
+        if isinstance(self.output_files, Undetermined) or not self.output_files:
+            sig_name = 'Dynamic_' + textMD5('{} {} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files, self.index))
         else:
-            sig_name = os.path.realpath(os.path.expanduser(filename) + '_' + \
-                textMD5('{} {} {} {} {}'.format(self.script, self.input_files, filename, self.dependent_files, self.index))
+            sig_name = os.path.realpath(os.path.expanduser(self.output_files[0]) + '_' + \
+                textMD5('{} {} {} {} {}'.format(self.script, self.input_files, self.output_files, self.dependent_files, self.index)))
         #
         # If the output path is outside of the current working directory
         rel_path = os.path.relpath(sig_name, env.exec_dir)
@@ -175,6 +174,7 @@ class RuntimeInfo:
                 os.makedirs(sig_path)
             except Exception as e:
                 raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
+        self.proc_info = '{}.exe_info'.format(info_file)
 
     def set(self, files, file_type):
         # add signature file if input and output files are dynamic
@@ -184,28 +184,29 @@ class RuntimeInfo:
         elif file_type == 'depends':
             self.depends_files = files
         else:
-            raise RuntimeError('Invalid signature file type')
+            raise RuntimeError('Invalid signature file type {}'.format(file_type))
 
     def write(self):
         '''Write signature file with signature of script, input, output and dependent files.'''
-        if not self.proc_info:
-            return
+        if isinstance(self.output_files, Undetermined) or isinstance(self.dependent_files, Undetermined):
+            env.logger.trave('Write signature failed due to undetermined files')
+            return False
         env.logger.trace('Write signature {}'.format(self.proc_info))
         with open(self.proc_info, 'w') as md5:
             md5.write('{}\n'.format(textMD5(self.script)))
             md5.write('# input\n')
             for f in self.input_files:
-                if isinstance(f, Undetermined):
+                if not os.path.isfile(os.path.expanduser(f)):
                     return False
                 md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
             md5.write('# output\n')
             for f in self.output_files:
-                if isinstance(f, Undetermined):
+                if not os.path.isfile(os.path.expanduser(f)):
                     return False
                 md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
             md5.write('# dependent\n')
             for f in self.dependent_files:
-                if isinstance(f, Undetermined):
+                if not os.path.isfile(os.path.expanduser(f)):
                     return False
                 md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
         return True
