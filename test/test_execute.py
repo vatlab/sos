@@ -989,9 +989,8 @@ touch ${output}
         ''')
         wf = script.workflow()
         Sequential_Executor(wf).run()
-        # without task, output should have 1, 2, 3, 4, 5, respectively, and
+        # output should have 1, 2, 3, 4, 5, respectively, and
         # the total record files would be 1+2+3+4+5=15
-        # There should be a warning for this.
         with open('temp/out.log') as out:
             self.assertEqual(len(out.read().split()), 15)
         shutil.rmtree('temp')
@@ -1014,7 +1013,7 @@ touch ${output}
         env.sig_mode = 'ignore'
         Sequential_Executor(wf).run()
         with open('temp/out.log') as out:
-            self.assertEqual(len(out.read().split()), 25)
+            self.assertEqual(len(out.read().split()), 15)
         shutil.rmtree('temp')
 
     def testInteractiveExecutor(self):
