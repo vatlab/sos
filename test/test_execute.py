@@ -1016,16 +1016,6 @@ touch ${output}
             self.assertEqual(len(out.read().split()), 15)
         shutil.rmtree('temp')
 
-    def testInteractiveExecutor(self):
-        '''interactive'''
-        executor = Interactive_Executor()
-        executor.run('a=1')
-        self.assertEqual(executor.run('a'), 1)
-        self.assertEqual(executor.run('b=a\nb'), 1)
-        executor.run('run:\necho "a"')
-        self.assertRaises(RuntimeError, executor.run, 'c')
-
-
     def testSignature(self):
         self._testSignature(r"""
 import time
@@ -1130,8 +1120,6 @@ cp ${_input} ${_dest}
         env.sig_mode = 'default'
         shutil.rmtree('temp')
 
-
-
     def _testSignature(self, text):
         '''Test recognizing the format of SoS script'''
         script = SoS_Script(text)
@@ -1225,6 +1213,15 @@ if run_mode == 'run':
         except:
             pass
 
+
+    def testInteractiveExecutor(self):
+        '''interactive'''
+        executor = Interactive_Executor()
+        executor.run('a=1')
+        self.assertEqual(executor.run('a'), 1)
+        self.assertEqual(executor.run('b=a\nb'), 1)
+        executor.run('run:\necho "a"')
+        self.assertRaises(RuntimeError, executor.run, 'c')
 
 if __name__ == '__main__':
     unittest.main()

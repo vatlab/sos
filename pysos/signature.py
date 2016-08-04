@@ -122,7 +122,7 @@ class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.
     '''
-    def __init__(self, script, input_files=[], output_files=[], dependent_files = [], index=None, pid=None, workdir='.'):
+    def __init__(self, script, input_files=[], output_files=[], dependent_files = [], index=None):
         '''Runtime information for specified output files
         index:
             in case of partial output, output files can be the same form (dynamic) so we need index to differntiate
@@ -130,28 +130,38 @@ class RuntimeInfo:
         output_files:
             intended output file
 
-        pid:
-            process id.
-
-        workdir:
-            Current working directory.,
         '''
-        self.script = script if isinstance(script, str) else ''.join(script)
-        self.input_files = [input_files] if isinstance(input_files, str) else input_files
-        self.output_files = [output_files] if isinstance(output_files, str) else output_files
-        self.dependent_files = [dependent_files] if isinstance(dependent_files, str) else dependent_files
-        if self.input_files is None:
-            raise RuntimeError('Cannot create runtime signature for unknown input')
-        if self.output_files is None:
-            raise RuntimeError('Cannot create runtime signature for unknown output')
-        #
-        if self.output_files and not isinstance(self.output_files[0], Undetermined):
-            sig_name = os.path.realpath(os.path.expanduser(self.output_files[0])) + textMD5('{} {} {} {}'.format(script, input_files, output_files, dependent_files))
+        self.script = script
+        # input can only be a list of files
+        if not isinstance(input_files, list):
+            raise RuntimeError('Input files must be a list of filenames for runtime signature.')
         else:
-            sig_name = textMD5('{} {} {} {} {}'.format(script, input_files, output_files, dependent_files, index))
+            self.input_files = input_files
+
+        if not isinstance(dependent_files, (list, Undetermined)):
+            raise RuntimeError('Dependent files must be a list of filenames or Undetermined for runtime signature.')
+        else:
+            self.dependent_files = dependent_files
+
+        self.index = index
+        self.sig_files = []
+        #
+        if isinstance(output_files, Undetermined):
+            self.sig_files = self.sig_file(output_files)
+        elif isinstance(output_files, list):
+            self.sig_files = [self.sig_file(x) for x in output_files]
+        else:
+            raise RuntimeError('Output files must be a list of filenames or Undetermined for runtime signature.')
+
+    def sig_file(self, filename):
+        if isinstance(filename, Undetermined):
+            sig_name = 'Dynamic_' + textMD5('{} {} {} {} {}'.format(self.script, self.input_files, filename, self.dependent_files, self.index))
+        else:
+            sig_name = os.path.realpath(os.path.expanduser(filename) + '_' + \
+                textMD5('{} {} {} {} {}'.format(self.script, self.input_files, filename, self.dependent_files, self.index))
         #
         # If the output path is outside of the current working directory
-        rel_path = os.path.relpath(sig_name, os.path.realpath(workdir))
+        rel_path = os.path.relpath(sig_name, env.exec_dir)
         # if this file is not relative to cache, use global signature file
         if rel_path.startswith('../'):
             info_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep))
@@ -165,19 +175,11 @@ class RuntimeInfo:
                 os.makedirs(sig_path)
             except Exception as e:
                 raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
-        env.logger.trace('Using signature file {} for output {} and index {}'.format(info_file, output_files, index))
-        if pid is None:
-            self.pid = os.getpid()
-        else:
-            self.pid = pid
-        self.proc_info = '{}.exe_info'.format(info_file)
 
     def set(self, files, file_type):
         # add signature file if input and output files are dynamic
         env.logger.trace('Set {} of signature to {}'.format(file_type, files))
-        if file_type == 'input':
-            self.input_files = files
-        elif file_type == 'output':
+        if file_type == 'output':
             self.output_files = files
         elif file_type == 'depends':
             self.depends_files = files
@@ -185,7 +187,7 @@ class RuntimeInfo:
             raise RuntimeError('Invalid signature file type')
 
     def write(self):
-        '''Write .exe_info file with signature of script, input, output and dependent files.'''
+        '''Write signature file with signature of script, input, output and dependent files.'''
         if not self.proc_info:
             return
         env.logger.trace('Write signature {}'.format(self.proc_info))
@@ -194,19 +196,19 @@ class RuntimeInfo:
             md5.write('# input\n')
             for f in self.input_files:
                 if isinstance(f, Undetermined):
-                    raise ValueError('Cannot write signature for undetermined input file')
+                    return False
                 md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
             md5.write('# output\n')
             for f in self.output_files:
                 if isinstance(f, Undetermined):
-                    raise ValueError('Cannot write signature for undetermined output file')
+                    return False
                 md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
             md5.write('# dependent\n')
             for f in self.dependent_files:
                 if isinstance(f, Undetermined):
-                    raise ValueError('Cannot write signature for undetermined dependent file')
+                    return False
                 md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
-        return {'input': self.input_files, 'output': self.output_files, 'depends': self.dependent_files}
+        return True
 
     def validate(self):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''

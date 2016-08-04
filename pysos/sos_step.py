@@ -112,10 +112,11 @@ class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
     # some function to behave differently in different modes.
     #
-    def __init__(self, step):
+    def __init__(self, step, inspect_or_prepare=False):
         self.step = step
         self.step_signature = self.get_step_signature()
         self.step_id = textMD5(self.step_signature)
+        self.inspect_or_prepare = inspect_or_prepare
 
     #
     # The following functions should be redefined in an executor
@@ -371,17 +372,6 @@ class Base_Step_Executor:
                 raise RuntimeError('Unrecognized runtime option {}={}'.format(k, v))
         env.sos_dict.set('_runtime', kwargs)
 
-    def check_signature(self):
-        return False
-        #if env.run_mode in ('prepare', 'run') and '_output' in env.sos_dict and env.sos_dict['_output'] is not None and env.sos_dict['_input'] is not None:
-        #                signature = RuntimeInfo(step_sig, env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict.get('_depends', []), index=idx)
-        #                if env.sig_mode == 'default':
-        #                    res = signature.validate()
-        #                    if res:
-        #                        env.sos_dict.set('_output', res['output'])
-        #                        env.logger.debug('_output: {}'.format(res['output']))
-        #                        env.logger.debug('Reuse existing output files ``{}``'.format(short_repr(env.sos_dict['_output'])))
- 
     def reevaluate_output(self):
         pass
 
@@ -534,6 +524,12 @@ class Base_Step_Executor:
         # run steps after input statement, which will be run multiple times for each input 
         # group.
         env.sos_dict.set('__num_groups__', len(self._groups))
+
+        # determine if a single index or the whole step should be skipped
+        skip_index = False
+        # signatures of each index, which can remain to be None if no output
+        # is defined.
+        signatures = [None for x in self._groups]
         for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
             # other variables
             env.sos_dict.update(v)
@@ -556,7 +552,26 @@ class Base_Step_Executor:
                         if key == 'output':
                             ofiles = self.expand_output_files(value, *args, **kwargs)
                             # ofiles can be Undertermined
+                            if env.sos_dict['_input'] is not None and env.sig_mode != 'ignore':
+                                signatures[idx] = RuntimeInfo(self.step_signature, env.sos_dict['_input'],
+                                    ofiles, env.sos_dict['_depends'], idx)
+                                if env.sig_mode == 'default':
+                                    res = signatures[idx].validate()
+                                    if res:
+                                        # in this case, an Undetermined output can get real output files
+                                        # from a signature
+                                        ofiles = res['output']
+                                        skip_index = True
+                                elif env.sig_mode == 'assert':
+                                    if not inspect_or_prepare and not signatures[idx].validate():
+                                        raise RuntimeError('Signature mismatch.')
+                                elif env.sig_mode == 'construct':
+                                    if signatures[idx].write():
+                                        skip_index = True
+                            # set variable _output and output
                             self.process_output_args(ofiles, **kwargs)
+                            if skip_index:
+                                break
                         elif key == 'depends':
                             dfiles = self.expand_depends_files(*args, **kwargs)
                             # dfiles can be Undertermined
@@ -571,13 +586,18 @@ class Base_Step_Executor:
                     except Exception as e:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
-                    if not self.check_signature():
-                        try:
-                            SoS_exec(statement[1], self.step.sigil)
-                        except Exception as e:
-                            raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
+                    try:
+                        SoS_exec(statement[1], self.step.sigil)
+                    except Exception as e:
+                        raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(statement[1]), e))
+
+            # if this index is skipped, go directly to the next one
+            if skip_index:
+                skip_index = False
+                continue
             # finally, tasks..
-            if not self.step.task:
+            # inspect_or_prepare is set by step_executors that ignores task (e.g. Inspect and Prepare)
+            if not self.step.task or self.inspect_or_prepare:
                 continue
 
             # check if the task is active
@@ -647,15 +667,30 @@ class Base_Step_Executor:
         if not all(x['succ'] == 0 for x in proc_results):
             raise RuntimeError('Step process returns non-zero value')
         # if output is Undetermined, re-evalulate it
-        self.reevaluate_output()
+        #
+        # NOTE: dynamic output is evaluated at last, so it sets output,
+        # not _output. For the same reason, signatures can be wrong if it has
+        # Undetermined output.
+        if isinstance(env.sos_dict['output'], Undetermined):
+            self.reevaluate_output()
+            # if output is no longer Undetermined, set it to output
+            # of each signature
+            for sig in signatures:
+                sig.set('output', env.sos_dict['output'])
+        #
+        for sig in signatures:
+            if sig is not None:
+                # signature write can fail for various reasons, for example when files are
+                # not available in inspection mode.
+                sig.write()
         self.log('output')
         return self.collectResult()
 
 class Queued_Step_Executor(Base_Step_Executor):
     # this class execute the step in a separate process
     # and returns result using a queue
-    def __init__(self, step, queue):
-        Base_Step_Executor.__init__(self, step)
+    def __init__(self, step, queue, inspect_or_prepare):
+        Base_Step_Executor.__init__(self, step, inspect_or_prepare)
         self.queue = queue
 
     def run(self):
@@ -709,7 +744,7 @@ def _expand_file_list(ignore_unknown, *args):
 
 class Inspect_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
-        Queued_Step_Executor.__init__(self, step, queue)
+        Queued_Step_Executor.__init__(self, step, queue, inspect_or_prepare=True)
 
     def expand_input_files(self, value, *args, **kwargs):
         if 'dynamic' in kwargs:
@@ -741,7 +776,7 @@ class Inspect_Step_Executor(Queued_Step_Executor):
 class Prepare_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
         env.run_mode = 'prepare'
-        Queued_Step_Executor.__init__(self, step, queue)
+        Queued_Step_Executor.__init__(self, step, queue, inspect_or_prepare=True)
 
     def expand_input_files(self, value, *args, **kwargs):
         if 'dynamic' in kwargs:
@@ -766,7 +801,7 @@ class Prepare_Step_Executor(Queued_Step_Executor):
 class Run_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
         env.run_mode = 'run'
-        Queued_Step_Executor.__init__(self, step, queue)
+        Queued_Step_Executor.__init__(self, step, queue, inspect_or_prepare=False)
 
     def log(self, stage=None, msg=None):
         if stage == 'start':
@@ -797,17 +832,16 @@ class Run_Step_Executor(Queued_Step_Executor):
         return _expand_file_list(True, *args)
 
     def reevaluate_output(self):
-        if isinstance(env.sos_dict['output'], Undetermined):
-            # re-process the output statement to determine output files
-            args, kwargs = SoS_eval('__null_func__({})'.format(env.sos_dict['output'].expr), self.step.sigil)
-            kwargs.pop('dynamic', None)
-            env.sos_dict.set('output', self.expand_output_files('', *args, **kwargs))
+        # re-process the output statement to determine output files
+        args, kwargs = SoS_eval('__null_func__({})'.format(env.sos_dict['output'].expr), self.step.sigil)
+        kwargs.pop('dynamic', None)
+        env.sos_dict.set('output', self.expand_output_files('', *args, **kwargs))
 
 
 class Interactive_Step_Executor(Base_Step_Executor):
     def __init__(self, step):
         env.run_mode = 'interactive'
-        Base_Step_Executor.__init__(self, step)
+        Base_Step_Executor.__init__(self, step, inspect_or_prepare=False)
     
     def expand_input_files(self, value, *args, **kwargs):
         # We ignore 'dynamic' option in run mode
