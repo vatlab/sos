@@ -415,7 +415,7 @@ class SoS_ExecuteScript:
 
     def run(self, **kwargs):
         transcribe(self.script, action=self.interpreter)
-        if env.run_mode in ['inspect', 'interactive']:
+        if env.run_mode == 'inspect':
             check_command(self.interpreter.split()[0], quiet=True)
             return
         if '{}' not in self.interpreter:
@@ -425,7 +425,7 @@ class SoS_ExecuteScript:
         env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
         with open(debug_script_file, 'w') as sfile:
             sfile.write(self.script)
-        if env.run_mode in ['prepare', 'interactive']:
+        if env.run_mode in ['prepare']:
             if self.validator is not None:
                 try:
                     self.validator(self.script, filename=debug_script_file)
@@ -468,6 +468,8 @@ class SoS_ExecuteScript:
                     sys.stderr.write(err.decode())
                     ret = p.returncode
                     env.logger.info(summarizeExecution(pid))
+                    sys.stdout.flush()
+                    sys.stderr.flush()
                 else:
                     p = subprocess.Popen(cmd, shell=True)
                     pid = p.pid

@@ -275,7 +275,9 @@ class SoS_Kernel(Kernel):
 
     def _start_sos(self):
         env.sos_dict = WorkflowDict()
+        SoS_exec('import os, sys, glob')
         SoS_exec('from pysos import *')
+        SoS_exec("run_mode = 'interactive'")
         self.executor = Interactive_Executor()
         self.original_keys = set(env.sos_dict._dict.keys())
         self.original_keys.add('__builtins__')
@@ -545,7 +547,7 @@ class SoS_Kernel(Kernel):
             # if it is a python kernel, passing specified SoS variables to it
             self.KC.execute('{}\ndputToString(list({}))'.format(dputToString_func, 
                 ','.join('{0}={0}'.format(x) for x in items)),
-                silent=False, store_history=not store_history)
+                silent=False, store_history=False)
             # first thing is wait for any side effects (output, stdin, etc.)
             _execution_state = "busy"
             while _execution_state != 'idle':
