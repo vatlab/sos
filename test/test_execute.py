@@ -927,6 +927,17 @@ touch temp/${ff}
             # test last iteration
             shutil.rmtree('temp')
 
+    def testActionBeforeInput(self):
+        '''Testing the execution of actions before input directive
+        (variables such as _index should be made available). '''
+        script = SoS_Script('''
+[0]
+bash('echo "A"')
+input: 
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).prepare()
+
     def testDuplicateIOFiles(self):
         '''Test interpretation of duplicate input/output/depends'''
         if os.path.isdir('temp'):

@@ -473,6 +473,8 @@ class Base_Step_Executor:
         env.sos_dict.set('_output', None)
         env.sos_dict.set('depends', None)
         env.sos_dict.set('_depends', None)
+        # _index is needed for pre-input action's active option and for debug output of scripts
+        env.sos_dict.set('_index', 0)
 
         # look for input statement.
         input_statement_idx = [idx for idx,x in enumerate(self.step.statements) if x[0] == ':' and x[1] == 'input']
