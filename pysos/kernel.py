@@ -481,9 +481,6 @@ class SoS_Kernel(Kernel):
                     {'name': 'stdout', 'text': 'Usage: set persistent sos options such as -v 3 (debug output) -p (prepare) and -t (transcribe)\n'})
   
             self.switch_kernel(options)
-            lines = code.split('\n')
-            code = '\n'.join(lines[1:])
-            command_line = self.options
 
     def handle_magic_get(self, options):
         items = options.split()
@@ -614,6 +611,8 @@ class SoS_Kernel(Kernel):
         code = dedent(code)
         last_input = [] if '__step_input__' not in env.sos_dict else copy.deepcopy(env.sos_dict['__step_input__'])
         last_output = [] if '__step_output__' not in env.sos_dict else copy.deepcopy(env.sos_dict['__step_output__'])
+        if os.path.isfile('.sos/report.md'):
+            os.remove('.sos/report.md')
         with self.redirect_sos_io():
             try:
                 # record input and output

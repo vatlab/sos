@@ -1245,6 +1245,8 @@ if run_mode == 'run':
         self.assertEqual(executor.run('b=a\nb'), 1)
         executor.run('run:\necho "a"')
         self.assertRaises(RuntimeError, executor.run, 'c')
+        # execute shell command is handled by the kernel, not executor
+        #executor.run('!ls')
 
 if __name__ == '__main__':
     unittest.main()
