@@ -244,7 +244,12 @@ class Base_Step_Executor:
             for fe in fe_all.split(','):
                 values = env.sos_dict[fe]
                 if not isinstance(values, Sequence):
-                    raise ValueError('for_each variable {} is not a sequence ("{}")'.format(fe, values))
+                    try:
+                        import pandas as pd
+                        if not isinstance(values, pd.DataFrame):
+                            raise ValueError('Unacceptable for_each data type {}'.format(values.__class__))
+                    except Exception as e:
+                        raise ValueError('Cannot iterate through variable {}: {}'.format(fe, e))
                 if loop_size is None:
                     loop_size = len(values)
                 elif loop_size != len(values):
@@ -268,7 +273,13 @@ class Base_Step_Executor:
                         else:
                             if fe not in env.sos_dict:
                                 raise ValueError('Variable {} does not exist.'.format(fe))
-                            _tmp_vars[idx]['_' + fe] = env.sos_dict[fe][vidx]
+                            values = env.sos_dict[fe]
+                            if isinstance(values, Sequence):
+                                _tmp_vars[idx]['_' + fe] = values[vidx]
+                            elif isinstance(values, pd.DataFrame):
+                                _tmp_vars[idx]['_' + fe] = values.loc[vidx]
+                            else:
+                                raise ValueError('Unrecognized for_each variable {}'.format(fe))
                 _vars.extend(copy.deepcopy(_tmp_vars))
 
     # directive input
