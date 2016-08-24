@@ -80,14 +80,14 @@ class Base_Executor:
         if new_dict:
             env.sos_dict = WorkflowDict()
 
-            # inject a few things
-            env.sos_dict.set('__null_func__', __null_func__)
-            env.sos_dict.set('__args__', args)
-            env.sos_dict.set('__unknown_args__', args)
-            # initial values
-            env.sos_dict.set('SOS_VERSION', __version__)
-            env.sos_dict.set('__step_output__', [])
-            env.sos_dict.set('__execute_errors__', ExecuteError('' if self.workflow is None else self.workflow.name))
+        # inject a few things
+        env.sos_dict.set('__null_func__', __null_func__)
+        env.sos_dict.set('__args__', args)
+        env.sos_dict.set('__unknown_args__', args)
+        # initial values
+        env.sos_dict.set('SOS_VERSION', __version__)
+        env.sos_dict.set('__step_output__', [])
+        env.sos_dict.set('__execute_errors__', ExecuteError('' if self.workflow is None else self.workflow.name))
 
         # load configuration files
         cfg = {}
@@ -269,10 +269,10 @@ class Interactive_Executor(Base_Executor):
         # no default workflow so it will execute any workflow if the code piece
         # defines only one workflow
         parser.add_argument('workflow', metavar='WORKFLOW', nargs='?')
-        parser.add_argument('-j', type=int, metavar='JOBS', default=1, dest='__max_jobs__')
+        # parser.add_argument('-j', type=int, metavar='JOBS', default=1, dest='__max_jobs__')
         parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
-        parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', 
-            default=os.path.join('.sos', '__step_report.md'))
+        #parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', 
+        #    default=os.path.join('.sos', '__step_report.md'))
         runmode = parser.add_argument_group(title='Run mode options')
         runmode.add_argument('-f', action='store_true', dest='__rerun__')
         runmode.add_argument('-F', action='store_true', dest='__construct__')
