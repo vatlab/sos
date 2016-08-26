@@ -563,7 +563,7 @@ class Base_Step_Executor:
                         if key == 'output':
                             ofiles = self.expand_output_files(value, *args, **kwargs)
                             # ofiles can be Undertermined
-                            if env.sos_dict['_input'] is not None and env.sig_mode != 'ignore':
+                            if env.sig_mode != 'ignore':
                                 signatures[idx] = RuntimeInfo(self.step_signature, env.sos_dict['_input'],
                                     ofiles, env.sos_dict['_depends'], idx)
                                 if env.sig_mode == 'default':

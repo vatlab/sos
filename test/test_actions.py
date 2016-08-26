@@ -766,6 +766,7 @@ pandoc(output=_output[0], to='html')
 
     def testShrink(self):
         '''test action shrink'''
+        shutil.rmtree('.sos/.runtime')
         script = SoS_Script(r'''
 [10]
 

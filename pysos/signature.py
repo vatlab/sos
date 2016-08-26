@@ -94,7 +94,7 @@ class FileSignature:
         with open(self.sig_file) as md5:
             line = md5.readline()
             f, m = line.rsplit('\t', 1)
-            return m
+            return m.strip()
 
     def add(self, filename):
         '''add related files to the same signature'''
@@ -143,7 +143,10 @@ class RuntimeInfo:
         self.script = script
         # input can only be a list of files
         if not isinstance(input_files, list):
-            raise RuntimeError('Input files must be a list of filenames for runtime signature.')
+            if input_files is None:
+                self.input_files = []
+            else:
+                raise RuntimeError('Input files must be a list of filenames for runtime signature.')
         else:
             self.input_files = input_files
 
@@ -260,6 +263,8 @@ class RuntimeInfo:
                 env.logger.trace('Fail because of command change')
                 return False
             for line in md5:
+                if not line.strip():
+                    continue
                 if line.startswith('#'):
                     if line == '# input\n':
                         cur_type = 'input'

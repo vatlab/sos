@@ -426,7 +426,7 @@ class SoS_ExecuteScript:
         env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
         with open(debug_script_file, 'w') as sfile:
             sfile.write(self.script)
-        if env.run_mode in ['prepare']:
+        if env.run_mode == 'prepare':
             if self.validator is not None:
                 try:
                     self.validator(self.script, filename=debug_script_file)
