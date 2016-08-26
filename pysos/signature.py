@@ -86,13 +86,15 @@ class FileSignature:
         else:
             # if this file is relative to cache, use local directory
             self.sig_file = os.path.join('.sos', '.runtime', rel_path + '.file_info')
-        # path to file
-        sig_path = os.path.split(self.sig_file)[0]
-        if not os.path.isdir(sig_path):
-            try:
-                os.makedirs(sig_path)
-            except Exception as e:
-                raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
+
+    def exist(self):
+        return os.path.isfile(self.sig_file)
+
+    def md5(self):
+        with open(self.sig_file) as md5:
+            line = md5.readline()
+            f, m = line.rsplit('\t', 1)
+            return m
 
     def add(self, filename):
         '''add related files to the same signature'''
@@ -100,6 +102,13 @@ class FileSignature:
 
     def write(self):
         '''Write .file_info file with signature'''
+        # path to file
+        sig_path = os.path.split(self.sig_file)[0]
+        if not os.path.isdir(sig_path):
+            try:
+                os.makedirs(sig_path)
+            except Exception as e:
+                raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
         with open(self.sig_file, 'w') as md5:
             for filename in self.filenames:
                 md5.write('{}\t{}\n'.format(filename, fileMD5(filename)))
@@ -196,19 +205,34 @@ class RuntimeInfo:
             md5.write('{}\n'.format(textMD5(self.script)))
             md5.write('# input\n')
             for f in self.input_files:
-                if not os.path.isfile(os.path.expanduser(f)):
-                    return False
-                md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
+                if os.path.isfile(os.path.expanduser(f)):
+                    md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
+                else:
+                    sig = FileSignature(os.path.expanduser(f))
+                    if sig.exist():
+                        md5.write('{}\t{}\n'.format(f, sig.md5()))
+                    else:
+                        return False
             md5.write('# output\n')
             for f in self.output_files:
-                if not os.path.isfile(os.path.expanduser(f)):
-                    return False
-                md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
+                if os.path.isfile(os.path.expanduser(f)):
+                    md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
+                else:
+                    sig = FileSignature(os.path.expanduser(f))
+                    if sig.exist():
+                        md5.write('{}\t{}\n'.format(f, sig.md5()))
+                    else:
+                        return False
             md5.write('# dependent\n')
             for f in self.dependent_files:
-                if not os.path.isfile(os.path.expanduser(f)):
-                    return False
-                md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
+                if os.path.isfile(os.path.expanduser(f)):
+                    md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
+                else:
+                    sig = FileSignature(os.path.expanduser(f))
+                    if sig.exist():
+                        md5.write('{}\t{}\n'.format(f, sig.md5()))
+                    else:
+                        return False
         return True
 
     def validate(self):
@@ -223,7 +247,7 @@ class RuntimeInfo:
             env.logger.trace('Fail because of undetermined output files.')
             return False
         self.sig_files = self.input_files + self.output_files + self.dependent_files
-        if not all(os.path.isfile(x) for x in self.sig_files):
+        if not all(os.path.isfile(x) or FileSignature(x).exist() for x in self.sig_files):
             env.logger.trace('Fail because of missing one of the files {}'.format(', '.join(self.sig_files)))
             return False
         #
@@ -249,14 +273,20 @@ class RuntimeInfo:
                 try:
                     f, m = line.rsplit('\t', 1)
                     freal = os.path.realpath(os.path.expanduser(f))
-                    if not os.path.isfile(freal):
-                        env.logger.debug('File {} not exist'.format(f))
-                        return False
+                    if os.path.isfile(freal):
+                        fmd5 = fileMD5(freal)
+                    else:
+                        sig = FileSignature(freal)
+                        if sig.exist():
+                            fmd5 = sig.md5()
+                        else:
+                            env.logger.debug('File {} not exist'.format(f))
+                            return False
                     res[cur_type].append(f)
                 except Exception as e:
                     env.logger.debug('Wrong md5 line {} in {}: {}'.format(line, self.proc_info, e))
                     continue
-                if fileMD5(freal) != m.strip():
+                if fmd5 != m.strip():
                     env.logger.debug('MD5 mismatch {}'.format(f))
                     return False
                 # for dynamic files, they are in sig file but not in self.sig_files
