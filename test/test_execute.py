@@ -212,7 +212,19 @@ processed.append((_par, _res))
         wf = script.workflow()
         Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
+        #
+        # test for each for pandas dataframe
+        script = SoS_Script(r"""
+[0: alias='res']
+import pandas as pd
+data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 
+input: for_each='data'
+output: '${_data["A"]}_${_data["B"]}_${_data["C"]}.txt'
+""")
+        wf = script.workflow()
+        Sequential_Executor(wf).inspect()
+        self.assertEqual(env.sos_dict['res'].output, ['1_2_Hello.txt', '2_4_World.txt'])
 
     def testPairedWith(self):
         '''Test option paired_with '''
