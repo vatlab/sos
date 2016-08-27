@@ -62,7 +62,6 @@ __all__ = ['SoS_Action', 'execute_script', 'sos_run',
     'R', 'check_R_library',
     'docker_build', 'docker_commit',
     'report', 'pandoc', 'Rmarkdown',
-    'shrink',
     ]
 
 from .sos_syntax import SOS_RUNTIME_OPTIONS, SOS_ACTION_OPTIONS
@@ -1223,33 +1222,4 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
         raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" to test it.'
             .format(temp_file, cmd))
     env.logger.info('Report saved to {}'.format(output_file))
-
-
-
-@SoS_Action(run_mode=['run', 'interactive'])
-def shrink(files):
-    '''Replace files with their signature so that they can 
-    be removed without affecting signature verification.
-    
-    files can be a text with a list of files, or a list. Wildcard
-    characters are NOT allowed
-    '''
-    if isinstance(files, str):
-        ifiles = [x.strip() for x in files.split('\n') if x.strip()]
-    elif isinstance(files, Sequence):
-        ifiles = list(files)
-    else:
-        raise RuntimeError('Unacceptable input file list for action shrink')
-    # expand
-    for ifile in ifiles:
-        if os.path.isfile(os.path.expanduser(ifile)):
-            sig = FileSignature(os.path.expanduser(ifile))
-            sig.write()
-            os.remove(os.path.expanduser(ifile))
-            env.logger.info('Remove {} while keeping its signature'.format(ifile))
-        elif FileSignature(os.path.expanduser(ifile)).exist():
-            continue
-        else:
-            raise RuntimeError('{} not exist'.format(ifile))
-
 

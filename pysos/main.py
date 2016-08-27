@@ -146,11 +146,6 @@ def cmd_prepare(args, workflow_args):
 # subcommand run
 #
 def cmd_run(args, workflow_args):
-    if args.__inspect__:
-        return sos_inspect(args, workflow_args)
-    elif args.__prepare__:
-        return sos_prepare(args, workflow_args)
-    #
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
     # kill all remainging processes when the master process is killed.
@@ -163,13 +158,23 @@ def cmd_run(args, workflow_args):
     else:
         env.sig_mode = 'default'
 
+    for filename in args.__discard__:
+        if os.path.isfile(os.path.expanduser(filename)):
+            os.remove(os.path.expanduser(filename))
+        # remove also signature of file if it exists
+        FileSignature(os.path.expanduser(filename)).remove()
+            
+    run_all = not (args.__inspect__ or args.__prepare__ or args.__run__)
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
         executor = Sequential_Executor(workflow, args=workflow_args, config_file=args.__config__)
-        executor.inspect()
-        executor.prepare()
-        executor.run()
+        if run_all or args.__inspect__:
+            executor.inspect()
+        if run_all or args.__prepare__:
+            executor.prepare()
+        if run_all or args.__run__:
+            executor.run()
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())

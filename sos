@@ -86,6 +86,11 @@ if __name__ == '__main__':
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary
             CONF in the SoS script being executed.''')
+    parser.add_argument('-d', dest='__discard__', metavar='FILES',
+        nargs='+', help='''One of more files, exist or not, that are discarded
+            before the execution of the workflow, which effectively triggers
+            the re-generation of these files through the execution of the 
+            workflow.''')
     #parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
     #    const='__STDOUT__', nargs='?',
     #    help='''Name of a file that records output from report lines
@@ -98,16 +103,18 @@ if __name__ == '__main__':
         description='''SoS scripts are by default executed in run mode where all
             the script is run in inspect mode to check syntax error, prepare mode
             to prepare resources, and run mode to execute the pipelines. Run mode
-            options allow you to check the script or download resources without
-            actually running the workflow.''')
+            options allow you to execute these steps selectively.''')
     runmode.add_argument('-i', action='store_true', dest='__inspect__',
         help='''Execute the workflow in inspect mode in which step processes
             are executed normally but with most SoS actions return directly.
             SoS also produces diagnoistic warning messages in this mode.''')
     runmode.add_argument('-p', action='store_true', dest='__prepare__',
-        help='''Execute the workflow in dyrun mode, and then preparation mode
-            in which SoS prepare the execution of workflow by, for example,
-            download required resources and docker images.''')
+        help='''Execute the workflow in preparation mode in which SoS prepare
+            the execution of workflow by, for example, download required
+            resources and docker images.''')
+    runmode.add_argument('-r', action='store_true', dest='__run__',
+        help='''Execute the workflow in run mode in which SoS execute all
+            steps.''')
     runmode.add_argument('-f', action='store_true', dest='__rerun__',
         help='''Execute the workflow in a special run mode that ignores saved
             runtime signatures and re-execute all the steps.''')
@@ -146,7 +153,7 @@ if __name__ == '__main__':
             prepares the exeuction of workflow by, for example, download
             required resources and docker images.''',
         epilog=workflow_options,
-        help='Execute a SoS script in prepare mode')
+        help='Execute a SoS script in inspect and prepare mode')
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)

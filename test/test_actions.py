@@ -764,38 +764,6 @@ pandoc(output=_output[0], to='html')
         os.remove('myreport.html')
 
 
-    def testShrink(self):
-        '''test action shrink'''
-        shutil.rmtree('.sos/.runtime')
-        script = SoS_Script(r'''
-[10]
-
-# generate a file
-output: 'largefile.txt'
-
-python:
-    import time
-    time.sleep(5)
-    with open('${output}', 'w') as out:
-        for i in range(1000):
-            out.write('{}\n'.format(i))
-
-[20]
-shrink('${input}')
-''')
-        wf = script.workflow()
-        st = time.time()
-        Sequential_Executor(wf).inspect()
-        Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
-        self.assertGreater(time.time() - st, 5)
-        # rerun, the first step should skip
-        st = time.time()
-        Sequential_Executor(wf).inspect()
-        Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
-        self.assertLess(time.time() - st, 3)
-
 
 if __name__ == '__main__':
     unittest.main()

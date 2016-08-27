@@ -36,6 +36,7 @@ from pysos.utils import env
 from pysos.sos_eval import Undetermined
 from pysos.sos_executor import Sequential_Executor, Interactive_Executor, ExecuteError
 from pysos.sos_script import ParsingError
+from pysos.signature import FileSignature
 import subprocess
 
 class TestExecute(unittest.TestCase):
@@ -1259,6 +1260,46 @@ if run_mode == 'run':
         self.assertRaises(RuntimeError, executor.run, 'c')
         # execute shell command is handled by the kernel, not executor
         #executor.run('!ls')
+
+    def testSignatureAfterRemovalOfFiles(self):
+        '''test action shrink'''
+        shutil.rmtree('.sos/.runtime')
+        script = SoS_Script(r'''
+[10]
+
+# generate a file
+output: 'largefile.txt'
+
+python:
+    import time
+    time.sleep(5)
+    with open('${output}', 'w') as out:
+        for i in range(1000):
+            out.write('{}\n'.format(i))
+
+''')
+        wf = script.workflow()
+        st = time.time()
+        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run()
+        self.assertGreater(time.time() - st, 5)
+        # rerun, but remove output
+        os.remove('largefile.txt')
+        st = time.time()
+        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run()
+        self.assertLess(time.time() - st, 3)
+        # however, the file will not be regenerated
+        self.assertFalse(os.path.isfile('largefile.txt'))
+        # if we discard largefile.txt, it should slow down again
+        st = time.time()
+        FileSignature('largefile.txt').remove()
+        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run()
+        self.assertGreater(time.time() - st, 5)
 
 if __name__ == '__main__':
     unittest.main()

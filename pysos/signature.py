@@ -86,11 +86,18 @@ class FileSignature:
         else:
             # if this file is relative to cache, use local directory
             self.sig_file = os.path.join('.sos', '.runtime', rel_path + '.file_info')
+        self._md5 = []
 
     def exist(self):
         return os.path.isfile(self.sig_file)
 
+    def remove(self):
+        if os.path.isfile(self.sig_file):
+            os.remove(self.sig_file)
+
     def md5(self):
+        if self._md5:
+            return self._md5[0]
         with open(self.sig_file) as md5:
             line = md5.readline()
             f, m = line.rsplit('\t', 1)
@@ -111,7 +118,8 @@ class FileSignature:
                 raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
         with open(self.sig_file, 'w') as md5:
             for filename in self.filenames:
-                md5.write('{}\t{}\n'.format(filename, fileMD5(filename)))
+                self._md5.append(fileMD5(filename))
+                md5.write('{}\t{}\n'.format(filename, self._md5[-1]))
 
     def validate(self):
         '''Check if file matches its signature'''
@@ -209,7 +217,10 @@ class RuntimeInfo:
             md5.write('# input\n')
             for f in self.input_files:
                 if os.path.isfile(os.path.expanduser(f)):
-                    md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
+                    sig = FileSignature(os.path.expanduser(f))
+                    # this calculates file MD5
+                    sig.write()
+                    md5.write('{}\t{}\n'.format(f, sig.md5()))
                 else:
                     sig = FileSignature(os.path.expanduser(f))
                     if sig.exist():
@@ -219,7 +230,9 @@ class RuntimeInfo:
             md5.write('# output\n')
             for f in self.output_files:
                 if os.path.isfile(os.path.expanduser(f)):
-                    md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
+                    sig = FileSignature(os.path.expanduser(f))
+                    sig.write()
+                    md5.write('{}\t{}\n'.format(f, sig.md5()))
                 else:
                     sig = FileSignature(os.path.expanduser(f))
                     if sig.exist():
@@ -229,7 +242,9 @@ class RuntimeInfo:
             md5.write('# dependent\n')
             for f in self.dependent_files:
                 if os.path.isfile(os.path.expanduser(f)):
-                    md5.write('{}\t{}\n'.format(f, fileMD5(os.path.realpath(os.path.expanduser(f)))))
+                    sig = FileSignature(os.path.expanduser(f))
+                    sig.write()
+                    md5.write('{}\t{}\n'.format(f, sig.md5()))
                 else:
                     sig = FileSignature(os.path.expanduser(f))
                     if sig.exist():
