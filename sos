@@ -86,7 +86,7 @@ if __name__ == '__main__':
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary
             CONF in the SoS script being executed.''')
-    parser.add_argument('-d', dest='__discard__', metavar='FILES',
+    parser.add_argument('-d', dest='__discard__', metavar='FILES', default=[],
         nargs='+', help='''One of more files, exist or not, that are discarded
             before the execution of the workflow, which effectively triggers
             the re-generation of these files through the execution of the 
