@@ -590,7 +590,7 @@ class Base_Step_Executor:
                         elif key == 'task':
                             self.process_task_args(*args, **kwargs)
                             # if concurrent is set, create a pool object
-                            if env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in kwargs and kwargs['concurrent']:
+                            if pool is None and env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in kwargs and kwargs['concurrent']:
                                 pool = mp.Pool(min(env.max_jobs, len(self._groups)))
                         else:
                             raise RuntimeError('Unrecognized directive {}'.format(key))
