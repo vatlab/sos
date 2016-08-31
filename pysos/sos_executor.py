@@ -77,8 +77,12 @@ class Base_Executor:
 
         # if creating a new dictionary, set it up with some basic varibles
         # and functions
-        if new_dict:
-            env.sos_dict = WorkflowDict()
+        if not new_dict:
+            SoS_exec('import os, sys, glob')
+            SoS_exec('from pysos import *')
+            return
+
+        env.sos_dict = WorkflowDict()
 
         # inject a few things
         env.sos_dict.set('__null_func__', __null_func__)
@@ -318,8 +322,8 @@ class Interactive_Executor(Base_Executor):
             else:
                 sig_mode = 'default'
 
-            if os.path.isfile(args.__report__):
-                os.remove(args.__report__)
+            #if os.path.isfile(args.__report__):
+            #    os.remove(args.__report__)
 
             # this is the result returned by the workflow, if the
             # last stement is an expression.

@@ -1300,6 +1300,7 @@ python:
         Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run()
         self.assertGreater(time.time() - st, 5)
+        os.remove('largefile.txt')
 
 if __name__ == '__main__':
     unittest.main()
