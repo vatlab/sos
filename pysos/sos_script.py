@@ -54,6 +54,15 @@ class SoS_Step:
     '''Parser of a SoS step. This class accepts strings sent by the parser, determine
     their types and add them to appropriate sections (directive, assignment, statement,
     scripts etc) '''
+    _INDENTED_TMPL = r'''
+        ^                   # start from beginning of string
+        (
+        \s*\n               # empty lines are ignored
+        )*
+        (\s*)\S             # match a line with a non-space character
+        '''
+    INDENTED = re.compile(_INDENTED_TMPL, re.VERBOSE)
+
     def __init__(self, context=None, names=[], options={}, is_global=False):
         '''A sos step '''
         self.context = context
@@ -89,13 +98,17 @@ class SoS_Step:
         self._action_options = ''
         self._script = ''
 
+    def indented_script(self):
+        ''' check self._script and see if it is indented '''
+        # get all leading space, tab and newline
+        leading = self.INDENTED.match(self._script)
+        return leading is not None and leading.group(2)
+
     def category(self):
         '''Determine the category of existing statement'''
         if self.statements:
             if self.statements[-1][0] == '=':
                 return 'expression'
-            elif self.statements[-1][0] == '%':
-                return 'report'
             elif self.statements[-1][0] == ':':
                 # a hack. ... to avoid calling isValid recursively
                 def validDirective():
@@ -143,45 +156,20 @@ class SoS_Step:
                 compile(''.join(self.values), filename='<string>', mode='exec')
             elif self.category() == 'script':
                 #
-                # We are talking about this script here
+                # A valid script has an identation defined at the first line. That is to say
                 #
-                # [0]
-                # input: 'filename',  'filename2', opt=value==1
-                # python3:
+                # line 1
+                # line 2
                 #
-                # with open('something') as e:
-                #   e.write("""
-                # [section]
-                # """)
+                # is allowed
                 #
-                # The script is obviously valid but [section] takes priority so python3 cannot
-                # get the complete script and fail. We can potentially fix this problem but
-                # we will see another bug, namely, "${}" expand to something that is not
-                # string in the script. That is to say
+                #     line 1
+                #     line 2
                 #
-                # [0]
-                # input: 'filename',  'filename2', opt=value==1
-                # python3:
+                # line 3
                 #
-                # with open('something') as e:
-                #   a = ${input}
-                #   e.write("""
-                # [section]
-                # """)
-                #
-                # would fail because a=${input} is not a valid statement.
-                #
-                #if self._action in ['python3', 'task']:
-                #    # we only know how to parse python script, but that is good enough
-                #    try:
-                #        compile(textwrap.dedent(self._script), filename='<string>', mode='exec')
-                #        return True
-                #    except Exception as e:
-                #        #self.error_msg = repr(e)
-                #        return False
-                #else:
-                return True
-            elif self.category() == 'report':
+                # is not so the addition of line 3 would fail. However, the last line
+                # will be tested before inserted so this function will always return True
                 return True
             else:
                 raise RuntimeError('Unrecognized expression type {}'.format(self.category()))
@@ -287,6 +275,7 @@ class SoS_Step:
         if self.statements[-1][0] != ':' or self.statements[-1][1] != '__script__':
             raise RuntimeError('Failed to parse script')
         self.statements[-1] = ['!', '{}({}{})\n'.format(self._action, text_repr(textwrap.dedent(self._script)), (', ' + opt) if opt else '')]
+        self.values = []
         self._action = None
         self._action_options = None
         self._script = ''
@@ -543,9 +532,17 @@ class SoS_Script:
                             self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
                     # this is comment in scripts (and perhaps not even comment)
                     elif cursect.category() == 'script':
-                        cursect.extend(line)
-                        if self.transcript:
-                            self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
+                        if cursect.indented_script():
+                            # if the script is indented and encounters a comment
+                            # from first column, switch to comment mode
+                            cursect.wrap_script()
+                            cursect.add_comment(line)
+                            if self.transcript:
+                                self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                        else:
+                            cursect.extend(line)
+                            if self.transcript:
+                                self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                     # this can be comment or back comment
                     elif cursect.category() in ('statement', 'expression') and cursect.isValid():
                         # this can be comment or back comment
@@ -749,12 +746,17 @@ class SoS_Script:
                         if self.transcript:
                             self.transcript.write('SCRIPT_{}\t{}\t{}'.format(directive_name, lineno, line))
                 continue
-            # if section is string mode?
+            # if section is in script mode?
             if cursect and cursect.isValid() and cursect.category() == 'script':
-                cursect.extend(line)
-                if self.transcript:
-                    self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
-                continue
+                # if the script is indented and the line is not, the script
+                # is ended.
+                if not line[0].isspace() and cursect.indented_script():
+                    cursect.wrap_script()
+                else:
+                    cursect.extend(line)
+                    if self.transcript:
+                        self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
+                    continue
             #
             # assignment?
             mo = SOS_ASSIGNMENT.match(line)

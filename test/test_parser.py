@@ -491,6 +491,17 @@ R:
 some::function(param)
 ''')
         wf = script.workflow()
+        #
+        # script with first-line indent
+        #
+        script = SoS_Script('''
+[0]
+sh:
+  echo "a"
+
+sh('echo "b"')
+''')
+        wf = script.workflow()
 
 
     def testInput(self):
