@@ -521,6 +521,16 @@ class Error(Exception):
     __str__ = __repr__
 
 
+class AbortExecution(Error):
+    '''Abort a step and continue'''
+    def __init__(self, msg):
+        Error.__init__(self, msg)
+
+class AbortExecution(Error):
+    '''Abort a step and continue'''
+    def __init__(self, msg):
+        Error.__init__(self, msg)
+
 def get_traceback():
     output = StringIO()
     exc_type, exc_value, exc_traceback = sys.exc_info()

@@ -28,7 +28,7 @@ from io import StringIO
 from shlex import quote
 from tokenize import generate_tokens, untokenize
 
-from .utils import env, Error, short_repr, DelayedAction, time_limit
+from .utils import env, Error, short_repr, DelayedAction, time_limit, AbortExecution
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
@@ -402,6 +402,8 @@ def SoS_exec(stmts, sigil='${ }'):
                 res = eval(stmts, env.sos_dict._dict)
             else:
                 exec(stmts, env.sos_dict._dict)
+        except AbortExecution:
+            raise
         except Exception as e:
             if env.run_mode not in ['run', 'interactive']:
                 if isinstance(e, InterpolationError):

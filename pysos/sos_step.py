@@ -32,7 +32,7 @@ from collections.abc import Sequence, Iterable
 from collections import OrderedDict
 from itertools import tee, combinations
 
-from .utils import env, Error, short_repr, get_traceback, pickleable, transcribe
+from .utils import env, Error, AbortExecution, short_repr, get_traceback, pickleable, transcribe
 from .pattern import extract_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
 from .signature import  RuntimeInfo, textMD5
@@ -414,6 +414,8 @@ class Base_Step_Executor:
     def execute(self, stmt):
         try:
             self.last_res = SoS_exec(stmt, self.step.sigil)
+        except AbortExecution:
+            raise
         except Exception as e:
             raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(stmt), e))
 
@@ -505,7 +507,12 @@ class Base_Step_Executor:
                 elif statement[0] == ':':
                     raise RuntimeError('Step input should be specified before others')
                 else:
-                    self.execute(statement[1])
+                    try:
+                        self.execute(statement[1])
+                    except AbortExecution as e:
+                        if e.message:
+                            env.logger.warning(e)
+                        return self.collectResult()
             # input statement
             stmt = self.step.statements[input_statement_idx][2]
             self.log('input statement', stmt)
@@ -597,7 +604,12 @@ class Base_Step_Executor:
                     except Exception as e:
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
-                    self.execute(statement[1])
+                    try:
+                        self.execute(statement[1])
+                    except AbortExecution as e:
+                        if e.message:
+                            env.logger.warning(e)
+                        continue
             # if this index is skipped, go directly to the next one
             if skip_index:
                 skip_index = False

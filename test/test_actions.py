@@ -258,6 +258,21 @@ warn_if(len(input) == 1)
         # should be silent
         Sequential_Executor(wf).inspect()
 
+    def testAbortIf(self):
+        '''Test action abort'''
+        script = SoS_Script(r'''
+[0: alias='res']
+rep = range(20)
+result = []
+input: for_each='rep'
+
+abort_if(_rep > 10)
+result.append(_rep)
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).inspect()
+        self.assertEqual(env.sos_dict['res'].result, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+
     def testRun(self):
         '''Test action run'''
         script = SoS_Script(r'''
