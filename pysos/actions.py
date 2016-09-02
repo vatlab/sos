@@ -543,13 +543,13 @@ def check_command(cmd, pattern = None, quiet=False):
         try:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True, timeout=2).decode()
         except subprocess.TimeoutExpired as e:
-            output = e.output
+            output = e.output.decode()
             ret_val = 1
             env.logger.warning(e)
             env.logger.warning(e.output.decode())
         except subprocess.CalledProcessError as e:
             ret_val = e.returncode
-            output = e.output
+            output = e.output.decode()
             env.logger.warning(e)
             env.logger.warning(e.output.decode())
         #
