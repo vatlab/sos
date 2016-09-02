@@ -202,13 +202,6 @@ class SoS_Step:
         else:
             self.back_comment += line.lstrip('#').lstrip()
 
-    def add_report(self, line):
-        self.wrap_script()
-        if self.statements and self.statements[-1][0] == '%':
-            self.statements[-1][-1] += line
-        else:
-            self.statements.append(['%', line])
-
     def add_assignment(self, key, value, lineno=None):
         '''Assignments are items with '=' type '''
         if key is None:
@@ -813,7 +806,11 @@ class SoS_Script:
                 # existing one
                 cursect.extend(line)
                 if self.transcript:
-                    self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
+                    # it is possible that we are switching from SCRIPT mode to regular
+                    # statement, in which case the new mode should be STATEMENT, not FOLLOW
+                    self.transcript.write('{}\t{}\t{}'.format(
+                        'STATEMENT' if cursect.category() == 'statements' else 'FOLLOW',
+                        lineno, line))
         #
         # check the last expression before a new directive
         if cursect:
