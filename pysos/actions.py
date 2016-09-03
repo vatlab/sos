@@ -47,7 +47,7 @@ from docker.utils import kwargs_from_env
 import multiprocessing as mp
 import pygments.token as token
 from pygments.lexers import get_lexer_for_filename, guess_lexer
-from .utils import env, ProgressBar, short_repr, natural_keys, transcribe
+from .utils import env, ProgressBar, short_repr, natural_keys, transcribe, AbortExecution
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .signature import FileSignature, fileMD5
@@ -55,7 +55,8 @@ from .sos_executor import Sequential_Executor
 from .monitor import ProcessMonitor, summarizeExecution
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
-    'check_command', 'fail_if', 'warn_if', 'download',
+    'check_command', 'fail_if', 'warn_if', 'abort_if',
+    'download',
     'run', 'bash', 'csh', 'tcsh', 'zsh', 'sh',
     'python', 'python3',
     'perl', 'ruby', 'node', 'JavaScript',
@@ -575,6 +576,14 @@ def warn_if(expr, msg=''):
     '''Yield an warning message `msg` if `expr` is False '''
     if expr:
         env.logger.warning(msg)
+    return 0
+
+@SoS_Action(run_mode=['inspect', 'run', 'interactive'])
+def abort_if(expr, msg=''):
+    '''Abort the execution of the current step or loop and yield
+    an warning message `msg` if `expr` is False '''
+    if expr:
+        raise AbortExecution(msg)
     return 0
 
 #
