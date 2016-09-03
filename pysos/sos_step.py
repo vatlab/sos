@@ -126,7 +126,7 @@ class Base_Step_Executor:
         '''Process input files (perhaps a pattern) to determine input files.
 
         ret: 
-            Return a file list or Undertermined.
+            Return a file list or Undetermined.
         '''
         raise RuntimeError('Undefined virtual function.')
 
@@ -134,7 +134,7 @@ class Base_Step_Executor:
         '''Process dependent files (perhaps a pattern) to determine input files.
 
         ret: 
-            Return a file list or Undertermined.
+            Return a file list or Undetermined.
         '''
         raise RuntimeError('Undefined virtual function.')
 
@@ -294,7 +294,7 @@ class Base_Step_Executor:
         which are groups of _input and related _vars
         '''
         if isinstance(ifiles, Undetermined):
-            return [Undertermined()], [{}]
+            return [Undetermined()], [{}]
 
         for k in kwargs.keys():
             if k not in SOS_INPUT_OPTIONS:
@@ -562,7 +562,7 @@ class Base_Step_Executor:
                         # dynamic output or dependent files
                         if key == 'output':
                             ofiles = self.expand_output_files(value, *args, **kwargs)
-                            # ofiles can be Undertermined
+                            # ofiles can be Undetermined
                             if env.sig_mode != 'ignore':
                                 signatures[idx] = RuntimeInfo(self.step_signature, env.sos_dict['_input'],
                                     ofiles, env.sos_dict['_depends'], idx)
@@ -585,7 +585,7 @@ class Base_Step_Executor:
                                 break
                         elif key == 'depends':
                             dfiles = self.expand_depends_files(*args, **kwargs)
-                            # dfiles can be Undertermined
+                            # dfiles can be Undetermined
                             self.process_depends_args(dfiles, **kwargs)
                         elif key == 'task':
                             self.process_task_args(*args, **kwargs)
