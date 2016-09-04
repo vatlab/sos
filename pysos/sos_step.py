@@ -328,26 +328,6 @@ class Base_Step_Executor:
         # handle for_each
         if 'for_each' in kwargs:
             Base_Step_Executor.handle_for_each(kwargs['for_each'], _groups, _vars)
-        #
-        if 'skip' in kwargs:
-            if callable(kwargs['skip']):
-                _tmp_groups = []
-                _tmp_vars = []
-                for g, v in zip(_groups, _vars):
-                    try:
-                        res = kwargs['skip'](g, **v)
-                    except Exception as e:
-                        raise RuntimeError('Failed to apply skip function to group {}: {}'.format(', '.join(g), e))
-                    if res:
-                       env.logger.info('Input group {} is skipped.'.format(', '.join(g)))
-                    else:
-                        _tmp_groups.append(g)
-                        _tmp_vars.append(v)
-                _groups = _tmp_groups
-                _vars = _tmp_vars
-            else:
-                _groups = []
-                _vars = []
         return _groups, _vars
 
     def process_depends_args(self, dfiles, **kwargs):
