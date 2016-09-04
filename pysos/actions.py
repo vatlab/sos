@@ -55,7 +55,7 @@ from .sos_executor import Sequential_Executor
 from .monitor import ProcessMonitor, summarizeExecution
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
-    'check_command', 'fail_if', 'warn_if', 'abort_if',
+    'check_command', 'fail_if', 'warn_if', 'stop_if',
     'download',
     'run', 'bash', 'csh', 'tcsh', 'zsh', 'sh',
     'python', 'python3',
@@ -579,7 +579,7 @@ def warn_if(expr, msg=''):
     return 0
 
 @SoS_Action(run_mode=['inspect', 'run', 'interactive'])
-def abort_if(expr, msg=''):
+def stop_if(expr, msg=''):
     '''Abort the execution of the current step or loop and yield
     an warning message `msg` if `expr` is False '''
     if expr:
