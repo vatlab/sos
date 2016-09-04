@@ -539,9 +539,9 @@ class SoS_Script:
                     # this can be comment or back comment
                     elif cursect.category() in ('statement', 'expression') and cursect.isValid():
                         # this can be comment or back comment
-                        cursect.add_comment(line)
+                        cursect.extend(line)
                         if self.transcript:
-                            self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                            self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                     else:
                         # ignored.
                         if self.transcript:

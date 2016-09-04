@@ -609,7 +609,8 @@ class Base_Step_Executor:
                     except AbortExecution as e:
                         if e.message:
                             env.logger.warning(e)
-                        continue
+                        skip_index = True
+                        break
             # if this index is skipped, go directly to the next one
             if skip_index:
                 skip_index = False
