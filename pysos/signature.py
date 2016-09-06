@@ -114,7 +114,7 @@ class FileTarget(BaseTarget):
 
 class executable(BaseTarget):
     '''A target for an executable command.'''
-    def __init__(self, cmd);
+    def __init__(self, cmd):
         self._cmd = cmd
 
     def exist(self, mode='any'):
