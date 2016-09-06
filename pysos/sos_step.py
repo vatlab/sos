@@ -760,7 +760,7 @@ def _expand_file_list(ignore_unknown, *args):
                     tmp.append(ifile)
             else:
                 tmp.extend(expanded)
-    return tmp
+    return Targets([FileTarget(x) for x in tmp])
 
 class Inspect_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):

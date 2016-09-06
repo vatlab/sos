@@ -22,6 +22,7 @@
 import os
 import sys
 import hashlib
+import shutil
 from .utils import env
 from .sos_eval import Undetermined
 
@@ -70,6 +71,55 @@ def fileMD5(filename, partial=True):
     return md5.hexdigest()
 
 
+class Targets:
+    '''A container class for one or more targets (e.g. a list of files'''
+    def __init__(self, targets):
+        self._targets = targets
+
+    def undetermined(self):
+        return any(x.undetermined() for x in self._targets)
+
+class dynamic(Targets):
+    '''A dynamic executable that only handles input files when 
+    it is available.'''
+    def __init__(self, targets):
+        self._targets = targets
+
+    def undetermined(self):
+        return True
+
+class BaseTarget:
+    '''A base class for all targets (e.g. a file)'''
+    def __init__(self):
+        pass
+
+    def exist(self, mode='any'):
+        raise RuntimeError('Undefined base function')
+
+    def undetermined(self):
+        return False
+
+class FileTarget(BaseTarget):
+    '''File target'''
+    def __init__(self, filename):
+        self._name = filename
+        self.fullname = os.path.expanduser(self._name)
+
+    def exist(self, mode='any'):
+        if mode in ('any', 'file') and os.path.isfile(self.fullname):
+            return True
+        if mode in ('any', 'signature') and FileSignature(self.fullname).exist():
+            return True
+        return False
+
+class executable(BaseTarget):
+    '''A target for an executable command.'''
+    def __init__(self, cmd);
+        self._cmd = cmd
+
+    def exist(self, mode='any'):
+        return shutil.which(cmd)
+    
 class FileSignature:
     '''Record file MD5 information to sign downloaded files, also add
     decompressed files in case the file is decompressed.'''
