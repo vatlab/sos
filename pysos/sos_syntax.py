@@ -23,7 +23,7 @@
 import re
 import keyword
 
-SOS_INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic']
+SOS_INPUT_OPTIONS = ['group_by', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic']
 SOS_OUTPUT_OPTIONS = ['dynamic']
 SOS_DEPENDS_OPTIONS = ['dynamic']
 SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active']
