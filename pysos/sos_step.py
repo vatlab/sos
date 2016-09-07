@@ -35,7 +35,7 @@ from itertools import tee, combinations
 from .utils import env, Error, AbortExecution, short_repr, get_traceback, pickleable, transcribe
 from .pattern import extract_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
-from .signature import  RuntimeInfo, textMD5
+from .signature import  Targets, FileTarget, RuntimeInfo, textMD5
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 
@@ -740,7 +740,7 @@ def _expand_file_list(ignore_unknown, *args):
                     tmp.append(ifile)
             else:
                 tmp.extend(expanded)
-    return tmp
+    return Targets([FileTarget(x) for x in tmp])
 
 class Inspect_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
