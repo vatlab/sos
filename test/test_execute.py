@@ -756,7 +756,7 @@ print('hay, I am crazy')
         script = SoS_Script('''
 [10: alias='test']
 ofiles = []
-output: ofiles, dynamic=True
+output: dynamic(ofiles)
 
 for i in range(4):
     ff = 'temp/something{}.html'.format(i)
@@ -785,8 +785,8 @@ for i in range(5):
 
 
 [10: alias='test']
-input: 'temp/*.txt', group_by='single', dynamic=True
-output: 'temp/*.txt.bak', dynamic=True
+input: dynamic('temp/*.txt'), group_by='single'
+output: dynamic('temp/*.txt.bak')
 
 run:
 touch ${_input}.bak

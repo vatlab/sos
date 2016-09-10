@@ -35,7 +35,7 @@ from itertools import tee, combinations
 from .utils import env, Error, AbortExecution, short_repr, get_traceback, pickleable, transcribe
 from .pattern import extract_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
-from .signature import  Targets, FileTarget, RuntimeInfo, textMD5
+from .signature import BaseTarget, dynamic, RuntimeInfo, textMD5
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 
@@ -122,7 +122,7 @@ class Base_Step_Executor:
     # The following functions should be redefined in an executor
     # because it may behave differently in different modes.
     #
-    def expand_input_files(self, value, *args, **kwargs):
+    def expand_input_files(self, value, *args):
         '''Process input files (perhaps a pattern) to determine input files.
 
         ret: 
@@ -130,7 +130,7 @@ class Base_Step_Executor:
         '''
         raise RuntimeError('Undefined virtual function.')
 
-    def expand_depends_files(self, *args, **kwargs):
+    def expand_depends_files(self, *args):
         '''Process dependent files (perhaps a pattern) to determine input files.
 
         ret: 
@@ -138,10 +138,10 @@ class Base_Step_Executor:
         '''
         raise RuntimeError('Undefined virtual function.')
 
-    def expand_output_files(self, value, *args, **kwargs):
+    def expand_output_files(self, value, *args):
         '''Process output files (perhaps a pattern) to determine input files.
         '''
-        if 'dynamic' in kwargs:
+        if any(isinstance(x, dynamic) for x in args):
             return Undetermined(value)
         else:
             return _expand_file_list(True, *args)
@@ -499,7 +499,7 @@ class Base_Step_Executor:
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(stmt), self.step.sigil)
                 # Files will be expanded differently with different running modes
-                input_files = self.expand_input_files(stmt, *args, **kwargs)
+                input_files = self.expand_input_files(stmt, *args)
                 if isinstance(input_files, Undetermined):
                     return self.collectResult()
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
@@ -548,7 +548,7 @@ class Base_Step_Executor:
                         args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
                         # dynamic output or dependent files
                         if key == 'output':
-                            ofiles = self.expand_output_files(value, *args, **kwargs)
+                            ofiles = self.expand_output_files(value, *args)
                             # ofiles can be Undetermined
                             if env.sig_mode != 'ignore':
                                 signatures[idx] = RuntimeInfo(self.step_signature, env.sos_dict['_input'],
@@ -571,7 +571,7 @@ class Base_Step_Executor:
                             if skip_index:
                                 break
                         elif key == 'depends':
-                            dfiles = self.expand_depends_files(*args, **kwargs)
+                            dfiles = self.expand_depends_files(*args)
                             # dfiles can be Undetermined
                             self.process_depends_args(dfiles, **kwargs)
                         elif key == 'task':
@@ -709,7 +709,9 @@ class Queued_Step_Executor(Base_Step_Executor):
 def _expand_file_list(ignore_unknown, *args):
     ifiles = []
     for arg in args:
-        if isinstance(arg, str):
+        if isinstance(arg, BaseTarget):
+            ifiles.extend(arg)
+        elif isinstance(arg, str):
             ifiles.append(os.path.expanduser(arg))
         elif isinstance(arg, Iterable):
             # in case arg is a Generator, check its type will exhaust it
@@ -723,7 +725,9 @@ def _expand_file_list(ignore_unknown, *args):
     # expand files with wildcard characters and check if files exist
     tmp = []
     for ifile in ifiles:
-        if os.path.isfile(os.path.expanduser(ifile)):
+        if isinstance(ifile, BaseTarget):
+            tmp.extend(tmp)
+        elif os.path.isfile(os.path.expanduser(ifile)):
             tmp.append(ifile)
         else:
             expanded = sorted(glob.glob(os.path.expanduser(ifile)))
@@ -740,14 +744,14 @@ def _expand_file_list(ignore_unknown, *args):
                     tmp.append(ifile)
             else:
                 tmp.extend(expanded)
-    return Targets([FileTarget(x) for x in tmp])
+    return tmp
 
 class Inspect_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
         Queued_Step_Executor.__init__(self, step, queue, inspect_or_prepare=True)
 
-    def expand_input_files(self, value, *args, **kwargs):
-        if 'dynamic' in kwargs:
+    def expand_input_files(self, value, *args):
+        if any(isinstance(x, dynamic) for x in args):
             return Undetermined(value)
         # if unspecified, use __step_output__ as input (default)
         if not args:
@@ -755,9 +759,9 @@ class Inspect_Step_Executor(Queued_Step_Executor):
         else:
             return _expand_file_list(True, *args)
 
-    def expand_depends_files(self, *args, **kwargs):
+    def expand_depends_files(self, *args):
         '''handle directive depends'''
-        if 'dynamic' in kwargs:
+        if any(isinstance(x, dynamic) for x in args):
             return Undetermined()
         else:
             return _expand_file_list(True, *args)
@@ -778,8 +782,8 @@ class Prepare_Step_Executor(Queued_Step_Executor):
         env.run_mode = 'prepare'
         Queued_Step_Executor.__init__(self, step, queue, inspect_or_prepare=True)
 
-    def expand_input_files(self, value, *args, **kwargs):
-        if 'dynamic' in kwargs:
+    def expand_input_files(self, value, *args):
+        if any(isinstance(x, dynamic) for x in value):
             return Undetermined(value)
         # if unspecified, use __step_output__ as input (default)
         if not args:
@@ -787,9 +791,9 @@ class Prepare_Step_Executor(Queued_Step_Executor):
         else:
             return _expand_file_list(True, *args)
 
-    def expand_depends_files(self, *args, **kwargs):
+    def expand_depends_files(self, *args):
         '''handle directive depends'''
-        if 'dynamic' in kwargs:
+        if any(isinstance(x, dynamic) for x in args):
             return Undetermined()
         else:
             return _expand_file_list(True, *args)
@@ -819,9 +823,10 @@ class Run_Step_Executor(Queued_Step_Executor):
         Base_Step_Executor.assign(self, key, value)
         transcribe('{} = {}'.format(key, env.sos_dict[key]))
 
-    def expand_input_files(self, value, *args, **kwargs):
-        # We ignore 'dynamic' option in run mode
+    def expand_input_files(self, value, *args):
         # if unspecified, use __step_output__ as input (default)
+        # resolve dynamic input.
+        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         if not args:
             return env.sos_dict['input']
         else:
@@ -834,8 +839,9 @@ class Run_Step_Executor(Queued_Step_Executor):
     def reevaluate_output(self):
         # re-process the output statement to determine output files
         args, kwargs = SoS_eval('__null_func__({})'.format(env.sos_dict['output'].expr), self.step.sigil)
-        kwargs.pop('dynamic', None)
-        env.sos_dict.set('output', self.expand_output_files('', *args, **kwargs))
+        # handle dynamic args
+        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+        env.sos_dict.set('output', self.expand_output_files('', *args))
 
 
 class Interactive_Step_Executor(Base_Step_Executor):
@@ -843,7 +849,7 @@ class Interactive_Step_Executor(Base_Step_Executor):
         env.run_mode = 'interactive'
         Base_Step_Executor.__init__(self, step, inspect_or_prepare=False)
     
-    def expand_input_files(self, value, *args, **kwargs):
+    def expand_input_files(self, value, *args):
         # We ignore 'dynamic' option in run mode
         # if unspecified, use __step_output__ as input (default)
         if not args:
@@ -851,11 +857,11 @@ class Interactive_Step_Executor(Base_Step_Executor):
         else:
             return _expand_file_list(False, *args)
 
-    def expand_depends_files(self, *args, **kwargs):
+    def expand_depends_files(self, *args):
         '''handle directive depends'''
         return _expand_file_list(True, *args)
 
-    def expand_output_files(self, value, *args, **kwargs):
+    def expand_output_files(self, value, *args):
         return _expand_file_list(True, *args)
 
     def log(self, stage=None, msg=None):
