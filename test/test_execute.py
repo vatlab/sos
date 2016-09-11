@@ -1249,6 +1249,41 @@ if run_mode == 'run':
         except:
             pass
 
+    def testDependsExecutable(self):
+        '''Testing target executable.'''
+        script = SoS_Script('''
+[0]
+depends: executable('ls')
+sh:
+    touch a.txt
+''')
+        wf = script.workflow()
+        try:
+            # remove existing output if exists
+            os.remove('a.txt')
+        except:
+            pass
+        Sequential_Executor(wf).run()
+        self.assertTrue(os.path.isfile('a.txt'))
+        
+    def testOutputExecutable(self):
+        '''Testing target executable.'''
+        script = SoS_Script('''
+[0]
+output: executable('lls')
+sh:
+    touch lls
+    chmod +x lls
+''')
+        wf = script.workflow()
+        try:
+            # remove existing output if exists
+            os.remove('lls')
+        except:
+            pass
+        Sequential_Executor(wf).run()
+        self.assertTrue(os.path.isfile('lls'))
+        
 
     def testInteractiveExecutor(self):
         '''interactive'''

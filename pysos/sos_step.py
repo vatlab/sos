@@ -710,7 +710,7 @@ def _expand_file_list(ignore_unknown, *args):
     ifiles = []
     for arg in args:
         if isinstance(arg, BaseTarget):
-            ifiles.extend(arg)
+            ifiles.append(arg)
         elif isinstance(arg, str):
             ifiles.append(os.path.expanduser(arg))
         elif isinstance(arg, Iterable):
@@ -726,7 +726,10 @@ def _expand_file_list(ignore_unknown, *args):
     tmp = []
     for ifile in ifiles:
         if isinstance(ifile, BaseTarget):
-            tmp.extend(tmp)
+            if ignore_unknown or ifile.exists():
+                tmp.append(ifile)
+            else:
+                raise RuntimeError('{} not exist'.format(ifile))
         elif os.path.isfile(os.path.expanduser(ifile)):
             tmp.append(ifile)
         else:
@@ -834,7 +837,7 @@ class Run_Step_Executor(Queued_Step_Executor):
 
     def expand_depends_files(self, *args, **kwargs):
         '''handle directive depends'''
-        return _expand_file_list(True, *args)
+        return _expand_file_list(False, *args)
 
     def reevaluate_output(self):
         # re-process the output statement to determine output files
@@ -859,7 +862,7 @@ class Interactive_Step_Executor(Base_Step_Executor):
 
     def expand_depends_files(self, *args):
         '''handle directive depends'''
-        return _expand_file_list(True, *args)
+        return _expand_file_list(False, *args)
 
     def expand_output_files(self, value, *args):
         return _expand_file_list(True, *args)
