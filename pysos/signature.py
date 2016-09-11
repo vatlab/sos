@@ -104,13 +104,15 @@ class FileTarget(BaseTarget):
         if self._sig_file is not None:
             return self._sig_file
         # If the output path is outside of the current working directory
-        rel_path = os.path.relpath(self.fullname(), env.exec_dir)
+        rel_path = os.path.relpath(os.path.abspath(self.fullname()), env.exec_dir)
         # if this file is not relative to cache, use global signature file
         if rel_path.startswith('../'):
-            self._sig_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep) + '.file_info')
+            self._sig_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime',
+                os.path.abspath(self.fullname()).lstrip(os.sep) + '.file_info')
         else:
             # if this file is relative to cache, use local directory
             self._sig_file = os.path.join('.sos', '.runtime', rel_path + '.file_info')
+        return self._sig_file
         
     def write_sig(self):
         '''Write .file_info file with signature'''
@@ -122,9 +124,21 @@ class FileTarget(BaseTarget):
             except Exception as e:
                 raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
         with open(self.sig_file(), 'w') as md5:
-            self._md5 = fileMD5(self.fullname())
-            md5.write('{}\t{}\n'.format(self.fullname(), self._md5))
+            self.calc_md5()
+            md5.write('{}\t{}\n'.format(self.fullname(), self.md5()))
 
+    def calc_md5(self):
+        if self._md5 is None:
+            self._md5 = fileMD5(self.fullname())
+
+    def md5(self):
+        '''Return md5'''
+        if self._md5 is not None:
+            return self._md5
+        with open(self.sig_file()) as md5:
+            line = md5.readline()
+            f, m = line.rsplit('\t', 1)
+            return m.strip()
 
 class dynamic(BaseTarget):
     '''A dynamic executable that only handles input files when 
@@ -248,14 +262,14 @@ class RuntimeInfo:
             self.dependent_files = []
         elif isinstance(dependent_files, list):
             self.dependent_files = [FileTarget(x) if isinstance(x, str) else x for x in dependent_files]
-        elif isinstance(dependent_files, Undetermined)):
+        elif isinstance(dependent_files, Undetermined):
             self.dependent_files = dependent_files
         else:
             raise RuntimeError('Dependent files must be a list of filenames or Undetermined for runtime signature.')
 
         if isinstance(output_files, list):
             self.output_files = [FileTarget(x) if isinstance(x, str) else x for x in output_files]
-        elif isinstance(output_files, Undertermined):
+        elif isinstance(output_files, Undetermined):
             self.output_files = output_files
         else:
             raise RuntimeError('Output files must be a list of filenames or Undetermined for runtime signature.')
@@ -348,7 +362,7 @@ class RuntimeInfo:
             env.logger.trace('Fail because of undetermined output files.')
             return False
         self.sig_files = self.input_files + self.output_files + self.dependent_files
-        if not all(x.exist('any') for x in self.sig_files):
+        if not all(x.exists('any') for x in self.sig_files):
             env.logger.trace('Fail because of missing one of the files {}'.format(', '.join(self.sig_files)))
             return False
         #
@@ -383,7 +397,7 @@ class RuntimeInfo:
                     else:
                         env.logger.debug('File {} not exist'.format(f))
                         return False
-                    res[cur_type].append(f)
+                    res[cur_type].append(f.fullname())
                 except Exception as e:
                     env.logger.debug('Wrong md5 line {} in {}: {}'.format(line, self.proc_info, e))
                     continue
