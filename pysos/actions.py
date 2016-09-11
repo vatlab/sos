@@ -50,7 +50,7 @@ from pygments.lexers import get_lexer_for_filename, guess_lexer
 from .utils import env, ProgressBar, short_repr, natural_keys, transcribe, AbortExecution
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
-from .signature import FileSignature, fileMD5
+from .signature import FileTarget, fileMD5
 from .sos_executor import Sequential_Executor
 from .monitor import ProcessMonitor, summarizeExecution
 
@@ -607,11 +607,11 @@ def downloadURL(URL, dest, decompress=False, index=None):
     try:
         env.logger.debug('Download {} to {}'.format(URL, dest))
         prog = ProgressBar(message, disp=env.verbosity > 1, index=index)
-        sig = FileSignature(dest)
+        sig = FileTarget(dest)
         if os.path.isfile(dest):
             if env.sig_mode == 'construct':
                 prog.done(message + ': \033[32m use existing {}\033[0m'.format(' '*(term_width - len(message) - 15)))
-                sig.write()
+                sig.write_sig()
                 return True
             elif env.sig_mode == 'ignore':
                 prog.done(message + ': \033[32m use existing {}\033[0m'.format(' '*(term_width - len(message) - 15)))
@@ -716,7 +716,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
         # if there is something wrong still remove temporary file
         if os.path.isfile(dest_tmp):
             os.remove(dest_tmp)
-    sig.write()
+    sig.write_sig()
     return os.path.isfile(dest)
 
 

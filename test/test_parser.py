@@ -510,7 +510,7 @@ sh('echo "b"')
 [0]
 files = ['a.txt', 'b.txt']
 
-input: 'a.pdf', files, skip=False
+input: 'a.pdf', files
 
 ''')
         wf = script.workflow('default')

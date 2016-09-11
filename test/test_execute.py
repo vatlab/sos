@@ -36,7 +36,7 @@ from pysos.utils import env
 from pysos.sos_eval import Undetermined
 from pysos.sos_executor import Sequential_Executor, Interactive_Executor, ExecuteError
 from pysos.sos_script import ParsingError
-from pysos.signature import FileSignature
+from pysos.signature import FileTarget
 import subprocess
 
 class TestExecute(unittest.TestCase):
@@ -1283,6 +1283,8 @@ sh:
     def testSignatureAfterRemovalOfFiles(self):
         '''test action shrink'''
         shutil.rmtree('.sos/.runtime')
+        if os.path.isfile('largefile.txt'):
+            os.remove('largefile.txt')
         script = SoS_Script(r'''
 [10]
 
@@ -1314,7 +1316,7 @@ python:
         self.assertFalse(os.path.isfile('largefile.txt'))
         # if we discard largefile.txt, it should slow down again
         st = time.time()
-        FileSignature('largefile.txt').remove()
+        FileTarget('largefile.txt').remove('signature')
         Sequential_Executor(wf).inspect()
         Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run()

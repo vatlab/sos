@@ -89,6 +89,7 @@ class FileTarget(BaseTarget):
         self._filename = filename
         self._sig_file = None
         self._md5 = None
+        self._attachments = []
 
     def exists(self, mode='any'):
         if mode in ('any', 'target') and os.path.isfile(self.fullname()):
@@ -97,6 +98,15 @@ class FileTarget(BaseTarget):
             return True
         return False
 
+    def add(self, filename):
+        '''add related files to the same signature'''
+        self._attachments.append(os.path.abspath(os.path.expanduser(filename)))
+
+    def remove(self, mode='both'):
+        if mode in ('both', 'target') and os.path.isfile(self.fullname()):
+            os.remove(self.fullname())
+        if mode in ('both', 'signature') and  os.path.isfile(self.sig_file()):
+            os.remove(self.sig_file())
     def fullname(self):
         return os.path.expanduser(self._filename)
         
@@ -126,6 +136,8 @@ class FileTarget(BaseTarget):
         with open(self.sig_file(), 'w') as md5:
             self.calc_md5()
             md5.write('{}\t{}\n'.format(self.fullname(), self.md5()))
+            for f in self._attachments:
+                md5.write('{}\t{}\n'.format(self.fullname(), fileMD5(f)))
 
     def calc_md5(self):
         if self._md5 is None:
@@ -140,6 +152,20 @@ class FileTarget(BaseTarget):
             line = md5.readline()
             f, m = line.rsplit('\t', 1)
             return m.strip()
+
+    def validate(self):
+        '''Check if file matches its signature'''
+        if not os.path.isfile(self.sig_file):
+            return False
+        with open(self.sig_file) as md5:
+            for line in md5:
+                f, m = line.rsplit('\t', 1)
+                if not os.path.isfile(f):
+                    return False
+                if fileMD5(f) != m.strip():
+                    env.logger.debug('MD5 mismatch {}'.format(f))
+                    return False
+        return True
 
     def __repr__(self):
         return self._filename
@@ -173,71 +199,6 @@ class executable(BaseTarget):
     def __repr__(self):
         return 'command {}'.format(self._cmd)
 
-
-class FileSignature:
-    '''Record file MD5 information to sign downloaded files, also add
-    decompressed files in case the file is decompressed.'''
-    def __init__(self, filename, workdir='.'):
-        #
-        sig_name = os.path.realpath(os.path.expanduser(filename))
-        self.filenames = [sig_name]
-        #
-        # If the output path is outside of the current working directory
-        rel_path = os.path.relpath(sig_name, os.path.realpath(workdir))
-        # if this file is not relative to cache, use global signature file
-        if rel_path.startswith('../'):
-            self.sig_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep) + '.file_info')
-        else:
-            # if this file is relative to cache, use local directory
-            self.sig_file = os.path.join('.sos', '.runtime', rel_path + '.file_info')
-        self._md5 = []
-
-    def exist(self):
-        return os.path.isfile(self.sig_file)
-
-    def remove(self):
-        if os.path.isfile(self.sig_file):
-            os.remove(self.sig_file)
-
-    def md5(self):
-        if self._md5:
-            return self._md5[0]
-        with open(self.sig_file) as md5:
-            line = md5.readline()
-            f, m = line.rsplit('\t', 1)
-            return m.strip()
-
-    def add(self, filename):
-        '''add related files to the same signature'''
-        self.filenames.append(os.path.abspath(os.path.expanduser(filename)))
-
-    def write(self):
-        '''Write .file_info file with signature'''
-        # path to file
-        sig_path = os.path.split(self.sig_file)[0]
-        if not os.path.isdir(sig_path):
-            try:
-                os.makedirs(sig_path)
-            except Exception as e:
-                raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
-        with open(self.sig_file, 'w') as md5:
-            for filename in self.filenames:
-                self._md5.append(fileMD5(filename))
-                md5.write('{}\t{}\n'.format(filename, self._md5[-1]))
-
-    def validate(self):
-        '''Check if file matches its signature'''
-        if not os.path.isfile(self.sig_file):
-            return False
-        with open(self.sig_file) as md5:
-            for line in md5:
-                f, m = line.rsplit('\t', 1)
-                if not os.path.isfile(f):
-                    return False
-                if fileMD5(f) != m.strip():
-                    env.logger.debug('MD5 mismatch {}'.format(f))
-                    return False
-        return True
 
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the

@@ -34,7 +34,7 @@ from .converter import script_to_html, workflow_to_html, script_to_markdown, \
     workflow_to_markdown, script_to_notebook, workflow_to_notebook, \
     script_to_term, workflow_to_term, notebook_to_script
 from .sos_syntax import CONFIG_NAME
-from .signature import FileSignature
+from .signature import FileTarget
 #
 # subcommand convert
 #
@@ -159,10 +159,8 @@ def cmd_run(args, workflow_args):
         env.sig_mode = 'default'
 
     for filename in args.__discard__:
-        if os.path.isfile(os.path.expanduser(filename)):
-            os.remove(os.path.expanduser(filename))
         # remove also signature of file if it exists
-        FileSignature(os.path.expanduser(filename)).remove()
+        FileTarget(filename).remove('both')
             
     run_all = not (args.__inspect__ or args.__prepare__ or args.__run__)
     try:
