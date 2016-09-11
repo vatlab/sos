@@ -335,22 +335,6 @@ counter += 1
         Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['counter'], 2)
 
-    def testSkip(self):
-        '''Test input option skip'''
-        env.shared_vars = ['counter']
-        script = SoS_Script(r"""
-[0]
-files = ['a.txt', 'b.txt']
-counter = 0
-
-input: 'a.pdf', 'b.html', files, skip=counter == 0
-
-counter += 1
-""")
-        wf = script.workflow()
-        Sequential_Executor(wf).inspect()
-        self.assertEqual(env.sos_dict['counter'], 0)
-
     def testOutputFromInput(self):
         '''Test deriving output files from input files'''
         script = SoS_Script(r"""

@@ -130,6 +130,7 @@ class FileTarget(BaseTarget):
     def calc_md5(self):
         if self._md5 is None:
             self._md5 = fileMD5(self.fullname())
+        return self._md5
 
     def md5(self):
         '''Return md5'''
@@ -139,6 +140,9 @@ class FileTarget(BaseTarget):
             line = md5.readline()
             f, m = line.rsplit('\t', 1)
             return m.strip()
+
+    def __repr__(self):
+        return self._filename
 
 class dynamic(BaseTarget):
     '''A dynamic executable that only handles input files when 
@@ -313,7 +317,7 @@ class RuntimeInfo:
     def write(self):
         '''Write signature file with signature of script, input, output and dependent files.'''
         if isinstance(self.output_files, Undetermined) or isinstance(self.dependent_files, Undetermined):
-            env.logger.trave('Write signature failed due to undetermined files')
+            env.logger.trace('Write signature failed due to undetermined files')
             return False
         env.logger.trace('Write signature {}'.format(self.proc_info))
         with open(self.proc_info, 'w') as md5:
@@ -362,11 +366,12 @@ class RuntimeInfo:
             env.logger.trace('Fail because of undetermined output files.')
             return False
         self.sig_files = self.input_files + self.output_files + self.dependent_files
-        if not all(x.exists('any') for x in self.sig_files):
-            env.logger.trace('Fail because of missing one of the files {}'.format(', '.join(self.sig_files)))
-            return False
+        for x in self.sig_files:
+            if not x.exists('any'):
+                env.logger.trace('Missing target {}'.format(x))
+                return False
         #
-        files_checked = {f.fullname():False for x in self.sig_files if not isinstance(x, Undetermined)}
+        files_checked = {x.fullname():False for x in self.sig_files if not isinstance(x, Undetermined)}
         res = {'input': [], 'output': [], 'depends': []}
         cur_type = 'input'
         with open(self.proc_info) as md5:
@@ -385,7 +390,7 @@ class RuntimeInfo:
                     elif line == '# dependent\n':
                         cur_type = 'depends'
                     else:
-                        env.logger.error('Unrecognized line in sig file {}'.format(line))
+                        env.logger.trace('Unrecognized line in sig file {}'.format(line))
                     continue
                 try:
                     f, m = line.rsplit('\t', 1)
@@ -395,21 +400,19 @@ class RuntimeInfo:
                     elif freal.exists('signature'):
                         fmd5 = freal.md5()
                     else:
-                        env.logger.debug('File {} not exist'.format(f))
+                        env.logger.trace('File {} not exist'.format(f))
                         return False
-                    res[cur_type].append(f.fullname())
+                    res[cur_type].append(freal.fullname())
+                    if fmd5 != m.strip():
+                        env.logger.trace('MD5 mismatch {}: {} / {}'.format(f, fmd5, m.strip()))
+                        return False
+                    files_checked[freal.fullname()] = True
                 except Exception as e:
-                    env.logger.debug('Wrong md5 line {} in {}: {}'.format(line, self.proc_info, e))
+                    env.logger.trace('Wrong md5 line {} in {}: {}'.format(line, self.proc_info, e))
                     continue
-                if fmd5 != m.strip():
-                    env.logger.debug('MD5 mismatch {}'.format(f))
-                    return False
-                # for dynamic files, they are in sig file but not in self.sig_files
-                if freal in files_checked:
-                    files_checked[freal] = True
         #
         if not all(files_checked.values()):
-            env.logger.warning('No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y)))
+            env.logger.trace('No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y)))
             return False
         env.logger.trace('Signature matches and returns {}'.format(res))
         return res

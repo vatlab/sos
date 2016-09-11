@@ -347,9 +347,10 @@ class Base_Step_Executor:
         # create directory
         if not isinstance(ofiles, Undetermined):
             for ofile in ofiles:
-                parent_dir = os.path.split(os.path.expanduser(ofile))[0]
-                if parent_dir and not os.path.isdir(parent_dir):
-                    os.makedirs(parent_dir)
+                if isinstance(ofile, str):
+                    parent_dir = os.path.split(os.path.expanduser(ofile))[0]
+                    if parent_dir and not os.path.isdir(parent_dir):
+                        os.makedirs(parent_dir)
         # set variables
         env.sos_dict.set('_output', ofiles)
         if env.sos_dict['output'] is None:
