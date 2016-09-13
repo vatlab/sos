@@ -25,7 +25,10 @@ import shutil
 from setuptools import setup
 from distutils import log
 from setuptools.command.install import install
-from pysos import __version__
+
+# obtain version of SoS
+with open('pysos/_version.py') as version:
+    exec(version.read())
 
 kernel_json = {
     "argv":         ["python", "-m", "pysos.kernel", "-f", "{connection_file}"],
@@ -138,8 +141,6 @@ class InstallWithConfigurations(install):
             except:
                 log.error("\nWARNING: Could not install SoS Kernel as %s user." % self.user)
         log.info('And "sos -h" to start using Script of Scripts.')
-
-exec(open('pysos/_version.py').read())
 
 setup(name = "sos",
     version = __version__,

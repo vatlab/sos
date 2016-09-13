@@ -28,7 +28,7 @@ from io import StringIO
 from shlex import quote
 from tokenize import generate_tokens, untokenize
 
-from .utils import env, Error, short_repr, DelayedAction, time_limit
+from .utils import env, Error, short_repr, DelayedAction, time_limit, AbortExecution
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
@@ -83,10 +83,24 @@ class SoS_String:
     # DOTALL makes . matchs also to newline so this supports multi-line expression
     FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
 
+    # we handle simple cases in an easier way to avoid linear search each time.
+    # simple case means ${ } as sigil, and there is nothing but variable name
+    # within it.
+    #
+    _SIMPLE_SUB_TMPL = r'''
+        \$\{                                # left sigil
+        (                                   # capture variable name
+        [_a-zA-Z]\w*                        # alpha numeric with no leading numeric
+        )
+        \}                                  # right sigil
+        '''
+    SIMPLE_SUB = re.compile(_SIMPLE_SUB_TMPL, re.VERBOSE | re.DOTALL)
+
     def __init__(self, sigil = '${ }', local_dict={}):
         # do not check sigil here because the function will be called quite frequently
         # the sigil will be checked when it is entered in SoS script.
         self.l, self.r = sigil.split(' ')
+        self.default_sigil = sigil == '${ }'
         self.error_count = 0
         self.local_dict = local_dict
 
@@ -96,19 +110,36 @@ class SoS_String:
         # We could potentially parse the text and find all interpolation text,
         # but we cannot really do it because of possible nested interpolation
         #
+        # 'in' test is 10 times faster than split so we do this test first.
+        if self.l not in text:
+            return text
+        #
+        # this function uses a direct substitution method to handle simple
+        # cases ${var}. Performance test shows that it can cut string interpolation
+        # time roughtly in half.
+        if self.default_sigil:
+            text = self.direct_interpolate(text)
+            # 'in' test is 10 times faster than split so we do this test first.
+            if self.l not in text:
+                return text
+        #
         # split by left sigil
         #
         # '${a} part1 ${ expr2 ${ nested }} and another ${expr2 {}} and done'
         #
         # '' 'a} part1 ' ' expr2 ' 'nested }} and another' 'expr2 {}} and done'
         #
-        # 'in' test is 10 times faster than split so we do this test first.
-        if self.l not in text:
-            return text
         pieces = text.split(self.l, 1)
         # the first piece must be before sigil and be completed text
         #env.logger.trace('"{}" interpolated to "{}"'.format(text, res))
         return pieces[0] + self._interpolate(pieces[1])
+
+    def direct_interpolate(self, text):
+        pieces = self.SIMPLE_SUB.split(text)
+        # replace pieces 1, 3, 5, ... etc with their values
+        for i in range(1, len(pieces), 2):
+            pieces[i] = self._repr(eval(pieces[i], env.sos_dict._dict, self.local_dict))
+        return ''.join(pieces)
 
     def _interpolate(self, text, start_nested=0):
         '''Intepolate an expression with unknown ending location. We cannot split
@@ -283,7 +314,7 @@ def SoS_eval(expr, sigil='${ }'):
         else:
             return eval(expr, env.sos_dict._dict)
     except Exception as e:
-        if env.run_mode != 'run':
+        if env.run_mode not in ['run', 'interactive']:
             env.sos_dict['__execute_errors__'].append(expr, e)
             return None
         else:		
@@ -349,14 +380,14 @@ def SoS_exec(stmts, sigil='${ }'):
         if not stmts.strip():
             continue
         if env.run_mode == 'inspect':
-            env.logger.trace('Checking\n{}'.format(stmts))
+            env.logger.trace('Checking statement:\n{}'.format(stmts))
         elif env.run_mode == 'prepare':
-            env.logger.trace('Preparing\n{}'.format(stmts))
+            env.logger.trace('Preparing statement:\n{}'.format(stmts))
         else:
-            env.logger.trace('Executing\n{}'.format(stmts))
+            env.logger.trace('Executing statement:\n{}'.format(stmts))
         #
         try:
-            if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+            if env.run_mode == 'interactive':
                 act = DelayedAction(env.logger.warning, 'Running {}'.format(short_repr(code)))
             else:
                 act = None
@@ -371,8 +402,10 @@ def SoS_exec(stmts, sigil='${ }'):
                 res = eval(stmts, env.sos_dict._dict)
             else:
                 exec(stmts, env.sos_dict._dict)
+        except AbortExecution:
+            raise
         except Exception as e:
-            if env.run_mode != 'run':
+            if env.run_mode not in ['run', 'interactive']:
                 if isinstance(e, InterpolationError):
                     if env.run_mode == 'inspect':
                         # this should not matter in inspect mode because many variables do not yet

@@ -22,6 +22,9 @@
 
 import os
 import unittest
+import cProfile
+import timeit
+import textwrap
 
 # these functions are normally not available but can be imported 
 # using their names for testing purposes
@@ -31,7 +34,6 @@ from pysos.sos_eval import interpolate, SoS_eval, InterpolationError
 from pysos.actions import downloadURL
 from pysos.sos_script import SoS_Script
 from pysos.sos_executor import Sequential_Executor
-from pysos.kernel import SoS_FilePreviewer, BioPreviewer
 
 class TestUtils(unittest.TestCase):
     def setUp(self):
@@ -230,7 +232,7 @@ class TestUtils(unittest.TestCase):
 
     def testProgressBar(self):
         '''Test progress bar'''
-        env.verbosity = 1
+        env.verbosity = 2
         prog = ProgressBar('test', 100)
         for i in range(100):
             prog.update(i)
@@ -293,8 +295,40 @@ sos_run('sub')
 b
 \nc'''), "r'''a\nb\n\\nc'''")
 
-    def testPreview(self):
-        '''Test previewer'''
+
+    def performanceTestInterpolation(self):
+        '''Testing the performance of string interpolation. This test
+        will not be executed automatically.'''
+        setup_stmt = textwrap.dedent('''
+        from pysos.utils import env, WorkflowDict
+        from pysos.sos_eval import interpolate
+        env.sos_dict = WorkflowDict({
+            'interpolate': interpolate,
+            'a': 100,
+            'b': 'file name',
+            'c': ['file1', 'file2', 'file 3'],
+        })
+        ''')
+        stmt = "interpolate('${a}_${b}_${c}.txt', sigil='${ }')"
+        ni_stmt = '''eval("'{}_{}_{}.txt'.format(a, b, c)", env.sos_dict._dict)'''
+        exec(setup_stmt)
+        cProfile.run(stmt)
+        # 
+        # original implementation takes ~12s on mac mini
+        # No interpolation (python .format()) takes ~2.28 s
+        #
+        # 9/1/2016: using directly substitution reduced time to interpolate
+        #   simple replacement (${var}) to about 6.06s.
+        #
+        print('Interpolating {} times take {} seconds'.format(
+            100000,
+            timeit.timeit(stmt, setup=setup_stmt, number=100000)))
+        # comparing to non-interpolation
+        print('No interpolating {} times take {} seconds'.format(
+            100000,
+            timeit.timeit(ni_stmt, setup=setup_stmt, number=100000)))
+
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -68,7 +68,7 @@ b=func_run()
 c=func_both()
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         self.assertEqual(env.sos_dict['result'].a, 1)
         self.assertTrue(isinstance(env.sos_dict['result'].b, Undetermined))
         self.assertEqual(env.sos_dict['result'].c, 1)
@@ -113,7 +113,7 @@ get_output('catmouse')
 """)
         wf = script.workflow()
         # should fail in inspect mode
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run, run_mode='inspect')
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect)
         #
         #
         script = SoS_Script(r"""
@@ -122,7 +122,7 @@ ret = get_output('cat -h')
 """)
         wf = script.workflow()
         # this should give a warning and return false
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).run)
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).inspect)
         #
         # check get_output if the command is stuck
         script = SoS_Script(r"""
@@ -131,7 +131,7 @@ get_output('sleep 6')
 """)
         wf = script.workflow()
         # this should yield error
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run, run_mode='inspect')
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect)
         # even for weird commands such as cat > /dev/null, it should quite
         # in inspect mode
         script = SoS_Script(r"""
@@ -140,7 +140,7 @@ get_output('cat > /dev/null')
 """)
         wf = script.workflow()
         # this should pass
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).run, run_mode='inspect')
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).inspect)
 
     def testCheckCommand(self):
         '''Test action check_command'''
@@ -158,7 +158,7 @@ check_command('catmouse')
 """)
         wf = script.workflow()
         # should fail in inspect mode
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run, run_mode='inspect')
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect)
         #
         wf = script.workflow()
         #
@@ -176,7 +176,7 @@ check_command('ls -l')
 fail_if(check_command('cat -h') != 0, 'command return non-zero')
 """)
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).run, run_mode='inspect')
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).inspect)
         #
         # check check_command is the command is stuck
         script = SoS_Script(r"""
@@ -185,7 +185,7 @@ check_command('sleep 4')
 """)
         wf = script.workflow()
         # this should pass
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         #
         script = SoS_Script(r"""
 [0]
@@ -193,7 +193,7 @@ fail_if(check_command('sleep 4') != 0, 'Command time out')
 """)
         wf = script.workflow()
         # this should pass
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run,  run_mode='inspect')
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect)
         #
         # test reading this file
         script = SoS_Script(r"""
@@ -202,7 +202,7 @@ check_command('cat test_actions.py', 'abcde' + 'fgh')
 """)
         wf = script.workflow()
         # should raise an error
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run,  run_mode='inspect')
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect)
         #
         script = SoS_Script(r"""
 check_command('cat test_actions.py', 'testSearchOutput')
@@ -217,7 +217,7 @@ check_command('cat > /dev/null')
 """)
         wf = script.workflow()
         # this should pass
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).run, run_mode='inspect')
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).inspect)
 
     def testFailIf(self):
         '''Test action fail if'''
@@ -228,7 +228,7 @@ fail_if(len(input) == 1)
 """)
         wf = script.workflow()
         # should fail in inspect mode
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run, run_mode='inspect')
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
@@ -236,7 +236,7 @@ fail_if(len(input) == 1)
 """)
         wf = script.workflow()
         # should be ok
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
 
     def testWarnIf(self):
         '''Test action fail if'''
@@ -247,7 +247,7 @@ warn_if(len(input) == 1, 'Expect to see a warning message')
 """)
         wf = script.workflow()
         # should see a warning message.
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
         #self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
         script = SoS_Script(r"""
 [0]
@@ -256,7 +256,22 @@ warn_if(len(input) == 1)
 """)
         wf = script.workflow()
         # should be silent
-        Sequential_Executor(wf).run(run_mode='inspect')
+        Sequential_Executor(wf).inspect()
+
+    def testStopIf(self):
+        '''Test action stop_if'''
+        script = SoS_Script(r'''
+[0: alias='res']
+rep = range(20)
+result = []
+input: for_each='rep'
+
+stop_if(_rep > 10)
+result.append(_rep)
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).inspect()
+        self.assertEqual(env.sos_dict['res'].result, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
     def testRun(self):
         '''Test action run'''
@@ -336,11 +351,13 @@ echo 'Echo
         self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
         #
         # this should give us a warning if RAM is less than 4G
-        Sequential_Executor(wf).run(run_mode='prepare')
+        Sequential_Executor(wf).prepare()
 
 
     def testCsh(self):
         '''Test action csh'''
+        if not shutil.which('csh'):
+            return
         script = SoS_Script(r'''
 [0]
 csh:
@@ -359,9 +376,11 @@ csh:
 
     def testTcsh(self):
         '''Test action tcsh'''
+        if not shutil.which('tcsh'):
+            return
         script = SoS_Script(r'''
 [0]
-csh:
+tcsh:
     foreach file (*)
         if (-d $file) then
             echo "Skipping $file (is a directory)"
@@ -587,7 +606,7 @@ mean(nums)
 check_R_library('edgeR')
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='prepare')
+        Sequential_Executor(wf).prepare()
         script = SoS_Script(r'''
 [0]
 check_R_library('stephens999/ashr')
@@ -599,7 +618,7 @@ check_R_library('stephens999/ashr')
 check_R_library('edgeRRRR')
 ''')
         wf = script.workflow()
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).run)
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).prepare)
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerBuild(self):
@@ -677,7 +696,7 @@ download(['http://bioinformatics.mdanderson.org/Software/VariantTools/repository
     dest_dir='tmp', decompress=True)
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='prepare')
+        Sequential_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('tmp/snapshot.proj'))
         self.assertTrue(os.path.isfile('tmp/snapshot_genotype.DB'))
         #
@@ -689,7 +708,7 @@ download: dest_file='tmp/test.ann'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run(run_mode='prepare')
+        Sequential_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('tmp/test.ann'))
         # test option dest_dir
         script = SoS_Script(r'''
@@ -698,7 +717,7 @@ download: dest_dir='tmp'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        Sequential_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq.ann'))
         #
    
@@ -713,13 +732,13 @@ download: dest_dir='tmp', decompress=True
 ''')
         start = time.time()
         wf = script.workflow()
-        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).run)
+        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).prepare)
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq-hg18_20100817.DB'))
         self.assertGreater(time.time() - start, 5)
         # this will be fast
         start = time.time()
         wf = script.workflow()
-        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).run)
+        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).prepare)
         self.assertLess(time.time() - start, 3)
         # 
         # test decompress tar.gz file
@@ -731,7 +750,7 @@ download: dest_dir='tmp', decompress=True
     ${GATK_URL}/1000G_omni2.5.hg19.sites.vcf.idx.gz.md5
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        Sequential_Executor(wf).prepare()
         #
         shutil.rmtree('tmp')
 
@@ -758,6 +777,7 @@ pandoc(output=_output[0], to='html')
         self.assertTrue(os.path.isfile('myreport.html'))
         #
         os.remove('myreport.html')
+
 
 
 if __name__ == '__main__':

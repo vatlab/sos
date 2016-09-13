@@ -45,6 +45,10 @@ except:
     pass
 import subprocess
 import threading
+try:
+    import _thread
+except:
+    import _dummy_thread as _thread
 from io import StringIO
 from html.parser import HTMLParser
 from contextlib import contextmanager
@@ -223,7 +227,7 @@ class WorkflowDict(object):
             if key in self._readonly_vars:
                 cmp_res = self.__cmp_values__(self._dict[key], self._readonly_vars[key])
                 if not cmp_res:
-                    if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+                    if env.run_mode == 'interactive':
                         if cmp_res is False:
                             env.logger.warning('Readonly variable {} is changed from {} to {}'
                                 .format(key, self._readonly_vars[key], self._dict[key]))
@@ -242,7 +246,7 @@ class WorkflowDict(object):
             if key in self._dict:
                 cmp_res = self.__cmp_values__(self._dict[key], self._readonly_vars[key])
                 if not cmp_res:
-                    if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+                    if env.run_mode == 'interactive':
                         if cmp_res is False:
                             env.logger.warning('Readonly variable {} is changed from {} to {}'
                                 .format(key, self._readonly_vars[key], self._dict[key]))
@@ -252,7 +256,7 @@ class WorkflowDict(object):
                             .format(key, self._dict[key], self._readonly_vars[key]))
                 cmp_res = self.__cmp_values__(value, self._dict[key])
                 if not cmp_res:
-                    if '__interactive__' in env.sos_dict and env.sos_dict['__interactive__']:
+                    if env.run_mode == 'interactive':
                         if cmp_res is False:
                             env.logger.warning('Readonly variable {} is changed from {} to {}'
                                 .format(key, self._dict[key], value))
@@ -379,8 +383,8 @@ class RuntimeEnvironments(object):
         # logging from multiple processes.
         self._logger = logging.getLogger()
         # clear previous handler
-        for handler in self._logger.handlers:
-            self._logger.removeHandler(handler)
+        while self._logger.hasHandlers():
+            self._logger.removeHandler(self._logger.handlers[0])
         self._logger.setLevel(logging.DEBUG)
         # output to standard output
         cout = logging.StreamHandler()
@@ -516,6 +520,16 @@ class Error(Exception):
 
     __str__ = __repr__
 
+
+class AbortExecution(Error):
+    '''Abort a step and continue'''
+    def __init__(self, msg):
+        Error.__init__(self, msg)
+
+class AbortExecution(Error):
+    '''Abort a step and continue'''
+    def __init__(self, msg):
+        Error.__init__(self, msg)
 
 def get_traceback():
     output = StringIO()
@@ -888,15 +902,8 @@ def natural_keys(text):
 def transcribe(text, action=None):
     if action is not None:
         text = '{}:\n{}'.format(action, '    ' + text.replace('\n', '\n    ') + '\n')
-    if '__transcript__' not in env.sos_dict:
-        raise RuntimeError('Transcript not defined')
-    if env.sos_dict['__transcript__'] is None:
-        return
-    if env.sos_dict['__transcript__'] == '__STDERR__':
-        sys.stderr.write(text)
-    else:
-        with open(env.sos_dict['__transcript__'], 'a') as trans:
-            trans.write(text)
+    with open('.sos/transcript.txt', 'a') as trans:
+        trans.write(text)
 
 def dict_merge(dct, merge_dct):
     """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of

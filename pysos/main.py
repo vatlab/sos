@@ -29,16 +29,16 @@ import tempfile
 
 from .utils import env, get_traceback, dict_merge
 from .sos_script import SoS_Script
-from .sos_executor import Sequential_Executor
+from .sos_executor import Base_Executor, Sequential_Executor
 from .converter import script_to_html, workflow_to_html, script_to_markdown, \
     workflow_to_markdown, script_to_notebook, workflow_to_notebook, \
     script_to_term, workflow_to_term, notebook_to_script
 from .sos_syntax import CONFIG_NAME
-
+from .signature import FileTarget
 #
 # subcommand convert
 #
-def sos_convert(args, style_args):
+def cmd_convert(args, style_args):
     env.verbosity = args.verbosity
     # convert from ...
     try:
@@ -104,62 +104,75 @@ def sos_convert(args, style_args):
 #
 # subcommand inspect
 #
-def sos_inspect(args, workflow_args):
-    args.__max_jobs__ = 1
-    args.__inspect__ = True
-    args.__prepare__ = False
-    args.__run__ = False
-    args.__rerun__ = False
-    args.__config__ = None
-    args.__report__ = None
-    args.__construct__ = False
-    args.__debug_mode__ = False
-    sos_run(args, workflow_args)
+def cmd_inspect(args, workflow_args):
+    env.verbosity = args.verbosity
+    try:
+        script = SoS_Script(filename=args.script)
+        workflow = script.workflow(args.workflow)
+        executor = Base_Executor(workflow, args=workflow_args, config_file=args.__config__)
+        executor.inspect()
+    except Exception as e:
+        if args.verbosity and args.verbosity > 2:
+            sys.stderr.write(get_traceback())
+        env.logger.error(e)
+        sys.exit(1)
 
 #
 # subcommand prepare
 #
-def sos_prepare(args, workflow_args):
-    args.__max_jobs__ = 1
-    args.__inspect__ = False
-    args.__prepare__ = True
-    args.__run__ = False
-    args.__rerun__ = False
-    args.__config__ = None
-    args.__report__ = None
-    args.__construct__ = False
-    args.__debug_mode__ = False
-    sos_run(args, workflow_args)
+def cmd_prepare(args, workflow_args):
+    env.verbosity = args.verbosity
+
+    if args.__rerun__:
+        env.sig_mode = 'ignore'
+    elif args.__construct__:
+        env.sig_mode = 'construct'
+    else:
+        env.sig_mode = 'default'
+
+    try:
+        script = SoS_Script(filename=args.script)
+        workflow = script.workflow(args.workflow)
+        executor = Base_Executor(workflow, args=workflow_args, config_file=args.__config__)
+        executor.inspect()
+        executor.prepare()
+    except Exception as e:
+        if args.verbosity and args.verbosity > 2:
+            sys.stderr.write(get_traceback())
+        env.logger.error(e)
+        sys.exit(1)
 
 #
 # subcommand run
 #
-def sos_run(args, workflow_args):
-    if hasattr(args, '__dryrun__') and args.__dryrun__:
-        env.logger.warning('Option -d (dryrun) is deprecated. Please use -i (inspect) instead')
-        args.__inspect__ = args.__dryrun__
+def cmd_run(args, workflow_args):
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
     # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)
     #
-    sig_mode = 'default'
-    run_mode = 'run'
     if args.__rerun__:
-        sig_mode = 'ignore'
-    if args.__prepare__:
-        run_mode = 'prepare'
-    if args.__inspect__:
-        run_mode = 'inspect'
-    if args.__construct__:
-        sig_mode = 'construct'
-    #
+        env.sig_mode = 'ignore'
+    elif args.__construct__:
+        env.sig_mode = 'construct'
+    else:
+        env.sig_mode = 'default'
+
+    for filename in args.__discard__:
+        # remove also signature of file if it exists
+        FileTarget(filename).remove('both')
+            
+    run_all = not (args.__inspect__ or args.__prepare__ or args.__run__)
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
-        executor = Sequential_Executor(workflow, report=args.__report__, transcript=args.__transcript__, debug=args.__debug_mode__)
-        executor.run(workflow_args, cmd_name='{} {}'.format(args.script, args.workflow), config_file=args.__config__,
-            run_mode=run_mode, sig_mode=sig_mode, verbosity = args.verbosity)
+        executor = Sequential_Executor(workflow, args=workflow_args, config_file=args.__config__)
+        if run_all or args.__inspect__:
+            executor.inspect()
+        if run_all or args.__prepare__:
+            executor.prepare()
+        if run_all or args.__run__:
+            executor.run()
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -169,7 +182,7 @@ def sos_run(args, workflow_args):
 #
 # subcommand config
 #
-def sos_config(args, workflow_args):
+def cmd_config(args, workflow_args):
     if workflow_args:
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
     #

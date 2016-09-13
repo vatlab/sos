@@ -24,6 +24,7 @@ import os
 import sys
 import base64
 import imghdr
+import copy
 import fnmatch
 import contextlib
 import subprocess
@@ -31,12 +32,15 @@ import subprocess
 import zipfile
 import tarfile
 import gzip
+import pickle
+from collections.abc import Sequence
 
 from .utils import env, WorkflowDict, short_repr, pretty_size, dehtml
 from ._version import __sos_version__, __version__
 from .sos_eval import SoS_exec, interpolate
 from .sos_executor import Interactive_Executor
 from .sos_syntax import SOS_SECTION_HEADER
+from .converter import SoS_Exporter
 
 from IPython.core.interactiveshell import InteractiveShell
 from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_clipboard_get
@@ -48,7 +52,6 @@ from jupyter_client import manager, find_connection_file
 from textwrap import dedent
 from io import StringIO
 
-from nbconvert.exporters import Exporter
 
 class FlushableStringIO(StringIO):
     def __init__(self, kernel, name, *args, **kwargs):
@@ -204,65 +207,50 @@ class BioPreviewer(SoS_FilePreviewer):
         else:
             return SoS_FilePreviewer.preview(filename)
 
-class SoS_Exporter(Exporter):
-    def __init__(self, config=None, reorder=False, reset_index=False, add_header=False,
-            no_index=False, remove_magic=False, md_to_report=False,
-            **kwargs):
-        self.reorder = reorder
-        self.reset_index = reset_index
-        self.add_header = add_header
-        self.no_index = no_index
-        self.remove_magic = remove_magic
-        self.md_to_report = md_to_report
-        self.output_extension = '.sos'
-        self.output_mimetype = 'text/x-sos'
-        Exporter.__init__(self, config, **kwargs)
+def R_repr(obj):
+    if isinstance(obj, (int, float, str)):
+        return repr(obj)
+    elif isinstance(obj, Sequence):
+        return 'c(' + ','.join(R_repr(x) for x in obj) + ')'
+    else:
+        raise UsageError('{} cannot be converted to R'.format(short_repr(obj)))
 
-    def from_notebook_cell(self, cell, fh, idx = 0):
-        if not hasattr(cell, 'execution_count') or cell.execution_count is None or self.no_index:
-            fh.write('\n#%% {}\n'.format(cell.cell_type))
-        else:
-            idx += 1
-            fh.write('\n#%% {} {}\n'.format(cell.cell_type,
-                                              idx if self.reset_index else cell.execution_count))
-        if cell.cell_type == 'code':
-            if any(cell.source.startswith(x) for x in ('%run', '%restart', '%dict', '%use', '%with', '%set', '%paste')):
-                if self.remove_magic:
-                    cell.source = '\n'.join(cell.source.split('\n')[1:])
-                else:
-                    env.logger.warning('SoS magic "{}" has to remove them before executing the script with sos command.'.format(cell.source.split('\n')[0]))
-            if self.add_header and not any([SOS_SECTION_HEADER.match(x) for x in cell.source.split('\n')]):
-                cell.source = '[{}]\n'.format(idx if self.reset_index else cell.execution_count) + cell.source
-            fh.write(cell.source.strip() + '\n')
-        elif cell.cell_type == "markdown":
-            fh.write('\n'.join('#! ' + x for x in cell.source.split('\n') if x.strip()) + '\n')
-        return idx
+# an R function that tries to convert an R object to Python repr
+dputToString_func = '''
+dputToString <- function (obj) {
+  con <- textConnection(NULL,open="w")
+  tryCatch({dput(obj,con);
+           textConnectionValue(con)},
+           finally=close(con))
+}
+'''
 
-    def from_notebook_node(self, nb, resources, **kwargs):
-        #
-        if self.reorder:
-            unnumbered_cells = {x: y for x, y in enumerate(nb.cells)
-                              if not hasattr(y, 'execution_count') or y.execution_count is None}
-            numbered_cells = [y for y in nb.cells
-                              if hasattr(y, 'execution_count') and y.execution_count is not None]
-            numbered_cells = sorted(numbered_cells, key = lambda x: x.execution_count)
-            cells = []
-            for idx in range(len(nb.cells)):
-                if idx in unnumbered_cells:
-                    cells.append(unnumbered_cells[idx])
-                else:
-                    cells.append(numbered_cells.pop(0))
-        else:
-            cells = nb.cells
-        with StringIO() as fh:
-            fh.write('#!/usr/bin/env sos-runner\n')
-            fh.write('#fileformat=SOSNB1.0\n')
-            idx = 0
-            for cell in cells:
-                idx = self.from_notebook_cell(cell, fh, idx)
-            content = fh.getvalue()
-        resources['output_extension'] = '.sos'
-        return content, resources
+def from_R_repr(expr):
+    '''
+    Convert text in the following format to a Python object
+
+    '[1] "structure(list(a = 1, b = \\"a\\"), .Names = c(\\"a\\", \\"b\\"))"'
+    '''
+    try:
+        text = expr[20:-1].split('), .Names')[0].replace('\\', '')
+        convert_funcs = {
+            'c': lambda *args: list(args)
+        }
+        return eval('dict({})'.format(text), convert_funcs)
+    except Exception as e:
+        raise UsageError('Failed to convert {} to Python object'.format(expr))
+
+def python2R(name):
+    #
+    # return equivalent R representation for python object.
+    # This is limited to select python objects but we will obtain
+    # native R object using this method.
+    if name not in env.sos_dict:
+        raise UsageError('{} not exist'.format(name))
+    try:
+        return '{} <- {}'.format(name, R_repr(env.sos_dict[name]))
+    except Exception as e:
+        raise UsageError('Failed to convert variable {} to R: {}'.format(name))
 
 
 class SoS_Kernel(Kernel):
@@ -287,8 +275,9 @@ class SoS_Kernel(Kernel):
 
     def _start_sos(self):
         env.sos_dict = WorkflowDict()
+        SoS_exec('import os, sys, glob')
         SoS_exec('from pysos import *')
-        env.sos_dict.set('__interactive__', True)
+        SoS_exec("run_mode = 'interactive'")
         self.executor = Interactive_Executor()
         self.original_keys = set(env.sos_dict._dict.keys())
         self.original_keys.add('__builtins__')
@@ -327,26 +316,6 @@ class SoS_Kernel(Kernel):
             'data': {x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys and not x.startswith('__')},
             'metadata':''}
 
-    def sosdict(self, line):
-        'Magic that displays content of the dictionary'
-        # do not return __builtins__ beacuse it is too long...
-        actions = line.strip().split()
-        for action in actions:
-            if action not in ['reset', 'all', 'keys']:
-                raise RuntimeError('Unrecognized sosdict option {}'.format(action))
-        if 'reset' in actions:
-            return self._reset()
-        if 'keys' in actions:
-            if 'all' in actions:
-                return env.sos_dict._dict.keys()
-            else:
-                return {x for x in env.sos_dict._dict.keys() if not x.startswith('__')} - self.original_keys
-        else:
-            if 'all' in actions:
-                return env.sos_dict._dict
-            else:
-                return {x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys and not x.startswith('__')}
-
     def do_is_complete(self, code):
         '''check if new line is in order'''
         code = code.strip()
@@ -375,14 +344,19 @@ class SoS_Kernel(Kernel):
             except:
                 return {'status': 'unknown', 'indent': ''}
 
-    def get_magic_option(self, code):
+    def get_magic_and_code(self, code, warn_remaining=False):
         lines = code.split('\n')
         pieces = lines[0].strip().split(None, 1)
         if len(pieces) == 2:
             command_line = pieces[1]
         else:
             command_line = ''
-        return command_line
+        remaining_code = '\n'.join(lines[1:])
+        if warn_remaining and remaining_code.strip():
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stderr', 'text': 
+                'Statement {} ignored'.format(short_repr(remaining_code))})
+        return command_line, remaining_code
 
     def run_cell(self, code, store_history):
         #
@@ -472,74 +446,337 @@ class SoS_Kernel(Kernel):
                 {'name': 'stdout', 'text': 'Specify one of the kernels to restart: sos{}\n'
                     .format(''.join(', {}'.format(x) for x in self.kernels))})
 
+    def handle_magic_dict(self, line):
+        'Magic that displays content of the dictionary'
+        # do not return __builtins__ beacuse it is too long...
+        actions = line.strip().split()
+        for action in actions:
+            if action not in ['reset', 'all', 'keys']:
+                self.send_response(self.iopub_socket, 'stream',
+                      {'name': 'stderr', 'text': 'Unrecognized sosdict option {}'.format(action)})
+                return
+        if 'reset' in actions:
+            self.send_result(self._reset())
+        if 'keys' in actions:
+            if 'all' in actions:
+                self.send_result(env.sos_dict._dict.keys())
+            else:
+                self.send_result({x for x in env.sos_dict._dict.keys() if not x.startswith('__')} - self.original_keys)
+        else:
+            if 'all' in actions:
+                self.send_result(env.sos_dict._dict)
+            else:
+                self.send_result({x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys and not x.startswith('__')})
+
+    def handle_magic_set(self, options):
+        if options.strip():
+            #self.send_response(self.iopub_socket, 'stream',
+            #    {'name': 'stdout', 'text': 'sos options set to "{}"\n'.format(options)})
+            self.options = options.strip()
+        else:
+            if self.options:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': 'sos options "{}" reset to ""\n'.format(self.options)})
+                self.options = ''
+            else:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': 'Usage: set persistent sos options such as -v 3 (debug output) -p (prepare) and -t (transcribe)\n'})
+  
+            self.switch_kernel(options)
+
+    def handle_magic_get(self, options):
+        items = options.split()
+        for item in items:
+            if item not in env.sos_dict:
+                self.send_response(self.iopub_socket, 'stream',
+                     {'name': 'stderr', 'text': 'Variable {} does not exist'.format(item)})
+                return
+        if self.kernel == 'python':
+            # if it is a python kernel, passing specified SoS variables to it
+            sos_data = pickle.dumps({x:env.sos_dict[x] for x in items})
+            # this can fail if the underlying python kernel is python 2
+            self.KC.execute("import pickle\nglobals().update(pickle.loads({!r}))".format(sos_data),
+                silent=True, store_history=False)
+        elif self.kernel == 'ir':
+            sos_data = '\n'.join(python2R(x) for x in items)
+            self.KC.execute(sos_data, silent=True, store_history=False)
+        else:
+            self.send_response(self.iopub_socket, 'stream',
+                 {'name': 'stderr', 'text': 'Can not pass variables to kernel {}'.format(self.kernel)})
+            return
+        # first thing is wait for any side effects (output, stdin, etc.)
+        _execution_state = "busy"
+        while _execution_state != 'idle':
+            # display intermediate print statements, etc.
+            while self.KC.iopub_channel.msg_ready():
+                sub_msg = self.KC.iopub_channel.get_msg()
+                msg_type = sub_msg['header']['msg_type']
+                if msg_type == 'status':
+                    _execution_state = sub_msg["content"]["execution_state"]
+
+    def handle_magic_push(self, options):
+        items = options.split()
+        if self.kernel == 'python':
+            # if it is a python kernel, passing specified SoS variables to it
+            self.KC.execute('import pickle\npickle.dumps({{ {} }})'.format(','.join('"{0}":{0}'.format(x) for x in items)),
+                silent=False, store_history=not store_history)
+            # first thing is wait for any side effects (output, stdin, etc.)
+            _execution_state = "busy"
+            while _execution_state != 'idle':
+                # display intermediate print statements, etc.
+                while self.KC.iopub_channel.msg_ready():
+                    sub_msg = self.KC.iopub_channel.get_msg()
+                    msg_type = sub_msg['header']['msg_type']
+                    if msg_type == 'status':
+                        _execution_state = sub_msg["content"]["execution_state"]
+                    elif msg_type == 'execute_result':
+                        #self.send_response(self.iopub_socket, 'stream',
+                        #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
+                        try:
+                            env.sos_dict.update(
+                                pickle.loads(eval(sub_msg['content']['data']['text/plain']))
+                                )
+                        except Exception as e:
+                            self.send_response(self.iopub_socket, 'stream',
+                                {'name': 'stderr', 'text': 'Failed to push variable {}: {}'.format(', '.join(items), e)})
+                        break
+        elif self.kernel == 'ir':
+            # if it is a python kernel, passing specified SoS variables to it
+            self.KC.execute('{}\ndputToString(list({}))'.format(dputToString_func, 
+                ','.join('{0}={0}'.format(x) for x in items)),
+                silent=False, store_history=False)
+            # first thing is wait for any side effects (output, stdin, etc.)
+            _execution_state = "busy"
+            while _execution_state != 'idle':
+                # display intermediate print statements, etc.
+                while self.KC.iopub_channel.msg_ready():
+                    sub_msg = self.KC.iopub_channel.get_msg()
+                    msg_type = sub_msg['header']['msg_type']
+                    if msg_type == 'status':
+                        _execution_state = sub_msg["content"]["execution_state"]
+                    elif msg_type == 'execute_result':
+                        #self.send_response(self.iopub_socket, 'stream',
+                        #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
+                        try:
+                            env.sos_dict.update(
+                                from_R_repr(sub_msg['content']['data']['text/plain'])
+                                )
+                        except Exception as e:
+                             self.send_response(self.iopub_socket, 'stream',
+                                {'name': 'stderr', 'text': str(e)})
+                        break
+        else:
+            raise UsageError('Can only pass variables to python kernel')
+
+    def handle_shell_command(self, cmd):
+        # interpolate command
+        try:
+            new_cmd = interpolate(cmd, sigil='${ }', local_dict=env.sos_dict._dict)
+            if new_cmd != cmd:
+                cmd = new_cmd
+                if not cmd.startswith('cd ') and not cmd.startswith('cd\t'):
+                    self.send_response(self.iopub_socket, 'stream',
+                        {'name': 'stdout', 'text':
+                        new_cmd.strip() + '\n## -- End interpolated command --\n'})
+        except Exception as e:
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(short_repr(cmd), e)})
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': str(e)})
+        # command cd is handled differently because it is the only one that
+        # has effect on sos.
+        if cmd.startswith('cd ') or cmd.startswith('cd\t'):
+            to_dir = cmd[3:].strip()
+            try:
+                os.chdir(os.path.expanduser(os.path.expandvars(to_dir)))
+            except Exception as e:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stderr', 'text': repr(e)})
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': os.getcwd()})
+        with self.redirect_sos_io():
+            try:
+                p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                out, err = p.communicate()
+                sys.stdout.write(out.decode())
+                sys.stderr.write(err.decode())
+                ret = p.returncode
+                sys.stderr.flush()
+                sys.stdout.flush()
+            except Exception as e:
+                sys.stderr.flush()
+                sys.stdout.flush()
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': str(e)})
+
+    def run_sos_code(self, code, silent):
+        code = dedent(code)
+        last_input = [] if '__step_input__' not in env.sos_dict else copy.deepcopy(env.sos_dict['__step_input__'])
+        last_output = [] if '__step_output__' not in env.sos_dict else copy.deepcopy(env.sos_dict['__step_output__'])
+        if os.path.isfile('.sos/report.md'):
+            os.remove('.sos/report.md')
+        with self.redirect_sos_io():
+            try:
+                # record input and output
+                res = self.executor.run(code, self.options)
+                self.send_result(res, silent)
+            except Exception:
+                sys.stderr.flush()
+                sys.stdout.flush()
+                self.send_response(self.iopub_socket, 'display_data',
+                    {
+                        'source': 'SoS',
+                        'metadata': {},
+                        'data': { 'text/html': HTML('<hr color="black" width="60%">').data}
+                    })
+                raise
+            except KeyboardInterrupt:
+                return {'status': 'abort', 'execution_count': self.execution_count}
+            finally:
+                sys.stderr.flush()
+                sys.stdout.flush()
+        #
+        if not silent:
+            start_output = True
+            # Send standard output
+            if os.path.isfile('.sos/report.md'):
+                with open('.sos/report.md') as sr:
+                    sos_report = sr.read()
+                with open(self.report_file, 'a') as summary_report:
+                    summary_report.write(sos_report + '\n\n')
+                if sos_report.strip():
+                    self.send_response(self.iopub_socket, 'display_data',
+                        {
+                            'source': 'SoS',
+                            'metadata': {},
+                            'data': {'text/markdown': sos_report}
+                        })
+                    start_output = False
+            #
+            if '__step_input__' in env.sos_dict and env.sos_dict['__step_input__'] != last_input:
+                input_files = env.sos_dict['__step_input__']
+            else:
+                input_files = []
+            if '__step_output__' in env.sos_dict and env.sos_dict['__step_output__'] != last_output:
+                output_files = env.sos_dict['__step_output__']
+                if output_files is None:
+                    output_files = []
+            else:
+                output_files = []
+            # use a table to list input and/or output file if exist
+            if input_files or output_files:
+                if not start_output:
+                    self.send_response(self.iopub_socket, 'display_data',
+                        {
+                            'source': 'SoS',
+                            'metadata': {},
+                            'data': { 'text/html': HTML('<hr color="black" width="60%">').data}
+                        })
+                self.send_response(self.iopub_socket, 'display_data',
+                        {
+                            'source': 'SoS',
+                            'metadata': {},
+                            'data': { 'text/html':
+                                HTML('''<pre> input: {}\noutput: {}\n</pre>'''.format(
+                                ', '.join('<a target="_blank" href="{0}">{0}</a>'.format(x) for x in input_files),
+                                ', '.join('<a target="_blank" href="{0}">{0}</a>'.format(x) for x in output_files))).data
+                            }
+                        })
+            # Send images, if any
+            for filename in output_files:
+                self.send_response(self.iopub_socket, 'stream',
+                     {'name': 'stdout', 'text': '\n> ' + filename + ' ({})'.format(pretty_size(os.path.getsize(filename)))})
+                previewer = [x for x in self.previewer.keys() if fnmatch.fnmatch(os.path.basename(filename), x)]
+                if not previewer:
+                    continue
+                else:
+                    # choose the longest matching pattern (e.g. '*' and '*.pdf', choose '*.pdf')
+                    previewer_name = max(previewer, key=len)
+                    previewer_func = self.previewer[previewer_name]
+                    if not previewer_func:
+                        continue
+                    if not callable(previewer_func):
+                        raise RuntimeError('Previewer {} is not callable'.format(previewer_name))
+                    try:
+                        result = previewer_func(filename)
+                        if not result:
+                            continue
+                        if isinstance(result, str):
+                            self.send_response(self.iopub_socket, 'stream',
+                                {'name': 'stdout', 'text': '\n'+result})
+                        else:
+                            msg_type, msg_data = result
+                            self.send_response(self.iopub_socket, msg_type,
+                                {'source': filename, 'data': msg_data, 'metadata': {}})
+                    except Exception as e:
+                        self.send_response(self.iopub_socket, 'stream',
+                            {'name': 'stderr', 'text': 'Failed to preview {}: {}'.format(filename, e) })
+
+    def send_result(self, res, silent=False):
+        # this is Ok, send result back
+        if not silent and res is not None:
+            format_dict, md_dict = self.format_obj(res)
+            self.send_response(self.iopub_socket, 'execute_result',
+                {'execution_count': self.execution_count, 'data': format_dict,
+                'metadata': md_dict})
+
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
         if code == 'import os\n_pid = os.getpid()':
             # this is a special probing command from vim-ipython. Let us handle it specially
             # so that vim-python can get the pid.
-            return {'status': 'ok',
-                # The base class increments the execution count
-                'execution_count': None,
-                'payload': [],
-                'user_expressions': {'_pid': {'data': {'text/plain': os.getpid()}}}
-               }
-        mode = 'code'
+            return 
         if code.startswith('%dict'):
-            mode = 'dict'
-            command_line = self.get_magic_option(code)
+            # %dict should be the last magic
+            options, remaining_code = self.get_magic_and_code(code, True)
+            res = self.handle_magic_dict(options)
+            return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
         elif code.startswith('%connect_info'):
+            options, remaining_code = self.get_magic_and_code(code, False)
             cfile = find_connection_file()
             with open(cfile) as conn:
                 conn_info = conn.read()
             self.send_response(self.iopub_socket, 'stream',
                   {'name': 'stdout', 'text': 'Connection file: {}\n{}'.format(cfile, conn_info)})
-            return {'status': 'ok',
-                    # The base class increments the execution count
-                    'execution_count': self.execution_count,
-                    'payload': [],
-                    'user_expressions': {},
-                   }
+            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('%set'):
-            options = self.get_magic_option(code)
-            if options.strip():
-                #self.send_response(self.iopub_socket, 'stream',
-                #    {'name': 'stdout', 'text': 'sos options set to "{}"\n'.format(options)})
-                self.options = options.strip()
-            else:
-                if self.options:
-                    self.send_response(self.iopub_socket, 'stream',
-                        {'name': 'stdout', 'text': 'sos options "{}" reset to ""\n'.format(self.options)})
-                    self.options = ''
-                else:
-                    self.send_response(self.iopub_socket, 'stream',
-                        {'name': 'stdout', 'text': 'Usage: set persistent sos options such as -v 3 (debug output) -p (prepare) and -t (transcribe)\n'})
-            lines = code.split('\n')
-            code = '\n'.join(lines[1:])
-            command_line = self.options
+            options, remaining_code = self.get_magic_and_code(code, False)
+            self.handle_magic_set(options)
+            # self.options will be set to inflence the execution of remaing_code
+            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('%restart'):
-            options = self.get_magic_option(code)
+            options, remaining_code = self.get_magic_and_code(code, True)
             if options == 'R':
                 options = 'ir'
             self.restart_kernel(options)
-            return {'status': 'ok',
-                    # The base class increments the execution count
-                    'execution_count': self.execution_count,
-                    'payload': [],
-                    'user_expressions': {},
-                   }
-        elif code.startswith('%with') or code.startswith('%use'):
-            options = self.get_magic_option(code)
+            return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
+        elif code.startswith('%with'):
+            options, remaining_code = self.get_magic_and_code(code, False)
             if options == 'R':
                 options = 'ir'
-            #
-            if code.startswith('%with'):
-                self.original_kernel = self.kernel
+            original_kernel = self.kernel
             self.switch_kernel(options)
-            lines = code.split('\n')
-            code = '\n'.join(lines[1:])
-            command_line = self.options
+            try:
+                return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            finally:
+                self.switch_kernel(original_kernel)
+        elif code.startswith('%use'):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            if options == 'R':
+                options = 'ir'
+            self.switch_kernel(options)
+            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+        elif code.startswith('%get'):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            self.handle_magic_get(options)
+            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+        elif code.startswith('%push'):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            self.handle_magic_push(options)
+            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('%paste'):
-            command_line = (self.options + ' ' + self.get_magic_option(code)).strip()
+            options, remaining_code = self.get_magic_and_code(code, True)
+            self.options += ' ' + options.strip()
             try:
                 code = clipboard_get()
             except ClipboardEmpty:
@@ -550,228 +787,47 @@ class SoS_Kernel(Kernel):
             #
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': code.strip() + '\n## -- End pasted text --\n'})
+            return self.do_execute(code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('%run'):
-            lines = code.split('\n')
-            code = '\n'.join(lines[1:])
-            command_line = self.options + ' ' + self.get_magic_option(code)
-        elif code.startswith('%'):
-            # treat as arbitrary shell command
-            lines = [x for x in code.split('\n') if x.strip()]
-            if len(lines) > 1:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stderr', 'text': 'extra lines ignored in temporary shell mode\n'})
-            #
-            # interpolate command
-            cmd = lines[0][1:]
+            options, remaining_code = self.get_magic_and_code(code, True)
+            old_options = self.options
+            self.options += ' ' + options
             try:
-                new_cmd = interpolate(cmd, sigil='${ }', local_dict=env.sos_dict._dict)
-                if new_cmd != cmd:
-                    cmd = new_cmd
-                    if not cmd.startswith('cd ') and not cmd.startswith('cd\t'):
-                        self.send_response(self.iopub_socket, 'stream',
-                            {'name': 'stdout', 'text':
-                            new_cmd.strip() + '\n## -- End interpolated command --\n'})
+                return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            finally:
+                self.options = old_options
+        elif code.startswith('!'):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            self.handle_shell_command(code.split(' ')[0][1:] + ' ' + options)
+            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+        elif self.kernel != 'sos':
+            # handle string interpolation before sending to the underlying kernel
+            try:
+                new_code = interpolate(code, sigil='${ }', local_dict=env.sos_dict._dict)
+                if new_code != code:
+                    code = new_code
+                    self.send_response(self.iopub_socket, 'stream',
+                        {'name': 'stdout', 'text':
+                        new_code.strip() + '\n## -- End interpolated text --\n'})
             except Exception as e:
                 self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(short_repr(cmd), e)})
-                return  {'status': 'error',
-                        'ename': e.__class__.__name__,
-                        'evalue': str(e),
-                        'traceback': [],
-                        'execution_count': self.execution_count,
-                       }
-            # command cd is handled differently because it is the only one that
-            # has effect on sos.
-            if cmd.startswith('cd ') or cmd.startswith('cd\t'):
-                to_dir = cmd[3:].strip()
-                try:
-                    os.chdir(os.path.expanduser(os.path.expandvars(to_dir)))
-                except Exception as e:
-                    self.send_response(self.iopub_socket, 'stream',
-                        {'name': 'stderr', 'text': repr(e)})
-                    return  {'status': 'error',
-                        'ename': e.__class__.__name__,
-                        'evalue': str(e),
-                        'traceback': [],
-                        'execution_count': self.execution_count,
-                       }
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': os.getcwd()})
-                return {'status': 'ok',
-                        # The base class increments the execution count
-                        'execution_count': self.execution_count,
-                        'payload': [],
-                        'user_expressions': {},
-                       }
-            with self.redirect_sos_io():
-                try:
-                    p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                    out, err = p.communicate()
-                    sys.stdout.write(out.decode())
-                    sys.stderr.write(err.decode())
-                    ret = p.returncode
-                    sys.stderr.flush()
-                    sys.stdout.flush()
-                    return {'status': 'ok',
-                        # The base class increments the execution count
-                        'execution_count': self.execution_count,
-                        'payload': [],
-                        'user_expressions': {},
-                       }
-                except Exception as e:
-                    sys.stderr.flush()
-                    sys.stdout.flush()
-                    return  {'status': 'error',
-                        'ename': e.__class__.__name__,
-                        'evalue': str(e),
-                        'traceback': [],
-                        'execution_count': self.execution_count,
-                       }
+                    {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(short_repr(code), e)})
+            return self.run_cell(code, store_history)
         else:
-            command_line = self.options
-        #
-        try:
+            # run sos
             try:
-                if mode == 'dict':
-                    res = self.sosdict(command_line)
-                elif self.kernel != 'sos':
-                    # handle string interpolation before sending to the underlying kernel
-                    try:
-                        new_code = interpolate(code, sigil='${ }', local_dict=env.sos_dict._dict)
-                        if new_code != code:
-                            code = new_code
-                            self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stdout', 'text':
-                                new_code.strip() + '\n## -- End interpolated text --\n'})
-                    except Exception as e:
-                        self.send_response(self.iopub_socket, 'stream',
-                            {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(short_repr(code), e)})
-                    return self.run_cell(code, store_history)
-                else:
-                    code = dedent(code)
-                    with self.redirect_sos_io():
-                        try:
-                            res = self.executor.run_interactive(code, command_line)
-                            sys.stderr.flush()
-                            sys.stdout.flush()
-                        except Exception:
-                            sys.stderr.flush()
-                            sys.stdout.flush()
-                            self.send_response(self.iopub_socket, 'display_data',
-                                {
-                                    'source': 'SoS',
-                                    'metadata': {},
-                                    'data': { 'text/html': HTML('<hr color="black" width="60%">').data}
-                                })
-                            raise
-                        except KeyboardInterrupt:
-                            return {'status': 'abort', 'execution_count': self.execution_count}
-                    #
-                    if not silent:
-                        start_output = True
-                        # Send standard output
-                        if '__step_report__' in env.sos_dict and os.path.isfile(env.sos_dict['__step_report__']):
-                            with open(env.sos_dict['__step_report__']) as sr:
-                                sos_report = sr.read()
-                            with open(self.report_file, 'a') as summary_report:
-                                summary_report.write(sos_report + '\n\n')
-                            if sos_report.strip():
-                                self.send_response(self.iopub_socket, 'display_data',
-                                    {
-                                        'source': 'SoS',
-                                        'metadata': {},
-                                        'data': {'text/markdown': sos_report}
-                                    })
-                                start_output = False
-                        #
-                        if '__step_input__' in env.sos_dict:
-                            input_files = env.sos_dict['__step_input__']
-                        else:
-                            input_files = []
-                        if '__step_output__' in env.sos_dict:
-                            output_files = env.sos_dict['__step_output__']
-                            if output_files is None:
-                                output_files = []
-                        else:
-                            output_files = []
-                        # use a table to list input and/or output file if exist
-                        if input_files or output_files:
-                            if not start_output:
-                                self.send_response(self.iopub_socket, 'display_data',
-                                    {
-                                        'source': 'SoS',
-                                        'metadata': {},
-                                        'data': { 'text/html': HTML('<hr color="black" width="60%">').data}
-                                    })
-                            self.send_response(self.iopub_socket, 'display_data',
-                                    {
-                                        'source': 'SoS',
-                                        'metadata': {},
-                                        'data': { 'text/html':
-                                            HTML('''<pre> input: {}\noutput: {}\n</pre>'''.format(
-                                            ', '.join('<a target="_blank" href="{0}">{0}</a>'.format(x) for x in input_files),
-                                            ', '.join('<a target="_blank" href="{0}">{0}</a>'.format(x) for x in output_files))).data
-                                        }
-                                    })
-                        # Send images, if any
-                        for filename in output_files:
-                            self.send_response(self.iopub_socket, 'stream',
-                                 {'name': 'stdout', 'text': '\n> ' + filename + ' ({})'.format(pretty_size(os.path.getsize(filename)))})
-                            previewer = [x for x in self.previewer.keys() if fnmatch.fnmatch(os.path.basename(filename), x)]
-                            if not previewer:
-                                continue
-                            else:
-                                # choose the longest matching pattern (e.g. '*' and '*.pdf', choose '*.pdf')
-                                previewer_name = max(previewer, key=len)
-                                previewer_func = self.previewer[previewer_name]
-                                if not previewer_func:
-                                    continue
-                                if not callable(previewer_func):
-                                    raise RuntimeError('Previewer {} is not callable'.format(previewer_name))
-                                try:
-                                    result = previewer_func(filename)
-                                    if not result:
-                                        continue
-                                    if isinstance(result, str):
-                                        self.send_response(self.iopub_socket, 'stream',
-                                            {'name': 'stdout', 'text': '\n'+result})
-                                    else:
-                                        msg_type, msg_data = result
-                                        self.send_response(self.iopub_socket, msg_type,
-                                            {'source': filename, 'data': msg_data, 'metadata': {}})
-                                except Exception as e:
-                                    self.send_response(self.iopub_socket, 'stream',
-                                        {'name': 'stderr', 'text': 'Failed to preview {}: {}'.format(filename, e) })
+                self.run_sos_code(code, silent)
+                self.shell.user_ns.update(env.sos_dict._dict)
+                return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
             except Exception as e:
                 stream_content = {'name': 'stderr', 'text': str(e)}
                 self.send_response(self.iopub_socket, 'stream', stream_content)
-                return  {'status': 'error',
+                return {'status': 'error',
                     'ename': e.__class__.__name__,
                     'evalue': str(e),
                     'traceback': [],
                     'execution_count': self.execution_count,
                    }
-
-            # this is Ok, send result back
-            if not silent and res is not None:
-                format_dict, md_dict = self.format_obj(res)
-                self.send_response(self.iopub_socket, 'execute_result',
-                    {'execution_count': self.execution_count, 'data': format_dict,
-                    'metadata': md_dict})
-            #
-            # update the underlying shell's namespace with the sos dict so that
-            # spyder's object inspector can view the variable.
-            self.shell.user_ns.update(env.sos_dict._dict)
-            return {'status': 'ok',
-                    # The base class increments the execution count
-                    'execution_count': self.execution_count,
-                    'payload': [],
-                    'user_expressions': {},
-                   }
-        finally:
-            if self.original_kernel is not None:
-                self.switch_kernel(self.original_kernel)
-                self.original_kernel = None
 
     def do_shutdown(self, restart):
         #

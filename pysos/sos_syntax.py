@@ -23,9 +23,9 @@
 import re
 import keyword
 
-SOS_INPUT_OPTIONS = ['group_by', 'skip', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic']
-SOS_OUTPUT_OPTIONS = ['dynamic']
-SOS_DEPENDS_OPTIONS = ['dynamic']
+SOS_INPUT_OPTIONS = ['group_by', 'filetype', 'paired_with', 'for_each', 'pattern']
+SOS_OUTPUT_OPTIONS = []
+SOS_DEPENDS_OPTIONS = []
 SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active']
 SOS_ACTION_OPTIONS = ['workdir', 'docker_image', 'docker_file', 'active']
 
@@ -97,7 +97,12 @@ _DIRECTIVE_TMPL = r'''
     ({}                                # name of directive
     |[a-zA-Z][\w\d_]*))                #    or action
     \s*:\s*                            # followed by :
-    (?P<directive_value>.*)            # and values
+    (?P<directive_value>               # and values that can be
+    ([^:.|=&@$^<>].*)?$)               # name followed by and values, which can be
+                                       # constant 'a', "b", variable or function call
+                                       # a(), or arbitrary expression (['a'...], dictionary, set
+                                       # etc) which is difficult to match, so we use negative
+                                       # pattern to exclude expressions starting with :, | etc
     '''.format('|'.join(keyword.kwlist), '|'.join(SOS_DIRECTIVES))
 
 _ASSIGNMENT_TMPL = r'''
