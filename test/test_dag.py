@@ -39,29 +39,82 @@ import matplotlib.pyplot as plt
 
 
 class TestDAG(unittest.TestCase):
-    def testLinearDag(self):
-        '''Test DAG with linear dependency'''
+    def testSimpleDag(self):
+        '''Test DAG with simple dependency'''
+        #
+        # 1 -> 2 -> 3 -> 4
+        # 
         script = SoS_Script('''
-[1]
+[A_1]
 input: 'a.txt'
 output: 'b.txt'
 
-[2]
+[A_2]
 input: 'b.txt'
 output: 'c.txt'
 
-[3]
+[A_3]
 input: 'c.txt'
 output: 'd.txt'
 
-[4]
+[A_4]
 input: 'd.txt'
 output: 'e.txt'
 
         ''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
-        dag.write_dot('linear.dot')
+        dag.write_dot('D1.dot')
+        #
+        # 1 -> 2
+        # 3 -> 4
+        #
+        script = SoS_Script('''
+[B_1]
+input: 'a.txt'
+output: 'b.txt'
+
+[B_2]
+input: 'b.txt'
+output: 'c.txt'
+
+[B_3]
+input: []
+output: 'd.txt'
+
+[B_4]
+input: 'd.txt'
+output: 'e.txt'
+
+        ''')
+        wf = script.workflow()
+        dag = Sequential_Executor(wf).prepare()
+        dag.write_dot('D2.dot')
+        #
+        # 1 -> 2
+        # 1 -> 3 -> 4
+        # 
+        script = SoS_Script('''
+[C_1]
+input: 'a.txt'
+output: 'b.txt'
+
+[C_2]
+input: 'b.txt'
+output: 'c.txt'
+
+[C_3]
+input:  'b.txt'
+output: 'd.txt'
+
+[C_4]
+depends: 'd.txt'
+output: 'e.txt'
+
+        ''')
+        wf = script.workflow()
+        dag = Sequential_Executor(wf).prepare()
+        dag.write_dot('D3.dot')
 
 if __name__ == '__main__':
     unittest.main()

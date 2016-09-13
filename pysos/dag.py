@@ -21,6 +21,7 @@
 #
 
 import networkx as nx
+import copy
 
 from .utils import env
 
@@ -87,9 +88,11 @@ from .utils import env
 class SoS_Node(object):
     def __init__(self, node_name, input_targets=[], depends_targets=[], output_targets=[]):
         self._node_id = node_name
-        self._input_targets = [] if input_targets is None else input_targets
-        self._depends_targets = [] if depends_targets is None else depends_targets
-        self._output_targets = [] if output_targets is None else output_targets
+        self._input_targets = [] if input_targets is None else copy.copy(input_targets)
+        self._depends_targets = [] if depends_targets is None else copy.copy(depends_targets)
+        self._output_targets = [] if output_targets is None else copy.copy(output_targets)
+        #env.logger.error('Note {}: Input: {} Depends: {} Output: {}'.format(self._node_id, self._input_targets,
+        #      self._depends_targets,  self._output_targets)) 
 
     def __repr__(self):
         return self._node_id
