@@ -174,6 +174,8 @@ setup(name = "sos",
           'nbconvert>=4.2.0',
           'ipython',
           'notebook',
+          # for DAG
+          'networkx',
       ],
     entry_points='''
 [pygments.lexers]
