@@ -34,6 +34,10 @@ from pysos.sos_eval import Undetermined
 from pysos.sos_executor import Sequential_Executor, Interactive_Executor, ExecuteError
 from pysos.sos_script import ParsingError
 
+
+import matplotlib.pyplot as plt
+
+
 class TestDAG(unittest.TestCase):
     def testLinearDag(self):
         '''Test DAG with linear dependency'''
@@ -56,9 +60,8 @@ output: 'e.txt'
 
         ''')
         wf = script.workflow()
-        dag = SoS_DAG()
-        wf.prepare(dag)
-        dag.write()
+        dag = Sequential_Executor(wf).prepare()
+        dag.write_dot('linear.dot')
 
 if __name__ == '__main__':
     unittest.main()

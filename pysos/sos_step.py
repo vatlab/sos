@@ -410,6 +410,7 @@ class Base_Step_Executor:
             '__step_input__': env.sos_dict['input'],
             '__step_output__': env.sos_dict['output'],
             '__step_depends__': env.sos_dict['depends'],
+            '__step_name__': env.sos_dict['step_name'],
         }
         if '__execute_errors__' in env.sos_dict:
             result['__execute_errors__'] = env.sos_dict['__execute_errors__']

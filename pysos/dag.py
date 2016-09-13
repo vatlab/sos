@@ -22,31 +22,13 @@
 
 import networkx as nx
 
+from .utils import env
+
 #
 # DAG design:
 #
-# 1. Nodes are jobs to be completed, including
-#
-#    1.a. Steps.
-#    1.b. Tasks within steps.
-#
-#    The completion of steps depends on the completion of tasks
-#    so we should see
-#
-#       task --> step
-#
-#    If there are multiple tasks within a step, the graph would look
-#    like 
-#
-#       task 0 -> task 1 -> task 2 -> step
-#   
-#    if concurrent = False (default), or
-#
-#       task 0  ->
-#       task 1  -> step
-#       task 2  -> 
-#
-#    if concurrent = True.
+# 1. Nodes are jobs to be completed currently they are the
+#    same as steps.
 #
 # 2. Input, output and depedent files of nodes.
 #
@@ -103,18 +85,50 @@ import networkx as nx
 #       be allowed.
 #
 class SoS_Node(object):
-    def __init__(self, node_id, input_targets=[], output_targets=[]):
-        self._node_id = node_id
-        self._input_targets = input_targets
-        self._output_targets = output_targets
+    def __init__(self, node_name, input_targets=[], depends_targets=[], output_targets=[]):
+        self._node_id = node_name
+        self._input_targets = [] if input_targets is None else input_targets
+        self._depends_targets = [] if depends_targets is None else depends_targets
+        self._output_targets = [] if output_targets is None else output_targets
+
+    def __repr__(self):
+        return self._node_id
+
+    def depends_on(self, node):
+        return any(x in node._output_targets for x in self._input_targets) or \
+            any(x in node._output_targets for x in self._depends_targets) 
 
 class SoS_DAG(nx.DiGraph):
     def __init__(self):
         nx.DiGraph.__init__(self)
 
-    def add_step(self, node):
-        self.add_node(node)
+    def add_step(self, node_name, input_targets, depends_targets, output_targets):
+        self.add_node(SoS_Node(node_name, input_targets, depends_targets, output_targets))
 
-    def add_task(self, step, task):
-        self.add_node(task)
+    def connect(self):
+        '''Connect nodes according to status of targets'''
+        # right now we do not worry about status of nodes
+        #
+        # connecting the output to the input of other nodes
+        #
+        # NOTE: This is implemented in the least efficient way just for
+        # testing. It has to be re-implemented.
+        # 
+        # refer to http://stackoverflow.com/questions/33494376/networkx-add-edges-to-graph-from-node-attributes
+        # 
+        # for some code using attributes
+        for node_i in self.nodes():
+            for node_j in self.nodes():
+                if node_i == node_j:
+                    continue
+                if node_i.depends_on(node_j):
+                    self.add_edge(node_j, node_i)
+                if node_j.depends_on(node_i):
+                    self.add_edge(node_i, node_j)
 
+    def write_dot(self, filename):
+        try:
+            wd = nx.drawing.nx_pydot.write_dot
+            wd(self, filename)
+        except Exception as e:
+            env.logger.error('Failed to call write_dot: {}'.format(e))

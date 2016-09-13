@@ -36,6 +36,7 @@ from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, \
 from .sos_eval import Undetermined, SoS_eval, SoS_exec
 from .sos_script import SoS_Script, SoS_Step, SoS_ScriptContent
 from .sos_syntax import SOS_SECTION_HEADER
+from .dag import SoS_DAG
 
 __all__ = []
 
@@ -193,6 +194,7 @@ class Base_Executor:
         #
         # the steps can be executed in the pool (Not implemented)
         # if nested = true, start a new progress bar
+        dag = SoS_DAG()
         for idx, section in enumerate(self.workflow.sections):
             if self.skip(section):
                 continue
@@ -208,13 +210,21 @@ class Base_Executor:
             if isinstance(res, Exception):
                 raise RuntimeError(res)
             #
+            #
             for k, v in res.items():
                 env.sos_dict.set(k, v)
+            #
+            # build DAG with input and output files of step
+            dag.add_step(res['__step_name__'], res['__step_input__'], res['__step_depends__'], res['__step_output__'])
+        #            
         # at the end
         exception = env.sos_dict['__execute_errors__']
         if exception.errors:
             # if there is any error, raise it
             raise exception
+        #
+        dag.connect()
+        return dag
 
 
 class Sequential_Executor(Base_Executor):

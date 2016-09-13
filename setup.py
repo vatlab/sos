@@ -177,6 +177,7 @@ setup(name = "sos",
           'notebook',
           # for DAG
           'networkx',
+          'pydotplus',
       ],
     entry_points='''
 [pygments.lexers]
