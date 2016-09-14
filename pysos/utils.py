@@ -816,7 +816,7 @@ def get_output(cmd, show_command=False, prompt='$ '):
 #
 # search a path and locate script and other files
 #
-def locate_script(filename, start=''):
+def _locate_script(filename, start=''):
     #
     attemp = os.path.abspath(os.path.expanduser(filename))
     if os.path.isfile(attemp):
@@ -877,6 +877,12 @@ def locate_script(filename, start=''):
                 pass
     #
     raise ValueError('Failed to locate {}'.format(filename))
+
+def locate_script(filename, start=''):
+    try:
+        return _locate_script(filename, start=start)
+    except:
+        return _locate_script(filename + '.sos', start=start)
 
 def text_repr(text):
     """Rich repr for ``text`` returning unicode, triple quoted if ``multiline``.

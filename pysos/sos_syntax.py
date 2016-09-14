@@ -120,6 +120,48 @@ _CONFIG_NAME = r'''
    $
    '''
 
+_SOS_INCLUDE_TMPL = r'''
+    ^                                   # from start of line
+    include\s+                          # keyword
+    (?P<sos_files>
+    [a-zA-Z][a-zA-Z0-9_.]*              # filename
+    (\s+as\s+
+    [a-zA-Z][a-zA-Z0-9_]*)?             # optional as ...
+    (\s*,\s*
+    [a-zA-Z][a-zA-Z0-9_.]*
+    (\s+as\s+
+    [a-zA-Z][a-zA-Z0-9_]*)?             # optional as ...
+    )*)                                 # or more filename
+    \s*$
+    '''
+
+_SOS_FROM_INCLUDE_TMPL = r'''
+    ^                                   # from start of line
+    from
+    \s+
+    (?P<sos_file>
+    [a-zA-Z][a-zA-Z0-9_.]*)\s+          # filename
+    include\s+
+    (
+    (?P<workflows>
+    [a-zA-Z][a-zA-Z0-9_]*               # workflow as aslias
+    (\s+as\s+
+    [a-zA-Z][a-zA-Z0-9_]*)?
+    (\s*,\s*                            # parate by ,
+    [a-zA-Z][a-zA-Z0-9_]*)              # additional workflow as aslias
+    (\s+as\s+
+    [a-zA-Z][a-zA-Z0-9_]*)?
+    )*) 
+    \s*$
+    '''
+
+_SOS_AS_TMPL = r'''
+    (?P<name>[a-zA-Z][a-zA-Z0-9_]*)     # name of item
+    (\s+as\s+                           #  as 
+    (?P<alias>
+    [a-zA-Z][a-zA-Z0-9_]*))?            # optional alias
+    '''
+
 SOS_SECTION_HEADER = re.compile(_SECTION_HEADER_TMPL, re.VERBOSE)
 SOS_SECTION_NAME = re.compile(_SECTION_NAME_TMPL, re.VERBOSE)
 SOS_SUBWORKFLOW = re.compile(_SUBWORKFLOW_TMPL, re.VERBOSE)
@@ -129,4 +171,7 @@ SOS_FORMAT_VERSION = re.compile(_FORMAT_VERSION_TMPL, re.VERBOSE)
 SOS_DIRECTIVE = re.compile(_DIRECTIVE_TMPL, re.VERBOSE)
 SOS_ASSIGNMENT = re.compile(_ASSIGNMENT_TMPL, re.VERBOSE)
 CONFIG_NAME = re.compile(_CONFIG_NAME, re.VERBOSE)
+SOS_INCLUDE = re.compile(_SOS_INCLUDE_TMPL, re.VERBOSE)
+SOS_FROM_INCLUDE = re.compile(_SOS_FROM_INCLUDE_TMPL, re.VERBOSE)
+SOS_AS = re.compile(_SOS_AS_TMPL, re.VERBOSE)
 

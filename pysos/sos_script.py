@@ -34,7 +34,7 @@ from .utils import env, Error, dehtml, locate_script, text_repr
 from .sos_eval import Undetermined
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
-    SOS_ASSIGNMENT, SOS_SUBWORKFLOW
+    SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS
 
 __all__ = ['SoS_Script']
 
@@ -477,6 +477,20 @@ class SoS_Script:
                 if lines and lines[0].strip() == name:
                     self.workflow_descriptions[name] += '\n'.join(lines[1:]) + '\n'
 
+    def _include(self, sos_file, alias, workflow_map):
+        try:
+            if self.sos_script and self.sos_script != '<string>':
+                content = locate_script(sos_file, start=os.path.split(self.sos_script)[0])
+            else:
+                content = locate_script(sos_file)
+        except Exception as e:
+            raise RuntimeError('Source file for nested workflow {} does not exist: {}'.format(sos_file, e))
+        script = SoS_Script(*content)
+        # get workflow name from source files
+        if workflow_map:
+            raise RuntimeError('from script include workflow is not implemented.')
+     
+
     def _read(self, fp):
         self.sections = []
         self.format_version = '1.0'
@@ -566,6 +580,23 @@ class SoS_Script:
                 if self.transcript:
                     self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                 continue
+            #
+            if cursect is None and (SOS_INCLUDE.match(line) or SOS_FROM_INCLUDE.match(line)):
+                # handle import
+                mo = SOS_INCLUDE.match(line)
+                if mo:
+                    sos_files = [x.strip() for x in mo.group('sos_files').split(',')]
+                    for sos_file in sos_files:
+                        ma = SOS_AS.match(sos_file)
+                        self._include(ma['name'], alias=ma['alias'])
+                mo = SOS_FROM_INCLUDE.match(line)
+                if mo:
+                    sos_file = mo.group('sos_file')
+                    workflows = {}
+                    for wf in mo.group('workflows').split(','):
+                        ma = SOS_AS.match(sos_file)
+                        workflows[ma['name']] = ma['alias']
+                    self._include(sos_file, workflows_map=workflows)
             #
             # a continuation of previous item?
             if line[0].isspace() and cursect is not None and not cursect.empty():
