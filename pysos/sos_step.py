@@ -400,7 +400,7 @@ class Base_Step_Executor:
         except Exception as e:
             raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(stmt), e))
 
-    def collectResult(self):
+    def collect_result(self):
         # only results will be sent back to the master process
         #
         # __step_input__:    input of this step
@@ -494,7 +494,7 @@ class Base_Step_Executor:
                     except AbortExecution as e:
                         if e.message:
                             env.logger.warning(e)
-                        return self.collectResult()
+                        return self.collect_result()
             # input statement
             stmt = self.step.statements[input_statement_idx][2]
             self.log('input statement', stmt)
@@ -503,7 +503,7 @@ class Base_Step_Executor:
                 # Files will be expanded differently with different running modes
                 input_files = self.expand_input_files(stmt, *args)
                 if isinstance(input_files, Undetermined):
-                    return self.collectResult()
+                    return self.collect_result()
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
             except Exception as e:
                 if '__execute_errors__' in env.sos_dict and env.sos_dict['__execute_errors__'].errors:
@@ -686,7 +686,7 @@ class Base_Step_Executor:
                 # not available in inspection mode.
                 sig.write()
         self.log('output')
-        return self.collectResult()
+        return self.collect_result()
 
 class Queued_Step_Executor(Base_Step_Executor):
     # this class execute the step in a separate process
@@ -872,5 +872,5 @@ class Interactive_Step_Executor(Base_Step_Executor):
     def log(self, stage=None, msg=None):
         return
 
-    def collectResult(self):
+    def collect_result(self):
         return self.last_res

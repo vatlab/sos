@@ -24,7 +24,7 @@ import networkx as nx
 import copy
 
 from .utils import env
-
+from .sos_eval import Undetermined
 #
 # DAG design:
 #
@@ -86,8 +86,9 @@ from .utils import env
 #       be allowed.
 #
 class SoS_Node(object):
-    def __init__(self, node_name, input_targets=[], depends_targets=[], output_targets=[]):
+    def __init__(self, node_name, node_index, input_targets=[], depends_targets=[], output_targets=[]):
         self._node_id = node_name
+        self._node_index = node_index
         self._input_targets = [] if input_targets is None else copy.copy(input_targets)
         self._depends_targets = [] if depends_targets is None else copy.copy(depends_targets)
         self._output_targets = [] if output_targets is None else copy.copy(output_targets)
@@ -98,6 +99,20 @@ class SoS_Node(object):
         return self._node_id
 
     def depends_on(self, node):
+        # if the input of a step is undetermined, it has to be executed
+        # after all its previous steps.
+        #
+        #  step 1 -> step 2 -> [Undetermined] step 3 (self)
+        #
+        if isinstance(self._input_targets, Undetermined):
+            return node._node_index < self._node_index
+        #
+        # if the output of node is Undetermined or None (no output)
+        # no other step will depend on this.
+        if isinstance(node._output_targets, Undetermined):
+            return False
+        #
+        # no undetermined case
         return any(x in node._output_targets for x in self._input_targets) or \
             any(x in node._output_targets for x in self._depends_targets) 
 
@@ -105,8 +120,8 @@ class SoS_DAG(nx.DiGraph):
     def __init__(self):
         nx.DiGraph.__init__(self)
 
-    def add_step(self, node_name, input_targets, depends_targets, output_targets):
-        self.add_node(SoS_Node(node_name, input_targets, depends_targets, output_targets))
+    def add_step(self, node_name, node_index, input_targets, depends_targets, output_targets):
+        self.add_node(SoS_Node(node_name, node_index, input_targets, depends_targets, output_targets))
 
     def connect(self):
         '''Connect nodes according to status of targets'''
@@ -131,7 +146,6 @@ class SoS_DAG(nx.DiGraph):
 
     def write_dot(self, filename):
         try:
-            wd = nx.drawing.nx_pydot.write_dot
-            wd(self, filename)
+            nx.drawing.nx_pydot.write_dot(self, filename)
         except Exception as e:
             env.logger.error('Failed to call write_dot: {}'.format(e))

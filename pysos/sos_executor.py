@@ -215,7 +215,7 @@ class Base_Executor:
                 env.sos_dict.set(k, v)
             #
             # build DAG with input and output files of step
-            dag.add_step(res['__step_name__'], res['__step_input__'], res['__step_depends__'], res['__step_output__'])
+            dag.add_step(res['__step_name__'], idx, res['__step_input__'], res['__step_depends__'], res['__step_output__'])
         #            
         # at the end
         exception = env.sos_dict['__execute_errors__']

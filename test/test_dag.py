@@ -26,6 +26,7 @@ import time
 import glob
 import unittest
 import shutil
+from io import StringIO
 
 from pysos import SoS_Script
 from pysos.dag import SoS_DAG
@@ -39,6 +40,13 @@ import matplotlib.pyplot as plt
 
 
 class TestDAG(unittest.TestCase):
+    def assertDAG(self, dag, content):
+        out = StringIO() 
+        dag.write_dot(out)
+        dot = out.getvalue()
+        self.assertEqual(sorted([x.strip() for x in dot.split('\n') if x.strip()]),
+            sorted([x.strip() for x in content.split('\n') if x.strip()]))
+
     def testSimpleDag(self):
         '''Test DAG with simple dependency'''
         #
@@ -64,10 +72,20 @@ output: 'e.txt'
         ''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
-        dag.write_dot('D1.dot')
+        self.assertDAG(dag, 
+'''strict digraph "" {
+A_2;
+A_4;
+A_1;
+A_3;
+A_2 -> A_3;
+A_1 -> A_2;
+A_3 -> A_4;
+}
+''')
         #
         # 1 -> 2
-        # 3 -> 4
+        # 3 -> 4 (3 does not have any input)
         #
         script = SoS_Script('''
 [B_1]
@@ -89,11 +107,56 @@ output: 'e.txt'
         ''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
-        dag.write_dot('D2.dot')
+        self.assertDAG(dag, 
+'''strict digraph "" {
+B_2;
+B_4;
+B_1;
+B_3;
+B_1 -> B_2;
+B_3 -> B_4;
+}
+''')
         #
         # 1 -> 2
-        # 1 -> 3 -> 4
+        # 3 -> 4 (3 depends on something else)
+        #
+        script = SoS_Script('''
+[B_1]
+input: 'a.txt'
+output: 'b.txt'
+
+[B_2]
+input: 'b.txt'
+output: 'c.txt'
+
+[B_3]
+input: 'a1.txt'
+output: 'd.txt'
+
+[B_4]
+input: 'd.txt'
+output: 'e.txt'
+
+        ''')
+
+        wf = script.workflow()
+        dag = Sequential_Executor(wf).prepare()
+        self.assertDAG(dag, 
+'''strict digraph "" {
+B_1;
+B_4;
+B_2;
+B_3;
+B_1 -> B_2;
+B_3 -> B_4;
+}
+''')
+        #
+        # (1) -> 2
+        # (1) -> 3 -> 4
         # 
+        # 2 and 3 depends on the output of 1
         script = SoS_Script('''
 [C_1]
 input: 'a.txt'
@@ -114,7 +177,18 @@ output: 'e.txt'
         ''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
-        dag.write_dot('D3.dot')
+        self.assertDAG(dag, 
+'''
+strict digraph "" {
+C_1;
+C_4;
+C_2;
+C_3;
+C_1 -> C_2;
+C_1 -> C_3;
+C_3 -> C_4;
+}
+''')
 
 if __name__ == '__main__':
     unittest.main()
