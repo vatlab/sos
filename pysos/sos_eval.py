@@ -32,7 +32,7 @@ from .utils import env, Error, short_repr, DelayedAction, time_limit, AbortExecu
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
-__all__ = ['interpolate']
+__all__ = ['interpolate', 'sos_namespace']
 
 
 class InterpolationError(Error):
@@ -327,7 +327,7 @@ def _is_expr(expr):
     except:
         return False
 
-def SoS_exec(stmts, sigil='${ }'):
+def SoS_exec(stmts, sigil='${ }', _dict=None):
     '''Execute a statement after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
     # the trouble here is that we have to execute the statements line by line
@@ -347,6 +347,8 @@ def SoS_exec(stmts, sigil='${ }'):
     # we then try to find syntaxly valid groups
     code_group = [x for x in stmts.split('\n')]
     idx = 0
+    if _dict is None:
+        _dict = env.sos_dict._dict
     while True:
         try:
             # test current group
@@ -395,13 +397,13 @@ def SoS_exec(stmts, sigil='${ }'):
                 # make sure that the expression can be completed in 5 seconds
                 with time_limit(env.sos_dict['CONFIG'].get('sos_inspect_timeout', 5), stmts):
                     if idx + 1 == len(code_group) and _is_expr(stmts):
-                        res = eval(stmts, env.sos_dict._dict)
+                        res = eval(stmts, _dict)
                     else:
-                        exec(stmts, env.sos_dict._dict)
+                        exec(stmts, _dict)
             elif idx + 1 == len(code_group) and _is_expr(stmts):
-                res = eval(stmts, env.sos_dict._dict)
+                res = eval(stmts, _dict)
             else:
-                exec(stmts, env.sos_dict._dict)
+                exec(stmts, _dict)
         except AbortExecution:
             raise
         except Exception as e:
@@ -442,4 +444,11 @@ class Undetermined(object):
         raise RuntimeError('Undetermined expression should be evaluated before used. '
             'This is certainly a bug so please report this to SoS developer.')
 
+class sos_namespace(object):
+    '''A namespace that is created by evaluating statements
+    and use the results as attributes of the object.'''
+    def __init__(self, stmts):
+        # the results of the statments will be saved as
+        # attribute of this object.
+        SoS_exec(stmts, _dict=self.__dict__)
 

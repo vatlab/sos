@@ -493,14 +493,14 @@ class SoS_ExecuteScript:
 
 
 @SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
-def sos_run(workflow, source={}):
+def sos_run(workflow):
     '''Execute a workflow from specified source, input, and output
     By default the workflow is defined in the existing SoS script, but
     extra sos files can be specified from paramter source. The workflow
     will be execute in the current step namespace with _input as workflow
     input. '''
     script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
-    wf = script.workflow(workflow, source=source)
+    wf = script.workflow(workflow)
     # if wf contains the current step or one of the previous one, this constitute
     # recusive nested workflow and should not be allowed
     if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections]:
