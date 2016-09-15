@@ -82,7 +82,7 @@ b"""
         self.assertEqual(sorted(script.workflows), ['default'])
         script = SoS_Script('''[0]\n[*_1]''')
         self.assertEqual(sorted(script.workflows), ['default'])
-        script = SoS_Script('''[0]\n[*_1]\n[auxillary:target='*.txt']''')
+        script = SoS_Script('''[0]\n[*_1]\n[auxillary:provides='{a}.txt']''')
         self.assertEqual(sorted(script.workflows), ['default'])
         script = SoS_Script('''[0]\n[*_1]\n[human_1]''')
         self.assertEqual(sorted(script.workflows), ['default', 'human'])
@@ -989,13 +989,11 @@ sos_run(wf)
         Sequential_Executor(wf, args=['--wf', 'a']).inspect()
         self.assertEqual(env.sos_dict['executed'], ['default_0', 'a_1', 'a_2', 'a_3'])
 
-    def testSourceOption(self):
+    def testIncludedNestedWorkFlow(self):
         '''Test the source option of sos_run'''
         # nested subworkflow with step option and others
         env.shared_vars = ['executed', 'GLB', 'parB']
-        if not os.path.isdir('temp'):
-            os.mkdir('temp')
-        with open('temp/test.sos', 'w') as sos:
+        with open('inc.sos', 'w') as sos:
             sos.write('''
 # test sos script
 
@@ -1013,35 +1011,41 @@ output: _input[0] + 'a2'
 
 ''')
         script = SoS_Script('''
-executed = []
+from inc include *
+
+if 'executed' not in locals():
+    executed = []
 
 [b_1: skip=False]
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
-sos_run('A', source='temp/test.sos')
+sos_run('A')
 ''')
         env.shared_vars = ['executed']
         wf = script.workflow('b')
         Sequential_Executor(wf).inspect()
-        #self.assertEqual(env.sos_dict['GLB'], 5)
-        #self.assertEqual(env.sos_dict['parB'], 10)
+        self.assertEqual(env.sos_dict['GLB'], 5)
+        self.assertEqual(env.sos_dict['parB'], 10)
         self.assertEqual(env.sos_dict['executed'], ['b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
         #
         script = SoS_Script('''
-executed = []
+include inc as k
+
+if 'executed' not in locals():
+    executed = []
+
 [b_1: skip=False]
 executed.append('g.' + step_name)
 input: 'a.txt', 'b.txt', group_by='single'
-sos_run('k.A', source={'k':'temp/test.sos'})
+sos_run('k.A')
 ''')
         wf = script.workflow('b')
         Sequential_Executor(wf).inspect()
-        #self.assertEqual(env.sos_dict['GLB'], 5)
-        #self.assertEqual(env.sos_dict['parB'], 10)
-        self.assertEqual(env.sos_dict['executed'], ['g.b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
+        self.assertEqual(env.sos_dict['k'].GLB, 5)
+        self.assertEqual(env.sos_dict['k'].parB, 10)
+        self.assertEqual(env.sos_dict['executed'], ['g.b_1', 't.k.A_1', 't.k.A_2', 't.k.A_1', 't.k.A_2'])
         #
-        shutil.rmtree('temp')
-
+        os.remove('inc.sos')
 
     def testYAMLConfig(self):
         '''Test config file in yaml format'''
