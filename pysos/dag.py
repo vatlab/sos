@@ -42,7 +42,7 @@ from .sos_eval import Undetermined
 #
 #    b. Target does not exists and with signature.
 #       The files are assumed to exist for dependency check, but
-#       are determined to be non-exist if they are needed for a 
+#       are determined to be non-exist if they are needed for a
 #       task.
 #
 #    c. Target does not exists and without signature.
@@ -71,12 +71,12 @@ from .sos_eval import Undetermined
 #
 #    a. Edges determines dependencies between nodes. They are
 #       generated depending on the status of the nodes.
-#    
+#
 #    b. Edges will be updated with the update of nodes.
 #
 # 5. Dynamic DAG.
 #
-#    a. DAG will consists of nodes and edges derived from 
+#    a. DAG will consists of nodes and edges derived from
 #       status of files.
 #
 #    b. Completion of a task or step will update the status of
@@ -89,11 +89,11 @@ class SoS_Node(object):
     def __init__(self, node_name, node_index, input_targets=[], depends_targets=[], output_targets=[]):
         self._node_id = node_name
         self._node_index = node_index
-        self._input_targets = [] if input_targets is None else copy.copy(input_targets)
+        self._input_targets = Undetermined() if input_targets is None else copy.copy(input_targets)
         self._depends_targets = [] if depends_targets is None else copy.copy(depends_targets)
-        self._output_targets = [] if output_targets is None else copy.copy(output_targets)
+        self._output_targets = Undetermined() if output_targets is None else copy.copy(output_targets)
         #env.logger.error('Note {}: Input: {} Depends: {} Output: {}'.format(self._node_id, self._input_targets,
-        #      self._depends_targets,  self._output_targets)) 
+        #      self._depends_targets,  self._output_targets))
 
     def __repr__(self):
         return self._node_id
@@ -105,7 +105,7 @@ class SoS_Node(object):
         #  step 1 -> step 2 -> [Undetermined] step 3 (self)
         #
         if isinstance(self._input_targets, Undetermined):
-            return node._node_index < self._node_index
+            return node._node_index == self._node_index - 1
         #
         # if the output of node is Undetermined or None (no output)
         # no other step will depend on this.
@@ -114,7 +114,11 @@ class SoS_Node(object):
         #
         # no undetermined case
         return any(x in node._output_targets for x in self._input_targets) or \
-            any(x in node._output_targets for x in self._depends_targets) 
+            any(x in node._output_targets for x in self._depends_targets)
+
+    def show(self):
+        print('{} ({}): input {}, depends {}, output {}'.format(self._node_id, self._node_index, self._input_targets,
+            self._depends_targets, self._output_targets))
 
 class SoS_DAG(nx.DiGraph):
     def __init__(self):
@@ -122,6 +126,10 @@ class SoS_DAG(nx.DiGraph):
 
     def add_step(self, node_name, node_index, input_targets, depends_targets, output_targets):
         self.add_node(SoS_Node(node_name, node_index, input_targets, depends_targets, output_targets))
+
+    def show_nodes(self):
+        for node in self.nodes():
+            node.show()
 
     def connect(self):
         '''Connect nodes according to status of targets'''
@@ -131,9 +139,9 @@ class SoS_DAG(nx.DiGraph):
         #
         # NOTE: This is implemented in the least efficient way just for
         # testing. It has to be re-implemented.
-        # 
+        #
         # refer to http://stackoverflow.com/questions/33494376/networkx-add-edges-to-graph-from-node-attributes
-        # 
+        #
         # for some code using attributes
         for node_i in self.nodes():
             for node_j in self.nodes():

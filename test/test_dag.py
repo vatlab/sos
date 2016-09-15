@@ -49,6 +49,58 @@ class TestDAG(unittest.TestCase):
 
     def testSimpleDag(self):
         '''Test DAG with simple dependency'''
+        # basica case
+        # 1 -> 2 -> 3 -> 4
+        script = SoS_Script('''
+[A_1]
+
+[A_2]
+
+[A_3]
+
+[A_4]
+
+        ''')
+        wf = script.workflow()
+        dag = Sequential_Executor(wf).prepare()
+        self.assertDAG(dag, 
+'''strict digraph "" {
+A_2;
+A_4;
+A_1;
+A_3;
+A_2 -> A_3;
+A_1 -> A_2;
+A_3 -> A_4;
+}
+''')
+        # basica case
+        # 1 -> 2 -> 3 -> 4
+        script = SoS_Script('''
+[A_1]
+
+[A_2]
+
+[A_3]
+input: 'c.txt'
+
+[A_4]
+
+        ''')
+        wf = script.workflow()
+        dag = Sequential_Executor(wf).prepare()
+        self.assertDAG(dag, 
+'''strict digraph "" {
+A_2;
+A_4;
+A_1;
+A_3;
+A_1 -> A_2;
+A_3 -> A_4;
+}
+''')
+
+
         #
         # 1 -> 2 -> 3 -> 4
         # 
@@ -186,6 +238,82 @@ C_2;
 C_3;
 C_1 -> C_2;
 C_1 -> C_3;
+C_3 -> C_4;
+}
+''')
+
+    def testUndetermined(self):
+        '''Test DAG with undetermined input.'''
+        #
+        # input of step 3 is undertermined so
+        # it depends on all its previous steps.
+        script = SoS_Script('''
+[C_1]
+input: 'a.txt'
+output: 'b.txt'
+
+[C_2]
+input: 'b.txt'
+output: 'c.txt'
+
+[C_3]
+input:  dynamic('*.txt')
+output: 'd.txt'
+
+[C_4]
+depends: 'd.txt'
+output: 'e.txt'
+
+        ''')
+        wf = script.workflow()
+        dag = Sequential_Executor(wf).prepare()
+        dag.show_nodes()
+        dag.write_dot('a.dot')
+        self.assertDAG(dag, 
+'''
+strict digraph "" {
+C_1;
+C_4;
+C_2;
+C_3;
+C_1 -> C_2;
+C_2 -> C_3;
+C_3 -> C_4;
+}
+''')
+        #
+        # output of step 
+        #
+        script = SoS_Script('''
+[C_1]
+input: 'a.txt'
+output: 'b.txt'
+
+[C_2]
+input: 'b.txt'
+output: 'c.txt'
+
+[C_3]
+input:  dynamic('*.txt')
+
+[C_4]
+depends: 'd.txt'
+output: 'e.txt'
+
+        ''')
+        wf = script.workflow()
+        dag = Sequential_Executor(wf).prepare()
+        dag.show_nodes()
+        dag.write_dot('a.dot')
+        self.assertDAG(dag, 
+'''
+strict digraph "" {
+C_1;
+C_4;
+C_2;
+C_3;
+C_1 -> C_2;
+C_2 -> C_3;
 C_3 -> C_4;
 }
 ''')

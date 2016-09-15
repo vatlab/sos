@@ -294,6 +294,11 @@ class Base_Step_Executor:
         which are groups of _input and related _vars
         '''
         if isinstance(ifiles, Undetermined):
+            env.sos_dict.set('input', Undetermined())
+            env.sos_dict.set('_input', Undetermined())
+            # temporarily set depends and output to Undetermined because we cannot
+            # go far with such input
+            env.sos_dict.set('output', Undetermined())
             return [Undetermined()], [{}]
 
         for k in kwargs.keys():
@@ -353,7 +358,7 @@ class Base_Step_Executor:
                         os.makedirs(parent_dir)
         # set variables
         env.sos_dict.set('_output', ofiles)
-        if env.sos_dict['output'] is None:
+        if isinstance(env.sos_dict['output'], (type(None), Undetermined)):
             env.sos_dict.set('output', copy.deepcopy(ofiles))
         elif not isinstance(env.sos_dict['output'], Undetermined) and env.sos_dict['output'] != ofiles:
             env.sos_dict['output'].extend(ofiles)
@@ -502,8 +507,6 @@ class Base_Step_Executor:
                 args, kwargs = SoS_eval('__null_func__({})'.format(stmt), self.step.sigil)
                 # Files will be expanded differently with different running modes
                 input_files = self.expand_input_files(stmt, *args)
-                if isinstance(input_files, Undetermined):
-                    return self.collect_result()
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
             except Exception as e:
                 if '__execute_errors__' in env.sos_dict and env.sos_dict['__execute_errors__'].errors:
@@ -541,6 +544,9 @@ class Base_Step_Executor:
             self.log('_input')
             env.sos_dict.set('_index', idx)
             for statement in self.step.statements[input_statement_idx:]:
+                # if input is undertermined, we can only process output:
+                if isinstance(g, Undetermined) and statement[0] != ':':
+                    return self.collect_result()
                 if statement[0] == '=':
                     self.assign(statement[1], statement[2])
                 elif statement[0] == ':':
@@ -552,7 +558,7 @@ class Base_Step_Executor:
                         if key == 'output':
                             ofiles = self.expand_output_files(value, *args)
                             # ofiles can be Undetermined
-                            if env.sig_mode != 'ignore':
+                            if env.sig_mode != 'ignore' and not isinstance(g, Undetermined):
                                 signatures[idx] = RuntimeInfo(self.step_signature, env.sos_dict['_input'],
                                     ofiles, env.sos_dict['_depends'], idx)
                                 if env.sig_mode == 'default':
@@ -584,6 +590,10 @@ class Base_Step_Executor:
                         else:
                             raise RuntimeError('Unrecognized directive {}'.format(key))
                     except Exception as e:
+                        # if input is Undertermined, it is possible that output cannot be processed
+                        # due to that, and we just return
+                        if isinstance(g, Undetermined):
+                            return self.collect_result()
                         raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
                     try:
@@ -678,7 +688,8 @@ class Base_Step_Executor:
             # if output is no longer Undetermined, set it to output
             # of each signature
             for sig in signatures:
-                sig.set(env.sos_dict['output'], 'output')
+                if sig is not None:
+                    sig.set(env.sos_dict['output'], 'output')
         #
         for sig in signatures:
             if sig is not None:
@@ -788,7 +799,7 @@ class Prepare_Step_Executor(Queued_Step_Executor):
         Queued_Step_Executor.__init__(self, step, queue, inspect_or_prepare=True)
 
     def expand_input_files(self, value, *args):
-        if any(isinstance(x, dynamic) for x in value):
+        if any(isinstance(x, dynamic) for x in args):
             return Undetermined(value)
         # if unspecified, use __step_output__ as input (default)
         if not args:

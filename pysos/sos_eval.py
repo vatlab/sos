@@ -261,7 +261,7 @@ class SoS_String:
             # the object might be nested...
             sep = ', ' if conversion and ',' in conversion else ' '
             return sep.join([self._repr(x, fmt, conversion) for x in obj])
-        elif isinstance(obj, collections.Callable):
+        elif isinstance(obj, (collections.Callable, Undetermined)):
             raise InterpolationError(repr(obj), 'Cannot interpolate callable object.')
         else:
             return repr(obj) if fmt is None and conversion is None else self._format(obj, fmt, conversion)
@@ -429,7 +429,7 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
 # at inspect mode etc, and has to be resolved at run time.
 #
 class Undetermined(object):
-    def __init__(self, expr):
+    def __init__(self, expr=''):
         if not isinstance(expr, str):
             raise RuntimeError('Undetermined expression has to be a string: "{}" passed'.format(expr))
         self.expr = expr.strip()
