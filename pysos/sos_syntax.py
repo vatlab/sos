@@ -30,7 +30,7 @@ SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active']
 SOS_ACTION_OPTIONS = ['workdir', 'docker_image', 'docker_file', 'active']
 
 SOS_DIRECTIVES = ['input', 'output', 'depends', 'task', 'parameter']
-SOS_SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'target']
+SOS_SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'provides']
 
 # Regular expressions for parsing section headers and options
 _SECTION_HEADER_TMPL = r'''
@@ -141,17 +141,17 @@ _SOS_FROM_INCLUDE_TMPL = r'''
     \s+
     (?P<sos_file>
     [a-zA-Z][a-zA-Z0-9_.]*)\s+          # filename
-    include\s+
-    (
-    (?P<workflows>
+    include\s+                          # include
+    (?P<names>
+    (\*|
     [a-zA-Z][a-zA-Z0-9_]*               # workflow as aslias
     (\s+as\s+
     [a-zA-Z][a-zA-Z0-9_]*)?
     (\s*,\s*                            # parate by ,
-    [a-zA-Z][a-zA-Z0-9_]*)              # additional workflow as aslias
+    [a-zA-Z][a-zA-Z0-9_]*               # additional workflow as aslias
     (\s+as\s+
     [a-zA-Z][a-zA-Z0-9_]*)?
-    )*) 
+    )*)) 
     \s*$
     '''
 

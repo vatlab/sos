@@ -1127,6 +1127,72 @@ assert(len(output), 3)
         # this does not work before until we make variable output available sooner
         Sequential_Executor(wf).inspect()
 
+    def testInclude(self):
+        '''Test include keyword'''
+        with open('inc.sos', 'w') as ts:
+            ts.write('''
+# a slave script to be included
+gv = 1
+[A_1]
+[A_2]
+[B]
+''')
+        script = SoS_Script('''
+include inc
+res = inc.gv
+[0]
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run()
+        self.assertEqual(env.sos_dict['res'], 1)
+        #
+        # include with alias
+        script = SoS_Script('''
+include inc as tt
+res1 = tt.gv
+[0]
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run()
+        self.assertEqual(env.sos_dict['res1'], 1)
+        os.remove('inc.sos')
+
+    def testFromInclude(self):
+        '''Test include keyword'''
+        with open('inc.sos', 'w') as ts:
+            ts.write('''
+# a slave script to be included
+gv = 1
+[A_1]
+[A_2]
+[B]
+''')
+        script = SoS_Script('''
+from inc include gv
+[0]
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run()
+        self.assertEqual(env.sos_dict['gv'], 1)
+        #
+        # include with alias
+        script = SoS_Script('''
+from inc include gv as g
+res1 = g
+[0]
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run()
+        self.assertEqual(env.sos_dict['res1'], 1)
+
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
     #unittest.TextTestRunner(, suite).run()

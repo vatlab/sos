@@ -337,7 +337,7 @@ class SoS_Workflow:
         #
         for section in sections:
             for name, index in section.names:
-                if 'target' in section.options:
+                if 'provides' in section.options:
                     self.auxillary_sections.append(section)
                 elif fnmatch.fnmatch(workflow_name, name):
                     self.sections.append(copy.deepcopy(section))
@@ -421,6 +421,12 @@ class SoS_Script:
 
         Parameter `filename` should be used if the content should be read
         from a file.
+
+        A SoS_Script generated from a .sos file contains the following items
+
+        sections:
+            A list of SoS_Step objects that present all sections read.
+            Among other things, section.names
         '''
         if filename:
             content, self.sos_script = locate_script(filename, start='.')
@@ -441,9 +447,8 @@ class SoS_Script:
         #
         # workflows in this script, from sections that are not skipped.
         section_steps = sum([x.names for x in self.sections if \
-            not x.is_global and \
             not ('skip' in x.options and (x.options['skip'] is None or x.options['skip'])) and \
-            not ('target' in x.options)], [])
+            not ('provides' in x.options)], [])
         # (name, None) is auxiliary steps
         self.workflows = list(set([x[0] for x in section_steps if '*' not in x[0]]))
         if not self.workflows:
@@ -477,19 +482,53 @@ class SoS_Script:
                 if lines and lines[0].strip() == name:
                     self.workflow_descriptions[name] += '\n'.join(lines[1:]) + '\n'
 
-    def _include(self, sos_file, alias, workflow_map):
+    def _include_namespace(self, sos_file, alias):
         try:
             if self.sos_script and self.sos_script != '<string>':
-                content = locate_script(sos_file, start=os.path.split(self.sos_script)[0])
+                content = locate_script(sos_file + '.sos', start=os.path.split(self.sos_script)[0])
             else:
-                content = locate_script(sos_file)
+                content = locate_script(sos_file + '.sos')
         except Exception as e:
             raise RuntimeError('Source file for nested workflow {} does not exist: {}'.format(sos_file, e))
         script = SoS_Script(*content)
-        # get workflow name from source files
-        if workflow_map:
-            raise RuntimeError('from script include workflow is not implemented.')
-     
+        if not alias:
+            alias = sos_file
+        # section names are changed from A to sos_file.A
+        for section in script.sections:
+            for idx in range(len(section.names)):
+                section.names[idx][0] = alias + '.' + section.names[idx][0]
+        # The global definition of sos_file should be accessible as
+        # sos_file.name
+        self.sections.extend(script.sections)
+        self.global_def += '{} = sos_namespace({})\n'.format(alias, text_repr(script.global_def))
+
+    def _include_content(self, sos_file, name_map):
+        try:
+            if self.sos_script and self.sos_script != '<string>':
+                content = locate_script(sos_file + '.sos', start=os.path.split(self.sos_script)[0])
+            else:
+                content = locate_script(sos_file + '.sos')
+        except Exception as e:
+            raise RuntimeError('Source file for nested workflow {} does not exist: {}'.format(sos_file, e))
+        script = SoS_Script(*content)
+        if not name_map:
+            self.sections.extend(script.sections)
+            self.global_def += script.global_def
+        else:
+            # if name_map, we only include selected names from the script
+            for section in script.sections:
+                for name, index in section.names:
+                    if any(fnmatch.fnmatch(x, name) for x in name_map):
+                        # match ...
+                        self.sections.append(section)
+            # global_def is more complicated
+            self.global_def += '__{} = sos_namespace({})\n'.format(sos_file, text_repr(script.global_def))
+            #
+            self.global_def += '''
+for __n, __v in {}.items():
+    if hasattr(__{}, __n):
+        globals()[__v if __v else __n] = getattr(__{}, __n)
+'''.format(repr(name_map), sos_file, sos_file)
 
     def _read(self, fp):
         self.sections = []
@@ -588,15 +627,18 @@ class SoS_Script:
                     sos_files = [x.strip() for x in mo.group('sos_files').split(',')]
                     for sos_file in sos_files:
                         ma = SOS_AS.match(sos_file)
-                        self._include(ma['name'], alias=ma['alias'])
+                        self._include_namespace(ma.group('name'), alias=ma.group('alias'))
+                    continue
                 mo = SOS_FROM_INCLUDE.match(line)
                 if mo:
                     sos_file = mo.group('sos_file')
-                    workflows = {}
-                    for wf in mo.group('workflows').split(','):
-                        ma = SOS_AS.match(sos_file)
-                        workflows[ma['name']] = ma['alias']
-                    self._include(sos_file, workflows_map=workflows)
+                    name_map = {}
+                    if mo.group('names') != '*':
+                        for wf in mo.group('names').split(','):
+                            ma = SOS_AS.match(wf)
+                            name_map[ma.group('name')] = ma.group('alias')
+                    self._include_content(sos_file, name_map=name_map)
+                    continue
             #
             # a continuation of previous item?
             if line[0].isspace() and cursect is not None and not cursect.empty():
@@ -636,9 +678,9 @@ class SoS_Script:
                         if n:
                             if i is None and '*' in n:
                                 parsing_errors.append(lineno, line, 'Unindexed section name cannot contain wildcard character (*).')
-                            step_names.append((n, i))
+                            step_names.append([n, i])
                         if di:
-                            step_names.append(('default', di))
+                            step_names.append(['default', di])
                     else:
                         parsing_errors.append(lineno, line, 'Invalid section name')
                 if section_option is not None:
@@ -877,10 +919,10 @@ class SoS_Script:
             # remove the global section after inserting it to each step of the process
             self.sections.pop(global_section[0][0])
 
-    def workflow(self, workflow_name=None, source={}):
+    def workflow(self, workflow_name=None):
         '''Return a workflow with name_step+name_step specified in wf_name
         This function might be called recursively because of nested
-        workflow. Additional workflows can be specified in the source parameter.'''
+        workflow. '''
         allowed_steps = None
         if not workflow_name:
             wf_name = ''
@@ -892,7 +934,7 @@ class SoS_Script:
                     if not SOS_SUBWORKFLOW.match(wf):
                         raise ValueError('Incorrect workflow name {}'.format(workflow_name))
                     # if this is a combined workflow, extra_section might be specied.
-                    wfs.append(self.workflow(wf, source=source))
+                    wfs.append(self.workflow(wf))
                 combined_wf = wfs[0]
                 for wf in wfs[1:]:
                     combined_wf.extend(wf)
@@ -905,38 +947,6 @@ class SoS_Script:
                 raise ValueError('Incorrect workflow name {}'.format(workflow_name))
             wf_name, allowed_steps = mo.group('name', 'steps')
         # check source
-        source_scripts = []
-        if source:
-            if isinstance(source, str):
-                source = {'': [source]}
-            elif isinstance(source, dict):
-                source = {x: ([y] if isinstance(y, str) else y) for x,y in source.items()}
-            elif isinstance(source, Sequence):
-                source = {'': source}
-            else:
-                raise RuntimeError('Invalid value for option source {}'.format(source))
-            #
-            for key in source.keys():
-                source_scripts = []
-                for sos_file in source[key]:
-                    try:
-                        if self.sos_script and self.sos_script != '<string>':
-                            content = locate_script(sos_file, start=os.path.split(self.sos_script)[0])
-                        else:
-                            content = locate_script(sos_file)
-                    except Exception as e:
-                        raise RuntimeError('Source file for nested workflow {} does not exist: {}'.format(sos_file, e))
-                    source_scripts.append(SoS_Script(*content))
-                #
-                source[key] = source_scripts
-        # get workflow name from source files
-        extra_workflows = {name: list(set(sum([x.workflows for x in scripts], []))) for name,scripts in source.items()}
-        extra_workflow_names = []
-        for k,v in extra_workflows.items():
-            extra_workflow_names.extend(['{}.{}'.format(k, x).lstrip('.') for x in v])
-        extra_sections = {name: sum([x.sections for x in scripts], []) for name,scripts in source.items()}
-        if extra_sections:
-            env.logger.debug('Importing workflows {}'.format(', '.join(extra_workflow_names)))
         #
         if not wf_name:
             if len(self.workflows) == 1:
@@ -947,21 +957,16 @@ class SoS_Script:
                 raise ValueError('Name of workflow should be specified because '
                     'the script defines more than one pipelines without a default one. '
                     'Available pipelines are: {}.'.format(', '.join(self.workflows)))
-        elif wf_name not in self.workflows + extra_workflow_names:
+        elif wf_name not in self.workflows:
             raise ValueError('Workflow {} is undefined. Available workflows are: {}'.format(wf_name,
-                ', '.join(self.workflows + extra_workflow_names)))
+                ', '.join(self.workflows)))
         # do not send extra parameters of ...
         sections = []
-        # look for relevant sections in self.sections and extra sections from another script
-        if '.' in wf_name:
-            candidate_sections = extra_sections[wf_name.split('.')[0]]
-        else:
-            candidate_sections = self.sections + extra_sections.get('', [])
-        for section in candidate_sections:
+        for section in self.sections:
             # skip, skip=True, skip=1 etc are all allowed.
             if 'skip' in section.options and (section.options['skip'] is None or section.options['skip'] is True):
                 continue
-            if 'target' in section.options:
+            if 'provides' in section.options:
                 # section global is shared by all workflows
                 sections.append(section)
                 continue
