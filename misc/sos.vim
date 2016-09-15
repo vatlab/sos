@@ -24,7 +24,7 @@ source $VIMRUNTIME/syntax/python.vim
 syn keyword pythonBuiltin	False True None
 syn keyword pythonBuiltin	NotImplemented Ellipsis __debug__
 " built-in functions
-syn keyword pythonBuiltin	abs all any bin bool chr classmethod
+syn keyword pythonBuiltin	abs all any bin bool chr classmethod include
 syn keyword pythonBuiltin	compile complex delattr dict dir divmod
 syn keyword pythonBuiltin	enumerate eval filter float format
 syn keyword pythonBuiltin	frozenset getattr globals hasattr hash
