@@ -37,6 +37,8 @@ from .sos_eval import Undetermined, SoS_eval, SoS_exec
 from .sos_script import SoS_Script, SoS_Step, SoS_ScriptContent
 from .sos_syntax import SOS_SECTION_HEADER
 from .dag import SoS_DAG
+from .signature import BaseTarget, FileTarget
+from .pattern import extract_pattern
 
 __all__ = []
 
@@ -120,7 +122,7 @@ class Base_Executor:
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(config_file, e))
-        # set config to CONFIG 
+        # set config to CONFIG
         env.sos_dict.set('CONFIG', frozendict(cfg))
 
         SoS_exec('import os, sys, glob')
@@ -183,13 +185,30 @@ class Base_Executor:
             # if there is any error, raise it
             raise exception
 
+    def match(self, target, pattern):
+        if isinstance(pattern, str):
+            patterns = [pattern]
+        elif isinstance(pattern, BaseTarget):
+            patterns = [pattern]
+        #
+        for p in patterns:
+            # other targets has to match exactly
+            if isinstance(target, BaseTarget) or isinstance(p, BaseTarget):
+                if pattern == p:
+                    return {}
+            # if this is a regular string
+            res = extract_pattern(p, [target])
+            if res:
+                return res
+        return False
+
     def prepare(self):
         '''Run the script in prepare mode to prepare resources.'''
         env.run_mode = 'prepare'
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
         env.sos_dict.set('run_mode', env.run_mode)
-        
+
         # process step of the pipelinp
         #
         # the steps can be executed in the pool (Not implemented)
@@ -210,20 +229,59 @@ class Base_Executor:
             if isinstance(res, Exception):
                 raise RuntimeError(res)
             #
-            #
             for k, v in res.items():
                 env.sos_dict.set(k, v)
             #
             # build DAG with input and output files of step
             dag.add_step(res['__step_name__'], idx, res['__step_input__'], res['__step_depends__'], res['__step_output__'])
-        #            
+        #
+        while True:
+            dangling_targets = dag.dangling()
+            if not dangling_targets:
+                break
+            # find matching steps
+            # check auxiliary steps and see if any steps provides it
+            for target in dangling_targets:
+                mo = [(x, self.match(target, x.options['provides'])) for x in self.workflow.auxiliary_sections]
+                mo = [x for x in mo if x[1] is not False]
+                if not mo:
+                    raise ValueError('No step to generate target {}'.format(target))
+                if len(mo) > 1:
+                    raise ValueError('Multiple steps {} to generate target {}'.format(', '.join(str(x) for x in matched), target))
+                # only one step, we need to process it
+                # execute section with specified input
+                section = mo[0][0]
+                for k,v in mo[0][1].items():
+                    env.sos_dict.set(k, v[0])
+                #
+                # for auxiliary, we need to set input and output, here
+                env.sos_dict['__default__output__'] = [target]
+                # will become input, set to None
+                env.sos_dict['__step_output__'] = None
+                #
+                queue = mp.Queue()
+                executor = Prepare_Step_Executor(section, queue)
+                proc = mp.Process(target=executor.run)
+                proc.start()
+                res = queue.get()
+                proc.join()
+                # if the job is failed
+                if isinstance(res, Exception):
+                    raise RuntimeError(res)
+                #
+                for k, v in res.items():
+                    env.sos_dict.set(k, v)
+                #
+                # build DAG with input and output files of step
+                dag.add_step(res['__step_name__'], None, res['__step_input__'], res['__step_depends__'], res['__step_output__'])
+        #
+        # now, there should be no dangling targets, let us connect nodes
+        dag.build(self.workflow.auxiliary_sections)
         # at the end
         exception = env.sos_dict['__execute_errors__']
         if exception.errors:
             # if there is any error, raise it
             raise exception
-        #
-        dag.connect()
         return dag
 
 
@@ -285,7 +343,7 @@ class Interactive_Executor(Base_Executor):
         parser.add_argument('workflow', metavar='WORKFLOW', nargs='?')
         # parser.add_argument('-j', type=int, metavar='JOBS', default=1, dest='__max_jobs__')
         parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
-        #parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', 
+        #parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
         #    default=os.path.join('.sos', '__step_report.md'))
         runmode = parser.add_argument_group(title='Run mode options')
         runmode.add_argument('-f', action='store_true', dest='__rerun__')

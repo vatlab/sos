@@ -333,12 +333,13 @@ class SoS_Workflow:
         self.name = workflow_name
         self.description = description
         self.sections = []
-        self.auxillary_sections = []
+        self.auxiliary_sections = []
         #
         for section in sections:
             for name, index in section.names:
                 if 'provides' in section.options:
-                    self.auxillary_sections.append(section)
+                    self.auxiliary_sections.append(section)
+                    self.auxiliary_sections[-1].name = section.names[0][0]
                 elif fnmatch.fnmatch(workflow_name, name):
                     self.sections.append(copy.deepcopy(section))
                     self.sections[-1].name = workflow_name
@@ -749,7 +750,7 @@ for __n, __v in {}.items():
                 for name in step_names:
                     prev_workflows = [x[0] for x in all_step_names if '*' not in x[0]]
                     for prev_name in all_step_names:
-                        # auxillary step
+                        # auxiliary step
                         if name[1] is None and prev_name[1] is None and name[0] != prev_name[0]:
                             continue
                         # index not euqal (one of them can be None)

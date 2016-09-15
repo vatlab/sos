@@ -448,7 +448,10 @@ class Base_Step_Executor:
         #
         # * step_name:  name of the step, can be used by step process to determine 
         #               actions dynamically.
-        env.sos_dict.set('step_name', '{}_{}'.format(self.step.name, self.step.index))
+        if self.step.index:
+            env.sos_dict.set('step_name', '{}_{}'.format(self.step.name, self.step.index))
+        else:
+            env.sos_dict.set('step_name', '{}'.format(self.step.name))
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.step.context)
 
@@ -469,8 +472,12 @@ class Base_Step_Executor:
 
         # input can be Undetermined from undetermined output from last step
         env.sos_dict.set('_input', copy.deepcopy(env.sos_dict['input']))
-        env.sos_dict.set('output', None)
-        env.sos_dict.set('_output', None)
+        if '__default_output__' in env.sos_dict:
+            env.sos_dict.set('output', copy.deepcopy(env.sos_dict['__default_output__']))
+            env.sos_dict.set('_output', copy.deepcopy(env.sos_dict['__default_output__']))
+        else:
+            env.sos_dict.set('output', None)
+            env.sos_dict.set('_output', None)
         env.sos_dict.set('depends', None)
         env.sos_dict.set('_depends', None)
         # _index is needed for pre-input action's active option and for debug output of scripts

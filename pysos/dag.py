@@ -21,10 +21,14 @@
 #
 
 import networkx as nx
+from collections import defaultdict
 import copy
 
 from .utils import env
 from .sos_eval import Undetermined
+from .signature import FileTarget
+
+
 #
 # DAG design:
 #
@@ -105,7 +109,10 @@ class SoS_Node(object):
         #  step 1 -> step 2 -> [Undetermined] step 3 (self)
         #
         if isinstance(self._input_targets, Undetermined):
-            return node._node_index == self._node_index - 1
+            if node._node_index is not None and self._node_index is not None:
+                return node._node_index == self._node_index - 1
+            else:
+                return False
         #
         # if the output of node is Undetermined or None (no output)
         # no other step will depend on this.
@@ -123,18 +130,32 @@ class SoS_Node(object):
 class SoS_DAG(nx.DiGraph):
     def __init__(self):
         nx.DiGraph.__init__(self)
+        self._all_dependent_files = defaultdict(list)
+        self._all_output_files = defaultdict(list)
 
     def add_step(self, node_name, node_index, input_targets, depends_targets, output_targets):
         self.add_node(SoS_Node(node_name, node_index, input_targets, depends_targets, output_targets))
+        if not isinstance(input_targets, (type(None), Undetermined)):
+            for x in input_targets:
+                self._all_dependent_files[x].append(node_name)
+        if not isinstance(depends_targets, (type(None), Undetermined)):
+            for x in depends_targets:
+                self._all_dependent_files[x].append(node_name)
+        if not isinstance(output_targets, (type(None), Undetermined)):
+            for x in output_targets:
+                self._all_output_files[x].append(node_name)
 
     def show_nodes(self):
         for node in self.nodes():
             node.show()
 
-    def connect(self):
+    def dangling(self):
+        return [x for x in self._all_dependent_files.keys() if x not in self._all_output_files \
+            and not (FileTarget(x).exists() if isinstance(x, str) else x.exists())]
+
+    def build(self, steps):
         '''Connect nodes according to status of targets'''
         # right now we do not worry about status of nodes
-        #
         # connecting the output to the input of other nodes
         #
         # NOTE: This is implemented in the least efficient way just for
@@ -151,6 +172,7 @@ class SoS_DAG(nx.DiGraph):
                     self.add_edge(node_j, node_i)
                 if node_j.depends_on(node_i):
                     self.add_edge(node_i, node_j)
+
 
     def write_dot(self, filename):
         try:

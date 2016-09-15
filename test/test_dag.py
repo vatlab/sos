@@ -41,7 +41,7 @@ import matplotlib.pyplot as plt
 
 class TestDAG(unittest.TestCase):
     def assertDAG(self, dag, content):
-        out = StringIO() 
+        out = StringIO()
         dag.write_dot(out)
         dot = out.getvalue()
         self.assertEqual(sorted([x.strip() for x in dot.split('\n') if x.strip()]),
@@ -63,7 +63,7 @@ class TestDAG(unittest.TestCase):
         ''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
-        self.assertDAG(dag, 
+        self.assertDAG(dag,
 '''strict digraph "" {
 A_2;
 A_4;
@@ -89,7 +89,7 @@ input: 'c.txt'
         ''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
-        self.assertDAG(dag, 
+        self.assertDAG(dag,
 '''strict digraph "" {
 A_2;
 A_4;
@@ -103,7 +103,7 @@ A_3 -> A_4;
 
         #
         # 1 -> 2 -> 3 -> 4
-        # 
+        #
         script = SoS_Script('''
 [A_1]
 input: 'a.txt'
@@ -124,7 +124,7 @@ output: 'e.txt'
         ''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
-        self.assertDAG(dag, 
+        self.assertDAG(dag,
 '''strict digraph "" {
 A_2;
 A_4;
@@ -159,7 +159,7 @@ output: 'e.txt'
         ''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
-        self.assertDAG(dag, 
+        self.assertDAG(dag,
 '''strict digraph "" {
 B_2;
 B_4;
@@ -194,7 +194,7 @@ output: 'e.txt'
 
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
-        self.assertDAG(dag, 
+        self.assertDAG(dag,
 '''strict digraph "" {
 B_1;
 B_4;
@@ -207,7 +207,7 @@ B_3 -> B_4;
         #
         # (1) -> 2
         # (1) -> 3 -> 4
-        # 
+        #
         # 2 and 3 depends on the output of 1
         script = SoS_Script('''
 [C_1]
@@ -229,7 +229,7 @@ output: 'e.txt'
         ''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
-        self.assertDAG(dag, 
+        self.assertDAG(dag,
 '''
 strict digraph "" {
 C_1;
@@ -269,7 +269,7 @@ output: 'e.txt'
         dag = Sequential_Executor(wf).prepare()
         dag.show_nodes()
         dag.write_dot('a.dot')
-        self.assertDAG(dag, 
+        self.assertDAG(dag,
 '''
 strict digraph "" {
 C_1;
@@ -282,7 +282,7 @@ C_3 -> C_4;
 }
 ''')
         #
-        # output of step 
+        # output of step
         #
         script = SoS_Script('''
 [C_1]
@@ -303,9 +303,7 @@ output: 'e.txt'
         ''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
-        dag.show_nodes()
-        dag.write_dot('a.dot')
-        self.assertDAG(dag, 
+        self.assertDAG(dag,
 '''
 strict digraph "" {
 C_1;
@@ -315,6 +313,45 @@ C_3;
 C_1 -> C_2;
 C_2 -> C_3;
 C_3 -> C_4;
+}
+''')
+
+    def testAuxiliarySteps(self):
+        script = SoS_Script('''
+[K: provides='{name}.txt']
+output: '${name}.txt'
+
+sh:
+    touch '${name}.txt'
+
+[C_2]
+input: 'b.txt'
+output: 'c.txt'
+
+sh:
+    touch c.txt
+
+[C_3]
+input: 'a.txt'
+
+        ''')
+        # a.txt exists and b.txt does not exist
+        with open('a.txt', 'w') as atfile:
+            atfile.write('garbage')
+        if os.path.isfile('b.txt'):
+            os.remove('b.txt')
+        # the workflow should call step K for step C_2, but not C_3
+        wf = script.workflow()
+        dag = Sequential_Executor(wf).prepare()
+        #dag.write_dot('a.dot')
+        #dag.show_nodes()
+        self.assertDAG(dag,
+'''
+strict digraph "" {
+K;
+C_2;
+C_3;
+K -> C_2;
 }
 ''')
 
