@@ -529,6 +529,7 @@ for __n, __v in {}.items():
     if hasattr(__{}, __n):
         globals()[__v if __v else __n] = getattr(__{}, __n)
 '''.format(repr(name_map), sos_file, sos_file)
+            # env.logger.trace(self.global_def)
 
     def _read(self, fp):
         self.sections = []
@@ -913,11 +914,11 @@ for __n, __v in {}.items():
                         env.readonly_vars.add(statement[1].strip())
                 else:
                     self.global_def += statement[1]
-            #
-            for section in self.sections:
-                section.global_def = self.global_def
             # remove the global section after inserting it to each step of the process
             self.sections.pop(global_section[0][0])
+        #
+        for section in self.sections:
+            section.global_def = self.global_def
 
     def workflow(self, workflow_name=None):
         '''Return a workflow with name_step+name_step specified in wf_name
@@ -947,7 +948,6 @@ for __n, __v in {}.items():
                 raise ValueError('Incorrect workflow name {}'.format(workflow_name))
             wf_name, allowed_steps = mo.group('name', 'steps')
         # check source
-        #
         if not wf_name:
             if len(self.workflows) == 1:
                 wf_name = list(self.workflows)[0]
@@ -972,10 +972,10 @@ for __n, __v in {}.items():
                 continue
             for name, index in section.names:
                 # exact match or filename like match if name contains * etc
-                if fnmatch.fnmatch(wf_name.split('.')[-1], name):
+                if fnmatch.fnmatch(wf_name, name):
                     sections.append(section)
                     break
-        return SoS_Workflow(wf_name.split('.')[-1], allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
+        return SoS_Workflow(wf_name, allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
 
     def show(self):
         textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
