@@ -779,6 +779,32 @@ pandoc(output=_output[0], to='html')
         os.remove('myreport.html')
 
 
+    def testOptionRunMode(self):
+        '''Testing run mode option for action'''
+        if os.path.isfile('a.txt'):
+            os.remove('a.txt')
+        #
+        script = SoS_Script(r'''
+[10]
+run: run_mode='prepare'
+    touch a.txt
+
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).prepare()
+        self.assertTrue(os.path.isfile('a.txt'))
+        os.remove('a.txt')
+        #
+        script = SoS_Script(r'''
+[10]
+run: run_mode='inspect'
+    touch a.txt
+
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).inspect()
+        self.assertTrue(os.path.isfile('a.txt'))
+        os.remove('a.txt')
 
 if __name__ == '__main__':
     unittest.main()
