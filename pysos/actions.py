@@ -352,11 +352,12 @@ def SoS_Action(run_mode=['run', 'interactive']):
                             .format(kwargs['run_mode']))
                     if kwargs['run_mode'] not in ['inspect', 'prepare', 'interactive']:
                         raise ValueError('Parameter run_mode can only be inspect, prepare, or interactive')
-                    if env.run_mode == 'run':
+                    top_mode = 'run' if 'run' in run_mode else ('prepare' if 'prepare' in run_mode else 'inspect')
+                    if env.run_mode == top_mode and top_mode != kwargs['run_mode']:
                         # if run has been moved away, do nothing
                         return None
                     elif env.run_mode == kwargs['run_mode']:
-                        env.run_mode = 'run'
+                        env.run_mode = top_mode
 
                 # docker files will be downloaded in run or prepare mode
                 if 'docker_file' in kwargs and env.run_mode in ['prepare', 'run', 'interactive']:
