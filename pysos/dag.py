@@ -90,41 +90,57 @@ from .signature import FileTarget
 #       be allowed.
 #
 class SoS_Node(object):
-    def __init__(self, node_name, node_index, input_targets=[], depends_targets=[], output_targets=[]):
+    def __init__(self, uuid, node_name, node_index, input_targets=[], depends_targets=[], 
+        output_targets=[], change_context=[]):
+        self._uuid = uuid
         self._node_id = node_name
         self._node_index = node_index
         self._input_targets = Undetermined() if input_targets is None else copy.copy(input_targets)
         self._depends_targets = [] if depends_targets is None else copy.copy(depends_targets)
         self._output_targets = Undetermined() if output_targets is None else copy.copy(output_targets)
+        self._change_context = change_context
         #env.logger.error('Note {}: Input: {} Depends: {} Output: {}'.format(self._node_id, self._input_targets,
         #      self._depends_targets,  self._output_targets))
+        self._context = None
+        self._status = None
 
     def __repr__(self):
         return self._node_id
 
     def depends_on(self, node):
-        # if the input of a step is undetermined, it has to be executed
+        #
+        # several cases triggers dependency.
+
+        # 0. if myself is complated, it does not depend on any step
+        if self._status == 'completed':
+            return False
+        #
+        # 1. if a node changes context (using option alias), all later steps
+        # has to rely on it.
+        if node._change_context and node._node_index is not None and \
+            self._node_index is not None and node._node_index < self._node_index:
+            return True
+
+        # 2. if the input of a step is undetermined, it has to be executed
         # after all its previous steps.
         #
         #  step 1 -> step 2 -> [Undetermined] step 3 (self)
+        if isinstance(self._input_targets, Undetermined) and \
+            node._node_index is not None and self._node_index is not None \
+            and node._node_index == self._node_index - 1:
+            return True
         #
-        if isinstance(self._input_targets, Undetermined):
-            if node._node_index is not None and self._node_index is not None:
-                return node._node_index == self._node_index - 1
-            else:
-                return False
-        #
-        # if the output of node is Undetermined or None (no output)
-        # no other step will depend on this.
-        if isinstance(node._output_targets, Undetermined):
-            return False
-        #
-        # no undetermined case
-        return any(x in node._output_targets for x in self._input_targets) or \
-            any(x in node._output_targets for x in self._depends_targets)
+        # 3. if the input of a step depends on the output of another step
+        if not isinstance(node._output_targets, Undetermined) and \
+            ((not isinstance(self._input_targets, Undetermined) and \
+            any(x in node._output_targets for x in self._input_targets)) or \
+            any(x in node._output_targets for x in self._depends_targets)):
+            return True
+
+        return False
 
     def show(self):
-        print('{} ({}): input {}, depends {}, output {}'.format(self._node_id, self._node_index, self._input_targets,
+        print('{} ({}, {}): input {}, depends {}, output {}'.format(self._node_id, self._node_index, self._status, self._input_targets,
             self._depends_targets, self._output_targets))
 
 class SoS_DAG(nx.DiGraph):
@@ -133,8 +149,9 @@ class SoS_DAG(nx.DiGraph):
         self._all_dependent_files = defaultdict(list)
         self._all_output_files = defaultdict(list)
 
-    def add_step(self, node_name, node_index, input_targets, depends_targets, output_targets):
-        self.add_node(SoS_Node(node_name, node_index, input_targets, depends_targets, output_targets))
+    def add_step(self, uuid, node_name, node_index, input_targets, depends_targets,
+        output_targets, change_context=False):
+        self.add_node(SoS_Node(uuid, node_name, node_index, input_targets, depends_targets, output_targets, change_context))
         if not isinstance(input_targets, (type(None), Undetermined)):
             for x in input_targets:
                 self._all_dependent_files[x].append(node_name)
@@ -144,6 +161,25 @@ class SoS_DAG(nx.DiGraph):
         if not isinstance(output_targets, (type(None), Undetermined)):
             for x in output_targets:
                 self._all_output_files[x].append(node_name)
+
+    def find_executable(self):
+        '''Find an executable node, which means nodes that has not been completed
+        and has no input dependency.'''
+        for node in self.nodes():
+            # if it has not been executed
+            if node._status is None:
+                with_dependency = False
+                for edge in self.in_edges(node):
+                    if edge[0]._status != 'completed':
+                        with_dependency = True
+                        break
+                if not with_dependency:
+                    return node
+        # should be all completed
+        for node in self.nodes():
+            if node._status != 'completed':
+                raise RuntimeError('{} is not completed yet has dependency'.format(node._node_id))
+        return None
 
     def show_nodes(self):
         for node in self.nodes():

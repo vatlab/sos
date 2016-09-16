@@ -233,12 +233,17 @@ class Base_Executor:
                 env.sos_dict.set(k, v)
             #
             # build DAG with input and output files of step
-            dag.add_step(res['__step_name__'], idx, res['__step_input__'], res['__step_depends__'], res['__step_output__'])
+            #
+            # NOTE: if a section has option 'alias', the execution of this step would
+            # change dictionary, essentially making all later steps rely on this step.
+            dag.add_step(section.uuid, res['__step_name__'], idx, res['__step_input__'], res['__step_depends__'],
+                res['__step_output__'], 'alias' in section.options)
         #
         while True:
             dangling_targets = dag.dangling()
             if not dangling_targets:
                 break
+            env.logger.info('Resolving {} objects'.format(len(dangling_targets)))
             # find matching steps
             # check auxiliary steps and see if any steps provides it
             for target in dangling_targets:
@@ -273,7 +278,9 @@ class Base_Executor:
                     env.sos_dict.set(k, v)
                 #
                 # build DAG with input and output files of step
-                dag.add_step(res['__step_name__'], None, res['__step_input__'], res['__step_depends__'], res['__step_output__'])
+                env.logger.info('Adding step {}'.format(res['__step_name__']))
+                dag.add_step(section.uuid, res['__step_name__'], None, res['__step_input__'], res['__step_depends__'],
+                    res['__step_output__'], False)
         #
         # now, there should be no dangling targets, let us connect nodes
         dag.build(self.workflow.auxiliary_sections)
@@ -291,7 +298,7 @@ class Sequential_Executor(Base_Executor):
     def __init__(self, workflow, args=[], config_file=None, nested=False):
         Base_Executor.__init__(self, workflow, args, config_file, new_dict=not nested)
 
-    def run(self):
+    def run(self, dag):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -301,13 +308,18 @@ class Sequential_Executor(Base_Executor):
         env.sos_dict.set('run_mode', env.run_mode)
         # process step of the pipelinp
         #
-        # the steps can be executed in the pool (Not implemented)
-        # if nested = true, start a new progress bar
-        prog = ProgressBar(self.workflow.name, len(self.workflow.sections),
-            disp=len(self.workflow.sections) > 1 and env.verbosity == 1)
-        for idx, section in enumerate(self.workflow.sections):
-            if self.skip(section):
-                continue
+        while True:
+            # the strategy (or better termed no strategy) is to find
+            # any step that can be executed and run it, and update the DAT
+            # with status.
+            runnable = dag.find_executable()
+            if runnable is None:
+                break
+            # find the section from runnable
+            section = self.workflow.section_by_id(runnable._uuid)
+            # if the step has its own context
+            if runnable._context is not None:
+                env.sos_dict.quick_update(runnable._context)
             # execute section with specified input
             queue = mp.Queue()
             executor = Run_Step_Executor(section, queue)
@@ -321,13 +333,14 @@ class Sequential_Executor(Base_Executor):
             #
             for k, v in res.items():
                 env.sos_dict.set(k, v)
-            prog.progress(1)
-        prog.done()
-        # at the end
-        exception = env.sos_dict['__execute_errors__']
-        if exception.errors:
-            # if there is any error, raise it
-            raise exception
+            # set context
+            for edge in dag.out_edges(runnable):
+                node = edge[1]
+                if node._context is None:
+                    node._context = env.sos_dict.clone_pickleable()
+                else:
+                    node._context.update(env.sos_dict.clone_pickleable())
+            runnable._status = 'completed'
 
 
 class Interactive_Executor(Base_Executor):

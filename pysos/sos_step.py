@@ -448,7 +448,7 @@ class Base_Step_Executor:
         #
         # * step_name:  name of the step, can be used by step process to determine 
         #               actions dynamically.
-        if self.step.index:
+        if isinstance(self.step.index, int):
             env.sos_dict.set('step_name', '{}_{}'.format(self.step.name, self.step.index))
         else:
             env.sos_dict.set('step_name', '{}'.format(self.step.name))

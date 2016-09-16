@@ -29,6 +29,7 @@ import shutil
 from io import StringIO
 from collections import defaultdict
 from collections.abc import Sequence
+from uuid import uuid4
 
 from .utils import env, Error, dehtml, locate_script, text_repr
 from .sos_eval import Undetermined
@@ -340,10 +341,12 @@ class SoS_Workflow:
                 if 'provides' in section.options:
                     self.auxiliary_sections.append(section)
                     self.auxiliary_sections[-1].name = section.names[0][0]
+                    self.auxiliary_sections[-1].uuid = uuid4()
                 elif fnmatch.fnmatch(workflow_name, name):
                     self.sections.append(copy.deepcopy(section))
                     self.sections[-1].name = workflow_name
                     self.sections[-1].index = 0 if index is None else int(index)
+                    self.sections[-1].uuid = uuid4()
         #
         # sort sections by index
         self.sections.sort(key=lambda x: x.index)
@@ -382,6 +385,15 @@ class SoS_Workflow:
             ', '.join('{}_{}'.format(section.name,
                     'global' if section.index == -2 else section.index)
             for section in self.sections)))
+
+    def section_by_id(self, uuid):
+        for section in self.sections:
+            if uuid == section.uuid:
+                return section
+        for section in self.auxiliary_sections:
+            if uuid == section.uuid:
+                return section
+        raise RuntimeError('Failed to find section with uuid {}'.format(uuid))
 
     def extend(self, workflow):
         '''Append another workflow to existing one to created a combined workflow'''

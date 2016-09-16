@@ -170,9 +170,9 @@ def cmd_run(args, workflow_args):
         if run_all or args.__inspect__:
             executor.inspect()
         if run_all or args.__prepare__:
-            executor.prepare()
+            dag = executor.prepare()
         if run_all or args.__run__:
-            executor.run()
+            executor.run(dag)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
