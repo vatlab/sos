@@ -171,7 +171,11 @@ def cmd_run(args, workflow_args):
             executor.inspect()
         if run_all or args.__prepare__:
             dag = executor.prepare()
+        else:
+            dag = None
         if run_all or args.__run__:
+            # if dag is None, the script will be run sequentially and cannot handle
+            # make-style steps.
             executor.run(dag)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:

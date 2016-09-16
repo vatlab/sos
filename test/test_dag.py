@@ -49,6 +49,9 @@ class TestDAG(unittest.TestCase):
 
     def testSimpleDag(self):
         '''Test DAG with simple dependency'''
+        for filename in ('a.txt', 'a1.txt'):
+            with open(filename, 'w') as tmp:
+                tmp.write('hey')
         # basica case
         # 1 -> 2 -> 3 -> 4
         script = SoS_Script('''
@@ -241,10 +244,15 @@ C_1 -> C_3;
 C_3 -> C_4;
 }
 ''')
+        for filename in ('a.txt', 'a1.txt'):
+            os.remove(filename)
 
     def testUndetermined(self):
         '''Test DAG with undetermined input.'''
         #
+        for filename in ('a.txt', 'd.txt'):
+            with open(filename, 'w') as tmp:
+                tmp.write('hey')
         # input of step 3 is undertermined so
         # it depends on all its previous steps.
         script = SoS_Script('''
@@ -315,6 +323,8 @@ C_2 -> C_3;
 C_3 -> C_4;
 }
 ''')
+        for filename in ('a.txt', 'd.txt'):
+            os.remove(filename)
 
     def testAuxiliarySteps(self):
         script = SoS_Script('''

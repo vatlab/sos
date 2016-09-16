@@ -298,10 +298,54 @@ class Sequential_Executor(Base_Executor):
     def __init__(self, workflow, args=[], config_file=None, nested=False):
         Base_Executor.__init__(self, workflow, args, config_file, new_dict=not nested)
 
-    def run(self, dag):
+    def run(self, dag=None):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
+        if dag is None:
+            self._sequential_run()
+        else:
+            self._dag_run(dag)
+
+    def _sequential_run(self):
+        '''Execute a workflow with specified command line args. If sub is True, this
+        workflow is a nested workflow and be treated slightly differently.
+        '''
+        env.run_mode = 'run'
+        # passing run_mode to SoS dict so that users can execute blocks of
+        # python statements in different run modes.
+        env.sos_dict.set('run_mode', env.run_mode)
+        # process step of the pipelinp
+        #
+        # the steps can be executed in the pool (Not implemented)
+        # if nested = true, start a new progress bar
+        prog = ProgressBar(self.workflow.name, len(self.workflow.sections),
+            disp=len(self.workflow.sections) > 1 and env.verbosity == 1)
+        for idx, section in enumerate(self.workflow.sections):
+            if self.skip(section):
+                continue
+            # execute section with specified input
+            queue = mp.Queue()
+            executor = Run_Step_Executor(section, queue)
+            proc = mp.Process(target=executor.run)
+            proc.start()
+            res = queue.get()
+            proc.join()
+            # if the job is failed
+            if isinstance(res, Exception):
+                raise RuntimeError(res)
+            #
+            for k, v in res.items():
+                env.sos_dict.set(k, v)
+            prog.progress(1)
+        prog.done()
+        # at the end
+        exception = env.sos_dict['__execute_errors__']
+        if exception.errors:
+            # if there is any error, raise it
+            raise exception
+
+    def _dag_run(self, dag):
         env.run_mode = 'run'
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
