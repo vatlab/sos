@@ -426,15 +426,14 @@ def SoS_Action(run_mode=['run', 'interactive']):
 
 
 class SoS_ExecuteScript:
-    def __init__(self, script, interpreter, suffix, validator=None):
+    def __init__(self, script, interpreter, suffix):
         self.script = script
         self.interpreter = interpreter
         self.suffix = suffix
-        self.validator = validator
 
     def run(self, **kwargs):
         transcribe(self.script, action=self.interpreter)
-        if env.run_mode == 'inspect':
+        if env.run_mode == 'prepare':
             check_command(self.interpreter.split()[0], quiet=True)
             return
         if '{}' not in self.interpreter:
@@ -444,26 +443,6 @@ class SoS_ExecuteScript:
         env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
         with open(debug_script_file, 'w') as sfile:
             sfile.write(self.script)
-        if env.run_mode == 'prepare':
-            if self.validator is not None:
-                try:
-                    self.validator(self.script, filename=debug_script_file)
-                except Exception as e:
-                    env.logger.warning('Syntax error found in script {}:\n{}'.format(debug_script_file, e))
-            else: # try to use a lexer to validate the code
-                try:
-                    lexer = get_lexer_for_filename(debug_script_file)
-                except:
-                    try:
-                        lexer = guess_lexer(self.script)
-                    except:
-                        lexer = None
-                if lexer is not None:
-                    for item in lexer.get_tokens(self.script):
-                        if item[0] == token.Error:
-                            env.logger.warning('Script {} contains unrecognized token {}'
-                                .format(debug_script_file, item[1]))
-            return
         if 'docker_image' in kwargs:
             docker = DockerClient()
             docker.run(kwargs['docker_image'], self.script, self.interpreter, self.suffix,
@@ -537,7 +516,7 @@ def sos_run(workflow):
     elif env.run_mode == 'interactive':
         raise RuntimeError('Action sos_run is not supported in interactive mode')
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def execute_script(script, interpreter, suffix, **kwargs):
     return SoS_ExecuteScript(script, interpreter, suffix).run(**kwargs)
 
@@ -811,84 +790,62 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
                     return 1
     return 0
 
-def validate_with_command(cmd):
-    def func(script, filename):
-        '''validate syntax of script with a command'''
-        try:
-            env.logger.trace('Running {} to check syntax of {}'.format(cmd + ' ' + shlex.quote(filename), filename))
-            subprocess.check_output(cmd + ' ' + shlex.quote(filename), stderr=subprocess.STDOUT, shell=True)
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError('{}'.format(e.output.decode()))
-        return 0
-    #
-    return func
-
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def run(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/bash', '.sh', validate_with_command('/bin/bash -n')).run(**kwargs)
+    return SoS_ExecuteScript(script, '/bin/bash', '.sh').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def bash(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/bash', '.sh', validate_with_command('/bin/bash -n')).run(**kwargs)
+    return SoS_ExecuteScript(script, '/bin/bash', '.sh').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def csh(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/csh', '.csh', validate_with_command('/bin/csh -n')).run(**kwargs)
+    return SoS_ExecuteScript(script, '/bin/csh', '.csh').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def tcsh(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/tcsh', '.sh', validate_with_command('/bin/tcsh -n')).run(**kwargs)
+    return SoS_ExecuteScript(script, '/bin/tcsh', '.sh').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def zsh(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/zsh', '.zsh', validate_with_command('/bin/zsh -n')).run(**kwargs)
+    return SoS_ExecuteScript(script, '/bin/zsh', '.zsh').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def sh(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/sh', '.sh', validate_with_command('/bin/sh -n')).run(**kwargs)
+    return SoS_ExecuteScript(script, '/bin/sh', '.sh').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def python(script, **kwargs):
-    return SoS_ExecuteScript(script, 'python', '.py', validate_with_command('python -m py_compile')).run(**kwargs)
+    return SoS_ExecuteScript(script, 'python', '.py').run(**kwargs)
 
-def validate_python3(script, filename=None):
-    compile(script, filename=filename, mode='exec')
-
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def python3(script, **kwargs):
-    return SoS_ExecuteScript(script, 'python3', '.py', validate_python3).run(**kwargs)
+    return SoS_ExecuteScript(script, 'python3', '.py').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def perl(script, **kwargs):
-    return SoS_ExecuteScript(script, 'perl', '.pl', validate_with_command('perl -c')).run(**kwargs)
+    return SoS_ExecuteScript(script, 'perl', '.pl').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def ruby(script, **kwargs):
-    return SoS_ExecuteScript(script, 'ruby', '.rb', validate_with_command('ruby -c')).run(**kwargs)
+    return SoS_ExecuteScript(script, 'ruby', '.rb').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def node(script, **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def JavaScript(script, **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def R(script, **kwargs):
     # > getOption('defaultPackages')
     # [1] "datasets"  "utils"     "grDevices" "graphics"  "stats"     "methods"
     return SoS_ExecuteScript(
-        script, 'Rscript --default-packages=datasets,methods,utils,stats,grDevices,graphics ', '.R',
-        validate_with_command('''Rscript -e
-            'if (!suppressWarnings(require(lintr, quietly=TRUE))) quit(save = "no");
-            lint = lintr::lint(commandArgs(trailingOnly=TRUE)[1]);
-            for (i in 1:length(lint))
-                if (lint[[i]]$"type" == "error")
-                    stop(paste(lint[[i]]$"message", lint[[i]]$"line"))'
-            '''.replace('\n', ' '))).run(**kwargs)
+        script, 'Rscript --default-packages=datasets,methods,utils,stats,grDevices,graphics ', '.R').run(**kwargs)
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'interactive'])
 def check_R_library(name, version = None, repos = 'http://cran.us.r-project.org'):
     '''Check existence and version match of R library.
     cran and bioc packages are unique yet might overlap with github.
