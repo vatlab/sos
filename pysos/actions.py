@@ -531,33 +531,33 @@ def check_command(cmd, pattern = None, quiet=False):
     if cmd in _check_command_cache:
         return _check_command_cache[cmd]
     ret_val = 0
+    cmd_name = shlex.split(cmd)[0]
+    full_name = shutil.which(cmd_name)
+    if not full_name:
+        raise RuntimeError('Command ``{}`` not found!'.format(cmd_name))
+    if not quiet:
+        env.logger.info('Command ``{}`` is located as ``{}``.'.format(cmd, name))
     if pattern is None and len(shlex.split(cmd)) == 1:
-        name = shutil.which(cmd)
-        if not name:
-            raise RuntimeError('Command ``{}`` not found!'.format(cmd))
-        if not quiet:
-            env.logger.info('Command ``{}`` is located as ``{}``.'.format(cmd, name))
-    else:
-        try:
-            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True, timeout=2).decode()
-        except subprocess.TimeoutExpired as e:
-            output = e.output.decode()
-            ret_val = 1
-            env.logger.warning(e)
-            env.logger.warning(e.output.decode())
-        except subprocess.CalledProcessError as e:
-            ret_val = e.returncode
-            output = e.output.decode()
-            env.logger.warning(e)
-            env.logger.warning(e.output.decode())
-        #
-        env.logger.trace('Output of command ``{}`` is ``{}``'.format(cmd, output))
-        #
-        if pattern:
-            pattern = [pattern] if isinstance(pattern, str) else pattern
-            if all([re.search(x, output, re.MULTILINE) is None for x in pattern]):
-                raise RuntimeError('Output of command ``{}`` does not match specified regular expression ``{}``.'
-                    .format(cmd, ' or '.join(pattern)))
+        return 0
+    try:
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True, timeout=2).decode()
+    except subprocess.TimeoutExpired as e:
+        output = e.output.decode()
+        ret_val = 1
+        env.logger.warning(e)
+        #env.logger.warning(e.output.decode())
+    except subprocess.CalledProcessError as e:
+        ret_val = e.returncode
+        output = e.output.decode()
+        env.logger.warning(e)
+    #
+    env.logger.trace('Output of command ``{}`` is ``{}``'.format(cmd, output))
+    #
+    if pattern:
+        pattern = [pattern] if isinstance(pattern, str) else pattern
+        if all([re.search(x, output, re.MULTILINE) is None for x in pattern]):
+            raise RuntimeError('Output of command ``{}`` does not match specified regular expression ``{}``.'
+                .format(cmd, ' or '.join(pattern)))
     _check_command_cache[cmd] = ret_val
     return ret_val
 
