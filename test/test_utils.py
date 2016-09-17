@@ -35,6 +35,19 @@ from pysos.actions import downloadURL
 from pysos.sos_script import SoS_Script
 from pysos.sos_executor import Sequential_Executor
 
+import socket
+def internet_on(host='8.8.8.8', port=53, timeout=3):
+    '''Test if internet is connected '''
+    try:
+        socket.setdefaulttimeout(timeout)
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+with_network = internet_on()
+
 class TestUtils(unittest.TestCase):
     def setUp(self):
         env.reset()
@@ -270,7 +283,7 @@ sos_run('sub')
         wf = script.workflow('a')
         Sequential_Executor(wf).run()
 
-
+    @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
     def testDownload(self):
         '''Test download file'''
         downloadURL('https://github.com/bpeng2000/SOS/wiki/SoS_March2016.pdf', 'tmp/SoS_March2016.pdf', index=0)

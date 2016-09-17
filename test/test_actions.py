@@ -36,6 +36,20 @@ from pysos.sos_executor import ExecuteError
 from pysos.actions import DockerClient
 from docker.errors import DockerException
 from pysos.sos_executor import Sequential_Executor
+from pysos.signature import FileTarget
+
+import socket
+def internet_on(host='8.8.8.8', port=53, timeout=3):
+    '''Test if internet is connected '''
+    try:
+        socket.setdefaulttimeout(timeout)
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+with_network = internet_on()
 
 try:
     with time_limit(2, 'check docker daemon'):
@@ -625,6 +639,7 @@ mean(nums)
         dag = Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run(dag)
 
+    @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
     def testCheckRLibrary(self):
         '''Test action check_R_library'''
         if not shutil.which('R'):
@@ -713,6 +728,7 @@ run: docker_image='blang/busybox-bash', docker_file = 'hello.tar'
         dag = Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run(dag)
 
+    @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
     def testDownload(self):
         '''Test download of resources'''
         if not os.path.isdir('tmp'):
@@ -810,13 +826,12 @@ pandoc(output=_output[0], to='html')
         Sequential_Executor(wf).run(dag)
         self.assertTrue(os.path.isfile('myreport.html'))
         #
-        os.remove('myreport.html')
+        FileTarget('myreport.html').remove('both')
 
 
     def testOptionRunMode(self):
         '''Testing run mode option for action'''
-        if os.path.isfile('a.txt'):
-            os.remove('a.txt')
+        FileTarget('a.txt').remove('both')
         #
         script = SoS_Script(r'''
 [10]
@@ -838,7 +853,7 @@ run: run_mode='inspect'
         wf = script.workflow()
         Sequential_Executor(wf).inspect()
         self.assertTrue(os.path.isfile('a.txt'))
-        os.remove('a.txt')
+        FileTarget('a.txt').remove('both')
 
 if __name__ == '__main__':
     unittest.main()
