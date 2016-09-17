@@ -214,4 +214,4 @@ class SoS_DAG(nx.DiGraph):
         try:
             nx.drawing.nx_pydot.write_dot(self, filename)
         except Exception as e:
-            env.logger.error('Failed to call write_dot: {}'.format(e))
+            env.logger.warning('Failed to call write_dot: {}'.format(e))

@@ -284,6 +284,9 @@ class Base_Executor:
         #
         # now, there should be no dangling targets, let us connect nodes
         dag.build(self.workflow.auxiliary_sections)
+        # write DAG for debugging purposes
+        dag.write_dot(os.path.join(env.exec_dir, '.sos', 'dag.dot'))
+
         # at the end
         exception = env.sos_dict['__execute_errors__']
         if exception.errors:
