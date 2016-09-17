@@ -929,6 +929,10 @@ for __n, __v in {}.items():
                     self.global_def += statement[1]
             # remove the global section after inserting it to each step of the process
             self.sections.pop(global_section[0][0])
+        # if there is no section in the script, we create a default section with only global
+        # definition. This avoids the problem that a script would not run without any section
+        if not self.sections:
+            self.sections.append(SoS_Step(self.content, [('default', None)]))
         #
         for section in self.sections:
             section.global_def = self.global_def
