@@ -364,6 +364,20 @@ class Sequential_Executor(Base_Executor):
                 break
             # find the section from runnable
             section = self.workflow.section_by_id(runnable._uuid)
+            # 
+            # this is to keep compatibility of dag run with sequential run because
+            # in sequential run, we evaluate global section of each step in 
+            # order to determine values of options such as skip. 
+            # The consequence is that global definitions are available in 
+            # SoS namespace.
+            try:
+                SoS_exec(section.global_def)
+            except Exception as e:
+                if env.verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
+                    section.global_def, e))
+
             # if the step has its own context
             if runnable._context is not None:
                 env.sos_dict.quick_update(runnable._context)

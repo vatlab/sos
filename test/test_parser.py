@@ -1148,8 +1148,8 @@ res = inc.gv
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).inspect()
-        Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['res'], 1)
         #
         # include with alias
