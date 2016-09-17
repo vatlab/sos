@@ -690,7 +690,7 @@ class Base_Step_Executor:
         # NOTE: dynamic output is evaluated at last, so it sets output,
         # not _output. For the same reason, signatures can be wrong if it has
         # Undetermined output.
-        if isinstance(env.sos_dict['output'], Undetermined):
+        if env.run_mode == 'run' and isinstance(env.sos_dict['output'], Undetermined):
             self.reevaluate_output()
             # if output is no longer Undetermined, set it to output
             # of each signature

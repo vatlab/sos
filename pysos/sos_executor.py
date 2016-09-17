@@ -395,13 +395,15 @@ class Sequential_Executor(Base_Executor):
             #
             for k, v in res.items():
                 env.sos_dict.set(k, v)
-            # set context
+            # set context to the next logic step.
             for edge in dag.out_edges(runnable):
                 node = edge[1]
-                if node._context is None:
-                    node._context = env.sos_dict.clone_pickleable()
-                else:
-                    node._context.update(env.sos_dict.clone_pickleable())
+                # if node is the logical next step...
+                if node._node_index == runnable._node_index + 1:
+                    if node._context is None:
+                        node._context = env.sos_dict.clone_pickleable()
+                    else:
+                        node._context.update(env.sos_dict.clone_pickleable())
             runnable._status = 'completed'
 
 

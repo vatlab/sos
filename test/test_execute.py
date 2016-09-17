@@ -76,7 +76,8 @@ res += '${b}'
 """)
         wf = script.workflow()
         env.shared_vars = ['res']
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['res'], '200')
         #
         script = SoS_Script(r"""
@@ -86,7 +87,8 @@ for b in range(5):
     res += '${b}'
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['res'], '01234')
         #
         script = SoS_Script(r"""
@@ -365,7 +367,8 @@ with open('test/result.txt', 'w') as res:
        res.write(file + '\n')
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         with open('result.txt') as res:
             content = [x.strip() for x in res.readlines()]
             self.assertTrue('test_execute.py' in content)
@@ -388,7 +391,8 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 """)
         wf = script.workflow()
         start = time.time()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertGreater(time.time() - start, 9)
         #
         #
@@ -407,7 +411,8 @@ if run_mode == 'run':
 """)
         wf = script.workflow()
         start = time.time()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertLess(time.time() - start, 6)
 
     def testRunmode(self):
@@ -428,7 +433,8 @@ a = fail()
         # should return 0 in inspect mode
         self.assertTrue(isinstance(env.sos_dict['a'], Undetermined))
         #
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         # shoulw return 1 in run mode
         self.assertEqual(env.sos_dict['a'], 1)
 
@@ -468,7 +474,8 @@ sos_run('nested')
 """)
         env.max_jobs = 1
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
 
     def testUserDefinedFunc(self):
         '''Test the use of user-defined functions in SoS script'''
@@ -627,7 +634,8 @@ import sklearn
 print(0)
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
 
 
     def testCollectionOfErrors(self):
@@ -682,7 +690,8 @@ time.sleep(8)
 }
 ''')
         # now we can rerun the script, and it should pass
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         # clean up
         if move_back:
             os.rename(sos_config_file + '.bak', sos_config_file)
@@ -749,7 +758,8 @@ for i in range(4):
        h.write('a')
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['test'].output, ['temp/something{}.html'.format(x) for x in range(4)])
         #
         shutil.rmtree('temp')
@@ -776,10 +786,12 @@ run:
 touch ${_input}.bak
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['test'].output, ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
         # this time we use th existing signature
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['test'].output, ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
         #
         shutil.rmtree('temp')
@@ -806,7 +818,8 @@ echo ${ff}
 touch temp/${ff}
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         #
         shutil.rmtree('temp')
 
@@ -829,8 +842,8 @@ for i in range(3):
         #
         executor = Sequential_Executor(wf)
         executor.inspect()
-        executor.prepare()
-        executor.run()
+        dag = executor.prepare()
+        executor.run(dag)
         # we should have 9 files
         files = glob.glob('temp/*.txt')
         self.assertEqual(len(files), 9)
@@ -852,7 +865,8 @@ if run_mode == 'run':
 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         # we should have 9 files
         files = glob.glob('temp/*.txt')
         self.assertEqual(len(files), 3)
@@ -896,7 +910,8 @@ echo ${ff}
 touch temp/${ff}
 ''' % active)
             wf = script.workflow()
-            Sequential_Executor(wf).run()
+            dag = Sequential_Executor(wf).prepare()
+            Sequential_Executor(wf).run(dag)
             files = list(glob.glob('temp/*.txt'))
             self.assertEqual(files, result)
             #
@@ -917,7 +932,8 @@ echo ${ff}
 touch temp/${ff}
 ''' % active)
             wf = script.workflow()
-            Sequential_Executor(wf).run()
+            dag = Sequential_Executor(wf).prepare()
+            Sequential_Executor(wf).run(dag)
             files = list(glob.glob('temp/*.txt'))
             self.assertEqual(files, result)
             #
@@ -933,7 +949,7 @@ bash('echo "A"')
 input: 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).prepare()
+        dag = Sequential_Executor(wf).prepare()
 
     def testDuplicateIOFiles(self):
         '''Test interpretation of duplicate input/output/depends'''
@@ -949,7 +965,8 @@ python:
 with open('temp/{}.input'.format(len([${input!r,}])), 'w') as f: f.write('')
         ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertTrue(os.path.isfile('temp/5.input'))
         # Test duplicate output
         script = SoS_Script('''
@@ -960,7 +977,8 @@ with open('temp/2.txt', 'w') as f: f.write('')
 with open('temp/{}.output'.format(len([${output!r,}])), 'w') as f: f.write('')
         ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertTrue(os.path.isfile('temp/5.output'))
         # Test duplicate depends
         script = SoS_Script('''
@@ -973,7 +991,8 @@ with open('temp/3.txt', 'w') as f: f.write('')
 with open('temp/{}.depends'.format(len([${depends!r,}])), 'w') as f: f.write('')
         ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertTrue(os.path.isfile('temp/5.depends'))
         shutil.rmtree('temp')
 
@@ -996,7 +1015,8 @@ echo ${output} >> temp/out.log
 touch ${output}
         ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         # output should have 1, 2, 3, 4, 5, respectively, and
         # the total record files would be 1+2+3+4+5=15
         with open('temp/out.log') as out:
@@ -1019,7 +1039,8 @@ touch ${output}
         ''')
         wf = script.workflow()
         env.sig_mode = 'ignore'
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         with open('temp/out.log') as out:
             self.assertEqual(len(out.read().split()), 15)
         shutil.rmtree('temp')
@@ -1137,8 +1158,8 @@ cp ${_input} ${_dest}
         start = time.time()
         env.sig_mode = 'ignore'
         Sequential_Executor(wf).inspect()
-        Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertGreater(time.time() - start, 1)
         self.assertTrue(os.path.isfile('temp/a.txt'))
         self.assertTrue(os.path.isfile('temp/b.txt'))
@@ -1148,15 +1169,15 @@ cp ${_input} ${_dest}
             self.assertTrue(tb.read(), 'b.txt')
         env.sig_mode = 'assert'
         Sequential_Executor(wf).inspect()
-        Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         #
         wf = script.workflow()
         start = time.time()
         env.sig_mode = 'ignore'
         Sequential_Executor(wf).inspect()
-        Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertGreater(time.time() - start, 1)
         #
         self.assertTrue(os.path.isfile('temp/c.txt'))
@@ -1170,14 +1191,14 @@ cp ${_input} ${_dest}
         # now in assert mode, the signature should be there
         env.sig_mode = 'assert'
         Sequential_Executor(wf).inspect()
-        Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         #
         start = time.time()
         env.sig_mode = 'default'
         Sequential_Executor(wf).inspect()
-        Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertLess(time.time() - start, 1.5)
         #
         # change script a little bit
@@ -1185,8 +1206,8 @@ cp ${_input} ${_dest}
         wf = script.workflow()
         env.sig_mode = 'assert'
         Sequential_Executor(wf).inspect()
-        Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         # add some other variable?
         #script = SoS_Script('comment = 1\n' + text)
         #wf = script.workflow()
@@ -1208,23 +1229,26 @@ if run_mode == 'run':
         wf = script.workflow()
         try:
             # remove existing output if exists
-            os.remove('a.txt')
+            FileTarget('a.txt').remove('both')
         except:
             pass
         start = time.time()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         # regularly take more than 5 seconds to execute
         self.assertGreater(time.time() - start, 2)
         # now, rerun should be much faster
         start = time.time()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         # rerun takes less than 1 second
         self.assertLess(time.time() - start, 1)
         #
         # force rerun mode
         start = time.time()
         env.sig_mode = 'ignore'
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         # regularly take more than 5 seconds to execute
         self.assertGreater(time.time() - start, 2)
         try:
@@ -1247,7 +1271,8 @@ sh:
             os.remove('a.txt')
         except:
             pass
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertTrue(os.path.isfile('a.txt'))
         
     def testOutputExecutable(self):
@@ -1265,7 +1290,8 @@ sh:
             os.remove('lls')
         except:
             pass
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertTrue(os.path.isfile('lls'))
         
 
@@ -1303,14 +1329,16 @@ python:
         st = time.time()
         Sequential_Executor(wf).inspect()
         Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertGreater(time.time() - st, 5)
         # rerun, but remove output
         os.remove('largefile.txt')
         st = time.time()
         Sequential_Executor(wf).inspect()
         Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertLess(time.time() - st, 3)
         # however, the file will not be regenerated
         self.assertFalse(os.path.isfile('largefile.txt'))
@@ -1319,7 +1347,8 @@ python:
         FileTarget('largefile.txt').remove('signature')
         Sequential_Executor(wf).inspect()
         Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertGreater(time.time() - st, 5)
         os.remove('largefile.txt')
 
