@@ -119,6 +119,7 @@ class SoS_Node(object):
         # has to rely on it.
         if node._change_context and node._node_index is not None and \
             self._node_index is not None and node._node_index < self._node_index:
+            #env.logger.trace('{} depends on {} because of change of context'.format(self._node_id, node._node_id))
             return True
 
         # 2. if the input of a step is undetermined, it has to be executed
@@ -128,6 +129,7 @@ class SoS_Node(object):
         if isinstance(self._input_targets, Undetermined) and \
             node._node_index is not None and self._node_index is not None \
             and node._node_index == self._node_index - 1:
+            #env.logger.trace('{} depends on {} because of undetermined input'.format(self._node_id, node._node_id))
             return True
         #
         # 3. if the input of a step depends on the output of another step
@@ -135,6 +137,8 @@ class SoS_Node(object):
             ((not isinstance(self._input_targets, Undetermined) and \
             any(x in node._output_targets for x in self._input_targets)) or \
             any(x in node._output_targets for x in self._depends_targets)):
+            #env.logger.trace('Input of {} ({}) depends on output of {} ({})'.format(self._node_id,
+            #    self._input_targets, node._node_id, node._output_targets))
             return True
 
         return False

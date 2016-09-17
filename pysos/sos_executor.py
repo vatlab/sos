@@ -213,6 +213,7 @@ class Base_Executor:
         #
         # the steps can be executed in the pool (Not implemented)
         # if nested = true, start a new progress bar
+        env.sos_dict.set('__step_output__', None)
         dag = SoS_DAG()
         for idx, section in enumerate(self.workflow.sections):
             if self.skip(section):

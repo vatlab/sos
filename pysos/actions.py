@@ -536,7 +536,7 @@ def check_command(cmd, pattern = None, quiet=False):
     if not full_name:
         raise RuntimeError('Command ``{}`` not found!'.format(cmd_name))
     if not quiet:
-        env.logger.info('Command ``{}`` is located as ``{}``.'.format(cmd, name))
+        env.logger.info('Command ``{}`` is located as ``{}``.'.format(cmd, full_name))
     if pattern is None and len(shlex.split(cmd)) == 1:
         return 0
     try:

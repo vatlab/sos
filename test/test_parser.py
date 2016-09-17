@@ -1160,8 +1160,8 @@ res1 = tt.gv
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).inspect()
-        Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['res1'], 1)
         os.remove('inc.sos')
 
@@ -1181,8 +1181,8 @@ from inc include gv
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).inspect()
-        Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['gv'], 1)
         #
         # include with alias
@@ -1193,8 +1193,8 @@ res1 = g
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).inspect()
-        Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['res1'], 1)
 
 if __name__ == '__main__':
