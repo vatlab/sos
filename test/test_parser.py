@@ -58,7 +58,8 @@ c = '''a\n
 b'''
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['a'], 'a\n')
         self.assertEqual(env.sos_dict['b'], 'a\n')
         # MAYJOR difference
@@ -70,7 +71,8 @@ c = """a\n
 b"""
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         # Note the difference between """ and ''' quotes
         self.assertEqual(env.sos_dict['c'], 'a\n\nb')
 
@@ -193,7 +195,8 @@ parameter: a = [1, 2]
 [0]
 ''')    
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['a'], [1,2])
         wf = script.workflow()
         Sequential_Executor(wf, args=['--a', '3']).run()
@@ -209,7 +212,8 @@ parameter: a = ['a.txt', 'b.txt']
 [0]
 ''')    
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['a'], ['a.txt', 'b.txt'])
         wf = script.workflow()
         Sequential_Executor(wf, args=['--a', '3']).run()
@@ -227,7 +231,8 @@ parameter: b=str(int(a)+1)
 [0]
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['b'], '101')
         #
         env.sos_dict.clear()
@@ -238,7 +243,8 @@ parameter: b=a+1
 [0]
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['b'], 101)
         #
         script = SoS_Script('''
@@ -262,7 +268,8 @@ parameter: b='${a+1}'
 [0]
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['b'], '101')
         #
         # argument has hve a value
@@ -469,7 +476,8 @@ python3:
         logger.warning('Another warning')
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         # with section head in the script, 
         # this will not work even if the embedded
         # python script is perfectly valid.
@@ -717,7 +725,8 @@ b = A()()
 ''')
         env.shared_vars=['b']
         wf = script.workflow()
-        Sequential_Executor(wf).run()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['b'], 0)
 
     def testCombinedWorkflow(self):

@@ -1152,6 +1152,8 @@ cp ${_input} ${_dest}
     def _testSignature(self, text):
         '''Test recognizing the format of SoS script'''
         script = SoS_Script(text)
+        for f in ['temp/a.txt', 'temp/b.txt']:
+            FileTarget(f).remove('both')
         #
         # only the first step
         wf = script.workflow('default_0')
