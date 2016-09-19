@@ -35,7 +35,7 @@ from itertools import tee, combinations
 from .utils import env, Error, AbortExecution, short_repr, get_traceback, pickleable, transcribe
 from .pattern import extract_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
-from .signature import BaseTarget, dynamic, RuntimeInfo, textMD5
+from .signature import BaseTarget, FileTarget, dynamic, RuntimeInfo, textMD5
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 
@@ -145,6 +145,10 @@ class Base_Step_Executor:
             return Undetermined(value)
         else:
             return _expand_file_list(True, *args)
+
+    def verify_output(self):
+        '''Check if intended output actually exists.'''
+        pass
 
     # Nested functions to handle different parameters of input directive
     @staticmethod
@@ -704,6 +708,7 @@ class Base_Step_Executor:
                 # not available in inspection mode.
                 sig.write()
         self.log('output')
+        self.verify_output()
         return self.collect_result()
 
 class Queued_Step_Executor(Base_Step_Executor):
@@ -832,7 +837,10 @@ class Run_Step_Executor(Queued_Step_Executor):
 
     def log(self, stage=None, msg=None):
         if stage == 'start':
-            env.logger.info('Executing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
+            if isinstance(self.step.index, int):
+                env.logger.info('Executing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
+            else:
+                env.logger.info('Executing ``{}``: {}'.format(self.step.name, self.step.comment.strip()))
         elif stage == 'input statement':
             env.logger.trace('Handling input statement {}'.format(msg))
         elif stage == '_input':
@@ -866,6 +874,20 @@ class Run_Step_Executor(Queued_Step_Executor):
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         env.sos_dict.set('output', self.expand_output_files('', *args))
 
+    def verify_output(self):
+        if env.sos_dict['output'] is None:
+            return
+        if isinstance(env.sos_dict['output'], Undetermined):
+            raise RuntimeError('Output of a completed step cannot be undetermined.')
+        for target in env.sos_dict['output']:
+            if isinstance(target, str):
+                if not FileTarget(target).exists('any'):
+                    raise RuntimeError('Output target {} does not exist after the completion of step {}'
+                            .format(target, env.sos_dict['step_name']))
+            elif not target.exists('any'):
+                raise RuntimeError('Output target {} does not exist after the completion of step {}'
+                            .format(target, env.sos_dict['step_name']))
+        
 
 class Interactive_Step_Executor(Base_Step_Executor):
     def __init__(self, step):

@@ -34,6 +34,7 @@ from pysos.utils import env
 from pysos.sos_eval import Undetermined
 from pysos.sos_executor import Sequential_Executor, Interactive_Executor, ExecuteError
 from pysos.sos_script import ParsingError
+from pysos.signature import FileTarget
 
 
 import matplotlib.pyplot as plt
@@ -392,6 +393,8 @@ output: 'A.txt'
     def testLongChain(self):
         '''Test long make file style dependencies.'''
         #
+        for f in ['A2.txt', 'result.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+            FileTarget(f).remove('both')
         #
         #  A1 <- B1 <- B2 <- B3 
         #   |
@@ -404,28 +407,46 @@ output: 'A.txt'
 [A_1]
 input: 'B1.txt'
 output: 'A2.txt'
+sh:
+    touch A2.txt
 
 [A_2]
 depends:  'B2.txt'
+sh:
+    touch result.txt
 
 [B1: provides='B1.txt']
 depends: 'B2.txt'
+sh:
+    touch B1.txt
 
 [B2: provides='B2.txt']
 depends: 'B3.txt', 'C1.txt'
+sh:
+    touch B2.txt
 
 [B3: provides='B3.txt']
+sh:
+    touch B3.txt
 
 [C1: provides='C1.txt']
 depends: 'C2.txt', 'C3.txt'
+sh:
+    touch C1.txt
 
 [C2: provides='C2.txt']
 depends: 'C4.txt'
+sh:
+    touch C2.txt
 
 [C3: provides='C3.txt']
 depends: 'C4.txt'
+sh:
+    touch C3.txt
 
 [C4: provides='C4.txt']
+sh:
+    touch C4.txt
 
         ''')
         # the workflow should call step K for step C_2, but not C_3
@@ -455,6 +476,11 @@ B1 -> A_1;
 C2 -> C1;
 }
 ''')
+        Sequential_Executor(wf).run(dag)
+        for f in ['A2.txt', 'result.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+            t = FileTarget(f)
+            self.assertTrue(t.exists())
+            t.remove('both')
 
 if __name__ == '__main__':
     unittest.main()
