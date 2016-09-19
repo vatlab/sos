@@ -283,16 +283,21 @@ class Base_Executor:
                 dag.add_step(section.uuid, res['__step_name__'], None, res['__step_input__'], res['__step_depends__'],
                     res['__step_output__'], False)
         #
-        # now, there should be no dangling targets, let us connect nodes
-        dag.build(self.workflow.auxiliary_sections)
-        # write DAG for debugging purposes
-        dag.write_dot(os.path.join(env.exec_dir, '.sos', 'dag.dot'))
-
         # at the end
         exception = env.sos_dict['__execute_errors__']
         if exception.errors:
             # if there is any error, raise it
             raise exception
+
+        # now, there should be no dangling targets, let us connect nodes
+        dag.build(self.workflow.auxiliary_sections)
+        # write DAG for debugging purposes
+        dag.write_dot(os.path.join(env.exec_dir, '.sos', 'dag.dot'))
+        # check error
+        cycle = dag.circular_dependencies()
+        if cycle:
+            raise RuntimeError('Circular dependency detected: {}'.format(cycle))
+
         return dag
 
 

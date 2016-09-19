@@ -365,5 +365,30 @@ K -> C_2;
 }
 ''')
 
+    def testCycle(self):
+        '''Test cycle detection of DAG'''
+        #
+        #  A.txt --> B.txt
+        #
+        #  B.txt --> C.txt
+        #
+        #  C.txt --> A.txt
+        #
+        script = SoS_Script('''
+[A_1]
+input: 'A.txt'
+output: 'B.txt'
+
+[A_2]
+output: 'C.txt'
+
+[A_3]
+output: 'A.txt'
+        ''')
+        # the workflow should call step K for step C_2, but not C_3
+        wf = script.workflow()
+        self.assertRaises(RuntimeError, Sequential_Executor(wf).prepare)
+
+
 if __name__ == '__main__':
     unittest.main()

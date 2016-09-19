@@ -189,6 +189,9 @@ class SoS_DAG(nx.DiGraph):
         for node in self.nodes():
             node.show()
 
+    def circular_dependencies(self):
+        return nx.find_cycle(self)
+
     def dangling(self):
         return [x for x in self._all_dependent_files.keys() if x not in self._all_output_files \
             and not (FileTarget(x).exists() if isinstance(x, str) else x.exists())]
