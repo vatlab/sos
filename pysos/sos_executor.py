@@ -195,7 +195,7 @@ class Base_Executor:
                 return {} if pattern == p else False
             # if this is a regular string
             res = extract_pattern(p, [target])
-            if res:
+            if res and not any(None in x for x in res.values()):
                 return res
             # string match
             elif FileTarget(p) == FileTarget(target):
@@ -253,7 +253,7 @@ class Base_Executor:
                 if not mo:
                     raise ValueError('No step to generate target {}'.format(target))
                 if len(mo) > 1:
-                    raise ValueError('Multiple steps {} to generate target {}'.format(', '.join(str(x) for x in matched), target))
+                    raise ValueError('Multiple steps {} to generate target {}'.format(', '.join(str(x[0].options['provides']) for x in mo), target))
                 #
                 # only one step, we need to process it # execute section with specified input
                 # 

@@ -482,5 +482,64 @@ C2 -> C1;
             self.assertTrue(t.exists())
             t.remove('both')
 
+    def testPatternReuse(self):
+        '''Test repeated use of steps that use pattern and produce different files.'''
+        #
+        for f in ['A1.txt', 'result.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
+            FileTarget(f).remove('both')
+        #
+        #  A1 <- P <- B1
+        #  A1 <- P <- B2
+        #  A2  
+        #
+        script = SoS_Script('''
+[A_1]
+input: 'B1.txt.p', 'B2.txt.p'
+output: 'A1.txt'
+sh:
+    touch A1.txt
+
+[A_2]
+sh:
+    touch result.txt
+
+[B1: provides='B1.txt']
+sh:
+    touch B1.txt
+
+[B2: provides='B2.txt']
+sh:
+    touch B2.txt
+
+[P: provides='{filename}.p']
+input: filename
+sh:
+    touch ${output}
+''')
+        # the workflow should call step K for step C_2, but not C_3
+        wf = script.workflow()
+        dag = Sequential_Executor(wf).prepare()
+        self.assertDAG(dag,
+'''
+strict digraph "" {
+B2;
+A_2;
+P;
+B1;
+P;
+A_1;
+B2 -> P;
+P -> A_1;
+B1 -> P;
+P -> A_1;
+A_1 -> A_2;
+}
+''')
+        Sequential_Executor(wf).run(dag)
+        for f in ['A1.txt', 'result.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
+            t = FileTarget(f)
+            self.assertTrue(t.exists())
+            t.remove('both')
+
 if __name__ == '__main__':
     unittest.main()

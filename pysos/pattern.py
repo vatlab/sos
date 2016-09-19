@@ -125,7 +125,7 @@ def extract_pattern(pattern, ifiles):
         matched = glob_wildcards(pattern, [ifile])
         for key in matched.keys():
             if not matched[key]:
-                env.logger.warning('Filename {} does not match pattern {}. None returned.'.format(ifile, pattern))
+                #env.logger.warning('Filename {} does not match pattern {}. None returned.'.format(ifile, pattern))
                 res[key].append(None)
             else:
                 res[key].extend(matched[key])
