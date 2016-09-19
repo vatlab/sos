@@ -442,6 +442,7 @@ class SoS_Script:
             Among other things, section.names
         '''
         if filename:
+            filename = filename if filename.endswith('.sos') else filename + '.sos'
             content, self.sos_script = locate_script(filename, start='.')
             self.content = SoS_ScriptContent(content, self.sos_script)
         else:
