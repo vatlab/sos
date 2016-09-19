@@ -186,20 +186,20 @@ class Base_Executor:
             raise exception
 
     def match(self, target, pattern):
-        if isinstance(pattern, str):
-            patterns = [pattern]
-        elif isinstance(pattern, BaseTarget):
+        if isinstance(pattern, (str, BaseTarget)):
             patterns = [pattern]
         #
         for p in patterns:
             # other targets has to match exactly
             if isinstance(target, BaseTarget) or isinstance(p, BaseTarget):
-                if pattern == p:
-                    return {}
+                return {} if pattern == p else False
             # if this is a regular string
             res = extract_pattern(p, [target])
             if res:
                 return res
+            # string match
+            elif FileTarget(p) == FileTarget(target):
+                return True
         return False
 
     def prepare(self):
@@ -244,7 +244,7 @@ class Base_Executor:
             dangling_targets = dag.dangling()
             if not dangling_targets:
                 break
-            env.logger.info('Resolving {} objects'.format(len(dangling_targets)))
+            env.logger.info('Resolving {} objects from {} nodes'.format(len(dangling_targets), dag.number_of_nodes()))
             # find matching steps
             # check auxiliary steps and see if any steps provides it
             for target in dangling_targets:
@@ -254,14 +254,19 @@ class Base_Executor:
                     raise ValueError('No step to generate target {}'.format(target))
                 if len(mo) > 1:
                     raise ValueError('Multiple steps {} to generate target {}'.format(', '.join(str(x) for x in matched), target))
-                # only one step, we need to process it
-                # execute section with specified input
+                #
+                # only one step, we need to process it # execute section with specified input
+                # 
+                # NOTE:  Auxiliary can be called with different output files and matching pattern
+                # so we are actually creating a new section each time we need an auxillary step.
+                #
                 section = mo[0][0]
-                for k,v in mo[0][1].items():
-                    env.sos_dict.set(k, v[0])
+                if isinstance(mo[0][1], dict):
+                    for k,v in mo[0][1].items():
+                        env.sos_dict.set(k, v[0])
                 #
                 # for auxiliary, we need to set input and output, here
-                env.sos_dict['__default__output__'] = [target]
+                env.sos_dict['__default_output__'] = [target]
                 # will become input, set to None
                 env.sos_dict['__step_output__'] = None
                 #
@@ -278,10 +283,18 @@ class Base_Executor:
                 for k, v in res.items():
                     env.sos_dict.set(k, v)
                 #
+                if isinstance(env.sos_dict['__step_output__'], (type(None), Undetermined)):
+                    raise RuntimeError('Output of auxiliary step cannot be undetermined, output containing {} is expected.'.format(target))
                 # build DAG with input and output files of step
-                env.logger.info('Adding step {}'.format(res['__step_name__']))
+                env.logger.info('Adding step {} with output {}'.format(res['__step_name__'], target))
+                if isinstance(mo[0][1], dict):
+                    context = mo[0][1]
+                else:
+                    context = {}
+                context['__default_output__'] = [target]
                 dag.add_step(section.uuid, res['__step_name__'], None, res['__step_input__'], res['__step_depends__'],
-                    res['__step_output__'], False)
+                    res['__step_output__'], False, context=context)
+            #dag.show_nodes()
         #
         # at the end
         exception = env.sos_dict['__execute_errors__']
@@ -385,8 +398,7 @@ class Sequential_Executor(Base_Executor):
                     section.global_def, e))
 
             # if the step has its own context
-            if runnable._context is not None:
-                env.sos_dict.quick_update(runnable._context)
+            env.sos_dict.quick_update(runnable._context)
             # execute section with specified input
             queue = mp.Queue()
             executor = Run_Step_Executor(section, queue)
@@ -405,10 +417,7 @@ class Sequential_Executor(Base_Executor):
                 node = edge[1]
                 # if node is the logical next step...
                 if node._node_index == runnable._node_index + 1:
-                    if node._context is None:
-                        node._context = env.sos_dict.clone_pickleable()
-                    else:
-                        node._context.update(env.sos_dict.clone_pickleable())
+                    node._context.update(env.sos_dict.clone_pickleable())
             runnable._status = 'completed'
 
 

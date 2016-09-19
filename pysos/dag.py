@@ -91,7 +91,7 @@ from .signature import FileTarget
 #
 class SoS_Node(object):
     def __init__(self, uuid, node_name, node_index, input_targets=[], depends_targets=[], 
-        output_targets=[], change_context=[]):
+        output_targets=[], change_context=False, context={}):
         self._uuid = uuid
         self._node_id = node_name
         self._node_index = node_index
@@ -101,7 +101,7 @@ class SoS_Node(object):
         self._change_context = change_context
         #env.logger.error('Note {}: Input: {} Depends: {} Output: {}'.format(self._node_id, self._input_targets,
         #      self._depends_targets,  self._output_targets))
-        self._context = None
+        self._context = context
         self._status = None
 
     def __repr__(self):
@@ -154,8 +154,8 @@ class SoS_DAG(nx.DiGraph):
         self._all_output_files = defaultdict(list)
 
     def add_step(self, uuid, node_name, node_index, input_targets, depends_targets,
-        output_targets, change_context=False):
-        self.add_node(SoS_Node(uuid, node_name, node_index, input_targets, depends_targets, output_targets, change_context))
+        output_targets, change_context=False, context={}):
+        self.add_node(SoS_Node(uuid, node_name, node_index, input_targets, depends_targets, output_targets, change_context, context))
         if not isinstance(input_targets, (type(None), Undetermined)):
             for x in input_targets:
                 self._all_dependent_files[x].append(node_name)
@@ -190,7 +190,11 @@ class SoS_DAG(nx.DiGraph):
             node.show()
 
     def circular_dependencies(self):
-        return nx.find_cycle(self)
+        try:
+            return nx.find_cycle(self)
+        except Exception:
+            # if there is no cycle, an exception is given
+            return []
 
     def dangling(self):
         return [x for x in self._all_dependent_files.keys() if x not in self._all_output_files \

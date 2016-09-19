@@ -107,6 +107,7 @@ class FileTarget(BaseTarget):
             os.remove(self.fullname())
         if mode in ('both', 'signature') and  os.path.isfile(self.sig_file()):
             os.remove(self.sig_file())
+
     def fullname(self):
         return os.path.expanduser(self._filename)
         
@@ -124,6 +125,9 @@ class FileTarget(BaseTarget):
             self._sig_file = os.path.join('.sos', '.runtime', rel_path + '.file_info')
         return self._sig_file
         
+    def __eq__(self, other):
+        return os.path.abspath(self.fullname()) == os.path.abspath(other.fullname())
+
     def write_sig(self):
         '''Write .file_info file with signature'''
         # path to file
