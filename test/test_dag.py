@@ -481,6 +481,152 @@ C2 -> C1;
             t = FileTarget(f)
             self.assertTrue(t.exists())
             t.remove('both')
+    
+    def testTarget(self):
+        '''Test executing only part of a workflow.'''
+        #
+        for f in ['A2.txt', 'result.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+            FileTarget(f).remove('both')
+        #
+        #  A1 <- B1 <- B2 <- B3 
+        #   |
+        #   |
+        #  \/
+        #  A2 <- B2 <- C1 <- C2 <- C4
+        #                    C3
+        #
+        script = SoS_Script('''
+[A_1]
+input: 'B1.txt'
+output: 'A2.txt'
+sh:
+    touch A2.txt
+
+[A_2]
+depends:  'B2.txt'
+sh:
+    touch result.txt
+
+[B1: provides='B1.txt']
+depends: 'B2.txt'
+sh:
+    touch B1.txt
+
+[B2: provides='B2.txt']
+depends: 'B3.txt', 'C1.txt'
+sh:
+    touch B2.txt
+
+[B3: provides='B3.txt']
+sh:
+    touch B3.txt
+
+[C1: provides='C1.txt']
+depends: 'C2.txt', 'C3.txt'
+sh:
+    touch C1.txt
+
+[C2: provides='C2.txt']
+depends: 'C4.txt'
+sh:
+    touch C2.txt
+
+[C3: provides='C3.txt']
+depends: 'C4.txt'
+sh:
+    touch C3.txt
+
+[C4: provides='C4.txt']
+sh:
+    touch C4.txt
+
+        ''')
+        # the workflow should call step K for step C_2, but not C_3
+        wf = script.workflow()
+        #
+        # test 1, we only need to generate target 'B1.txt'
+        dag = Sequential_Executor(wf).prepare(targets=['B1.txt'])
+        # note that A2 is no longer mentioned
+        self.assertDAG(dag,
+'''
+strict digraph "" {
+B3;
+B1;
+B1;
+C2;
+C4;
+B2;
+C1;
+C3;
+B3 -> B2;
+C2 -> C1;
+C4 -> C3;
+C4 -> C2;
+B2 -> B1;
+B2 -> B1;
+C1 -> B2;
+C3 -> C1;
+}
+''')
+        Sequential_Executor(wf).run(dag)
+        self.assertFalse(FileTarget('A1.txt').exists())
+        self.assertFalse(FileTarget('result.txt').exists())
+        for f in ['C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+            t = FileTarget(f)
+            self.assertTrue(t.exists())
+            t.remove('both')
+        #
+        # test 2, we would like to generate two files
+        dag = Sequential_Executor(wf).prepare(targets=['B2.txt', 'C2.txt'])
+        # note that A2 is no longer mentioned
+        self.assertDAG(dag,
+'''
+strict digraph "" {
+C1;
+C2;
+B3;
+B2;
+B2;
+C4;
+C3;
+C1 -> B2;
+C1 -> B2;
+C3 -> C1;
+B3 -> B2;
+B3 -> B2;
+C4 -> C3;
+C4 -> C2;
+C2 -> C1;
+}
+''')
+        Sequential_Executor(wf).run(dag)
+        for f in ['A1.txt', 'B1.txt', 'result.txt']:
+            self.assertFalse(FileTarget(f).exists())
+        for f in ['C2.txt', 'B2.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+            t = FileTarget(f)
+            self.assertTrue(t.exists())
+            t.remove('both')
+        # 
+        # test 3, generate two separate trees
+        #
+        dag = Sequential_Executor(wf).prepare(targets=['B3.txt', 'C2.txt'])
+        # note that A2 is no longer mentioned
+        self.assertDAG(dag,
+'''
+strict digraph "" {
+B3;
+C2;
+C4;
+C4 -> C2;
+}
+''')
+        Sequential_Executor(wf).run(dag)
+        for f in ['A1.txt', 'B1.txt', 'result.txt', 'B2.txt', 'C1.txt', 'C3.txt']:
+            self.assertFalse(FileTarget(f).exists())
+        for f in ['C2.txt', 'B3.txt', 'C4.txt']:
+            t = FileTarget(f)
+            self.assertTrue(t.exists())
+            t.remove('both')
 
     def testPatternReuse(self):
         '''Test repeated use of steps that use pattern and produce different files.'''

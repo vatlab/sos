@@ -170,7 +170,7 @@ def cmd_run(args, workflow_args):
         if run_all or args.__inspect__:
             executor.inspect()
         if run_all or args.__prepare__:
-            dag = executor.prepare()
+            dag = executor.prepare(args.__targets__)
         else:
             dag = None
         if run_all or args.__run__:

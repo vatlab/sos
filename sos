@@ -91,6 +91,11 @@ if __name__ == '__main__':
             before the execution of the workflow, which effectively triggers
             the re-generation of these files through the execution of the 
             workflow.''')
+    parser.add_argument('-t', dest='__targets__', metavar='FILES', default=[],
+        nargs='+', help='''One of more files or alias of other targets that
+            will be the target of execution. If specified, SoS will execute
+            only part of a workflow or multiple workflows or auxiliary steps
+            to generate specified targets. ''')
     #parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
     #    const='__STDOUT__', nargs='?',
     #    help='''Name of a file that records output from report lines

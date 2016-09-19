@@ -196,9 +196,22 @@ class SoS_DAG(nx.DiGraph):
             # if there is no cycle, an exception is given
             return []
 
-    def dangling(self):
-        return [x for x in self._all_dependent_files.keys() if x not in self._all_output_files \
-            and not (FileTarget(x).exists() if isinstance(x, str) else x.exists())]
+    def dangling(self, targets):
+        return [x for x in list(self._all_dependent_files.keys()) + ([] if targets is None else targets) \
+            if x not in self._all_output_files and not (FileTarget(x).exists() if isinstance(x, str) else x.exists())]
+
+    def subgraph_from(self, targets):
+        '''Trim DAG to keep only nodes that produce targets'''
+        # first, find all nodes with targets
+        subnodes = []
+        for node in self.nodes():
+            if not isinstance(node._output_targets, Undetermined) and any(x in node._output_targets for x in targets):
+                subnodes.append(node)
+        #
+        ancestors = set()
+        for node in subnodes:
+            ancestors |= nx.ancestors(self, node)
+        return nx.subgraph(self, subnodes + list(ancestors))
 
     def build(self, steps):
         '''Connect nodes according to status of targets'''

@@ -202,7 +202,7 @@ class Base_Executor:
                 return True
         return False
 
-    def prepare(self):
+    def prepare(self, targets=None):
         '''Run the script in prepare mode to prepare resources.'''
         env.run_mode = 'prepare'
         # passing run_mode to SoS dict so that users can execute blocks of
@@ -241,7 +241,7 @@ class Base_Executor:
                 res['__step_output__'], 'alias' in section.options)
         #
         while True:
-            dangling_targets = dag.dangling()
+            dangling_targets = dag.dangling(targets)
             if not dangling_targets:
                 break
             env.logger.info('Resolving {} objects from {} nodes'.format(len(dangling_targets), dag.number_of_nodes()))
@@ -304,6 +304,9 @@ class Base_Executor:
 
         # now, there should be no dangling targets, let us connect nodes
         dag.build(self.workflow.auxiliary_sections)
+        # trim the DAG if targets are specified
+        if targets:
+            dag = dag.subgraph_from(targets)
         # write DAG for debugging purposes
         dag.write_dot(os.path.join(env.exec_dir, '.sos', 'dag.dot'))
         # check error
