@@ -1272,34 +1272,36 @@ sh:
     touch a.txt
 ''')
         wf = script.workflow()
-        try:
-            # remove existing output if exists
-            os.remove('a.txt')
-        except:
-            pass
+        FileTarget('a.txt').remove('both')
         dag = Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run(dag)
         self.assertTrue(os.path.isfile('a.txt'))
+        FileTarget('a.txt').remove('both')
         
     def testOutputExecutable(self):
         '''Testing target executable.'''
+        # change $PATH so that lls can be found at the current
+        # directory.
+        os.environ['PATH'] += os.pathsep + '.'
         script = SoS_Script('''
 [0]
 output: executable('lls')
 sh:
     touch lls
+    sleep 3
     chmod +x lls
 ''')
         wf = script.workflow()
-        try:
-            # remove existing output if exists
-            os.remove('lls')
-        except:
-            pass
+        FileTarget('lls').remove('both')
         dag = Sequential_Executor(wf).prepare()
+        st = time.time()
         Sequential_Executor(wf).run(dag)
-        self.assertTrue(os.path.isfile('lls'))
-        
+        self.assertGreater(time.time() - st, 2)
+        # test validation
+        st = time.time()
+        Sequential_Executor(wf).run(dag)
+        self.assertLess(time.time() - st, 2)
+        FileTarget('lls').remove('both')
 
     def testInteractiveExecutor(self):
         '''interactive'''
@@ -1310,7 +1312,6 @@ sh:
         executor.run('run:\necho "a"')
         self.assertRaises(RuntimeError, executor.run, 'c')
         # execute shell command is handled by the kernel, not executor
-        #executor.run('!ls')
 
     def testSignatureAfterRemovalOfFiles(self):
         '''test action shrink'''

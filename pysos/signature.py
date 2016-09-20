@@ -193,16 +193,38 @@ class executable(BaseTarget):
     '''A target for an executable command.'''
     def __init__(self, cmd):
         self._cmd = cmd
+        self.sig_file = os.path.join('.sos/.runtime/__executable_{}.sig'.format(self._cmd))
 
     def exists(self, mode='any'):
-        return shutil.which(self._cmd)
-    
+        if mode in ('any', 'target') and shutil.which(self._cmd):
+            return True
+        if mode in ('any', 'signature') and os.path.isfile(self.sig_file):
+            return True
+        return False
+
     def fullname(self):
-        return '__cmd_{}'.format(self._cmd)
+        return 'command {}'.format(self._cmd)
         
     def __repr__(self):
-        return 'command {}'.format(self._cmd)
+        return 'executable("{}")'.format(self._cmd)
 
+    def calc_md5(self):
+        return textMD5(self._cmd)
+
+    def md5(self):
+        return textMD5(self._cmd)
+
+    def write_sig(self):
+        '''Write .file_info file with signature'''
+        # path to file
+        sig_path = os.path.split(self.sig_file)[0]
+        if not os.path.isdir(sig_path):
+            try:
+                os.makedirs(sig_path)
+            except Exception as e:
+                raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
+        with open(self.sig_file, 'w') as md5:
+            md5.write('{}\t{}\n'.format(self.fullname(), self.md5()))
 
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
@@ -359,7 +381,10 @@ class RuntimeInfo:
                     continue
                 try:
                     f, m = line.rsplit('\t', 1)
-                    freal = FileTarget(f)
+                    if '(' in f and ')' in f:
+                        freal = eval(f)
+                    else:
+                        freal = FileTarget(f)
                     if freal.exists('target'):
                         fmd5 = freal.calc_md5()
                     elif freal.exists('signature'):
@@ -367,7 +392,7 @@ class RuntimeInfo:
                     else:
                         env.logger.trace('File {} not exist'.format(f))
                         return False
-                    res[cur_type].append(freal.fullname())
+                    res[cur_type].append(freal.fullname() if isinstance(freal, FileTarget) else freal)
                     if fmd5 != m.strip():
                         env.logger.trace('MD5 mismatch {}: {} / {}'.format(f, fmd5, m.strip()))
                         return False
