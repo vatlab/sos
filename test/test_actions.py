@@ -386,14 +386,9 @@ echo 'Echo
         script = SoS_Script(r'''
 [0]
 csh:
-    foreach file (*)
-        if (-d $file) then
-            echo "Skipping $file (is a directory)"
-        else
-            echo "Echo $file"
-            echo $file
-        endif
-    end
+     foreach color (red orange yellow green blue)
+        echo $color
+     end
 ''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
@@ -407,14 +402,9 @@ csh:
         script = SoS_Script(r'''
 [0]
 tcsh:
-    foreach file (*)
-        if (-d $file) then
-            echo "Skipping $file (is a directory)"
-        else
-            echo "Echo $file"
-            echo $file
-        endif
-    end
+     foreach color (red orange yellow green blue)
+        echo $color
+     end
 ''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
