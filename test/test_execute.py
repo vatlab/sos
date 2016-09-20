@@ -42,6 +42,12 @@ import subprocess
 class TestExecute(unittest.TestCase):
     def setUp(self):
         env.reset()
+        self.resetDir('.sos')
+
+    def resetDir(self, dirname):
+        if os.path.isdir(dirname):
+            shutil.rmtree(dirname)
+        os.mkdir(dirname)
 
     def testCommandLine(self):
         '''Test command line arguments'''
@@ -953,9 +959,7 @@ input:
 
     def testDuplicateIOFiles(self):
         '''Test interpretation of duplicate input/output/depends'''
-        if os.path.isdir('temp'):
-            shutil.rmtree('temp')
-        os.mkdir('temp')
+        self.resetDir('temp')
         # Test duplicate input
         os.system('touch temp/1.txt')
         script = SoS_Script('''
@@ -1310,7 +1314,6 @@ sh:
 
     def testSignatureAfterRemovalOfFiles(self):
         '''test action shrink'''
-        shutil.rmtree('.sos/.runtime')
         if os.path.isfile('largefile.txt'):
             os.remove('largefile.txt')
         script = SoS_Script(r'''

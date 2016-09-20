@@ -393,7 +393,7 @@ output: 'A.txt'
     def testLongChain(self):
         '''Test long make file style dependencies.'''
         #
-        for f in ['A2.txt', 'result.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+        for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             FileTarget(f).remove('both')
         #
         #  A1 <- B1 <- B2 <- B3 
@@ -406,14 +406,14 @@ output: 'A.txt'
         script = SoS_Script('''
 [A_1]
 input: 'B1.txt'
-output: 'A2.txt'
+output: 'A1.txt'
 sh:
-    touch A2.txt
+    touch A1.txt
 
 [A_2]
 depends:  'B2.txt'
 sh:
-    touch result.txt
+    touch A2.txt
 
 [B1: provides='B1.txt']
 depends: 'B2.txt'
@@ -477,7 +477,7 @@ C2 -> C1;
 }
 ''')
         Sequential_Executor(wf).run(dag)
-        for f in ['A2.txt', 'result.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+        for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             t = FileTarget(f)
             self.assertTrue(t.exists())
             t.remove('both')
@@ -485,7 +485,7 @@ C2 -> C1;
     def testTarget(self):
         '''Test executing only part of a workflow.'''
         #
-        for f in ['A2.txt', 'result.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+        for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             FileTarget(f).remove('both')
         #
         #  A1 <- B1 <- B2 <- B3 
@@ -498,14 +498,14 @@ C2 -> C1;
         script = SoS_Script('''
 [A_1]
 input: 'B1.txt'
-output: 'A2.txt'
+output: 'A1.txt'
 sh:
-    touch A2.txt
+    touch A1.txt
 
 [A_2]
 depends:  'B2.txt'
 sh:
-    touch result.txt
+    touch A2.txt
 
 [B1: provides='B1.txt']
 depends: 'B2.txt'
@@ -569,8 +569,8 @@ C3 -> C1;
 }
 ''')
         Sequential_Executor(wf).run(dag)
-        self.assertFalse(FileTarget('A1.txt').exists())
-        self.assertFalse(FileTarget('result.txt').exists())
+        for f in ['A1.txt', 'A2.txt']:
+            self.assertFalse(FileTarget(f).exists())
         for f in ['C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             t = FileTarget(f)
             self.assertTrue(t.exists())
@@ -600,7 +600,7 @@ C2 -> C1;
 }
 ''')
         Sequential_Executor(wf).run(dag)
-        for f in ['A1.txt', 'B1.txt', 'result.txt']:
+        for f in ['A1.txt', 'B1.txt', 'A2.txt']:
             self.assertFalse(FileTarget(f).exists())
         for f in ['C2.txt', 'B2.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             t = FileTarget(f)
@@ -621,7 +621,7 @@ C4 -> C2;
 }
 ''')
         Sequential_Executor(wf).run(dag)
-        for f in ['A1.txt', 'B1.txt', 'result.txt', 'B2.txt', 'C1.txt', 'C3.txt']:
+        for f in ['A1.txt', 'B1.txt', 'A2.txt', 'B2.txt', 'C1.txt', 'C3.txt']:
             self.assertFalse(FileTarget(f).exists())
         for f in ['C2.txt', 'B3.txt', 'C4.txt']:
             t = FileTarget(f)
@@ -631,7 +631,7 @@ C4 -> C2;
     def testPatternReuse(self):
         '''Test repeated use of steps that use pattern and produce different files.'''
         #
-        for f in ['A1.txt', 'result.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
+        for f in ['A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
             FileTarget(f).remove('both')
         #
         #  A1 <- P <- B1
@@ -647,7 +647,7 @@ sh:
 
 [A_2]
 sh:
-    touch result.txt
+    touch A2.txt
 
 [B1: provides='B1.txt']
 sh:
@@ -682,7 +682,7 @@ A_1 -> A_2;
 }
 ''')
         Sequential_Executor(wf).run(dag)
-        for f in ['A1.txt', 'result.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
+        for f in ['A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
             t = FileTarget(f)
             self.assertTrue(t.exists())
             t.remove('both')

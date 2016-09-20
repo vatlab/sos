@@ -101,7 +101,7 @@ class SoS_Node(object):
         self._change_context = change_context
         #env.logger.error('Note {}: Input: {} Depends: {} Output: {}'.format(self._node_id, self._input_targets,
         #      self._depends_targets,  self._output_targets))
-        self._context = context
+        self._context = copy.deepcopy(context)
         self._status = None
 
     def __repr__(self):

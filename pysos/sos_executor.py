@@ -400,6 +400,11 @@ class Sequential_Executor(Base_Executor):
                 raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
                     section.global_def, e))
 
+            # clear existing keys, otherwise the results from some random result
+            # might mess with the execution of another step that does not define input
+            for k in ['__step_input__', '__default_output__', '__step_output__']:
+                if k in env.sos_dict:
+                    env.sos_dict.pop(k)
             # if the step has its own context
             env.sos_dict.quick_update(runnable._context)
             # execute section with specified input
