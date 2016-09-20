@@ -1,25 +1,10 @@
 **Script of Scripts (SoS)** is a workflow engine that allows you to work
 with scripts in different languages, glue them with Python expressions and
-variables, and execute them as powerful workflows under different
-environemtns. It is designed for data scienticists and bioinformatics who
-routinely work with scripts in different languages such as Python, bash,
-and R.
+variables, and execute them as powerful workflows under different environemtns. It is designed for data scienticists and bioinformatics who routinely work with scripts in different languages such as R, Python, Perl, and bash.
 
-As an integration tool, SoS provides data formats and tools for you
-to perform and record your analysis in different languages in a single
-notebook. You can work with SoS scripts directly, or in [Jupyter
-notebook](http://jupyter.org/) with seamless integration of
-multiple-kernels (e.g. python, and
-[R](https://github.com/IRkernel/IRkernel) in a single notebook
-([tutorial](https://github.com/BoPeng/SOS/blob/master/examples/NotebookTutorial.ipynb)
-and [example](https://github.com/BoPeng/SOS/blob/master/examples/example.ipynb)).
+As a **notebook tool** that promotes [literate programming](https://en.wikipedia.org/wiki/Literate_programming), SoS allows you to perform and record your analysis in different languages in a single [Jupyter notebook](http://jupyter.org/), with seamless integration of multiple Jupyter kernels (e.g. python, and [R](https://github.com/IRkernel/IRkernel). Main features of SoS notebook are demonstrated in a [tutorial](https://github.com/BoPeng/SOS/blob/master/examples/NotebookTutorial.ipynb) and an [example](https://github.com/BoPeng/SOS/blob/master/examples/example.ipynb).
 
-As a workflow engine, SoS helps you oraganize your commands and scripts in 
-different languages into readable workflows that can be easily understood
-and modified by others, and be executed . It is an easy-to-use alternative to specialized workflow
-systems such as [CWL](http://common-workflow-language.github.io/draft-3/) which makes it
-an ideal tool for the creation and maintainance of workflows that need to be frequently updated and shared with others.
-
+As a **workflow engine**, SoS helps you oraganize your commands and scripts in different languages into readable workflows that can be easily understood and modified by others. The workflows can be specified in both forward (step by step), makefile (dependency rules) and even a mixture of both styles. Beacuse of a great emphasis on readability, SoS is an easy-to-use alternative to specialized workflow systems such as [CWL](http://common-workflow-language.github.io/draft-3/) which makes it an ideal tool for the creation and maintainance of workflows that need to be frequently updated and shared with others.
 
 ## Installation
 
@@ -56,7 +41,7 @@ or using another container
 ```
 % docker run -it mdabioinfo/sos-full:latest /bin/bash
 ```
-with [R](https://www.r-project.org/) and [IRkernel](https://github.com/IRkernel/IRkernel), and a running [Jupyter](http://jupyter.org/) server with SoS, python, and R kernels .
+with [R](https://www.r-project.org/) and [IRkernel](https://github.com/IRkernel/IRkernel), and a running [Jupyter](http://jupyter.org/) server with SoS, python, and R kernels.
 
 ## Documentation
 
@@ -66,5 +51,5 @@ directly:
 
 * [Quick start guide](https://github.com/BoPeng/SOS/wiki/Quick-Start)
 * [Tutorial](https://github.com/BoPeng/SOS/blob/master/examples/NotebookTutorial.ipynb) and [example](https://github.com/BoPeng/SOS/blob/master/examples/example.ipynb) of Jupyter notebooks.
-* [A presentation about SoS](https://github.com/BoPeng/SOS/wiki/SoS_March2016.pdf) (updated on Apr. 7th for version 0.5.7)
+* [A presentation about SoS](https://github.com/BoPeng/SOS/wiki/SoS_March2016.pdf) (updated on Apr. 7th, 2016 for version 0.5.7, already quite outdated given the rapid evolution of SoS)
 * [Complete documentation](https://github.com/BoPeng/SOS/wiki/Documentation)
