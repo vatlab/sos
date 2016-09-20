@@ -86,7 +86,7 @@ A_3 -> A_4;
 [A_2]
 
 [A_3]
-input: 'c.txt'
+input: 'a.txt'
 
 [A_4]
 
