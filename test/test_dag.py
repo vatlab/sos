@@ -687,5 +687,55 @@ A_1 -> A_2;
             self.assertTrue(t.exists())
             t.remove('both')
 
+
+    def testParallelExecution(self):
+        '''Test basic parallel execution'''
+        '''
+        A1 <- None
+        A2 <- B2
+        '''
+        for f in ['A1.txt', 'B2.txt', 'A2.txt']:
+            FileTarget(f).remove('both')
+        script = SoS_Script('''
+[A_1]
+output: 'A1.txt'
+sh:
+    sleep 3
+    touch A1.txt
+
+[A_2]
+input:  'B2.txt'
+output: 'A2.txt'
+sh:
+    sleep 3
+    touch A2.txt
+
+[B: provides='B2.txt']
+output: 'B2.txt'
+sh:
+    touch B2.txt
+
+
+''')
+        # the workflow should call step K for step C_2, but not C_3
+        wf = script.workflow()
+        dag = Sequential_Executor(wf).prepare()
+        self.assertDAG(dag,
+'''
+strict digraph "" {
+B;
+A_2;
+A_1;
+B -> A_2;
+}
+''')
+        env.max_jobs = 4
+        st = time.time()
+        Sequential_Executor(wf).run(dag)
+        self.assertLess(time.time() - st, 4)
+        for f in ['A1.txt', 'B2.txt', 'A2.txt']:
+            FileTarget(f).remove('both')
+
+
 if __name__ == '__main__':
     unittest.main()

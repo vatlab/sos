@@ -23,6 +23,7 @@
 import networkx as nx
 from collections import defaultdict
 import copy
+from uuid import uuid4
 
 from .utils import env
 from .sos_eval import Undetermined
@@ -90,9 +91,9 @@ from .signature import FileTarget
 #       be allowed.
 #
 class SoS_Node(object):
-    def __init__(self, uuid, node_name, node_index, input_targets=[], depends_targets=[], 
+    def __init__(self, step_uuid, node_name, node_index, input_targets=[], depends_targets=[],
         output_targets=[], change_context=False, context={}):
-        self._uuid = uuid
+        self._step_uuid = step_uuid
         self._node_id = node_name
         self._node_index = node_index
         self._input_targets = Undetermined() if input_targets is None else copy.copy(input_targets)
@@ -103,6 +104,7 @@ class SoS_Node(object):
         #      self._depends_targets,  self._output_targets))
         self._context = copy.deepcopy(context)
         self._status = None
+        self._node_uuid = uuid4()
 
     def __repr__(self):
         return self._node_id
@@ -153,9 +155,9 @@ class SoS_DAG(nx.DiGraph):
         self._all_dependent_files = defaultdict(list)
         self._all_output_files = defaultdict(list)
 
-    def add_step(self, uuid, node_name, node_index, input_targets, depends_targets,
+    def add_step(self, step_uuid, node_name, node_index, input_targets, depends_targets,
         output_targets, change_context=False, context={}):
-        self.add_node(SoS_Node(uuid, node_name, node_index, input_targets, depends_targets, output_targets, change_context, context))
+        self.add_node(SoS_Node(step_uuid, node_name, node_index, input_targets, depends_targets, output_targets, change_context, context))
         if not isinstance(input_targets, (type(None), Undetermined)):
             for x in input_targets:
                 self._all_dependent_files[x].append(node_name)
@@ -179,11 +181,18 @@ class SoS_DAG(nx.DiGraph):
                         break
                 if not with_dependency:
                     return node
-        # should be all completed
-        for node in self.nodes():
-            if node._status != 'completed':
-                raise RuntimeError('{} is not completed yet has dependency'.format(node._node_id))
+        # it there is no job to be executed
+        # it should be all completed
+        #for node in self.nodes():
+        #    if node._status not in ('running', 'completed'):
+        #        raise RuntimeError('{} is not completed yet has dependency'.format(node._node_id))
         return None
+
+    def node_by_id(self, node_uuid):
+        for node in self.nodes():
+            if node._node_uuid == node_uuid:
+                return node
+        raise RuntimeError('Failed to locate node with UUID {}'.format(node_uuid))
 
     def show_nodes(self):
         for node in self.nodes():

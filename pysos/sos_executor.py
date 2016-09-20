@@ -26,8 +26,11 @@ import glob
 import shlex
 import shutil
 import argparse
+import time
 
 import multiprocessing as mp
+from multiprocessing.pool import AsyncResult
+from queue import Empty
 
 from . import __version__
 from .sos_step import Inspect_Step_Executor, Prepare_Step_Executor, Run_Step_Executor, Interactive_Step_Executor
@@ -256,7 +259,7 @@ class Base_Executor:
                     raise ValueError('Multiple steps {} to generate target {}'.format(', '.join(str(x[0].options['provides']) for x in mo), target))
                 #
                 # only one step, we need to process it # execute section with specified input
-                # 
+                #
                 # NOTE:  Auxiliary can be called with different output files and matching pattern
                 # so we are actually creating a new section each time we need an auxillary step.
                 #
@@ -377,58 +380,92 @@ class Sequential_Executor(Base_Executor):
         env.sos_dict.set('run_mode', env.run_mode)
         # process step of the pipelinp
         #
+        dag.show_nodes()
+        procs = [None for x in range(env.max_jobs)]
         while True:
-            # the strategy (or better termed no strategy) is to find
-            # any step that can be executed and run it, and update the DAT
-            # with status.
-            runnable = dag.find_executable()
-            if runnable is None:
-                break
-            # find the section from runnable
-            section = self.workflow.section_by_id(runnable._uuid)
-            # 
-            # this is to keep compatibility of dag run with sequential run because
-            # in sequential run, we evaluate global section of each step in 
-            # order to determine values of options such as skip. 
-            # The consequence is that global definitions are available in 
-            # SoS namespace.
-            try:
-                SoS_exec(section.global_def)
-            except Exception as e:
-                if env.verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
-                    section.global_def, e))
+            # step 1: check existing jobs and see if they are completed
+            for idx, proc in enumerate(procs):
+                if proc is None:
+                    continue
+                (p, q, u) = proc
+                try:
+                    res = q.get_nowait()
+                except Empty:
+                    # continue waiting
+                    continue
+                #
+                # if we does get the result
+                p.join()
+                # if the job is failed
+                if isinstance(res, Exception):
+                    raise RuntimeError(res)
+                #
+                for k, v in res.items():
+                    env.sos_dict.set(k, v)
+                #
+                runnable = dag.node_by_id(u)
+                # set context to the next logic step.
+                for edge in dag.out_edges(runnable):
+                    node = edge[1]
+                    # if node is the logical next step...
+                    if node._node_index is not None and runnable._node_index is not None \
+                        and node._node_index == runnable._node_index + 1:
+                        node._context.update(env.sos_dict.clone_pickleable())
+                runnable._status = 'completed'
+                procs[idx] = None
+                #env.logger.error('completed')
+                #dag.show_nodes()
+            # step 2: submit new jobs if there are empty slots
+            for idx, proc in enumerate(procs):
+                # if there is empty slot, submit
+                if proc is not None:
+                    continue
+                # the strategy (or better termed no strategy) is to find
+                # any step that can be executed and run it, and update the DAT
+                # with status.
+                runnable = dag.find_executable()
+                if runnable is None:
+                    # no runnable
+                    #dag.show_nodes()
+                    break
+                # find the section from runnable
+                section = self.workflow.section_by_id(runnable._step_uuid)
+                #
+                # this is to keep compatibility of dag run with sequential run because
+                # in sequential run, we evaluate global section of each step in
+                # order to determine values of options such as skip.
+                # The consequence is that global definitions are available in
+                # SoS namespace.
+                try:
+                    SoS_exec(section.global_def)
+                except Exception as e:
+                    if env.verbosity > 2:
+                        sys.stderr.write(get_traceback())
+                    raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
+                        section.global_def, e))
 
-            # clear existing keys, otherwise the results from some random result
-            # might mess with the execution of another step that does not define input
-            for k in ['__step_input__', '__default_output__', '__step_output__']:
-                if k in env.sos_dict:
-                    env.sos_dict.pop(k)
-            # if the step has its own context
-            env.sos_dict.quick_update(runnable._context)
-            # execute section with specified input
-            queue = mp.Queue()
-            executor = Run_Step_Executor(section, queue)
-            proc = mp.Process(target=executor.run)
-            proc.start()
-            res = queue.get()
-            proc.join()
-            # if the job is failed
-            if isinstance(res, Exception):
-                raise RuntimeError(res)
+                # clear existing keys, otherwise the results from some random result
+                # might mess with the execution of another step that does not define input
+                for k in ['__step_input__', '__default_output__', '__step_output__']:
+                    if k in env.sos_dict:
+                        env.sos_dict.pop(k)
+                # if the step has its own context
+                env.sos_dict.quick_update(runnable._context)
+                # execute section with specified input
+                runnable._status = 'running'
+                q = mp.Queue()
+                executor = Run_Step_Executor(section, q)
+                p = mp.Process(target=executor.run)
+                procs[idx] = (p, q, runnable._node_uuid)
+                p.start()
+                #
+                #env.logger.error('started')
+                #dag.show_nodes()
             #
-            for k, v in res.items():
-                env.sos_dict.set(k, v)
-            # set context to the next logic step.
-            for edge in dag.out_edges(runnable):
-                node = edge[1]
-                # if node is the logical next step...
-                if node._node_index is not None and runnable._node_index is not None \
-                    and node._node_index == runnable._node_index + 1:
-                    node._context.update(env.sos_dict.clone_pickleable())
-            runnable._status = 'completed'
-
+            if all(x is None for x in procs):
+                break
+            else:
+                time.sleep(0.1)
 
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
