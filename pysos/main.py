@@ -195,7 +195,7 @@ def cmd_config(args, workflow_args):
     elif args.__config_file__:
         config_file = os.path.expanduser(args.__config_file__)
     else:
-        config_file = os.path.join('.sos', 'config.yaml')
+        config_file = 'config.yaml'
     if args.__get_config__ is not None:
         if os.path.isfile(config_file):
             try:

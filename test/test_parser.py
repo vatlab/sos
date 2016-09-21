@@ -1058,7 +1058,7 @@ sos_run('k.A')
 
     def testYAMLConfig(self):
         '''Test config file in yaml format'''
-        with open('config.yaml', 'w') as config:
+        with open('myconfig.yaml', 'w') as config:
             config.write('''
 # Lines beginning with # are skipped when the JSON is parsed, so we can
 # put comments into our JSON configuration files
@@ -1080,11 +1080,11 @@ print(CONFIG.StoreOwner)
 '''
 )
         # run the command
-        self.assertEqual(subprocess.call('sos run config.sos -c config.yaml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos run config.sos -c myconfig.yaml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         # now test the value
         script = SoS_Script(filename='config.sos')
         wf = script.workflow()
-        Sequential_Executor(wf, config_file='config.yaml').run()
+        Sequential_Executor(wf, config_file='myconfig.yaml').run()
         self.assertEqual(env.sos_dict['CONFIG']['Price'], 1.05)
         self.assertEqual(env.sos_dict['CONFIG']['StoreOwner'], 'John Doe')
         self.assertEqual(env.sos_dict['CONFIG']['Fruits'], ['apple', 'banana', 'pear'])
@@ -1098,7 +1098,7 @@ CONFIG['a'] = 'b'
         # the command would fail with error message
         # ERROR: Failed to process statement CONFIG['a'] = 'b'
         # : Cannot modify a readonly dictionary.
-        self.assertEqual(subprocess.call('sos run config.sos -c config.yaml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
+        self.assertEqual(subprocess.call('sos run config.sos -c myconfig.yaml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
         #
         with open('config.sos', 'w') as sos:
             sos.write('''
@@ -1109,9 +1109,9 @@ CONFIG.a = 'b'
         # the command would fail with error message
         # ERROR: Failed to process statement CONFIG['a'] = 'b'
         # : Cannot modify a readonly dictionary.
-        self.assertEqual(subprocess.call('sos run config.sos -c config.yaml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
+        self.assertEqual(subprocess.call('sos run config.sos -c myconfig.yaml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
         #
-        for filename in ['config.sos', 'config.yaml']:
+        for filename in ['config.sos', 'myconfig.yaml']:
             os.remove(filename)
 
     def testVarOutput(self):

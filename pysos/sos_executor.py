@@ -109,7 +109,7 @@ class Base_Executor:
             except Exception as e:
                 raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
         # local config file
-        sos_config_file = os.path.join('.sos', 'config.yaml')
+        sos_config_file = 'config.yaml'
         if os.path.isfile(sos_config_file):
             try:
                 with open(sos_config_file) as config:

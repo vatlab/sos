@@ -668,7 +668,7 @@ check_command('a4')
 
     def testInspectTimeout(self):
         '''Test if any action should exit in five seconds in inspect mode'''
-        sos_config_file = os.path.expanduser('.sos/config.yaml')
+        sos_config_file = 'config.yaml'
         move_back = False
         if os.path.isfile(sos_config_file):
             move_back = True
@@ -706,7 +706,7 @@ time.sleep(8)
 
     def testSearchPath(self):
         '''Test if any action should exit in five seconds in inspect mode'''
-        sos_config_file = os.path.expanduser('.sos/config.yaml')
+        sos_config_file = 'config.yaml'
         move_back = False
         if os.path.isfile(sos_config_file):
             move_back = True
