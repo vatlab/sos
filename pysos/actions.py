@@ -50,7 +50,7 @@ from pygments.lexers import get_lexer_for_filename, guess_lexer
 from .utils import env, ProgressBar, short_repr, natural_keys, transcribe, AbortExecution
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
-from .signature import FileTarget, fileMD5
+from .target import FileTarget, fileMD5
 from .sos_executor import Sequential_Executor
 from .monitor import ProcessMonitor, summarizeExecution
 

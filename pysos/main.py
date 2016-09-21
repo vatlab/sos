@@ -34,7 +34,7 @@ from .converter import script_to_html, workflow_to_html, script_to_markdown, \
     workflow_to_markdown, script_to_notebook, workflow_to_notebook, \
     script_to_term, workflow_to_term, notebook_to_script
 from .sos_syntax import CONFIG_NAME
-from .signature import FileTarget
+from .target import FileTarget
 #
 # subcommand convert
 #

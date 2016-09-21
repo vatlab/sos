@@ -27,7 +27,7 @@ from uuid import uuid4
 
 from .utils import env
 from .sos_eval import Undetermined
-from .signature import FileTarget
+from .target import FileTarget
 
 
 #

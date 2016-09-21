@@ -26,4 +26,4 @@ from .utils import *
 from .actions import *
 from .sos_eval import *
 from .pattern import *
-from .signature import *
+from .target import *

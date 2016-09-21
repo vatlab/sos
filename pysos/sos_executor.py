@@ -40,7 +40,7 @@ from .sos_eval import Undetermined, SoS_eval, SoS_exec
 from .sos_script import SoS_Script, SoS_Step, SoS_ScriptContent
 from .sos_syntax import SOS_SECTION_HEADER
 from .dag import SoS_DAG
-from .signature import BaseTarget, FileTarget
+from .target import BaseTarget, FileTarget
 from .pattern import extract_pattern
 
 __all__ = []

@@ -35,7 +35,7 @@ from itertools import tee, combinations
 from .utils import env, Error, AbortExecution, short_repr, get_traceback, pickleable, transcribe
 from .pattern import extract_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
-from .signature import BaseTarget, FileTarget, dynamic, RuntimeInfo, textMD5
+from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, textMD5
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 
