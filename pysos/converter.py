@@ -886,7 +886,7 @@ def parse_convert_args(convert_args):
     return args
 
 
-# This class cannot be defined in .kernel because it would cause some 
+# This class cannot be defined in .kernel because it would cause some
 # weird problem with unittesting not able to resolve __main__
 class SoS_Exporter(Exporter):
     def __init__(self, config=None, reorder=False, reset_index=False, add_header=False,
@@ -904,23 +904,19 @@ class SoS_Exporter(Exporter):
 
     def from_notebook_cell(self, cell, fh, idx = 0):
         if not hasattr(cell, 'execution_count') or cell.execution_count is None or self.no_index:
-            fh.write('\n#%% {}\n'.format(cell.cell_type))
+            fh.write('\n%cell {}\n'.format(cell.cell_type))
         else:
             idx += 1
-            fh.write('\n#%% {} {}\n'.format(cell.cell_type,
+            fh.write('\n%cell {} {}\n'.format(cell.cell_type,
                                               idx if self.reset_index else cell.execution_count))
         if cell.cell_type == 'code':
             if any(cell.source.startswith(x) for x in ('%run', '%restart', '%dict', '%use', '%with', '%set', '%paste')):
                 if self.remove_magic:
                     cell.source = '\n'.join(cell.source.split('\n')[1:])
-                else:
-                    env.logger.warning('SoS magic "{}" has to remove them before executing the script with sos command.'.format(cell.source.split('\n')[0]))
             if self.add_header and not any([SOS_SECTION_HEADER.match(x) for x in cell.source.split('\n')]):
                 cell.source = '[{}]\n'.format(idx if self.reset_index else cell.execution_count) + cell.source
-            fh.write('%cell {}\n'.format(cell.execution_count))
             fh.write(cell.source.strip() + '\n')
         elif cell.cell_type == "markdown":
-            fh.write('%cell {}\n'.format(cell.execution_count))
             fh.write('\n'.join('#! ' + x for x in cell.source.split('\n') if x.strip()) + '\n')
         return idx
 
@@ -971,107 +967,67 @@ def notebook_to_script(notebook_file, sos_file, convert_args=[]):
 #
 # Converter to Notebook
 #
-def add_cell(cells, cell_src_code, cell_count):
+def add_cell(cells, content, cell_type, cell_count):
     # if a section consist of all report, report it as a markdown cell
-    if not cell_src_code:
+    if not content:
         return
-    if (cell_src_code[0].startswith('#! ') or not cell_src_code[0].strip() or SOS_SECTION_HEADER.match(cell_src_code[0])) and \
-        all(not x.strip() or x.startswith('#! ') for x in cell_src_code[1:]):
-        md = ''
-        for line in cell_src_code:
-            if SOS_SECTION_HEADER.match(line):
-                continue
-            else:
-                md += line[3:]
-        cells.append(new_markdown_cell(source=md))
-        return cell_count
+    if cell_type not in ('code', 'markdown'):
+        env.logger.warning('Unrecognized cell type {}, code assumed.'.format(cell_type))
+    if cell_type == 'markdown' and any(x.strip() and not x.startswith('#! ') for x in content):
+        env.logger.warning('Markdown lines not starting with #!, code cell assumed.')
+        cell_type = 'code'
+    #
+    if cell_type == 'markdown':
+        cells.append(new_markdown_cell(source=''.join([x[3:] for x in md]),
+            execution_count=cell_count))
     else:
         cells.append(
              new_code_cell(
-                 source=''.join(cell_src_code),
+                 source=''.join(content),
                  execution_count=cell_count)
         )
-        return cell_count
 
-def script_to_notebook(transcript, script_file, notebook_file):
+def script_to_notebook(script_file, notebook_file):
     '''
     Write a notebook file with the transcript of a SOS file.
     '''
     cells = []
     cell_count = 1
-    CELL_LINE = re.compile('^#%%\s+(markdown|code)(\s+\d+\s+)?$')
-    with open(transcript) as script:
-        cell_src_code = []
-        content = []
-        content_type = None
-        # content_number = None
-        next_type = None
+    cell_type = 'code'
+    content = []
+    CELL_LINE = re.compile('^%cell\s+(markdown|code)(\s+\d+\s+)?$')
+    with open(script_file) as script:
+        first_block = True
         for line in script:
-            line_type, line_no, script_line = line.split('\t', 2)
-            if line_type == 'COMMENT':
-                if script_line.startswith('#!'):
-                    # shebang line is ignored
-                    if script_line.startswith('#! '):
-                        content.append(script_line)
+            if line.startswith('#') and first_block:
+                if line.startswith('#!'):
                     continue
-                if script_line.startswith('#fileformat='):
-                    if not script_line[12:].startswith('SOS'):
+                if line.startswith('#fileformat='):
+                    if not line[12:].startswith('SOS'):
                         raise RuntimeError('{} is not a SoS script according to #fileformat line.'.format(script_file))
                     continue
-            if CELL_LINE.match(script_line):
+
+            fist_block = False
+
+            mo = CELL_LINE.match(line)
+            if mo:
                 # eat a new line before the CELL_LINE
                 if content and content[-1] == '\n':
                     content = content[:-1]
+                # get ride of empty content
                 if not any(x.strip() for x in content):
                     continue
-                cell_src_code.extend(content)
-                add_cell(cells, cell_src_code, cell_count)
-                parts = script_line.split()
-                if len(parts) > 2 and parts[2].isdigit():
-                    cell_count = int(parts[2])
-                if parts[1] == 'markdown':
-                    content_type == 'MARKDOWN'
-                else:
-                    content_type == 'SECTION'
+                add_cell(cells, content, cell_type, cell_count)
+                cell_count += 1
+
+                cell_type = mo.group(1)
                 content = []
-                cell_src_code = []
                 continue
-            # Does not follow section because it has to be one line
-            if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
-                line_type = 'COMMENT'
-            if content_type == line_type or line_type == 'FOLLOW':
-                if next_type is not None and not script_line.rstrip().endswith(','):
-                    if content_type == 'SECTION' and cell_src_code:
-                        # wrap up a cell
-                        add_cell(cells, cell_src_code, cell_count)
-                        cell_count += 1
-                        cell_src_code = content
-                    else:
-                        cell_src_code.extend(content)
-                    content = [script_line]
-                    content_type = next_type
-                    # content_number = int(line_no)
-                    next_type = None
-                else:
-                    content.append(script_line)
             else:
-                if content:
-                    if content_type == 'SECTION' and cell_src_code:
-                        # wrap up a cell
-                        add_cell(cells, cell_src_code, cell_count)
-                        cell_count += 1
-                        cell_src_code = content
-                    else:
-                        cell_src_code.extend(content)
-                if line_type.startswith('SCRIPT_'):
-                    content_type = 'DIRECTIVE'
-                    next_type = line_type[7:]
-                else:
-                    content_type = line_type
-                # content_number = int(line_no)
-                content = [script_line]
-    if content:
-        add_cell(cells, content, cell_count)
+                content.append(line)
+    #
+    if content and any(x.strip() for x in content):
+        add_cell(cells, content, cell_type, cell_count)
     #
     nb = new_notebook(cells = cells,
         metadata = {

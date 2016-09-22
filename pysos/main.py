@@ -51,13 +51,7 @@ def cmd_convert(args, style_args):
                 sos_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.sos', delete=False).name
                 notebook_to_script(args.from_file, sos_file, style_args)
                 transcript_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.transcript', delete=False).name
-                try:
-                    with open(transcript_file, 'w') as transcript:
-                        script = SoS_Script(filename=sos_file, transcript=transcript)
-                except Exception as e:
-                    script = None
-                    env.logger.warning(e)
-                script_to_notebook(transcript_file, sos_file, args.notebook)
+                script_to_notebook(sos_file, args.notebook)
                 sys.exit(0)
             finally:
                 os.remove(sos_file)
@@ -90,7 +84,7 @@ def cmd_convert(args, style_args):
                 elif args.markdown is not None:
                     script_to_markdown(transcript_file, args.from_file, args.markdown)
                 elif args.notebook is not None:
-                    script_to_notebook(transcript_file, args.from_file, args.notebook)
+                    script_to_notebook(args.from_file, args.notebook)
                 elif args.term:
                     script_to_term(transcript_file, args.from_file, style_args)
                 else:
