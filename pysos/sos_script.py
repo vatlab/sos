@@ -655,12 +655,10 @@ for __n, __v in {}.items():
                     continue
 
             if condition_ignore:
-                env.logger.error('COND IGNORE {}'.format(line))
                 # ignore cell directive in batch mode
                 if self.transcript:
                     self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
                 continue
-            env.logger.error('COND NOT IGNORE {}'.format(line))
             # comments in SoS scripts are mostly informative
             if line.startswith('#'):
                 # Comment blocks before any section
