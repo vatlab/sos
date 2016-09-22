@@ -52,6 +52,7 @@ highlight link pythonBuiltin	Function
 " parenthetical part of def and class
 syn match sos_section_head "^\[\s*\w\+.*\]\s*$"
 syn match sos_directive "^\(input\|output\|depends\|parameter\|task\)\s*:"
+syn match sos_preprocessor "^%\(if\|elif\|else\|endif\|cell\|include\|from\).*$"
 
 " match a line with non input/output/depends/task, and ends before a section
 " or another directive
@@ -61,17 +62,18 @@ syn match sos_directive "^\(input\|output\|depends\|parameter\|task\)\s*:"
 if exists("sos_fold")
   syn region script
      \ start="^\(input\|output\|depends\|parameter\|task\)\@!\w\+\s*:"hs=e+1
-     \ end="\(^\[\s*\w\+.*\]\s*$\|^\w\+\s*:\|^! \|^!$\)"me=s-1,he=s-1,re=s-1
+     \ end="^\S"me=s-1,he=s-1,re=s-1
      \ fold contains=TOP containedin=ALL
 else
   syn region script
      \ start="^\(input\|output\|depends\|parameter\|task\)\@!\w\+\s*:"ms=e+1,hs=e+1
-     \ end="\(^\[\s*\w\+.*\]\s*$\|^\w\+\s*:\|^! \|^!$\)"me=s-1,he=s-1,re=s-1
+     \ end="^\S"me=s-1,he=s-1,re=s-1
      \ contains=TOP containedin=ALL
 endif
 
 highlight sos_section_head guibg='Purple' gui=none
 highlight sos_directive guifg='LightBlue' gui=bold
+highlight sos_preprocessor guifg='LightRed' gui=bold
 highlight script guifg='Gray' gui=none
 
 syn sync fromstart
