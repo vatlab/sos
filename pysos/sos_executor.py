@@ -534,6 +534,13 @@ class Interactive_Executor(Base_Executor):
             # last stement is an expression.
             last_res = None
             #
+            # clear __step_input__, __step_output__ etc because there is
+            # no concept of passing input/outputs across cells.
+            env.sos_dict.set('__step_output__', [])
+            for k in ['__step_input__', '__default_output__', 'input', 'output', \
+                'depends', '_input', '_output', '_depends']:
+                env.sos_dict.pop(k, None)
+
             for idx, section in enumerate(self.workflow.sections):
                 if 'skip' in section.options:
                     val_skip = section.options['skip']
