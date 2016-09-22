@@ -65,7 +65,10 @@ def patch_spyder():
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
             src.write(content.replace("'Python': ('py', 'pyw', 'python', 'ipy')",
-                "'Python': ('py', 'pyw', 'python', 'ipy', 'sos', 'sosnb')"))
+                "'Python': ('py', 'pyw', 'python', 'ipy', 'sos', 'sosnb')")
+                .replace(
+                '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[')}''',
+                '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[', '%cell')}'''))
         #
         from spyderlib import config
         src_file = config.__file__
