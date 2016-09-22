@@ -53,6 +53,7 @@ highlight link pythonBuiltin	Function
 syn match sos_section_head "^\[\s*\w\+.*\]\s*$"
 syn match sos_directive "^\(input\|output\|depends\|parameter\|task\)\s*:"
 syn match sos_preprocessor "^%\(if\|elif\|else\|endif\|cell\|include\|from\).*$"
+syn match sos_magic "^%\(with\|use\|set\|paste\|reset\|dict\|run\).*$"
 
 " match a line with non input/output/depends/task, and ends before a section
 " or another directive
@@ -74,6 +75,7 @@ endif
 highlight sos_section_head guibg='Purple' gui=none
 highlight sos_directive guifg='LightBlue' gui=bold
 highlight sos_preprocessor guifg='LightRed' gui=bold
+highlight sos_magic guifg='Orange' gui=bold
 highlight script guifg='Gray' gui=none
 
 syn sync fromstart
