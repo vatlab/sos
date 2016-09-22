@@ -46,11 +46,11 @@ def patch_spyder():
     to
 
         ALL_LANGUAGES = {
-                     'Python': ('py', 'pyw', 'python', 'ipy', 'sos', 'sosnb'),
+                     'Python': ('py', 'pyw', 'python', 'ipy', 'sos'),
 
     in spyderlib.utils.sourcecode.py, and add 
 
-        (_("SoS files"), ('.sos', '.sosnb')),
+        (_("SoS files"), ('.sos', )),
 
     to
 
@@ -65,7 +65,7 @@ def patch_spyder():
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
             src.write(content.replace("'Python': ('py', 'pyw', 'python', 'ipy')",
-                "'Python': ('py', 'pyw', 'python', 'ipy', 'sos', 'sosnb')")
+                "'Python': ('py', 'pyw', 'python', 'ipy', 'sos')")
                 .replace(
                 '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[')}''',
                 '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[', '%cell')}'''))
@@ -79,7 +79,7 @@ def patch_spyder():
     (_("Cython/Pyrex files"), ('.pyx', '.pxd', '.pxi')),
     (_("C files"), ('.c', '.h')),''', '''
     (_("Cython/Pyrex files"), ('.pyx', '.pxd', '.pxi')),
-    (_("SoS files"), ('.sos', '.sosnb')),
+    (_("SoS files"), ('.sos', )),
     (_("C files"), ('.c', '.h')),'''))
         #
         log.info('\nAllow spyder to accept .sos as input format.')
