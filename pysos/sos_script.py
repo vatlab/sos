@@ -35,7 +35,8 @@ from .utils import env, Error, dehtml, locate_script, text_repr
 from .sos_eval import Undetermined
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
-    SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS
+    SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
+    SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_ENDIF, SOS_CELL
 
 __all__ = ['SoS_Script']
 
@@ -556,11 +557,110 @@ for __n, __v in {}.items():
         cursect = None
         all_step_names = []
         #
+        condition_ignore = False
+        condition_met = None
         # this ParsingError is a container for all parsing errors. It will be
         # raised after parsing if there is at least one parsing error.
         parsing_errors = ParsingError(self.sos_script)
         for lineno, line in enumerate(fp, start=1):
             #
+            # for structural lines
+            if SOS_STRU.match(line):
+                # ignore cell directive in batch mode
+                if self.transcript:
+                    self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+
+                if SOS_INCLUDE.match(line) or SOS_FROM_INCLUDE.match(line):
+                    if cursect is not None:
+                        parsing_errors.append(lineno, line, 'include magic can only be defined before any other statemetns.')
+
+                    # handle import
+                    mo = SOS_INCLUDE.match(line)
+                    if mo:
+                        sos_files = [x.strip() for x in mo.group('sos_files').split(',')]
+                        for sos_file in sos_files:
+                            ma = SOS_AS.match(sos_file)
+                            self._include_namespace(ma.group('name'), alias=ma.group('alias'))
+                        continue
+                    mo = SOS_FROM_INCLUDE.match(line)
+                    if mo:
+                        sos_file = mo.group('sos_file')
+                        name_map = {}
+                        if mo.group('names') != '*':
+                            for wf in mo.group('names').split(','):
+                                ma = SOS_AS.match(wf)
+                                name_map[ma.group('name')] = ma.group('alias')
+                        self._include_content(sos_file, name_map=name_map)
+                        continue
+
+                mo = SOS_CELL.match(line)
+                if mo:
+                    continue
+
+                mo = SOS_IF.match(line)
+                if mo:
+                    cond = mo.group('condition')
+                    try:
+                        cond_value = eval(cond)
+                    except Exception as e:
+                        parsing_errors.append(lineno, line, 'Invalid expression {}: {}'.format(cond, e))
+                        continue
+                    #
+                    if cond_value:
+                        condition_met = True
+                        condition_ignore = False
+                    else:
+                        condition_met = False
+                        condition_ignore = True
+                    continue
+
+                mo = SOS_ELIF.match(line)
+                if mo:
+                    if condition_met is None:
+                        parsing_errors.append(lineno, line, '%elif not following %if: {}'.format(line))
+                        continue
+
+                    if condition_met:
+                        condition_ignore = True
+                        continue
+
+                    cond = mo.group('condition')
+                    try:
+                        cond_value = eval(cond)
+                    except Exception as e:
+                        parsing_errors.append(lineno, line, 'Invalid expression {}: {}'.format(cond, e))
+
+                    if cond_value:
+                        condition_met = True
+                        condition_ignore = False
+                    continue
+
+                mo = SOS_ELSE.match(line)
+                if mo:
+                    if condition_met is None:
+                        parsing_errors.append(lineno, line, '%else not following %if: {}'.format(line))
+                        continue
+
+                    condition_ignore = condition_met
+                    continue
+
+                mo = SOS_ENDIF.match(line)
+                if mo:
+                    condition_met = None
+                    condition_ignore = False
+                    continue
+
+                else:
+                    parsing_errors.append(lineno, line, 'Unrecognized SoS magic statement: {}'.format(line))
+                    continue
+
+            if condition_ignore:
+                env.logger.error('COND IGNORE {}'.format(line))
+                # ignore cell directive in batch mode
+                if self.transcript:
+                    self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                continue
+            env.logger.error('COND NOT IGNORE {}'.format(line))
             # comments in SoS scripts are mostly informative
             if line.startswith('#'):
                 # Comment blocks before any section
@@ -634,26 +734,7 @@ for __n, __v in {}.items():
                 if self.transcript:
                     self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                 continue
-            #
-            if cursect is None and (SOS_INCLUDE.match(line) or SOS_FROM_INCLUDE.match(line)):
-                # handle import
-                mo = SOS_INCLUDE.match(line)
-                if mo:
-                    sos_files = [x.strip() for x in mo.group('sos_files').split(',')]
-                    for sos_file in sos_files:
-                        ma = SOS_AS.match(sos_file)
-                        self._include_namespace(ma.group('name'), alias=ma.group('alias'))
-                    continue
-                mo = SOS_FROM_INCLUDE.match(line)
-                if mo:
-                    sos_file = mo.group('sos_file')
-                    name_map = {}
-                    if mo.group('names') != '*':
-                        for wf in mo.group('names').split(','):
-                            ma = SOS_AS.match(wf)
-                            name_map[ma.group('name')] = ma.group('alias')
-                    self._include_content(sos_file, name_map=name_map)
-                    continue
+
             #
             # a continuation of previous item?
             if line[0].isspace() and cursect is not None and not cursect.empty():
@@ -911,6 +992,11 @@ for __n, __v in {}.items():
                 parsing_errors.append(cursect.lineno, ''.join(cursect.values[:5]), 'Invalid {}: {}'.format(cursect.category(), cursect.error_msg))
             else:
                 cursect.finalize()
+
+        # non-matching %if ...
+        if condition_met is not None:
+            parsing_errors.append(lineno, '', 'Non-matching %if and %endif')
+
         #
         # if there is any parsing error, raise an exception
         if parsing_errors.errors:

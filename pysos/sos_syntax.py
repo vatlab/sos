@@ -135,24 +135,28 @@ _SOS_STRU_TMPL = r'''                   # structural directive
 
 _SOS_IF_TMPL = r'''                     # %if
     ^%if\s+
-    (?P<condition>.*)
+    (?P<condition>.+)
+    $
     '''
 
 _SOS_ELIF_TMPL = r'''                   # %if
-    ^%elif\s+.*
-    (?P<condition>.*)
+    ^%elif\s+
+    (?P<condition>.+)
+    $
     '''
 
 _SOS_ELSE_TMPL = r'''                   # %else
     ^%else\s*
+    $
     '''
 
 _SOS_ENDIF_TMPL = r'''                  # %endif
     ^%endif\s*
+    $
     '''
 
 _SOS_CELL_TMPL = r'''                   # %cell
-    ^%cell(\s*.*)?
+    ^%cell(\s+.*)?
     '''
 
 _SOS_INCLUDE_TMPL = r'''

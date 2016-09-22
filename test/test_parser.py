@@ -1206,6 +1206,54 @@ res1 = g
         Sequential_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['res1'], 1)
 
+    def testCell(self):
+        '''Test ignoring %cell'''
+        script = SoS_Script('''
+%cell 1
+[step ]
+a = 1
+''')
+
+    def testIfElse(self):
+        '''Test if/elif/else/endif structural directive'''
+        # no matching %endif
+        self.assertRaises(ParsingError, SoS_Script, '''
+%if 1
+a = 1
+%else
+a=2
+''')
+        # no if for else
+        self.assertRaises(ParsingError, SoS_Script, '''
+%else
+a=2
+''')
+        # no conditon for if
+        self.assertRaises(ParsingError, SoS_Script, '''
+%if
+a=2
+%endif
+''')
+        # no conditon for elif
+        self.assertRaises(ParsingError, SoS_Script, '''
+%if 1
+%elif
+a=2
+%endif
+''')
+        # test if else
+        script = SoS_Script('''
+%if 0
+a = 1
+%else
+a = 2
+%endif
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf).inspect()
+        self.assertEqual(env.sos_dict['a'], 2)
+
+
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
     #unittest.TextTestRunner(, suite).run()
