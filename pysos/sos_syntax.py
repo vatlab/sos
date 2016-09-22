@@ -120,8 +120,43 @@ _CONFIG_NAME = r'''
    $
    '''
 
+
+_SOS_STRU_TMPL = r'''                   # structural directive
+    ^%(if                               # %if
+    |elif                               # %elif
+    |else                               # %else
+    |endif                              # %endif
+    |cell                               # %cell
+    |include                            # %include
+    |from                               # %from
+    )(\s+.*)?
+    $
+    '''
+
+_SOS_IF_TMPL = r'''                     # %if
+    ^%if\s+
+    (?P<condition>.*)
+    '''
+
+_SOS_ELIF_TMPL = r'''                   # %if
+    ^%elif\s+.*
+    (?P<condition>.*)
+    '''
+
+_SOS_ELSE_TMPL = r'''                   # %else
+    ^%else\s*
+    '''
+
+_SOS_ENDIF_TMPL = r'''                  # %endif
+    ^%endif\s*
+    '''
+
+_SOS_CELL_TMPL = r'''                   # %cell
+    ^%cell(\s*.*)?
+    '''
+
 _SOS_INCLUDE_TMPL = r'''
-    ^                                   # from start of line
+    ^%                                  # from start of line
     include\s+                          # keyword
     (?P<sos_files>
     [a-zA-Z][a-zA-Z0-9_.]*              # filename
@@ -136,7 +171,7 @@ _SOS_INCLUDE_TMPL = r'''
     '''
 
 _SOS_FROM_INCLUDE_TMPL = r'''
-    ^                                   # from start of line
+    ^%                                  # from start of line
     from
     \s+
     (?P<sos_file>
@@ -162,6 +197,7 @@ _SOS_AS_TMPL = r'''
     [a-zA-Z][a-zA-Z0-9_]*))?            # optional alias
     '''
 
+
 SOS_SECTION_HEADER = re.compile(_SECTION_HEADER_TMPL, re.VERBOSE)
 SOS_SECTION_NAME = re.compile(_SECTION_NAME_TMPL, re.VERBOSE)
 SOS_SUBWORKFLOW = re.compile(_SUBWORKFLOW_TMPL, re.VERBOSE)
@@ -171,7 +207,12 @@ SOS_FORMAT_VERSION = re.compile(_FORMAT_VERSION_TMPL, re.VERBOSE)
 SOS_DIRECTIVE = re.compile(_DIRECTIVE_TMPL, re.VERBOSE)
 SOS_ASSIGNMENT = re.compile(_ASSIGNMENT_TMPL, re.VERBOSE)
 CONFIG_NAME = re.compile(_CONFIG_NAME, re.VERBOSE)
+SOS_AS = re.compile(_SOS_AS_TMPL, re.VERBOSE)
+SOS_STRU = re.compile(_SOS_STRU_TMPL, re.VERBOSE)
+SOS_IF = re.compile(_SOS_IF_TMPL, re.VERBOSE)
+SOS_ELIF = re.compile(_SOS_ELIF_TMPL, re.VERBOSE)
+SOS_ELSE = re.compile(_SOS_ELSE_TMPL, re.VERBOSE)
+SOS_ENDIF = re.compile(_SOS_ENDIF_TMPL, re.VERBOSE)
+SOS_CELL = re.compile(_SOS_CELL_TMPL, re.VERBOSE)
 SOS_INCLUDE = re.compile(_SOS_INCLUDE_TMPL, re.VERBOSE)
 SOS_FROM_INCLUDE = re.compile(_SOS_FROM_INCLUDE_TMPL, re.VERBOSE)
-SOS_AS = re.compile(_SOS_AS_TMPL, re.VERBOSE)
-

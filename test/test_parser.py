@@ -1020,7 +1020,7 @@ output: _input[0] + 'a2'
 
 ''')
         script = SoS_Script('''
-from inc include *
+%from inc include *
 
 if 'executed' not in locals():
     executed = []
@@ -1038,7 +1038,7 @@ sos_run('A')
         self.assertEqual(env.sos_dict['executed'], ['b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
         #
         script = SoS_Script('''
-include inc as k
+%include inc as k
 
 if 'executed' not in locals():
     executed = []
@@ -1151,7 +1151,7 @@ gv = 1
 [B]
 ''')
         script = SoS_Script('''
-include inc
+%include inc
 res = inc.gv
 [0]
 ''')
@@ -1163,7 +1163,7 @@ res = inc.gv
         #
         # include with alias
         script = SoS_Script('''
-include inc as tt
+%include inc as tt
 res1 = tt.gv
 [0]
 ''')
@@ -1185,7 +1185,7 @@ gv = 1
 [B]
 ''')
         script = SoS_Script('''
-from inc include gv
+%from inc include gv
 [0]
 ''')
         wf = script.workflow()
@@ -1196,7 +1196,7 @@ from inc include gv
         #
         # include with alias
         script = SoS_Script('''
-from inc include gv as g
+%from inc include gv as g
 res1 = g
 [0]
 ''')
