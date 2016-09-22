@@ -133,6 +133,19 @@ _SOS_STRU_TMPL = r'''                   # structural directive
     $
     '''
 
+_SOS_MAGIC_TMPL = r'''                  # SOS magic
+    ^%(dict                             # %dict
+    |run                                # %run
+    |paste                              # %paste
+    |set                                # %set
+    |with                               # %with
+    |use                                # %use
+    |restart                            # %restart
+    |cd                                 # %cd
+    )(\s+.*)?
+    $
+    '''
+
 _SOS_IF_TMPL = r'''                     # %if
     ^%if\s+
     (?P<condition>.+)
@@ -213,6 +226,7 @@ SOS_ASSIGNMENT = re.compile(_ASSIGNMENT_TMPL, re.VERBOSE)
 CONFIG_NAME = re.compile(_CONFIG_NAME, re.VERBOSE)
 SOS_AS = re.compile(_SOS_AS_TMPL, re.VERBOSE)
 SOS_STRU = re.compile(_SOS_STRU_TMPL, re.VERBOSE)
+SOS_MAGIC = re.compile(_SOS_MAGIC_TMPL, re.VERBOSE)
 SOS_IF = re.compile(_SOS_IF_TMPL, re.VERBOSE)
 SOS_ELIF = re.compile(_SOS_ELIF_TMPL, re.VERBOSE)
 SOS_ELSE = re.compile(_SOS_ELSE_TMPL, re.VERBOSE)

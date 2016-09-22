@@ -565,6 +565,12 @@ for __n, __v in {}.items():
         for lineno, line in enumerate(fp, start=1):
             #
             # for structural lines
+            if SOS_MAGIC.match(line):
+                # ignore cell directive in batch mode
+                if self.transcript:
+                    self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+                continue
+
             if SOS_STRU.match(line):
                 # ignore cell directive in batch mode
                 if self.transcript:
