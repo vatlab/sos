@@ -347,13 +347,15 @@ parameter: b = bool
         Sequential_Executor(wf, args=['--b', 'no']).inspect()
         self.assertEqual(env.sos_dict['b'], False)
         #
-        # should fail for undefined variables
-        #script = SoS_Script('''
-#parameter: a = 5
-#[0]
-#''')
-        #wf = script.workflow()
-        #self.assertRaises(ArgumentError, Sequential_Executor(wf, args=['--b', 'file']).inspect)
+        # parameters are masked by previous definition
+        script = SoS_Script('''
+a = 4
+parameter: a = 5
+''')
+        wf = script.workflow()
+        env.verbosity = 4
+        Sequential_Executor(wf, args=['--a', 7]).inspect()
+        self.assertEqual(env.sos_dict['a'], 4)
         #script = SoS_Script('''
 #[0]
 #''')

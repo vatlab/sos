@@ -1006,12 +1006,20 @@ def str2bool(v):
         raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
 
 def handle_parameter(key, defvalue):
-    '''Parse command line arguments and set values to parameters section'''
-    #
+    '''Parse command line arguments and set values to parameters section.
+    NOTE: parmeters will not be handled if it is already defined in
+    the environment. This makes the parameters variable.
+    '''
+
+    if key in env.sos_dict:
+        env.logger.debug('Parameter {} takes default value because it already exists.'.format(key))
+        return env.sos_dict[key]
+
     if not env.sos_dict['__args__']:
         if isinstance(defvalue, type):
             raise ArgumentError('Argument {} of type {} is required'.format(key, defvalue))
         return defvalue
+
     parser = argparse.ArgumentParser()
     parser.register('type', 'bool', str2bool)
     arguments = {}
