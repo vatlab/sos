@@ -295,7 +295,10 @@ class Base_Executor:
                 else:
                     context = {}
                 context['__default_output__'] = [target]
-                dag.add_step(section.uuid, res['__step_name__'], None, res['__step_input__'], res['__step_depends__'],
+                # NOTE: If a step is called multiple times with different targets, it is much better
+                # to use different names because pydotplus can be very slow in handling graphs with nodes
+                # with identical names.
+                dag.add_step(section.uuid, '{} ({})'.format(res['__step_name__'], target), None, res['__step_input__'], res['__step_depends__'],
                     res['__step_output__'], False, context=context)
             #dag.show_nodes()
         #

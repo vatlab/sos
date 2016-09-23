@@ -109,42 +109,6 @@ class SoS_Node(object):
     def __repr__(self):
         return self._node_id
 
-    def depends_on(self, node):
-        #
-        # several cases triggers dependency.
-
-        # 0. if myself is complated, it does not depend on any step
-        if self._status == 'completed':
-            return False
-        #
-        # 1. if a node changes context (using option alias), all later steps
-        # has to rely on it.
-        if node._change_context and node._node_index is not None and \
-            self._node_index is not None and node._node_index < self._node_index:
-            #env.logger.trace('{} depends on {} because of change of context'.format(self._node_id, node._node_id))
-            return True
-
-        # 2. if the input of a step is undetermined, it has to be executed
-        # after all its previous steps.
-        #
-        #  step 1 -> step 2 -> [Undetermined] step 3 (self)
-        if isinstance(self._input_targets, Undetermined) and \
-            node._node_index is not None and self._node_index is not None \
-            and node._node_index == self._node_index - 1:
-            #env.logger.trace('{} depends on {} because of undetermined input'.format(self._node_id, node._node_id))
-            return True
-        #
-        # 3. if the input of a step depends on the output of another step
-        if not isinstance(node._output_targets, Undetermined) and \
-            ((not isinstance(self._input_targets, Undetermined) and \
-            any(x in node._output_targets for x in self._input_targets)) or \
-            any(x in node._output_targets for x in self._depends_targets)):
-            #env.logger.trace('Input of {} ({}) depends on output of {} ({})'.format(self._node_id,
-            #    self._input_targets, node._node_id, node._output_targets))
-            return True
-
-        return False
-
     def show(self):
         print('{} ({}, {}): input {}, depends {}, output {}'.format(self._node_id, self._node_index, self._status, self._input_targets,
             self._depends_targets, self._output_targets))
@@ -157,16 +121,17 @@ class SoS_DAG(nx.DiGraph):
 
     def add_step(self, step_uuid, node_name, node_index, input_targets, depends_targets,
         output_targets, change_context=False, context={}):
-        self.add_node(SoS_Node(step_uuid, node_name, node_index, input_targets, depends_targets, output_targets, change_context, context))
+        node = SoS_Node(step_uuid, node_name, node_index, input_targets, depends_targets, output_targets, change_context, context)
         if not isinstance(input_targets, (type(None), Undetermined)):
             for x in input_targets:
-                self._all_dependent_files[x].append(node_name)
+                self._all_dependent_files[x].append(node)
         if not isinstance(depends_targets, (type(None), Undetermined)):
             for x in depends_targets:
-                self._all_dependent_files[x].append(node_name)
+                self._all_dependent_files[x].append(node)
         if not isinstance(output_targets, (type(None), Undetermined)):
             for x in output_targets:
-                self._all_output_files[x].append(node_name)
+                self._all_output_files[x].append(node)
+        self.add_node(node)
 
     def find_executable(self):
         '''Find an executable node, which means nodes that has not been completed
@@ -232,16 +197,28 @@ class SoS_DAG(nx.DiGraph):
         #
         # refer to http://stackoverflow.com/questions/33494376/networkx-add-edges-to-graph-from-node-attributes
         #
-        # for some code using attributes
-        for node_i in self.nodes():
-            for node_j in self.nodes():
-                if node_i == node_j:
-                    continue
-                if node_i.depends_on(node_j):
-                    self.add_edge(node_j, node_i)
-                if node_j.depends_on(node_i):
-                    self.add_edge(node_i, node_j)
+        # several cases triggers dependency.
+        indexed = [x for x in self.nodes() if x._node_index is not None]
+        indexed.sort(key = lambda x: x._node_index)
 
+        for idx, node in enumerate(indexed):
+            # 1. if a node changes context (using option alias), all later steps
+            # has to rely on it.
+            if node._change_context:
+                for later_node in indexed[idx + 1: ]:
+                    self.add_edge(node, later_node)
+
+            # 2. if the input of a step is undetermined, it has to be executed
+            # after all its previous steps.
+            if isinstance(node._input_targets, Undetermined) and idx > 0:
+                self.add_edge(indexed[idx-1], node)
+        #
+        # 3. if the input of a step depends on the output of another step
+        for target, in_node in self._all_dependent_files.items():
+            for out_node in [y for (x,y) in self._all_output_files.items() if x == target]:
+                for i in in_node:
+                    for j in out_node:
+                        self.add_edge(j, i)
 
     def write_dot(self, filename):
         try:
