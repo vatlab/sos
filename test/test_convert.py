@@ -78,10 +78,7 @@ report('this is action report')
     def testScriptToAndFromNotebook(self):
         '''Test sos show script --notebook'''
         for script_file in self.scripts:
-            with open('temp/test.transcript', 'w') as transcript:
-                script = SoS_Script(filename=script_file, transcript=transcript)
-            script_to_notebook('temp/test.transcript', script_file, script_file + '.ipynb')
-            #
+            script_to_notebook(script_file, script_file + '.ipynb')
             notebook_to_script(script_file + '.ipynb', script_file) 
 
     def testWorkflowToHtml(self):
