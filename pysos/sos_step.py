@@ -281,7 +281,7 @@ class Base_Step_Executor:
                             if isinstance(values, Sequence):
                                 _tmp_vars[idx]['_' + fe] = values[vidx]
                             elif isinstance(values, pd.DataFrame):
-                                _tmp_vars[idx]['_' + fe] = values.loc[vidx]
+                                _tmp_vars[idx]['_' + fe] = values.iloc[vidx]
                             else:
                                 raise ValueError('Unrecognized for_each variable {}'.format(fe))
                 _vars.extend(copy.deepcopy(_tmp_vars))
