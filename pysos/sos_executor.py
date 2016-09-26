@@ -208,7 +208,7 @@ class Base_Executor:
             # NOTE: if a section has option 'alias', the execution of this step would
             # change dictionary, essentially making all later steps rely on this step.
             dag.add_step(section.uuid, res['__step_name__'], idx, res['__step_input__'], res['__step_depends__'],
-                res['__step_output__'], 'alias' in section.options)
+                res['__step_output__'], 'alias' in section.options or 'shared' in section.options)
         #
         while True:
             dangling_targets = dag.dangling(targets)

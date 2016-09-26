@@ -322,6 +322,51 @@ output: [x + '.res' for x in _input]
         self.assertEqual(env.sos_dict['oa'].input, ["a.pdf", 'a.txt', 'b.txt'])
         self.assertEqual(env.sos_dict['ob'].output, ["a.pdf.res", 'a.txt.res', 'b.txt.res'])
 
+    def testShared(self):
+        '''Test option shared'''
+        script = SoS_Script(r"""
+parameter: res = 1
+
+[0]
+res = 2
+
+[1]
+res = 3
+""")
+        wf = script.workflow()
+        Sequential_Executor(wf).prepare()
+        self.assertEqual(env.sos_dict['res'], 1)
+        #
+        script = SoS_Script(r"""
+parameter: res = 1
+
+[0: shared='res']
+res = 2
+
+[1]
+res = 3
+""")
+        wf = script.workflow()
+        Sequential_Executor(wf).prepare()
+        self.assertEqual(env.sos_dict['res'], 2)
+        #
+        script = SoS_Script(r"""
+parameter: res = 1
+parameter: a = 30
+
+[0: shared='a']
+res = 2
+
+[1: shared='res']
+res = 3
+a = 5
+
+""")
+        wf = script.workflow()
+        Sequential_Executor(wf).prepare()
+        self.assertEqual(env.sos_dict['res'], 3)
+        self.assertEqual(env.sos_dict['a'], 30)
+
     def testFileType(self):
         '''Test input option filetype'''
         self.touch(['a.txt', 'b.txt', 'a.pdf', 'b.html'])

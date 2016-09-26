@@ -436,6 +436,19 @@ class Base_Step_Executor:
                 # it is time to evalulate this expression now
                 self.step.options['alias'] = self.step.options['alias'].value(self.step.sigil)
             result[self.step.options['alias']] = copy.deepcopy(step_info)
+        if 'shared' in self.step.options:
+            try:
+                vars = self.step.options['shared']
+            except Exception as e:
+                raise RuntimeError('Invalid option shared {}: {}'.format(self.step.options['shared'], e))
+            if isinstance(vars, str):
+                vars = [vars]
+            elif not isinstance(vars, Sequence):
+                raise ValueError('Option shared should be one or list of strings. {} provided'.format(var))
+            for var in vars:
+                if var not in env.sos_dict:
+                    raise RuntimeError('Variable {} is not defined to shared.'.format(var))
+                result[var] = env.sos_dict[var]
         return result
 
     def run(self):

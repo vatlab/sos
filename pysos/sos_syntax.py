@@ -30,7 +30,7 @@ SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active']
 SOS_ACTION_OPTIONS = ['workdir', 'docker_image', 'docker_file', 'active']
 
 SOS_DIRECTIVES = ['input', 'output', 'depends', 'task', 'parameter']
-SOS_SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'provides']
+SOS_SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'provides', 'shared']
 
 # Regular expressions for parsing section headers and options
 _SECTION_HEADER_TMPL = r'''
