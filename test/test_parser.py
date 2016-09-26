@@ -332,35 +332,40 @@ parameter: b = list
         wf = script.workflow()
         Sequential_Executor(wf, args=['--b', '5']).prepare()
         self.assertEqual(env.sos_dict['b'], ['5'])
-        # bool
+        # bool required
         script = SoS_Script('''
 # comment
 parameter: b = bool
 [0]
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf, args=['--b', 't']).prepare()
+        Sequential_Executor(wf, args=['--b']).prepare()
         self.assertEqual(env.sos_dict['b'], True)
-        script = SoS_Script('''
-parameter: b = True
-[0]
-''')
-        wf = script.workflow()
-        Sequential_Executor(wf, args=['--b', 'False']).prepare()
+        Sequential_Executor(wf, args=['--no-b']).prepare()
         self.assertEqual(env.sos_dict['b'], False)
+        # bool with default True
         script = SoS_Script('''
 parameter: b = True
 [0]
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf, args=['--b', '1']).prepare()
+        Sequential_Executor(wf, args=[]).prepare()
         self.assertEqual(env.sos_dict['b'], True)
+        Sequential_Executor(wf, args=['--b']).prepare()
+        self.assertEqual(env.sos_dict['b'], True)
+        Sequential_Executor(wf, args=['--no-b']).prepare()
+        self.assertEqual(env.sos_dict['b'], False)
+        # bool with default False
         script = SoS_Script('''
-parameter: b = bool
+parameter: b = False
 [0]
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf, args=['--b', 'no']).prepare()
+        Sequential_Executor(wf, args=[]).prepare()
+        self.assertEqual(env.sos_dict['b'], False)
+        Sequential_Executor(wf, args=['--b']).prepare()
+        self.assertEqual(env.sos_dict['b'], True)
+        Sequential_Executor(wf, args=['--no-b']).prepare()
         self.assertEqual(env.sos_dict['b'], False)
         #
         # parameters are masked by previous definition

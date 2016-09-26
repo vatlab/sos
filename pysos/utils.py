@@ -946,48 +946,6 @@ def _parse_error(msg):
     raise ArgumentError(msg)
 
 
-def str2bool(v):
-    if v.lower() in ('yes', 'true', 't', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', '0'):
-        return False
-    else:
-        raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
-
-def create_parser(key, defvalue):
-    '''Create a parse to parse command line argument key'''
-    parser = argparse.ArgumentParser()
-    parser.register('type', 'bool', str2bool)
-
-    if isinstance(defvalue, type):
-        if defvalue == bool:
-            parser.add_argument('--{}'.format(key), type='bool', required=True, nargs='?')
-        else:
-            # if only a type is specified, it is a required document of required type
-            parser.add_argument('--{}'.format(key), type=str if hasattr(defvalue, '__iter__') else defvalue,
-                help='', required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
-    else:
-        if isinstance(defvalue, bool):
-            parser.add_argument('--{}'.format(key), type='bool',
-                nargs='?', default=defvalue)
-        else:
-            if isinstance(defvalue, str):
-                deftype = str
-            elif isinstance(defvalue, Sequence):
-                if len(defvalue) > 0:
-                    deftype = type(defvalue[0])
-                else:
-                    deftype = str
-            else:
-                deftype = type(defvalue)
-            parser.add_argument('--{}'.format(key), type=deftype,
-                nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
-                default=defvalue)
-    #
-    parser.error = _parse_error
-    return parser
-
-
 def handle_parameter(key, defvalue):
     '''Parse command line arguments and set values to parameters section.
     NOTE: parmeters will not be handled if it is already defined in
@@ -1002,17 +960,57 @@ def handle_parameter(key, defvalue):
             raise ArgumentError('Argument {} of type {} is required'.format(key, defvalue))
         return defvalue
     #
-    parser = create_parser(key, defvalue)
-    parsed, unknown = parser.parse_known_args(env.sos_dict['__args__'])
+    parser = argparse.ArgumentParser()
     # thre is a possibility that users specify --cut-off instead of --cut_off for parameter
     # cut_off. It owuld be nice to allow both.
     #
     # Argparse would produce cut_off for both definition of --cut-off and --cut_off, however
     # you can only use the matching input...
-    if '_' in key and getattr(parsed, key) == defvalue:
-        parser = create_parser(key.replace('_', '-'), defvalue)
-        parsed, unknown = parser.parse_known_args(env.sos_dict['__args__'])
 
+    if isinstance(defvalue, type):
+        if defvalue == bool:
+            feature_parser = parser.add_mutually_exclusive_group(required=True)
+            feature_parser.add_argument('--{}'.format(key), dest=key, action='store_true')
+            feature_parser.add_argument('--no-{}'.format(key), dest=key, action='store_false')
+            if '_' in key:
+                feature_parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, action='store_true')
+                feature_parser.add_argument('--no-{}'.format(key.replace('_', '-')), dest=key, action='store_false')
+        else:
+            # if only a type is specified, it is a required document of required type
+            parser.add_argument('--{}'.format(key), dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
+                help='', required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
+            if '_' in key:
+                parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
+                    help='', required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
+    else:
+        if isinstance(defvalue, bool):
+            feature_parser = parser.add_mutually_exclusive_group(required=False)
+            feature_parser.add_argument('--{}'.format(key), dest=key, action='store_true')
+            feature_parser.add_argument('--no-{}'.format(key), dest=key, action='store_false')
+            if '_' in key:
+                feature_parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, action='store_true')
+                feature_parser.add_argument('--no-{}'.format(key.replace('_', '-')), dest=key, action='store_false')
+            feature_parser.set_defaults(key=defvalue)
+        else:
+            if isinstance(defvalue, str):
+                deftype = str
+            elif isinstance(defvalue, Sequence):
+                if len(defvalue) > 0:
+                    deftype = type(defvalue[0])
+                else:
+                    deftype = str
+            else:
+                deftype = type(defvalue)
+            parser.add_argument('--{}'.format(key), dest=key, type=deftype,
+                nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
+                default=defvalue)
+            if '_' in key:
+                parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, type=deftype,
+                    nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
+                    default=defvalue)
+    #
+    parser.error = _parse_error
+    parsed, unknown = parser.parse_known_args(env.sos_dict['__args__'])
     if '__unknown_args__' not in env.sos_dict:
         env.sos_dict.set('__unknown_args__', unknown)
     else:
