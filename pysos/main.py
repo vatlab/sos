@@ -163,7 +163,10 @@ def cmd_run(args, workflow_args):
         executor = Sequential_Executor(workflow, args=workflow_args, config_file=args.__config__)
         if run_all or args.__inspect__:
             executor.inspect()
-        if run_all or args.__prepare__:
+        # even with the -r option, prepare() can be executed if there are
+        # auxiliary_sections, or if there are targets where a DAG is required
+        # Issue #213
+        if run_all or args.__prepare__ or args._targets__ or executor.workflow.auxiliary_sections:
             dag = executor.prepare(args.__targets__)
         else:
             dag = None
