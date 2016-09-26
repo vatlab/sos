@@ -206,11 +206,11 @@ string """
         #    args=['--not_exist'])
         #self.assertRaises(ArgumentError, Sequential_Executor(wf).run,
         #    args=['--par1', 'a', 'b'])
-        # 
+        #
         script = SoS_Script('''
 parameter: a = [1, 2]
 [0]
-''')    
+''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run(dag)
@@ -227,7 +227,7 @@ parameter: a = [1, 2]
 # comment
 parameter: a = ['a.txt', 'b.txt']
 [0]
-''')    
+''')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run(dag)
@@ -370,14 +370,19 @@ a = 4
 parameter: a = 5
 ''')
         wf = script.workflow()
-        env.verbosity = 4
         Sequential_Executor(wf, args=['--a', 7]).prepare()
         self.assertEqual(env.sos_dict['a'], 4)
-        #script = SoS_Script('''
-#[0]
-#''')
-        #wf = script.workflow()
-        #self.assertRaises(ArgumentError, Sequential_Executor(wf, args=['--b', 'file']).prepare)
+        #
+        # test parameters with dash
+        script = SoS_Script('''
+parameter: a_b = 5
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf, args=['--a_b', '10']).prepare()
+        self.assertEqual(env.sos_dict['a_b'], 10)
+        Sequential_Executor(wf, args=['--a-b', '10']).prepare()
+        self.assertEqual(env.sos_dict['a_b'], 10)
+
 
     def testSectionVariables(self):
         '''Test variables in sections'''
@@ -412,7 +417,7 @@ input: 'filename',
 
 filename4,
 opt1=value
-output: 
+output:
     blah
 
 depends:
@@ -437,7 +442,7 @@ input: 'filename'  filename2
         # can be after action
         SoS_Script('''
 [0]
-func()        
+func()
 input: 'filename',  'filename2', opt=value==1
 ''')
         # assignments between directives are allowed
@@ -497,7 +502,7 @@ python3:
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run(dag)
-        # with section head in the script, 
+        # with section head in the script,
         # this will not work even if the embedded
         # python script is perfectly valid.
         self.assertRaises(ParsingError, SoS_Script, '''
@@ -627,7 +632,7 @@ executed.append(_input)
 ''')
         wf = script.workflow()
         Sequential_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt'], ['a1.txt', 'a3.txt'], 
+        self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt'], ['a1.txt', 'a3.txt'],
             ['a1.txt', 'a4.txt'], ['a2.txt', 'a3.txt'], ['a2.txt', 'a4.txt'], ['a3.txt', 'a4.txt']])
         # group_by chunks specified as integers
         script = SoS_Script('''
@@ -692,7 +697,7 @@ executed.append(_input)
             """
 [0]
 func('''
-multiline 
+multiline
 string''', with_option=1
 )
 """)
@@ -790,7 +795,7 @@ executed.append(step_name)
         #
         wf = script.workflow('a_ 1-2 + a_4 + b_3-')
         Sequential_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['executed'], ['a_1', 'a_2', 'a_4', 
+        self.assertEqual(env.sos_dict['executed'], ['a_1', 'a_2', 'a_4',
             'b_3', 'b_4'])
         #
         wf = script.workflow('a+c+d')
@@ -799,8 +804,8 @@ executed.append(step_name)
 
     def testNestedWorkflow(self):
         '''Test the creation and execution of combined workfow'''
-        env.shared_vars = ['executed', 'inputs']
         self.touch(['a.txt', 'b.txt', 'b.begin'])
+        env.shared_vars = ['executed', 'inputs']
         script = SoS_Script('''
 if 'executed' not in locals():
     executed = []
@@ -1094,7 +1099,7 @@ sos_run('k.A')
     # List of items that we sell
     Fruits: [ "apple", "banana", "pear" ],
     Price: 1.05
-}            
+}
 ''')
         with open('config.sos', 'w') as sos:
             sos.write('''

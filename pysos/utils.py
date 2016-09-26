@@ -1005,24 +1005,12 @@ def str2bool(v):
     else:
         raise ArgumentError('Invalid value for bool argument "{}" (only yes,no,true,false,t,f,0,1 are allowed)'.format(v))
 
-def handle_parameter(key, defvalue):
-    '''Parse command line arguments and set values to parameters section.
-    NOTE: parmeters will not be handled if it is already defined in
-    the environment. This makes the parameters variable.
-    '''
-
-    if key in env.sos_dict:
-        env.logger.debug('Parameter {} takes default value because it already exists.'.format(key))
-        return env.sos_dict[key]
-
-    if not env.sos_dict['__args__']:
-        if isinstance(defvalue, type):
-            raise ArgumentError('Argument {} of type {} is required'.format(key, defvalue))
-        return defvalue
-
+def create_parser(key, defvalue):
+    '''Create a parse to parse command line argument key'''
     parser = argparse.ArgumentParser()
     parser.register('type', 'bool', str2bool)
     arguments = {}
+
     if isinstance(defvalue, type):
         if defvalue == bool:
             parser.add_argument('--{}'.format(key), type='bool', required=True, nargs='?')
@@ -1049,8 +1037,34 @@ def handle_parameter(key, defvalue):
                 default=defvalue)
     #
     parser.error = _parse_error
+    return parser
+
+
+def handle_parameter(key, defvalue):
+    '''Parse command line arguments and set values to parameters section.
+    NOTE: parmeters will not be handled if it is already defined in
+    the environment. This makes the parameters variable.
+    '''
+    if key in env.sos_dict:
+        env.logger.debug('Parameter {} takes default value because it already exists.'.format(key))
+        return env.sos_dict[key]
+
+    if not env.sos_dict['__args__']:
+        if isinstance(defvalue, type):
+            raise ArgumentError('Argument {} of type {} is required'.format(key, defvalue))
+        return defvalue
     #
+    parser = create_parser(key, defvalue)
     parsed, unknown = parser.parse_known_args(env.sos_dict['__args__'])
+    # thre is a possibility that users specify --cut-off instead of --cut_off for parameter
+    # cut_off. It owuld be nice to allow both.
+    #
+    # Argparse would produce cut_off for both definition of --cut-off and --cut_off, however
+    # you can only use the matching input...
+    if '_' in key and getattr(parsed, key) == defvalue:
+        parser = create_parser(key.replace('_', '-'), defvalue)
+        parsed, unknown = parser.parse_known_args(env.sos_dict['__args__'])
+
     if '__unknown_args__' not in env.sos_dict:
         env.sos_dict.set('__unknown_args__', unknown)
     else:
