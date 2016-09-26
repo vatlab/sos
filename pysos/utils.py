@@ -977,10 +977,14 @@ def handle_parameter(key, defvalue):
                 feature_parser.add_argument('--no-{}'.format(key.replace('_', '-')), dest=key, action='store_false')
         else:
             # if only a type is specified, it is a required document of required type
-            parser.add_argument('--{}'.format(key), dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
-                help='', required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
             if '_' in key:
-                parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
+                feature_parser = parser.add_mutually_exclusive_group(required=True)
+                feature_parser.add_argument('--{}'.format(key), dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
+                    help='', nargs='+' if hasattr(defvalue, '__iter__') else '?')
+                feature_parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
+                    help='', nargs='+' if hasattr(defvalue, '__iter__') else '?')
+            else:
+                parser.add_argument('--{}'.format(key), dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
                     help='', required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
     else:
         if isinstance(defvalue, bool):
@@ -1001,11 +1005,16 @@ def handle_parameter(key, defvalue):
                     deftype = str
             else:
                 deftype = type(defvalue)
-            parser.add_argument('--{}'.format(key), dest=key, type=deftype,
-                nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
-                default=defvalue)
             if '_' in key:
-                parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, type=deftype,
+                feature_parser = parser.add_mutually_exclusive_group(required=False)
+                feature_parser.add_argument('--{}'.format(key), dest=key, type=deftype,
+                    nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
+                    default=defvalue)
+                feature_parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, type=deftype,
+                    nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
+                    default=defvalue)
+            else:
+                parser.add_argument('--{}'.format(key), dest=key, type=deftype,
                     nargs='*' if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else '?',
                     default=defvalue)
     #

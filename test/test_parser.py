@@ -386,6 +386,16 @@ parameter: a_b = 5
         self.assertEqual(env.sos_dict['a_b'], 10)
         Sequential_Executor(wf, args=['--a-b', '10']).prepare()
         self.assertEqual(env.sos_dict['a_b'], 10)
+        #
+        #
+        script = SoS_Script('''
+parameter: a_b = int
+''')
+        wf = script.workflow()
+        Sequential_Executor(wf, args=['--a_b', '10']).prepare()
+        self.assertEqual(env.sos_dict['a_b'], 10)
+        Sequential_Executor(wf, args=['--a-b', '10']).prepare()
+        self.assertEqual(env.sos_dict['a_b'], 10)
 
 
     def testSectionVariables(self):
