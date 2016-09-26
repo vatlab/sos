@@ -186,6 +186,7 @@ class Base_Executor:
         #
         if self.new_dict:
             env.sos_dict.set('__step_output__', None)
+
         dag = SoS_DAG()
         for idx, section in enumerate(self.workflow.sections):
             if self.skip(section):

@@ -209,7 +209,7 @@ class WorkflowDict(object):
         '''Set value to key, trigger logging and warning messages if needed'''
         if env.verbosity > 2:
             self._log(key, value)
-        if env.run_mode == 'inspect':
+        if env.run_mode == 'prepare':
             self._warn(key, value)
         if key in ('input', 'output', 'depends', '_input', '_output', '_depends', '_runtime'):
             raise ValueError('Variable {} can only be set by SoS'.format(key))
