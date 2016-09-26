@@ -43,7 +43,7 @@ __all__ = []
 
 
 class ExecuteError(Error):
-    '''Raised when there are errors in inspect mode. Such errors are not raised
+    '''Raised when there are errors in prepare mode. Such errors are not raised
     immediately, but will be collected and raised at the end'''
     def __init__(self, workflow):
         Error.__init__(self, 'SoS workflow contains errors: %s' % workflow)
@@ -112,11 +112,11 @@ class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
     # some function to behave differently in different modes.
     #
-    def __init__(self, step, inspect_or_prepare=False):
+    def __init__(self, step, prepare_mode=False):
         self.step = step
         self.step_signature = self.get_step_signature()
         self.step_id = textMD5(self.step_signature)
-        self.inspect_or_prepare = inspect_or_prepare
+        self.prepare_mode = prepare_mode
 
     #
     # The following functions should be redefined in an executor
@@ -580,7 +580,7 @@ class Base_Step_Executor:
                                         ofiles = res['output']
                                         skip_index = True
                                 elif env.sig_mode == 'assert':
-                                    if not self.inspect_or_prepare and not signatures[idx].validate():
+                                    if not self.prepare_mode and not signatures[idx].validate():
                                         raise RuntimeError('Signature mismatch.')
                                 elif env.sig_mode == 'construct':
                                     if signatures[idx].write():
@@ -619,8 +619,8 @@ class Base_Step_Executor:
                 skip_index = False
                 continue
             # finally, tasks..
-            # inspect_or_prepare is set by step_executors that ignores task (e.g. Inspect and Prepare)
-            if not self.step.task or self.inspect_or_prepare:
+            # prepare_mode is set by step_executors that ignores task (e.g. Prepare)
+            if not self.step.task or self.prepare_mode:
                 continue
 
             # check if the task is active
@@ -705,7 +705,7 @@ class Base_Step_Executor:
         for sig in signatures:
             if sig is not None:
                 # signature write can fail for various reasons, for example when files are
-                # not available in inspection mode.
+                # not available in prepare mode.
                 sig.write()
         self.log('output')
         self.verify_output()
@@ -714,8 +714,8 @@ class Base_Step_Executor:
 class Queued_Step_Executor(Base_Step_Executor):
     # this class execute the step in a separate process
     # and returns result using a queue
-    def __init__(self, step, queue, inspect_or_prepare):
-        Base_Step_Executor.__init__(self, step, inspect_or_prepare)
+    def __init__(self, step, queue, prepare_mode):
+        Base_Step_Executor.__init__(self, step, prepare_mode)
         self.queue = queue
 
     def run(self):
@@ -774,41 +774,10 @@ def _expand_file_list(ignore_unknown, *args):
                 tmp.extend(expanded)
     return tmp
 
-class Inspect_Step_Executor(Queued_Step_Executor):
-    def __init__(self, step, queue):
-        Queued_Step_Executor.__init__(self, step, queue, inspect_or_prepare=True)
-
-    def expand_input_files(self, value, *args):
-        if any(isinstance(x, dynamic) for x in args):
-            return Undetermined(value)
-        # if unspecified, use __step_output__ as input (default)
-        if not args:
-            return env.sos_dict['input']
-        else:
-            return _expand_file_list(True, *args)
-
-    def expand_depends_files(self, *args):
-        '''handle directive depends'''
-        if any(isinstance(x, dynamic) for x in args):
-            return Undetermined()
-        else:
-            return _expand_file_list(True, *args)
-
-    def log(self, stage, msg=None):
-        if stage == 'start':
-            env.logger.trace('Inspecting ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
-        elif stage == 'input statement':
-            env.logger.trace('Processing input statement ``{}``'.format(msg))
-        elif stage == 'input':
-            env.logger.debug('input: ``{}``'.format(short_repr(env.sos_dict['input'], noneAsNA=True)))
-        elif stage == '_input':
-            env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'], noneAsNA=True)))
-
-
 class Prepare_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
         env.run_mode = 'prepare'
-        Queued_Step_Executor.__init__(self, step, queue, inspect_or_prepare=True)
+        Queued_Step_Executor.__init__(self, step, queue, prepare_mode=True)
 
     def expand_input_files(self, value, *args):
         if any(isinstance(x, dynamic) for x in args):
@@ -833,7 +802,7 @@ class Prepare_Step_Executor(Queued_Step_Executor):
 class Run_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
         env.run_mode = 'run'
-        Queued_Step_Executor.__init__(self, step, queue, inspect_or_prepare=False)
+        Queued_Step_Executor.__init__(self, step, queue, prepare_mode=False)
 
     def log(self, stage=None, msg=None):
         if stage == 'start':
@@ -892,7 +861,7 @@ class Run_Step_Executor(Queued_Step_Executor):
 class Interactive_Step_Executor(Base_Step_Executor):
     def __init__(self, step):
         env.run_mode = 'interactive'
-        Base_Step_Executor.__init__(self, step, inspect_or_prepare=False)
+        Base_Step_Executor.__init__(self, step, prepare_mode=False)
     
     def expand_input_files(self, value, *args):
         # We ignore 'dynamic' option in run mode
