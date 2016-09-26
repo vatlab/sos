@@ -585,6 +585,11 @@ class Base_Step_Executor:
                                 elif env.sig_mode == 'construct':
                                     if signatures[idx].write():
                                         skip_index = True
+                            #
+                            if not isinstance(g, Undetermined) and not isinstance(ofiles, Undetermined):
+                                if any(x in g for x in ofiles):
+                                    raise RuntimeError('Overlapping input and output files: {}'
+                                        .format(', '.join(x for x in ofiles if x in g)))
                             # set variable _output and output
                             self.process_output_args(ofiles, **kwargs)
                             if skip_index:
