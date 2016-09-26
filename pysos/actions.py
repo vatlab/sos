@@ -512,7 +512,13 @@ def sos_run(workflow):
         return Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
     elif env.run_mode == 'run':
         env.logger.info('Executing nested workflow {}'.format(workflow))
-        return Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).run()
+        #
+        # NOTE: Because at run mode we do not really have the DAG (which might have
+        # been changed and need to be re-prepared) so it is necessary to prepare
+        # the workflow at run mode.
+        #
+        dag = Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
+        return Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).run(dag)
     elif env.run_mode == 'interactive':
         raise RuntimeError('Action sos_run is not supported in interactive mode')
 

@@ -314,7 +314,7 @@ class Base_Executor:
         if targets:
             dag = dag.subgraph_from(targets)
         # write DAG for debugging purposes
-        dag.write_dot(os.path.join(env.exec_dir, '.sos', 'dag.dot'))
+        dag.write_dot(os.path.join(env.exec_dir, '.sos', '{}.dot'.format(self.workflow.name)))
         # check error
         cycle = dag.circular_dependencies()
         if cycle:

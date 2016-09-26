@@ -396,7 +396,7 @@ output: 'A.txt'
         for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             FileTarget(f).remove('both')
         #
-        #  A1 <- B1 <- B2 <- B3 
+        #  A1 <- B1 <- B2 <- B3
         #   |
         #   |
         #  \/
@@ -481,14 +481,14 @@ A_1 -> A_2;
             t = FileTarget(f)
             self.assertTrue(t.exists())
             t.remove('both')
-    
+
     def testTarget(self):
         '''Test executing only part of a workflow.'''
         #
         for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             FileTarget(f).remove('both')
         #
-        #  A1 <- B1 <- B2 <- B3 
+        #  A1 <- B1 <- B2 <- B3
         #   |
         #   |
         #  \/
@@ -606,7 +606,7 @@ strict digraph "" {
             t = FileTarget(f)
             self.assertTrue(t.exists())
             t.remove('both')
-        # 
+        #
         # test 3, generate two separate trees
         #
         dag = Sequential_Executor(wf).prepare(targets=['B3.txt', 'C2.txt'])
@@ -636,7 +636,7 @@ strict digraph "" {
         #
         #  A1 <- P <- B1
         #  A1 <- P <- B2
-        #  A2  
+        #  A2
         #
         script = SoS_Script('''
 [A_1]
@@ -734,6 +734,51 @@ A_2;
         Sequential_Executor(wf).run(dag)
         self.assertLess(time.time() - st, 4)
         for f in ['A1.txt', 'B2.txt', 'A2.txt']:
+            FileTarget(f).remove('both')
+
+
+    def testDynamicNestedWorkflow(self):
+        #
+        # Because we are not sure which workflows would be executed
+        # until run time, the DAG should not contain nested workflow
+        # until runtime.
+        #
+        for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
+            FileTarget(f).remove('both')
+        #
+        #  A1 <- P <- B
+        #  A1 <- P <- B
+        #  A2
+        #
+        #  ALL calls A and B with parameter
+        #
+        script = SoS_Script('''
+[A_1]
+parameter: num = 2
+input: 'B${num}.txt.p'
+
+[B: provides='B{num}.txt']
+sh:
+    touch 'B${num}.txt'
+
+[P: provides='{filename}.p']
+input: filename
+sh:
+    touch ${output}
+
+[ALL]
+
+for num in range(3):
+    sos_run('A')
+
+
+''')
+        # the workflow should call step K for step C_2, but not C_3
+        wf = script.workflow('ALL')
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
+        for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
+            self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')
 
 
