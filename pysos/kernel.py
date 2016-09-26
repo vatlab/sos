@@ -238,7 +238,7 @@ def from_R_repr(expr):
         }
         return eval('dict({})'.format(text), convert_funcs)
     except Exception as e:
-        raise UsageError('Failed to convert {} to Python object'.format(expr))
+        raise UsageError('Failed to convert {} to Python object: {}'.format(expr, e))
 
 def python2R(name):
     #
@@ -250,7 +250,7 @@ def python2R(name):
     try:
         return '{} <- {}'.format(name, R_repr(env.sos_dict[name]))
     except Exception as e:
-        raise UsageError('Failed to convert variable {} to R: {}'.format(name))
+        raise UsageError('Failed to convert variable {} to R: {}'.format(name, e))
 
 
 class SoS_Kernel(Kernel):
@@ -519,7 +519,7 @@ class SoS_Kernel(Kernel):
         if self.kernel == 'python':
             # if it is a python kernel, passing specified SoS variables to it
             self.KC.execute('import pickle\npickle.dumps({{ {} }})'.format(','.join('"{0}":{0}'.format(x) for x in items)),
-                silent=False, store_history=not store_history)
+                silent=False, store_history=False)
             # first thing is wait for any side effects (output, stdin, etc.)
             _execution_state = "busy"
             while _execution_state != 'idle':
@@ -600,7 +600,7 @@ class SoS_Kernel(Kernel):
                 out, err = p.communicate()
                 sys.stdout.write(out.decode())
                 sys.stderr.write(err.decode())
-                ret = p.returncode
+                # ret = p.returncode
                 sys.stderr.flush()
                 sys.stdout.flush()
             except Exception as e:
@@ -729,7 +729,7 @@ class SoS_Kernel(Kernel):
         if code.startswith('%dict'):
             # %dict should be the last magic
             options, remaining_code = self.get_magic_and_code(code, True)
-            res = self.handle_magic_dict(options)
+            self.handle_magic_dict(options)
             return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
         elif code.startswith('%connect_info'):
             options, remaining_code = self.get_magic_and_code(code, False)

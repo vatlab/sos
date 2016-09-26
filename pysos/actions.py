@@ -45,9 +45,7 @@ from docker import Client
 from collections.abc import Sequence
 from docker.utils import kwargs_from_env
 import multiprocessing as mp
-import pygments.token as token
-from pygments.lexers import get_lexer_for_filename, guess_lexer
-from .utils import env, ProgressBar, short_repr, natural_keys, transcribe, AbortExecution
+from .utils import env, ProgressBar, natural_keys, transcribe, AbortExecution
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .target import FileTarget, fileMD5

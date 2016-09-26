@@ -526,11 +526,6 @@ class AbortExecution(Error):
     def __init__(self, msg):
         Error.__init__(self, msg)
 
-class AbortExecution(Error):
-    '''Abort a step and continue'''
-    def __init__(self, msg):
-        Error.__init__(self, msg)
-
 def get_traceback():
     output = StringIO()
     exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -1009,7 +1004,6 @@ def create_parser(key, defvalue):
     '''Create a parse to parse command line argument key'''
     parser = argparse.ArgumentParser()
     parser.register('type', 'bool', str2bool)
-    arguments = {}
 
     if isinstance(defvalue, type):
         if defvalue == bool:

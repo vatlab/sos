@@ -103,7 +103,7 @@ def cmd_inspect(args, workflow_args):
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
-        executor = Base_Executor(workflow, args=workflow_args, config_file=args.__config__)
+        Base_Executor(workflow, args=workflow_args, config_file=args.__config__)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())

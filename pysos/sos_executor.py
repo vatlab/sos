@@ -22,22 +22,19 @@
 import os
 import sys
 import yaml
-import glob
 import shlex
-import shutil
 import argparse
 import time
 
 import multiprocessing as mp
-from multiprocessing.pool import AsyncResult
 from queue import Empty
 
 from . import __version__
 from .sos_step import Prepare_Step_Executor, Run_Step_Executor, Interactive_Step_Executor
 from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, \
-    frozendict, natural_keys, dict_merge, ArgumentError
-from .sos_eval import Undetermined, SoS_eval, SoS_exec
-from .sos_script import SoS_Script, SoS_Step, SoS_ScriptContent
+    frozendict, dict_merge
+from .sos_eval import Undetermined, SoS_exec
+from .sos_script import SoS_Script
 from .sos_syntax import SOS_SECTION_HEADER
 from .dag import SoS_DAG
 from .target import BaseTarget, FileTarget
@@ -493,11 +490,11 @@ class Interactive_Executor(Base_Executor):
             self.workflow = script.workflow(args.workflow)
 
             if args.__rerun__:
-                sig_mode = 'ignore'
+                env.sig_mode = 'ignore'
             elif args.__construct__:
-                sig_mode = 'construct'
+                env.sig_mode = 'construct'
             else:
-                sig_mode = 'default'
+                env.sig_mode = 'default'
 
             #if os.path.isfile(args.__report__):
             #    os.remove(args.__report__)

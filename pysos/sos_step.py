@@ -29,7 +29,6 @@ import multiprocessing as mp
 from multiprocessing.pool import AsyncResult
 
 from collections.abc import Sequence, Iterable
-from collections import OrderedDict
 from itertools import tee, combinations
 
 from .utils import env, Error, AbortExecution, short_repr, get_traceback, pickleable, transcribe

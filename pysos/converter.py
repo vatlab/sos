@@ -978,7 +978,7 @@ def add_cell(cells, content, cell_type, cell_count):
         cell_type = 'code'
     #
     if cell_type == 'markdown':
-        cells.append(new_markdown_cell(source=''.join([x[3:] for x in md]),
+        cells.append(new_markdown_cell(source=''.join([x[3:] for x in content]),
             execution_count=cell_count))
     else:
         cells.append(
@@ -1007,7 +1007,7 @@ def script_to_notebook(script_file, notebook_file):
                         raise RuntimeError('{} is not a SoS script according to #fileformat line.'.format(script_file))
                     continue
 
-            fist_block = False
+            first_block = False
 
             mo = CELL_LINE.match(line)
             if mo:

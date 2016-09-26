@@ -28,7 +28,6 @@ import shutil
 
 from io import StringIO
 from collections import defaultdict
-from collections.abc import Sequence
 from uuid import uuid4
 
 from .utils import env, Error, dehtml, locate_script, text_repr
