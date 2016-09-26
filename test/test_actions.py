@@ -852,5 +852,26 @@ run: run_mode='prepare'
         self.assertTrue(os.path.isfile('a.txt'))
         FileTarget('a.txt').remove('both')
 
+    def testSoSRun(self):
+        '''Test action sos_run with keyword parameters'''
+        for f in ['0.txt', '1.txt']:
+            FileTarget(f).remove('both')
+        script = SoS_Script(r'''
+[A]
+parameter: num=5
+sh:
+    touch ${num}.txt
+
+[batch]
+for k in range(2):
+    sos_run('A', num=k)
+''')
+        env.verbosity=3
+        wf = script.workflow('batch')
+        Sequential_Executor(wf).run()
+        for f in ['0.txt', '1.txt']:
+            self.assertTrue(FileTarget(f).exists())
+            FileTarget(f).remove('both')
+
 if __name__ == '__main__':
     unittest.main()

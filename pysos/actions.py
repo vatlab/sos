@@ -484,7 +484,7 @@ class SoS_ExecuteScript:
 
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def sos_run(workflow):
+def sos_run(workflow, **kwargs):
     '''Execute a workflow from specified source, input, and output
     By default the workflow is defined in the existing SoS script, but
     extra sos files can be specified from paramter source. The workflow
@@ -497,6 +497,8 @@ def sos_run(workflow):
     if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections]:
         raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
     # for nested workflow, _input would becomes the input of workflow.
+    for k,v in kwargs.items():
+        env.sos_dict.set(k, v)
     env.sos_dict.set('__step_output__', copy.deepcopy(env.sos_dict['_input']))
     if env.run_mode == 'prepare':
         env.logger.debug('Preparing nested workflow {}'.format(workflow))
