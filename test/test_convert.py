@@ -23,12 +23,11 @@
 import os
 import unittest
 import shutil
-import subprocess
 
 from pysos.utils import env
-from pysos.sos_script import SoS_Script, ParsingError
-from pysos.converter import script_to_html, script_to_markdown, script_to_term, script_to_notebook, \
-    workflow_to_html, workflow_to_markdown, workflow_to_term, workflow_to_notebook, notebook_to_script
+from pysos.sos_script import SoS_Script
+from pysos.converter import script_to_html, script_to_markdown, script_to_notebook, \
+    workflow_to_html, workflow_to_markdown, workflow_to_notebook, notebook_to_script
 
 class TestConvert(unittest.TestCase):
     def setUp(self):
@@ -65,14 +64,14 @@ report('this is action report')
         '''Test sos show script --html'''
         for script_file in self.scripts:
             with open('temp/test.transcript', 'w') as transcript:
-                script = SoS_Script(filename=script_file, transcript=transcript)
+                SoS_Script(filename=script_file, transcript=transcript)
             script_to_html('temp/test.transcript', script_file, script_file + '.html', [])
     
     def testScriptToMarkdown(self):
         '''Test sos show script --markdown'''
         for script_file in self.scripts:
             with open('temp/test.transcript', 'w') as transcript:
-                script = SoS_Script(filename=script_file, transcript=transcript)
+                SoS_Script(filename=script_file, transcript=transcript)
             script_to_markdown('temp/test.transcript', script_file, script_file + '.md')
 
     def testScriptToAndFromNotebook(self):

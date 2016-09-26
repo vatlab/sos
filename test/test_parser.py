@@ -22,12 +22,11 @@
 
 import os
 import unittest
-import shutil
 import subprocess
 
-from pysos.utils import env
+from pysos.utils import env, ArgumentError
 from pysos.sos_script import SoS_Script, ParsingError
-from pysos.sos_executor import Sequential_Executor, ArgumentError, ExecuteError
+from pysos.sos_executor import Sequential_Executor, ExecuteError
 from pysos.target import FileTarget
 
 class TestParser(unittest.TestCase):
@@ -1239,7 +1238,7 @@ res1 = g
 
     def testCell(self):
         '''Test ignoring %cell'''
-        script = SoS_Script('''
+        SoS_Script('''
 %cell 1
 [step ]
 a = 1

@@ -23,21 +23,13 @@
 
 import os
 import time
-import glob
 import unittest
-import shutil
 from io import StringIO
 
 from pysos import SoS_Script
-from pysos.dag import SoS_DAG
 from pysos.utils import env
-from pysos.sos_eval import Undetermined
-from pysos.sos_executor import Sequential_Executor, Interactive_Executor, ExecuteError
-from pysos.sos_script import ParsingError
+from pysos.sos_executor import Sequential_Executor
 from pysos.signature import FileTarget
-
-
-import matplotlib.pyplot as plt
 
 
 class TestDAG(unittest.TestCase):

@@ -33,7 +33,6 @@ import collections
 import traceback
 import pickle
 import yaml
-import signal
 import psutil
 import urllib
 import argparse
@@ -45,13 +44,8 @@ except:
     pass
 import subprocess
 import threading
-try:
-    import _thread
-except:
-    import _dummy_thread as _thread
 from io import StringIO
 from html.parser import HTMLParser
-from contextlib import contextmanager
 
 __all__ = ['logger', 'get_output', 'handle_parameter']
 
@@ -940,51 +934,11 @@ class DelayedAction:
     def __del__(self):
         self.timer.cancel()
 
-
-
-class TimeoutException(Exception):
-    def __init__(self, msg=''):
-        self.msg = msg
-
-@contextmanager
-def time_limit(seconds, msg=''):
-    if sys.platform == 'win32':
-        # windows system does not have signal SIGALARM so we will
-        # have to use a timer approach, which does not work as well
-        # as the signal approach
-        def timeout_func():
-            #env.logger.error('Timed out for operation {}'.format(msg))
-            _thread.interrupt_main()
-
-        timer = threading.Timer(seconds, timeout_func)
-        timer.start()
-        try:
-            yield
-        except KeyboardInterrupt:
-            # important: KeyboardInterrupt does not interrupt time.sleep()
-            # because KeyboardInterrupt is handled by Python interpreter but
-            # time.sleep() calls a system function.
-            raise TimeoutException("Timed out for operation {}".format(msg))
-        finally:
-            # if the action ends in specified time, timer is canceled
-            timer.cancel()
-    else:
-        def signal_handler(signum, frame):
-            raise TimeoutException("Timed out for option {}".format(msg))
-        signal.signal(signal.SIGALRM, signal_handler)
-        signal.alarm(seconds)
-        try:
-            yield
-        finally:
-            signal.alarm(0)
-
-
 class ArgumentError(Error):
     """Raised when an invalid argument is passed."""
     def __init__(self, msg):
         Error.__init__(self, msg)
         self.args = (msg, )
-
 
 def _parse_error(msg):
     '''This function will replace error() function in argparse module so that SoS

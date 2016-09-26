@@ -688,45 +688,6 @@ check_command('a4')
         except Exception as e:
             self.assertEqual(len(e.errors), 6)
 
-
-    def testInspectTimeout(self):
-        '''Test if any action should exit in five seconds in prepare mode'''
-        sos_config_file = 'config.yaml'
-        move_back = False
-        if os.path.isfile(sos_config_file):
-            move_back = True
-            os.rename(sos_config_file, sos_config_file + '.bak')
-        script = SoS_Script('''
-[0]
-import time
-time.sleep(8)
-
-''')
-        wf = script.workflow()
-        #
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
-        #
-        # now, if I have a configuration file, the default value can be changed
-        if not os.path.isdir(os.path.expanduser('.sos')):
-            os.mkdir(os.path.expanduser('.sos'))
-        with open(sos_config_file, 'w') as sos_config:
-            sos_config.write('''
-#
-# global sos configuration file
-#
-{
-    "sos_prepare_timeout": 10
-}
-''')
-        # now we can rerun the script, and it should pass
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
-        # clean up
-        if move_back:
-            os.rename(sos_config_file + '.bak', sos_config_file)
-        else:
-            os.remove(sos_config_file)
-
     def testSearchPath(self):
         '''Test if any action should exit in five seconds in prepare mode'''
         sos_config_file = 'config.yaml'
@@ -978,7 +939,7 @@ bash('echo "A"')
 input: 
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).prepare()
 
     def testDuplicateIOFiles(self):
         '''Test interpretation of duplicate input/output/depends'''

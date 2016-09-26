@@ -28,7 +28,7 @@ from io import StringIO
 from shlex import quote
 from tokenize import generate_tokens, untokenize
 
-from .utils import env, Error, short_repr, DelayedAction, time_limit, AbortExecution
+from .utils import env, Error, short_repr, DelayedAction, AbortExecution
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
@@ -307,12 +307,7 @@ def SoS_eval(expr, sigil='${ }'):
     interpolate expressions) strings.'''
     expr = ConvertString(expr, sigil)
     try:
-        if env.run_mode == 'prepare':
-            # make sure that the expression can be completed in 5 seconds
-            with time_limit(env.sos_dict['CONFIG'].get('sos_prepare_timeout', 5), expr):
-                return eval(expr, env.sos_dict._dict)
-        else:
-            return eval(expr, env.sos_dict._dict)
+        return eval(expr, env.sos_dict._dict)
     except Exception as e:
         if env.run_mode not in ['run', 'interactive']:
             env.sos_dict['__execute_errors__'].append(expr, e)
@@ -391,14 +386,7 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
                 act = DelayedAction(env.logger.warning, 'Running {}'.format(short_repr(code)))
             else:
                 act = None
-            if env.run_mode == 'prepare':
-                # make sure that the expression can be completed in 5 seconds
-                with time_limit(env.sos_dict['CONFIG'].get('sos_prepare_timeout', 5), stmts):
-                    if idx + 1 == len(code_group) and _is_expr(stmts):
-                        res = eval(stmts, _dict)
-                    else:
-                        exec(stmts, _dict)
-            elif idx + 1 == len(code_group) and _is_expr(stmts):
+            if idx + 1 == len(code_group) and _is_expr(stmts):
                 res = eval(stmts, _dict)
             else:
                 exec(stmts, _dict)

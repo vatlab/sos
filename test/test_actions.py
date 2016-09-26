@@ -28,9 +28,17 @@ import os
 import unittest
 import time
 import shutil
+import signal
+import sys
+import threading
+try:
+    import _thread
+except:
+    import _dummy_thread as _thread
+from contextlib import contextmanager
 
 from pysos import SoS_Script
-from pysos.utils import env, TimeoutException, time_limit
+from pysos.utils import env
 from pysos.sos_eval import  Undetermined
 from pysos.sos_executor import ExecuteError
 from pysos.actions import DockerClient
@@ -50,6 +58,43 @@ def internet_on(host='8.8.8.8', port=53, timeout=3):
         return False
 
 with_network = internet_on()
+
+class TimeoutException(Exception):
+    def __init__(self, msg=''):
+        self.msg = msg
+
+@contextmanager
+def time_limit(seconds, msg=''):
+    if sys.platform == 'win32':
+        # windows system does not have signal SIGALARM so we will
+        # have to use a timer approach, which does not work as well
+        # as the signal approach
+        def timeout_func():
+            #env.logger.error('Timed out for operation {}'.format(msg))
+            _thread.interrupt_main()
+
+        timer = threading.Timer(seconds, timeout_func)
+        timer.start()
+        try:
+            yield
+        except KeyboardInterrupt:
+            # important: KeyboardInterrupt does not interrupt time.sleep()
+            # because KeyboardInterrupt is handled by Python interpreter but
+            # time.sleep() calls a system function.
+            raise TimeoutException("Timed out for operation {}".format(msg))
+        finally:
+            # if the action ends in specified time, timer is canceled
+            timer.cancel()
+    else:
+        def signal_handler(signum, frame):
+            raise TimeoutException("Timed out for option {}".format(msg))
+        signal.signal(signal.SIGALRM, signal_handler)
+        signal.alarm(seconds)
+        try:
+            yield
+        finally:
+            signal.alarm(0)
+
 
 try:
     with time_limit(2, 'check docker daemon'):
@@ -134,24 +179,6 @@ ret = get_output('cat -h')
         wf = script.workflow()
         # this should give a warning and return false
         self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
-        #
-        # check get_output if the command is stuck
-        script = SoS_Script(r"""
-[0]
-get_output('sleep 6')
-""")
-        wf = script.workflow()
-        # this should yield error
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).prepare)
-        # even for weird commands such as cat > /dev/null, it should quite
-        # in prepare mode
-        script = SoS_Script(r"""
-[0]
-get_output('cat > /dev/null')
-""")
-        wf = script.workflow()
-        # this should pass
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
 
     def testCheckCommand(self):
         '''Test action check_command'''
@@ -223,15 +250,7 @@ check_command('cat test_actions.py', 'testSearchOutput')
         wf = script.workflow()
         dag = Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run(dag)
-        # even for weird commands such as cat > /dev/null, it should quite
-        # in prepare mode
-        script = SoS_Script(r"""
-[0]
-check_command('cat > /dev/null')
-""")
-        wf = script.workflow()
-        # this should pass
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
+
 
     def testFailIf(self):
         '''Test action fail if'''
@@ -364,7 +383,7 @@ echo 'Echo
         self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
         #
         # this should give us a warning if RAM is less than 4G
-        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).prepare()
 
 
     def testCsh(self):
@@ -723,7 +742,7 @@ download(['http://bioinformatics.mdanderson.org/Software/VariantTools/repository
     dest_dir='tmp', decompress=True)
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('tmp/snapshot.proj'))
         self.assertTrue(os.path.isfile('tmp/snapshot_genotype.DB'))
         #
@@ -735,7 +754,7 @@ download: dest_file='tmp/test.ann'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('tmp/test.ann'))
         # test option dest_dir
         script = SoS_Script(r'''
@@ -744,7 +763,7 @@ download: dest_dir='tmp'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq.ann'))
         #
    
@@ -777,7 +796,7 @@ download: dest_dir='tmp', decompress=True
     ${GATK_URL}/1000G_omni2.5.hg19.sites.vcf.idx.gz.md5
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).prepare()
         #
         shutil.rmtree('tmp')
 
@@ -818,7 +837,7 @@ run: run_mode='prepare'
 
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('a.txt'))
         os.remove('a.txt')
         #
