@@ -33,7 +33,7 @@ from multiprocessing.pool import AsyncResult
 from queue import Empty
 
 from . import __version__
-from .sos_step import Inspect_Step_Executor, Prepare_Step_Executor, Run_Step_Executor, Interactive_Step_Executor
+from .sos_step import Prepare_Step_Executor, Run_Step_Executor, Interactive_Step_Executor
 from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, \
     frozendict, natural_keys, dict_merge, ArgumentError
 from .sos_eval import Undetermined, SoS_eval, SoS_exec
@@ -52,7 +52,7 @@ def __null_func__(*args, **kwargs):
     return args, kwargs
 
 class ExecuteError(Error):
-    """Raised when there are errors in inspect mode. Such errors are not raised
+    """Raised when there are errors in prepare mode. Such errors are not raised
     immediately, but will be collected and raised at the end """
 
     def __init__(self, workflow):
@@ -80,6 +80,7 @@ class Base_Executor:
     set up and tear functions for all executors.'''
     def __init__(self, workflow=None, args=[], config_file=None, new_dict=True):
         self.workflow = workflow
+        self.new_dict = new_dict
 
         # if creating a new dictionary, set it up with some basic varibles
         # and functions
@@ -157,37 +158,6 @@ class Base_Executor:
                 raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
         return False
 
-    def inspect(self):
-        '''Run the script in inspect mode to check for errors.'''
-        env.run_mode = 'inspect'
-        # passing run_mode to SoS dict so that users can execute blocks of
-        # python statements in different run modes.
-        env.sos_dict.set('run_mode', env.run_mode)
-
-        # process steps of the pipeline
-        for idx, section in enumerate(self.workflow.sections):
-            if self.skip(section):
-                continue
-            #
-            # execute section with specified input
-            queue = mp.Queue()
-            executor = Inspect_Step_Executor(section, queue)
-            proc = mp.Process(target=executor.run)
-            proc.start()
-            res = queue.get()
-            proc.join()
-            # if the job is failed
-            if isinstance(res, Exception):
-                raise RuntimeError(res)
-            #
-            for k, v in res.items():
-                env.sos_dict.set(k, v)
-        # at the end
-        exception = env.sos_dict['__execute_errors__']
-        if exception.errors:
-            # if there is any error, raise it
-            raise exception
-
     def match(self, target, pattern):
         if isinstance(pattern, (str, BaseTarget)):
             patterns = [pattern]
@@ -214,9 +184,8 @@ class Base_Executor:
 
         # process step of the pipelinp
         #
-        # the steps can be executed in the pool (Not implemented)
-        # if nested = true, start a new progress bar
-        env.sos_dict.set('__step_output__', None)
+        if self.new_dict:
+            env.sos_dict.set('__step_output__', None)
         dag = SoS_DAG()
         for idx, section in enumerate(self.workflow.sections):
             if self.skip(section):
@@ -254,9 +223,9 @@ class Base_Executor:
                 mo = [(x, self.match(target, x.options['provides'])) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
                 if not mo:
-                    raise ValueError('No step to generate target {}'.format(target))
+                    raise RuntimeError('No step to generate target {}'.format(target))
                 if len(mo) > 1:
-                    raise ValueError('Multiple steps {} to generate target {}'.format(', '.join(str(x[0].options['provides']) for x in mo), target))
+                    raise RuntimeError('Multiple steps {} to generate target {}'.format(', '.join(str(x[0].options['provides']) for x in mo), target))
                 #
                 # only one step, we need to process it # execute section with specified input
                 #
@@ -506,8 +475,7 @@ class Interactive_Executor(Base_Executor):
         2. execute the workflow in interactive mode, which is different from
            batch mode in a number of ways, which most notably without support
            for nested workflow.
-        3. Optionally execute the workflow in inspection or preparation mode
-           for debugging purposes.
+        3. Optionally execute the workflow in preparation mode for debugging purposes.
         '''
         # if there is no valid code do nothing
         if not block.strip():
