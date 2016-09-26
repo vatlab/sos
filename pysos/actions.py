@@ -350,9 +350,9 @@ def SoS_Action(run_mode=['run', 'interactive']):
                     if not isinstance(kwargs['run_mode'], str):
                         raise ValueError('A string is required for option run_mode, {} provided.'
                             .format(kwargs['run_mode']))
-                    if kwargs['run_mode'] not in ['inspect', 'prepare', 'interactive']:
-                        raise ValueError('Parameter run_mode can only be inspect, prepare, or interactive')
-                    top_mode = 'run' if 'run' in run_mode else ('prepare' if 'prepare' in run_mode else 'inspect')
+                    if kwargs['run_mode'] not in ['prepare', 'interactive']:
+                        raise ValueError('Parameter run_mode can only be prepare, or interactive')
+                    top_mode = 'run' if 'run' in run_mode else 'prepare'
                     if env.run_mode == top_mode and top_mode != kwargs['run_mode']:
                         # if run has been moved away, do nothing
                         return None
@@ -365,10 +365,6 @@ def SoS_Action(run_mode=['run', 'interactive']):
                     docker.import_image(kwargs['docker_file'])
                 # handle image
                 if 'docker_image' in kwargs:
-                    if env.run_mode == 'inspect':
-                        # if the action will be executed in docker
-                        # we do not execute it in inspect mode
-                        return True
                     docker = DockerClient()
                     docker.pull(kwargs['docker_image'])
                     if env.run_mode in ['prepare', 'interactive']:
@@ -383,7 +379,7 @@ def SoS_Action(run_mode=['run', 'interactive']):
                     # return dynamic expression when not in run mode, that is to say
                     # the script logic cannot rely on the result of the action
                     return Undetermined(func.__name__)
-                if env.run_mode in ['inspect', 'interactive']:
+                if env.run_mode == 'interactive':
                     for k,v in kwargs.items():
                         if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
                             env.logger.warning('Passing runtime option "{0}" to action is deprecated. Please use "task: {0}={1}" before action instead.'.format(k, v))
@@ -489,7 +485,7 @@ class SoS_ExecuteScript:
                     .format(debug_script_file, cmd, os.getcwd()))
 
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def sos_run(workflow):
     '''Execute a workflow from specified source, input, and output
     By default the workflow is defined in the existing SoS script, but
@@ -504,10 +500,7 @@ def sos_run(workflow):
         raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
     # for nested workflow, _input would becomes the input of workflow.
     env.sos_dict.set('__step_output__', copy.deepcopy(env.sos_dict['_input']))
-    if env.run_mode == 'inspect':
-        env.logger.debug('Checking nested workflow {}'.format(workflow))
-        return Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).inspect()
-    elif env.run_mode == 'prepare':
+    if env.run_mode == 'prepare':
         env.logger.debug('Preparing nested workflow {}'.format(workflow))
         return Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
     elif env.run_mode == 'run':
@@ -527,7 +520,7 @@ def execute_script(script, interpreter, suffix, **kwargs):
     return SoS_ExecuteScript(script, interpreter, suffix).run(**kwargs)
 
 _check_command_cache = {}
-@SoS_Action(run_mode=['inspect', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def check_command(cmd, pattern = None, quiet=False):
     '''Raise an exception if output of `cmd` does not match specified `pattern`.
     Multiple patterns can be specified as a list of patterns.
@@ -567,21 +560,21 @@ def check_command(cmd, pattern = None, quiet=False):
     _check_command_cache[cmd] = ret_val
     return ret_val
 
-@SoS_Action(run_mode=['inspect', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def fail_if(expr, msg=''):
     '''Raise an exception with `msg` if condition `expr` is False'''
     if expr:
         raise RuntimeError(msg)
     return 0
 
-@SoS_Action(run_mode=['inspect', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'interactive'])
 def warn_if(expr, msg=''):
     '''Yield an warning message `msg` if `expr` is False '''
     if expr:
         env.logger.warning(msg)
     return 0
 
-@SoS_Action(run_mode=['inspect', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def stop_if(expr, msg=''):
     '''Abort the execution of the current step or loop and yield
     an warning message `msg` if `expr` is False '''
@@ -858,9 +851,7 @@ def check_R_library(name, version = None, repos = 'http://cran.us.r-project.org'
     Therefore if the input name is {repo}/{pkg} the package will be
     installed from github if not available, else from cran or bioc
     '''
-    if env.run_mode == 'inspect':
-        check_command('Rscript', quiet=True)
-        return 0
+    check_command('Rscript', quiet=True)
     output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
     if len(glob_wildcards('{repo}/{pkg}', [name])['repo']):
         # package is from github
@@ -938,7 +929,7 @@ def check_R_library(name, version = None, repos = 'http://cran.us.r-project.org'
         env.run_mode = 'run'
         SoS_ExecuteScript(install_script + version_script, 'Rscript --default-packages=utils', '.R').run()
     finally:
-        env.run_mode = 'inspect'
+        env.run_mode = 'prepare'
     ret_val = 0
     with open(output_file) as tmp:
         for line in tmp:
@@ -1004,7 +995,7 @@ def report(script=None, from_file=None, to_file=None, mode='a', **kwargs):
             md.write(content)
 
 
-@SoS_Action(run_mode=['inspect', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def pandoc(script=None, output=None, **kwargs):
     '''This action can be used in three ways
 
@@ -1016,9 +1007,7 @@ def pandoc(script=None, output=None, **kwargs):
     pandoc(outputfile='report.html')
 
     '''
-    # if in inspect mode, check for pandoc command
-    if env.run_mode == 'inspect':
-        return check_command('pandoc')
+    check_command('pandoc')
     #
     # in run mode, collect report and call pandoc
     sos_script = env.sos_dict['__step_context__'].filename
@@ -1118,7 +1107,7 @@ def pandoc(script=None, output=None, **kwargs):
     env.logger.info('Report saved to {}'.format(output))
 
 
-@SoS_Action(run_mode=['inspect', 'prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def Rmarkdown(script=None, output_file=None, **kwargs):
     '''This action can be used in three ways
 
@@ -1130,8 +1119,8 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
     Rmarkdown(output_file='report.html')
 
     '''
-    # if in inspect mode, check for Rmarkdown command
-    if env.run_mode in ['inspect', 'prepare']:
+    # if in prepare mode, check for Rmarkdown command
+    if env.run_mode == 'prepare':
         return check_R_library('knitr') + check_R_library('rmarkdown')
     #
     # in run mode, collect report and call Rmarkdown
