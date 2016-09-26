@@ -288,7 +288,7 @@ class Base_Executor:
         # check error
         cycle = dag.circular_dependencies()
         if cycle:
-            raise RuntimeError('Circular dependency detected: {}'.format(cycle))
+            raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
 
         return dag
 

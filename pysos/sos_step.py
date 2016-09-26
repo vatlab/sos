@@ -586,7 +586,7 @@ class Base_Step_Executor:
                                     if signatures[idx].write():
                                         skip_index = True
                             #
-                            if not isinstance(g, Undetermined) and not isinstance(ofiles, Undetermined):
+                            if not isinstance(g, (type(None), Undetermined)) and not isinstance(ofiles, (type(None), Undetermined)):
                                 if any(x in g for x in ofiles):
                                     raise RuntimeError('Overlapping input and output files: {}'
                                         .format(', '.join(x for x in ofiles if x in g)))
