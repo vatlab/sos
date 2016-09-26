@@ -307,9 +307,9 @@ def SoS_eval(expr, sigil='${ }'):
     interpolate expressions) strings.'''
     expr = ConvertString(expr, sigil)
     try:
-        if env.run_mode == 'inspect':
+        if env.run_mode == 'prepare':
             # make sure that the expression can be completed in 5 seconds
-            with time_limit(env.sos_dict['CONFIG'].get('sos_inspect_timeout', 5), expr):
+            with time_limit(env.sos_dict['CONFIG'].get('sos_prepare_timeout', 5), expr):
                 return eval(expr, env.sos_dict._dict)
         else:
             return eval(expr, env.sos_dict._dict)
@@ -381,9 +381,7 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
         stmts = ConvertString(code, sigil)
         if not stmts.strip():
             continue
-        if env.run_mode == 'inspect':
-            env.logger.trace('Checking statement:\n{}'.format(stmts))
-        elif env.run_mode == 'prepare':
+        if env.run_mode == 'prepare':
             env.logger.trace('Preparing statement:\n{}'.format(stmts))
         else:
             env.logger.trace('Executing statement:\n{}'.format(stmts))
@@ -393,9 +391,9 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
                 act = DelayedAction(env.logger.warning, 'Running {}'.format(short_repr(code)))
             else:
                 act = None
-            if env.run_mode == 'inspect':
+            if env.run_mode == 'prepare':
                 # make sure that the expression can be completed in 5 seconds
-                with time_limit(env.sos_dict['CONFIG'].get('sos_inspect_timeout', 5), stmts):
+                with time_limit(env.sos_dict['CONFIG'].get('sos_prepare_timeout', 5), stmts):
                     if idx + 1 == len(code_group) and _is_expr(stmts):
                         res = eval(stmts, _dict)
                     else:
@@ -409,8 +407,8 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
         except Exception as e:
             if env.run_mode not in ['run', 'interactive']:
                 if isinstance(e, InterpolationError):
-                    if env.run_mode == 'inspect':
-                        # this should not matter in inspect mode because many variables do not yet
+                    if env.run_mode == 'prepare':
+                        # this should not matter in prepare mode because many variables do not yet
                         # exist...
                         env.logger.debug('Failed to interpolate {}: {}'.format(short_repr(stmts), e))
                 else:
@@ -426,7 +424,7 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
 
 #
 # dynamic expression that cannot be resolved during parsing
-# at inspect mode etc, and has to be resolved at run time.
+# at prepare mode etc, and has to be resolved at run time.
 #
 class Undetermined(object):
     def __init__(self, expr=''):

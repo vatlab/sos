@@ -104,7 +104,6 @@ def cmd_inspect(args, workflow_args):
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
         executor = Base_Executor(workflow, args=workflow_args, config_file=args.__config__)
-        executor.inspect()
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -128,7 +127,6 @@ def cmd_prepare(args, workflow_args):
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
         executor = Base_Executor(workflow, args=workflow_args, config_file=args.__config__)
-        executor.inspect()
         executor.prepare()
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
@@ -161,8 +159,6 @@ def cmd_run(args, workflow_args):
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
         executor = Sequential_Executor(workflow, args=workflow_args, config_file=args.__config__)
-        if run_all or args.__inspect__:
-            executor.inspect()
         # even with the -r option, prepare() can be executed if there are
         # auxiliary_sections, or if there are targets where a DAG is required
         # Issue #213
