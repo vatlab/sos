@@ -64,32 +64,25 @@ class TestActions(unittest.TestCase):
         script = SoS_Script(r"""
 from pysos import SoS_Action
 
-@SoS_Action(run_mode='inspect')
-def func_inspect():
-    return 1
-
 @SoS_Action(run_mode='run')
 def func_run():
     return 1
 
-@SoS_Action(run_mode=['run', 'inspect'])
+@SoS_Action(run_mode=['run', 'prepare'])
 def func_both():
     return 1
 
 [0:alias='result']
-a=func_inspect()
 b=func_run()
 c=func_both()
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).inspect()
-        self.assertEqual(env.sos_dict['result'].a, 1)
+        Sequential_Executor(wf).prepare()
         self.assertTrue(isinstance(env.sos_dict['result'].b, Undetermined))
         self.assertEqual(env.sos_dict['result'].c, 1)
         #
         dag = Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run(dag)
-        self.assertTrue(isinstance(env.sos_dict['result'].a, Undetermined))
         self.assertEqual(env.sos_dict['result'].b, 1)
         self.assertEqual(env.sos_dict['result'].c, 1)
 
@@ -130,8 +123,8 @@ ret = get_output('echo blah', show_command=True, prompt='% ')
 get_output('catmouse')
 """)
         wf = script.workflow()
-        # should fail in inspect mode
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect)
+        # should fail in prepare mode
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).prepare)
         #
         #
         script = SoS_Script(r"""
@@ -140,7 +133,7 @@ ret = get_output('cat -h')
 """)
         wf = script.workflow()
         # this should give a warning and return false
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).inspect)
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
         #
         # check get_output if the command is stuck
         script = SoS_Script(r"""
@@ -149,16 +142,16 @@ get_output('sleep 6')
 """)
         wf = script.workflow()
         # this should yield error
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect)
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).prepare)
         # even for weird commands such as cat > /dev/null, it should quite
-        # in inspect mode
+        # in prepare mode
         script = SoS_Script(r"""
 [0]
 get_output('cat > /dev/null')
 """)
         wf = script.workflow()
         # this should pass
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).inspect)
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
 
     def testCheckCommand(self):
         '''Test action check_command'''
@@ -176,8 +169,8 @@ check_command('cat')
 check_command('catmouse')
 """)
         wf = script.workflow()
-        # should fail in inspect mode
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect)
+        # should fail in prepare mode
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
         #
         wf = script.workflow()
         #
@@ -196,7 +189,7 @@ check_command('ls -l')
 fail_if(check_command('cat -h') != 0, 'command return non-zero')
 """)
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).inspect)
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
         #
         # check check_command is the command is stuck
         script = SoS_Script(r"""
@@ -205,7 +198,7 @@ check_command('sleep 4')
 """)
         wf = script.workflow()
         # this should pass
-        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
         #
         script = SoS_Script(r"""
 [0]
@@ -213,7 +206,7 @@ fail_if(check_command('sleep 4') != 0, 'Command time out')
 """)
         wf = script.workflow()
         # this should pass
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect)
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
         #
         # test reading this file
         script = SoS_Script(r"""
@@ -222,7 +215,7 @@ check_command('cat test_actions.py', 'abcde' + 'fgh')
 """)
         wf = script.workflow()
         # should raise an error
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect)
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
         #
         script = SoS_Script(r"""
 check_command('cat test_actions.py', 'testSearchOutput')
@@ -231,14 +224,14 @@ check_command('cat test_actions.py', 'testSearchOutput')
         dag = Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run(dag)
         # even for weird commands such as cat > /dev/null, it should quite
-        # in inspect mode
+        # in prepare mode
         script = SoS_Script(r"""
 [0]
 check_command('cat > /dev/null')
 """)
         wf = script.workflow()
         # this should pass
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).inspect)
+        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
 
     def testFailIf(self):
         '''Test action fail if'''
@@ -248,27 +241,24 @@ input: 'a.txt'
 fail_if(len(input) == 1)
 """)
         wf = script.workflow()
-        # should fail in inspect mode
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).inspect)
+        # should fail in prepare mode
+        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).prepare)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
 fail_if(len(input) == 1)
 """)
         wf = script.workflow()
-        # should be ok
-        Sequential_Executor(wf).inspect()
 
     def testWarnIf(self):
         '''Test action fail if'''
         script = SoS_Script(r"""
 [0]
-input: 'a.txt'
-warn_if(len(input) == 1, 'Expect to see a warning message')
+warn_if(input is None, 'Expect to see a warning message')
 """)
         wf = script.workflow()
         # should see a warning message.
-        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
         #self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
         script = SoS_Script(r"""
 [0]
@@ -276,8 +266,6 @@ input: 'a.txt', 'b.txt'
 warn_if(len(input) == 1)
 """)
         wf = script.workflow()
-        # should be silent
-        Sequential_Executor(wf).inspect()
 
     def testStopIf(self):
         '''Test action stop_if'''
@@ -291,7 +279,7 @@ stop_if(_rep > 10)
 result.append(_rep)
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['res'].result, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
     def testRun(self):
@@ -836,12 +824,12 @@ run: run_mode='prepare'
         #
         script = SoS_Script(r'''
 [10]
-run: run_mode='inspect'
+run: run_mode='prepare'
     touch a.txt
 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).inspect()
+        Sequential_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('a.txt'))
         FileTarget('a.txt').remove('both')
 
