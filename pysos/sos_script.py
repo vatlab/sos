@@ -342,6 +342,8 @@ class SoS_Workflow:
                     self.auxiliary_sections.append(section)
                     self.auxiliary_sections[-1].name = section.names[0][0]
                     self.auxiliary_sections[-1].uuid = uuid4()
+                # an auxiliary step can also serve as a regular step
+                # as long as it matches workflow name.
                 if fnmatch.fnmatch(workflow_name, name):
                     self.sections.append(copy.deepcopy(section))
                     self.sections[-1].name = workflow_name
