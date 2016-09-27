@@ -356,7 +356,6 @@ class Sequential_Executor(Base_Executor):
         env.sos_dict.set('run_mode', env.run_mode)
         # process step of the pipelinp
         #
-        dag.show_nodes()
         procs = [None for x in range(env.max_jobs)]
         while True:
             # step 1: check existing jobs and see if they are completed

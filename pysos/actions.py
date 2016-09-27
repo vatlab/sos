@@ -45,7 +45,7 @@ from docker import Client
 from collections.abc import Sequence
 from docker.utils import kwargs_from_env
 import multiprocessing as mp
-from .utils import env, ProgressBar, natural_keys, transcribe, AbortExecution
+from .utils import env, ProgressBar, natural_keys, transcribe, AbortExecution, short_repr
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .target import FileTarget, fileMD5
@@ -504,7 +504,8 @@ def sos_run(workflow, **kwargs):
         env.logger.debug('Preparing nested workflow {}'.format(workflow))
         return Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
     elif env.run_mode == 'run':
-        env.logger.info('Executing nested workflow {}'.format(workflow))
+        env.logger.info('Executing workflow ``{}`` with input ``{}``'
+            .format(workflow, short_repr(env.sos_dict['_input'], True)))
         #
         # NOTE: Because at run mode we do not really have the DAG (which might have
         # been changed and need to be re-prepared) so it is necessary to prepare
