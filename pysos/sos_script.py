@@ -830,7 +830,7 @@ for __n, __v in {}.items():
                                     if opt_name == 'sigil':
                                         parsing_errors.append(lineno, line, e)
                                     else:
-                                        env.logger.debug('Step option {}={} (line {}) cannot be resolved during parsing.'.format(opt_name, opt_value, lineno))
+                                        #env.logger.warning('Step option {}={} (line {}) cannot be resolved during parsing: {}'.format(opt_name, opt_value, lineno, e))
                                         opt_value = Undetermined(opt_value)
                             if opt_name == 'sigil':
                                 if opt_value.count(' ') != 1 or opt_value[0] in (' ', "'") or \

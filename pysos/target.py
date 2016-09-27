@@ -226,6 +226,12 @@ class executable(BaseTarget):
         with open(self.sig_file, 'w') as md5:
             md5.write('{}\t{}\n'.format(self.fullname(), self.md5()))
 
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __eq__(self, obj):
+        return isinstance(obj, executable) and self._cmd == obj._cmd
+
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.

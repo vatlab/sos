@@ -1326,6 +1326,30 @@ sh:
         self.assertLess(time.time() - st, 2)
         FileTarget('lls').remove('both')
 
+    def testProvidesExecutable(self):
+        '''Testing provides executable target.'''
+        # change $PATH so that lls can be found at the current
+        # directory.
+        os.environ['PATH'] += os.pathsep + '.'
+        FileTarget('lls').remove('both')
+        script = SoS_Script('''
+[lls: provides=executable('lls')]
+sh:
+    touch lls
+    sleep 3
+    chmod +x lls
+
+[c]
+depends: executable('lls')
+
+''')
+        wf = script.workflow('c')
+        dag = Sequential_Executor(wf).prepare()
+        st = time.time()
+        Sequential_Executor(wf).run(dag)
+        self.assertGreater(time.time() - st, 2)
+        FileTarget('lls').remove('both')
+
     def testInteractiveExecutor(self):
         '''interactive'''
         executor = Interactive_Executor()

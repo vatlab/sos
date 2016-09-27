@@ -25,7 +25,7 @@ import yaml
 import shlex
 import argparse
 import time
-
+from collections.abc import Sequence
 import multiprocessing as mp
 from queue import Empty
 
@@ -155,14 +155,16 @@ class Base_Executor:
                 raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
         return False
 
-    def match(self, target, pattern):
-        if isinstance(pattern, (str, BaseTarget)):
-            patterns = [pattern]
+    def match(self, target, patterns):
+        if isinstance(patterns, (str, BaseTarget)):
+            patterns = [patterns]
+        elif not isinstance(patterns, Sequence):
+            raise RuntimeError('Unknown target to match: {}'.format(patterns))
         #
         for p in patterns:
             # other targets has to match exactly
             if isinstance(target, BaseTarget) or isinstance(p, BaseTarget):
-                return {} if pattern == p else False
+                return {} if target == p else False
             # if this is a regular string
             res = extract_pattern(p, [target])
             if res and not any(None in x for x in res.values()):
@@ -210,6 +212,10 @@ class Base_Executor:
             dag.add_step(section.uuid, res['__step_name__'], idx, res['__step_input__'], res['__step_depends__'],
                 res['__step_output__'], 'alias' in section.options or 'shared' in section.options)
         #
+        for section in self.workflow.auxiliary_sections:
+            if isinstance(section.options['provides'], Undetermined):
+                section.options['provides'] = section.options['provides'].value(section.sigil)
+
         while True:
             dangling_targets = dag.dangling(targets)
             if not dangling_targets:
@@ -515,6 +521,8 @@ class Interactive_Executor(Base_Executor):
                     val_skip = section.options['skip']
                     if val_skip is None or val_skip is True:
                         continue
+                    elif isinstance(val_skip, Undetermined):
+                        val_skip = val_skip.value(section.sigil)
                     elif val_skip is not False:
                         raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
                 #

@@ -952,7 +952,7 @@ def handle_parameter(key, defvalue):
     the environment. This makes the parameters variable.
     '''
     if key in env.sos_dict:
-        env.logger.debug('Parameter {} takes default value because it already exists.'.format(key))
+        #env.logger.debug('Parameter {} takes default value because it already exists.'.format(key))
         return env.sos_dict[key]
 
     if not env.sos_dict['__args__']:
