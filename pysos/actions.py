@@ -614,9 +614,13 @@ def downloadURL(URL, dest, decompress=False, index=None):
             elif env.sig_mode == 'ignore':
                 prog.done(message + ': \033[32m use existing {}\033[0m'.format(' '*(term_width - len(message) - 15)))
                 return True
-            elif sig.validate():
-                prog.done(message + ': \033[32m validated {}\033[0m'.format(' '*(term_width - len(message) - 13)))
-                return True
+            else:
+                prog.done(message + ': \033[32m Validating signature {}\033[0m'.format(' '*(term_width - len(message) - 26)))
+                if sig.validate():
+                    prog.done(message + ': \033[32m Validated {}\033[0m'.format(' '*(term_width - len(message) - 15)))
+                    return True
+                else:
+                    prog.done(message + ':\033[91m Signature mismatch {}\033[0m'.format(' '*(term_width - len(message) - 22)))
         #
         # Stop using pycurl because of libcurl version compatibility problems
         # that happen so often and difficult to fix. Error message looks like
