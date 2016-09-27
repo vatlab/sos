@@ -159,9 +159,9 @@ class FileTarget(BaseTarget):
 
     def validate(self):
         '''Check if file matches its signature'''
-        if not os.path.isfile(self.sig_file):
+        if not os.path.isfile(self.sig_file()):
             return False
-        with open(self.sig_file) as md5:
+        with open(self.sig_file()) as md5:
             for line in md5:
                 f, m = line.rsplit('\t', 1)
                 if not os.path.isfile(f):

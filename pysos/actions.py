@@ -45,7 +45,7 @@ from docker import Client
 from collections.abc import Sequence
 from docker.utils import kwargs_from_env
 import multiprocessing as mp
-from .utils import env, ProgressBar, natural_keys, transcribe, AbortExecution, short_repr
+from .utils import env, ProgressBar, natural_keys, transcribe, AbortExecution, short_repr, get_traceback
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .target import FileTarget, fileMD5
@@ -471,7 +471,7 @@ class SoS_ExecuteScript:
                     ret = p.wait()
                     summarizeExecution(pid)
             except Exception as e:
-                env.logger.error(e)
+                env.logger.error('Failed to execute script: {}'.format(e))
             finally:
                 env.deregister_process(p.pid)
                 os.remove(script_file)
@@ -707,7 +707,9 @@ def downloadURL(URL, dest, decompress=False, index=None):
         prog.done(message + ':\033[32m downloaded{} {}\033[0m'.format(decompress_msg,
             ' '*(term_width - len(message) - 13 - len(decompress_msg))))
     except Exception as e:
-        env.logger.error(e)
+        if env.verbosity > 2:
+             sys.stderr.write(get_traceback())
+        env.logger.error('Failed to download: {}'.format(e))
         return False
     finally:
         # if there is something wrong still remove temporary file
