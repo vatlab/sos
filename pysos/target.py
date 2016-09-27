@@ -38,7 +38,7 @@ def textMD5(text):
     return m.hexdigest()
 
 def fileMD5(filename, partial=True):
-    '''Calculate partial MD5, basically the first and last 32M
+    '''Calculate partial MD5, basically the first and last 8M
     of the file for large files. This should signicicantly reduce
     the time spent on the creation and comparison of file signature
     when dealing with large bioinformat ics datasets. '''
@@ -47,7 +47,8 @@ def fileMD5(filename, partial=True):
     md5 = hashlib.md5()
     block_size = 2**20  # buffer of 1M
     try:
-        if (not partial) or filesize < 2**26:
+        # 2**24 = 16M
+        if (not partial) or filesize < 2**24:
             with open(filename, 'rb') as f:
                 while True:
                     data = f.read(block_size)
@@ -55,14 +56,15 @@ def fileMD5(filename, partial=True):
                         break
                     md5.update(data)
         else:
-            count = 64
+            count = 16
             # otherwise, use the first and last 32M
             with open(filename, 'rb') as f:
                 while True:
                     data = f.read(block_size)
                     count -= 1
-                    if count == 32:
-                        f.seek(-2**25, 2)
+                    if count == 8:
+                        # 2**23 = 8M
+                        f.seek(-2**23, 2)
                     if not data or count == 0:
                         break
                     md5.update(data)
