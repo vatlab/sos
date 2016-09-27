@@ -832,7 +832,7 @@ class Run_Step_Executor(Queued_Step_Executor):
         elif stage == '_input':
             env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'], noneAsNA=True)))
         elif stage == 'input':
-            env.logger.info('input:   ``{}``'.format(short_repr(env.sos_dict['input'], noneAsNA=True)))
+            env.logger.info('input:    ``{}``'.format(short_repr(env.sos_dict['input'], noneAsNA=True)))
         elif stage == 'output':
             env.logger.info('output:   ``{}``'.format(short_repr(env.sos_dict['output'], noneAsNA=True)))
 

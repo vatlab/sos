@@ -459,7 +459,7 @@ class SoS_ExecuteScript:
                     sys.stdout.write(out.decode())
                     sys.stderr.write(err.decode())
                     ret = p.returncode
-                    env.logger.info(summarizeExecution(pid))
+                    summarizeExecution(pid)
                     sys.stdout.flush()
                     sys.stderr.flush()
                 else:
@@ -469,7 +469,7 @@ class SoS_ExecuteScript:
                     m.start()
                     env.register_process(pid, 'Runing {}'.format(script_file))
                     ret = p.wait()
-                    env.logger.info(summarizeExecution(pid))
+                    summarizeExecution(pid)
             except Exception as e:
                 env.logger.error(e)
             finally:
@@ -1182,13 +1182,13 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
             sys.stdout.write(out.decode())
             sys.stderr.write(err.decode())
             ret = p.returncode
-            env.logger.info(summarizeExecution(pid))
+            summarizeExecution(pid)
         else:
             p = subprocess.Popen(cmd, shell=True)
             pid = p.pid
             env.register_process(pid, 'Runing {}'.format(script_file))
             ret = p.wait()
-            env.logger.info(summarizeExecution(pid))
+            summarizeExecution(pid)
     except Exception as e:
         env.logger.error(e)
     finally:

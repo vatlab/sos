@@ -68,7 +68,7 @@ class ProcessMonitor(threading.Thread):
 def summarizeExecution(pid):
     proc_file = os.path.join(env.exec_dir, '.sos/{}.proc'.format(pid))
     if not os.path.isfile(proc_file):
-        return ''
+        return
     peak_cpu = 0
     accu_cpu = 0
     peak_mem = 0
@@ -98,10 +98,8 @@ def summarizeExecution(pid):
                 peak_mem = float(m) + float(cm)
             if int(nch) > peak_nch:
                 peak_nch = int(nch)
-    if start_time is None or end_time is None:
-        return ''
-    else:
-        return ('Completed in {:.1f} seconds with {} child{} and {:.1f}% peak ({:.1f}% avg) CPU and {:.1f}Mb peak ({:.1f}Mb avg) memory usage'
+    if start_time is not None and end_time is not None:
+        env.logger.info('Completed in {:.1f} seconds with {} child{} and {:.1f}% peak ({:.1f}% avg) CPU and {:.1f}Mb peak ({:.1f}Mb avg) memory usage'
             .format(end_time - start_time, peak_nch, 'ren' if peak_nch > 1 else '', peak_cpu, accu_cpu/count, peak_mem/1024/1024, accu_mem/1024/1024/count))
         
 
