@@ -19,11 +19,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
+import time
 import os
 import sys
 import re
 import copy
-import time
 import types
 import logging
 import shutil
@@ -33,16 +33,9 @@ import collections
 import traceback
 import pickle
 import yaml
-import psutil
 import urllib
 import argparse
 from collections.abc import Sequence
-try:
-    # no ncurse support under windows
-    import blessings
-except:
-    pass
-import subprocess
 import threading
 from io import StringIO
 from html.parser import HTMLParser
@@ -351,6 +344,7 @@ class RuntimeEnvironments(object):
 
     def cleanup(self):
         '''Clean up all running processes'''
+        import psutil
         for p in glob.glob(os.path.join(self.exec_dir, '.sos', 'proc_*')):
             pid = int(os.path.basename(p)[5:])
             try:
@@ -562,6 +556,8 @@ class ProgressBar:
     '''A text-based progress bar, it differs from regular progress bar in that
     1. it can start from the middle with init count
     '''
+    # no ncurse support under windows
+    import blessings
     def __init__(self, message, totalCount = None, disp=True, index=None):
         if not disp:
             self.update = self.empty
@@ -791,6 +787,7 @@ class frozendict(dict):
 #
 # A utility function that returns output of a command
 def get_output(cmd, show_command=False, prompt='$ '):
+    import subprocess
     try:
         output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, shell=True).decode()
     except subprocess.CalledProcessError as e:

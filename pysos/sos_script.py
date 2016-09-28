@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
+import time
+st = time.time()
 import os
 import re
 import copy
@@ -31,7 +33,6 @@ from collections import defaultdict
 from uuid import uuid4
 
 from .utils import env, Error, dehtml, locate_script, text_repr
-from .sos_eval import Undetermined
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
     SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
@@ -840,6 +841,7 @@ for __n, __v in {}.items():
                                     if opt_name == 'sigil':
                                         parsing_errors.append(lineno, line, e)
                                     else:
+                                        from .sos_eval import Undetermined
                                         #env.logger.warning('Step option {}={} (line {}) cannot be resolved during parsing: {}'.format(opt_name, opt_value, lineno, e))
                                         opt_value = Undetermined(opt_value)
                             if opt_name == 'sigil':

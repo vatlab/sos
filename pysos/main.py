@@ -22,17 +22,14 @@
 #
 import os
 import sys
-import yaml
-import atexit
-import fnmatch
-import tempfile
-#
-from .utils import env, get_traceback, dict_merge
-from .sos_script import SoS_Script
+
 #
 # subcommand convert
 #
 def cmd_convert(args, style_args):
+    import tempfile
+    from .utils import env, get_traceback
+    from .sos_script import SoS_Script
     from .converter import script_to_html, workflow_to_html, script_to_markdown, \
         workflow_to_markdown, script_to_notebook, workflow_to_notebook, \
         script_to_term, workflow_to_term, notebook_to_script
@@ -96,6 +93,8 @@ def cmd_convert(args, style_args):
 # subcommand inspect
 #
 def cmd_inspect(args, workflow_args):
+    from .utils import env, get_traceback
+    from .sos_script import SoS_Script
     from .sos_executor import Base_Executor
     env.verbosity = args.verbosity
     try:
@@ -112,6 +111,8 @@ def cmd_inspect(args, workflow_args):
 # subcommand prepare
 #
 def cmd_prepare(args, workflow_args):
+    from .utils import env, get_traceback
+    from .sos_script import SoS_Script
     from .sos_executor import Base_Executor
     env.verbosity = args.verbosity
 
@@ -137,6 +138,9 @@ def cmd_prepare(args, workflow_args):
 # subcommand run
 #
 def cmd_run(args, workflow_args):
+    import atexit
+    from .utils import env, get_traceback
+    from .sos_script import SoS_Script
     from .target import FileTarget
     from .sos_executor import Sequential_Executor
     env.max_jobs = args.__max_jobs__
@@ -181,6 +185,9 @@ def cmd_run(args, workflow_args):
 # subcommand config
 #
 def cmd_config(args, workflow_args):
+    import fnmatch
+    import yaml
+    from .utils import env, get_traceback, dict_merge
     from .sos_syntax import CONFIG_NAME
     if workflow_args:
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
