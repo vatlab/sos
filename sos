@@ -110,16 +110,11 @@ if __name__ == '__main__':
             to prepare resources, and run mode to execute the pipelines. Run mode
             options allow you to execute these steps selectively.''')
     runmode.add_argument('-i', action='store_true', dest='__inspect__',
-        help='''Execute the workflow in inspect mode in which step processes
-            are executed normally but with most SoS actions return directly.
-            SoS also produces diagnoistic warning messages in this mode.''')
+        help='''Check the syntax of specified sos script without executing it.''')
     runmode.add_argument('-p', action='store_true', dest='__prepare__',
         help='''Execute the workflow in preparation mode in which SoS prepare
             the execution of workflow by, for example, download required
             resources and docker images.''')
-    runmode.add_argument('-r', action='store_true', dest='__run__',
-        help='''Execute the workflow in run mode in which SoS execute all
-            steps.''')
     runmode.add_argument('-f', action='store_true', dest='__rerun__',
         help='''Execute the workflow in a special run mode that ignores saved
             runtime signatures and re-execute all the steps.''')
@@ -132,19 +127,12 @@ if __name__ == '__main__':
     #
     # command inspect
     parser = subparsers.add_parser('inspect',
-        description='''Execute a workflow in inspect mode. In comparison to
-            run mode, SoS does not panic for non-existing input or output
-            files, does not execute most SoS actions, and does not save or
-            check runtime signatures. It simply goes through the workflow,
-            figure out input/output of steps, and produce warning messages
-            if necessary.''',
+        description='''Inspect specified script for syntax errors''',
         epilog=workflow_options,
         help='Execute a SoS script in inspect mode')
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
-    #parser.add_argument('-t', dest='__transcript__', nargs='?',
-    #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE',
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary
@@ -158,7 +146,7 @@ if __name__ == '__main__':
             prepares the exeuction of workflow by, for example, download
             required resources and docker images.''',
         epilog=workflow_options,
-        help='Execute a SoS script in inspect and prepare mode')
+        help='Execute a SoS script in prepare mode')
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
@@ -166,21 +154,6 @@ if __name__ == '__main__':
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary
             CONF in the SoS script being executed.''')
-    runmode = parser.add_argument_group(title='Run mode options',
-        description='''SoS scripts are by default executed in run mode where all
-            the script is run in inspect mode to check syntax error, prepare mode
-            to prepare resources, and run mode to execute the pipelines. Run mode
-            options allow you to check the script or download resources without
-            actually running the workflow.''')
-    runmode.add_argument('-f', action='store_true', dest='__rerun__',
-        help='''Execute the workflow in a special run mode that ignores saved
-            runtime signatures and re-execute all the steps.''')
-    runmode.add_argument('-F', action='store_true', dest='__construct__',
-        help='''Execute the workflow in a special run mode that re-use existing
-            output files and recontruct runtime signatures if output files
-            exist.''')
-    #parser.add_argument('-t', dest='__transcript__', nargs='?',
-    #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     addCommonArgs(parser)
     parser.set_defaults(func=cmd_prepare)
     #

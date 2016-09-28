@@ -116,13 +116,6 @@ def cmd_prepare(args, workflow_args):
     from .sos_executor import Base_Executor
     env.verbosity = args.verbosity
 
-    if args.__rerun__:
-        env.sig_mode = 'ignore'
-    elif args.__construct__:
-        env.sig_mode = 'construct'
-    else:
-        env.sig_mode = 'default'
-
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
@@ -159,7 +152,7 @@ def cmd_run(args, workflow_args):
         # remove also signature of file if it exists
         FileTarget(filename).remove('both')
             
-    run_all = not (args.__inspect__ or args.__prepare__ or args.__run__)
+    run_all = not (args.__inspect__ or args.__prepare__)
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
@@ -167,11 +160,9 @@ def cmd_run(args, workflow_args):
         # even with the -r option, prepare() can be executed if there are
         # auxiliary_sections, or if there are targets where a DAG is required
         # Issue #213
-        if run_all or args.__prepare__ or args._targets__ or executor.workflow.auxiliary_sections:
+        if run_all or args.__prepare__ or args._targets__:
             dag = executor.prepare(args.__targets__)
-        else:
-            dag = None
-        if run_all or args.__run__:
+        if run_all:
             # if dag is None, the script will be run sequentially and cannot handle
             # make-style steps.
             executor.run(dag)
