@@ -891,7 +891,7 @@ def natural_keys(text):
 def transcribe(text, action=None):
     if action is not None:
         text = '{}:\n{}'.format(action, '    ' + text.replace('\n', '\n    ') + '\n')
-    with open('.sos/transcript.txt', 'a') as trans:
+    with open(os.path.join(env.exec_dir, '.sos', 'transcript.txt'), 'a') as trans:
         trans.write(text)
 
 def dict_merge(dct, merge_dct):
