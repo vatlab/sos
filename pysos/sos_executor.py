@@ -206,9 +206,10 @@ class Base_Executor:
             if isinstance(res, Exception):
                 raise RuntimeError(res)
             #
+            accessed_vars = {}
             for k, v in res.items():
                 if k == 'accessed_vars':
-                    section.accessed_vars = v - self._base_symbols
+                    accessed_vars = v - self._base_symbols
                 else:
                     env.sos_dict.set(k, v)
             #
@@ -217,7 +218,8 @@ class Base_Executor:
             # NOTE: if a section has option 'alias', the execution of this step would
             # change dictionary, essentially making all later steps rely on this step.
             dag.add_step(section.uuid, res['__step_name__'], idx, res['__step_input__'], res['__step_depends__'],
-                res['__step_output__'], 'alias' in section.options or 'shared' in section.options)
+                res['__step_output__'], 'alias' in section.options or 'shared' in section.options,
+                context={'__accessed_vars__': accessed_vars})
         #
         for section in self.workflow.auxiliary_sections:
             if isinstance(section.options['provides'], Undetermined):
@@ -263,9 +265,10 @@ class Base_Executor:
                 if isinstance(res, Exception):
                     raise RuntimeError(res)
                 #
+                accessed_vars = {}
                 for k, v in res.items():
                     if k == 'accessed_vars':
-                        section.accessed_vars = v - self._base_symbols
+                        accessed_vars = v - self._base_symbols
                     else:
                         env.sos_dict.set(k, v)
                 #
@@ -277,6 +280,7 @@ class Base_Executor:
                     context = mo[0][1]
                 else:
                     context = {}
+                context['__accessed_vars__'] = accessed_vars
                 context['__default_output__'] = [target]
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes

@@ -1399,5 +1399,36 @@ python:
         self.assertGreater(time.time() - st, 5)
         os.remove('largefile.txt')
 
+    def testSignatureWithParameter(self):
+        '''Test signature'''
+        FileTarget('myfile.txt').remove('both')
+        #
+        script = SoS_Script(r'''
+parameter: gvar = 10
+
+[10]
+# generate a file
+output: 'myfile.txt'
+# additional comment
+python:
+    with open(${output!r}, 'w') as tmp:
+        tmp.write('${gvar}')
+
+''')
+        wf = script.workflow()
+        dag = Sequential_Executor(wf).prepare()
+        Sequential_Executor(wf).run(dag)
+        with open('myfile.txt') as tmp:
+            self.assertEqual(tmp.read(), '10')
+        #
+        # now if we change parameter, the step should be rerun
+        wf = script.workflow()
+        dag = Sequential_Executor(wf, args=['--gvar', '20']).prepare()
+        Sequential_Executor(wf, args=['--gvar', '20']).run(dag)
+        with open('myfile.txt') as tmp:
+            self.assertEqual(tmp.read(), '20')
+
+
+
 if __name__ == '__main__':
     unittest.main()

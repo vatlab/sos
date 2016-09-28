@@ -28,6 +28,8 @@ import fnmatch
 import multiprocessing as mp
 from multiprocessing.pool import AsyncResult
 
+from io import StringIO
+from tokenize import generate_tokens
 from collections.abc import Sequence, Iterable
 from itertools import tee, combinations
 
@@ -379,16 +381,25 @@ class Base_Step_Executor:
         lead to the invalidation of the signature, which will then cause the
         re-execution of the step for any result from the step. '''
         #
-        # TBD: should we also include global definitions? These can affect all 
-        # steps.
-        result = ''
+        env_vars = []
+        if '__accessed_vars__' in env.sos_dict:
+            for var in sorted(env.sos_dict['__accessed_vars__']):
+                # var can be local and not passed as outside environment
+                if var in env.sos_dict:
+                    # FIXME: this would not work for function defintion etc
+                    env_vars.append('{} = {}\n'.format(var, env.sos_dict[var]))
+
+        def get_tokens(statement):
+            return [x[1] for x in generate_tokens(StringIO(statement).readline)]
+
+        tokens = []
         for statement in self.step.statements:
             if statement[0] in (':', '='):
-                result += '{}: {}\n'.format(statement[1], statement[2])
+                tokens.extend([statement[1], statement[0]])
+                tokens.extend(get_tokens(statement[2]))
             else:
-                result += statement[1] + '\n'
-        result += self.step.task
-        return re.sub(r'\s+', ' ', result)
+                tokens.extend(get_tokens(statement[1]))
+        return ''.join(env_vars + tokens)
 
     def log(self, stage=None, msg=None):
         raise RuntimeError('Please redefine the log function in derived step executor.')

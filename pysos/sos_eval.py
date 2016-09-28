@@ -23,10 +23,9 @@ import os
 import sys
 import re
 import collections
-import token
 from io import StringIO
 from shlex import quote
-from tokenize import generate_tokens, untokenize
+from tokenize import generate_tokens, untokenize, NAME, STRING
 
 from .utils import env, Error, short_repr, DelayedAction, AbortExecution
 
@@ -288,7 +287,7 @@ def ConvertString(s, sigil):
     left_sigil = sigil.split(' ')[0]
     # tokenize the input syntax.
     for toknum, tokval, _, _, _  in generate_tokens(StringIO(s).readline):
-        if toknum == token.STRING:
+        if toknum == STRING:
             # if this item is a string that uses triple single quote
             if tokval.startswith("'''"):
                 # we convert it to a raw string
@@ -310,7 +309,7 @@ def accessed_vars(statement):
 
     result = set()
     for toknum, tokval, _, _, _  in generate_tokens(StringIO(statement).readline):
-        if toknum == token.NAME:
+        if toknum == NAME:
             result.add(tokval)
     return result
 
