@@ -25,6 +25,7 @@ import copy
 import collections
 from itertools import chain
 from .utils import env
+from .sos_syntax import SOS_WILDCARD
 
 __all__ = ['expand_pattern']
 
@@ -37,15 +38,11 @@ __all__ = ['expand_pattern']
 # I will re-implement it if there is any license issue with the code
 #
 
-_wildcard_regex = re.compile(
-    "\{\s*(?P<name>\w+?)(\s*,\s*(?P<constraint>([^\{\}]+|\{\d+(,\d+)?\})*))?\s*\}")
-
-
 def regex(filepattern):
     f = []
     last = 0
     wildcards = set()
-    for match in _wildcard_regex.finditer(filepattern):
+    for match in SOS_WILDCARD.finditer(filepattern):
         f.append(re.escape(filepattern[last:match.start()]))
         wildcard = match.group("name")
         if wildcard in wildcards:
@@ -78,7 +75,7 @@ def glob_wildcards(pattern, files=None):
         dirname = "."
 
     names = [match.group('name')
-             for match in _wildcard_regex.finditer(pattern)]
+             for match in SOS_WILDCARD.finditer(pattern)]
     res = {x: [] for x in names}
     pattern = re.compile(regex(pattern))
 
@@ -115,7 +112,7 @@ def apply_wildcards(pattern,
             else:
                 raise RuntimeError('Wildcard apply error: {} ({})'.format(ex, wildcards))
 
-    return re.sub(_wildcard_regex, format_match, pattern)
+    return re.sub(SOS_WILDCARD, format_match, pattern)
 
 def extract_pattern(pattern, ifiles):
     '''This function match pattern to a list of input files, extract and return

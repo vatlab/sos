@@ -20,9 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 import time
-st = time.time()
 import os
-import re
 import copy
 import fnmatch
 import textwrap
@@ -36,7 +34,8 @@ from .utils import env, Error, dehtml, locate_script, text_repr
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
     SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
-    SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_ENDIF, SOS_CELL, SOS_MAGIC
+    SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_ENDIF, SOS_CELL, SOS_MAGIC, \
+    INDENTED
 
 __all__ = ['SoS_Script']
 
@@ -56,15 +55,6 @@ class SoS_Step:
     '''Parser of a SoS step. This class accepts strings sent by the parser, determine
     their types and add them to appropriate sections (directive, assignment, statement,
     scripts etc) '''
-    _INDENTED_TMPL = r'''
-        ^                   # start from beginning of string
-        (
-        \s*\n               # empty lines are ignored
-        )*
-        (\s*)\S             # match a line with a non-space character
-        '''
-    INDENTED = re.compile(_INDENTED_TMPL, re.VERBOSE)
-
     def __init__(self, context=None, names=[], options={}, is_global=False):
         '''A sos step '''
         self.context = context
@@ -103,7 +93,7 @@ class SoS_Step:
     def indented_script(self):
         ''' check self._script and see if it is indented '''
         # get all leading space, tab and newline
-        leading = self.INDENTED.match(self._script)
+        leading = INDENTED.match(self._script)
         return leading is not None and leading.group(2)
 
     def category(self):

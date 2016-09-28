@@ -217,6 +217,70 @@ _SOS_AS_TMPL = r'''
     [a-zA-Z][a-zA-Z0-9_]*))?            # optional alias
     '''
 
+_SOS_CELL_LINE_TMPL = r'''
+    ^
+    %cell\s+                            # %cell
+    (markdown|code)                     % markdown or code
+    (\s+\d+\s+)?                        % arbitrary stuff
+    $
+    '''
+
+_INDENTED_TMPL = r'''
+    ^                                   # start from beginning of string
+    (
+    \s*\n                               # empty lines are ignored
+    )*
+    (\s*)\S                             # match a line with a non-space character
+    '''
+
+# Format specifier that can be used at the end of the string to convert
+# result (!s|r|q) and control output format (:.2f etc). The pattern
+# is constructed according to Python format mini language.
+_FORMAT_SPECIFIER_TMPL = r'''
+    ^                                   # start of expression
+    (?P<expr>.*?)                       # any expression
+    (?P<conversion>!\s*                 # conversion starting with !
+    [srqabde,]+                         # conversion, q, a, b, and , are added by SoS
+    )?
+    (?P<format_spec>:\s*                # format_spec starting with :
+    (?P<fill>.?[<>=^])?                 # optional fill|align
+    (?P<sign>[-+ ])?                    # optional sign
+    \#?                                 #
+    0?                                  #
+    (?P<width>\d+)?                     # optional width
+    ,?                                  # optional ,
+    (?P<precision>\.\d+)?               # optional precision
+    (?P<type>[bcdeEfFgGnosxX%])?        # optional type
+    )?                                  # optional format_spec
+    \s*$                                # end of tring
+    '''
+
+
+# we handle simple cases in an easier way to avoid linear search each time.
+# simple case means ${ } as sigil, and there is nothing but variable name
+# within it.
+#
+_SIMPLE_SUB_TMPL = r'''
+    \$\{                                # left sigil
+    (                                   # capture variable name
+    [_a-zA-Z]\w*                        # alpha numeric with no leading numeric
+    )
+    \}                                  # right sigil
+    '''
+
+_SOS_WILDCARD_TMPL = r'''
+    \{
+        \s*
+        (?P<name>\w+?)
+        (\s*,\s*
+        (?P<constraint>
+            ([^\{\}]+|\{\d+(,\d+)?\})
+        *)
+        )?
+        \s*
+    \}
+    '''
+
 
 SOS_SECTION_HEADER = re.compile(_SECTION_HEADER_TMPL, re.VERBOSE)
 SOS_SECTION_NAME = re.compile(_SECTION_NAME_TMPL, re.VERBOSE)
@@ -237,3 +301,8 @@ SOS_ENDIF = re.compile(_SOS_ENDIF_TMPL, re.VERBOSE)
 SOS_CELL = re.compile(_SOS_CELL_TMPL, re.VERBOSE)
 SOS_INCLUDE = re.compile(_SOS_INCLUDE_TMPL, re.VERBOSE)
 SOS_FROM_INCLUDE = re.compile(_SOS_FROM_INCLUDE_TMPL, re.VERBOSE)
+SOS_CELL_LINE = re.compile(_SOS_CELL_LINE_TMPL, re.VERBOSE)
+INDENTED = re.compile(_INDENTED_TMPL, re.VERBOSE)
+FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
+SIMPLE_SUB = re.compile(_SIMPLE_SUB_TMPL, re.VERBOSE | re.DOTALL)
+SOS_WILDCARD = re.compile(_SOS_WILDCARD_TMPL, re.VERBOSE)

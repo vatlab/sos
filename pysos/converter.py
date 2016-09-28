@@ -24,7 +24,6 @@ import os
 import sys
 import argparse
 import webbrowser
-import re
 
 from io import StringIO
 from textwrap import dedent
@@ -43,7 +42,7 @@ from nbconvert.exporters import Exporter
 from .utils import env, pretty_size
 from .actions import get_actions
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_DEPENDS_OPTIONS, \
-    SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS, SOS_SECTION_HEADER
+    SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS, SOS_SECTION_HEADER, SOS_CELL_LINE
 
 __all__ = ['SoS_Lexer', 'SoS_Exporter']
 
@@ -766,6 +765,7 @@ def workflow_to_html(workflow, script_file, html_file, style_args):
 
 def markdown_content(content_type, content, fh):
     # write content to a file
+    import re
     if content_type == 'COMMENT':
         fh.write('{}\n'.format(''.join([x.lstrip('#').strip() + '  \n'
                                         for x in content if not x.startswith('#!')])))
@@ -995,7 +995,7 @@ def script_to_notebook(script_file, notebook_file):
     cell_count = 1
     cell_type = 'code'
     content = []
-    CELL_LINE = re.compile('^%cell\s+(markdown|code)(\s+\d+\s+)?$')
+
     with open(script_file) as script:
         first_block = True
         for line in script:
@@ -1009,7 +1009,7 @@ def script_to_notebook(script_file, notebook_file):
 
             first_block = False
 
-            mo = CELL_LINE.match(line)
+            mo = SOS_CELL_LINE.match(line)
             if mo:
                 # eat a new line before the CELL_LINE
                 if content and content[-1] == '\n':

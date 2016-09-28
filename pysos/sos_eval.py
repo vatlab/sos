@@ -21,13 +21,13 @@
 #
 import os
 import sys
-import re
 import collections
 from io import StringIO
 from shlex import quote
 from tokenize import generate_tokens, untokenize, NAME, STRING
 
 from .utils import env, Error, short_repr, DelayedAction, AbortExecution
+from .sos_syntax import FORMAT_SPECIFIER, SIMPLE_SUB 
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
@@ -56,44 +56,6 @@ class SoS_String:
     resulting object of types other than simple int, None etc. It also supports
     a special conversion flag !q that properly quote a filename so that
     it can be used safely within a shell script. '''
-
-    # Format specifier that can be used at the end of the string to convert
-    # result (!s|r|q) and control output format (:.2f etc). The pattern
-    # is constructed according to Python format mini language.
-    _FORMAT_SPECIFIER_TMPL = r'''
-        ^                                   # start of expression
-        (?P<expr>.*?)                       # any expression
-        (?P<conversion>!\s*                 # conversion starting with !
-        [srqabde,]+                         # conversion, q, a, b, and , are added by SoS
-        )?
-        (?P<format_spec>:\s*                # format_spec starting with :
-        (?P<fill>.?[<>=^])?                 # optional fill|align
-        (?P<sign>[-+ ])?                    # optional sign
-        \#?                                 #
-        0?                                  #
-        (?P<width>\d+)?                     # optional width
-        ,?                                  # optional ,
-        (?P<precision>\.\d+)?               # optional precision
-        (?P<type>[bcdeEfFgGnosxX%])?        # optional type
-        )?                                  # optional format_spec
-        \s*$                                # end of tring
-        '''
-
-    # DOTALL makes . matchs also to newline so this supports multi-line expression
-    FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
-
-    # we handle simple cases in an easier way to avoid linear search each time.
-    # simple case means ${ } as sigil, and there is nothing but variable name
-    # within it.
-    #
-    _SIMPLE_SUB_TMPL = r'''
-        \$\{                                # left sigil
-        (                                   # capture variable name
-        [_a-zA-Z]\w*                        # alpha numeric with no leading numeric
-        )
-        \}                                  # right sigil
-        '''
-    SIMPLE_SUB = re.compile(_SIMPLE_SUB_TMPL, re.VERBOSE | re.DOTALL)
 
     def __init__(self, sigil = '${ }', local_dict={}):
         # do not check sigil here because the function will be called quite frequently
@@ -134,7 +96,7 @@ class SoS_String:
         return pieces[0] + self._interpolate(pieces[1])
 
     def direct_interpolate(self, text):
-        pieces = self.SIMPLE_SUB.split(text)
+        pieces = SIMPLE_SUB.split(text)
         # replace pieces 1, 3, 5, ... etc with their values
         for i in range(1, len(pieces), 2):
             if hasattr(env, 'accessed_vars'):
@@ -200,7 +162,7 @@ class SoS_String:
             while True:
                 try:
                     # is syntax correct?
-                    mo = self.FORMAT_SPECIFIER.match(text[:j])
+                    mo = FORMAT_SPECIFIER.match(text[:j])
                     if mo:
                         expr, fmt, conversion = mo.group('expr', 'format_spec', 'conversion')
                     else:
