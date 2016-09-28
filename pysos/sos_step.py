@@ -842,11 +842,14 @@ class Run_Step_Executor(Queued_Step_Executor):
         elif stage == 'input statement':
             env.logger.trace('Handling input statement {}'.format(msg))
         elif stage == '_input':
-            env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'], noneAsNA=True)))
+            if env.sos_dict['_input'] is not None:
+                env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'])))
         elif stage == 'input':
-            env.logger.info('input:    ``{}``'.format(short_repr(env.sos_dict['input'], noneAsNA=True)))
+            if env.sos_dict['input'] is not None:
+                env.logger.info('input:    ``{}``'.format(short_repr(env.sos_dict['input'])))
         elif stage == 'output':
-            env.logger.info('output:   ``{}``'.format(short_repr(env.sos_dict['output'], noneAsNA=True)))
+            if env.sos_dict['output'] is not None:
+                env.logger.info('output:   ``{}``'.format(short_repr(env.sos_dict['output'])))
 
     def assign(self, key, value):
         Base_Step_Executor.assign(self, key, value)

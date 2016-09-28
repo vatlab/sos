@@ -43,7 +43,7 @@ from pysos.sos_eval import  Undetermined
 from pysos.sos_executor import ExecuteError
 from pysos.actions import DockerClient
 from docker.errors import DockerException
-from pysos.sos_executor import Sequential_Executor
+from pysos.sos_executor import DAG_Executor
 from pysos.signature import FileTarget
 
 import socket
@@ -122,12 +122,12 @@ b=func_run()
 c=func_both()
 """)
         wf = script.workflow()
-        Sequential_Executor(wf).prepare()
+        DAG_Executor(wf).prepare()
         self.assertTrue(isinstance(env.sos_dict['result'].b, Undetermined))
         self.assertEqual(env.sos_dict['result'].c, 1)
         #
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['result'].b, 1)
         self.assertEqual(env.sos_dict['result'].c, 1)
 
@@ -139,8 +139,8 @@ ret = get_output('echo blah')
 """)
         wf = script.workflow()
         # should be ok
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['test'].ret, 'blah\n')
         #
         script = SoS_Script(r"""
@@ -149,8 +149,8 @@ ret = get_output('echo blah', show_command=True)
 """)
         wf = script.workflow()
         # should be ok
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['test'].ret, '$ echo blah\nblah\n')
         #
         script = SoS_Script(r"""
@@ -159,8 +159,8 @@ ret = get_output('echo blah', show_command=True, prompt='% ')
 """)
         wf = script.workflow()
         # should be ok
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['test'].ret, '% echo blah\nblah\n')
         #
         script = SoS_Script(r"""
@@ -169,7 +169,7 @@ get_output('catmouse')
 """)
         wf = script.workflow()
         # should fail in prepare mode
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).prepare)
+        self.assertRaises((ExecuteError, RuntimeError), DAG_Executor(wf).prepare)
         #
         #
         script = SoS_Script(r"""
@@ -178,7 +178,7 @@ ret = get_output('cat -h')
 """)
         wf = script.workflow()
         # this should give a warning and return false
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
+        self.assertRaises(ExecuteError, DAG_Executor(wf).prepare)
 
     def testCheckCommand(self):
         '''Test action check_command'''
@@ -188,8 +188,8 @@ check_command('cat')
 """)
         wf = script.workflow()
         # should be ok
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         #
         script = SoS_Script(r"""
 [0]
@@ -197,7 +197,7 @@ check_command('catmouse')
 """)
         wf = script.workflow()
         # should fail in prepare mode
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
+        self.assertRaises(ExecuteError, DAG_Executor(wf).prepare)
         #
         wf = script.workflow()
         #
@@ -208,15 +208,15 @@ check_command('ls -l')
 """)
         wf = script.workflow()
         # this should pass
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         #
         script = SoS_Script(r"""
 [0]
 fail_if(check_command('cat -h') != 0, 'command return non-zero')
 """)
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
+        self.assertRaises(ExecuteError, DAG_Executor(wf).prepare)
         #
         # check check_command is the command is stuck
         script = SoS_Script(r"""
@@ -225,7 +225,7 @@ check_command('sleep 4')
 """)
         wf = script.workflow()
         # this should pass
-        Sequential_Executor(wf).prepare()
+        DAG_Executor(wf).prepare()
         #
         script = SoS_Script(r"""
 [0]
@@ -233,7 +233,7 @@ fail_if(check_command('sleep 4') != 0, 'Command time out')
 """)
         wf = script.workflow()
         # this should pass
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
+        self.assertRaises(ExecuteError, DAG_Executor(wf).prepare)
         #
         # test reading this file
         script = SoS_Script(r"""
@@ -242,14 +242,14 @@ check_command('cat test_actions.py', 'abcde' + 'fgh')
 """)
         wf = script.workflow()
         # should raise an error
-        self.assertRaises(ExecuteError, Sequential_Executor(wf).prepare)
+        self.assertRaises(ExecuteError, DAG_Executor(wf).prepare)
         #
         script = SoS_Script(r"""
 check_command('cat test_actions.py', 'testSearchOutput')
 """)
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
 
     def testFailIf(self):
@@ -261,7 +261,7 @@ fail_if(len(input) == 1)
 """)
         wf = script.workflow()
         # should fail in prepare mode
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).prepare)
+        self.assertRaises((ExecuteError, RuntimeError), DAG_Executor(wf).prepare)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
@@ -277,8 +277,8 @@ warn_if(input is None, 'Expect to see a warning message')
 """)
         wf = script.workflow()
         # should see a warning message.
-        Sequential_Executor(wf).prepare()
-        #self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
+        DAG_Executor(wf).prepare()
+        #self.assertRaises(RuntimeError, DAG_Executor(wf).run)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
@@ -298,7 +298,7 @@ stop_if(_rep > 10)
 result.append(_rep)
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).prepare()
+        DAG_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['res'].result, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
     def testRun(self):
@@ -309,15 +309,16 @@ run:
 echo 'Echo'
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         script = SoS_Script(r'''
 [0]
 run:
 echo 'Echo
 ''')
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
+        dag = DAG_Executor(wf).prepare()
+        self.assertRaises(RuntimeError, DAG_Executor(wf).run, dag)
 
     def testBash(self):
         '''Test action bash'''
@@ -327,15 +328,16 @@ bash:
 echo 'Echo'
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         script = SoS_Script(r'''
 [0]
 bash:
 echo 'Echo
 ''')
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
+        dag = DAG_Executor(wf).prepare()
+        self.assertRaises(RuntimeError, DAG_Executor(wf).run, dag)
     
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testBashInDocker(self):
@@ -346,8 +348,8 @@ bash:  docker_image='ubuntu'
 echo 'Echo'
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
 
     def testSh(self):
@@ -358,15 +360,16 @@ sh:
 echo 'Echo'
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         script = SoS_Script(r'''
 [0]
 sh:
 echo 'Echo
 ''')
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
+        dag = DAG_Executor(wf).prepare()
+        self.assertRaises(RuntimeError, DAG_Executor(wf).run, dag)
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -379,11 +382,11 @@ sh: docker_image='ubuntu'
 echo 'Echo
 ''')
         wf = script.workflow()
-        # FIXME: syntax error is not reflected outside of the docker
-        self.assertRaises(RuntimeError, Sequential_Executor(wf).run)
+        dag = DAG_Executor(wf).prepare()
+        self.assertRaises(RuntimeError, DAG_Executor(wf).run, dag)
         #
         # this should give us a warning if RAM is less than 4G
-        Sequential_Executor(wf).prepare()
+        DAG_Executor(wf).prepare()
 
 
     def testCsh(self):
@@ -398,8 +401,8 @@ csh:
      end
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         # no test for docker because standard distributions do not have csh
 
     def testTcsh(self):
@@ -414,8 +417,8 @@ tcsh:
      end
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         # no test for docker because standard distributions do not have tcsh
 
     def testZsh(self):
@@ -428,8 +431,8 @@ zsh:
 echo "Hello World!", $SHELL
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         # cannot test in docker because no first-tier repository
         # provides zsh.
 
@@ -443,8 +446,8 @@ a = {'1': 2}
 print(a)
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testPythonInDocker(self):
@@ -456,8 +459,8 @@ a = {'1': 2}
 print(a)
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
     def testPython3(self):
         script = SoS_Script(r'''
@@ -467,8 +470,8 @@ a = {'1', '2'}
 print(a)
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -482,8 +485,8 @@ a = {'1', '2'}
 print(a)
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
     def testPerl(self):
         '''Test action ruby'''
@@ -496,8 +499,8 @@ use warnings;
 print "hi NAME\n";
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -512,8 +515,8 @@ use warnings;
 print "hi NAME\n";
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
 
     def testRuby(self):
@@ -534,8 +537,8 @@ if ( line2 =~ /Cats(.*)/ )
 end
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -555,8 +558,8 @@ if ( line2 =~ /Cats(.*)/ )
 end
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
     def testNode(self):
         '''Test action ruby'''
@@ -569,8 +572,8 @@ var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         #
         script = SoS_Script(r'''
 [0]
@@ -579,8 +582,8 @@ var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -594,8 +597,8 @@ var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         #
         script = SoS_Script(r'''
 [0]
@@ -605,8 +608,8 @@ var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
     def testR(self):
         '''Test action JavaScript'''
@@ -619,8 +622,8 @@ nums = rnorm(25, mean=100, sd=15)
 mean(nums)
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -633,8 +636,8 @@ nums = rnorm(25, mean=100, sd=15)
 mean(nums)
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
     @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
     def testCheckRLibrary(self):
@@ -646,21 +649,21 @@ mean(nums)
 check_R_library('edgeR')
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        dag = DAG_Executor(wf).prepare()
         script = SoS_Script(r'''
 [0]
 check_R_library('stephens999/ashr')
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
         script = SoS_Script(r'''
 [0]
 check_R_library('edgeRRRR')
 ''')
         wf = script.workflow()
-        self.assertRaises((ExecuteError, RuntimeError), Sequential_Executor(wf).prepare)
+        self.assertRaises((ExecuteError, RuntimeError), DAG_Executor(wf).prepare)
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerBuild(self):
@@ -681,8 +684,8 @@ RUN pip install Flask
 WORKDIR /home
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerImage(self):
@@ -700,8 +703,8 @@ run: docker_image='compbio/ngseasy-fastqc:1.0-r001',
     /usr/local/bin/fastqc /input_data/*.fastq --outdir /output_data
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerImageFromFile(self):
@@ -722,8 +725,8 @@ run: docker_image='blang/busybox-bash', docker_file = 'hello.tar'
     echo "a"
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
 
     @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
     def testDownload(self):
@@ -742,7 +745,7 @@ download(['http://bioinformatics.mdanderson.org/Software/VariantTools/repository
     dest_dir='tmp', decompress=True)
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).prepare()
+        DAG_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('tmp/snapshot.proj'))
         self.assertTrue(os.path.isfile('tmp/snapshot_genotype.DB'))
         #
@@ -754,7 +757,7 @@ download: dest_file='tmp/test.ann'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).prepare()
+        DAG_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('tmp/test.ann'))
         # test option dest_dir
         script = SoS_Script(r'''
@@ -763,7 +766,7 @@ download: dest_dir='tmp'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).prepare()
+        DAG_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq.ann'))
         #
    
@@ -778,13 +781,13 @@ download: dest_dir='tmp', decompress=True
 ''')
         start = time.time()
         wf = script.workflow()
-        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).prepare)
+        self.assertRaises((RuntimeError, ExecuteError), DAG_Executor(wf).prepare)
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq-hg18_20100817.DB'))
         self.assertGreater(time.time() - start, 5)
         # this will be fast
         start = time.time()
         wf = script.workflow()
-        self.assertRaises((RuntimeError, ExecuteError), Sequential_Executor(wf).prepare)
+        self.assertRaises((RuntimeError, ExecuteError), DAG_Executor(wf).prepare)
         self.assertLess(time.time() - start, 3)
         # 
         # test decompress tar.gz file
@@ -796,7 +799,7 @@ download: dest_dir='tmp', decompress=True
     ${GATK_URL}/1000G_omni2.5.hg19.sites.vcf.idx.gz.md5
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).prepare()
+        DAG_Executor(wf).prepare()
         #
         shutil.rmtree('tmp')
 
@@ -819,8 +822,8 @@ output: 'myreport.html'
 pandoc(output=_output[0], to='html')
 ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         self.assertTrue(os.path.isfile('myreport.html'))
         #
         FileTarget('myreport.html').remove('both')
@@ -837,7 +840,7 @@ run: run_mode='prepare'
 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).prepare()
+        DAG_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('a.txt'))
         os.remove('a.txt')
         #
@@ -848,7 +851,7 @@ run: run_mode='prepare'
 
 ''')
         wf = script.workflow()
-        Sequential_Executor(wf).prepare()
+        DAG_Executor(wf).prepare()
         self.assertTrue(os.path.isfile('a.txt'))
         FileTarget('a.txt').remove('both')
 
@@ -868,7 +871,8 @@ for k in range(2):
 ''')
         env.verbosity=3
         wf = script.workflow('batch')
-        Sequential_Executor(wf).run()
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         for f in ['0.txt', '1.txt']:
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')

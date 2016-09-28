@@ -28,7 +28,7 @@ from io import StringIO
 
 from pysos.sos_script import SoS_Script
 from pysos.utils import env
-from pysos.sos_executor import Sequential_Executor
+from pysos.sos_executor import DAG_Executor
 from pysos.signature import FileTarget
 
 
@@ -58,7 +58,7 @@ class TestDAG(unittest.TestCase):
 
         ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        dag = DAG_Executor(wf).prepare()
         self.assertDAG(dag,
 '''strict digraph "" {
 A_2;
@@ -84,7 +84,7 @@ input: 'a.txt'
 
         ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        dag = DAG_Executor(wf).prepare()
         self.assertDAG(dag,
 '''strict digraph "" {
 A_2;
@@ -119,7 +119,7 @@ output: 'e.txt'
 
         ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        dag = DAG_Executor(wf).prepare()
         self.assertDAG(dag,
 '''strict digraph "" {
 A_2;
@@ -154,7 +154,7 @@ output: 'e.txt'
 
         ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        dag = DAG_Executor(wf).prepare()
         self.assertDAG(dag,
 '''strict digraph "" {
 B_2;
@@ -189,7 +189,7 @@ output: 'e.txt'
         ''')
 
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        dag = DAG_Executor(wf).prepare()
         self.assertDAG(dag,
 '''strict digraph "" {
 B_1;
@@ -224,7 +224,7 @@ output: 'e.txt'
 
         ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        dag = DAG_Executor(wf).prepare()
         self.assertDAG(dag,
 '''
 strict digraph "" {
@@ -267,7 +267,7 @@ output: 'e.txt'
 
         ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        dag = DAG_Executor(wf).prepare()
         dag.show_nodes()
         dag.write_dot('a.dot')
         self.assertDAG(dag,
@@ -303,7 +303,7 @@ output: 'e.txt'
 
         ''')
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        dag = DAG_Executor(wf).prepare()
         self.assertDAG(dag,
 '''
 strict digraph "" {
@@ -345,7 +345,7 @@ input: 'a.txt'
             os.remove('b.txt')
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        dag = DAG_Executor(wf).prepare()
         #dag.write_dot('a.dot')
         #dag.show_nodes()
         self.assertDAG(dag,
@@ -380,7 +380,7 @@ output: 'A.txt'
         ''')
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Sequential_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, DAG_Executor(wf).prepare)
 
     def testLongChain(self):
         '''Test long make file style dependencies.'''
@@ -443,7 +443,7 @@ sh:
         ''')
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        dag = DAG_Executor(wf).prepare()
         self.assertDAG(dag,
 '''
 strict digraph "" {
@@ -468,7 +468,7 @@ A_1 -> A_2;
 "B3 (B3.txt)" -> "B2 (B2.txt)";
 }
 ''')
-        Sequential_Executor(wf).run(dag)
+        DAG_Executor(wf).run(dag)
         for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             t = FileTarget(f)
             self.assertTrue(t.exists())
@@ -537,7 +537,7 @@ sh:
         wf = script.workflow()
         #
         # test 1, we only need to generate target 'B1.txt'
-        dag = Sequential_Executor(wf).prepare(targets=['B1.txt'])
+        dag = DAG_Executor(wf).prepare(targets=['B1.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(dag,
 '''
@@ -560,7 +560,7 @@ strict digraph "" {
 "C3 (C3.txt)" -> "C1 (C1.txt)";
 }
 ''')
-        Sequential_Executor(wf).run(dag)
+        DAG_Executor(wf).run(dag)
         for f in ['A1.txt', 'A2.txt']:
             self.assertFalse(FileTarget(f).exists())
         for f in ['C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
@@ -569,7 +569,7 @@ strict digraph "" {
             t.remove('both')
         #
         # test 2, we would like to generate two files
-        dag = Sequential_Executor(wf).prepare(targets=['B2.txt', 'C2.txt'])
+        dag = DAG_Executor(wf).prepare(targets=['B2.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(dag,
 '''
@@ -591,7 +591,7 @@ strict digraph "" {
 "C1 (C1.txt)" -> "B2 (B2.txt)";
 }
 ''')
-        Sequential_Executor(wf).run(dag)
+        DAG_Executor(wf).run(dag)
         for f in ['A1.txt', 'B1.txt', 'A2.txt']:
             self.assertFalse(FileTarget(f).exists())
         for f in ['C2.txt', 'B2.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
@@ -601,7 +601,7 @@ strict digraph "" {
         #
         # test 3, generate two separate trees
         #
-        dag = Sequential_Executor(wf).prepare(targets=['B3.txt', 'C2.txt'])
+        dag = DAG_Executor(wf).prepare(targets=['B3.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
         self.assertDAG(dag,
 '''
@@ -612,7 +612,7 @@ strict digraph "" {
 "C4 (C4.txt)" -> "C2 (C2.txt)";
 }
 ''')
-        Sequential_Executor(wf).run(dag)
+        DAG_Executor(wf).run(dag)
         for f in ['A1.txt', 'B1.txt', 'A2.txt', 'B2.txt', 'C1.txt', 'C3.txt']:
             self.assertFalse(FileTarget(f).exists())
         for f in ['C2.txt', 'B3.txt', 'C4.txt']:
@@ -656,7 +656,7 @@ sh:
 ''')
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        dag = DAG_Executor(wf).prepare()
         self.assertDAG(dag,
 '''
 strict digraph "" {
@@ -673,7 +673,7 @@ A_1 -> A_2;
 "P (B1.txt.p)" -> A_1;
 }
 ''')
-        Sequential_Executor(wf).run(dag)
+        DAG_Executor(wf).run(dag)
         for f in ['A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
             t = FileTarget(f)
             self.assertTrue(t.exists())
@@ -711,7 +711,7 @@ sh:
 ''')
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
-        dag = Sequential_Executor(wf).prepare()
+        dag = DAG_Executor(wf).prepare()
         self.assertDAG(dag,
 '''
 strict digraph "" {
@@ -723,7 +723,7 @@ A_2;
 ''')
         env.max_jobs = 4
         st = time.time()
-        Sequential_Executor(wf).run(dag)
+        DAG_Executor(wf).run(dag)
         self.assertLess(time.time() - st, 4)
         for f in ['A1.txt', 'B2.txt', 'A2.txt']:
             FileTarget(f).remove('both')
@@ -767,8 +767,8 @@ for num in range(3):
 ''')
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow('ALL')
-        dag = Sequential_Executor(wf).prepare()
-        Sequential_Executor(wf).run(dag)
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
         for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')

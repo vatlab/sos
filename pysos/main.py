@@ -135,7 +135,7 @@ def cmd_run(args, workflow_args):
     from .utils import env, get_traceback
     from .sos_script import SoS_Script
     from .target import FileTarget
-    from .sos_executor import Sequential_Executor
+    from .sos_executor import DAG_Executor
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
     # kill all remainging processes when the master process is killed.
@@ -156,7 +156,7 @@ def cmd_run(args, workflow_args):
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
-        executor = Sequential_Executor(workflow, args=workflow_args, config_file=args.__config__)
+        executor = DAG_Executor(workflow, args=workflow_args, config_file=args.__config__)
         # even with the -r option, prepare() can be executed if there are
         # auxiliary_sections, or if there are targets where a DAG is required
         # Issue #213

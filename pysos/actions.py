@@ -49,7 +49,7 @@ from .utils import env, ProgressBar, natural_keys, transcribe, AbortExecution, s
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .target import FileTarget, fileMD5
-from .sos_executor import Sequential_Executor
+from .sos_executor import DAG_Executor
 from .monitor import ProcessMonitor, summarizeExecution
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
@@ -502,7 +502,7 @@ def sos_run(workflow, **kwargs):
     env.sos_dict.set('__step_output__', copy.deepcopy(env.sos_dict['_input']))
     if env.run_mode == 'prepare':
         env.logger.debug('Preparing nested workflow {}'.format(workflow))
-        return Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
+        return DAG_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
     elif env.run_mode == 'run':
         env.logger.info('Executing workflow ``{}`` with input ``{}``'
             .format(workflow, short_repr(env.sos_dict['_input'], True)))
@@ -511,8 +511,8 @@ def sos_run(workflow, **kwargs):
         # been changed and need to be re-prepared) so it is necessary to prepare
         # the workflow at run mode.
         #
-        dag = Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
-        return Sequential_Executor(wf, args=env.sos_dict['__args__'], nested=True).run(dag)
+        dag = DAG_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
+        return DAG_Executor(wf, args=env.sos_dict['__args__'], nested=True).run(dag)
     elif env.run_mode == 'interactive':
         raise RuntimeError('Action sos_run is not supported in interactive mode')
 

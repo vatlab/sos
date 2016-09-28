@@ -180,6 +180,7 @@ class Base_Executor:
 
     def prepare(self, targets=None):
         '''Run the script in prepare mode to prepare resources.'''
+        #env.logger.info('Preparing workflow {}'.format(self.workflow.name))
         env.run_mode = 'prepare'
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
@@ -310,7 +311,7 @@ class Base_Executor:
         return dag
 
 
-class Sequential_Executor(Base_Executor):
+class DAG_Executor(Base_Executor):
     #
     # Execute a workflow sequentially in batch mode
     def __init__(self, workflow, args=[], config_file=None, nested=False):
