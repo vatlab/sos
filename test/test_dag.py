@@ -26,7 +26,7 @@ import time
 import unittest
 from io import StringIO
 
-from pysos import SoS_Script
+from pysos.sos_script import SoS_Script
 from pysos.utils import env
 from pysos.sos_executor import Sequential_Executor
 from pysos.signature import FileTarget

@@ -95,7 +95,7 @@ def execute_task(task, global_def, sos_dict, sigil):
             os.chdir(os.path.expanduser(sos_dict['_runtime']['workdir']))
         env.sos_dict.quick_update(sos_dict)
         SoS_exec('import os, sys, glob')
-        SoS_exec('from pysos import *')
+        SoS_exec('from pysos.runtime import *')
         # re-execute global definition because some of the definitions in the 
         # global section might not be pickaleable (e.g. functions) and cannot
         # be passed to this separate process.

@@ -30,8 +30,8 @@ import glob
 import unittest
 import shutil
 
-from pysos import SoS_Script
-from pysos import __version__
+from pysos.sos_script import SoS_Script
+from pysos._version import __version__
 from pysos.utils import env
 from pysos.sos_eval import Undetermined
 from pysos.sos_executor import Sequential_Executor, Interactive_Executor, ExecuteError
@@ -493,7 +493,7 @@ if run_mode == 'run':
     def testRunmode(self):
         '''Test the runmode decoration'''
         script = SoS_Script(r"""
-from pysos import SoS_Action
+from pysos.actions import SoS_Action
 
 @SoS_Action(run_mode='run')
 def fail():

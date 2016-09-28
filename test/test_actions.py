@@ -37,7 +37,7 @@ except:
     import _dummy_thread as _thread
 from contextlib import contextmanager
 
-from pysos import SoS_Script
+from pysos.sos_script import SoS_Script
 from pysos.utils import env
 from pysos.sos_eval import  Undetermined
 from pysos.sos_executor import ExecuteError
@@ -107,7 +107,7 @@ class TestActions(unittest.TestCase):
     def testSoSAction(self):
         '''Test sos_action decorator'''
         script = SoS_Script(r"""
-from pysos import SoS_Action
+from pysos.actions import SoS_Action
 
 @SoS_Action(run_mode='run')
 def func_run():

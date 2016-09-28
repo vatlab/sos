@@ -19,26 +19,23 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-
+#
 import os
 import sys
 import yaml
 import atexit
 import fnmatch
 import tempfile
-
+#
 from .utils import env, get_traceback, dict_merge
 from .sos_script import SoS_Script
-from .sos_executor import Base_Executor, Sequential_Executor
-from .converter import script_to_html, workflow_to_html, script_to_markdown, \
-    workflow_to_markdown, script_to_notebook, workflow_to_notebook, \
-    script_to_term, workflow_to_term, notebook_to_script
-from .sos_syntax import CONFIG_NAME
-from .target import FileTarget
 #
 # subcommand convert
 #
 def cmd_convert(args, style_args):
+    from .converter import script_to_html, workflow_to_html, script_to_markdown, \
+        workflow_to_markdown, script_to_notebook, workflow_to_notebook, \
+        script_to_term, workflow_to_term, notebook_to_script
     env.verbosity = args.verbosity
     # convert from ...
     try:
@@ -99,6 +96,7 @@ def cmd_convert(args, style_args):
 # subcommand inspect
 #
 def cmd_inspect(args, workflow_args):
+    from .sos_executor import Base_Executor
     env.verbosity = args.verbosity
     try:
         script = SoS_Script(filename=args.script)
@@ -114,6 +112,7 @@ def cmd_inspect(args, workflow_args):
 # subcommand prepare
 #
 def cmd_prepare(args, workflow_args):
+    from .sos_executor import Base_Executor
     env.verbosity = args.verbosity
 
     if args.__rerun__:
@@ -138,6 +137,8 @@ def cmd_prepare(args, workflow_args):
 # subcommand run
 #
 def cmd_run(args, workflow_args):
+    from .target import FileTarget
+    from .sos_executor import Sequential_Executor
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
     # kill all remainging processes when the master process is killed.
@@ -180,6 +181,7 @@ def cmd_run(args, workflow_args):
 # subcommand config
 #
 def cmd_config(args, workflow_args):
+    from .sos_syntax import CONFIG_NAME
     if workflow_args:
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
     #

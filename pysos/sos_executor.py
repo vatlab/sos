@@ -31,7 +31,7 @@ from collections.abc import Sequence
 import multiprocessing as mp
 from queue import Empty
 
-from . import __version__
+from ._version import __version__
 from .sos_step import Prepare_Step_Executor, Run_Step_Executor, Interactive_Step_Executor
 from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, \
     frozendict, dict_merge
@@ -85,7 +85,7 @@ class Base_Executor:
         # and functions
         if not new_dict:
             SoS_exec('import os, sys, glob')
-            SoS_exec('from pysos import *')
+            SoS_exec('from pysos.runtime import *')
             self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
             return
 
@@ -130,7 +130,7 @@ class Base_Executor:
         env.sos_dict.set('CONFIG', frozendict(cfg))
 
         SoS_exec('import os, sys, glob')
-        SoS_exec('from pysos import *')
+        SoS_exec('from pysos.runtime import *')
         self._base_symbols = set(dir(builtins)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
 
     def skip(self, section):
