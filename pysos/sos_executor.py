@@ -25,6 +25,8 @@ import yaml
 import shlex
 import argparse
 import time
+import builtins
+import keyword
 from collections.abc import Sequence
 import multiprocessing as mp
 from queue import Empty
@@ -35,7 +37,7 @@ from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, \
     frozendict, dict_merge
 from .sos_eval import Undetermined, SoS_exec
 from .sos_script import SoS_Script
-from .sos_syntax import SOS_SECTION_HEADER
+from .sos_syntax import SOS_SECTION_HEADER, SOS_KEYWORDS
 from .dag import SoS_DAG
 from .target import BaseTarget, FileTarget
 from .pattern import extract_pattern
@@ -84,6 +86,7 @@ class Base_Executor:
         if not new_dict:
             SoS_exec('import os, sys, glob')
             SoS_exec('from pysos import *')
+            self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
             return
 
         env.sos_dict = WorkflowDict()
@@ -128,6 +131,7 @@ class Base_Executor:
 
         SoS_exec('import os, sys, glob')
         SoS_exec('from pysos import *')
+        self._base_symbols = set(dir(builtins)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
 
     def skip(self, section):
         if section.global_def:
@@ -203,9 +207,10 @@ class Base_Executor:
                 raise RuntimeError(res)
             #
             for k, v in res.items():
-                env.sos_dict.set(k, v)
                 if k == 'accessed_vars':
-                    env.logger.warning('{} accessed vars: {}'.format(section.name, ', '.join(v)))
+                    section.accessed_vars = v - self._base_symbols
+                else:
+                    env.sos_dict.set(k, v)
             #
             # build DAG with input and output files of step
             #
@@ -259,9 +264,10 @@ class Base_Executor:
                     raise RuntimeError(res)
                 #
                 for k, v in res.items():
-                    env.sos_dict.set(k, v)
                     if k == 'accessed_vars':
-                        env.logger.warning('{} accessed vars: {}'.format(section.name, ', '.join(v)))
+                        section.accessed_vars = v - self._base_symbols
+                    else:
+                        env.sos_dict.set(k, v)
                 #
                 if isinstance(env.sos_dict['__step_output__'], (type(None), Undetermined)):
                     raise RuntimeError('Output of auxiliary step cannot be undetermined, output containing {} is expected.'.format(target))

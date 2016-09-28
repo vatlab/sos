@@ -111,11 +111,10 @@ class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
     # some function to behave differently in different modes.
     #
-    def __init__(self, step, prepare_mode=False):
+    def __init__(self, step):
         self.step = step
         self.step_signature = self.get_step_signature()
         self.step_id = textMD5(self.step_signature)
-        self.prepare_mode = prepare_mode
 
     #
     # The following functions should be redefined in an executor
@@ -594,7 +593,7 @@ class Base_Step_Executor:
                                         ofiles = res['output']
                                         skip_index = True
                                 elif env.sig_mode == 'assert':
-                                    if not self.prepare_mode and not signatures[idx].validate():
+                                    if env.run_mode == 'run' and not signatures[idx].validate():
                                         raise RuntimeError('Signature mismatch.')
                                 elif env.sig_mode == 'construct':
                                     if signatures[idx].write():
@@ -638,8 +637,7 @@ class Base_Step_Executor:
                 skip_index = False
                 continue
             # finally, tasks..
-            # prepare_mode is set by step_executors that ignores task (e.g. Prepare)
-            if not self.step.task or self.prepare_mode:
+            if not self.step.task or env.run_mode == 'prepare':
                 continue
 
             # check if the task is active
@@ -733,8 +731,8 @@ class Base_Step_Executor:
 class Queued_Step_Executor(Base_Step_Executor):
     # this class execute the step in a separate process
     # and returns result using a queue
-    def __init__(self, step, queue, prepare_mode):
-        Base_Step_Executor.__init__(self, step, prepare_mode)
+    def __init__(self, step, queue):
+        Base_Step_Executor.__init__(self, step)
         self.queue = queue
 
     def run(self):
@@ -797,7 +795,7 @@ class Prepare_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
         env.run_mode = 'prepare'
         env.accessed_vars = set()
-        Queued_Step_Executor.__init__(self, step, queue, prepare_mode=True)
+        Queued_Step_Executor.__init__(self, step, queue)
 
     def expand_input_files(self, value, *args):
         if any(isinstance(x, dynamic) for x in args):
@@ -822,7 +820,7 @@ class Prepare_Step_Executor(Queued_Step_Executor):
 class Run_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
         env.run_mode = 'run'
-        Queued_Step_Executor.__init__(self, step, queue, prepare_mode=False)
+        Queued_Step_Executor.__init__(self, step, queue)
 
     def log(self, stage=None, msg=None):
         if stage == 'start':
@@ -881,7 +879,7 @@ class Run_Step_Executor(Queued_Step_Executor):
 class Interactive_Step_Executor(Base_Step_Executor):
     def __init__(self, step):
         env.run_mode = 'interactive'
-        Base_Step_Executor.__init__(self, step, prepare_mode=False)
+        Base_Step_Executor.__init__(self, step)
     
     def expand_input_files(self, value, *args):
         # We ignore 'dynamic' option in run mode

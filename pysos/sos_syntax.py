@@ -32,6 +32,9 @@ SOS_ACTION_OPTIONS = ['workdir', 'docker_image', 'docker_file', 'active']
 SOS_DIRECTIVES = ['input', 'output', 'depends', 'task', 'parameter']
 SOS_SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'provides', 'shared']
 
+SOS_KEYWORDS = SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS + SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS \
+    + SOS_ACTION_OPTIONS + SOS_DIRECTIVES + SOS_SECTION_OPTIONS
+
 # Regular expressions for parsing section headers and options
 _SECTION_HEADER_TMPL = r'''
     ^\[\s*                             # [
