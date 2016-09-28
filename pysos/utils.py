@@ -557,7 +557,6 @@ class ProgressBar:
     1. it can start from the middle with init count
     '''
     # no ncurse support under windows
-    import blessings
     def __init__(self, message, totalCount = None, disp=True, index=None):
         if not disp:
             self.update = self.empty
@@ -574,6 +573,7 @@ class ProgressBar:
         else:
             self.index = index
         if self.index is not None:
+            import blessings
             self.term = blessings.Terminal(stream=sys.stderr)
         self.main = message
         self.main_start_time = time.time()

@@ -35,11 +35,8 @@ import shutil
 import zipfile
 import gzip
 import tarfile
-try:
-    # no ncurse support under windows
-    import blessings
-except ImportError:
-    pass
+import blessings
+
 from io import BytesIO
 from docker import Client
 from collections.abc import Sequence
@@ -678,7 +675,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
         decompressed = 0
         if decompress:
             if zipfile.is_zipfile(dest):
-                prog.done(message + ':\033[91m {} Decompressing {}\033[0m'.format(e.code, ' '*(term_width - len(message) - 16)))
+                prog.done(message + ':\033[91m Decompressing {}\033[0m'.format(' '*(term_width - len(message) - 16)))
                 zip = zipfile.ZipFile(dest)
                 zip.extractall(dest_dir)
                 names = zip.namelist()
@@ -689,7 +686,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                         sig.add(os.path.join(dest_dir, name))
                         decompressed += 1
             elif tarfile.is_tarfile(dest):
-                prog.done(message + ':\033[91m {} Decompressing {}\033[0m'.format(e.code, ' '*(term_width - len(message) - 16)))
+                prog.done(message + ':\033[91m Decompressing {}\033[0m'.format(' '*(term_width - len(message) - 16)))
                 with tarfile.open(dest, 'r:*') as tar:
                     tar.extractall(dest_dir)
                     # only extract files
@@ -701,7 +698,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                             sig.add(os.path.join(dest_dir, name))
                             decompressed += 1
             elif dest.endswith('.gz'):
-                prog.done(message + ':\033[91m {} Decompressing {}\033[0m'.format(e.code, ' '*(term_width - len(message) - 16)))
+                prog.done(message + ':\033[91m Decompressing {}\033[0m'.format(' '*(term_width - len(message) - 16)))
                 decomp = dest[:-3]
                 with gzip.open(dest, 'rb') as fin, open(decomp, 'wb') as fout:
                     buffer = fin.read(100000)
@@ -718,7 +715,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
         # if downloaded files contains .md5 signature, use them to validate
         # downloaded files.
         if os.path.isfile(dest + '.md5'):
-            prog.done(message + ':\033[91m {} Verifying md5 signature {}\033[0m'.format(e.code, ' '*(term_width - len(message) - 28)))
+            prog.done(message + ':\033[91m Verifying md5 signature {}\033[0m'.format(' '*(term_width - len(message) - 28)))
             with open(dest + '.md5') as md5:
                 rec_md5 = md5.readline().split()[0].strip()
                 obs_md5 = fileMD5(dest, partial=False)
@@ -726,7 +723,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     prog.done(message + ':\033[91m MD5 signature mismatch {}\033[0m'.format(' '*(term_width - len(message) - 25)))
                     env.logger.warning('md5 signature mismatch for downloaded file {} (recorded {}, observed {})'
                         .format(filename[:-4], rec_md5, obs_md5))
-            prog.done(message + ':\033[91m {} MD5 signature verified {}\033[0m'.format(e.code, ' '*(term_width - len(message) - 26)))
+            prog.done(message + ':\033[91m MD5 signature verified {}\033[0m'.format(' '*(term_width - len(message) - 26)))
     except Exception as e:
         if env.verbosity > 2:
              sys.stderr.write(get_traceback())
