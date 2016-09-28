@@ -138,6 +138,8 @@ class SoS_String:
         pieces = self.SIMPLE_SUB.split(text)
         # replace pieces 1, 3, 5, ... etc with their values
         for i in range(1, len(pieces), 2):
+            if hasattr(env, 'accessed_vars'):
+                env.accessed_vars |= accessed_vars(pieces[i])
             pieces[i] = self._repr(eval(pieces[i], env.sos_dict._dict, self.local_dict))
         return ''.join(pieces)
 
@@ -209,6 +211,8 @@ class SoS_String:
                     # if the syntax is correct
                     compile(expr, '<string>', 'eval')
                     try:
+                        if hasattr(env, 'accessed_vars'):
+                            env.accessed_vars |= accessed_vars(expr)
                         result = eval(expr, env.sos_dict._dict, self.local_dict)
                     except Exception as e:
                         raise InterpolationError(expr, e)
@@ -283,12 +287,7 @@ def ConvertString(s, sigil):
     result = []
     left_sigil = sigil.split(' ')[0]
     # tokenize the input syntax.
-    if sys.version_info.major == 2:
-        g = generate_tokens(StringIO(s.decode()).readline)
-    else:
-        # python 3 string is already unicode string
-        g = generate_tokens(StringIO(s).readline)
-    for toknum, tokval, _, _, _  in g:
+    for toknum, tokval, _, _, _  in generate_tokens(StringIO(s).readline):
         if toknum == token.STRING:
             # if this item is a string that uses triple single quote
             if tokval.startswith("'''"):
@@ -301,12 +300,27 @@ def ConvertString(s, sigil):
         result.append((toknum, tokval))
     return untokenize(result)
 
+accessed_vars_cache = {}
+def accessed_vars(statement):
+    '''Parse a Python statement and analyze the symbols used. The result
+    will be used to determine what variables a step depends upon.'''
+    global accessed_vars_cache
+    if statement in accessed_vars_cache:
+        return accessed_vars_cache[statement]
+
+    result = set()
+    for toknum, tokval, _, _, _  in generate_tokens(StringIO(statement).readline):
+        if toknum == token.NAME:
+            result.add(tokval)
+    return result
 
 def SoS_eval(expr, sigil='${ }'):
     '''Evaluate an expression after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
     expr = ConvertString(expr, sigil)
     try:
+        if hasattr(env, 'accessed_vars'):
+            env.accessed_vars |= accessed_vars(expr)
         return eval(expr, env.sos_dict._dict)
     except Exception as e:
         if env.run_mode not in ['run', 'interactive']:
@@ -387,8 +401,12 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
             else:
                 act = None
             if idx + 1 == len(code_group) and _is_expr(stmts):
+                if hasattr(env, 'accessed_vars'):
+                    env.accessed_vars |= accessed_vars(stmts)
                 res = eval(stmts, _dict)
             else:
+                if hasattr(env, 'accessed_vars'):
+                    env.accessed_vars |= accessed_vars(stmts)
                 exec(stmts, _dict)
         except AbortExecution:
             raise

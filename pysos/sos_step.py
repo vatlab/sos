@@ -449,6 +449,8 @@ class Base_Step_Executor:
                 if var not in env.sos_dict:
                     raise RuntimeError('Variable {} is not defined to shared.'.format(var))
                 result[var] = env.sos_dict[var]
+        if hasattr(env, 'accessed_vars'):
+            result['accessed_vars'] = env.accessed_vars
         return result
 
     def run(self):
@@ -794,6 +796,7 @@ def _expand_file_list(ignore_unknown, *args):
 class Prepare_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
         env.run_mode = 'prepare'
+        env.accessed_vars = set()
         Queued_Step_Executor.__init__(self, step, queue, prepare_mode=True)
 
     def expand_input_files(self, value, *args):

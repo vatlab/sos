@@ -204,6 +204,8 @@ class Base_Executor:
             #
             for k, v in res.items():
                 env.sos_dict.set(k, v)
+                if k == 'accessed_vars':
+                    env.logger.warning('{} accessed vars: {}'.format(section.name, ', '.join(v)))
             #
             # build DAG with input and output files of step
             #
@@ -258,6 +260,8 @@ class Base_Executor:
                 #
                 for k, v in res.items():
                     env.sos_dict.set(k, v)
+                    if k == 'accessed_vars':
+                        env.logger.warning('{} accessed vars: {}'.format(section.name, ', '.join(v)))
                 #
                 if isinstance(env.sos_dict['__step_output__'], (type(None), Undetermined)):
                     raise RuntimeError('Output of auxiliary step cannot be undetermined, output containing {} is expected.'.format(target))
@@ -301,6 +305,8 @@ class Sequential_Executor(Base_Executor):
     # Execute a workflow sequentially in batch mode
     def __init__(self, workflow, args=[], config_file=None, nested=False):
         Base_Executor.__init__(self, workflow, args, config_file, new_dict=not nested)
+        if hasattr(env, 'accessed_vars'):
+            delattr(env, 'accessed_vars')
 
     def run(self, dag=None):
         '''Execute a workflow with specified command line args. If sub is True, this
