@@ -582,7 +582,7 @@ class Base_Step_Executor:
                         if key == 'output':
                             ofiles = self.expand_output_files(value, *args)
                             # ofiles can be Undetermined
-                            if env.sig_mode != 'ignore' and not isinstance(g, Undetermined):
+                            if env.run_mode != 'prepare' and env.sig_mode != 'ignore' and not isinstance(g, Undetermined):
                                 signatures[idx] = RuntimeInfo(self.step_signature, env.sos_dict['_input'],
                                     ofiles, env.sos_dict['_depends'], idx)
                                 if env.sig_mode == 'default':
@@ -593,7 +593,7 @@ class Base_Step_Executor:
                                         ofiles = res['output']
                                         skip_index = True
                                 elif env.sig_mode == 'assert':
-                                    if env.run_mode == 'run' and not signatures[idx].validate():
+                                    if not signatures[idx].validate():
                                         raise RuntimeError('Signature mismatch.')
                                 elif env.sig_mode == 'construct':
                                     if signatures[idx].write():

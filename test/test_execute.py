@@ -1191,7 +1191,7 @@ cp ${_input} ${_dest}
         # only the first step
         wf = script.workflow('default_0')
         start = time.time()
-        env.sig_mode = 'ignore'
+        env.sig_mode = 'default'
         dag = Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run(dag)
         self.assertGreater(time.time() - start, 1)
@@ -1207,7 +1207,7 @@ cp ${_input} ${_dest}
         #
         wf = script.workflow()
         start = time.time()
-        env.sig_mode = 'ignore'
+        env.sig_mode = 'rebuild'
         dag = Sequential_Executor(wf).prepare()
         Sequential_Executor(wf).run(dag)
         self.assertGreater(time.time() - start, 1)
