@@ -112,7 +112,7 @@ def apply_wildcards(pattern,
             else:
                 raise RuntimeError('Wildcard apply error: {} ({})'.format(ex, wildcards))
 
-    return re.sub(SOS_WILDCARD, format_match, pattern)
+    return SOS_WILDCARD.sub(format_match, pattern)
 
 def extract_pattern(pattern, ifiles):
     '''This function match pattern to a list of input files, extract and return

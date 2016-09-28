@@ -35,6 +35,76 @@ SOS_SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'provides', 'shared']
 SOS_KEYWORDS = SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS + SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS \
     + SOS_ACTION_OPTIONS + SOS_DIRECTIVES + SOS_SECTION_OPTIONS
 
+#
+# This code is copied from Bazzar to compile regular expressions only when they
+# are needed, to avoid compiling all regular expressions up front even when they
+# are not used
+#
+class LazyRegex(object):
+    """A proxy around a real regex, which won't be compiled until accessed."""
+
+
+    # These are the parameters on a real _sre.SRE_Pattern object, which we
+    # will map to local members so that we don't have the proxy overhead.
+    _regex_attributes_to_copy = [
+                 '__copy__', '__deepcopy__', 'findall', 'finditer', 'match',
+                 'scanner', 'search', 'split', 'sub', 'subn'
+                 ]
+
+    # We use slots to keep the overhead low. But we need a slot entry for
+    # all of the attributes we will copy
+    __slots__ = ['_real_regex', '_regex_args', '_regex_kwargs',
+                ] + _regex_attributes_to_copy
+
+    def __init__(self, *args, **kwargs):
+        """Create a new proxy object, passing in the args to pass to re.compile
+        :param args: The `*args` to pass to re.compile
+        :param kwargs: The `**kwargs` to pass to re.compile
+        """
+        self._real_regex = None
+        self._regex_args = args
+        self._regex_kwargs = kwargs
+
+    def _compile_and_collapse(self):
+        """Actually compile the requested regex"""
+        self._real_regex = self._real_re_compile(*self._regex_args,
+                                                 **self._regex_kwargs)
+        for attr in self._regex_attributes_to_copy:
+            setattr(self, attr, getattr(self._real_regex, attr))
+
+    def _real_re_compile(self, *args, **kwargs):
+        """Thunk over to the original re.compile"""
+        try:
+            return re.compile(*args, **kwargs)
+        except re.error as e:
+            # raise InvalidPattern instead of re.error as this gives a
+            # cleaner message to the user.
+            raise InvalidPattern('"' + args[0] + '" ' +str(e))
+
+    def __getstate__(self):
+        """Return the state to use when pickling."""
+        return {
+            "args": self._regex_args,
+            "kwargs": self._regex_kwargs,
+            }
+
+    def __setstate__(self, dict):
+        """Restore from a pickled state."""
+        self._real_regex = None
+        setattr(self, "_regex_args", dict["args"])
+        setattr(self, "_regex_kwargs", dict["kwargs"])
+
+    def __getattr__(self, attr):
+        """Return a member from the proxied regex object.
+        If the regex hasn't been compiled yet, compile it
+        """
+        if self._real_regex is None:
+            self._compile_and_collapse()
+        # Once we have compiled, the only time we should come here
+        # is actually if the attribute is missing.
+        return getattr(self._real_regex, attr)
+
+
 # Regular expressions for parsing section headers and options
 _SECTION_HEADER_TMPL = r'''
     ^\[\s*                             # [
@@ -282,27 +352,27 @@ _SOS_WILDCARD_TMPL = r'''
     '''
 
 
-SOS_SECTION_HEADER = re.compile(_SECTION_HEADER_TMPL, re.VERBOSE)
-SOS_SECTION_NAME = re.compile(_SECTION_NAME_TMPL, re.VERBOSE)
-SOS_SUBWORKFLOW = re.compile(_SUBWORKFLOW_TMPL, re.VERBOSE)
-SOS_SECTION_OPTION = re.compile(_SECTION_OPTION_TMPL, re.VERBOSE)
-SOS_FORMAT_LINE = re.compile(_FORMAT_LINE_TMPL, re.VERBOSE)
-SOS_FORMAT_VERSION = re.compile(_FORMAT_VERSION_TMPL, re.VERBOSE)
-SOS_DIRECTIVE = re.compile(_DIRECTIVE_TMPL, re.VERBOSE)
-SOS_ASSIGNMENT = re.compile(_ASSIGNMENT_TMPL, re.VERBOSE)
-CONFIG_NAME = re.compile(_CONFIG_NAME, re.VERBOSE)
-SOS_AS = re.compile(_SOS_AS_TMPL, re.VERBOSE)
-SOS_STRU = re.compile(_SOS_STRU_TMPL, re.VERBOSE)
-SOS_MAGIC = re.compile(_SOS_MAGIC_TMPL, re.VERBOSE)
-SOS_IF = re.compile(_SOS_IF_TMPL, re.VERBOSE)
-SOS_ELIF = re.compile(_SOS_ELIF_TMPL, re.VERBOSE)
-SOS_ELSE = re.compile(_SOS_ELSE_TMPL, re.VERBOSE)
-SOS_ENDIF = re.compile(_SOS_ENDIF_TMPL, re.VERBOSE)
-SOS_CELL = re.compile(_SOS_CELL_TMPL, re.VERBOSE)
-SOS_INCLUDE = re.compile(_SOS_INCLUDE_TMPL, re.VERBOSE)
-SOS_FROM_INCLUDE = re.compile(_SOS_FROM_INCLUDE_TMPL, re.VERBOSE)
-SOS_CELL_LINE = re.compile(_SOS_CELL_LINE_TMPL, re.VERBOSE)
-INDENTED = re.compile(_INDENTED_TMPL, re.VERBOSE)
-FORMAT_SPECIFIER = re.compile(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
-SIMPLE_SUB = re.compile(_SIMPLE_SUB_TMPL, re.VERBOSE | re.DOTALL)
-SOS_WILDCARD = re.compile(_SOS_WILDCARD_TMPL, re.VERBOSE)
+SOS_SECTION_HEADER = LazyRegex(_SECTION_HEADER_TMPL, re.VERBOSE)
+SOS_SECTION_NAME = LazyRegex(_SECTION_NAME_TMPL, re.VERBOSE)
+SOS_SUBWORKFLOW = LazyRegex(_SUBWORKFLOW_TMPL, re.VERBOSE)
+SOS_SECTION_OPTION = LazyRegex(_SECTION_OPTION_TMPL, re.VERBOSE)
+SOS_FORMAT_LINE = LazyRegex(_FORMAT_LINE_TMPL, re.VERBOSE)
+SOS_FORMAT_VERSION = LazyRegex(_FORMAT_VERSION_TMPL, re.VERBOSE)
+SOS_DIRECTIVE = LazyRegex(_DIRECTIVE_TMPL, re.VERBOSE)
+SOS_ASSIGNMENT = LazyRegex(_ASSIGNMENT_TMPL, re.VERBOSE)
+CONFIG_NAME = LazyRegex(_CONFIG_NAME, re.VERBOSE)
+SOS_AS = LazyRegex(_SOS_AS_TMPL, re.VERBOSE)
+SOS_STRU = LazyRegex(_SOS_STRU_TMPL, re.VERBOSE)
+SOS_MAGIC = LazyRegex(_SOS_MAGIC_TMPL, re.VERBOSE)
+SOS_IF = LazyRegex(_SOS_IF_TMPL, re.VERBOSE)
+SOS_ELIF = LazyRegex(_SOS_ELIF_TMPL, re.VERBOSE)
+SOS_ELSE = LazyRegex(_SOS_ELSE_TMPL, re.VERBOSE)
+SOS_ENDIF = LazyRegex(_SOS_ENDIF_TMPL, re.VERBOSE)
+SOS_CELL = LazyRegex(_SOS_CELL_TMPL, re.VERBOSE)
+SOS_INCLUDE = LazyRegex(_SOS_INCLUDE_TMPL, re.VERBOSE)
+SOS_FROM_INCLUDE = LazyRegex(_SOS_FROM_INCLUDE_TMPL, re.VERBOSE)
+SOS_CELL_LINE = LazyRegex(_SOS_CELL_LINE_TMPL, re.VERBOSE)
+INDENTED = LazyRegex(_INDENTED_TMPL, re.VERBOSE)
+FORMAT_SPECIFIER = LazyRegex(_FORMAT_SPECIFIER_TMPL, re.VERBOSE | re.DOTALL)
+SIMPLE_SUB = LazyRegex(_SIMPLE_SUB_TMPL, re.VERBOSE | re.DOTALL)
+SOS_WILDCARD = LazyRegex(_SOS_WILDCARD_TMPL, re.VERBOSE)
