@@ -462,12 +462,21 @@ class SoS_Script:
                 self._read(fp)
         #
         # workflows in this script, from sections that are not skipped.
-        section_steps = sum([x.names for x in self.sections if \
-            not ('skip' in x.options and (x.options['skip'] is None or x.options['skip'])) ], [])
+        all_section_steps = sum([x.names for x in self.sections if \
+            not ('skip' in x.options and (x.options['skip'] is None or x.options['skip']))], [])
+        forward_section_steps = sum([x.names for x in self.sections if \
+            not ('skip' in x.options and (x.options['skip'] is None or x.options['skip'])) \
+            and 'provides' not in x.options], [])
         # (name, None) is auxiliary steps
-        self.workflows = list(set([x[0] for x in section_steps if '*' not in x[0]]))
-        if not self.workflows:
-            self.workflows = ['default']
+        self.workflows = list(set([x[0] for x in all_section_steps if '*' not in x[0]]))
+        forward_workflows = list(set([x[0] for x in forward_section_steps if '*' not in x[0]]))
+        if not forward_workflows:
+            self.workflows.append('default')
+            self.default_workflow = 'default'
+        elif len(forward_workflows) == 1:
+            self.default_workflow = forward_workflows[0]
+        else:
+            self.default_workflow = None
         #
         # now we need to record the workflows to the global section so
         # that we know if which has to be included when a subworkflow is used.
@@ -1061,6 +1070,8 @@ for __n, __v in {}.items():
                 wf_name = list(self.workflows)[0]
             elif 'default' in self.workflows:
                 wf_name = 'default'
+            elif self.default_workflow:
+                wf_name = self.default_workflow
             else:
                 raise ValueError('Name of workflow should be specified because '
                     'the script defines more than one pipelines without a default one. '
