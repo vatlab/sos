@@ -603,7 +603,7 @@ class Base_Step_Executor:
                         elif key == 'task':
                             self.process_task_args(*args, **kwargs)
                             # if concurrent is set, create a pool object
-                            if pool is None and env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in kwargs and kwargs['concurrent']:
+                            if env.run_mode != 'prepare' and pool is None and env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in kwargs and kwargs['concurrent']:
                                 pool = mp.Pool(min(env.max_jobs, len(self._groups)))
                         else:
                             raise RuntimeError('Unrecognized directive {}'.format(key))
@@ -626,7 +626,7 @@ class Base_Step_Executor:
                 skip_index = False
                 continue
             # finally, tasks..
-            if not self.step.task or env.run_mode == 'prepare':
+            if not self.step.task:
                 continue
 
             # check if the task is active
@@ -867,6 +867,10 @@ class Run_Step_Executor(Queued_Step_Executor):
                 tokens.extend(get_tokens(statement[2]))
             else:
                 tokens.extend(get_tokens(statement[1]))
+
+        if self.step.task:
+            tokens.extend(get_tokens(self.step.task))
+
         return ''.join(env_vars + tokens)
 
     def expand_depends_files(self, *args, **kwargs):

@@ -1411,23 +1411,79 @@ parameter: gvar = 10
 output: 'myfile.txt'
 # additional comment
 python:
+    import time
+    time.sleep(3)
     with open(${output!r}, 'w') as tmp:
         tmp.write('${gvar}')
 
 ''')
+        st = time.time()
         wf = script.workflow()
         dag = DAG_Executor(wf).prepare()
         DAG_Executor(wf).run(dag)
+        self.assertGreater(time.time() - st, 2.5)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '10')
         #
         # now if we change parameter, the step should be rerun
+        st = time.time()
         wf = script.workflow()
         dag = DAG_Executor(wf, args=['--gvar', '20']).prepare()
         DAG_Executor(wf, args=['--gvar', '20']).run(dag)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
+        self.assertGreater(time.time() - st, 2.5)
+        #
+        # do it again, signature should be effective
+        st = time.time()
+        wf = script.workflow()
+        dag = DAG_Executor(wf, args=['--gvar', '20']).prepare()
+        DAG_Executor(wf, args=['--gvar', '20']).run(dag)
+        with open('myfile.txt') as tmp:
+            self.assertEqual(tmp.read(), '20')
+        self.assertLess(time.time() - st, 2.5)
 
+        #
+        script = SoS_Script(r'''
+parameter: gvar = 10
+
+[10]
+# generate a file
+output: 'myfile.txt'
+# additional comment
+task:
+python:
+    import time
+    time.sleep(3)
+    with open(${output!r}, 'w') as tmp:
+        tmp.write('${gvar}')
+
+''')
+        st = time.time()
+        wf = script.workflow()
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
+        self.assertGreater(time.time() - st, 2.5)
+        with open('myfile.txt') as tmp:
+            self.assertEqual(tmp.read(), '10')
+        #
+        # now if we change parameter, the step should be rerun
+        st = time.time()
+        wf = script.workflow()
+        dag = DAG_Executor(wf, args=['--gvar', '20']).prepare()
+        DAG_Executor(wf, args=['--gvar', '20']).run(dag)
+        with open('myfile.txt') as tmp:
+            self.assertEqual(tmp.read(), '20')
+        self.assertGreater(time.time() - st, 2.5)
+        #
+        # do it again, signature should be effective
+        st = time.time()
+        wf = script.workflow()
+        dag = DAG_Executor(wf, args=['--gvar', '20']).prepare()
+        DAG_Executor(wf, args=['--gvar', '20']).run(dag)
+        with open('myfile.txt') as tmp:
+            self.assertEqual(tmp.read(), '20')
+        self.assertLess(time.time() - st, 2.5)
 
 
 if __name__ == '__main__':
