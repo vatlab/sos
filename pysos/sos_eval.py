@@ -245,15 +245,17 @@ def ConvertString(s, sigil):
     FIXME: the expression might have a dynamic option which should prevent
     string interpolation. Not sure how to handle this option right now.
     '''
-    result = []
     left_sigil = sigil.split(' ')[0]
+    if left_sigil not in s:
+        return s
+    result = []
     # tokenize the input syntax.
     for toknum, tokval, _, _, _  in generate_tokens(StringIO(s).readline):
         if toknum == STRING:
             # if this item is a string that uses triple single quote
-            if tokval.startswith("'''"):
-                # we convert it to a raw string
-                tokval = u'r' + tokval
+            # if tokval.startswith("'''"):
+            #     # we convert it to a raw string
+            #     tokval = u'r' + tokval
             # we then perform interpolation on the string and put it back to expression
             if left_sigil in tokval:
                 tokval = 'interpolate(' + tokval + ", \'" + sigil + "', locals())"

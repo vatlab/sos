@@ -62,36 +62,6 @@ class TestParser(unittest.TestCase):
         # not the default value of 1.0
         self.assertEqual(script.format_version, '1.1')
 
-    def testStringLiteral(self):
-        '''Test string literals of SoS'''
-        env.shared_vars = ['a', 'b', 'c']
-        script = SoS_Script(r"""
-[0]
-a = 'a\n'
-b = "a\n"
-c = '''a\n
-
-b'''
-""")
-        wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
-        self.assertEqual(env.sos_dict['a'], 'a\n')
-        self.assertEqual(env.sos_dict['b'], 'a\n')
-        # MAYJOR difference
-        self.assertEqual(env.sos_dict['c'], 'a\\n\nb')
-        script = SoS_Script(r'''
-[0]
-c = """a\n
-
-b"""
-''')
-        wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
-        # Note the difference between """ and ''' quotes
-        self.assertEqual(env.sos_dict['c'], 'a\n\nb')
-
     def testWorkflows(self):
         '''Test workflows defined in SoS script'''
         script = SoS_Script('''[0]''')
