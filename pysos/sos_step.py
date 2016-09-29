@@ -115,7 +115,6 @@ class Base_Step_Executor:
     #
     def __init__(self, step):
         self.step = step
-        self.step_signature = self.get_step_signature()
 
     #
     # The following functions should be redefined in an executor
@@ -149,7 +148,7 @@ class Base_Step_Executor:
         '''Check if intended output actually exists.'''
         pass
 
-    def get_step_signature(self):
+    def step_signature(self, index):
         '''Base executor does not have signature'''
         return None
 
@@ -577,8 +576,8 @@ class Base_Step_Executor:
                         if key == 'output':
                             ofiles = self.expand_output_files(value, *args)
                             # ofiles can be Undetermined
-                            if self.step_signature is not None and not isinstance(g, Undetermined):
-                                signatures[idx] = RuntimeInfo(self.step_signature, env.sos_dict['_input'],
+                            if self.step_signature(idx) is not None and not isinstance(g, Undetermined):
+                                signatures[idx] = RuntimeInfo(self.step_signature(idx), env.sos_dict['_input'],
                                     ofiles, env.sos_dict['_depends'], idx)
                                 if env.sig_mode == 'default':
                                     res = signatures[idx].validate()
@@ -857,7 +856,7 @@ class Run_Step_Executor(Queued_Step_Executor):
         else:
             return _expand_file_list(False, *args)
 
-    def get_step_signature(self):
+    def step_signature(self, index):
         '''returns a signature of the step. Change of the step content will
         lead to the invalidation of the signature, which will then cause the
         re-execution of the step for any result from the step. '''
