@@ -376,6 +376,10 @@ class Base_Step_Executor:
                 raise RuntimeError('Unrecognized runtime option {}={}'.format(k, v))
         env.sos_dict.set('_runtime', kwargs)
 
+    def prepare_input_loop(self):
+        # what do do before input loop
+        pass
+
     def reevaluate_output(self):
         pass
 
@@ -438,7 +442,7 @@ class Base_Step_Executor:
                     raise RuntimeError('Variable {} is not defined to shared.'.format(var))
                 result[var] = env.sos_dict[var]
         if hasattr(env, 'accessed_vars'):
-            result['accessed_vars'] = env.accessed_vars
+            result['__accessed_vars__'] = env.accessed_vars
         return result
 
     def run(self):
@@ -544,6 +548,8 @@ class Base_Step_Executor:
         # run steps after input statement, which will be run multiple times for each input 
         # group.
         env.sos_dict.set('__num_groups__', len(self._groups))
+
+        self.prepare_input_loop()
 
         # determine if a single index or the whole step should be skipped
         skip_index = False
@@ -786,7 +792,6 @@ def _expand_file_list(ignore_unknown, *args):
 class Prepare_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
         env.run_mode = 'prepare'
-        env.accessed_vars = set()
         Queued_Step_Executor.__init__(self, step, queue)
 
     def expand_input_files(self, value, *args):
@@ -797,6 +802,11 @@ class Prepare_Step_Executor(Queued_Step_Executor):
             return env.sos_dict['input']
         else:
             return _expand_file_list(True, *args)
+
+    def prepare_input_loop(self):
+        # we start another round of check for accessed_vars so that we can create
+        # signature for loops
+        env.accessed_vars = set()
 
     def expand_depends_files(self, *args):
         '''handle directive depends'''
@@ -812,6 +822,8 @@ class Prepare_Step_Executor(Queued_Step_Executor):
 class Run_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
         env.run_mode = 'run'
+        if hasattr(env, 'accessed_vars'):
+            delattr(env, 'accessed_vars')
         Queued_Step_Executor.__init__(self, step, queue)
 
     def log(self, stage=None, msg=None):
@@ -853,12 +865,11 @@ class Run_Step_Executor(Queued_Step_Executor):
         if env.sig_mode == 'ignore':
             return None
         env_vars = []
-        if '__accessed_vars__' in env.sos_dict:
-            for var in sorted(env.sos_dict['__accessed_vars__']):
-                # var can be local and not passed as outside environment
-                if var in env.sos_dict:
-                    # FIXME: this would not work for function defintion etc
-                    env_vars.append('{} = {}\n'.format(var, env.sos_dict[var]))
+        for var in sorted(env.sos_dict['__accessed_vars__']):
+            # var can be local and not passed as outside environment
+            if var in env.sos_dict:
+                # FIXME: this would not work for function defintion etc
+                env_vars.append('{} = {}\n'.format(var, env.sos_dict[var]))
 
         def get_tokens(statement):
             return [x[1] for x in generate_tokens(StringIO(statement).readline)]

@@ -209,7 +209,7 @@ class Base_Executor:
             #
             accessed_vars = {}
             for k, v in res.items():
-                if k == 'accessed_vars':
+                if k == '__accessed_vars__':
                     accessed_vars = v - self._base_symbols
                 else:
                     env.sos_dict.set(k, v)
@@ -268,7 +268,7 @@ class Base_Executor:
                 #
                 accessed_vars = {}
                 for k, v in res.items():
-                    if k == 'accessed_vars':
+                    if k == '__accessed_vars__':
                         accessed_vars = v - self._base_symbols
                     else:
                         env.sos_dict.set(k, v)
