@@ -750,7 +750,9 @@ class Queued_Step_Executor(Base_Step_Executor):
 def _expand_file_list(ignore_unknown, *args):
     ifiles = []
     for arg in args:
-        if isinstance(arg, BaseTarget):
+        if arg is None:
+            continue
+        elif isinstance(arg, BaseTarget):
             ifiles.append(arg)
         elif isinstance(arg, str):
             ifiles.append(os.path.expanduser(arg))
