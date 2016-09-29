@@ -181,6 +181,12 @@ setup(name = "sos",
           # for DAG
           'networkx',
           'pydotplus',
+          # for RQ task-execution engine
+          'rq',
+          'rq-dashboard',
+          # for celery task-execution engine
+          'celery',
+          'flower',
       ],
     entry_points='''
 [pygments.lexers]

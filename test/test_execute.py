@@ -34,7 +34,7 @@ from pysos.sos_script import SoS_Script
 from pysos._version import __version__
 from pysos.utils import env
 from pysos.sos_eval import Undetermined
-from pysos.sos_executor import DAG_Executor, Interactive_Executor, ExecuteError
+from pysos.sos_executor import Base_Executor, MP_Executor, Interactive_Executor, ExecuteError
 from pysos.sos_script import ParsingError
 from pysos.signature import FileTarget
 import subprocess
@@ -99,8 +99,8 @@ res += '${b}'
 """)
         wf = script.workflow()
         env.shared_vars = ['res']
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['res'], '200')
         #
         script = SoS_Script(r"""
@@ -110,8 +110,8 @@ for b in range(5):
     res += '${b}'
 """)
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['res'], '01234')
         #
         script = SoS_Script(r"""
@@ -121,7 +121,7 @@ output: ['{}_{}_processed.txt'.format(x,y) for x,y in zip(name, model)]
 
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['res'].output,  ['a_1_processed.txt', 'b_2_processed.txt', 'c_2_processed.txt'])
         #
         script = SoS_Script(r"""
@@ -131,7 +131,7 @@ output: ['${x}_${y}_process.txt' for x,y in zip(name, model)]
 
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['res'].output,  ['a_1_process.txt', 'b_2_process.txt', 'c_2_process.txt'])
         #
         script = SoS_Script(r"""
@@ -144,7 +144,7 @@ output: add_a(['${x}_${y}_process.txt' for x,y in zip(name, model)])
 
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['res'].output,  ['aa_1_process.txt', 'ab_2_process.txt', 'ac_2_process.txt'])
 
     def testGlobalVars(self):
@@ -153,7 +153,7 @@ output: add_a(['${x}_${y}_process.txt' for x,y in zip(name, model)])
 [0]
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['SOS_VERSION'], __version__)
 
     def testFuncDef(self):
@@ -168,7 +168,7 @@ def myfunc(a):
 input: myfunc(['a.txt', 'b.txt'])
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['test'].input, ['aa.txt', 'ab.txt'])
         # in nested workflow?
         script = SoS_Script(r"""
@@ -182,7 +182,7 @@ input: myfunc(['a.txt', 'b.txt'])
 sos_run('mse')
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         #
         # Names defined in subworkflow is not returned to the master dict
         self.assertTrue('test' not in env.sos_dict)
@@ -195,7 +195,7 @@ input: '*.py'
 output: [x + '.res' for x in _input]
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertTrue('test_execute.py.res' in env.sos_dict['res'].output)
 
     def testForEach(self):
@@ -219,7 +219,7 @@ counter = counter + 1
 """)
         wf = script.workflow()
         env.shared_vars = ['counter', 'all_names', 'all_loop', 'processed']
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['counter'], 6)
         self.assertEqual(env.sos_dict['all_names'], "a b c a b c ")
         self.assertEqual(env.sos_dict['all_loop'], "1 1 1 2 2 2 ")
@@ -238,7 +238,7 @@ output: res
 processed.append((_par, _res))
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
         #
         # test for each for pandas dataframe
@@ -251,7 +251,7 @@ input: for_each='data'
 output: '${_data["A"]}_${_data["B"]}_${_data["C"]}.txt'
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['res'].output, ['1_2_Hello.txt', '2_4_World.txt'])
 
     def testPairedWith(self):
@@ -272,7 +272,7 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
 """)
         wf = script.workflow()
         env.shared_vars=['base', 'name', 'par', '_output']
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
@@ -292,7 +292,7 @@ output: expand_pattern('{base}-{name}-{par}.txt'), expand_pattern('{par}.txt')
 """)
         wf = script.workflow()
         env.shared_vars = ['base', 'name', 'par', '_output']
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
@@ -318,7 +318,7 @@ input: oa.input
 output: [x + '.res' for x in _input]
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['oa'].input, ["a.pdf", 'a.txt', 'b.txt'])
         self.assertEqual(env.sos_dict['ob'].output, ["a.pdf.res", 'a.txt.res', 'b.txt.res'])
 
@@ -334,7 +334,7 @@ res = 2
 res = 3
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['res'], 1)
         #
         script = SoS_Script(r"""
@@ -347,7 +347,7 @@ res = 2
 res = 3
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['res'], 2)
         #
         script = SoS_Script(r"""
@@ -363,7 +363,7 @@ a = 5
 
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['res'], 3)
         self.assertEqual(env.sos_dict['a'], 30)
 
@@ -381,7 +381,7 @@ output: '${_input}.res'
 
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['res'].output, ['a.txt.res', 'b.txt.res'])
         #
         script = SoS_Script(r"""
@@ -395,7 +395,7 @@ counter += 1
 """)
         wf = script.workflow()
         env.shared_vars=['counter']
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['counter'], 3)
         #
         script = SoS_Script(r"""
@@ -408,7 +408,7 @@ input: 'a.pdf', 'b.html', files, filetype=lambda x: 'a' in x, group_by='single'
 counter += 1
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['counter'], 2)
 
     def testOutputFromInput(self):
@@ -426,7 +426,7 @@ counter += 1
 """)
         wf = script.workflow()
         env.shared_vars = ['counter']
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['step'].output, ['a.txt.bak', 'b.txt.bak'])
 
@@ -442,8 +442,8 @@ with open('test/result.txt', 'w') as res:
        res.write(file + '\n')
 """)
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         with open('result.txt') as res:
             content = [x.strip() for x in res.readlines()]
             self.assertTrue('test_execute.py' in content)
@@ -466,8 +466,8 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 """)
         wf = script.workflow()
         start = time.time()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        MP_Executor(wf).run(dag)
         self.assertGreater(time.time() - start, 9)
         #
         #
@@ -486,8 +486,8 @@ if run_mode == 'run':
 """)
         wf = script.workflow()
         start = time.time()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        MP_Executor(wf).run(dag)
         self.assertLess(time.time() - start, 6)
 
     def testRunmode(self):
@@ -504,12 +504,12 @@ a = fail()
 """)
         wf = script.workflow()
         env.shared_vars=['a']
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         # should return 0 in prepare mode
         self.assertTrue(isinstance(env.sos_dict['a'], Undetermined))
         #
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         # shoulw return 1 in run mode
         self.assertEqual(env.sos_dict['a'], 1)
 
@@ -525,7 +525,7 @@ a += 1
 
 """)
         wf = script.workflow()
-        self.assertRaises(RuntimeError, DAG_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).prepare)
 
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''
@@ -547,10 +547,9 @@ print('Passing ${seed} to ${nested}')
 sos_run('nested')
 
 """)
-        env.max_jobs = 1
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
 
     def testUserDefinedFunc(self):
         '''Test the use of user-defined functions in SoS script'''
@@ -566,7 +565,7 @@ myfunc()
 
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['test'].output, ['a'])
         # User defined function should also work under nested workflows
         # This is difficult because the 'local namespace' is usually
@@ -585,7 +584,7 @@ myfunc()
 
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['test'].output, ['a45'])
 
     def testReadOnlyStepVars(self):
@@ -601,7 +600,7 @@ test.output=['ab.txt']
 """)
         wf = script.workflow()
         env.run_mode = 'prepare'
-        self.assertRaises((RuntimeError, ExecuteError), DAG_Executor(wf).prepare)
+        self.assertRaises((RuntimeError, ExecuteError), Base_Executor(wf).prepare)
 
     def testReadOnlyInputOutputVars(self):
         '''Test readonly input output vars'''
@@ -615,7 +614,7 @@ _output = ['b.txt']
         env.run_mode = 'prepare'
         # I would like to disallow setting _output directly, but this is
         # not the case now.
-        self.assertRaises(RuntimeError, DAG_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).prepare)
 
     def testLocalNamespace(self):
         '''Test if steps are well separated.'''
@@ -633,7 +632,7 @@ print(a)
         env.run_mode = 'prepare'
         # I would like to disallow accessing variables defined
         # in other cases.
-        self.assertRaises((RuntimeError, ExecuteError), DAG_Executor(wf).prepare)
+        self.assertRaises((RuntimeError, ExecuteError), Base_Executor(wf).prepare)
         # however, alias should be sent back
         script = SoS_Script(r"""
 [1: alias='shared']
@@ -647,7 +646,7 @@ output: [x + '.res' for x in shared.input]
 
 """)
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['shared'].output, ['b.txt'])
         self.assertEqual(env.sos_dict['tt'].output, ['a.txt.res'])
         #
@@ -672,7 +671,7 @@ e = shared.d + 1
         wf = script.workflow()
         # I would like to disallow accessing variables defined
         # in other cases.
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['shared'].c, 'c.txt')
         self.assertEqual(env.sos_dict['d'].e, 2)
         #
@@ -697,7 +696,7 @@ shared.d += 1
         wf = script.workflow()
         # I would like to disallow accessing variables defined
         # in other cases.
-        self.assertRaises((ExecuteError, RuntimeError), DAG_Executor(wf).prepare)
+        self.assertRaises((ExecuteError, RuntimeError), Base_Executor(wf).prepare)
 
     def testSklearnImportFailure(self):
         '''Test problem with Sklean when using Celery/multiprocessing'''
@@ -708,8 +707,8 @@ import sklearn
 print(0)
 ''')
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
 
 
     def testCollectionOfErrors(self):
@@ -729,7 +728,7 @@ check_command('a4')
         wf = script.workflow()
         # we should see a single error with 4 messages.
         try:
-            DAG_Executor(wf).prepare()
+            Base_Executor(wf).prepare()
         except Exception as e:
             self.assertEqual(len(e.errors), 6)
 
@@ -793,8 +792,8 @@ for i in range(4):
        h.write('a')
 ''')
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['test'].output, ['temp/something{}.html'.format(x) for x in range(4)])
         #
         shutil.rmtree('temp')
@@ -821,12 +820,12 @@ run:
 touch ${_input}.bak
 ''')
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['test'].output, ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
         # this time we use th existing signature
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['test'].output, ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
         #
         shutil.rmtree('temp')
@@ -853,8 +852,8 @@ echo ${ff}
 touch temp/${ff}
 ''')
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         #
         shutil.rmtree('temp')
 
@@ -875,7 +874,7 @@ for i in range(3):
 ''')
         wf = script.workflow()
         #
-        executor = DAG_Executor(wf)
+        executor = Base_Executor(wf)
         executor.prepare()
         dag = executor.prepare()
         executor.run(dag)
@@ -900,8 +899,8 @@ if run_mode == 'run':
 
 ''')
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         # we should have 9 files
         files = glob.glob('temp/*.txt')
         self.assertEqual(len(files), 3)
@@ -945,8 +944,8 @@ echo ${ff}
 touch temp/${ff}
 ''' % active)
             wf = script.workflow()
-            dag = DAG_Executor(wf).prepare()
-            DAG_Executor(wf).run(dag)
+            dag = Base_Executor(wf).prepare()
+            Base_Executor(wf).run(dag)
             files = list(glob.glob('temp/*.txt'))
             self.assertEqual(files, result)
             #
@@ -967,8 +966,8 @@ echo ${ff}
 touch temp/${ff}
 ''' % active)
             wf = script.workflow()
-            dag = DAG_Executor(wf).prepare()
-            DAG_Executor(wf).run(dag)
+            dag = Base_Executor(wf).prepare()
+            Base_Executor(wf).run(dag)
             files = list(glob.glob('temp/*.txt'))
             self.assertEqual(files, result)
             #
@@ -984,7 +983,7 @@ bash('echo "A"')
 input: 
 ''')
         wf = script.workflow()
-        DAG_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
 
     def testDuplicateIOFiles(self):
         '''Test interpretation of duplicate input/output/depends'''
@@ -998,8 +997,8 @@ python:
 with open('temp/{}.input'.format(len([${input!r,}])), 'w') as f: f.write('')
         ''')
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertTrue(os.path.isfile('temp/5.input'))
         # Test duplicate output
         script = SoS_Script('''
@@ -1010,8 +1009,8 @@ with open('temp/2.txt', 'w') as f: f.write('')
 with open('temp/{}.output'.format(len([${output!r,}])), 'w') as f: f.write('')
         ''')
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertTrue(os.path.isfile('temp/5.output'))
         # Test duplicate depends
         script = SoS_Script('''
@@ -1024,8 +1023,8 @@ with open('temp/3.txt', 'w') as f: f.write('')
 with open('temp/{}.depends'.format(len([${depends!r,}])), 'w') as f: f.write('')
         ''')
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertTrue(os.path.isfile('temp/5.depends'))
         shutil.rmtree('temp')
 
@@ -1048,8 +1047,8 @@ echo ${output} >> temp/out.log
 touch ${output}
         ''')
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         # output should have 1, 2, 3, 4, 5, respectively, and
         # the total record files would be 1+2+3+4+5=15
         with open('temp/out.log') as out:
@@ -1072,8 +1071,8 @@ touch ${output}
         ''')
         wf = script.workflow()
         env.sig_mode = 'ignore'
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         with open('temp/out.log') as out:
             self.assertEqual(len(out.read().split()), 15)
         shutil.rmtree('temp')
@@ -1192,8 +1191,11 @@ cp ${_input} ${_dest}
         wf = script.workflow('default_0')
         start = time.time()
         env.sig_mode = 'default'
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        if env.max_jobs == 1:
+            Base_Executor(wf).run(dag)
+        else:
+            MP_Executor(wf).run(dag)
         self.assertGreater(time.time() - start, 1)
         self.assertTrue(os.path.isfile('temp/a.txt'))
         self.assertTrue(os.path.isfile('temp/b.txt'))
@@ -1202,14 +1204,21 @@ cp ${_input} ${_dest}
         with open('temp/b.txt') as tb:
             self.assertTrue(tb.read(), 'b.txt')
         env.sig_mode = 'assert'
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        if env.max_jobs == 1:
+            Base_Executor(wf).run(dag)
+        else:
+            MP_Executor(wf).run(dag)
         #
         wf = script.workflow()
         start = time.time()
         env.sig_mode = 'rebuild'
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        if env.max_jobs == 1:
+            Base_Executor(wf).run(dag)
+        else:
+            MP_Executor(wf).run(dag)
+
         self.assertGreater(time.time() - start, 1)
         #
         self.assertTrue(os.path.isfile('temp/c.txt'))
@@ -1222,26 +1231,38 @@ cp ${_input} ${_dest}
         #
         # now in assert mode, the signature should be there
         env.sig_mode = 'assert'
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        if env.max_jobs == 1:
+            Base_Executor(wf).run(dag)
+        else:
+            MP_Executor(wf).run(dag)
+
         #
         start = time.time()
         env.sig_mode = 'default'
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        if env.max_jobs == 1:
+            Base_Executor(wf).run(dag)
+        else:
+            MP_Executor(wf).run(dag)
+        
         self.assertLess(time.time() - start, 1.5)
         #
         # change script a little bit
         script = SoS_Script('# comment\n' + text)
         wf = script.workflow()
         env.sig_mode = 'assert'
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        if env.max_jobs == 1:
+            Base_Executor(wf).run(dag)
+        else:
+            MP_Executor(wf).run(dag)
+
         # add some other variable?
         #script = SoS_Script('comment = 1\n' + text)
         #wf = script.workflow()
         #env.sig_mode = 'assert'
-        #self.assertRaises(RuntimeError, DAG_Executor(wf).run)
+        #self.assertRaises(RuntimeError, Base_Executor(wf).run)
 
     def testReexecution(self):
         '''Test -f option of sos run'''
@@ -1262,22 +1283,22 @@ if run_mode == 'run':
         except:
             pass
         start = time.time()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         # regularly take more than 5 seconds to execute
         self.assertGreater(time.time() - start, 2)
         # now, rerun should be much faster
         start = time.time()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         # rerun takes less than 1 second
         self.assertLess(time.time() - start, 1)
         #
         # force rerun mode
         start = time.time()
         env.sig_mode = 'ignore'
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         # regularly take more than 5 seconds to execute
         self.assertGreater(time.time() - start, 2)
         try:
@@ -1296,8 +1317,8 @@ sh:
 ''')
         wf = script.workflow()
         FileTarget('a.txt').remove('both')
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertTrue(os.path.isfile('a.txt'))
         FileTarget('a.txt').remove('both')
         
@@ -1316,13 +1337,13 @@ sh:
 ''')
         wf = script.workflow()
         FileTarget('lls').remove('both')
-        dag = DAG_Executor(wf).prepare()
+        dag = Base_Executor(wf).prepare()
         st = time.time()
-        DAG_Executor(wf).run(dag)
+        Base_Executor(wf).run(dag)
         self.assertGreater(time.time() - st, 2)
         # test validation
         st = time.time()
-        DAG_Executor(wf).run(dag)
+        Base_Executor(wf).run(dag)
         self.assertLess(time.time() - st, 2)
         FileTarget('lls').remove('both')
 
@@ -1344,9 +1365,9 @@ depends: executable('lls')
 
 ''')
         wf = script.workflow('c')
-        dag = DAG_Executor(wf).prepare()
+        dag = Base_Executor(wf).prepare()
         st = time.time()
-        DAG_Executor(wf).run(dag)
+        Base_Executor(wf).run(dag)
         self.assertGreater(time.time() - st, 2)
         FileTarget('lls').remove('both')
 
@@ -1380,22 +1401,22 @@ python:
 ''')
         wf = script.workflow()
         st = time.time()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertGreater(time.time() - st, 5)
         # rerun, but remove output
         os.remove('largefile.txt')
         st = time.time()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertLess(time.time() - st, 3)
         # however, the file will not be regenerated
         self.assertFalse(os.path.isfile('largefile.txt'))
         # if we discard largefile.txt, it should slow down again
         st = time.time()
         FileTarget('largefile.txt').remove('signature')
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertGreater(time.time() - st, 5)
         os.remove('largefile.txt')
 
@@ -1419,8 +1440,8 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertGreater(time.time() - st, 2.5)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '10')
@@ -1428,8 +1449,8 @@ python:
         # now if we change parameter, the step should be rerun
         st = time.time()
         wf = script.workflow()
-        dag = DAG_Executor(wf, args=['--gvar', '20']).prepare()
-        DAG_Executor(wf, args=['--gvar', '20']).run(dag)
+        dag = Base_Executor(wf, args=['--gvar', '20']).prepare()
+        Base_Executor(wf, args=['--gvar', '20']).run(dag)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
         self.assertGreater(time.time() - st, 2.5)
@@ -1437,8 +1458,8 @@ python:
         # do it again, signature should be effective
         st = time.time()
         wf = script.workflow()
-        dag = DAG_Executor(wf, args=['--gvar', '20']).prepare()
-        DAG_Executor(wf, args=['--gvar', '20']).run(dag)
+        dag = Base_Executor(wf, args=['--gvar', '20']).prepare()
+        Base_Executor(wf, args=['--gvar', '20']).run(dag)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
         self.assertLess(time.time() - st, 2.5)
@@ -1461,8 +1482,8 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertGreater(time.time() - st, 2.5)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '10')
@@ -1470,8 +1491,8 @@ python:
         # now if we change parameter, the step should be rerun
         st = time.time()
         wf = script.workflow()
-        dag = DAG_Executor(wf, args=['--gvar', '20']).prepare()
-        DAG_Executor(wf, args=['--gvar', '20']).run(dag)
+        dag = Base_Executor(wf, args=['--gvar', '20']).prepare()
+        Base_Executor(wf, args=['--gvar', '20']).run(dag)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
         self.assertGreater(time.time() - st, 2.5)
@@ -1479,8 +1500,8 @@ python:
         # do it again, signature should be effective
         st = time.time()
         wf = script.workflow()
-        dag = DAG_Executor(wf, args=['--gvar', '20']).prepare()
-        DAG_Executor(wf, args=['--gvar', '20']).run(dag)
+        dag = Base_Executor(wf, args=['--gvar', '20']).prepare()
+        Base_Executor(wf, args=['--gvar', '20']).run(dag)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
         self.assertLess(time.time() - st, 2.5)
@@ -1510,8 +1531,8 @@ python:
 ''')
         wf = script.workflow()
         env.max_jobs = 4
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        MP_Executor(wf).run(dag)
         for t in range(10, 13):
             with open('myfile_{}.txt'.format(t)) as tmp:
                 self.assertEqual(tmp.read(), str(t))
@@ -1539,8 +1560,8 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertGreater(time.time() - st, 2.5)
         # now we modify the script 
         script = SoS_Script(r'''
@@ -1559,15 +1580,15 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertGreater(time.time() - st, 2.5)
         self.assertLess(time.time() - st, 5)
         #
         # run it again, neither needs to be rerun
         st = time.time()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertLess(time.time() - st, 2)
         #
         # change again, the second one is already there.
@@ -1587,8 +1608,8 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         self.assertLess(time.time() - st, 2)
         #
         for t in range(10, 12):

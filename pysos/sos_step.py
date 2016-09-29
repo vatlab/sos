@@ -24,8 +24,6 @@ import sys
 import copy
 import glob
 import fnmatch
-import multiprocessing as mp
-from multiprocessing.pool import AsyncResult
 
 from io import StringIO
 from tokenize import generate_tokens
@@ -803,14 +801,14 @@ class Prepare_Step_Executor(Queued_Step_Executor):
         if stage == 'start':
             env.logger.trace('Preparing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
 
-class Run_Step_Executor(Queued_Step_Executor):
+class SP_Step_Executor(Queued_Step_Executor):
+    '''Single process step executor'''
     def __init__(self, step, queue):
         env.run_mode = 'run'
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
         Queued_Step_Executor.__init__(self, step, queue)
         self.step_tokens = self.get_tokens()
-        self.pool = None
 
     def get_tokens(self):
         '''Get tokens after input statement'''
@@ -906,8 +904,15 @@ class Run_Step_Executor(Queued_Step_Executor):
                 raise RuntimeError('Output target {} does not exist after the completion of step {}'
                             .format(target, env.sos_dict['step_name']))
         
+
+class MP_Step_Executor(SP_Step_Executor):
+    def __init__(self, step, queue):
+        SP_Step_Executor.__init__(self, step, queue)
+        self.pool = None
+
     def submit_task(self):
         # if concurrent is set, create a pool object
+        import multiprocessing as mp
         if self.pool is None and env.max_jobs > 1 and len(self._groups) > 1 and \
             'concurrent' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['concurrent']:
             self.pool = mp.Pool(min(env.max_jobs, len(self._groups)))
@@ -935,6 +940,7 @@ class Run_Step_Executor(Queued_Step_Executor):
                 ))
 
     def wait_for_results(self):
+        from multiprocessing.pool import AsyncResult
         if self.pool is None:
             return
         try:
@@ -951,6 +957,79 @@ class Run_Step_Executor(Queued_Step_Executor):
             self.pool.terminate()
             self.pool.close()
             self.pool.join()
+
+
+class RQ_Step_Executor(SP_Step_Executor):
+    #
+    # This is not working yet
+    def __init__(self, step, queue, redis_queuq):
+        SP_Step_Executor.__init__(self, step, queue)
+        self.redis_queue = redis_queue
+
+    def submit_task(self):
+        self.proc_results.append( self.redis_queue.enqueue(
+            execute_task,            # function
+            self.step.task,          # task
+            self.step.global_def,    # global process
+            # if pool, it must not be in prepare mode and have
+            # __signature_vars__
+            env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
+                | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_idx'}),
+            self.step.sigil
+            ) )
+
+    def wait_for_results(self):
+        while True:
+            # wait for results
+            try:
+                if any(x.result is None for x in self.proc_results):
+                    time.sleep(1)
+                else:
+                    return
+                env.logger.error('{}/{} completed'.format(len([x for x in self.proc_results if x.result is not None]), len(self.proc_results)))
+            except KeyboardInterrupt:
+                # if keyboard interrupt
+                raise RuntimeError('KeyboardInterrupt fro m {} (master)'.format(os.getpid()))
+            except Exception as e:
+                # if keyboard interrupt etc
+                env.logger.error('Caught {}'.format(e))
+                raise
+
+class Celery_Step_Executor(SP_Step_Executor):
+    def __init__(self, step, queue):
+        SP_Step_Executor.__init__(self, step, queue)
+
+        # make execute_task a celery task ... 
+        from celery import shared_task
+        execute_task.celery = shared_task(execute_task)
+
+    def submit_task(self):
+        # if concurrent is set, create a pool object
+        self.proc_results.append( 
+            execute_task.celery.delay(     # function
+            self.step.task,         # task
+            self.step.global_def,   # global process
+            env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
+                | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_idx'}),
+            self.step.sigil
+            ) )
+
+    def wait_for_results(self):
+        while True:
+            # wait for results
+            try:
+                if any(not x.ready() for x in self.proc_results):
+                    time.sleep(1)
+                else:
+                    break
+                env.logger.error('{}/{} completed'.format(len([x for x in self.proc_results if x.ready()]), len(self.proc_results)))
+            except KeyboardInterrupt:
+                # if keyboard interrupt
+                raise RuntimeError('KeyboardInterrupt fro m {} (master)'.format(os.getpid()))
+            except Exception as e:
+                # if keyboard interrupt etc
+                env.logger.error('Caught {}'.format(e))
+                raise
 
 class Interactive_Step_Executor(Base_Step_Executor):
     def __init__(self, step):

@@ -32,7 +32,7 @@ import multiprocessing as mp
 from queue import Empty
 
 from ._version import __version__
-from .sos_step import Prepare_Step_Executor, Run_Step_Executor, Interactive_Step_Executor
+from .sos_step import Prepare_Step_Executor, SP_Step_Executor, MP_Step_Executor, RQ_Step_Executor, Celery_Step_Executor, Interactive_Step_Executor
 from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, frozendict, dict_merge
 from .sos_eval import Undetermined, SoS_exec
 from .sos_script import SoS_Script
@@ -76,13 +76,14 @@ class ExecuteError(Error):
 class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
-    def __init__(self, workflow=None, args=[], config_file=None, new_dict=True):
+    def __init__(self, workflow=None, args=[], config_file=None, nested=False):
+        env.__task_engine__ = None
         self.workflow = workflow
-        self.new_dict = new_dict
+        self.nested = nested
 
         # if creating a new dictionary, set it up with some basic varibles
         # and functions
-        if not new_dict:
+        if nested:
             SoS_exec('import os, sys, glob')
             SoS_exec('from pysos.runtime import *')
             self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
@@ -187,7 +188,7 @@ class Base_Executor:
 
         # process step of the pipelinp
         #
-        if self.new_dict:
+        if not self.nested:
             env.sos_dict.set('__step_output__', None)
 
         dag = SoS_DAG()
@@ -325,14 +326,90 @@ class Base_Executor:
 
         return dag
 
+    def run(self, dag):
+        '''Execute a workflow with specified command line args. If sub is True, this
+        workflow is a nested workflow and be treated slightly differently.
+        '''
+        env.run_mode = 'run'
+        # passing run_mode to SoS dict so that users can execute blocks of
+        # python statements in different run modes.
+        env.sos_dict.set('run_mode', env.run_mode)
+        # process step of the pipelinp
+        #
+        prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
+        while True:
+            # find any step that can be executed and run it, and update the DAT
+            # with status.
+            runnable = dag.find_executable()
+            if runnable is None:
+                # no runnable
+                #dag.show_nodes()
+                break
+            # find the section from runnable
+            section = self.workflow.section_by_id(runnable._step_uuid)
+            #
+            # this is to keep compatibility of dag run with sequential run because
+            # in sequential run, we evaluate global section of each step in
+            # order to determine values of options such as skip.
+            # The consequence is that global definitions are available in
+            # SoS namespace.
+            try:
+                SoS_exec(section.global_def)
+            except Exception as e:
+                if env.verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
+                    section.global_def, e))
 
-class DAG_Executor(Base_Executor):
+            # clear existing keys, otherwise the results from some random result
+            # might mess with the execution of another step that does not define input
+            for k in ['__step_input__', '__default_output__', '__step_output__']:
+                if k in env.sos_dict:
+                    env.sos_dict.pop(k)
+            # if the step has its own context
+            env.sos_dict.quick_update(runnable._context)
+            # execute section with specified input
+            runnable._status = 'running'
+            q = mp.Queue()
+            executor = SP_Step_Executor(section, q)
+            p = mp.Process(target=executor.run)
+            p.start()
+            #
+            res = q.get()
+            # if we does get the result
+            p.join()
+            # if the job is failed
+            if isinstance(res, Exception):
+                raise RuntimeError(res)
+            #
+            for k, v in res.items():
+                env.sos_dict.set(k, v)
+            #
+            # set context to the next logic step.
+            for edge in dag.out_edges(runnable):
+                node = edge[1]
+                # if node is the logical next step...
+                if node._node_index is not None and runnable._node_index is not None \
+                    and node._node_index == runnable._node_index + 1:
+                    node._context.update(env.sos_dict.clone_selected_vars(
+                        node._context['__signature_vars__'] | node._context['__environ_vars__'] \
+                        | {'_input', '__step_output__', '__default_output__'}))
+            runnable._status = 'completed'
+            prog.progress(1)
+            #env.logger.error('completed')
+        prog.done()
+
+
+class MP_Executor(Base_Executor):
     #
     # Execute a workflow sequentially in batch mode
     def __init__(self, workflow, args=[], config_file=None, nested=False):
-        Base_Executor.__init__(self, workflow, args, config_file, new_dict=not nested)
+        Base_Executor.__init__(self, workflow, args, config_file, nested=nested)
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
+
+    def step_executor(self, section, queue):
+        return MP_Step_Executor(section, queue)
 
     def run(self, dag):
         '''Execute a workflow with specified command line args. If sub is True, this
@@ -345,8 +422,7 @@ class DAG_Executor(Base_Executor):
         # process step of the pipelinp
         #
         procs = [None for x in range(env.max_jobs)]
-        prog = ProgressBar(self.workflow.name, dag.num_nodes(),
-            disp=dag.num_nodes() > 1 and env.verbosity == 1)
+        prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
         while True:
             # step 1: check existing jobs and see if they are completed
             for idx, proc in enumerate(procs):
@@ -388,8 +464,7 @@ class DAG_Executor(Base_Executor):
                 # if there is empty slot, submit
                 if proc is not None:
                     continue
-                # the strategy (or better termed no strategy) is to find
-                # any step that can be executed and run it, and update the DAT
+                # find any step that can be executed and run it, and update the DAT
                 # with status.
                 runnable = dag.find_executable()
                 if runnable is None:
@@ -422,7 +497,7 @@ class DAG_Executor(Base_Executor):
                 # execute section with specified input
                 runnable._status = 'running'
                 q = mp.Queue()
-                executor = Run_Step_Executor(section, q)
+                executor = self.step_executor(section, q)
                 p = mp.Process(target=executor.run)
                 procs[idx] = (p, q, runnable._node_uuid)
                 p.start()
@@ -436,11 +511,39 @@ class DAG_Executor(Base_Executor):
                 time.sleep(0.1)
         prog.done()
 
+
+class RQ_Executor(MP_Executor):
+    def __init__(self, workflow, args=[], config_file=None, nested=False):
+        MP_Executor.__init__(self, workflow, args, config_file, nested=nested)
+        env.__task_engine__ = 'RQ'
+
+        from rq import Queue as rqQueue
+        from redis import Redis
+
+        redis_conn = Redis()
+        self.redis_queue = rqQueue(connection=redis_conn)
+
+    def step_executor(self, section, queue):
+        return RQ_Step_Executor(section, queue, self.redis_euque)
+
+class Celery_Executor(MP_Executor):
+    def __init__(self, workflow, args=[], config_file=None, nested=False):
+        MP_Executor.__init__(self, workflow, args, config_file, nested=nested)
+        env.__task_engine__ = 'Celery'
+
+        from celery import Celery
+        celery_app = Celery('pysos.sos_step', broker='redis://localhost', backend='redis://localhost')
+
+    def step_executor(self, section, queue):
+        # pass celery_app if needed
+        return Celery_Step_Executor(section, queue)
+
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
     def __init__(self):
         # we actually do not have our own workflow, everything is passed from ipython
-        Base_Executor.__init__(self, new_dict=False)
+        # by nested = True we actually mean no new dictionary
+        Base_Executor.__init__(self, nested=True)
 
     def parse_command_line(self, command_line):
         parser = argparse.ArgumentParser()

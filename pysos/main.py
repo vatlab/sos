@@ -135,7 +135,7 @@ def cmd_run(args, workflow_args):
     from .utils import env, get_traceback
     from .sos_script import SoS_Script
     from .target import FileTarget
-    from .sos_executor import DAG_Executor
+    from .sos_executor import Base_Executor, MP_Executor, RQ_Executor, Celery_Executor
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
     # kill all remainging processes when the master process is killed.
@@ -156,7 +156,18 @@ def cmd_run(args, workflow_args):
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
-        executor = DAG_Executor(workflow, args=workflow_args, config_file=args.__config__)
+        if args.__engine__ is None:
+            if args.__max_jobs__ == 1:
+                # single process executor
+                executor = Base_Executor(workflow, args=workflow_args, config_file=args.__config__)
+            else:
+                executor = MP_Executor(workflow, args=workflow_args, config_file=args.__config__)
+        elif args.__engine__ == 'rq':
+            executor = RQ_Executor(workflow, args=workflow_args, config_file=args.__config__)
+        elif args.__engine__ == 'celery':
+            executor = Celery_Executor(workflow, args=workflow_args, config_file=args.__config__)
+        else:
+            raise ValueError('Only the default multiprocessing and a rq engine is allowed')
         # even with the -r option, prepare() can be executed if there are
         # auxiliary_sections, or if there are targets where a DAG is required
         # Issue #213

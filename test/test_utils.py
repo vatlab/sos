@@ -33,7 +33,7 @@ from pysos.pattern import extract_pattern, expand_pattern
 from pysos.sos_eval import interpolate, SoS_eval, InterpolationError
 from pysos.actions import downloadURL
 from pysos.sos_script import SoS_Script
-from pysos.sos_executor import DAG_Executor
+from pysos.sos_executor import Base_Executor
 
 import socket
 def internet_on(host='8.8.8.8', port=53, timeout=3):
@@ -264,8 +264,8 @@ class TestUtils(unittest.TestCase):
 [5]
 ''')
         wf = script.workflow()
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
         # progress bar with nested workflow
         script = SoS_Script('''
 import time
@@ -282,8 +282,8 @@ sos_run('sub')
 [a_5]
 ''')
         wf = script.workflow('a')
-        dag = DAG_Executor(wf).prepare()
-        DAG_Executor(wf).run(dag)
+        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).run(dag)
 
     @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
     def testDownload(self):

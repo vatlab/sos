@@ -46,7 +46,7 @@ from .utils import env, ProgressBar, natural_keys, transcribe, AbortExecution, s
 from .pattern import glob_wildcards
 from .sos_eval import interpolate, Undetermined
 from .target import FileTarget, fileMD5
-from .sos_executor import DAG_Executor
+from .sos_executor import Base_Executor, MP_Executor, RQ_Executor, Celery_Executor
 from .monitor import ProcessMonitor, summarizeExecution
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
@@ -499,7 +499,7 @@ def sos_run(workflow, **kwargs):
     env.sos_dict.set('__step_output__', copy.deepcopy(env.sos_dict['_input']))
     if env.run_mode == 'prepare':
         env.logger.debug('Preparing nested workflow {}'.format(workflow))
-        return DAG_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
+        return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
     elif env.run_mode == 'run':
         env.logger.info('Executing workflow ``{}`` with input ``{}``'
             .format(workflow, short_repr(env.sos_dict['_input'], True)))
@@ -508,8 +508,16 @@ def sos_run(workflow, **kwargs):
         # been changed and need to be re-prepared) so it is necessary to prepare
         # the workflow at run mode.
         #
-        dag = DAG_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
-        return DAG_Executor(wf, args=env.sos_dict['__args__'], nested=True).run(dag)
+        dag = Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
+        if env.__task_engine__ is None:
+            if env.max_jobs == 1:
+                return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).run(dag)
+            else:
+                return MP_Executor(wf, args=env.sos_dict['__args__'], nested=True).run(dag)
+        elif env.__task_engine__ == 'rq':
+            return RQ_Executor(wf, args=env.sos_dict['__args__'], nested=True).run(dag)
+        elif env.__task_engine__ == 'celery':
+            return Celery_Executor(wf, args=env.sos_dict['__args__'], nested=True).run(dag)
     elif env.run_mode == 'interactive':
         raise RuntimeError('Action sos_run is not supported in interactive mode')
 
