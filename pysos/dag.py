@@ -92,14 +92,13 @@ from .target import FileTarget
 #
 class SoS_Node(object):
     def __init__(self, step_uuid, node_name, node_index, input_targets=[], depends_targets=[],
-        output_targets=[], change_context=False, context={}):
+        output_targets=[], context={}):
         self._step_uuid = step_uuid
         self._node_id = node_name
         self._node_index = node_index
         self._input_targets = Undetermined() if input_targets is None else copy.copy(input_targets)
         self._depends_targets = [] if depends_targets is None else copy.copy(depends_targets)
         self._output_targets = Undetermined() if output_targets is None else copy.copy(output_targets)
-        self._change_context = change_context
         #env.logger.error('Note {}: Input: {} Depends: {} Output: {}'.format(self._node_id, self._input_targets,
         #      self._depends_targets,  self._output_targets))
         self._context = copy.deepcopy(context)
@@ -120,8 +119,8 @@ class SoS_DAG(nx.DiGraph):
         self._all_output_files = defaultdict(list)
 
     def add_step(self, step_uuid, node_name, node_index, input_targets, depends_targets,
-        output_targets, change_context=False, context={}):
-        node = SoS_Node(step_uuid, node_name, node_index, input_targets, depends_targets, output_targets, change_context, context)
+        output_targets, context={}):
+        node = SoS_Node(step_uuid, node_name, node_index, input_targets, depends_targets, output_targets, context)
         if not isinstance(input_targets, (type(None), Undetermined)):
             for x in input_targets:
                 self._all_dependent_files[x].append(node)
@@ -204,9 +203,10 @@ class SoS_DAG(nx.DiGraph):
         for idx, node in enumerate(indexed):
             # 1. if a node changes context (using option alias), all later steps
             # has to rely on it.
-            if node._change_context:
+            if node._context['__changed_vars__']:
                 for later_node in indexed[idx + 1: ]:
-                    self.add_edge(node, later_node)
+                    if node._context['__changed_vars__'] & (later_node._context['__signature_vars__'] | later_node._context['__environ_vars__']):
+                        self.add_edge(node, later_node)
 
             # 2. if the input of a step is undetermined, it has to be executed
             # after all its previous steps.

@@ -207,20 +207,28 @@ class Base_Executor:
             if isinstance(res, Exception):
                 raise RuntimeError(res)
             #
-            accessed_vars = set()
+            # environ vars are variables used on and before input statement
+            # signature vars are variables used after input statement
+            environ_vars = set()
+            signature_vars = set()
+            changed_vars = set()
             for k, v in res.items():
-                if k == '__accessed_vars__':
-                    accessed_vars = v - self._base_symbols
+                if k == '__environ_vars__':
+                    environ_vars = v - self._base_symbols
+                elif k == '__signature_vars__':
+                    signature_vars = v - self._base_symbols
+                elif k == '__changed_vars__':
+                    changed_vars = v
                 else:
                     env.sos_dict.set(k, v)
+
             #
             # build DAG with input and output files of step
             #
             # NOTE: if a section has option 'alias', the execution of this step would
             # change dictionary, essentially making all later steps rely on this step.
-            dag.add_step(section.uuid, res['__step_name__'], idx, res['__step_input__'], res['__step_depends__'],
-                res['__step_output__'], 'alias' in section.options or 'shared' in section.options,
-                context={'__accessed_vars__': accessed_vars})
+            dag.add_step(section.uuid, res['__step_name__'], idx, res['__step_input__'], res['__step_depends__'], res['__step_output__'],
+                context={'__signature_vars__': signature_vars, '__environ_vars__': environ_vars, '__changed_vars__': changed_vars})
         #
         for section in self.workflow.auxiliary_sections:
             if isinstance(section.options['provides'], Undetermined):
@@ -266,10 +274,16 @@ class Base_Executor:
                 if isinstance(res, Exception):
                     raise RuntimeError(res)
                 #
-                accessed_vars = set()
+                environ_vars = set()
+                signature_vars = set()
+                changed_vars = set()
                 for k, v in res.items():
-                    if k == '__accessed_vars__':
-                        accessed_vars = v - self._base_symbols
+                    if k == '__environ_vars__':
+                        environ_vars = v - self._base_symbols
+                    elif k == '__signature_vars__':
+                        signature_vars = v - self._base_symbols
+                    elif k == '__changed_vars__':
+                        changed_vars = v
                     else:
                         env.sos_dict.set(k, v)
                 #
@@ -281,13 +295,15 @@ class Base_Executor:
                     context = mo[0][1]
                 else:
                     context = {}
-                context['__accessed_vars__'] = accessed_vars
+                context['__signature_vars__'] = signature_vars
+                context['__environ_vars__'] = environ_vars
+                context['__changed_vars__'] = changed_vars
                 context['__default_output__'] = [target]
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
                 # with identical names.
-                dag.add_step(section.uuid, '{} ({})'.format(res['__step_name__'], target), None, res['__step_input__'], res['__step_depends__'],
-                    res['__step_output__'], False, context=context)
+                dag.add_step(section.uuid, '{} ({})'.format(res['__step_name__'], target), None, res['__step_input__'],
+                    res['__step_depends__'], res['__step_output__'], context=context)
             #dag.show_nodes()
         #
         # at the end
@@ -359,7 +375,8 @@ class DAG_Executor(Base_Executor):
                     if node._node_index is not None and runnable._node_index is not None \
                         and node._node_index == runnable._node_index + 1:
                         node._context.update(env.sos_dict.clone_selected_vars(
-                            node._context['__accessed_vars__'] | {'_input', '__step_output__', '__default_output__'}))
+                            node._context['__signature_vars__'] | node._context['__environ_vars__'] \
+                            | {'_input', '__step_output__', '__default_output__'}))
                 runnable._status = 'completed'
                 procs[idx] = None
                 #env.logger.error('completed')

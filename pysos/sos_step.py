@@ -413,6 +413,7 @@ class Base_Step_Executor:
         }
         if '__execute_errors__' in env.sos_dict:
             result['__execute_errors__'] = env.sos_dict['__execute_errors__']
+        result['__changed_vars__'] = set()
         if 'alias' in self.step.options:
             step_info = StepInfo()
             step_info.set('step_name', env.sos_dict['step_name'])
@@ -427,6 +428,7 @@ class Base_Step_Executor:
                 # it is time to evalulate this expression now
                 self.step.options['alias'] = self.step.options['alias'].value(self.step.sigil)
             result[self.step.options['alias']] = copy.deepcopy(step_info)
+            result['__changed_vars__'].add(self.step.options['alias'])
         if 'shared' in self.step.options:
             try:
                 vars = self.step.options['shared']
@@ -440,8 +442,10 @@ class Base_Step_Executor:
                 if var not in env.sos_dict:
                     raise RuntimeError('Variable {} is not defined to shared.'.format(var))
                 result[var] = env.sos_dict[var]
+            result['__changed_vars__'] |= set(vars)
         if hasattr(env, 'accessed_vars'):
-            result['__accessed_vars__'] = env.accessed_vars
+            result['__environ_vars__'] = self.environ_vars
+            result['__signature_vars__'] = env.accessed_vars
         return result
 
     def run(self):
@@ -663,8 +667,8 @@ class Base_Step_Executor:
                         (self.step.task,         # task
                         self.step.global_def,    # global process
                         # if pool, it must not be in prepare mode and have
-                        # __accessed_vars__
-                        env.sos_dict.clone_selected_vars(env.sos_dict['__accessed_vars__'] \
+                        # __signature_vars__
+                        env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
                             | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_idx'}),
                         self.step.sigil
                         )))
@@ -795,6 +799,7 @@ def _expand_file_list(ignore_unknown, *args):
 class Prepare_Step_Executor(Queued_Step_Executor):
     def __init__(self, step, queue):
         env.run_mode = 'prepare'
+        env.accessed_vars = set()
         Queued_Step_Executor.__init__(self, step, queue)
 
     def expand_input_files(self, value, *args):
@@ -809,6 +814,7 @@ class Prepare_Step_Executor(Queued_Step_Executor):
     def prepare_input_loop(self):
         # we start another round of check for accessed_vars so that we can create
         # signature for loops
+        self.environ_vars = env.accessed_vars
         env.accessed_vars = set()
 
     def expand_depends_files(self, *args):
@@ -892,7 +898,7 @@ class Run_Step_Executor(Queued_Step_Executor):
         if env.sig_mode == 'ignore':
             return None
         env_vars = []
-        for var in sorted(env.sos_dict['__accessed_vars__']):
+        for var in sorted(env.sos_dict['__signature_vars__']):
             # var can be local and not passed as outside environment
             if var in env.sos_dict:
                 env_vars.append('{} = {}\n'.format(var, env.sos_dict[var]))

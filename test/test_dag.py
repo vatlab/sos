@@ -774,5 +774,99 @@ for num in range(3):
             FileTarget(f).remove('both')
 
 
+    def testSharedDependency(self):
+        #
+        # shared variable should introduce additional dependency
+        #
+        for f in ['A1.txt']:
+            FileTarget(f).remove('both')
+        #
+        # A1 introduces a shared variable ss, A3 depends on ss but not A2
+        #
+        script = SoS_Script('''
+[A_1: shared='ss']
+ss = 'A1'
+
+[A_2]
+input: None
+
+sh:
+    sleep 3
+
+[A_3]
+input: None
+import time
+time.sleep(3)
+with open('${ss}.txt', 'w') as tmp:
+    tmp.write('test')
+
+''')
+        wf = script.workflow('A')
+        dag = DAG_Executor(wf).prepare()
+        self.assertDAG(dag,
+'''
+strict digraph "" {
+A_3;
+A_1;
+A_2;
+A_1 -> A_3;
+}
+''')
+        env.max_jobs = 3
+        st = time.time()
+        DAG_Executor(wf).run(dag)
+        self.assertLess(time.time() - st, 5)
+        for f in ['A1.txt']:
+            self.assertTrue(FileTarget(f).exists())
+            FileTarget(f).remove('both')
+
+    def testAliasDependency(self):
+        #
+        # shared variable should introduce additional dependency
+        #
+        for f in ['A1.txt']:
+            FileTarget(f).remove('both')
+        #
+        # A1 introduces a shared variable ss, A3 depends on ss but not A2
+        #
+        script = SoS_Script('''
+[A_1: alias='p']
+ss = 'A1'
+
+[A_2]
+input: None
+
+sh:
+    sleep 3
+
+[A_3]
+input: None
+import time
+time.sleep(3)
+with open('${p.ss}.txt', 'w') as tmp:
+    tmp.write('test')
+
+''')
+        wf = script.workflow('A')
+        dag = DAG_Executor(wf).prepare()
+        self.assertDAG(dag,
+'''
+strict digraph "" {
+A_3;
+A_1;
+A_2;
+A_1 -> A_3;
+}
+''')
+        env.max_jobs = 3
+        st = time.time()
+        DAG_Executor(wf).run(dag)
+        self.assertLess(time.time() - st, 5)
+        for f in ['A1.txt']:
+            self.assertTrue(FileTarget(f).exists())
+            FileTarget(f).remove('both')
+
+
+
 if __name__ == '__main__':
     unittest.main()
