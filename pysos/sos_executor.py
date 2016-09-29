@@ -33,8 +33,7 @@ from queue import Empty
 
 from ._version import __version__
 from .sos_step import Prepare_Step_Executor, Run_Step_Executor, Interactive_Step_Executor
-from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, \
-    frozendict, dict_merge
+from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, frozendict, dict_merge
 from .sos_eval import Undetermined, SoS_exec
 from .sos_script import SoS_Script
 from .sos_syntax import SOS_SECTION_HEADER, SOS_KEYWORDS
@@ -346,6 +345,8 @@ class DAG_Executor(Base_Executor):
         # process step of the pipelinp
         #
         procs = [None for x in range(env.max_jobs)]
+        prog = ProgressBar(self.workflow.name, dag.num_nodes(),
+            disp=dag.num_nodes() > 1 and env.verbosity == 1)
         while True:
             # step 1: check existing jobs and see if they are completed
             for idx, proc in enumerate(procs):
@@ -378,6 +379,7 @@ class DAG_Executor(Base_Executor):
                             node._context['__signature_vars__'] | node._context['__environ_vars__'] \
                             | {'_input', '__step_output__', '__default_output__'}))
                 runnable._status = 'completed'
+                prog.progress(1)
                 procs[idx] = None
                 #env.logger.error('completed')
                 #dag.show_nodes()
@@ -432,6 +434,7 @@ class DAG_Executor(Base_Executor):
                 break
             else:
                 time.sleep(0.1)
+        prog.done()
 
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''

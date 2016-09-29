@@ -77,9 +77,9 @@ class LazyRegex(object):
         try:
             return re.compile(*args, **kwargs)
         except re.error as e:
-            # raise InvalidPattern instead of re.error as this gives a
+            # raise ValueError instead of re.error as this gives a
             # cleaner message to the user.
-            raise InvalidPattern('"' + args[0] + '" ' +str(e))
+            raise ValueError('"' + args[0] + '" ' +str(e))
 
     def __getstate__(self):
         """Return the state to use when pickling."""

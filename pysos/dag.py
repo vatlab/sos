@@ -118,6 +118,9 @@ class SoS_DAG(nx.DiGraph):
         self._all_dependent_files = defaultdict(list)
         self._all_output_files = defaultdict(list)
 
+    def num_nodes(self):
+        return nx.number_of_nodes(self)
+
     def add_step(self, step_uuid, node_name, node_index, input_targets, depends_targets,
         output_targets, context={}):
         node = SoS_Node(step_uuid, node_name, node_index, input_targets, depends_targets, output_targets, context)

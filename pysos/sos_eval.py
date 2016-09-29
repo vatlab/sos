@@ -20,7 +20,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 import os
-import sys
 import collections
 from io import StringIO
 from shlex import quote
@@ -31,7 +30,7 @@ from .sos_syntax import FORMAT_SPECIFIER, SIMPLE_SUB
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
-__all__ = ['interpolate', 'sos_namespace']
+__all__ = ['interpolate']
 
 
 class InterpolationError(Error):
@@ -411,7 +410,7 @@ class Undetermined(object):
         raise RuntimeError('Undetermined expression should be evaluated before used. '
             'This is certainly a bug so please report this to SoS developer.')
 
-class sos_namespace(object):
+class sos_namespace_(object):
     '''A namespace that is created by evaluating statements
     and use the results as attributes of the object.'''
     def __init__(self, stmts):

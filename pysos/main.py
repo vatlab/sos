@@ -178,7 +178,7 @@ def cmd_run(args, workflow_args):
 def cmd_config(args, workflow_args):
     import fnmatch
     import yaml
-    from .utils import env, get_traceback, dict_merge
+    from .utils import env, dict_merge
     from .sos_syntax import CONFIG_NAME
     if workflow_args:
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))

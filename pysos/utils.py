@@ -40,7 +40,7 @@ import threading
 from io import StringIO
 from html.parser import HTMLParser
 
-__all__ = ['logger', 'get_output', 'handle_parameter']
+__all__ = ['logger', 'get_output']
 
 
 class ColoredFormatter(logging.Formatter):
@@ -942,8 +942,7 @@ def _parse_error(msg):
     can hijack errors raised from it.'''
     raise ArgumentError(msg)
 
-
-def handle_parameter(key, defvalue):
+def sos_handle_parameter_(key, defvalue):
     '''Parse command line arguments and set values to parameters section.
     NOTE: parmeters will not be handled if it is already defined in
     the environment. This makes the parameters variable.

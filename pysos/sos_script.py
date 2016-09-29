@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-import time
 import re
 import os
 import copy
@@ -280,7 +279,7 @@ class SoS_Step:
                 name, value = statement[2].split('=', 1)
                 if not value.strip():
                     raise ValueError('In valid parameter definition: {}'.format(statement[2]))
-                self.statements[idx] = ['!', '{} = handle_parameter({!r}, {})\n'.format(name, name.strip(), value)]
+                self.statements[idx] = ['!', '{} = sos_handle_parameter_({!r}, {})\n'.format(name, name.strip(), value)]
         #
         task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
         if not task_directive:
@@ -516,7 +515,7 @@ class SoS_Script:
         # The global definition of sos_file should be accessible as
         # sos_file.name
         self.sections.extend(script.sections)
-        self.global_def += '{} = sos_namespace({})\n'.format(alias, text_repr(script.global_def))
+        self.global_def += '{} = sos_namespace_({})\n'.format(alias, text_repr(script.global_def))
 
     def _include_content(self, sos_file, name_map):
         try:
@@ -538,7 +537,7 @@ class SoS_Script:
                         # match ...
                         self.sections.append(section)
             # global_def is more complicated
-            self.global_def += '__{} = sos_namespace({})\n'.format(sos_file, text_repr(script.global_def))
+            self.global_def += '__{} = sos_namespace_({})\n'.format(sos_file, text_repr(script.global_def))
             #
             self.global_def += '''
 for __n, __v in {}.items():

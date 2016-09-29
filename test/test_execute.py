@@ -1508,7 +1508,6 @@ python:
         tmp.write('${_tt}')
 
 ''')
-        st = time.time()
         wf = script.workflow()
         env.max_jobs = 4
         dag = DAG_Executor(wf).prepare()
