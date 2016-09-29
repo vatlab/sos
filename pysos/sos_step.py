@@ -381,6 +381,22 @@ class Base_Step_Executor:
     def reevaluate_output(self):
         pass
 
+    def submit_task(self):
+        # submit results using single-thread
+        # this is the default mode for prepare and interactive mode
+        self.proc_results.append(
+            execute_task(             # function
+            self.step.task,           # task
+            '',                       # local execusion, no need to re-run global
+            # do not clone dict
+            env.sos_dict,
+            self.step.sigil
+            ))
+
+    def wait_for_results(self):
+        # no waiting is necessary by default (prepare mode etc)
+        pass
+
     def log(self, stage=None, msg=None):
         raise RuntimeError('Please redefine the log function in derived step executor.')
 
@@ -543,10 +559,7 @@ class Base_Step_Executor:
 
         self.log('input')
         
-        # we do not know if we should create a pool yet, because we do not know the option
-        # of directive task
-        pool = None
-        proc_results = []
+        self.proc_results = []
         # run steps after input statement, which will be run multiple times for each input 
         # group.
         env.sos_dict.set('__num_groups__', len(self._groups))
@@ -612,9 +625,6 @@ class Base_Step_Executor:
                             self.process_depends_args(dfiles, **kwargs)
                         elif key == 'task':
                             self.process_task_args(*args, **kwargs)
-                            # if concurrent is set, create a pool object
-                            if env.run_mode == 'run' and pool is None and env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in kwargs and kwargs['concurrent']:
-                                pool = mp.Pool(min(env.max_jobs, len(self._groups)))
                         else:
                             raise RuntimeError('Unrecognized directive {}'.format(key))
                     except Exception as e:
@@ -660,27 +670,7 @@ class Base_Step_Executor:
 
             self.log('task')
             try:
-                if pool:
-                    proc_results.append(pool.apply_async(
-                        execute_task,            # function
-                        (self.step.task,         # task
-                        self.step.global_def,    # global process
-                        # if pool, it must not be in prepare mode and have
-                        # __signature_vars__
-                        env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                            | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_idx'}),
-                        self.step.sigil
-                        )))
-                else:
-                    # execute in existing process
-                    proc_results.append(
-                        execute_task(             # function
-                        self.step.task,           # task
-                        '',                       # local execusion, no need to re-run global
-                        # do not clone dict
-                        env.sos_dict,
-                        self.step.sigil
-                        ))
+                self.submit_task()
             except Exception as e:
                 # FIXME: cannot catch exception from subprocesses
                 if env.verbosity > 2:
@@ -690,23 +680,9 @@ class Base_Step_Executor:
             # endfor loop for each input group
             #
         # check results? This is only meaningful for pool
-        if pool:
-            try:
-                proc_results = [res.get() if isinstance(res, AsyncResult) else res for res in proc_results]
-            except KeyboardInterrupt:
-                # if keyboard interrupt
-                raise RuntimeError('KeyboardInterrupt fro m {} (master)'.format(os.getpid()))
-            except Exception as e:
-                # if keyboard interrupt etc
-                env.logger.error('Caught {}'.format(e))
-                raise
-            finally:
-                # finally, write results back to the master process
-                pool.terminate()
-                pool.close()
-                pool.join()
+        self.wait_for_results()
         # check results
-        if not all(x['succ'] == 0 for x in proc_results):
+        if not all(x['succ'] == 0 for x in self.proc_results):
             raise RuntimeError('Step process returns non-zero value')
         # if output is Undetermined, re-evalulate it
         #
@@ -834,6 +810,7 @@ class Run_Step_Executor(Queued_Step_Executor):
             delattr(env, 'accessed_vars')
         Queued_Step_Executor.__init__(self, step, queue)
         self.step_tokens = self.get_tokens()
+        self.pool = None
 
     def get_tokens(self):
         '''Get tokens after input statement'''
@@ -929,6 +906,51 @@ class Run_Step_Executor(Queued_Step_Executor):
                 raise RuntimeError('Output target {} does not exist after the completion of step {}'
                             .format(target, env.sos_dict['step_name']))
         
+    def submit_task(self):
+        # if concurrent is set, create a pool object
+        if self.pool is None and env.max_jobs > 1 and len(self._groups) > 1 and \
+            'concurrent' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['concurrent']:
+            self.pool = mp.Pool(min(env.max_jobs, len(self._groups)))
+
+        if self.pool:
+            self.proc_results.append(self.pool.apply_async(
+                execute_task,            # function
+                (self.step.task,         # task
+                self.step.global_def,    # global process
+                # if pool, it must not be in prepare mode and have
+                # __signature_vars__
+                env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
+                    | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_idx'}),
+                self.step.sigil
+                )))
+        else:
+            # execute in existing process
+            self.proc_results.append(
+                execute_task(             # function
+                self.step.task,           # task
+                '',                       # local execusion, no need to re-run global
+                # do not clone dict
+                env.sos_dict,
+                self.step.sigil
+                ))
+
+    def wait_for_results(self):
+        if self.pool is None:
+            return
+        try:
+            self.proc_results = [res.get() if isinstance(res, AsyncResult) else res for res in self.proc_results]
+        except KeyboardInterrupt:
+            # if keyboard interrupt
+            raise RuntimeError('KeyboardInterrupt fro m {} (master)'.format(os.getpid()))
+        except Exception as e:
+            # if keyboard interrupt etc
+            env.logger.error('Caught {}'.format(e))
+            raise
+        finally:
+            # finally, write results back to the master process
+            self.pool.terminate()
+            self.pool.close()
+            self.pool.join()
 
 class Interactive_Step_Executor(Base_Step_Executor):
     def __init__(self, step):
