@@ -116,7 +116,6 @@ class Base_Step_Executor:
     def __init__(self, step):
         self.step = step
         self.step_signature = self.get_step_signature()
-        self.step_id = textMD5(self.step_signature)
 
     #
     # The following functions should be redefined in an executor
@@ -149,6 +148,10 @@ class Base_Step_Executor:
     def verify_output(self):
         '''Check if intended output actually exists.'''
         pass
+
+    def get_step_signature(self):
+        '''Base executor does not have signature'''
+        return None
 
     # Nested functions to handle different parameters of input directive
     @staticmethod
@@ -376,31 +379,6 @@ class Base_Step_Executor:
     def reevaluate_output(self):
         pass
 
-    def get_step_signature(self):
-        '''returns a signature of the step. Change of the step content will
-        lead to the invalidation of the signature, which will then cause the
-        re-execution of the step for any result from the step. '''
-        #
-        env_vars = []
-        if '__accessed_vars__' in env.sos_dict:
-            for var in sorted(env.sos_dict['__accessed_vars__']):
-                # var can be local and not passed as outside environment
-                if var in env.sos_dict:
-                    # FIXME: this would not work for function defintion etc
-                    env_vars.append('{} = {}\n'.format(var, env.sos_dict[var]))
-
-        def get_tokens(statement):
-            return [x[1] for x in generate_tokens(StringIO(statement).readline)]
-
-        tokens = []
-        for statement in self.step.statements:
-            if statement[0] in (':', '='):
-                tokens.extend([statement[1], statement[0]])
-                tokens.extend(get_tokens(statement[2]))
-            else:
-                tokens.extend(get_tokens(statement[1]))
-        return ''.join(env_vars + tokens)
-
     def log(self, stage=None, msg=None):
         raise RuntimeError('Please redefine the log function in derived step executor.')
 
@@ -593,7 +571,7 @@ class Base_Step_Executor:
                         if key == 'output':
                             ofiles = self.expand_output_files(value, *args)
                             # ofiles can be Undetermined
-                            if env.run_mode != 'prepare' and env.sig_mode != 'ignore' and not isinstance(g, Undetermined):
+                            if self.step_signature is not None and not isinstance(g, Undetermined):
                                 signatures[idx] = RuntimeInfo(self.step_signature, env.sos_dict['_input'],
                                     ofiles, env.sos_dict['_depends'], idx)
                                 if env.sig_mode == 'default':
@@ -863,6 +841,33 @@ class Run_Step_Executor(Queued_Step_Executor):
             return env.sos_dict['input']
         else:
             return _expand_file_list(False, *args)
+
+    def get_step_signature(self):
+        '''returns a signature of the step. Change of the step content will
+        lead to the invalidation of the signature, which will then cause the
+        re-execution of the step for any result from the step. '''
+        #
+        if env.sig_mode == 'ignore':
+            return None
+        env_vars = []
+        if '__accessed_vars__' in env.sos_dict:
+            for var in sorted(env.sos_dict['__accessed_vars__']):
+                # var can be local and not passed as outside environment
+                if var in env.sos_dict:
+                    # FIXME: this would not work for function defintion etc
+                    env_vars.append('{} = {}\n'.format(var, env.sos_dict[var]))
+
+        def get_tokens(statement):
+            return [x[1] for x in generate_tokens(StringIO(statement).readline)]
+
+        tokens = []
+        for statement in self.step.statements:
+            if statement[0] in (':', '='):
+                tokens.extend([statement[1], statement[0]])
+                tokens.extend(get_tokens(statement[2]))
+            else:
+                tokens.extend(get_tokens(statement[1]))
+        return ''.join(env_vars + tokens)
 
     def expand_depends_files(self, *args, **kwargs):
         '''handle directive depends'''
