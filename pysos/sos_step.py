@@ -603,7 +603,7 @@ class Base_Step_Executor:
                         elif key == 'task':
                             self.process_task_args(*args, **kwargs)
                             # if concurrent is set, create a pool object
-                            if env.run_mode != 'prepare' and pool is None and env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in kwargs and kwargs['concurrent']:
+                            if env.run_mode == 'run' and pool is None and env.max_jobs > 1 and len(self._groups) > 1 and 'concurrent' in kwargs and kwargs['concurrent']:
                                 pool = mp.Pool(min(env.max_jobs, len(self._groups)))
                         else:
                             raise RuntimeError('Unrecognized directive {}'.format(key))
@@ -655,7 +655,10 @@ class Base_Step_Executor:
                         execute_task,            # function
                         (self.step.task,         # task
                         self.step.global_def,    # global process
-                        env.sos_dict.clone_pickleable(),
+                        # if pool, it must not be in prepare mode and have
+                        # __accessed_vars__
+                        env.sos_dict.clone_selected_vars(env.sos_dict['__accessed_vars__'] \
+                            | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_idx'}),
                         self.step.sigil
                         )))
                 else:

@@ -262,9 +262,9 @@ class WorkflowDict(object):
         if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
             env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
-    def clone_pickleable(self):
-        '''Return a copy of the existing dictionary but keep only the ones that are pickleable'''
-        return {x:copy.deepcopy(y) for x,y in self._dict.items() if pickleable(y)}
+    def clone_selected_vars(self, selected):
+        return {x:copy.deepcopy(y) for x,y in self._dict.items() if x in selected and pickleable(y)}
+
 #
 # Runtime environment
 #

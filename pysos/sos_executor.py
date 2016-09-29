@@ -358,7 +358,8 @@ class DAG_Executor(Base_Executor):
                     # if node is the logical next step...
                     if node._node_index is not None and runnable._node_index is not None \
                         and node._node_index == runnable._node_index + 1:
-                        node._context.update(env.sos_dict.clone_pickleable())
+                        node._context.update(env.sos_dict.clone_selected_vars(
+                            node._context['__accessed_vars__'] | {'_input', '__step_output__', '__default_output__'}))
                 runnable._status = 'completed'
                 procs[idx] = None
                 #env.logger.error('completed')
