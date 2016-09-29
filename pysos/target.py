@@ -143,7 +143,7 @@ class FileTarget(BaseTarget):
             self.calc_md5()
             md5.write('{}\t{}\n'.format(self.fullname(), self.md5()))
             for f in self._attachments:
-                md5.write('{}\t{}\n'.format(self.fullname(), fileMD5(f)))
+                md5.write('{}\t{}\n'.format(f, fileMD5(f)))
 
     def calc_md5(self):
         if self._md5 is None:
