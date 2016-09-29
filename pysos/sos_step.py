@@ -575,10 +575,18 @@ class Base_Step_Executor:
                         # dynamic output or dependent files
                         if key == 'output':
                             ofiles = self.expand_output_files(value, *args)
+                            if not isinstance(g, (type(None), Undetermined)) and not isinstance(ofiles, (type(None), Undetermined)):
+                                if any(x in g for x in ofiles):
+                                    raise RuntimeError('Overlapping input and output files: {}'
+                                        .format(', '.join(x for x in ofiles if x in g)))
+                            # set variable _output and output
+                            self.process_output_args(ofiles, **kwargs)
+
                             # ofiles can be Undetermined
-                            if self.step_signature(idx) is not None and not isinstance(g, Undetermined):
-                                signatures[idx] = RuntimeInfo(self.step_signature(idx), env.sos_dict['_input'],
-                                    ofiles, env.sos_dict['_depends'], idx)
+                            sg = self.step_signature(idx)
+                            if sg is not None and not isinstance(g, Undetermined):
+                                signatures[idx] = RuntimeInfo(sg, env.sos_dict['_input'],
+                                    env.sos_dict['_output'], env.sos_dict['_depends'])
                                 if env.sig_mode == 'default':
                                     res = signatures[idx].validate()
                                     if res:
@@ -592,13 +600,7 @@ class Base_Step_Executor:
                                 elif env.sig_mode == 'construct':
                                     if signatures[idx].write():
                                         skip_index = True
-                            #
-                            if not isinstance(g, (type(None), Undetermined)) and not isinstance(ofiles, (type(None), Undetermined)):
-                                if any(x in g for x in ofiles):
-                                    raise RuntimeError('Overlapping input and output files: {}'
-                                        .format(', '.join(x for x in ofiles if x in g)))
-                            # set variable _output and output
-                            self.process_output_args(ofiles, **kwargs)
+
                             if skip_index:
                                 break
                         elif key == 'depends':
@@ -824,6 +826,30 @@ class Run_Step_Executor(Queued_Step_Executor):
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
         Queued_Step_Executor.__init__(self, step, queue)
+        self.step_tokens = self.get_tokens()
+
+    def get_tokens(self):
+        '''Get tokens after input statement'''
+        def _get_tokens(statement):
+            return [x[1] for x in generate_tokens(StringIO(statement).readline)]
+
+        tokens = []
+        for statement in self.step.statements:
+            if statement[0] == ':':
+                # we only keep statements after input
+                if statement[1] == 'input':
+                    tokens = []
+                continue
+            if statement[0] == '=':
+                tokens.extend([statement[1], statement[0]])
+                tokens.extend(_get_tokens(statement[2]))
+            else:
+                tokens.extend(_get_tokens(statement[1]))
+
+        if self.step.task:
+            tokens.extend(_get_tokens(self.step.task))
+
+        return ''.join(tokens)
 
     def log(self, stage=None, msg=None):
         if stage == 'start':
@@ -867,24 +893,9 @@ class Run_Step_Executor(Queued_Step_Executor):
         for var in sorted(env.sos_dict['__accessed_vars__']):
             # var can be local and not passed as outside environment
             if var in env.sos_dict:
-                # FIXME: this would not work for function defintion etc
                 env_vars.append('{} = {}\n'.format(var, env.sos_dict[var]))
 
-        def get_tokens(statement):
-            return [x[1] for x in generate_tokens(StringIO(statement).readline)]
-
-        tokens = []
-        for statement in self.step.statements:
-            if statement[0] in (':', '='):
-                tokens.extend([statement[1], statement[0]])
-                tokens.extend(get_tokens(statement[2]))
-            else:
-                tokens.extend(get_tokens(statement[1]))
-
-        if self.step.task:
-            tokens.extend(get_tokens(self.step.task))
-
-        return ''.join(env_vars + tokens)
+        return ''.join(env_vars) + '---\n' + self.step_tokens
 
     def expand_depends_files(self, *args, **kwargs):
         '''handle directive depends'''

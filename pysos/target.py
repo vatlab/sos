@@ -238,10 +238,8 @@ class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.
     '''
-    def __init__(self, script, input_files=[], output_files=[], dependent_files = [], index=None):
+    def __init__(self, script, input_files=[], output_files=[], dependent_files = []):
         '''Runtime information for specified output files
-        index:
-            in case of partial output, output files can be the same form (dynamic) so we need index to differntiate
 
         output_files:
             intended output file
@@ -273,14 +271,13 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Output files must be a list of filenames or Undetermined for runtime signature.')
         
-        self.index = index
         self.sig_files = []
 
         if isinstance(self.output_files, Undetermined) or not self.output_files:
-            sig_name = 'Dynamic_' + textMD5('{} {} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files, self.index))
+            sig_name = 'Dynamic_' + textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))
         else:
             sig_name = os.path.realpath(self.output_files[0].fullname() + '_' + \
-                textMD5('{} {} {} {} {}'.format(self.script, self.input_files, self.output_files, self.dependent_files, self.index)))
+                textMD5('{} {} {} {}'.format(self.script, self.input_files, self.output_files, self.dependent_files)))
         #
         # If the output path is outside of the current working directory
         rel_path = os.path.relpath(sig_name, env.exec_dir)

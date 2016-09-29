@@ -1519,6 +1519,85 @@ python:
             FileTarget('myfile_{}.txt'.format(t)).remove('both')
 
 
+    def testLoopWiseSignature(self):
+        '''Test partial signature'''
+        for i in range(10, 12):
+            FileTarget('myfile_{}.txt'.format(i)).remove('both')
+        #
+        script = SoS_Script(r'''
+parameter: gvar = 10
+
+[10]
+tt = [gvar]
+input: for_each='tt'
+output: 'myfile_${_tt}.txt'
+python:
+    import time
+    time.sleep(3)
+    print("DO ${_tt}")
+    with open(${_output!r}, 'w') as tmp:
+        tmp.write('${_tt}')
+''')
+        st = time.time()
+        wf = script.workflow()
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
+        self.assertGreater(time.time() - st, 2.5)
+        # now we modify the script 
+        script = SoS_Script(r'''
+parameter: gvar = 10
+
+[10]
+tt = [gvar, gvar + 1]
+input: for_each='tt'
+output: 'myfile_${_tt}.txt'
+python:
+    import time
+    time.sleep(3)
+    print("DO ${_tt}")
+    with open(${_output!r}, 'w') as tmp:
+        tmp.write('${_tt}')
+''')
+        st = time.time()
+        wf = script.workflow()
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
+        self.assertGreater(time.time() - st, 2.5)
+        self.assertLess(time.time() - st, 5)
+        #
+        # run it again, neither needs to be rerun
+        st = time.time()
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
+        self.assertLess(time.time() - st, 2)
+        #
+        # change again, the second one is already there.
+        script = SoS_Script(r'''
+parameter: gvar = 10
+
+[10]
+tt = [gvar + 1]
+input: for_each='tt'
+output: 'myfile_${_tt}.txt'
+python:
+    import time
+    time.sleep(3)
+    print("DO ${_tt}")
+    with open(${_output!r}, 'w') as tmp:
+        tmp.write('${_tt}')
+''')
+        st = time.time()
+        wf = script.workflow()
+        dag = DAG_Executor(wf).prepare()
+        DAG_Executor(wf).run(dag)
+        self.assertLess(time.time() - st, 2)
+        #
+        for t in range(10, 12):
+            with open('myfile_{}.txt'.format(t)) as tmp:
+                self.assertEqual(tmp.read(), str(t))
+            FileTarget('myfile_{}.txt'.format(t)).remove('both')
+
+
 
 if __name__ == '__main__':
     unittest.main()

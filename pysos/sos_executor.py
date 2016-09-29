@@ -207,7 +207,7 @@ class Base_Executor:
             if isinstance(res, Exception):
                 raise RuntimeError(res)
             #
-            accessed_vars = {}
+            accessed_vars = set()
             for k, v in res.items():
                 if k == '__accessed_vars__':
                     accessed_vars = v - self._base_symbols
@@ -266,7 +266,7 @@ class Base_Executor:
                 if isinstance(res, Exception):
                     raise RuntimeError(res)
                 #
-                accessed_vars = {}
+                accessed_vars = set()
                 for k, v in res.items():
                     if k == '__accessed_vars__':
                         accessed_vars = v - self._base_symbols
