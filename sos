@@ -67,9 +67,10 @@ if __name__ == '__main__':
         If the option is specified wiht no value, the transcript will be written
         to standard error output.'''
     bindir_help = '''Extra directories in which SoS will look for executables before
-        standard $PATH. This essentially prefix $PATH with these directories.
+        standard $PATH. This option essentially prefix $PATH with these directories.
         Note that the default value '~/.sos/bin' is by convention a default
-        directory for commands that are installed by SoS.'''
+        directory for commands that are installed by SoS. You can use option '-b'
+        without value to disallow commands under ~/.sos/bin.'''
     #
     # command run
     parser = subparsers.add_parser('run',
@@ -100,7 +101,7 @@ if __name__ == '__main__':
             will be the target of execution. If specified, SoS will execute
             only part of a workflow or multiple workflows or auxiliary steps
             to generate specified targets. ''')
-    parser.add_argument('-b', dest-'__bin_dirs__', nargs='+', metavar='BIN_DIRS',
+    parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIRS',
         default=['~/.sos/bin'], help=bindir_help)
     parser.add_argument('-e', dest='__engine__', metavar='ENGINE',
         help='''Task-processing engine. SoS by default uses a local multiprocessing
@@ -166,7 +167,7 @@ if __name__ == '__main__':
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary
             CONF in the SoS script being executed.''')
-    parser.add_argument('-b', dest-'__bin_dirs__', nargs='+', metavar='BIN_DIRS',
+    parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIRS',
         default=['~/.sos/bin'], help=bindir_help)
     addCommonArgs(parser)
     parser.set_defaults(func=cmd_prepare)
