@@ -1023,7 +1023,9 @@ for __n, __v in {}.items():
             self.sections.append(SoS_Step(self.content, [('default', None)]))
         #
         for section in self.sections:
-            section.global_def = self.global_def
+            # for nested / included sections, we need to keep their own global definition
+            if '.' not in section.names[0][0]:
+                section.global_def = self.global_def
 
     def workflow(self, workflow_name=None):
         '''Return a workflow with name_step+name_step specified in wf_name
