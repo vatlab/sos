@@ -182,8 +182,8 @@ setup(name = "sos",
           'networkx',
           'pydotplus',
           # for RQ task-execution engine
-          'rq',
           'rq-dashboard',
+          'rq',
           # for celery task-execution engine
           'celery',
           'flower',
