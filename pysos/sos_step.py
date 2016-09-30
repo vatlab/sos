@@ -1001,20 +1001,17 @@ class Celery_Step_Executor(SP_Step_Executor):
     def __init__(self, step, queue):
         SP_Step_Executor.__init__(self, step, queue)
 
-        # make execute_task a celery task ... 
-        from celery import shared_task
-        execute_task.celery = shared_task(execute_task)
-
     def submit_task(self):
         # if concurrent is set, create a pool object
+        from .celery import celery_execute_task
         self.proc_results.append( 
-            execute_task.celery.delay(     # function
+            celery_execute_task.apply_async((     # function
             self.step.task,         # task
             self.step.global_def,   # global process
             env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_idx'}),
+                | {'step_name', '_index', '_input', '_output', '_depends', 'input', 'output', 'depends', '_idx'}),
             self.step.sigil
-            ) )
+            )) )
 
     def wait_for_results(self):
         while True:
@@ -1023,11 +1020,11 @@ class Celery_Step_Executor(SP_Step_Executor):
                 if any(not x.ready() for x in self.proc_results):
                     time.sleep(1)
                 else:
-                    break
-                env.logger.error('{}/{} completed'.format(len([x for x in self.proc_results if x.ready()]), len(self.proc_results)))
+                    self.proc_results = [x.get() for x in self.proc_results]
+                    return
             except KeyboardInterrupt:
                 # if keyboard interrupt
-                raise RuntimeError('KeyboardInterrupt fro m {} (master)'.format(os.getpid()))
+                raise RuntimeError('KeyboardInterrupt from {} (master)'.format(os.getpid()))
             except Exception as e:
                 # if keyboard interrupt etc
                 env.logger.error('Caught {}'.format(e))

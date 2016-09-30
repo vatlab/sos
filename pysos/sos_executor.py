@@ -531,9 +531,6 @@ class Celery_Executor(MP_Executor):
         MP_Executor.__init__(self, workflow, args, config_file, nested=nested)
         env.__task_engine__ = 'Celery'
 
-        from celery import Celery
-        celery_app = Celery('pysos.sos_step', broker='redis://localhost', backend='redis://localhost')
-
     def step_executor(self, section, queue):
         # pass celery_app if needed
         return Celery_Step_Executor(section, queue)
