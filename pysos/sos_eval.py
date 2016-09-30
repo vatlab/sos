@@ -373,14 +373,8 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
         except AbortExecution:
             raise
         except Exception as e:
-            if env.run_mode not in ['run', 'interactive']:
-                if isinstance(e, InterpolationError):
-                    if env.run_mode == 'prepare':
-                        # this should not matter in prepare mode because many variables do not yet
-                        # exist...
-                        env.logger.debug('Failed to interpolate {}: {}'.format(short_repr(stmts), e))
-                else:
-                    env.sos_dict['__execute_errors__'].append(stmts, e)
+            if env.run_mode == 'prepare':
+                env.logger.warning('Failed to execute {} in prepare mode: {}'.format(short_repr(code), e))
             else:
                 raise
         finally:
