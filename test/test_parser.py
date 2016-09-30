@@ -148,10 +148,11 @@ var = 1
         self.assertRaises(ParsingError, SoS_Script,
             '''a = 'b  ''')
         # This one also does not work because b is not defined.
-        delattr(env, 'sos_dict')
-        script = SoS_Script('''a = b\n[0] ''')
-        wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
+        #delattr(env, 'sos_dict')
+        #script = SoS_Script('''a = b\n[0] ''')
+        #wf = script.workflow()
+        #dag = Base_Executor(wf).prepare()
+        #self.assertRaises(ExecuteError, Base_Executor(wf).run, dag)
         # multi-line string literal
         SoS_Script('''a = """
 this is a multi line
@@ -559,9 +560,8 @@ output: ('a${x}' for x in _input)
         # group_by = 'all'
         self.touch(['a{}.txt'.format(x) for x in range(11)])
         #
-        env.shared_vars = ['executed']
         script = SoS_Script('''
-[0]
+[0: shared='executed']
 
 executed = []
 input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='all'
@@ -574,7 +574,7 @@ executed.append(_input)
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt', 'a3.txt', 'a4.txt']])
         # group_by = 'single'
         script = SoS_Script('''
-[0]
+[0: shared='executed']
 
 executed = []
 input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='single'
@@ -587,7 +587,7 @@ executed.append(_input)
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt'], ['a2.txt'], ['a3.txt'], ['a4.txt']])
         # group_by = 'pairs'
         script = SoS_Script('''
-[0]
+[0: shared='executed']
 
 executed = []
 input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='pairs'
@@ -600,7 +600,7 @@ executed.append(_input)
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a3.txt'], ['a2.txt', 'a4.txt']])
         # group_by = 'pairwise'
         script = SoS_Script('''
-[0]
+[0: shared='executed']
 
 executed = []
 input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='pairwise'
@@ -613,7 +613,7 @@ executed.append(_input)
         self.assertEqual(env.sos_dict['executed'],  [['a1.txt', 'a2.txt'], ['a2.txt', 'a3.txt'], ['a3.txt', 'a4.txt']])
         # group_by = 'combinations'
         script = SoS_Script('''
-[0]
+[0: shared='executed']
 
 executed = []
 input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='combinations'
@@ -627,7 +627,7 @@ executed.append(_input)
             ['a1.txt', 'a4.txt'], ['a2.txt', 'a3.txt'], ['a2.txt', 'a4.txt'], ['a3.txt', 'a4.txt']])
         # group_by chunks specified as integers
         script = SoS_Script('''
-[0]
+[0: shared='executed']
 
 executed = []
 input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by=3
@@ -643,7 +643,7 @@ executed.append(_input)
                          ['a7.txt', 'a8.txt', 'a9.txt']])
         # group_by chunks specified as integer strings
         script = SoS_Script('''
-[0]
+[0: shared='executed']
 
 executed = []
 input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by='3'
@@ -728,7 +728,7 @@ a = '1'
         '''Test definition of classes (with intermediate newlines) in step.'''
         script = SoS_Script('''# first block
 
-[0]
+[0: shared='b']
 class A:
     def __init__(self):
         pass
@@ -741,7 +741,6 @@ class A:
 b = A()()
 
 ''')
-        env.shared_vars=['b']
         wf = script.workflow()
         dag = Base_Executor(wf).prepare()
         Base_Executor(wf).run(dag)
@@ -749,33 +748,32 @@ b = A()()
 
     def testCombinedWorkflow(self):
         '''Test the creation and execution of combined workfow'''
-        env.shared_vars = ['executed', 'input_b1', 'a']
         script = SoS_Script('''
 a0 = 0
 if 'executed' not in locals():
     executed = []
 parameter: a = a0 + 1
-[a_1]
+[a_1: shared='executed']
 executed.append(step_name)
-[a_2]
+[a_2: shared='executed']
 executed.append(step_name)
-[a_3]
+[a_3: shared='executed']
 executed.append(step_name)
-[a_4]
+[a_4: shared='executed']
 executed.append(step_name)
 output: 'out_a_4'
-[b_1]
+[b_1: shared=['executed', 'input_b1']]
 executed.append(step_name)
 input_b1 = input
-[b_2]
+[b_2: shared='executed']
 executed.append(step_name)
-[b_3]
+[b_3: shared='executed']
 executed.append(step_name)
-[b_4]
+[b_4: shared='executed']
 executed.append(step_name)
-[c]
+[c: shared='executed']
 executed.append(step_name)
-[d]
+[d: shared='executed']
 executed.append(step_name)
 ''')
         wf = script.workflow('a+b')
@@ -796,41 +794,40 @@ executed.append(step_name)
     def testNestedWorkflow(self):
         '''Test the creation and execution of combined workfow'''
         self.touch(['a.txt', 'b.txt', 'b.begin'])
-        env.shared_vars = ['executed', 'inputs']
         script = SoS_Script('''
 if 'executed' not in locals():
     executed = []
 if 'inputs' not in locals():
     inputs = []
 
-[a_1]
+[a_1: shared=['executed', 'inputs']]
 executed.append(step_name)
 inputs.append(input)
-[a_2]
+[a_2: shared=['executed', 'inputs']]
 executed.append(step_name)
 inputs.append(input)
-[a_3]
+[a_3: shared=['executed', 'inputs']]
 executed.append(step_name)
 inputs.append(input)
-[a_4]
+[a_4: shared=['executed', 'inputs']]
 executed.append(step_name)
 output: 'a.done'
 inputs.append(input)
-[b_1]
+[b_1: shared=['executed', 'inputs']]
 executed.append(step_name)
 input: 'b.begin'
 inputs.append(input)
-[b_2]
+[b_2: shared=['executed', 'inputs']]
 executed.append(step_name)
 inputs.append(input)
-[b_3]
+[b_3: shared=['executed', 'inputs']]
 executed.append(step_name)
 inputs.append(input)
-[b_4]
+[b_4: shared=['executed', 'inputs']]
 executed.append(step_name)
 output: 'b.txt'
 inputs.append(input)
-[c]
+[c: shared=['executed', 'inputs']]
 executed.append(step_name)
 input: 'a.txt'
 output: 'b.txt'
@@ -850,15 +847,15 @@ if 'executed' not in locals():
 if 'inputs' not in locals():
     inputs = []
 
-[a_1]
+[a_1:shared=['executed', 'inputs']]
 executed.append(step_name)
 output: _input[0] + '.a1'
 inputs.append(input)
-[a_2]
+[a_2:shared=['executed', 'inputs']]
 executed.append(step_name)
 output: _input[0] + '.a2'
 inputs.append(input)
-[c]
+[c:shared=['executed', 'inputs']]
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 inputs.append(_input)
@@ -874,13 +871,13 @@ sos_run('a')
         script = SoS_Script('''
 if 'executed' not in locals():
     executed = []
-[a_1]
+[a_1:shared='executed']
 executed.append(step_name)
-[a_2]
+[a_2:shared='executed']
 executed.append(step_name)
-[c_0]
+[c_0:shared='executed']
 executed.append(step_name)
-[c_1]
+[c_1:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2')
@@ -893,13 +890,13 @@ sos_run('a_2')
         script = SoS_Script('''
 if 'executed' not in locals():
     executed = []
-[a_1]
+[a_1:shared='executed']
 executed.append(step_name)
-[a_2]
+[a_2:shared='executed']
 executed.append(step_name)
-[c_0]
+[c_0:shared='executed']
 executed.append(step_name)
-[c_1]
+[c_1:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2')
@@ -912,13 +909,13 @@ sos_run('a_2')
         script = SoS_Script('''
 if 'executed' not in locals():
     executed = []
-[a_1]
+[a_1:shared='executed']
 executed.append(step_name)
-[a_2]
+[a_2:shared='executed']
 executed.append(step_name)
-[c_0]
+[c_0:shared='executed']
 executed.append(step_name)
-[c_1]
+[c_1:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2+c')
@@ -930,20 +927,20 @@ sos_run('a_2+c')
         script = SoS_Script('''
 if 'executed' not in locals():
     executed = []
-[a_1]
+[a_1:shared='executed']
 executed.append(step_name)
-[a_2]
+[a_2:shared='executed']
 executed.append(step_name)
-[a_3]
+[a_3:shared='executed']
 executed.append(step_name)
-[b_1]
+[b_1:shared='executed']
 executed.append(step_name)
-[b_2]
+[b_2:shared='executed']
 executed.append(step_name)
 sos_run('a_1+a_2')
-[c_0]
+[c_0:shared='executed']
 executed.append(step_name)
-[c_1]
+[c_1:shared='executed']
 executed.append(step_name)
 input: 'a.txt'
 sos_run('a+b')
@@ -958,21 +955,21 @@ sos_run('a+b')
         script = SoS_Script('''
 if 'executed' not in locals():
     executed = []
-[a_1]
+[a_1:shared='executed']
 executed.append(step_name)
-[a_2]
+[a_2:shared='executed']
 executed.append(step_name)
-[a_3]
+[a_3:shared='executed']
 executed.append(step_name)
-[b]
+[b:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_3+a_1')
-[d]
+[d:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2')
-[e2_2]
+[e2_2:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 ''')
@@ -988,26 +985,25 @@ input: 'a.txt', 'b.txt', group_by='single'
 
     def testDynamicNestedWorkflow(self):
         '''Test nested workflow controlled by command line option'''
-        env.shared_vars = ['executed']
         script = SoS_Script('''
 if 'executed' not in locals():
     executed = []
 parameter: wf='a'
 
-[a_1]
+[a_1:shared='executed']
 executed.append(step_name)
-[a_2]
+[a_2:shared='executed']
 executed.append(step_name)
-[a_3]
+[a_3:shared='executed']
 executed.append(step_name)
-[b_1]
+[b_1:shared='executed']
 executed.append(step_name)
-[b_2]
+[b_2:shared='executed']
 executed.append(step_name)
-[b_3]
+[b_3:shared='executed']
 executed.append(step_name)
 
-[default]
+[default:shared='executed']
 executed.append(step_name)
 sos_run(wf)
 ''')
@@ -1021,7 +1017,6 @@ sos_run(wf)
     def testIncludedNestedWorkFlow(self):
         '''Test the source option of sos_run'''
         # nested subworkflow with step option and others
-        env.shared_vars = ['executed', 'GLB', 'parB']
         self.touch(['a.txt', 'b.txt'])
         #
         with open('inc.sos', 'w') as sos:
@@ -1032,11 +1027,11 @@ sos_run(wf)
 GLB = 5
 parameter: parB = 10
 
-[A_1]
+[A_1: shared='executed']
 executed.append('t.' + step_name)
 output: _input[0] + 'a1'
 
-[A_2]
+[A_2: shared='executed']
 executed.append('t.' + step_name)
 output: _input[0] + 'a2'
 
@@ -1047,12 +1042,11 @@ output: _input[0] + 'a2'
 if 'executed' not in locals():
     executed = []
 
-[b_1: skip=False]
+[b_1: skip=False, shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('A')
 ''')
-        env.shared_vars = ['executed']
         wf = script.workflow('b')
         Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['GLB'], 5)
@@ -1065,7 +1059,7 @@ sos_run('A')
 if 'executed' not in locals():
     executed = []
 
-[b_1: skip=False]
+[b_1: skip=False, shared='executed']
 executed.append('g.' + step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 sos_run('k.A')
@@ -1077,6 +1071,9 @@ sos_run('k.A')
         self.assertEqual(env.sos_dict['executed'], ['g.b_1', 't.k.A_1', 't.k.A_2', 't.k.A_1', 't.k.A_2'])
         #
         os.remove('inc.sos')
+
+    def testIncludeWithNamespace(self):
+        '''Test include a workflow that uses variables from its own global module'''
 
     def testYAMLConfig(self):
         '''Test config file in yaml format'''

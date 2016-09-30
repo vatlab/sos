@@ -374,7 +374,10 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
             raise
         except Exception as e:
             if env.run_mode == 'prepare':
-                env.logger.warning('Failed to execute {} in prepare mode: {}'.format(short_repr(code), e))
+                if isinstance(e, (IndexError, NameError, InterpolationError)):
+                    env.logger.warning('Failed to execute {} in prepare mode: {}'.format(short_repr(code), e))
+                else:
+                    env.sos_dict['__execute_errors__'].append(code, e)
             else:
                 raise
         finally:

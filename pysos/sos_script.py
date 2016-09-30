@@ -1013,10 +1013,6 @@ for __n, __v in {}.items():
             for statement in global_section[0][1].statements:
                 if statement[0] == '=':
                     self.global_def += '{} = {}\n'.format(statement[1], statement[2])
-                    # for debugging purposes, we sometimes set some global variables as shared
-                    # across steps, which should not be readonly
-                    if statement[1].strip() not in env.shared_vars:
-                        env.readonly_vars.add(statement[1].strip())
                 else:
                     self.global_def += statement[1]
             # remove the global section after inserting it to each step of the process

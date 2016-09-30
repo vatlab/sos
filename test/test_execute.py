@@ -92,19 +92,18 @@ class TestExecute(unittest.TestCase):
         '''Test string interpolation during execution'''
         self.touch(['a_1.txt', 'b_2.txt', 'c_2.txt'])
         script = SoS_Script(r"""
-[0]
+[0: shared='res']
 res = ''
 b = 200
 res += '${b}'
 """)
         wf = script.workflow()
-        env.shared_vars = ['res']
         dag = Base_Executor(wf).prepare()
         Base_Executor(wf).run(dag)
         self.assertEqual(env.sos_dict['res'], '200')
         #
         script = SoS_Script(r"""
-[0]
+[0: shared='res']
 res = ''
 for b in range(5):
     res += '${b}'
@@ -202,7 +201,7 @@ output: [x + '.res' for x in _input]
         '''Test for_each option of input'''
         self.touch(['a.txt', 'b.txt', 'a.pdf'])
         script = SoS_Script(r"""
-[0]
+[0: shared=['counter', 'all_names', 'all_loop', 'processed']]
 files = ['a.txt', 'b.txt']
 names = ['a', 'b', 'c']
 c = ['1', '2']
@@ -218,7 +217,6 @@ all_loop += _c + " "
 counter = counter + 1
 """)
         wf = script.workflow()
-        env.shared_vars = ['counter', 'all_names', 'all_loop', 'processed']
         Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['counter'], 6)
         self.assertEqual(env.sos_dict['all_names'], "a b c a b c ")
@@ -226,7 +224,7 @@ counter = counter + 1
         #
         # test same-level for loop and parameter with nested list
         script = SoS_Script(r"""
-[0]
+[0: shared=['counter', 'all_names', 'all_loop', 'processed']]
 files = ['a.txt', 'b.txt']
 par = [(1, 2), (1, 3), (2, 3)]
 res = ['p1.txt', 'p2.txt', 'p3.txt']
@@ -263,7 +261,7 @@ output: '${_data["A"]}_${_data["B"]}_${_data["C"]}.txt'
         #env.verbosity = 4
         self.touch(['a-20.txt', 'b-10.txt'])
         script = SoS_Script(r"""
-[0]
+[0: shared=['base', 'name', 'par', '_output']]
 
 files = ['a-20.txt', 'b-10.txt']
 input: files, pattern=['{name}-{par}.txt', '{base}.txt']
@@ -271,7 +269,6 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
 
 """)
         wf = script.workflow()
-        env.shared_vars=['base', 'name', 'par', '_output']
         Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
@@ -283,7 +280,7 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
         #env.verbosity = 4
         self.touch(['a-20.txt', 'b-10.txt'])
         script = SoS_Script(r"""
-[0]
+[0: shared=['base', 'name', 'par', '_output']]
 
 files = ['a-20.txt', 'b-10.txt']
 input: files, pattern=['{name}-{par}.txt', '{base}.txt']
@@ -291,7 +288,6 @@ output: expand_pattern('{base}-{name}-{par}.txt'), expand_pattern('{par}.txt')
 
 """)
         wf = script.workflow()
-        env.shared_vars = ['base', 'name', 'par', '_output']
         Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
@@ -385,7 +381,7 @@ output: '${_input}.res'
         self.assertEqual(env.sos_dict['res'].output, ['a.txt.res', 'b.txt.res'])
         #
         script = SoS_Script(r"""
-[0]
+[0: shared='counter']
 files = ['a.txt', 'b.txt']
 counter = 0
 
@@ -394,7 +390,6 @@ input: 'a.pdf', 'b.html', files, filetype=('*.txt', '*.pdf'), group_by='single'
 counter += 1
 """)
         wf = script.workflow()
-        env.shared_vars=['counter']
         Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['counter'], 3)
         #
@@ -415,7 +410,7 @@ counter += 1
         '''Test deriving output files from input files'''
         self.touch(['a.txt', 'b.txt'])
         script = SoS_Script(r"""
-[0: alias='step']
+[0: alias='step', shared='counter']
 files = ['a.txt', 'b.txt']
 counter = 0
 
@@ -425,7 +420,6 @@ output: _input[0] + '.bak'
 counter += 1
 """)
         wf = script.workflow()
-        env.shared_vars = ['counter']
         Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['step'].output, ['a.txt.bak', 'b.txt.bak'])
@@ -499,11 +493,10 @@ from pysos.actions import SoS_Action
 def fail():
     return 1
 
-[0]
+[0: shared='a']
 a = fail()
 """)
         wf = script.workflow()
-        env.shared_vars=['a']
         Base_Executor(wf).prepare()
         # should return 0 in prepare mode
         self.assertTrue(isinstance(env.sos_dict['a'], Undetermined))

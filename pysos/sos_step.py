@@ -715,10 +715,6 @@ class Queued_Step_Executor(Base_Step_Executor):
     def run(self):
         try:
             res = Base_Step_Executor.run(self)
-            # shared variables will be sent from subprocess to the master
-            for key in env.shared_vars:
-                if key in env.sos_dict and key not in res:
-                    res[key] = env.sos_dict[key]
             self.queue.put(res)
         except Exception as e:
             if env.verbosity > 2:
