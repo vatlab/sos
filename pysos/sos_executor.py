@@ -79,11 +79,14 @@ class Base_Executor:
     def __init__(self, workflow=None, args=[], config_file=None, nested=False):
         env.__task_engine__ = None
         self.workflow = workflow
+        self.args = args
         self.nested = nested
+        self.config_file = config_file
 
+    def reset_dict(self):
         # if creating a new dictionary, set it up with some basic varibles
         # and functions
-        if nested:
+        if self.nested:
             SoS_exec('import os, sys, glob')
             SoS_exec('from pysos.runtime import *')
             self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
@@ -93,8 +96,8 @@ class Base_Executor:
 
         # inject a few things
         env.sos_dict.set('__null_func__', __null_func__)
-        env.sos_dict.set('__args__', args)
-        env.sos_dict.set('__unknown_args__', args)
+        env.sos_dict.set('__args__', self.args)
+        env.sos_dict.set('__unknown_args__', self.args)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__step_output__', [])
@@ -118,14 +121,14 @@ class Base_Executor:
             except Exception as e:
                 raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
         # user-specified configuration file.
-        if config_file is not None:
-            if not os.path.isfile(config_file):
-                raise RuntimeError('Config file {} not found'.format(config_file))
+        if self.config_file is not None:
+            if not os.path.isfile(self.config_file):
+                raise RuntimeError('Config file {} not found'.format(self.config_file))
             try:
-                with open(config_file) as config:
+                with open(self.config_file) as config:
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
-                raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(config_file, e))
+                raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config_file, e))
         # set config to CONFIG
         env.sos_dict.set('CONFIG', frozendict(cfg))
 
@@ -180,6 +183,7 @@ class Base_Executor:
 
     def prepare(self, targets=None):
         '''Run the script in prepare mode to prepare resources.'''
+        self.reset_dict()
         #env.logger.info('Preparing workflow {}'.format(self.workflow.name))
         env.run_mode = 'prepare'
         # passing run_mode to SoS dict so that users can execute blocks of
@@ -330,6 +334,7 @@ class Base_Executor:
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
+        self.reset_dict()
         env.run_mode = 'run'
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
@@ -415,6 +420,7 @@ class MP_Executor(Base_Executor):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
+        self.reset_dict()
         env.run_mode = 'run'
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
