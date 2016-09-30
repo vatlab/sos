@@ -524,7 +524,7 @@ class RQ_Executor(MP_Executor):
         self.redis_queue = rqQueue(connection=redis_conn)
 
     def step_executor(self, section, queue):
-        return RQ_Step_Executor(section, queue, self.redis_euque)
+        return RQ_Step_Executor(section, queue, self.redis_queue)
 
 class Celery_Executor(MP_Executor):
     def __init__(self, workflow, args=[], config_file=None, nested=False):

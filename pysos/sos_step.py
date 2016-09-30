@@ -22,6 +22,7 @@
 import os
 import sys
 import copy
+import time
 import glob
 import fnmatch
 
@@ -962,7 +963,7 @@ class MP_Step_Executor(SP_Step_Executor):
 class RQ_Step_Executor(SP_Step_Executor):
     #
     # This is not working yet
-    def __init__(self, step, queue, redis_queuq):
+    def __init__(self, step, queue, redis_queue):
         SP_Step_Executor.__init__(self, step, queue)
         self.redis_queue = redis_queue
 
@@ -985,8 +986,9 @@ class RQ_Step_Executor(SP_Step_Executor):
                 if any(x.result is None for x in self.proc_results):
                     time.sleep(1)
                 else:
+                    # the executor interface expect results ...
+                    self.proc_results = [x.result for x in self.proc_results]
                     return
-                env.logger.error('{}/{} completed'.format(len([x for x in self.proc_results if x.result is not None]), len(self.proc_results)))
             except KeyboardInterrupt:
                 # if keyboard interrupt
                 raise RuntimeError('KeyboardInterrupt fro m {} (master)'.format(os.getpid()))
