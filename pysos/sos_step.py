@@ -31,7 +31,8 @@ from tokenize import generate_tokens
 from collections.abc import Sequence, Iterable
 from itertools import tee, combinations
 
-from .utils import env, Error, AbortExecution, short_repr, get_traceback, pickleable, transcribe
+from .utils import env, Error, WorkflowDict, AbortExecution, short_repr, \
+    get_traceback, pickleable, transcribe
 from .pattern import extract_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo
@@ -108,15 +109,29 @@ def execute_task(task, global_def, sos_dict, sigil):
     return {'succ': 0, 'output': env.sos_dict['_output']}
 
 
-def analyze_section(section):
+def analyze_section(section, args=[]):
     '''Analyze a section for how it uses input and output, what variables 
     it uses, and input, output, etc.'''
 
     # 1. execute global definition to get a basic environment
+    #
+    # FIXME: this could be made much more efficient
     env.sos_dict = WorkflowDict()
+    from .sos_executor import __null_func__
+    from ._version import __version__
+    from .sos_eval import accessed_vars
+    env.sos_dict.set('__null_func__', __null_func__)
+    env.sos_dict.set('__args__', args)
+    env.sos_dict.set('__unknown_args__', args)
+    # initial values
+    env.sos_dict.set('SOS_VERSION', __version__)
+    SoS_exec('import os, sys, glob')
+    SoS_exec('from pysos.runtime import *')
+
     if section.global_def:
         try:
             SoS_exec(section.global_def)
+
         except Exception as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
@@ -143,7 +158,7 @@ def analyze_section(section):
         changed_vars |= set(vars)
 
     if 'alias' in section.options:
-        changed_vars.add(section.options['alias']
+        changed_vars.add(section.options['alias'])
         result['__changed_vars__'] |= set(vars)
 
     # look for input statement.
@@ -172,7 +187,7 @@ def analyze_section(section):
         try:
             args, kwargs = SoS_eval('__null_func__({})'.format(stmt), section.sigil)
             # Files will be expanded differently with different running modes
-            if not any(isinstance(x, dynamic) for x in args:
+            if not any(isinstance(x, dynamic) for x in args):
                 step_input = _expand_file_list(False, *args)
         except:
             # if anything is not evalutable, keep Undetermined
@@ -192,7 +207,7 @@ def analyze_section(section):
             # output, depends, and process can be processed multiple times
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
-                if not any(isinstance(x, dynamic) for x in args:
+                if not any(isinstance(x, dynamic) for x in args):
                     if key == 'output':
                         step_output = _expand_file_list(False, *args)
                     else:

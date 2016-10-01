@@ -33,7 +33,7 @@ from pysos.pattern import extract_pattern, expand_pattern
 from pysos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_vars
 from pysos.actions import downloadURL
 from pysos.sos_script import SoS_Script
-from pysos.sos_executor import Base_Executor
+from pysos.sos_executor import Base_Executor, analyze_section
 
 import socket
 def internet_on(host='8.8.8.8', port=53, timeout=3):
@@ -353,6 +353,32 @@ b
         print('No interpolating {} times take {} seconds'.format(
             100000,
             timeit.timeit(ni_stmt, setup=setup_stmt, number=100000)))
+
+    def testAnalyzeSection(self):
+        '''Test analysis of sections (statically)'''
+        script = SoS_Script('''
+g1 = 'a'
+g2 = 1
+parameter: p1 = 5
+parameter: infiles = 'a.txt'
+
+[A_1: shared='b']
+b = p1 + 2
+input:  infiles
+output: None
+
+[A_2]
+b = [1, 2, 3]
+input: for_each='b'
+import time
+import random
+
+r = random.randint(5)
+time.sleep(r)
+''')
+        wf = script.workflow('A')
+        for section in wf.sections:
+            print(analyze_section(section))
 
 
 
