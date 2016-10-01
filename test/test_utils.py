@@ -30,7 +30,7 @@ import textwrap
 # using their names for testing purposes
 from pysos.utils import env, logger, WorkflowDict, ProgressBar, text_repr
 from pysos.pattern import extract_pattern, expand_pattern
-from pysos.sos_eval import interpolate, SoS_eval, InterpolationError
+from pysos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_vars
 from pysos.actions import downloadURL
 from pysos.sos_script import SoS_Script
 from pysos.sos_executor import Base_Executor
@@ -242,6 +242,16 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(expand_pattern('{b}.txt'), ['file name.txt'])
         self.assertEqual(expand_pattern('{c}.txt'), ['file1.txt', 'file2.txt', 'file 3.txt'])
         self.assertEqual(expand_pattern('{a}_{c}.txt'), ['100_file1.txt', '100_file2.txt', '100_file 3.txt'])
+
+    def testAccessedVars(self):
+        '''Test accessed vars of a SoS expression or statement.'''
+        self.assertEqual(accessed_vars('''a = 1'''), {'a'})
+        self.assertEqual(accessed_vars('''a = b + 2.0'''), {'a', 'b'})
+        self.assertEqual(accessed_vars('''a = "C"'''), {'a'})
+        self.assertEqual(accessed_vars('''a = "C" + "${D}"'''), {'a', 'D'})
+        self.assertEqual(accessed_vars('''a = 1 + "${D + 20:f}" '''), {'a', 'D'})
+        self.assertEqual(accessed_vars('''k, "a.txt", "b.txt", skip=True '''), {'k', 'skip', 'True'})
+        self.assertEqual(accessed_vars('''c + "${D + '${E}'}" '''), {'c', 'D', 'E'})
 
     def testProgressBar(self):
         '''Test progress bar'''

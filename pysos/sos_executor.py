@@ -139,9 +139,23 @@ class Base_Executor:
     def analyze(self, section):
         '''Analyze a section for how it uses input and output, what variables 
         it uses, and input, output, etc.'''
-        # return value of the last executed statement
-        self.last_res = None
 
+        # 1. execute global definition to get a basic environment
+        env.sos_dict = WorkflowDict()
+        if section.global_def:
+            try:
+                SoS_exec(section.global_def)
+            except Exception as e:
+                if env.verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
+                    section.global_def, e))
+        #
+        # 2. look for input statement
+        step_input = Undetermined()
+        step_output = Undetermined()
+        step_depends = []
+        
         # look for input statement.
         input_statement_idx = [idx for idx,x in enumerate(section.statements) if x[0] == ':' and x[1] == 'input']
         if not input_statement_idx:

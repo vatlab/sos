@@ -56,13 +56,15 @@ class SoS_String:
     a special conversion flag !q that properly quote a filename so that
     it can be used safely within a shell script. '''
 
-    def __init__(self, sigil = '${ }', local_dict={}):
+    def __init__(self, sigil = '${ }', local_dict={}, trace_vars=False):
         # do not check sigil here because the function will be called quite frequently
         # the sigil will be checked when it is entered in SoS script.
         self.l, self.r = sigil.split(' ')
         self.default_sigil = sigil == '${ }'
         self.error_count = 0
         self.local_dict = local_dict
+        self.my_eval = eval
+        self.accessed_vars = set() if trace_vars else None
 
     def interpolate(self, text):
         '''Intepolate string with local and global dictionary'''
@@ -98,9 +100,11 @@ class SoS_String:
         pieces = SIMPLE_SUB.split(text)
         # replace pieces 1, 3, 5, ... etc with their values
         for i in range(1, len(pieces), 2):
-            if hasattr(env, 'accessed_vars'):
-                env.accessed_vars |= accessed_vars(pieces[i])
-            pieces[i] = self._repr(eval(pieces[i], env.sos_dict._dict, self.local_dict))
+            if isinstance(self.accessed_vars, set):
+                self.accessed_vars |= accessed_vars(pieces[i])
+                pieces[i] = ''
+            else:
+                pieces[i] = self._repr(eval(pieces[i], env.sos_dict._dict, self.local_dict))
         return ''.join(pieces)
 
     def _interpolate(self, text, start_nested=0):
@@ -171,13 +175,15 @@ class SoS_String:
                     # if the syntax is correct
                     compile(expr, '<string>', 'eval')
                     try:
-                        if hasattr(env, 'accessed_vars'):
-                            env.accessed_vars |= accessed_vars(expr)
-                        result = eval(expr, env.sos_dict._dict, self.local_dict)
+                        if isinstance(self.accessed_vars, set):
+                            self.accessed_vars |= accessed_vars(expr)
+                            return self.interpolate(text[j+len(self.r):])
+                        else:
+                            result = eval(expr, env.sos_dict._dict, self.local_dict)
+                            return self._repr(result, fmt, conversion) + self.interpolate(text[j+len(self.r):])
                     except Exception as e:
                         raise InterpolationError(expr, e)
                     # evaluate the expression and interpolate the next expression
-                    return self._repr(result, fmt, conversion) + self.interpolate(text[j+len(self.r):])
                 except Exception as e:
                     self.error_count += 1
                     if self.error_count > 10:
@@ -263,17 +269,24 @@ def ConvertString(s, sigil):
     return untokenize(result)
 
 accessed_vars_cache = {}
-def accessed_vars(statement):
+def accessed_vars(statement, sigil='${ }'):
     '''Parse a Python statement and analyze the symbols used. The result
     will be used to determine what variables a step depends upon.'''
     global accessed_vars_cache
     if statement in accessed_vars_cache:
         return accessed_vars_cache[statement]
 
+    left_sigil = sigil.split(' ')[0]
     result = set()
     for toknum, tokval, _, _, _  in generate_tokens(StringIO(statement).readline):
         if toknum == NAME:
             result.add(tokval)
+        if toknum == STRING and left_sigil in tokval:
+            # if it is a string, check if variables used during
+            # string interpolation
+            ss = SoS_String(sigil, {}, True)
+            ss.interpolate(eval(tokval))
+            result |= ss.accessed_vars
     return result
 
 def SoS_eval(expr, sigil='${ }'):
@@ -281,8 +294,6 @@ def SoS_eval(expr, sigil='${ }'):
     interpolate expressions) strings.'''
     expr = ConvertString(expr, sigil)
     try:
-        if hasattr(env, 'accessed_vars'):
-            env.accessed_vars |= accessed_vars(expr)
         return eval(expr, env.sos_dict._dict)
     except Exception as e:
         if env.run_mode not in ['run', 'interactive']:
@@ -363,12 +374,8 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
             else:
                 act = None
             if idx + 1 == len(code_group) and _is_expr(stmts):
-                if hasattr(env, 'accessed_vars'):
-                    env.accessed_vars |= accessed_vars(stmts)
                 res = eval(stmts, _dict)
             else:
-                if hasattr(env, 'accessed_vars'):
-                    env.accessed_vars |= accessed_vars(stmts)
                 exec(stmts, _dict)
         except AbortExecution:
             raise
