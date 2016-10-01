@@ -264,8 +264,7 @@ class TestUtils(unittest.TestCase):
 [5]
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         # progress bar with nested workflow
         script = SoS_Script('''
 import time
@@ -282,8 +281,7 @@ sos_run('sub')
 [a_5]
 ''')
         wf = script.workflow('a')
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
 
     @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
     def testDownload(self):

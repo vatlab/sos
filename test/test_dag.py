@@ -468,7 +468,7 @@ A_1 -> A_2;
 "B3 (B3.txt)" -> "B2 (B2.txt)";
 }
 ''')
-        Base_Executor(wf).run(dag)
+        Base_Executor(wf).run()
         for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             t = FileTarget(f)
             self.assertTrue(t.exists())
@@ -560,7 +560,7 @@ strict digraph "" {
 "C3 (C3.txt)" -> "C1 (C1.txt)";
 }
 ''')
-        Base_Executor(wf).run(dag)
+        Base_Executor(wf).run()
         for f in ['A1.txt', 'A2.txt']:
             self.assertFalse(FileTarget(f).exists())
         for f in ['C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
@@ -591,7 +591,7 @@ strict digraph "" {
 "C1 (C1.txt)" -> "B2 (B2.txt)";
 }
 ''')
-        Base_Executor(wf).run(dag)
+        Base_Executor(wf).run()
         for f in ['A1.txt', 'B1.txt', 'A2.txt']:
             self.assertFalse(FileTarget(f).exists())
         for f in ['C2.txt', 'B2.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
@@ -612,7 +612,7 @@ strict digraph "" {
 "C4 (C4.txt)" -> "C2 (C2.txt)";
 }
 ''')
-        Base_Executor(wf).run(dag)
+        Base_Executor(wf).run()
         for f in ['A1.txt', 'B1.txt', 'A2.txt', 'B2.txt', 'C1.txt', 'C3.txt']:
             self.assertFalse(FileTarget(f).exists())
         for f in ['C2.txt', 'B3.txt', 'C4.txt']:
@@ -673,7 +673,7 @@ A_1 -> A_2;
 "P (B1.txt.p)" -> A_1;
 }
 ''')
-        Base_Executor(wf).run(dag)
+        Base_Executor(wf).run()
         for f in ['A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
             t = FileTarget(f)
             self.assertTrue(t.exists())
@@ -723,7 +723,7 @@ A_2;
 ''')
         env.max_jobs = 4
         st = time.time()
-        MP_Executor(wf).run(dag)
+        MP_Executor(wf).run()
         self.assertLess(time.time() - st, 4)
         for f in ['A1.txt', 'B2.txt', 'A2.txt']:
             FileTarget(f).remove('both')
@@ -767,8 +767,7 @@ for num in range(3):
 ''')
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow('ALL')
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')
@@ -814,7 +813,7 @@ A_1 -> A_3;
 ''')
         env.max_jobs = 3
         st = time.time()
-        MP_Executor(wf).run(dag)
+        MP_Executor(wf).run()
         self.assertLess(time.time() - st, 5)
         for f in ['A1.txt']:
             self.assertTrue(FileTarget(f).exists())
@@ -860,7 +859,7 @@ A_1 -> A_3;
 ''')
         env.max_jobs = 3
         st = time.time()
-        MP_Executor(wf).run(dag)
+        MP_Executor(wf).run()
         self.assertLess(time.time() - st, 5)
         for f in ['A1.txt']:
             self.assertTrue(FileTarget(f).exists())

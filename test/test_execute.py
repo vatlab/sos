@@ -98,8 +98,7 @@ b = 200
 res += '${b}'
 """)
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['res'], '200')
         #
         script = SoS_Script(r"""
@@ -109,8 +108,7 @@ for b in range(5):
     res += '${b}'
 """)
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['res'], '01234')
         #
         script = SoS_Script(r"""
@@ -436,8 +434,7 @@ with open('test/result.txt', 'w') as res:
        res.write(file + '\n')
 """)
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         with open('result.txt') as res:
             content = [x.strip() for x in res.readlines()]
             self.assertTrue('test_execute.py' in content)
@@ -460,8 +457,7 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 """)
         wf = script.workflow()
         start = time.time()
-        dag = Base_Executor(wf).prepare()
-        MP_Executor(wf).run(dag)
+        MP_Executor(wf).run()
         self.assertGreater(time.time() - start, 9)
         #
         #
@@ -480,8 +476,7 @@ if run_mode == 'run':
 """)
         wf = script.workflow()
         start = time.time()
-        dag = Base_Executor(wf).prepare()
-        MP_Executor(wf).run(dag)
+        MP_Executor(wf).run()
         self.assertLess(time.time() - start, 6)
 
     def testRunmode(self):
@@ -501,8 +496,7 @@ a = fail()
         # should return 0 in prepare mode
         self.assertTrue(isinstance(env.sos_dict['a'], Undetermined))
         #
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         # shoulw return 1 in run mode
         self.assertEqual(env.sos_dict['a'], 1)
 
@@ -541,8 +535,7 @@ sos_run('nested')
 
 """)
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
 
     def testUserDefinedFunc(self):
         '''Test the use of user-defined functions in SoS script'''
@@ -700,8 +693,7 @@ import sklearn
 print(0)
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
 
 
     def testCollectionOfErrors(self):
@@ -785,8 +777,7 @@ for i in range(4):
        h.write('a')
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['test'].output, ['temp/something{}.html'.format(x) for x in range(4)])
         #
         shutil.rmtree('temp')
@@ -813,12 +804,10 @@ run:
 touch ${_input}.bak
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['test'].output, ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
         # this time we use th existing signature
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['test'].output, ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
         #
         shutil.rmtree('temp')
@@ -845,8 +834,7 @@ echo ${ff}
 touch temp/${ff}
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         #
         shutil.rmtree('temp')
 
@@ -869,8 +857,7 @@ for i in range(3):
         #
         executor = Base_Executor(wf)
         executor.prepare()
-        dag = executor.prepare()
-        executor.run(dag)
+        executor.run()
         # we should have 9 files
         files = glob.glob('temp/*.txt')
         self.assertEqual(len(files), 9)
@@ -892,8 +879,7 @@ if run_mode == 'run':
 
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         # we should have 9 files
         files = glob.glob('temp/*.txt')
         self.assertEqual(len(files), 3)
@@ -937,8 +923,7 @@ echo ${ff}
 touch temp/${ff}
 ''' % active)
             wf = script.workflow()
-            dag = Base_Executor(wf).prepare()
-            Base_Executor(wf).run(dag)
+            Base_Executor(wf).run()
             files = list(glob.glob('temp/*.txt'))
             self.assertEqual(files, result)
             #
@@ -959,8 +944,7 @@ echo ${ff}
 touch temp/${ff}
 ''' % active)
             wf = script.workflow()
-            dag = Base_Executor(wf).prepare()
-            Base_Executor(wf).run(dag)
+            Base_Executor(wf).run()
             files = list(glob.glob('temp/*.txt'))
             self.assertEqual(files, result)
             #
@@ -990,8 +974,7 @@ python:
 with open('temp/{}.input'.format(len([${input!r,}])), 'w') as f: f.write('')
         ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertTrue(os.path.isfile('temp/5.input'))
         # Test duplicate output
         script = SoS_Script('''
@@ -1002,8 +985,7 @@ with open('temp/2.txt', 'w') as f: f.write('')
 with open('temp/{}.output'.format(len([${output!r,}])), 'w') as f: f.write('')
         ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertTrue(os.path.isfile('temp/5.output'))
         # Test duplicate depends
         script = SoS_Script('''
@@ -1016,8 +998,7 @@ with open('temp/3.txt', 'w') as f: f.write('')
 with open('temp/{}.depends'.format(len([${depends!r,}])), 'w') as f: f.write('')
         ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertTrue(os.path.isfile('temp/5.depends'))
         shutil.rmtree('temp')
 
@@ -1040,8 +1021,7 @@ echo ${output} >> temp/out.log
 touch ${output}
         ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         # output should have 1, 2, 3, 4, 5, respectively, and
         # the total record files would be 1+2+3+4+5=15
         with open('temp/out.log') as out:
@@ -1064,8 +1044,7 @@ touch ${output}
         ''')
         wf = script.workflow()
         env.sig_mode = 'ignore'
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         with open('temp/out.log') as out:
             self.assertEqual(len(out.read().split()), 15)
         shutil.rmtree('temp')
@@ -1184,11 +1163,10 @@ cp ${_input} ${_dest}
         wf = script.workflow('default_0')
         start = time.time()
         env.sig_mode = 'default'
-        dag = Base_Executor(wf).prepare()
         if env.max_jobs == 1:
-            Base_Executor(wf).run(dag)
+            Base_Executor(wf).run()
         else:
-            MP_Executor(wf).run(dag)
+            MP_Executor(wf).run()
         self.assertGreater(time.time() - start, 1)
         self.assertTrue(os.path.isfile('temp/a.txt'))
         self.assertTrue(os.path.isfile('temp/b.txt'))
@@ -1197,20 +1175,18 @@ cp ${_input} ${_dest}
         with open('temp/b.txt') as tb:
             self.assertTrue(tb.read(), 'b.txt')
         env.sig_mode = 'assert'
-        dag = Base_Executor(wf).prepare()
         if env.max_jobs == 1:
-            Base_Executor(wf).run(dag)
+            Base_Executor(wf).run()
         else:
-            MP_Executor(wf).run(dag)
+            MP_Executor(wf).run()
         #
         wf = script.workflow()
         start = time.time()
         env.sig_mode = 'rebuild'
-        dag = Base_Executor(wf).prepare()
         if env.max_jobs == 1:
-            Base_Executor(wf).run(dag)
+            Base_Executor(wf).run()
         else:
-            MP_Executor(wf).run(dag)
+            MP_Executor(wf).run()
 
         self.assertGreater(time.time() - start, 1)
         #
@@ -1224,20 +1200,18 @@ cp ${_input} ${_dest}
         #
         # now in assert mode, the signature should be there
         env.sig_mode = 'assert'
-        dag = Base_Executor(wf).prepare()
         if env.max_jobs == 1:
-            Base_Executor(wf).run(dag)
+            Base_Executor(wf).run()
         else:
-            MP_Executor(wf).run(dag)
+            MP_Executor(wf).run()
 
         #
         start = time.time()
         env.sig_mode = 'default'
-        dag = Base_Executor(wf).prepare()
         if env.max_jobs == 1:
-            Base_Executor(wf).run(dag)
+            Base_Executor(wf).run()
         else:
-            MP_Executor(wf).run(dag)
+            MP_Executor(wf).run()
         
         self.assertLess(time.time() - start, 1.5)
         #
@@ -1245,11 +1219,10 @@ cp ${_input} ${_dest}
         script = SoS_Script('# comment\n' + text)
         wf = script.workflow()
         env.sig_mode = 'assert'
-        dag = Base_Executor(wf).prepare()
         if env.max_jobs == 1:
-            Base_Executor(wf).run(dag)
+            Base_Executor(wf).run()
         else:
-            MP_Executor(wf).run(dag)
+            MP_Executor(wf).run()
 
         # add some other variable?
         #script = SoS_Script('comment = 1\n' + text)
@@ -1276,22 +1249,19 @@ if run_mode == 'run':
         except:
             pass
         start = time.time()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         # regularly take more than 5 seconds to execute
         self.assertGreater(time.time() - start, 2)
         # now, rerun should be much faster
         start = time.time()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         # rerun takes less than 1 second
         self.assertLess(time.time() - start, 1)
         #
         # force rerun mode
         start = time.time()
         env.sig_mode = 'ignore'
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         # regularly take more than 5 seconds to execute
         self.assertGreater(time.time() - start, 2)
         try:
@@ -1310,8 +1280,7 @@ sh:
 ''')
         wf = script.workflow()
         FileTarget('a.txt').remove('both')
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertTrue(os.path.isfile('a.txt'))
         FileTarget('a.txt').remove('both')
         
@@ -1330,13 +1299,12 @@ sh:
 ''')
         wf = script.workflow()
         FileTarget('lls').remove('both')
-        dag = Base_Executor(wf).prepare()
         st = time.time()
-        Base_Executor(wf).run(dag)
+        Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 2)
         # test validation
         st = time.time()
-        Base_Executor(wf).run(dag)
+        Base_Executor(wf).run()
         self.assertLess(time.time() - st, 2)
         FileTarget('lls').remove('both')
 
@@ -1358,14 +1326,13 @@ depends: executable('lls')
 
 ''')
         wf = script.workflow('c')
-        dag = Base_Executor(wf).prepare()
         st = time.time()
-        Base_Executor(wf).run(dag)
+        Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 2)
         FileTarget('lls').remove('both')
 
     def testInteractiveExecutor(self):
-        '''interactive'''
+        ''interactive'''
         executor = Interactive_Executor()
         executor.run('a=1')
         self.assertEqual(executor.run('a'), 1)
@@ -1394,22 +1361,19 @@ python:
 ''')
         wf = script.workflow()
         st = time.time()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertGreater(time.time() - st, 5)
         # rerun, but remove output
         os.remove('largefile.txt')
         st = time.time()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertLess(time.time() - st, 3)
         # however, the file will not be regenerated
         self.assertFalse(os.path.isfile('largefile.txt'))
         # if we discard largefile.txt, it should slow down again
         st = time.time()
         FileTarget('largefile.txt').remove('signature')
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertGreater(time.time() - st, 5)
         os.remove('largefile.txt')
 
@@ -1433,8 +1397,7 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertGreater(time.time() - st, 2.5)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '10')
@@ -1442,8 +1405,7 @@ python:
         # now if we change parameter, the step should be rerun
         st = time.time()
         wf = script.workflow()
-        dag = Base_Executor(wf, args=['--gvar', '20']).prepare()
-        Base_Executor(wf, args=['--gvar', '20']).run(dag)
+        Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
         self.assertGreater(time.time() - st, 2.5)
@@ -1451,8 +1413,7 @@ python:
         # do it again, signature should be effective
         st = time.time()
         wf = script.workflow()
-        dag = Base_Executor(wf, args=['--gvar', '20']).prepare()
-        Base_Executor(wf, args=['--gvar', '20']).run(dag)
+        Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
         self.assertLess(time.time() - st, 2.5)
@@ -1475,8 +1436,7 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertGreater(time.time() - st, 2.5)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '10')
@@ -1484,8 +1444,7 @@ python:
         # now if we change parameter, the step should be rerun
         st = time.time()
         wf = script.workflow()
-        dag = Base_Executor(wf, args=['--gvar', '20']).prepare()
-        Base_Executor(wf, args=['--gvar', '20']).run(dag)
+        Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
         self.assertGreater(time.time() - st, 2.5)
@@ -1493,8 +1452,7 @@ python:
         # do it again, signature should be effective
         st = time.time()
         wf = script.workflow()
-        dag = Base_Executor(wf, args=['--gvar', '20']).prepare()
-        Base_Executor(wf, args=['--gvar', '20']).run(dag)
+        Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
         self.assertLess(time.time() - st, 2.5)
@@ -1524,8 +1482,7 @@ python:
 ''')
         wf = script.workflow()
         env.max_jobs = 4
-        dag = Base_Executor(wf).prepare()
-        MP_Executor(wf).run(dag)
+        MP_Executor(wf).run()
         for t in range(10, 13):
             with open('myfile_{}.txt'.format(t)) as tmp:
                 self.assertEqual(tmp.read(), str(t))
@@ -1553,8 +1510,7 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertGreater(time.time() - st, 2.5)
         # now we modify the script 
         script = SoS_Script(r'''
@@ -1573,15 +1529,13 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertGreater(time.time() - st, 2.5)
         self.assertLess(time.time() - st, 5)
         #
         # run it again, neither needs to be rerun
         st = time.time()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertLess(time.time() - st, 2)
         #
         # change again, the second one is already there.
@@ -1601,8 +1555,7 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertLess(time.time() - st, 2)
         #
         for t in range(10, 12):

@@ -98,12 +98,10 @@ var = 1
 
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf, args=['--skip', '0']).prepare()
-        Base_Executor(wf, args=['--skip', '0']).run(dag)
+        Base_Executor(wf, args=['--skip', '0']).run()
         self.assertEqual(env.sos_dict['b'].var, 1)
         #
-        dag = Base_Executor(wf, args=['--skip', '1']).prepare()
-        Base_Executor(wf, args=['--skip', '1']).run(dag)
+        Base_Executor(wf, args=['--skip', '1']).run()
         self.assertEqual(env.sos_dict['a'].var, 0)
 
     def testSections(self):
@@ -184,16 +182,13 @@ parameter: a = [1, 2]
 [0]
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['a'], [1,2])
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf, args=['--a', '3']).run(dag)
+        Base_Executor(wf, args=['--a', '3']).run()
         self.assertEqual(env.sos_dict['a'], [3])
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf, args=['--a', '3', '5']).run(dag)
+        Base_Executor(wf, args=['--a', '3', '5']).run()
         self.assertEqual(env.sos_dict['a'], [3, 5])
         #
         script = SoS_Script('''
@@ -203,16 +198,13 @@ parameter: a = ['a.txt', 'b.txt']
 [0]
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['a'], ['a.txt', 'b.txt'])
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf, args=['--a', '3']).run(dag)
+        Base_Executor(wf, args=['--a', '3']).run()
         self.assertEqual(env.sos_dict['a'], ['3'])
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf, args=['--a', '3', '5']).run(dag)
+        Base_Executor(wf, args=['--a', '3', '5']).run()
         self.assertEqual(env.sos_dict['a'], ['3', '5'])
         #
         # test parameter using global definition
@@ -224,8 +216,7 @@ parameter: b=str(int(a)+1)
 [0]
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['b'], '101')
         #
         env.sos_dict.clear()
@@ -236,8 +227,7 @@ parameter: b=a+1
 [0]
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['b'], 101)
         #
         script = SoS_Script('''
@@ -247,8 +237,7 @@ parameter: b=a+1.
 [0]
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf, args=['--b', '1000']).run(dag)
+        Base_Executor(wf, args=['--b', '1000']).run()
         #
         self.assertEqual(env.sos_dict['b'], 1000)
         #
@@ -262,8 +251,7 @@ parameter: b='${a+1}'
 [0]
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['b'], '101')
         #
         # argument has hve a value
@@ -492,8 +480,7 @@ python3:
         logger.warning('Another warning')
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         # with section head in the script,
         # this will not work even if the embedded
         # python script is perfectly valid.
@@ -742,8 +729,7 @@ b = A()()
 
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['b'], 0)
 
     def testCombinedWorkflow(self):
@@ -1123,8 +1109,7 @@ print(CONFIG.StoreOwner)
         # now test the value
         script = SoS_Script(filename='config.sos')
         wf = script.workflow()
-        dag = Base_Executor(wf, config_file='myconfig.yaml').prepare()
-        Base_Executor(wf, config_file='myconfig.yaml').run(dag)
+        Base_Executor(wf, config_file='myconfig.yaml').run()
         self.assertEqual(env.sos_dict['CONFIG']['Price'], 1.05)
         self.assertEqual(env.sos_dict['CONFIG']['StoreOwner'], 'John Doe')
         self.assertEqual(env.sos_dict['CONFIG']['Fruits'], ['apple', 'banana', 'pear'])
@@ -1197,8 +1182,7 @@ res = inc.gv
 ''')
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['res'], 1)
         #
         # include with alias
@@ -1209,8 +1193,7 @@ res1 = tt.gv
 ''')
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['res1'], 1)
         os.remove('inc.sos')
 
@@ -1230,8 +1213,7 @@ gv = 1
 ''')
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['gv'], 1)
         #
         # include with alias
@@ -1242,8 +1224,7 @@ res1 = g
 ''')
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        dag = Base_Executor(wf).prepare()
-        Base_Executor(wf).run(dag)
+        Base_Execurot(wf).run()
         self.assertEqual(env.sos_dict['res1'], 1)
 
     def testCell(self):
