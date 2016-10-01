@@ -136,6 +136,147 @@ class Base_Executor:
         SoS_exec('from pysos.runtime import *')
         self._base_symbols = set(dir(builtins)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
 
+    def analyze(self, section):
+        '''Analyze a section for how it uses input and output, what variables 
+        it uses, and input, output, etc.'''
+        # return value of the last executed statement
+        self.last_res = None
+
+        # look for input statement.
+        input_statement_idx = [idx for idx,x in enumerate(section.statements) if x[0] == ':' and x[1] == 'input']
+        if not input_statement_idx:
+            input_statement_idx = None
+        elif len(input_statement_idx) == 1:
+            input_statement_idx = input_statement_idx[0]
+        else:
+            raise RuntimeError('More than one step input are specified in step {}_{}'.format(section.name, section.index))
+
+        # if there is an input statement, analyze the statements before it, and then the input statement
+        if input_statement_idx is not None:
+            # execute before input stuff
+            for statement in section.statements[:input_statement_idx]:
+                if statement[0] == '=':
+                    self.assign(statement[1], statement[2])
+                elif statement[0] == ':':
+                    raise RuntimeError('Step input should be specified before others')
+                else:
+                    try:
+                        self.execute(statement[1])
+                    except AbortExecution as e:
+                        if e.message:
+                            env.logger.warning(e)
+                        return self.collect_result()
+            # input statement
+            stmt = section.statements[input_statement_idx][2]
+            self.log('input statement', stmt)
+            try:
+                args, kwargs = SoS_eval('__null_func__({})'.format(stmt), section.sigil)
+                # Files will be expanded differently with different running modes
+                input_files = self.expand_input_files(stmt, *args)
+                self._groups, self._vars = self.process_input_args(input_files, **kwargs)
+            except Exception as e:
+                if '__execute_errors__' in env.sos_dict and env.sos_dict['__execute_errors__'].errors:
+                    raise env.sos_dict['__execute_errors__']
+                else:
+                    raise RuntimeError('Failed to process input statement {}: {}'.format(stmt, e))
+
+            input_statement_idx += 1
+        else:
+            # assuming everything starts from 0 is after input
+            input_statement_idx = 0
+
+        for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
+            # other variables
+            for statement in section.statements[input_statement_idx:]:
+                # if input is undertermined, we can only process output:
+                if isinstance(g, Undetermined) and statement[0] != ':':
+                    return self.collect_result()
+                if statement[0] == '=':
+                    self.assign(statement[1], statement[2])
+                elif statement[0] == ':':
+                    key, value, _ = statement[1:]
+                    # output, depends, and process can be processed multiple times
+                    try:
+                        args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
+                        # dynamic output or dependent files
+                        if key == 'output':
+                            ofiles = self.expand_output_files(value, *args)
+                            if not isinstance(g, (type(None), Undetermined)) and not isinstance(ofiles, (type(None), Undetermined)):
+                                if any(x in g for x in ofiles):
+                                    raise RuntimeError('Overlapping input and output files: {}'
+                                        .format(', '.join(x for x in ofiles if x in g)))
+                            # set variable _output and output
+                            self.process_output_args(ofiles, **kwargs)
+
+                            # ofiles can be Undetermined
+                            sg = section_signature(idx)
+                            if sg is not None and not isinstance(g, Undetermined):
+                                signatures[idx] = RuntimeInfo(sg, env.sos_dict['_input'],
+                                    env.sos_dict['_output'], env.sos_dict['_depends'])
+                                if env.sig_mode == 'default':
+                                    res = signatures[idx].validate()
+                                    if res:
+                                        # in this case, an Undetermined output can get real output files
+                                        # from a signature
+                                        ofiles = res['output']
+                                        skip_index = True
+                                elif env.sig_mode == 'assert':
+                                    if not signatures[idx].validate():
+                                        raise RuntimeError('Signature mismatch.')
+                                elif env.sig_mode == 'construct':
+                                    if signatures[idx].write():
+                                        skip_index = True
+
+                            if skip_index:
+                                break
+                        elif key == 'depends':
+                            dfiles = self.expand_depends_files(*args)
+                            # dfiles can be Undetermined
+                            self.process_depends_args(dfiles, **kwargs)
+                        elif key == 'task':
+                            self.process_task_args(*args, **kwargs)
+                        else:
+                            raise RuntimeError('Unrecognized directive {}'.format(key))
+                    except Exception as e:
+                        # if input is Undertermined, it is possible that output cannot be processed
+                        # due to that, and we just return
+                        if isinstance(g, Undetermined):
+                            return self.collect_result()
+                        raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
+                else:
+                    try:
+                        self.execute(statement[1])
+                    except AbortExecution as e:
+                        if e.message:
+                            env.logger.warning(e)
+                        skip_index = True
+                        break
+            # finally, tasks..
+            if not section.task:
+                continue
+
+            # check if the task is active
+            if '_runtime' in env.sos_dict and 'active' in env.sos_dict['_runtime']:
+                active = env.sos_dict['_runtime']['active']
+                if isinstance(active, int):
+                    if active >= 0 and env.sos_dict['_index'] != active:
+                        continue
+                    if active < 0 and env.sos_dict['_index'] != active + env.sos_dict['__num_groups__']:
+                        continue
+                elif isinstance(active, Sequence):
+                    allowed_index = list([x if x >= 0 else env.sos_dict['__num_groups__'] + x for x in active])
+                    if env.sos_dict['_index'] not in allowed_index:
+                        continue
+                elif isinstance(active, slice):
+                    allowed_index = list(range(env.sos_dict['__num_groups__']))[active]
+                    if env.sos_dict['_index'] not in allowed_index:
+                        continue
+                else:
+                    raise RuntimeError('Unacceptable value for option active: {}'.format(active))
+
+        return self.collect_result()
+
+
     def skip(self, section):
         if section.global_def:
             try:
@@ -330,7 +471,7 @@ class Base_Executor:
 
         return dag
 
-    def run(self, dag):
+    def run(self):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -416,7 +557,7 @@ class MP_Executor(Base_Executor):
     def step_executor(self, section, queue):
         return MP_Step_Executor(section, queue)
 
-    def run(self, dag):
+    def run(self):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
