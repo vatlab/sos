@@ -64,7 +64,8 @@ class SoS_String:
         self.error_count = 0
         self.local_dict = local_dict
         self.my_eval = eval
-        self.accessed_vars = set() if trace_vars else None
+        if trace_vars:
+            self.accessed_vars = set()
 
     def interpolate(self, text):
         '''Intepolate string with local and global dictionary'''
@@ -100,7 +101,7 @@ class SoS_String:
         pieces = SIMPLE_SUB.split(text)
         # replace pieces 1, 3, 5, ... etc with their values
         for i in range(1, len(pieces), 2):
-            if isinstance(self.accessed_vars, set):
+            if hasattr(self, 'accessed_vars'):
                 self.accessed_vars |= accessed_vars(pieces[i])
                 pieces[i] = ''
             else:
@@ -175,7 +176,7 @@ class SoS_String:
                     # if the syntax is correct
                     compile(expr, '<string>', 'eval')
                     try:
-                        if isinstance(self.accessed_vars, set):
+                        if hasattr(self, 'accessed_vars'):
                             self.accessed_vars |= accessed_vars(expr)
                             return self.interpolate(text[j+len(self.r):])
                         else:

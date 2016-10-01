@@ -107,6 +107,114 @@ def execute_task(task, global_def, sos_dict, sigil):
     env.deregister_process(os.getpid())
     return {'succ': 0, 'output': env.sos_dict['_output']}
 
+
+def analyze_section(section):
+    '''Analyze a section for how it uses input and output, what variables 
+    it uses, and input, output, etc.'''
+
+    # 1. execute global definition to get a basic environment
+    env.sos_dict = WorkflowDict()
+    if section.global_def:
+        try:
+            SoS_exec(section.global_def)
+        except Exception as e:
+            if env.verbosity > 2:
+                sys.stderr.write(get_traceback())
+            raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
+                section.global_def, e))
+    #
+    # 2. look for input statement
+    step_input = Undetermined()
+    step_output = Undetermined()
+    step_depends = []
+    environ_vars = set()
+    signature_vars = set()
+    changed_vars = set()
+    
+    if 'shared' in section.options:
+        try:
+            vars = section.options['shared']
+        except Exception as e:
+            raise RuntimeError('Invalid option shared {}: {}'.format(section.options['shared'], e))
+        if isinstance(vars, str):
+            vars = [vars]
+        elif not isinstance(vars, Sequence):
+            raise ValueError('Option shared should be one or list of strings. {} provided'.format(vars))
+        changed_vars |= set(vars)
+
+    if 'alias' in section.options:
+        changed_vars.add(section.options['alias']
+        result['__changed_vars__'] |= set(vars)
+
+    # look for input statement.
+    input_statement_idx = [idx for idx,x in enumerate(section.statements) if x[0] == ':' and x[1] == 'input']
+    if not input_statement_idx:
+        input_statement_idx = None
+    elif len(input_statement_idx) == 1:
+        input_statement_idx = input_statement_idx[0]
+    else:
+        raise RuntimeError('More than one step input are specified in step {}_{}'.format(section.name, section.index))
+
+    # if there is an input statement, analyze the statements before it, and then the input statement
+    if input_statement_idx is not None:
+        # execute before input stuff
+        for statement in section.statements[:input_statement_idx]:
+            if statement[0] == '=':
+                # we do not get LHS because it must be local to the step
+                environ_vars |= accessed_vars(statement[2])
+            elif statement[0] == ':':
+                raise RuntimeError('Step input should be specified before others')
+            else:
+                environ_vars |= accessed_vars(statement[1])
+        #
+        # input statement
+        stmt = section.statements[input_statement_idx][2]
+        try:
+            args, kwargs = SoS_eval('__null_func__({})'.format(stmt), section.sigil)
+            # Files will be expanded differently with different running modes
+            if not any(isinstance(x, dynamic) for x in args:
+                step_input = _expand_file_list(False, *args)
+        except:
+            # if anything is not evalutable, keep Undetermined
+            pass
+        input_statement_idx += 1
+    else:
+        # assuming everything starts from 0 is after input
+        input_statement_idx = 0
+
+    # other variables
+    for statement in section.statements[input_statement_idx:]:
+        # if input is undertermined, we can only process output:
+        if statement[0] == '=':
+            self.signature_vars |= accessed_vars(statement[2])
+        elif statement[0] == ':':
+            key, value, _ = statement[1:]
+            # output, depends, and process can be processed multiple times
+            try:
+                args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
+                if not any(isinstance(x, dynamic) for x in args:
+                    if key == 'output':
+                        step_output = _expand_file_list(False, *args)
+                    else:
+                        step_depends = _expand_file_list(False, *args)
+            except:
+                pass
+        else: # statement
+            signature_vars |= accessed_vars(statement[1])
+    # finally, tasks..
+    if section.task:
+        signatur_vars |= accessed_vars(section.task)
+    return {
+        'step_input': step_input,
+        'step_output': step_output,
+        'step_depends': step_depends,
+        'environ_vars': environ_vars,
+        'signature_vars': signature_vars,
+        'changed_vars': changed_vars
+        }
+
+
+
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
     # some function to behave differently in different modes.
