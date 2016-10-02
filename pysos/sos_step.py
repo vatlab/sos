@@ -35,7 +35,7 @@ from .utils import env, Error, WorkflowDict, AbortExecution, short_repr, \
     get_traceback, pickleable, transcribe
 from .pattern import extract_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
-from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo
+from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 
@@ -115,6 +115,13 @@ def analyze_section(section, args=[]):
     from .sos_executor import __null_func__
     from ._version import __version__
     from .sos_eval import accessed_vars
+
+    # these are the information we need to build a DAG, by default
+    # input and output and undetermined, and there are no variables.
+    #
+    # step input and output can be true "Undetermined", namely unspecified,
+    # can be dynamic and has to be determined at run time, or undetermined
+    # at this stage because something cannot be determined now.
     step_input = Undetermined()
     step_output = Undetermined()
     step_depends = []
@@ -122,7 +129,6 @@ def analyze_section(section, args=[]):
     signature_vars = set()
     changed_vars = set()
 
-    env.logger.error('ANALY {}'.format(section.name))
     # 1. execute global definition to get a basic environment
     #
     # FIXME: this could be made much more efficient
@@ -130,7 +136,7 @@ def analyze_section(section, args=[]):
         if '__default_output__' in env.sos_dict:
             step_output = env.sos_dict['__default_output__']
     else:
-        env.sos_dict = WorkflowDict()
+        #env.sos_dict = WorkflowDict()
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', args)
         env.sos_dict.set('__unknown_args__', args)
@@ -142,7 +148,6 @@ def analyze_section(section, args=[]):
     if section.global_def:
         try:
             SoS_exec(section.global_def)
-
         except Exception as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
@@ -150,8 +155,6 @@ def analyze_section(section, args=[]):
                 section.global_def, e))
     #
     # 2. look for input statement
-
-    
     if 'shared' in section.options:
         try:
             vars = section.options['shared']
@@ -166,7 +169,6 @@ def analyze_section(section, args=[]):
     if 'alias' in section.options:
         changed_vars.add(section.options['alias'])
 
-    env.logger.warning('bbb 3')
     # look for input statement.
     input_statement_idx = [idx for idx,x in enumerate(section.statements) if x[0] == ':' and x[1] == 'input']
     if not input_statement_idx:
@@ -176,7 +178,6 @@ def analyze_section(section, args=[]):
     else:
         raise RuntimeError('More than one step input are specified in step {}_{}'.format(section.name, section.index))
 
-    env.logger.warning('bbb 2')
     # if there is an input statement, analyze the statements before it, and then the input statement
     if input_statement_idx is not None:
         # execute before input stuff
@@ -191,7 +192,6 @@ def analyze_section(section, args=[]):
         #
         # input statement
         stmt = section.statements[input_statement_idx][2]
-        env.logger.error('input {}'.format(stmt))
         try:
             args, kwargs = SoS_eval('__null_func__({})'.format(stmt), section.sigil)
             # Files will be expanded differently with different running modes
@@ -207,7 +207,6 @@ def analyze_section(section, args=[]):
         # assuming everything starts from 0 is after input
         input_statement_idx = 0
 
-    env.logger.warning('bbb 1')
     # other variables
     for statement in section.statements[input_statement_idx:]:
         # if input is undertermined, we can only process output:
@@ -217,7 +216,6 @@ def analyze_section(section, args=[]):
             key, value, _ = statement[1:]
             # output, depends, and process can be processed multiple times
             try:
-                env.logger.warning('bb c {}'.format(value))
                 args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
                 if not any(isinstance(x, dynamic) for x in args):
                     if key == 'output':
@@ -227,14 +225,12 @@ def analyze_section(section, args=[]):
                     else:
                         raise ValueError('Unrecognized directive {}'.format(key))
             except Exception as e:
-                env.logger.error(e)
-                pass
+                env.logger.debug("Args {} cannot be determined: {}".format(value, e))
         else: # statement
             signature_vars |= accessed_vars(statement[1])
     # finally, tasks..
     if section.task:
         signatur_vars |= accessed_vars(section.task)
-    env.logger.warning('bbb')
     return {
         'step_name': '{}_{}'.format(section.name, section.index) if isinstance(section.index, int) else section.name,
         'step_input': step_input,
@@ -244,8 +240,6 @@ def analyze_section(section, args=[]):
         'signature_vars': signature_vars,
         'changed_vars': changed_vars
         }
-
-
 
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
@@ -542,6 +536,8 @@ class Base_Step_Executor:
     def assign(self, key, value):
         try:
             env.sos_dict[key] = SoS_eval(value, self.step.sigil)
+        except UnknownTarget as e:
+            raise
         except Exception as e:
             raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
 
@@ -549,6 +545,8 @@ class Base_Step_Executor:
         try:
             self.last_res = SoS_exec(stmt, self.step.sigil)
         except AbortExecution:
+            raise
+        except UnknownTarget as e:
             raise
         except Exception as e:
             raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(stmt), e))
@@ -682,6 +680,8 @@ class Base_Step_Executor:
                 # Files will be expanded differently with different running modes
                 input_files = self.expand_input_files(stmt, *args)
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
+            except UnknownTarget:
+                raise
             except Exception as e:
                 if '__execute_errors__' in env.sos_dict and env.sos_dict['__execute_errors__'].errors:
                     raise env.sos_dict['__execute_errors__']
@@ -766,6 +766,8 @@ class Base_Step_Executor:
                             self.process_task_args(*args, **kwargs)
                         else:
                             raise RuntimeError('Unrecognized directive {}'.format(key))
+                    except UnknownTarget:
+                        raise
                     except Exception as e:
                         # if input is Undertermined, it is possible that output cannot be processed
                         # due to that, and we just return
@@ -886,7 +888,7 @@ def _expand_file_list(ignore_unknown, *args):
             if ignore_unknown or ifile.exists():
                 tmp.append(ifile)
             else:
-                raise RuntimeError('{} not exist'.format(ifile))
+                raise UnknownTarget(ifile)
         elif os.path.isfile(os.path.expanduser(ifile)):
             tmp.append(ifile)
         else:
@@ -899,7 +901,7 @@ def _expand_file_list(ignore_unknown, *args):
             #
             if not expanded:
                 if not ignore_unknown:
-                    raise RuntimeError('{} not exist'.format(ifile))
+                    raise UnknownTarget(ifile)
                 else:
                     tmp.append(ifile)
             else:

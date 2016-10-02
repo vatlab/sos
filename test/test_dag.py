@@ -40,7 +40,7 @@ class TestDAG(unittest.TestCase):
         self.assertEqual(sorted([x.strip() for x in dot.split('\n') if x.strip()]),
             sorted([x.strip() for x in content.split('\n') if x.strip()]))
 
-    def testSimpleDag(self):
+    def testSimpleDAG(self):
         '''Test DAG with simple dependency'''
         for filename in ('a.txt', 'a1.txt'):
             with open(filename, 'w') as tmp:
@@ -559,7 +559,7 @@ strict digraph "" {
 "C3 (C3.txt)" -> "C1 (C1.txt)";
 }
 ''')
-        Base_Executor(wf).run()
+        Base_Executor(wf).run(targets=['B1.txt'])
         for f in ['A1.txt', 'A2.txt']:
             self.assertFalse(FileTarget(f).exists())
         for f in ['C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
@@ -590,7 +590,7 @@ strict digraph "" {
 "C1 (C1.txt)" -> "B2 (B2.txt)";
 }
 ''')
-        Base_Executor(wf).run()
+        Base_Executor(wf).run(targets=['B2.txt', 'C2.txt'])
         for f in ['A1.txt', 'B1.txt', 'A2.txt']:
             self.assertFalse(FileTarget(f).exists())
         for f in ['C2.txt', 'B2.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
@@ -611,7 +611,7 @@ strict digraph "" {
 "C4 (C4.txt)" -> "C2 (C2.txt)";
 }
 ''')
-        Base_Executor(wf).run()
+        Base_Executor(wf).run(targets=['B3.txt', 'C2.txt'])
         for f in ['A1.txt', 'B1.txt', 'A2.txt', 'B2.txt', 'C1.txt', 'C3.txt']:
             self.assertFalse(FileTarget(f).exists())
         for f in ['C2.txt', 'B3.txt', 'C4.txt']:
@@ -767,7 +767,7 @@ for num in range(3):
 ''')
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow('ALL')
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')

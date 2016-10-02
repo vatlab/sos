@@ -508,16 +508,15 @@ def sos_run(workflow, **kwargs):
         # been changed and need to be re-prepared) so it is necessary to prepare
         # the workflow at run mode.
         #
-        dag = Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
         if env.__task_engine__ is None:
             if env.max_jobs == 1:
-                return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).run(dag)
+                return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).run()
             else:
-                return MP_Executor(wf, args=env.sos_dict['__args__'], nested=True).run(dag)
+                return MP_Executor(wf, args=env.sos_dict['__args__'], nested=True).run()
         elif env.__task_engine__ == 'rq':
-            return RQ_Executor(wf, args=env.sos_dict['__args__'], nested=True).run(dag)
+            return RQ_Executor(wf, args=env.sos_dict['__args__'], nested=True).run()
         elif env.__task_engine__ == 'celery':
-            return Celery_Executor(wf, args=env.sos_dict['__args__'], nested=True).run(dag)
+            return Celery_Executor(wf, args=env.sos_dict['__args__'], nested=True).run()
     elif env.run_mode == 'interactive':
         raise RuntimeError('Action sos_run is not supported in interactive mode')
 
