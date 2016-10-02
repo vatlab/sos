@@ -112,21 +112,32 @@ def execute_task(task, global_def, sos_dict, sigil):
 def analyze_section(section, args=[]):
     '''Analyze a section for how it uses input and output, what variables 
     it uses, and input, output, etc.'''
-
-    # 1. execute global definition to get a basic environment
-    #
-    # FIXME: this could be made much more efficient
-    env.sos_dict = WorkflowDict()
     from .sos_executor import __null_func__
     from ._version import __version__
     from .sos_eval import accessed_vars
-    env.sos_dict.set('__null_func__', __null_func__)
-    env.sos_dict.set('__args__', args)
-    env.sos_dict.set('__unknown_args__', args)
-    # initial values
-    env.sos_dict.set('SOS_VERSION', __version__)
-    SoS_exec('import os, sys, glob')
-    SoS_exec('from pysos.runtime import *')
+    step_input = Undetermined()
+    step_output = Undetermined()
+    step_depends = []
+    environ_vars = set()
+    signature_vars = set()
+    changed_vars = set()
+
+    env.logger.error('ANALY {}'.format(section.name))
+    # 1. execute global definition to get a basic environment
+    #
+    # FIXME: this could be made much more efficient
+    if 'provides' in section.options:
+        if '__default_output__' in env.sos_dict:
+            step_output = env.sos_dict['__default_output__']
+    else:
+        env.sos_dict = WorkflowDict()
+        env.sos_dict.set('__null_func__', __null_func__)
+        env.sos_dict.set('__args__', args)
+        env.sos_dict.set('__unknown_args__', args)
+        # initial values
+        env.sos_dict.set('SOS_VERSION', __version__)
+        SoS_exec('import os, sys, glob')
+        SoS_exec('from pysos.runtime import *')
 
     if section.global_def:
         try:
@@ -139,12 +150,7 @@ def analyze_section(section, args=[]):
                 section.global_def, e))
     #
     # 2. look for input statement
-    step_input = Undetermined()
-    step_output = Undetermined()
-    step_depends = []
-    environ_vars = set()
-    signature_vars = set()
-    changed_vars = set()
+
     
     if 'shared' in section.options:
         try:
@@ -159,8 +165,8 @@ def analyze_section(section, args=[]):
 
     if 'alias' in section.options:
         changed_vars.add(section.options['alias'])
-        result['__changed_vars__'] |= set(vars)
 
+    env.logger.warning('bbb 3')
     # look for input statement.
     input_statement_idx = [idx for idx,x in enumerate(section.statements) if x[0] == ':' and x[1] == 'input']
     if not input_statement_idx:
@@ -170,6 +176,7 @@ def analyze_section(section, args=[]):
     else:
         raise RuntimeError('More than one step input are specified in step {}_{}'.format(section.name, section.index))
 
+    env.logger.warning('bbb 2')
     # if there is an input statement, analyze the statements before it, and then the input statement
     if input_statement_idx is not None:
         # execute before input stuff
@@ -184,42 +191,52 @@ def analyze_section(section, args=[]):
         #
         # input statement
         stmt = section.statements[input_statement_idx][2]
+        env.logger.error('input {}'.format(stmt))
         try:
             args, kwargs = SoS_eval('__null_func__({})'.format(stmt), section.sigil)
             # Files will be expanded differently with different running modes
             if not any(isinstance(x, dynamic) for x in args):
-                step_input = _expand_file_list(False, *args)
-        except:
+                step_input = _expand_file_list(True, *args)
+        except Exception as e:
             # if anything is not evalutable, keep Undetermined
+            env.logger.debug('Input of step {}_{} is set to Undertermined: {}'
+                .format(section.name, section.index, e))
             pass
         input_statement_idx += 1
     else:
         # assuming everything starts from 0 is after input
         input_statement_idx = 0
 
+    env.logger.warning('bbb 1')
     # other variables
     for statement in section.statements[input_statement_idx:]:
         # if input is undertermined, we can only process output:
         if statement[0] == '=':
-            self.signature_vars |= accessed_vars(statement[2])
+            signature_vars |= accessed_vars(statement[2])
         elif statement[0] == ':':
             key, value, _ = statement[1:]
             # output, depends, and process can be processed multiple times
             try:
+                env.logger.warning('bb c {}'.format(value))
                 args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
                 if not any(isinstance(x, dynamic) for x in args):
                     if key == 'output':
-                        step_output = _expand_file_list(False, *args)
+                        step_output = _expand_file_list(True, *args)
+                    elif key == 'depends':
+                        step_depends = _expand_file_list(True, *args)
                     else:
-                        step_depends = _expand_file_list(False, *args)
-            except:
+                        raise ValueError('Unrecognized directive {}'.format(key))
+            except Exception as e:
+                env.logger.error(e)
                 pass
         else: # statement
             signature_vars |= accessed_vars(statement[1])
     # finally, tasks..
     if section.task:
         signatur_vars |= accessed_vars(section.task)
+    env.logger.warning('bbb')
     return {
+        'step_name': '{}_{}'.format(section.name, section.index) if isinstance(section.index, int) else section.name,
         'step_input': step_input,
         'step_output': step_output,
         'step_depends': step_depends,

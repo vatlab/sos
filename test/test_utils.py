@@ -30,10 +30,11 @@ import textwrap
 # using their names for testing purposes
 from pysos.utils import env, logger, WorkflowDict, ProgressBar, text_repr
 from pysos.pattern import extract_pattern, expand_pattern
-from pysos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_vars
+from pysos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_vars, Undetermined
 from pysos.actions import downloadURL
 from pysos.sos_script import SoS_Script
 from pysos.sos_executor import Base_Executor, analyze_section
+from pysos.target import executable
 
 import socket
 def internet_on(host='8.8.8.8', port=53, timeout=3):
@@ -277,7 +278,7 @@ class TestUtils(unittest.TestCase):
 [5]
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         # progress bar with nested workflow
         script = SoS_Script('''
 import time
@@ -370,6 +371,7 @@ output: None
 [A_2]
 b = [1, 2, 3]
 input: for_each='b'
+depends: 'some.txt', executable('ls')
 import time
 import random
 
@@ -378,8 +380,21 @@ time.sleep(r)
 ''')
         wf = script.workflow('A')
         for section in wf.sections:
-            print(analyze_section(section))
-
+            res = analyze_section(section)
+            if section.names[0][1] == '1':
+                self.assertTrue(isinstance(res['step_input'], Undetermined))
+                self.assertEqual(res['step_depends'], [])
+                self.assertEqual(res['step_output'], [])
+                self.assertEqual(res['environ_vars'], {'p1'})
+                self.assertEqual(res['signature_vars'], set())
+                self.assertEqual(res['changed_vars'], {'b'})
+            elif section.names[0][1] == '2':
+                self.assertEqual(res['step_input'], [])
+                self.assertEqual(res['step_depends'], ['some.txt', executable('ls')])
+                self.assertTrue(isinstance(res['step_output'], Undetermined))
+                self.assertEqual(res['environ_vars'], set())
+                self.assertEqual(res['signature_vars'], {'import', 'r', 'randint', 'time', 'random', 'sleep'})
+                self.assertEqual(res['changed_vars'], set())
 
 
 if __name__ == '__main__':
