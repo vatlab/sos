@@ -31,7 +31,7 @@ from tokenize import generate_tokens
 from collections.abc import Sequence, Iterable
 from itertools import tee, combinations
 
-from .utils import env, Error, WorkflowDict, AbortExecution, short_repr, \
+from .utils import env, Error, AbortExecution, short_repr, \
     get_traceback, pickleable, transcribe
 from .pattern import extract_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
@@ -109,7 +109,7 @@ def execute_task(task, global_def, sos_dict, sigil):
     return {'succ': 0, 'output': env.sos_dict['_output']}
 
 
-def analyze_section(section, args=[]):
+def analyze_section(section, default_input=None):
     '''Analyze a section for how it uses input and output, what variables 
     it uses, and input, output, etc.'''
     from .sos_executor import __null_func__
@@ -128,7 +128,7 @@ def analyze_section(section, args=[]):
     environ_vars = set()
     signature_vars = set()
     changed_vars = set()
-
+    #
     # 1. execute global definition to get a basic environment
     #
     # FIXME: this could be made much more efficient
@@ -138,16 +138,23 @@ def analyze_section(section, args=[]):
     else:
         #env.sos_dict = WorkflowDict()
         env.sos_dict.set('__null_func__', __null_func__)
-        env.sos_dict.set('__args__', args)
-        env.sos_dict.set('__unknown_args__', args)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
         SoS_exec('import os, sys, glob')
         SoS_exec('from pysos.runtime import *')
 
+    #
+    # Here we need to get "contant" values from the global section
+    # Because parameters are considered variable, they has to be 
+    # removed. We achieve this by removing function sos_handle_parameter_
+    # from the SoS_dict namespace
+    #
     if section.global_def:
         try:
-            SoS_exec(section.global_def)
+            SoS_exec('''
+if 'sos_handle_parameter_' in globals():
+    del sos_handle_parameter_
+''' + section.global_def)
         except Exception as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
@@ -156,10 +163,7 @@ def analyze_section(section, args=[]):
     #
     # 2. look for input statement
     if 'shared' in section.options:
-        try:
-            vars = section.options['shared']
-        except Exception as e:
-            raise RuntimeError('Invalid option shared {}: {}'.format(section.options['shared'], e))
+        vars = section.options['shared']
         if isinstance(vars, str):
             vars = [vars]
         elif not isinstance(vars, Sequence):
@@ -194,8 +198,12 @@ def analyze_section(section, args=[]):
         stmt = section.statements[input_statement_idx][2]
         try:
             args, kwargs = SoS_eval('__null_func__({})'.format(stmt), section.sigil)
-            # Files will be expanded differently with different running modes
-            if not any(isinstance(x, dynamic) for x in args):
+            if not args:
+                if default_input is None:
+                    step_input = []
+                else:
+                    step_input = default_input
+            elif not any(isinstance(x, dynamic) for x in args):
                 step_input = _expand_file_list(True, *args)
         except Exception as e:
             # if anything is not evalutable, keep Undetermined
@@ -230,7 +238,7 @@ def analyze_section(section, args=[]):
             signature_vars |= accessed_vars(statement[1])
     # finally, tasks..
     if section.task:
-        signatur_vars |= accessed_vars(section.task)
+        signature_vars |= accessed_vars(section.task)
     return {
         'step_name': '{}_{}'.format(section.name, section.index) if isinstance(section.index, int) else section.name,
         'step_input': step_input,
@@ -576,16 +584,10 @@ class Base_Step_Executor:
             for statement in self.step.statements:
                 if statement[0] == '=' and statement[1] in env.sos_dict and pickleable(env.sos_dict[statement[1]]):
                     step_info.set(statement[1], env.sos_dict[statement[1]])
-            if isinstance(self.step.options['alias'], Undetermined):
-                # it is time to evalulate this expression now
-                self.step.options['alias'] = self.step.options['alias'].value(self.step.sigil)
             result[self.step.options['alias']] = copy.deepcopy(step_info)
             result['__changed_vars__'].add(self.step.options['alias'])
         if 'shared' in self.step.options:
-            try:
-                vars = self.step.options['shared']
-            except Exception as e:
-                raise RuntimeError('Invalid option shared {}: {}'.format(self.step.options['shared'], e))
+            vars = self.step.options['shared']
             if isinstance(vars, str):
                 vars = [vars]
             elif not isinstance(vars, Sequence):

@@ -32,8 +32,8 @@ import shutil
 
 from pysos.sos_script import SoS_Script
 from pysos._version import __version__
-from pysos.utils import env
-from pysos.sos_eval import Undetermined
+from pysos.utils import env, WorkflowDict
+from pysos.sos_eval import Undetermined, SoS_exec
 from pysos.sos_executor import Base_Executor, MP_Executor, Interactive_Executor, ExecuteError
 from pysos.sos_script import ParsingError
 from pysos.signature import FileTarget
@@ -98,7 +98,7 @@ b = 200
 res += '${b}'
 """)
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], '200')
         #
         script = SoS_Script(r"""
@@ -108,7 +108,7 @@ for b in range(5):
     res += '${b}'
 """)
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], '01234')
         #
         script = SoS_Script(r"""
@@ -199,7 +199,7 @@ output: [x + '.res' for x in _input]
         '''Test for_each option of input'''
         self.touch(['a.txt', 'b.txt', 'a.pdf'])
         script = SoS_Script(r"""
-[0: shared=['counter', 'all_names', 'all_loop', 'processed']]
+[0: shared=['counter', 'all_names', 'all_loop']]
 files = ['a.txt', 'b.txt']
 names = ['a', 'b', 'c']
 c = ['1', '2']
@@ -215,14 +215,14 @@ all_loop += _c + " "
 counter = counter + 1
 """)
         wf = script.workflow()
-        Base_Executor(wf).prepare()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['counter'], 6)
         self.assertEqual(env.sos_dict['all_names'], "a b c a b c ")
         self.assertEqual(env.sos_dict['all_loop'], "1 1 1 2 2 2 ")
         #
         # test same-level for loop and parameter with nested list
         script = SoS_Script(r"""
-[0: shared=['counter', 'all_names', 'all_loop', 'processed']]
+[0: shared=['processed']]
 files = ['a.txt', 'b.txt']
 par = [(1, 2), (1, 3), (2, 3)]
 res = ['p1.txt', 'p2.txt', 'p3.txt']
@@ -392,7 +392,7 @@ counter += 1
         self.assertEqual(env.sos_dict['counter'], 3)
         #
         script = SoS_Script(r"""
-[0]
+[0: shared='counter']
 files = ['a.txt', 'b.txt']
 counter = 0
 
@@ -401,7 +401,7 @@ input: 'a.pdf', 'b.html', files, filetype=lambda x: 'a' in x, group_by='single'
 counter += 1
 """)
         wf = script.workflow()
-        Base_Executor(wf).prepare()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['counter'], 2)
 
     def testOutputFromInput(self):
@@ -434,7 +434,7 @@ with open('test/result.txt', 'w') as res:
        res.write(file + '\n')
 """)
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         with open('result.txt') as res:
             content = [x.strip() for x in res.readlines()]
             self.assertTrue('test_execute.py' in content)
@@ -496,7 +496,7 @@ a = fail()
         # should return 0 in prepare mode
         self.assertTrue(isinstance(env.sos_dict['a'], Undetermined))
         #
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         # shoulw return 1 in run mode
         self.assertEqual(env.sos_dict['a'], 1)
 
@@ -512,7 +512,7 @@ a += 1
 
 """)
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
 
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''
@@ -535,7 +535,7 @@ sos_run('nested')
 
 """)
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
     def testUserDefinedFunc(self):
         '''Test the use of user-defined functions in SoS script'''
@@ -615,10 +615,8 @@ print(a)
 
 """)
         wf = script.workflow()
-        env.run_mode = 'prepare'
-        # I would like to disallow accessing variables defined
-        # in other cases.
-        self.assertRaises((RuntimeError, ExecuteError), Base_Executor(wf).prepare)
+        env.run_mode = 'run'
+        self.assertRaises((RuntimeError, ExecuteError), Base_Executor(wf).run)
         # however, alias should be sent back
         script = SoS_Script(r"""
 [1: alias='shared']
@@ -693,7 +691,7 @@ import sklearn
 print(0)
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
 
     def testCollectionOfErrors(self):
@@ -777,7 +775,7 @@ for i in range(4):
        h.write('a')
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].output, ['temp/something{}.html'.format(x) for x in range(4)])
         #
         shutil.rmtree('temp')
@@ -804,10 +802,10 @@ run:
 touch ${_input}.bak
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].output, ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
         # this time we use th existing signature
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].output, ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
         #
         shutil.rmtree('temp')
@@ -834,36 +832,12 @@ echo ${ff}
 touch temp/${ff}
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         #
         shutil.rmtree('temp')
 
     def testUseOfRunmode(self):
         '''Test the use of run_mode variable in SoS script'''
-        #
-        if os.path.isdir('temp'):
-            shutil.rmtree('temp')
-        os.mkdir('temp')
-        #
-        env.sig_mode = 'ignore'
-        script = SoS_Script('''
-[1: alias='res']
-import random
-for i in range(3):
-    with open('temp/test_${random.randint(1, 100000)}.txt', 'w') as res:
-        res.write(str(i))
-''')
-        wf = script.workflow()
-        #
-        executor = Base_Executor(wf)
-        executor.prepare()
-        executor.run()
-        # we should have 9 files
-        files = glob.glob('temp/*.txt')
-        self.assertEqual(len(files), 9)
-        #
-        # now, if we strict to run mode, we should be fine
-        #
         #
         if os.path.isdir('temp'):
             shutil.rmtree('temp')
@@ -879,7 +853,7 @@ if run_mode == 'run':
 
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         # we should have 9 files
         files = glob.glob('temp/*.txt')
         self.assertEqual(len(files), 3)
@@ -974,7 +948,7 @@ python:
 with open('temp/{}.input'.format(len([${input!r,}])), 'w') as f: f.write('')
         ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('temp/5.input'))
         # Test duplicate output
         script = SoS_Script('''
@@ -985,7 +959,7 @@ with open('temp/2.txt', 'w') as f: f.write('')
 with open('temp/{}.output'.format(len([${output!r,}])), 'w') as f: f.write('')
         ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('temp/5.output'))
         # Test duplicate depends
         script = SoS_Script('''
@@ -998,7 +972,7 @@ with open('temp/3.txt', 'w') as f: f.write('')
 with open('temp/{}.depends'.format(len([${depends!r,}])), 'w') as f: f.write('')
         ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('temp/5.depends'))
         shutil.rmtree('temp')
 
@@ -1021,7 +995,7 @@ echo ${output} >> temp/out.log
 touch ${output}
         ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         # output should have 1, 2, 3, 4, 5, respectively, and
         # the total record files would be 1+2+3+4+5=15
         with open('temp/out.log') as out:
@@ -1044,7 +1018,7 @@ touch ${output}
         ''')
         wf = script.workflow()
         env.sig_mode = 'ignore'
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         with open('temp/out.log') as out:
             self.assertEqual(len(out.read().split()), 15)
         shutil.rmtree('temp')
@@ -1249,19 +1223,19 @@ if run_mode == 'run':
         except:
             pass
         start = time.time()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         # regularly take more than 5 seconds to execute
         self.assertGreater(time.time() - start, 2)
         # now, rerun should be much faster
         start = time.time()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         # rerun takes less than 1 second
         self.assertLess(time.time() - start, 1)
         #
         # force rerun mode
         start = time.time()
         env.sig_mode = 'ignore'
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         # regularly take more than 5 seconds to execute
         self.assertGreater(time.time() - start, 2)
         try:
@@ -1280,7 +1254,7 @@ sh:
 ''')
         wf = script.workflow()
         FileTarget('a.txt').remove('both')
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('a.txt'))
         FileTarget('a.txt').remove('both')
         
@@ -1332,7 +1306,13 @@ depends: executable('lls')
         FileTarget('lls').remove('both')
 
     def testInteractiveExecutor(self):
-        ''interactive'''
+        '''tes interactive mode'''
+        # the kernel is not started yet so there is no symbol
+        env.sos_dict = WorkflowDict()
+        SoS_exec('import os, sys, glob')
+        SoS_exec('from pysos.runtime import *')
+        SoS_exec("run_mode = 'interactive'")
+
         executor = Interactive_Executor()
         executor.run('a=1')
         self.assertEqual(executor.run('a'), 1)
@@ -1361,19 +1341,19 @@ python:
 ''')
         wf = script.workflow()
         st = time.time()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 5)
         # rerun, but remove output
         os.remove('largefile.txt')
         st = time.time()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertLess(time.time() - st, 3)
         # however, the file will not be regenerated
         self.assertFalse(os.path.isfile('largefile.txt'))
         # if we discard largefile.txt, it should slow down again
         st = time.time()
         FileTarget('largefile.txt').remove('signature')
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 5)
         os.remove('largefile.txt')
 
@@ -1397,7 +1377,7 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 2.5)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '10')
@@ -1436,7 +1416,7 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 2.5)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '10')
@@ -1510,7 +1490,7 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 2.5)
         # now we modify the script 
         script = SoS_Script(r'''
@@ -1529,13 +1509,13 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 2.5)
         self.assertLess(time.time() - st, 5)
         #
         # run it again, neither needs to be rerun
         st = time.time()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertLess(time.time() - st, 2)
         #
         # change again, the second one is already there.
@@ -1555,7 +1535,7 @@ python:
 ''')
         st = time.time()
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertLess(time.time() - st, 2)
         #
         for t in range(10, 12):

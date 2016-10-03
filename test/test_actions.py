@@ -126,7 +126,7 @@ c=func_both()
         self.assertTrue(isinstance(env.sos_dict['result'].b, Undetermined))
         self.assertEqual(env.sos_dict['result'].c, 1)
         #
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['result'].b, 1)
         self.assertEqual(env.sos_dict['result'].c, 1)
 
@@ -138,7 +138,7 @@ ret = get_output('echo blah')
 """)
         wf = script.workflow()
         # should be ok
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].ret, 'blah\n')
         #
         script = SoS_Script(r"""
@@ -147,7 +147,7 @@ ret = get_output('echo blah', show_command=True)
 """)
         wf = script.workflow()
         # should be ok
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].ret, '$ echo blah\nblah\n')
         #
         script = SoS_Script(r"""
@@ -156,7 +156,7 @@ ret = get_output('echo blah', show_command=True, prompt='% ')
 """)
         wf = script.workflow()
         # should be ok
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['test'].ret, '% echo blah\nblah\n')
         #
         script = SoS_Script(r"""
@@ -184,7 +184,7 @@ check_command('cat')
 """)
         wf = script.workflow()
         # should be ok
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         #
         script = SoS_Script(r"""
 [0]
@@ -203,7 +203,7 @@ check_command('ls -l')
 """)
         wf = script.workflow()
         # this should pass
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         #
         script = SoS_Script(r"""
 [0]
@@ -242,7 +242,7 @@ check_command('cat test_actions.py', 'abcde' + 'fgh')
 check_command('cat test_actions.py', 'testSearchOutput')
 """)
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
 
     def testFailIf(self):
@@ -302,15 +302,14 @@ run:
 echo 'Echo'
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         script = SoS_Script(r'''
 [0]
 run:
 echo 'Echo
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run, dag)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
 
     def testBash(self):
         '''Test action bash'''
@@ -320,15 +319,14 @@ bash:
 echo 'Echo'
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         script = SoS_Script(r'''
 [0]
 bash:
 echo 'Echo
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run, dag)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
     
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testBashInDocker(self):
@@ -339,7 +337,7 @@ bash:  docker_image='ubuntu'
 echo 'Echo'
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
 
     def testSh(self):
@@ -350,15 +348,14 @@ sh:
 echo 'Echo'
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         script = SoS_Script(r'''
 [0]
 sh:
 echo 'Echo
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run, dag)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -371,8 +368,7 @@ sh: docker_image='ubuntu'
 echo 'Echo
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run, dag)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
         #
         # this should give us a warning if RAM is less than 4G
         Base_Executor(wf).prepare()
@@ -390,7 +386,7 @@ csh:
      end
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         # no test for docker because standard distributions do not have csh
 
     def testTcsh(self):
@@ -405,7 +401,7 @@ tcsh:
      end
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         # no test for docker because standard distributions do not have tcsh
 
     def testZsh(self):
@@ -418,7 +414,7 @@ zsh:
 echo "Hello World!", $SHELL
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         # cannot test in docker because no first-tier repository
         # provides zsh.
 
@@ -432,7 +428,7 @@ a = {'1': 2}
 print(a)
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testPythonInDocker(self):
@@ -444,7 +440,7 @@ a = {'1': 2}
 print(a)
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
     def testPython3(self):
         script = SoS_Script(r'''
@@ -454,7 +450,7 @@ a = {'1', '2'}
 print(a)
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -468,7 +464,7 @@ a = {'1', '2'}
 print(a)
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
     def testPerl(self):
         '''Test action ruby'''
@@ -481,7 +477,7 @@ use warnings;
 print "hi NAME\n";
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -496,7 +492,7 @@ use warnings;
 print "hi NAME\n";
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
 
     def testRuby(self):
@@ -517,7 +513,7 @@ if ( line2 =~ /Cats(.*)/ )
 end
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -537,7 +533,7 @@ if ( line2 =~ /Cats(.*)/ )
 end
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
     def testNode(self):
         '''Test action ruby'''
@@ -550,7 +546,7 @@ var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         #
         script = SoS_Script(r'''
 [0]
@@ -559,7 +555,7 @@ var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -573,7 +569,7 @@ var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         #
         script = SoS_Script(r'''
 [0]
@@ -583,7 +579,7 @@ var args = process.argv.slice(2);
 console.log('Hello ' + args.join(' ') + '!');
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
     def testR(self):
         '''Test action JavaScript'''
@@ -596,7 +592,7 @@ nums = rnorm(25, mean=100, sd=15)
 mean(nums)
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -609,7 +605,7 @@ nums = rnorm(25, mean=100, sd=15)
 mean(nums)
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
     @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
     def testCheckRLibrary(self):
@@ -621,13 +617,13 @@ mean(nums)
 check_R_library('edgeR')
 ''')
         wf = script.workflow()
-        dag = Base_Executor(wf).prepare()
+        Base_Executor(wf).prepare()
         script = SoS_Script(r'''
 [0]
 check_R_library('stephens999/ashr')
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
         script = SoS_Script(r'''
 [0]
@@ -655,7 +651,7 @@ RUN pip install Flask
 WORKDIR /home
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerImage(self):
@@ -673,7 +669,7 @@ run: docker_image='compbio/ngseasy-fastqc:1.0-r001',
     /usr/local/bin/fastqc /input_data/*.fastq --outdir /output_data
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerImageFromFile(self):
@@ -694,7 +690,7 @@ run: docker_image='blang/busybox-bash', docker_file = 'hello.tar'
     echo "a"
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
     @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
     def testDownload(self):
@@ -790,7 +786,7 @@ output: 'myreport.html'
 pandoc(output=_output[0], to='html')
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('myreport.html'))
         #
         FileTarget('myreport.html').remove('both')
@@ -838,7 +834,7 @@ for k in range(2):
 ''')
         env.verbosity=3
         wf = script.workflow('batch')
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         for f in ['0.txt', '1.txt']:
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')

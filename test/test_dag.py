@@ -722,8 +722,8 @@ A_2;
 ''')
         env.max_jobs = 4
         st = time.time()
-        # MP
-        Base_Executor(wf).run()
+        #env.verbosity = 4
+        MP_Executor(wf).run()
         self.assertLess(time.time() - st, 4)
         for f in ['A1.txt', 'B2.txt', 'A2.txt']:
             FileTarget(f).remove('both')
@@ -772,7 +772,6 @@ for num in range(3):
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')
 
-
     def testSharedDependency(self):
         #
         # shared variable should introduce additional dependency
@@ -813,8 +812,7 @@ A_1 -> A_3;
 ''')
         env.max_jobs = 3
         st = time.time()
-        #MP
-        Base_Executor(wf).run()
+        MP_Executor(wf).run()
         self.assertLess(time.time() - st, 5)
         for f in ['A1.txt']:
             self.assertTrue(FileTarget(f).exists())
@@ -860,8 +858,7 @@ A_1 -> A_3;
 ''')
         env.max_jobs = 3
         st = time.time()
-        # MP
-        Base_Executor(wf).run()
+        MP_Executor(wf).run()
         self.assertLess(time.time() - st, 5)
         for f in ['A1.txt']:
             self.assertTrue(FileTarget(f).exists())

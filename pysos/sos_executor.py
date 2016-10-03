@@ -149,15 +149,7 @@ class Base_Executor:
                     section.global_def, e))
         #
         if 'skip' in section.options:
-            if isinstance(section.options['skip'], Undetermined):
-                try:
-                    val_skip = section.options['skip'].value(section.sigil)
-                    if val_skip is None:
-                        val_skip = False
-                except Exception as e:
-                    raise RuntimeError('Failed to evaluate value of section option skip={}: {}'.format(section.options['skip'], e))
-            else:
-                val_skip = section.options['skip']
+            val_skip = section.options['skip']
             if val_skip is None or val_skip is True:
                 return True
             elif val_skip is not False:
@@ -234,10 +226,6 @@ class Base_Executor:
             # change dictionary, essentially making all later steps rely on this step.
             dag.add_step(section.uuid, res['__step_name__'], idx, res['__step_input__'], res['__step_depends__'], res['__step_output__'],
                 context={'__signature_vars__': signature_vars, '__environ_vars__': environ_vars, '__changed_vars__': changed_vars})
-        #
-        for section in self.workflow.auxiliary_sections:
-            if isinstance(section.options['provides'], Undetermined):
-                section.options['provides'] = section.options['provides'].value(section.sigil)
 
         while True:
             dangling_targets = dag.dangling(targets)
@@ -331,7 +319,7 @@ class Base_Executor:
 
         return dag
 
-    def feed_dangling_targets(self, dag, targets=None):
+    def resolve_dangling_targets(self, dag, targets=None):
         '''Feed dangling targets with their dependncies from auxiliary steps,
         optionally add other targets'''
         while True:
@@ -372,9 +360,9 @@ class Base_Executor:
                     context = mo[0][1]
                 else:
                     context = {}
-                context['signature_vars'] = res['signature_vars']
-                context['environ_vars'] = res['environ_vars']
-                context['changed_vars'] = res['changed_vars']
+                context['__signature_vars__'] = res['signature_vars']
+                context['__environ_vars__'] = res['environ_vars']
+                context['__changed_vars__'] = res['changed_vars']
                 context['__default_output__'] = [target]
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
@@ -387,15 +375,16 @@ class Base_Executor:
         '''Create a DAG by analyzing sections statically.'''
         '''Run the script in prepare mode to prepare resources.'''
         dag = SoS_DAG()
+        default_input = []
         for idx, section in enumerate(self.workflow.sections):
             if self.skip(section):
                 continue
             #
-            res = analyze_section(section)
+            res = analyze_section(section, default_input)
 
             # NOTE: if a section has option 'alias', the execution of this step would
             # change dictionary, essentially making all later steps rely on this step.
-            dag.add_step(section.uuid, 
+            dag.add_step(section.uuid,
                 res['step_name'],
                 idx,
                 res['step_input'],
@@ -404,12 +393,10 @@ class Base_Executor:
                 context={'__signature_vars__': res['signature_vars'],
                     '__environ_vars__': res['environ_vars'],
                     '__changed_vars__': res['changed_vars']})
-        # 
-        for section in self.workflow.auxiliary_sections:
-            if isinstance(section.options['provides'], Undetermined):
-                section.options['provides'] = section.options['provides'].value(section.sigil)
+            default_input = res['step_output']
+        #
         #dag.show_nodes()
-        self.feed_dangling_targets(dag, targets)
+        self.resolve_dangling_targets(dag, targets)
         # now, there should be no dangling targets, let us connect nodes
         dag.build(self.workflow.auxiliary_sections)
         # trim the DAG if targets are specified
@@ -435,9 +422,14 @@ class Base_Executor:
         env.sos_dict.set('run_mode', env.run_mode)
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
+        if not 'run_mode' in env.sos_dict:
+            raise ValueError('HHH')
+        #
+        SoS_exec('from pysos.runtime import sos_handle_parameter_')
         #
         prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
         self.reset_dict()
+        env.sos_dict.set('run_mode', env.run_mode)
         while True:
             # find any step that can be executed and run it, and update the DAT
             # with status.
@@ -468,7 +460,6 @@ class Base_Executor:
                 if k in env.sos_dict:
                     env.sos_dict.pop(k)
             # if the step has its own context
-            env.logger.error('CONTEXT {}'.format(runnable._context))
             env.sos_dict.quick_update(runnable._context)
             # execute section with specified input
             runnable._status = 'running'
@@ -480,12 +471,12 @@ class Base_Executor:
             res = q.get()
             # if we does get the result
             p.join()
-            # if the step says unknown target .... need to check if the target can 
+            # if the step says unknown target .... need to check if the target can
             # be build dynamically.
             if isinstance(res, UnknownTarget):
                 runnable._status = None
                 target = res.target
-                self.feed_dangling_targets(dag, [target])
+                self.resolve_dangling_targets(dag, [target])
                 # now, there should be no dangling targets, let us connect nodes
                 # this can be done more efficiently
                 dag.build(self.workflow.auxiliary_sections)
@@ -525,7 +516,7 @@ class MP_Executor(Base_Executor):
     def step_executor(self, section, queue):
         return MP_Step_Executor(section, queue)
 
-    def run(self):
+    def run(self, targets=None):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -534,6 +525,11 @@ class MP_Executor(Base_Executor):
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
         env.sos_dict.set('run_mode', env.run_mode)
+        # process step of the pipelinp
+        dag = self.initialize_dag(targets=targets)
+        #
+        SoS_exec('from pysos.runtime import sos_handle_parameter_')
+
         # process step of the pipelinp
         #
         procs = [None for x in range(env.max_jobs)]
@@ -552,26 +548,38 @@ class MP_Executor(Base_Executor):
                 #
                 # if we does get the result
                 p.join()
-                # if the job is failed
-                if isinstance(res, Exception):
-                    raise RuntimeError(res)
-                #
-                for k, v in res.items():
-                    env.sos_dict.set(k, v)
-                #
+
                 runnable = dag.node_by_id(u)
-                # set context to the next logic step.
-                for edge in dag.out_edges(runnable):
-                    node = edge[1]
-                    # if node is the logical next step...
-                    if node._node_index is not None and runnable._node_index is not None \
-                        and node._node_index == runnable._node_index + 1:
-                        node._context.update(env.sos_dict.clone_selected_vars(
-                            node._context['__signature_vars__'] | node._context['__environ_vars__'] \
-                            | {'_input', '__step_output__', '__default_output__'}))
-                runnable._status = 'completed'
-                prog.progress(1)
-                procs[idx] = None
+                if isinstance(res, UnknownTarget):
+                    runnable._status = None
+                    target = res.target
+                    self.resolve_dangling_targets(dag, [target])
+                    # now, there should be no dangling targets, let us connect nodes
+                    # this can be done more efficiently
+                    dag.build(self.workflow.auxiliary_sections)
+                    cycle = dag.circular_dependencies()
+                    if cycle:
+                        raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
+                # if the job is failed
+                elif isinstance(res, Exception):
+                    raise RuntimeError(res)
+                else:
+                    #
+                    for k, v in res.items():
+                        env.sos_dict.set(k, v)
+                    #
+                    # set context to the next logic step.
+                    for edge in dag.out_edges(runnable):
+                        node = edge[1]
+                        # if node is the logical next step...
+                        if node._node_index is not None and runnable._node_index is not None \
+                            and node._node_index == runnable._node_index + 1:
+                            node._context.update(env.sos_dict.clone_selected_vars(
+                                node._context['__signature_vars__'] | node._context['__environ_vars__'] \
+                                | {'_input', '__step_output__', '__default_output__'}))
+                    runnable._status = 'completed'
+                    prog.progress(1)
+                    procs[idx] = None
                 #env.logger.error('completed')
                 #dag.show_nodes()
             # step 2: submit new jobs if there are empty slots
@@ -729,8 +737,6 @@ class Interactive_Executor(Base_Executor):
                     val_skip = section.options['skip']
                     if val_skip is None or val_skip is True:
                         continue
-                    elif isinstance(val_skip, Undetermined):
-                        val_skip = val_skip.value(section.sigil)
                     elif val_skip is not False:
                         raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
                 #

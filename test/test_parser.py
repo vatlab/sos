@@ -78,9 +78,9 @@ class TestParser(unittest.TestCase):
         self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2]\n[s*_2]''')
         self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
-        # skip option
+        # skip option is not effective at parsing time
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse_2:skip]\n[s*_2]''')
-        self.assertEqual(sorted(script.workflows), ['default', 'human'])
+        self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
         # unnamed
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse]\n[s*_2]''')
         self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
@@ -114,7 +114,7 @@ var = 1
             self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
         # option value should be a valid python expression
         for badoption in ['sigil=a', 'sigil="[]"', 'sigil="| |"']:
-            self.assertRaises(ParsingError, SoS_Script, '[0:{}]'.format(badoption))
+            self.assertRaises((ValueError, ParsingError), SoS_Script, '[0:{}]'.format(badoption))
         # good options
         for goodoption in ['sigil="[ ]"', 'alias="a"']:
             SoS_Script('[0:{}]'.format(goodoption))
@@ -164,7 +164,7 @@ string """
 ]
 ''')
         #
-        script = SoS_Script(filename='scripts/section1.sos')
+        SoS_Script(filename='scripts/section1.sos')
         # not the default value of 1.0
 
     def testParameters(self):
@@ -182,7 +182,7 @@ parameter: a = [1, 2]
 [0]
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['a'], [1,2])
         wf = script.workflow()
         Base_Executor(wf, args=['--a', '3']).run()
@@ -198,7 +198,7 @@ parameter: a = ['a.txt', 'b.txt']
 [0]
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['a'], ['a.txt', 'b.txt'])
         wf = script.workflow()
         Base_Executor(wf, args=['--a', '3']).run()
@@ -216,7 +216,7 @@ parameter: b=str(int(a)+1)
 [0]
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], '101')
         #
         env.sos_dict.clear()
@@ -227,7 +227,7 @@ parameter: b=a+1
 [0]
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], 101)
         #
         script = SoS_Script('''
@@ -251,7 +251,7 @@ parameter: b='${a+1}'
 [0]
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], '101')
         #
         # argument has hve a value
@@ -480,7 +480,7 @@ python3:
         logger.warning('Another warning')
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         # with section head in the script,
         # this will not work even if the embedded
         # python script is perfectly valid.
@@ -729,7 +729,7 @@ b = A()()
 
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], 0)
 
     def testCombinedWorkflow(self):
@@ -1182,7 +1182,7 @@ res = inc.gv
 ''')
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], 1)
         #
         # include with alias
@@ -1193,7 +1193,7 @@ res1 = tt.gv
 ''')
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res1'], 1)
         os.remove('inc.sos')
 
@@ -1213,7 +1213,7 @@ gv = 1
 ''')
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['gv'], 1)
         #
         # include with alias
@@ -1224,7 +1224,7 @@ res1 = g
 ''')
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res1'], 1)
 
     def testCell(self):

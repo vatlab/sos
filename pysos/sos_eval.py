@@ -438,6 +438,9 @@ class on_demand_options(object):
         self._expressions.update(items)
         self._values = {}
 
+    def __contains__(self, key):
+        return key in self._expressions
+
     def __setitem__(self, key, value):
         self._expressions[key] = value
 

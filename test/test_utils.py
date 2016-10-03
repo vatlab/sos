@@ -296,7 +296,7 @@ sos_run('sub')
 [a_5]
 ''')
         wf = script.workflow('a')
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
 
     @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
     def testDownload(self):

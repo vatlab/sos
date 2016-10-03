@@ -189,7 +189,6 @@ class SoS_Step:
 
     def add_comment(self, line):
         '''Add comment line'''
-        # in parameter section, comments will always be kept
         if self.empty():
             self.comment += line.lstrip('#').lstrip()
         else:
@@ -280,7 +279,7 @@ class SoS_Step:
                 name, value = statement[2].split('=', 1)
                 if not value.strip():
                     raise ValueError('In valid parameter definition: {}'.format(statement[2]))
-                self.statements[idx] = ['!', '{} = sos_handle_parameter_({!r}, {})\n'.format(name, name.strip(), value)]
+                self.statements[idx] = ['!', 'if "sos_handle_parameter_" in globals():\n    {} = sos_handle_parameter_({!r}, {})\n'.format(name, name.strip(), value)]
         #
         task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
         if not task_directive:
@@ -454,11 +453,9 @@ class SoS_Script:
                 self._read(fp)
         #
         # workflows in this script, from sections that are not skipped.
-        all_section_steps = sum([x.names for x in self.sections if \
-            not ('skip' in x.options and (x.options['skip'] is None or x.options['skip']))], [])
+        all_section_steps = sum([x.names for x in self.sections], [])
         forward_section_steps = sum([x.names for x in self.sections if \
-            not ('skip' in x.options and (x.options['skip'] is None or x.options['skip'])) \
-            and 'provides' not in x.options], [])
+            'provides' not in x.options], [])
         # (name, None) is auxiliary steps
         self.workflows = list(set([x[0] for x in all_section_steps if '*' not in x[0]]))
         forward_workflows = list(set([x[0] for x in forward_section_steps if '*' not in x[0]]))
@@ -820,13 +817,16 @@ for __n, __v in {}.items():
                         mo = SOS_SECTION_OPTION.match(option)
                         if mo:
                             opt_name, opt_value = mo.group('name', 'value')
-                            #
+                            # sigil cannot be dynamic
                             if opt_name == 'sigil':
-                                value = eval(opt_value)
-                                if value.count(' ') != 1 or value[0] in (' ', "'") or \
-                                    value[-1] in (' ', "'") or \
-                                    value.split(' ')[0] == value.split(' ')[1]:
-                                    parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(value))
+                                try:
+                                    value = eval(opt_value)
+                                    if value.count(' ') != 1 or value[0] in (' ', "'") or \
+                                        value[-1] in (' ', "'") or \
+                                        value.split(' ')[0] == value.split(' ')[1]:
+                                        parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(value))
+                                except Exception as e:
+                                    parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(opt_value))
                             if opt_name in step_options:
                                 parsing_errors.append(lineno, line, 'Duplicate options')
                             step_options[opt_name] = opt_value
@@ -1001,6 +1001,7 @@ for __n, __v in {}.items():
             for statement in global_section[0][1].statements:
                 if statement[0] == '=':
                     self.global_def += '{} = {}\n'.format(statement[1], statement[2])
+                    env.readonly_vars.add(statement[1].strip())
                 else:
                     self.global_def += statement[1]
             # remove the global section after inserting it to each step of the process
@@ -1061,8 +1062,6 @@ for __n, __v in {}.items():
         sections = []
         for section in self.sections:
             # skip, skip=True, skip=1 etc are all allowed.
-            if 'skip' in section.options and (section.options['skip'] is None or section.options['skip'] is True):
-                continue
             if 'provides' in section.options:
                 # section global is shared by all workflows
                 sections.append(section)
