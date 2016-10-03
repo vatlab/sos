@@ -30,7 +30,8 @@ import textwrap
 # using their names for testing purposes
 from pysos.utils import env, logger, WorkflowDict, ProgressBar, text_repr
 from pysos.pattern import extract_pattern, expand_pattern
-from pysos.sos_eval import interpolate, SoS_eval, InterpolationError
+from pysos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_vars, \
+    Undetermined, on_demand_options
 from pysos.actions import downloadURL
 from pysos.sos_script import SoS_Script
 from pysos.sos_executor import Base_Executor
@@ -342,6 +343,18 @@ b
             timeit.timeit(ni_stmt, setup=setup_stmt, number=100000)))
 
 
+    def testOnDemandOptions(self):
+        '''Test options that are evaluated upon request.'''
+        options = on_demand_options(
+            {'a': '"est"', 'b': 'c', 'c': 'e + 2'}
+        )
+        env.sos_dict = WorkflowDict({
+            'e': 10,
+            })
+        self.assertEqual(options['a'], 'est')
+        self.assertRaises(KeyError, options.__getitem__, 'd')
+        self.assertRaises(ValueError, options.__getitem__, 'b')
+        self.assertEqual(options['c'], 12)
 
 if __name__ == '__main__':
     unittest.main()

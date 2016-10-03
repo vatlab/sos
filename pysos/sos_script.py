@@ -31,6 +31,7 @@ from collections import defaultdict
 from uuid import uuid4
 
 from .utils import env, Error, dehtml, locate_script, text_repr
+from .sos_eval import on_demand_options
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
     SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
@@ -63,7 +64,7 @@ class SoS_Step:
         self.index = None
         # it initially hold multiple names with/without wildcard characters
         self.names = names
-        self.options = options
+        self.options = on_demand_options(options)
         self.comment = ''
         # comment at the end of a section that could be a workflow description
         self.back_comment = ''
@@ -820,25 +821,12 @@ for __n, __v in {}.items():
                         if mo:
                             opt_name, opt_value = mo.group('name', 'value')
                             #
-                            #opt_value should also be a valid Python expression (with quote etc)
-                            #which is most likely a string.
-                            if opt_value:
-                                try:
-                                    # now, the expression might depend on some globle varialbe
-                                    # or even option so we might not be able to parse it at parsing time
-                                    opt_value = eval(opt_value)
-                                except Exception as e:
-                                    if opt_name == 'sigil':
-                                        parsing_errors.append(lineno, line, e)
-                                    else:
-                                        from .sos_eval import Undetermined
-                                        #env.logger.warning('Step option {}={} (line {}) cannot be resolved during parsing: {}'.format(opt_name, opt_value, lineno, e))
-                                        opt_value = Undetermined(opt_value)
                             if opt_name == 'sigil':
-                                if opt_value.count(' ') != 1 or opt_value[0] in (' ', "'") or \
-                                    opt_value[-1] in (' ', "'") or \
-                                    opt_value.split(' ')[0] == opt_value.split(' ')[1]:
-                                    parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(opt_value))
+                                value = eval(opt_value)
+                                if value.count(' ') != 1 or value[0] in (' ', "'") or \
+                                    value[-1] in (' ', "'") or \
+                                    value.split(' ')[0] == value.split(' ')[1]:
+                                    parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(value))
                             if opt_name in step_options:
                                 parsing_errors.append(lineno, line, 'Duplicate options')
                             step_options[opt_name] = opt_value
