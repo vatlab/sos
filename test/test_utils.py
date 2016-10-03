@@ -409,6 +409,12 @@ time.sleep(r)
         self.assertRaises(KeyError, options.__getitem__, 'd')
         self.assertRaises(ValueError, options.__getitem__, 'b')
         self.assertEqual(options['c'], 12)
+        #
+        env.sos_dict.set('e', 20)
+        self.assertEqual(options['c'], 22)
+        env.sos_dict.set('c', 200)
+        self.assertEqual(options['b'], 200)
+
 
 if __name__ == '__main__':
     unittest.main()
