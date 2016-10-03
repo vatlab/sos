@@ -23,10 +23,18 @@ import os
 import sys
 import hashlib
 import shutil
-from .utils import env
+from .utils import env, Error
 from .sos_eval import Undetermined
 
 __all__ = ['dynamic', 'executable']
+
+class UnknownTarget(Error):
+    """Raised when there are errors in prepare mode. Such errors are not raised
+    immediately, but will be collected and raised at the end """
+
+    def __init__(self, target):
+        Error.__init__(self, 'Unknown target %s' % target)
+        self.target = target
 
 #
 # Runtime signature

@@ -168,7 +168,6 @@ def cmd_run(args, workflow_args):
                 raise ValueError('directory does not exist: {}'.format(d))
         os.environ['PATH'] = os.pathsep.join([os.path.expanduser(x) for x in args.__bin_dirs__]) + os.pathsep + os.environ['PATH']
             
-    run_all = not (args.__inspect__ or args.__prepare__)
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
@@ -184,15 +183,15 @@ def cmd_run(args, workflow_args):
             executor = Celery_Executor(workflow, args=workflow_args, config_file=args.__config__)
         else:
             raise ValueError('Only the default multiprocessing and a rq engine is allowed')
-        # even with the -r option, prepare() can be executed if there are
-        # auxiliary_sections, or if there are targets where a DAG is required
-        # Issue #213
-        if run_all or args.__prepare__ or args._targets__:
-            dag = executor.prepare(args.__targets__)
-        if run_all:
+        # inspect currently does not do anything
+        if args.__inspect__:
+            return
+        elif args.__prepare__:
+            executor.prepare(args.__targets__)
+        else:
             # if dag is None, the script will be run sequentially and cannot handle
             # make-style steps.
-            executor.run(dag)
+            executor.run(args.__targets__)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())

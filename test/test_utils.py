@@ -34,7 +34,8 @@ from pysos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_v
     Undetermined, on_demand_options
 from pysos.actions import downloadURL
 from pysos.sos_script import SoS_Script
-from pysos.sos_executor import Base_Executor
+from pysos.sos_executor import Base_Executor, analyze_section
+from pysos.target import executable
 
 import socket
 def internet_on(host='8.8.8.8', port=53, timeout=3):
@@ -244,6 +245,19 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(expand_pattern('{c}.txt'), ['file1.txt', 'file2.txt', 'file 3.txt'])
         self.assertEqual(expand_pattern('{a}_{c}.txt'), ['100_file1.txt', '100_file2.txt', '100_file 3.txt'])
 
+    def testAccessedVars(self):
+        '''Test accessed vars of a SoS expression or statement.'''
+        self.assertEqual(accessed_vars('''a = 1'''), {'a'})
+        self.assertEqual(accessed_vars('''a = b + 2.0'''), {'a', 'b'})
+        self.assertEqual(accessed_vars('''a = "C"'''), {'a'})
+        self.assertEqual(accessed_vars('''a = "C" + "${D}"'''), {'a', 'D'})
+        self.assertEqual(accessed_vars('''a = 1 + "${D + 20:f}" '''), {'a', 'D'})
+        self.assertEqual(accessed_vars('''k, "a.txt", "b.txt", skip=True '''), {'k', 'skip', 'True'})
+        # this is a complicated case because the actual variable depends on the
+        # result of an expression... However, in the NO-evaluation case, this is
+        # the best we can do.
+        self.assertEqual(accessed_vars('''c + "${D + '${E}'}" '''), {'c', 'D', 'E'})
+
     def testProgressBar(self):
         '''Test progress bar'''
         env.verbosity = 2
@@ -265,7 +279,7 @@ class TestUtils(unittest.TestCase):
 [5]
 ''')
         wf = script.workflow()
-        Base_Execurot(wf).run()
+        Base_Executor(wf).run()
         # progress bar with nested workflow
         script = SoS_Script('''
 import time
@@ -342,6 +356,46 @@ b
             100000,
             timeit.timeit(ni_stmt, setup=setup_stmt, number=100000)))
 
+    def testAnalyzeSection(self):
+        '''Test analysis of sections (statically)'''
+        script = SoS_Script('''
+g1 = 'a'
+g2 = 1
+parameter: p1 = 5
+parameter: infiles = 'a.txt'
+
+[A_1: shared='b']
+b = p1 + 2
+input:  infiles
+output: None
+
+[A_2]
+b = [1, 2, 3]
+input: for_each='b'
+depends: 'some.txt', executable('ls')
+import time
+import random
+
+r = random.randint(5)
+time.sleep(r)
+''')
+        wf = script.workflow('A')
+        for section in wf.sections:
+            res = analyze_section(section)
+            if section.names[0][1] == '1':
+                self.assertTrue(isinstance(res['step_input'], Undetermined))
+                self.assertEqual(res['step_depends'], [])
+                self.assertEqual(res['step_output'], [])
+                self.assertEqual(res['environ_vars'], {'p1'})
+                self.assertEqual(res['signature_vars'], set())
+                self.assertEqual(res['changed_vars'], {'b'})
+            elif section.names[0][1] == '2':
+                self.assertEqual(res['step_input'], [])
+                self.assertEqual(res['step_depends'], ['some.txt', executable('ls')])
+                self.assertTrue(isinstance(res['step_output'], Undetermined))
+                self.assertEqual(res['environ_vars'], set())
+                self.assertEqual(res['signature_vars'], {'import', 'r', 'randint', 'time', 'random', 'sleep'})
+                self.assertEqual(res['changed_vars'], set())
 
     def testOnDemandOptions(self):
         '''Test options that are evaluated upon request.'''
