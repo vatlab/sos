@@ -972,12 +972,12 @@ def sos_handle_parameter_(key, defvalue):
             if '_' in key:
                 feature_parser = parser.add_mutually_exclusive_group(required=True)
                 feature_parser.add_argument('--{}'.format(key), dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
-                    help='', nargs='+' if hasattr(defvalue, '__iter__') else '?')
+                    help='', nargs='+' if defvalue != str and hasattr(defvalue, '__iter__') else '?')
                 feature_parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
-                    help='', nargs='+' if hasattr(defvalue, '__iter__') else '?')
+                    help='', nargs='+' if defvalue != str and hasattr(defvalue, '__iter__') else '?')
             else:
                 parser.add_argument('--{}'.format(key), dest=key, type=str if hasattr(defvalue, '__iter__') else defvalue,
-                    help='', required=True, nargs='+' if hasattr(defvalue, '__iter__') else '?')
+                    help='', required=True, nargs='+' if defvalue != str and hasattr(defvalue, '__iter__') else '?')
     else:
         if isinstance(defvalue, bool):
             feature_parser = parser.add_mutually_exclusive_group(required=False)

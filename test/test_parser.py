@@ -290,6 +290,14 @@ parameter: b = int
         wf = script.workflow()
         Base_Executor(wf, args=['--b', '5']).prepare()
         self.assertEqual(env.sos_dict['b'], 5)
+        # string
+        script = SoS_Script('''
+parameter: b = str
+[0]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, args=['--b', '5']).prepare()
+        self.assertEqual(env.sos_dict['b'], '5')
         # list is ok
         script = SoS_Script('''
 parameter: b = list
