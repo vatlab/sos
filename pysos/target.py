@@ -21,9 +21,10 @@
 #
 import os
 import sys
+import types
 import hashlib
 import shutil
-from .utils import env, Error
+from .utils import env, Error, WorkflowDict
 from .sos_eval import Undetermined
 
 __all__ = ['dynamic', 'executable']
@@ -246,7 +247,7 @@ class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.
     '''
-    def __init__(self, script, input_files=[], output_files=[], dependent_files = []):
+    def __init__(self, script, input_files=[], output_files=[], dependent_files = [], signature_vars = []):
         '''Runtime information for specified output files
 
         output_files:
@@ -279,6 +280,8 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Output files must be a list of filenames or Undetermined for runtime signature.')
         
+        self.signature_vars = signature_vars
+
         self.sig_files = []
 
         if isinstance(self.output_files, Undetermined) or not self.output_files:
@@ -353,7 +356,15 @@ class RuntimeInfo:
                 else:
                     return False
             md5.write('# context\n')
-            md5.write('{}\n'.format(self.script))
+            for var in sorted(self.signature_vars):
+                # var can be local and not passed as outside environment
+                if var in env.sos_dict:
+                    if isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
+                        md5.write('{} = {!r}\n'.format(var, env.sos_dict[var]))
+                    else:
+                        env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, env.sos_dict[var]))
+            md5.write('# step process\n')
+            md5.write(self.script)
         return True
 
     def validate(self):
@@ -374,7 +385,7 @@ class RuntimeInfo:
                 return False
         #
         files_checked = {x.fullname():False for x in self.sig_files if not isinstance(x, Undetermined)}
-        res = {'input': [], 'output': [], 'depends': []}
+        res = {'input': [], 'output': [], 'depends': [], 'vars': {}}
         cur_type = 'input'
         with open(self.proc_info) as md5:
             cmdMD5 = md5.readline().strip()   # command
@@ -392,9 +403,18 @@ class RuntimeInfo:
                     elif line == '# dependent\n':
                         cur_type = 'depends'
                     elif line == '# context\n':
+                        cur_type = 'context'
+                    elif line == '# step process\n':
                         break
                     else:
                         env.logger.trace('Unrecognized line in sig file {}'.format(line))
+                    continue
+                if cur_type == 'context':
+                    key, value = line.split('=', 1)
+                    try:
+                        res['vars'][key.strip()] = eval(value.strip())
+                    except Exception as e:
+                        env.logger.warning('Variable {} with value {} cannot be restored from signature'.format(key, value.strip()))
                     continue
                 try:
                     f, m = line.rsplit('\t', 1)

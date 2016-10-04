@@ -221,6 +221,9 @@ class Base_Executor:
                     changed_vars = v
                 else:
                     env.sos_dict.set(k, v)
+
+            # parameters, if used in the step, should be considered environmental
+            environ_vars |= env.parameter_vars & signature_vars
             #
             # build DAG with input and output files of step
             #
@@ -281,6 +284,9 @@ class Base_Executor:
                         changed_vars = v
                     else:
                         env.sos_dict.set(k, v)
+
+                # parameters, if used in the step, should be considered environmental
+                environ_vars |= env.parameter_vars & signature_vars
                 #
                 if isinstance(env.sos_dict['__step_output__'], (type(None), Undetermined)):
                     raise RuntimeError('Output of auxiliary step cannot be undetermined, output containing {} is expected.'.format(target))
@@ -389,6 +395,12 @@ class Base_Executor:
             #
             res = analyze_section(section, default_input)
 
+            environ_vars = res['environ_vars'] - self._base_symbols
+            signature_vars = res['signature_vars'] - self._base_symbols
+            changed_vars = res['changed_vars']
+            # parameters, if used in the step, should be considered environmental
+            environ_vars |= env.parameter_vars & signature_vars
+
             # NOTE: if a section has option 'alias', the execution of this step would
             # change dictionary, essentially making all later steps rely on this step.
             dag.add_step(section.uuid,
@@ -397,9 +409,9 @@ class Base_Executor:
                 res['step_input'],
                 res['step_depends'],
                 res['step_output'],
-                context={'__signature_vars__': res['signature_vars'] - self._base_symbols,
-                    '__environ_vars__': res['environ_vars'] - self._base_symbols,
-                    '__changed_vars__': res['changed_vars']})
+                context={'__signature_vars__': signature_vars,
+                    '__environ_vars__': environ_vars,
+                    '__changed_vars__': changed_vars })
             default_input = res['step_output']
         #
         self.resolve_dangling_targets(dag, targets)

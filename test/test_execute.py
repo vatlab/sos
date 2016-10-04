@@ -1097,6 +1097,64 @@ cp ${_input} ${_dest}
         env.sig_mode = 'default'
         shutil.rmtree('temp')
 
+    def testSignatureWithSharedVariable(self):
+        '''Test restoration of signature from variables.'''
+        FileTarget('a.txt').remove('both')
+        # shared 
+        script = SoS_Script(r"""
+import time
+[0: shared='a']
+output: 'a.txt'
+run:
+   sleep 3
+   touch a.txt
+
+a= 5
+
+[1]
+print(a)
+
+""")
+        # alias should also be recovered.
+        wf = script.workflow('default')
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 3)
+        # rerun
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 1)
+        FileTarget('a.txt').remove('both')
+
+    def testSignatureWithAlias(self):
+        '''Test restoration of signature from alias'''
+        FileTarget('a.txt').remove('both')
+        # for alias
+        script = SoS_Script(r"""
+import time
+[0: alias='a']
+output: 'a.txt'
+run:
+   sleep 3
+   touch a.txt
+
+b = 5
+
+[1]
+print(a.b)
+
+""")
+        # alias should also be recovered.
+        wf = script.workflow('default')
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 3)
+        # rerun
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 1)
+        FileTarget('a.txt').remove('both')
+
 
     def testSignatureWithoutOutput(self):
         # signature without output file

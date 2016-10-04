@@ -368,6 +368,7 @@ parameter: infiles = 'a.txt'
 b = p1 + 2
 input:  infiles
 output: None
+c = 5
 
 [A_2]
 b = [1, 2, 3]
@@ -378,6 +379,11 @@ import random
 
 r = random.randint(5)
 time.sleep(r)
+
+[A_3]
+input: None
+print(p1)
+
 ''')
         wf = script.workflow('A')
         for section in wf.sections:
@@ -387,7 +393,7 @@ time.sleep(r)
                 self.assertEqual(res['step_depends'], [])
                 self.assertEqual(res['step_output'], [])
                 self.assertEqual(res['environ_vars'], {'p1', 'infiles'})
-                self.assertEqual(res['signature_vars'], set())
+                self.assertEqual(res['signature_vars'], {'c'})
                 self.assertEqual(res['changed_vars'], {'b'})
             elif section.names[0][1] == '2':
                 self.assertEqual(res['step_input'], [])

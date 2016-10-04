@@ -84,7 +84,7 @@ class StepInfo(object):
         return '{' + ', '.join('{}: {!r}'.format(x,y) for x,y in self.__dict__.items()) + '}'
 
 def execute_task(task, global_def, sos_dict, sigil):
-    '''A function that execute specified task within a local dictionary 
+    '''A function that execute specified task within a local dictionary
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
     process or remotely on a different machine.'''
@@ -96,7 +96,7 @@ def execute_task(task, global_def, sos_dict, sigil):
         env.sos_dict.quick_update(sos_dict)
         SoS_exec('import os, sys, glob')
         SoS_exec('from pysos.runtime import *')
-        # re-execute global definition because some of the definitions in the 
+        # re-execute global definition because some of the definitions in the
         # global section might not be pickaleable (e.g. functions) and cannot
         # be passed to this separate process.
         if global_def:
@@ -111,7 +111,7 @@ def execute_task(task, global_def, sos_dict, sigil):
 
 
 def analyze_section(section, default_input=None):
-    '''Analyze a section for how it uses input and output, what variables 
+    '''Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc.'''
     from .sos_executor import __null_func__
     from ._version import __version__
@@ -146,7 +146,7 @@ def analyze_section(section, default_input=None):
 
     #
     # Here we need to get "contant" values from the global section
-    # Because parameters are considered variable, they has to be 
+    # Because parameters are considered variable, they has to be
     # removed. We achieve this by removing function sos_handle_parameter_
     # from the SoS_dict namespace
     #
@@ -211,7 +211,7 @@ if 'sos_handle_parameter_' in globals():
             # if anything is not evalutable, keep Undetermined
             env.logger.debug('Input of step {}_{} is set to Undertermined: {}'
                 .format(section.name, section.index, e))
-            # expression ... 
+            # expression ...
             step_input = Undetermined(stmt)
         input_statement_idx += 1
     else:
@@ -222,7 +222,7 @@ if 'sos_handle_parameter_' in globals():
     for statement in section.statements[input_statement_idx:]:
         # if input is undertermined, we can only process output:
         if statement[0] == '=':
-            signature_vars |= accessed_vars(statement[2], section.sigil)
+            signature_vars |= accessed_vars(statement[1] + '=' + statement[2], section.sigil)
         elif statement[0] == ':':
             key, value, _ = statement[1:]
             # output, depends, and process can be processed multiple times
@@ -266,7 +266,7 @@ class Base_Step_Executor:
     def expand_input_files(self, value, *args):
         '''Process input files (perhaps a pattern) to determine input files.
 
-        ret: 
+        ret:
             Return a file list or Undetermined.
         '''
         raise RuntimeError('Undefined virtual function.')
@@ -274,7 +274,7 @@ class Base_Step_Executor:
     def expand_depends_files(self, *args):
         '''Process dependent files (perhaps a pattern) to determine input files.
 
-        ret: 
+        ret:
             Return a file list or Undetermined.
         '''
         raise RuntimeError('Undefined virtual function.')
@@ -324,7 +324,7 @@ class Base_Step_Executor:
             return [ifiles[i:i + group_by] for i in range(0, len(ifiles), group_by)]
         else:
             raise ValueError('Unsupported group_by option ``{}``!'.format(group_by))
-    
+
     @staticmethod
     def handle_paired_with(paired_with, ifiles, _groups, _vars):
         '''Handle input option paired_with'''
@@ -584,9 +584,20 @@ class Base_Step_Executor:
             step_info.set('output', env.sos_dict['output'])
             step_info.set('depends', env.sos_dict['depends'])
             # the step might be skipped
-            for statement in self.step.statements:
-                if statement[0] == '=' and statement[1] in env.sos_dict and pickleable(env.sos_dict[statement[1]]):
-                    step_info.set(statement[1], env.sos_dict[statement[1]])
+            # if in prepare mode, there is no __environ_vars etc. This should be fixed
+            # in later work on prepare mode
+            if env.run_mode == 'prepare':
+                for statement in self.step.statements:
+                     if statement[0] == '=' and statement[1] in env.sos_dict and pickleable(env.sos_dict[statement[1]]):
+                         step_info.set(statement[1], env.sos_dict[statement[1]])
+            else:
+                for var in env.sos_dict['__environ_vars__'] | env.sos_dict['__signature_vars__']:
+                    if not var in env.sos_dict:
+                        continue
+                    if isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
+                        step_info.set(var, env.sos_dict[var])
+                    else:
+                        env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, env.sos_dict[var]))
             result[self.step.options['alias']] = copy.deepcopy(step_info)
             result['__changed_vars__'].add(self.step.options['alias'])
         if 'shared' in self.step.options:
@@ -597,7 +608,8 @@ class Base_Step_Executor:
                 raise ValueError('Option shared should be one or list of strings. {} provided'.format(vars))
             for var in vars:
                 if var not in env.sos_dict:
-                    raise RuntimeError('Variable {} is not defined to shared.'.format(var))
+                    raise RuntimeError('Shared variable {} is not defined in step {}.'
+                        .format(var, env.sos_dict['step_name']))
                 result[var] = env.sos_dict[var]
             result['__changed_vars__'] |= set(vars)
         if hasattr(env, 'accessed_vars'):
@@ -613,10 +625,10 @@ class Base_Step_Executor:
         self.last_res = None
         #
         self.log('start')
-        # 
+        #
         # prepare environments, namely variables that can be used by the step
         #
-        # * step_name:  name of the step, can be used by step process to determine 
+        # * step_name:  name of the step, can be used by step process to determine
         #               actions dynamically.
         if isinstance(self.step.index, int):
             env.sos_dict.set('step_name', '{}_{}'.format(self.step.name, self.step.index))
@@ -626,7 +638,7 @@ class Base_Step_Executor:
         env.sos_dict.set('__step_context__', self.step.context)
 
         # * input:      input files, which should be __step_output__ if it is defined, or
-        #               None otherwise. 
+        #               None otherwise.
         # * _input:     first batch of input, which should be input if no input statement is used
         # * output:     None at first, can be redefined by output statement
         # * _output:    None at first, can be redefined by output statement
@@ -702,9 +714,9 @@ class Base_Step_Executor:
             input_statement_idx = 0
 
         self.log('input')
-        
+
         self.proc_results = []
-        # run steps after input statement, which will be run multiple times for each input 
+        # run steps after input statement, which will be run multiple times for each input
         # group.
         env.sos_dict.set('__num_groups__', len(self._groups))
 
@@ -746,13 +758,16 @@ class Base_Step_Executor:
                             sg = self.step_signature(idx)
                             if sg is not None and not isinstance(g, Undetermined):
                                 signatures[idx] = RuntimeInfo(sg, env.sos_dict['_input'],
-                                    env.sos_dict['_output'], env.sos_dict['_depends'])
+                                    env.sos_dict['_output'], env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
                                 if env.sig_mode == 'default':
                                     res = signatures[idx].validate()
                                     if res:
                                         # in this case, an Undetermined output can get real output files
                                         # from a signature
-                                        ofiles = res['output']
+                                        env.sos_dict.set('input', res['input'])
+                                        env.sos_dict.set('depends', res['depends'])
+                                        env.sos_dict.set('output', res['output'])
+                                        env.sos_dict.update(res['vars'])
                                         env.logger.info('Step ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
                                         skip_index = True
                                 elif env.sig_mode == 'assert':
@@ -902,7 +917,7 @@ def _expand_file_list(ignore_unknown, *args):
         else:
             expanded = sorted(glob.glob(os.path.expanduser(ifile)))
             # no matching file ... but this is not a problem at the
-            # inspection stage. 
+            # inspection stage.
             #
             # NOTE: if a DAG is given, the input file can be output from
             # a previous step..
@@ -978,7 +993,7 @@ class SP_Step_Executor(Queued_Step_Executor):
         if self.step.task:
             tokens.extend(_get_tokens(self.step.task))
 
-        return ''.join(tokens)
+        return ' '.join(tokens)
 
     def log(self, stage=None, msg=None):
         if stage == 'start':
@@ -1019,20 +1034,11 @@ class SP_Step_Executor(Queued_Step_Executor):
         if env.sig_mode == 'ignore':
             return None
         env_vars = []
-        for var in sorted(env.sos_dict['__signature_vars__']):
-            # var can be local and not passed as outside environment
-            if var in env.sos_dict:
-                if callable(env.sos_dict[var]):
-                    env.logger.warning('Callable variable {} is ignored from step signature'.format(var))
-                    continue
-                if isinstance(env.sos_dict[var], (types.ModuleType, WorkflowDict)):
-                    env.logger.warning('Module or dict {} is ignored from step signature'.format(var))
-                    continue
-                if not isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
-                    env.logger.warning('Variable {} of non-basic type {} is included in step signature'.format(var, type(env.sos_dict[var])))
-                env_vars.append('{} = {}\n'.format(var, env.sos_dict[var]))
+        for var in sorted(env.sos_dict['__environ_vars__']):
+            if var in env.sos_dict and isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
+                env_vars.append('{} = {!r}\n'.format(var, env.sos_dict[var]))
 
-        return ''.join(env_vars) + '---\n' + self.step_tokens
+        return ''.join(env_vars) + '\n' + self.step_tokens
 
     def expand_depends_files(self, *args, **kwargs):
         '''handle directive depends'''
@@ -1058,7 +1064,7 @@ class SP_Step_Executor(Queued_Step_Executor):
             elif not target.exists('any'):
                 raise RuntimeError('Output target {} does not exist after the completion of step {}'
                             .format(target, env.sos_dict['step_name']))
-        
+
 
 class MP_Step_Executor(SP_Step_Executor):
     def __init__(self, step, queue):
@@ -1158,7 +1164,7 @@ class Celery_Step_Executor(SP_Step_Executor):
     def submit_task(self):
         # if concurrent is set, create a pool object
         from .celery import celery_execute_task
-        self.proc_results.append( 
+        self.proc_results.append(
             celery_execute_task.apply_async((     # function
             self.step.task,         # task
             self.step.global_def,   # global process
@@ -1188,7 +1194,7 @@ class Interactive_Step_Executor(Base_Step_Executor):
     def __init__(self, step):
         env.run_mode = 'interactive'
         Base_Step_Executor.__init__(self, step)
-    
+
     def expand_input_files(self, value, *args):
         # We ignore 'dynamic' option in run mode
         # if unspecified, use __step_output__ as input (default)

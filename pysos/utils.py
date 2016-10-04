@@ -315,6 +315,8 @@ class RuntimeEnvironments(object):
         self.sos_dict = WorkflowDict()
         # variables that are defined in global and parameters sections and are readonly
         self.readonly_vars = set()
+        # parameters of the workflow, which will be handled differently
+        self.parameter_vars = set()
         #
         # maximum number of concurrent jobs
         self.max_jobs = 1
@@ -947,6 +949,7 @@ def sos_handle_parameter_(key, defvalue):
         #env.logger.debug('Parameter {} takes default value because it already exists.'.format(key))
         return env.sos_dict[key]
 
+    env.parameter_vars.add(key)
     if not env.sos_dict['__args__']:
         if isinstance(defvalue, type):
             raise ArgumentError('Argument {} of type {} is required'.format(key, defvalue))
