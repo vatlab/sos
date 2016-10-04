@@ -409,7 +409,7 @@ class Base_Executor:
         if cycle:
             raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
 
-        dag.show_nodes()
+        #dag.show_nodes()
         return dag
 
     def run(self, targets=None):
