@@ -352,6 +352,8 @@ class RuntimeInfo:
                     md5.write('{}\t{}\n'.format(f, f.md5()))
                 else:
                     return False
+            md5.write('# context\n')
+            md5.write('{}\n'.format(self.script))
         return True
 
     def validate(self):
@@ -389,6 +391,8 @@ class RuntimeInfo:
                         cur_type = 'output'
                     elif line == '# dependent\n':
                         cur_type = 'depends'
+                    elif line == '# context\n':
+                        break
                     else:
                         env.logger.trace('Unrecognized line in sig file {}'.format(line))
                     continue

@@ -151,6 +151,7 @@ class Base_Executor:
         if 'skip' in section.options:
             val_skip = section.options['skip']
             if val_skip is None or val_skip is True:
+                env.logger.info('Step ``{}_{}`` is ``ignored`` due to skip option.'.format(section.name, section.index))
                 return True
             elif val_skip is not False:
                 raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
@@ -297,7 +298,7 @@ class Base_Executor:
                 # with identical names.
                 dag.add_step(section.uuid, '{} ({})'.format(res['__step_name__'], target), None, res['__step_input__'],
                     res['__step_depends__'], res['__step_output__'], context=context)
-            #dag.show_nodes()
+        #dag.show_nodes()
         #
         # at the end
         exception = env.sos_dict['__execute_errors__']
@@ -390,12 +391,11 @@ class Base_Executor:
                 res['step_input'],
                 res['step_depends'],
                 res['step_output'],
-                context={'__signature_vars__': res['signature_vars'],
-                    '__environ_vars__': res['environ_vars'],
+                context={'__signature_vars__': res['signature_vars'] - self._base_symbols,
+                    '__environ_vars__': res['environ_vars'] - self._base_symbols,
                     '__changed_vars__': res['changed_vars']})
             default_input = res['step_output']
         #
-        #dag.show_nodes()
         self.resolve_dangling_targets(dag, targets)
         # now, there should be no dangling targets, let us connect nodes
         dag.build(self.workflow.auxiliary_sections)
@@ -409,6 +409,7 @@ class Base_Executor:
         if cycle:
             raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
 
+        dag.show_nodes()
         return dag
 
     def run(self, targets=None):

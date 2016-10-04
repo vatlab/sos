@@ -24,6 +24,7 @@ import sys
 import copy
 import time
 import glob
+import types
 import fnmatch
 
 from io import StringIO
@@ -32,7 +33,7 @@ from collections.abc import Sequence, Iterable
 from itertools import tee, combinations
 
 from .utils import env, Error, AbortExecution, short_repr, \
-    get_traceback, pickleable, transcribe
+    get_traceback, pickleable, transcribe, WorkflowDict
 from .pattern import extract_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget
@@ -752,12 +753,15 @@ class Base_Step_Executor:
                                         # in this case, an Undetermined output can get real output files
                                         # from a signature
                                         ofiles = res['output']
+                                        env.logger.info('Step ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
                                         skip_index = True
                                 elif env.sig_mode == 'assert':
                                     if not signatures[idx].validate():
+                                        env.logger.info('Step ``{}`` (index={}) is ``rerun`` due to signature mismatch'.format(env.sos_dict['step_name'], idx))
                                         raise RuntimeError('Signature mismatch.')
                                 elif env.sig_mode == 'construct':
                                     if signatures[idx].write():
+                                        env.logger.info('Step ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
                                         skip_index = True
 
                             if skip_index:
@@ -1018,6 +1022,14 @@ class SP_Step_Executor(Queued_Step_Executor):
         for var in sorted(env.sos_dict['__signature_vars__']):
             # var can be local and not passed as outside environment
             if var in env.sos_dict:
+                if callable(env.sos_dict[var]):
+                    env.logger.warning('Callable variable {} is ignored from step signature'.format(var))
+                    continue
+                if isinstance(env.sos_dict[var], (types.ModuleType, WorkflowDict)):
+                    env.logger.warning('Module or dict {} is ignored from step signature'.format(var))
+                    continue
+                if not isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
+                    env.logger.warning('Variable {} of non-basic type {} is included in step signature'.format(var, type(env.sos_dict[var])))
                 env_vars.append('{} = {}\n'.format(var, env.sos_dict[var]))
 
         return ''.join(env_vars) + '---\n' + self.step_tokens
