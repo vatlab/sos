@@ -865,6 +865,63 @@ A_1 -> A_3;
             FileTarget(f).remove('both')
 
 
+    def testLiteralConnection(self):
+        '''Testing the connection of steps with by variables.'''
+        for f in ['A1.txt']:
+            FileTarget(f).remove('both')
+        #
+        # A1 introduces a shared variable ss, A3 depends on ss but not A2
+        #
+        script = SoS_Script('''
+[A_1: shared='p']
+sh:
+    touch 'A1.txt'
+
+p = 'A1.txt'
+
+[A_2]
+input: None
+
+sh:
+    sleep 3
+
+[A_3]
+input: p
+
+sh:
+    sleep 3
+
+[A_4]
+input: p
+sh:
+    sleep 3
+
+[A_5]
+input: dynamic(p)
+''')
+        wf = script.workflow('A')
+        dag = Base_Executor(wf).initialize_dag()
+        self.assertDAG(dag,
+'''
+strict digraph "" {
+A_1;
+A_4;
+A_2;
+A_3;
+A_5;
+A_1 -> A_4;
+A_1 -> A_3;
+A_1 -> A_5;
+A_4 -> A_5;
+}
+''')
+        env.max_jobs = 3
+        st = time.time()
+        MP_Executor(wf).run()
+        self.assertLess(time.time() - st, 5)
+        for f in ['A1.txt']:
+            self.assertTrue(FileTarget(f).exists())
+            FileTarget(f).remove('both')
 
 if __name__ == '__main__':
     unittest.main()

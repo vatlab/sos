@@ -188,15 +188,16 @@ if 'sos_handle_parameter_' in globals():
         for statement in section.statements[:input_statement_idx]:
             if statement[0] == '=':
                 # we do not get LHS because it must be local to the step
-                environ_vars |= accessed_vars(statement[2])
+                environ_vars |= accessed_vars(statement[2], section.sigil)
             elif statement[0] == ':':
                 raise RuntimeError('Step input should be specified before others')
             else:
-                environ_vars |= accessed_vars(statement[1])
+                environ_vars |= accessed_vars(statement[1], section.sigil)
         #
         # input statement
         stmt = section.statements[input_statement_idx][2]
         try:
+            environ_vars |= accessed_vars(stmt, section.sigil)
             args, kwargs = SoS_eval('__null_func__({})'.format(stmt), section.sigil)
             if not args:
                 if default_input is None:
@@ -209,7 +210,8 @@ if 'sos_handle_parameter_' in globals():
             # if anything is not evalutable, keep Undetermined
             env.logger.debug('Input of step {}_{} is set to Undertermined: {}'
                 .format(section.name, section.index, e))
-            pass
+            # expression ... 
+            step_input = Undetermined(stmt)
         input_statement_idx += 1
     else:
         # assuming everything starts from 0 is after input
@@ -219,7 +221,7 @@ if 'sos_handle_parameter_' in globals():
     for statement in section.statements[input_statement_idx:]:
         # if input is undertermined, we can only process output:
         if statement[0] == '=':
-            signature_vars |= accessed_vars(statement[2])
+            signature_vars |= accessed_vars(statement[2], section.sigil)
         elif statement[0] == ':':
             key, value, _ = statement[1:]
             # output, depends, and process can be processed multiple times
@@ -235,10 +237,10 @@ if 'sos_handle_parameter_' in globals():
             except Exception as e:
                 env.logger.debug("Args {} cannot be determined: {}".format(value, e))
         else: # statement
-            signature_vars |= accessed_vars(statement[1])
+            signature_vars |= accessed_vars(statement[1], section.sigil)
     # finally, tasks..
     if section.task:
-        signature_vars |= accessed_vars(section.task)
+        signature_vars |= accessed_vars(section.task, section.sigil)
     return {
         'step_name': '{}_{}'.format(section.name, section.index) if isinstance(section.index, int) else section.name,
         'step_input': step_input,

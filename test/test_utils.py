@@ -386,14 +386,15 @@ time.sleep(r)
                 self.assertTrue(isinstance(res['step_input'], Undetermined))
                 self.assertEqual(res['step_depends'], [])
                 self.assertEqual(res['step_output'], [])
-                self.assertEqual(res['environ_vars'], {'p1'})
+                self.assertEqual(res['environ_vars'], {'p1', 'infiles'})
                 self.assertEqual(res['signature_vars'], set())
                 self.assertEqual(res['changed_vars'], {'b'})
             elif section.names[0][1] == '2':
                 self.assertEqual(res['step_input'], [])
                 self.assertEqual(res['step_depends'], ['some.txt', executable('ls')])
                 self.assertTrue(isinstance(res['step_output'], Undetermined))
-                self.assertEqual(res['environ_vars'], set())
+                # for_each will not be used for DAG
+                self.assertEqual(res['environ_vars'], {'for_each'})
                 self.assertEqual(res['signature_vars'], {'import', 'r', 'randint', 'time', 'random', 'sleep'})
                 self.assertEqual(res['changed_vars'], set())
 

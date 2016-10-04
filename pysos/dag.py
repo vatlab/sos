@@ -109,8 +109,8 @@ class SoS_Node(object):
         return self._node_id
 
     def show(self):
-        print('{} ({}, {}): input {}, depends {}, output {}'.format(self._node_id, self._node_index, self._status, self._input_targets,
-            self._depends_targets, self._output_targets))
+        print('{} ({}, {}): input {}, depends {}, output {}, context {}'.format(self._node_id, self._node_index, self._status, self._input_targets,
+            self._depends_targets, self._output_targets, self._context))
 
 class SoS_DAG(nx.DiGraph):
     def __init__(self):
@@ -214,7 +214,19 @@ class SoS_DAG(nx.DiGraph):
             # 2. if the input of a step is undetermined, it has to be executed
             # after all its previous steps.
             if isinstance(node._input_targets, Undetermined) and idx > 0:
-                self.add_edge(indexed[idx-1], node)
+                # if there is some input specified, it does not use default
+                # input, so the relationship can be further looked before
+                if node._input_targets.expr:
+                    # if the input is dynamic, has to rely on previous step...
+                    if 'dynamic' in node._context['__environ_vars__']:
+                        self.add_edge(indexed[idx-1], node)
+                    else:
+                        # otherwise let us look back.
+                        for prev_node in indexed[idx -1 : :-1]:
+                            if node._context['__environ_vars__'] & prev_node._context['__changed_vars__']:
+                                self.add_edge(prev_node, node)
+                else:
+                    self.add_edge(indexed[idx-1], node)
         #
         # 3. if the input of a step depends on the output of another step
         for target, in_node in self._all_dependent_files.items():
