@@ -572,7 +572,7 @@ def fail_if(expr, msg=''):
         raise RuntimeError(msg)
     return 0
 
-@SoS_Action(run_mode=['prepare', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def warn_if(expr, msg=''):
     '''Yield an warning message `msg` if `expr` is False '''
     if expr:
@@ -744,7 +744,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
     return os.path.isfile(dest)
 
 
-@SoS_Action(run_mode=['prepare', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified
@@ -861,7 +861,7 @@ def R(script, **kwargs):
     return SoS_ExecuteScript(
         script, 'Rscript --default-packages=datasets,methods,utils,stats,grDevices,graphics ', '.R').run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def check_R_library(name, version = None, repos = 'http://cran.us.r-project.org'):
     '''Check existence and version match of R library.
     cran and bioc packages are unique yet might overlap with github.
