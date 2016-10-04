@@ -91,6 +91,7 @@ class Base_Executor:
             SoS_exec('import os, sys, glob')
             SoS_exec('from pysos.runtime import *')
             self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
+            self._base_symbols -= {'dynamic'}
             return
 
         env.sos_dict = WorkflowDict()
@@ -136,7 +137,7 @@ class Base_Executor:
         SoS_exec('import os, sys, glob')
         SoS_exec('from pysos.runtime import *')
         self._base_symbols = set(dir(builtins)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
-
+        self._base_symbols -= {'dynamic'}
 
     def skip(self, section):
         if section.global_def:
@@ -375,6 +376,11 @@ class Base_Executor:
     def initialize_dag(self, targets=None):
         '''Create a DAG by analyzing sections statically.'''
         '''Run the script in prepare mode to prepare resources.'''
+        # this is for testing only and allows tester to call initialize_dag
+        # directly to get a DAG
+        if not hasattr(self, '_base_symbols'):
+            self.reset_dict()
+
         dag = SoS_DAG()
         default_input = []
         for idx, section in enumerate(self.workflow.sections):
