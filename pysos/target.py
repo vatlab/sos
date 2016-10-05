@@ -43,7 +43,10 @@ class UnknownTarget(Error):
 def textMD5(text):
     '''Get md5 of a piece of text'''
     m = hashlib.md5()
-    m.update(text.encode())
+    if isinstance(text, str):
+        m.update(text.encode())
+    else:
+        m.update(text)
     return m.hexdigest()
 
 def fileMD5(filename, partial=True):

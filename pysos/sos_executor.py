@@ -535,9 +535,11 @@ class Base_Executor:
                 cycle = dag.circular_dependencies()
                 if cycle:
                     raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
+                dag.write_dot('_test.dot')
+                os.rename('_test.dot', 'test.dot')
             # if the job is failed
             elif isinstance(res, Exception):
-                raise RuntimeError(res)
+                raise res
             else:#
                 for k, v in res.items():
                     env.sos_dict.set(k, v)
@@ -555,13 +557,7 @@ class Base_Executor:
                 prog.progress(1)
             #env.logger.error('completed')
         prog.done()
-        # final summary
-        pending_steps = dag.pending()
-        if not pending_steps:
-            env.logger.info('Workflow {} has been executed successfully.'.format(self.workflow.name))
-        else:
-            env.logger.error('Workflow {} is terminated prematurally with {} failed steps: {}'
-                        .format(self.workflow.name, len(pending_steps), ', '.join(pending_steps)))
+
 
 
 class MP_Executor(Base_Executor):
@@ -574,6 +570,25 @@ class MP_Executor(Base_Executor):
 
     def step_executor(self, section, queue):
         return MP_Step_Executor(section, queue)
+
+    def summarize(self, dag):
+        # final summary
+        failed_steps, pending_steps = dag.pending()
+        if not failed_steps:
+            env.logger.info('Workflow {} has been executed successfully.'.format(self.workflow.name))
+        else:
+            if failed_steps:
+                env.logger.error('Failed steps:')
+                for x in failed_steps:
+                    section = self.workflow.section_by_id(x._step_uuid)
+                    env.logger.error('    {}: {}'.format(section.name, section.comment))
+            if pending_steps:
+                env.logger.error('Pending steps:')
+                for x in pending_steps:
+                    section = self.workflow.section_by_id(x._step_uuid)
+                    env.logger.error('    {}: {}'.format(section.name, section.comment))
+            raise RuntimeError('Workflow {} is terminated prematurally with {} failed and {} pending steps'
+                        .format(self.workflow.name, len(failed_steps), len(pending_steps)))
 
     def run(self, targets=None):
         '''Execute a workflow with specified command line args. If sub is True, this
@@ -621,7 +636,9 @@ class MP_Executor(Base_Executor):
                         raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
                 # if the job is failed
                 elif isinstance(res, Exception):
-                    raise RuntimeError(res)
+                    runnable._status = 'failed'
+                    prog.progress(1)
+                    procs[idx] = None
                 else:
                     #
                     for k, v in res.items():
@@ -692,7 +709,7 @@ class MP_Executor(Base_Executor):
             else:
                 time.sleep(0.1)
         prog.done()
-
+        self.summarize(dag)
 
 class RQ_Executor(MP_Executor):
     def __init__(self, workflow, args=[], config_file=None, nested=False):

@@ -435,14 +435,13 @@ class sos_namespace_(object):
 
 class on_demand_options(object):
     '''Expression that will be evaluated upon request.'''
-    def __init__(self, items={}):
+    def __init__(self, items={}, sigil='${ }'):
         self._expressions = {}
         self._expressions.update(items)
-        self._values = {}
+        self._sigil = sigil
 
     def set(self, key, value):
         self._expressions[key] = repr(value)
-        self._values[key] = value
 
     def __contains__(self, key):
         return key in self._expressions
@@ -452,23 +451,13 @@ class on_demand_options(object):
 
     def __getitem__(self, key):
         # first check if the value if cached
-        if key in self._values:
-            return self._values[key]
         if key not in self._expressions:
             raise KeyError(key)
-        # if the value is SoS independent, cache it
         try:
-            value = eval(self._expressions[key])
-            self._values[key] = value
-            return value
-        except:
-            # we have to get SoS involved, but we do not 
-            # cache result in this case.
-            try:
-                return SoS_eval(self._expressions[key])
-            except Exception as e:
-                raise ValueError('Failed to evaluate option {} with value {}: {}'
-                    .format(key, self._expressions[key], e))
+            return SoS_eval(self._expressions[key], self._sigil)
+        except Exception as e:
+            raise ValueError('Failed to evaluate option {} with value {}: {}'
+                .format(key, self._expressions[key], e))
 
     def __repr__(self):
         return repr(self._expressions)
