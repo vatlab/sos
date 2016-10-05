@@ -199,6 +199,21 @@ def cmd_run(args, workflow_args):
         sys.exit(1)
 
 #
+# command start
+#
+def cmd_start(args, unknown_args):
+    import subprocess
+    if args.server_type == 'server':
+        # TODO: run it in background so that sos would quit
+        # TODO: write .sos/redis_connection.yaml
+        subprocess.call('redis-server')
+    elif args.server_type == 'worker':
+        # read .sos/redis_connection.yaml
+        # test redis connection???
+        # write .sos/rq_worker_settings.py
+        subprocess.call('rq worker -c .sos/rq_worker_settings')
+
+#
 # subcommand config
 #
 def cmd_config(args, workflow_args):

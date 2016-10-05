@@ -24,7 +24,7 @@ import sys
 import argparse
 
 from pysos._version import SOS_FULL_VERSION
-from pysos.main import cmd_run, cmd_inspect, cmd_prepare, cmd_convert, cmd_config
+from pysos.main import cmd_run, cmd_inspect, cmd_prepare, cmd_convert, cmd_config, cmd_start
 
 def addCommonArgs(parser):
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
@@ -222,6 +222,12 @@ if __name__ == '__main__':
             code cell with report.)''')
     addCommonArgs(parser)
     parser.set_defaults(func=cmd_convert)
+    #
+    #
+    parser = subparsers.add_parser('start',
+        description='''Start server or worker''')
+    parser.add_argument('server_type', choices=('server', 'worker'), metavar='TYPE')
+    parser.set_defaults(func=cmd_start)
     #
     # command config
     #
