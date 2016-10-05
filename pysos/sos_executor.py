@@ -701,8 +701,25 @@ class RQ_Executor(MP_Executor):
 
         from rq import Queue as rqQueue
         from redis import Redis
+        import yaml
 
-        redis_conn = Redis()
+        connection_file = os.path.join(env.exec_dir, '.sos', 'redis_connection.yaml')
+        if os.path.isfile(connection_file):
+            try:
+                with open(connection_file) as conn:
+                    cfg = yaml.safe_load(conn)
+                if cfg is None:
+                    cfg = {}
+            except Exception as e:
+                env.logger.error('Failed to parse redis connection file {}. ({}}'.format(connection_file, e))
+                sys.exit(1)
+            try:
+                redis_conn = Redis(host=cfg['host'], port=cfg.get('port', 6379))
+            except Exception as e:
+                env.logger.error('Failed to connect to redis server: {}'.format(e))
+                sys.exit(1)
+        else:
+            redis_conn = Redis()
         self.redis_queue = rqQueue(connection=redis_conn)
 
     def step_executor(self, section, queue):
