@@ -243,6 +243,37 @@ class executable(BaseTarget):
     def __eq__(self, obj):
         return isinstance(obj, executable) and self._cmd == obj._cmd
 
+class sos_variable(BaseTarget):
+    '''A target for a SoS variable.'''
+    def __init__(self, var):
+        self._var = var
+
+    def exists(self, mode='any'):
+        return self._var in env.sos_dict
+
+    def fullname(self):
+        return 'sos_variable {}'.format(self._var)
+
+    def __repr__(self):
+        return 'sos_variable("{}")'.format(self._var)
+
+    def calc_md5(self):
+        return textMD5(self._var)
+
+    def md5(self):
+        return textMD5(self._var)
+
+    def write_sig(self):
+        '''Write .file_info file with signature'''
+        pass
+
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __eq__(self, obj):
+        return isinstance(obj, sos_variable) and self._var == obj._var
+
+
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.

@@ -440,6 +440,10 @@ class on_demand_options(object):
         self._expressions.update(items)
         self._values = {}
 
+    def set(self, key, value):
+        self._expressions[key] = repr(value)
+        self._values[key] = value
+
     def __contains__(self, key):
         return key in self._expressions
 
@@ -466,3 +470,5 @@ class on_demand_options(object):
                 raise ValueError('Failed to evaluate option {} with value {}: {}'
                     .format(key, self._expressions[key], e))
 
+    def __repr__(self):
+        return repr(self._expressions)

@@ -49,6 +49,8 @@ class ParsingError(Error):
         self.args = (filename, )
 
     def append(self, lineno, line, msg):
+        if (lineno, line) in self.errors:
+            return
         self.errors.append((lineno, line))
         self.message += '\n\t[line %2d]: %s\n%s' % (lineno, line, msg)
 
@@ -329,7 +331,7 @@ class SoS_Workflow:
         #
         for section in sections:
             for name, index in section.names:
-                if 'provides' in section.options:
+                if 'provides' in section.options or 'alias' in section.options or 'shared' in section.options:
                     self.auxiliary_sections.append(section)
                     self.auxiliary_sections[-1].name = section.names[0][0]
                     self.auxiliary_sections[-1].uuid = uuid4()
@@ -1062,7 +1064,7 @@ for __n, __v in {}.items():
         sections = []
         for section in self.sections:
             # skip, skip=True, skip=1 etc are all allowed.
-            if 'provides' in section.options:
+            if 'provides' in section.options or 'alias' in section.options or 'shared' in section.options:
                 # section global is shared by all workflows
                 sections.append(section)
                 continue

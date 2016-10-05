@@ -39,7 +39,7 @@ from .sos_eval import Undetermined, SoS_exec
 from .sos_script import SoS_Script
 from .sos_syntax import SOS_SECTION_HEADER, SOS_KEYWORDS
 from .dag import SoS_DAG
-from .target import BaseTarget, FileTarget, UnknownTarget
+from .target import BaseTarget, FileTarget, UnknownTarget, sos_variable
 from .pattern import extract_pattern
 
 __all__ = []
@@ -67,6 +67,8 @@ class ExecuteError(Error):
             short_line = '<empty>'
         else:
             short_line = lines[0][:40] if len(lines[0]) > 40 else lines[0]
+        if short_line in self.errors:
+            return
         self.errors.append(short_line)
         self.traces.append(get_traceback())
         if isinstance(error, Exception):
@@ -401,6 +403,17 @@ class Base_Executor:
             # parameters, if used in the step, should be considered environmental
             environ_vars |= env.parameter_vars & signature_vars
 
+            # add shared to targets
+            if res['changed_vars']:
+                if 'provides' in section.options:
+                    if isinstance(section.options['provides'], str):
+                        section.options.set('provides', [section.options['provides']])
+                else:
+                    section.options.set('provides', [])
+                #
+                section.options.set('provides',
+                    section.options['provides'] + [sos_variable(var) for var in changed_vars])
+
             # NOTE: if a section has option 'alias', the execution of this step would
             # change dictionary, essentially making all later steps rely on this step.
             dag.add_step(section.uuid,
@@ -413,6 +426,26 @@ class Base_Executor:
                     '__environ_vars__': environ_vars,
                     '__changed_vars__': changed_vars })
             default_input = res['step_output']
+        #
+        # analyze auxiliary steps
+        for idx, section in enumerate(self.workflow.auxiliary_sections):
+            res = analyze_section(section, default_input)
+            environ_vars = res['environ_vars'] - self._base_symbols
+            signature_vars = res['signature_vars'] - self._base_symbols
+            changed_vars = res['changed_vars']
+            # parameters, if used in the step, should be considered environmental
+            environ_vars |= env.parameter_vars & signature_vars
+
+            # add shared to targets
+            if res['changed_vars']:
+                if 'provides' in section.options:
+                    if isinstance(section.options['provides'], str):
+                        section.options.set('provides', [section.options['provides']])
+                else:
+                    section.options.set('provides', [])
+                #
+                section.options.set('provides',
+                    section.options['provides'] + [sos_variable(var) for var in changed_vars])
         #
         self.resolve_dangling_targets(dag, targets)
         # now, there should be no dangling targets, let us connect nodes

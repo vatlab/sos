@@ -934,6 +934,8 @@ b = 1
 k = 2
 
 [all: shared='p']
+depends: sos_variable('c'), sos_variable('b')
+
 p = c.k + b
 
 ''')

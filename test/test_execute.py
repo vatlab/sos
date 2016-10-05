@@ -713,7 +713,7 @@ check_command('a4')
         try:
             Base_Executor(wf).prepare()
         except Exception as e:
-            self.assertEqual(len(e.errors), 6)
+            self.assertEqual(len(e.errors), 5)
 
     def testSearchPath(self):
         '''Test if any action should exit in five seconds in prepare mode'''

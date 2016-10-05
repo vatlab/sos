@@ -580,27 +580,7 @@ class Base_Step_Executor:
             result['__execute_errors__'] = env.sos_dict['__execute_errors__']
         result['__changed_vars__'] = set()
         if 'alias' in self.step.options:
-            step_info = StepInfo()
-            step_info.set('step_name', env.sos_dict['step_name'])
-            step_info.set('input', env.sos_dict['input'])
-            step_info.set('output', env.sos_dict['output'])
-            step_info.set('depends', env.sos_dict['depends'])
-            # the step might be skipped
-            # if in prepare mode, there is no __environ_vars etc. This should be fixed
-            # in later work on prepare mode
-            if env.run_mode == 'prepare':
-                for statement in self.step.statements:
-                     if statement[0] == '=' and statement[1] in env.sos_dict and pickleable(env.sos_dict[statement[1]]):
-                         step_info.set(statement[1], env.sos_dict[statement[1]])
-            else:
-                for var in env.sos_dict['__environ_vars__'] | env.sos_dict['__signature_vars__']:
-                    if not var in env.sos_dict:
-                        continue
-                    if isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
-                        step_info.set(var, env.sos_dict[var])
-                    else:
-                        env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, env.sos_dict[var]))
-            result[self.step.options['alias']] = copy.deepcopy(step_info)
+            result[self.step.options['alias']] = copy.deepcopy(env.sos_dict[self.step.options['alias']])
             result['__changed_vars__'].add(self.step.options['alias'])
         if 'shared' in self.step.options:
             vars = self.step.options['shared']
@@ -614,6 +594,7 @@ class Base_Step_Executor:
                         .format(var, env.sos_dict['step_name']))
                 result[var] = env.sos_dict[var]
             result['__changed_vars__'] |= set(vars)
+
         if hasattr(env, 'accessed_vars'):
             result['__environ_vars__'] = self.environ_vars
             result['__signature_vars__'] = env.accessed_vars
@@ -869,6 +850,30 @@ class Base_Step_Executor:
                 # not available in prepare mode.
                 sig.write()
         self.log('output')
+        #
+        # alias output needs to be inserted here
+        if 'alias' in self.step.options:
+            step_info = StepInfo()
+            step_info.set('step_name', env.sos_dict['step_name'])
+            step_info.set('input', env.sos_dict['input'])
+            step_info.set('output', env.sos_dict['output'])
+            step_info.set('depends', env.sos_dict['depends'])
+            # the step might be skipped
+            # if in prepare mode, there is no __environ_vars etc. This should be fixed
+            # in later work on prepare mode
+            if env.run_mode == 'prepare':
+                for statement in self.step.statements:
+                     if statement[0] == '=' and statement[1] in env.sos_dict and pickleable(env.sos_dict[statement[1]]):
+                         step_info.set(statement[1], env.sos_dict[statement[1]])
+            else:
+                for var in env.sos_dict['__environ_vars__'] | env.sos_dict['__signature_vars__']:
+                    if not var in env.sos_dict:
+                        continue
+                    if isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
+                        step_info.set(var, env.sos_dict[var])
+                    else:
+                        env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, env.sos_dict[var]))
+            env.sos_dict.set(self.step.options['alias'], copy.deepcopy(step_info))
         self.verify_output()
         return self.collect_result()
 
