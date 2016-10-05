@@ -555,6 +555,13 @@ class Base_Executor:
                 prog.progress(1)
             #env.logger.error('completed')
         prog.done()
+        # final summary
+        pending_steps = dag.pending()
+        if not pending_steps:
+            env.logger.info('Workflow {} has been executed successfully.'.format(self.workflow.name))
+        else:
+            env.logger.error('Workflow {} is terminated prematurally with {} failed steps: {}'
+                        .format(self.workflow.name, len(pending_steps), ', '.join(pending_steps)))
 
 
 class MP_Executor(Base_Executor):
