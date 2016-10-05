@@ -279,8 +279,9 @@ def accessed_vars(statement, sigil='${ }'):
 
     left_sigil = sigil.split(' ')[0]
     result = set()
+    prev_tok = None
     for toknum, tokval, _, _, _  in generate_tokens(StringIO(statement).readline):
-        if toknum == NAME:
+        if toknum == NAME and prev_tok != '.':
             result.add(tokval)
         if toknum == STRING and left_sigil in tokval:
             # if it is a string, check if variables used during
@@ -288,6 +289,7 @@ def accessed_vars(statement, sigil='${ }'):
             ss = SoS_String(sigil, {}, True)
             ss.interpolate(eval(tokval))
             result |= ss.accessed_vars
+        prev_tok = tokval
     return result
 
 def SoS_eval(expr, sigil='${ }'):

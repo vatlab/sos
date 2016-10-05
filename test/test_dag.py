@@ -923,5 +923,24 @@ A_4 -> A_5;
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')
 
+
+    def testVariableTarget(self):
+        '''Test dependency caused by variable usage.'''
+        script = SoS_Script(r'''
+[A: shared='b']
+b = 1
+
+[C: alias='c']
+k = 2
+
+[all: shared='p']
+p = c.k + b
+
+''')
+        wf = script.workflow('all')
+        Base_Executor(wf).run()
+        self.assertTrue(env.sos_dict['p'], 3)
+
+
 if __name__ == '__main__':
     unittest.main()

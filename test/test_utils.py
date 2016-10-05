@@ -401,7 +401,7 @@ print(p1)
                 self.assertTrue(isinstance(res['step_output'], Undetermined))
                 # for_each will not be used for DAG
                 self.assertEqual(res['environ_vars'], {'for_each'})
-                self.assertEqual(res['signature_vars'], {'import', 'r', 'randint', 'time', 'random', 'sleep'})
+                self.assertEqual(res['signature_vars'], {'import', 'r', 'time', 'random'})
                 self.assertEqual(res['changed_vars'], set())
 
     def testOnDemandOptions(self):

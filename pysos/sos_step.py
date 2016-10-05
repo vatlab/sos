@@ -129,6 +129,7 @@ def analyze_section(section, default_input=None):
     environ_vars = set()
     signature_vars = set()
     changed_vars = set()
+    local_vars = set()
     #
     # 1. execute global definition to get a basic environment
     #
@@ -189,6 +190,7 @@ if 'sos_handle_parameter_' in globals():
         for statement in section.statements[:input_statement_idx]:
             if statement[0] == '=':
                 # we do not get LHS because it must be local to the step
+                local_vars |= accessed_vars(statement[1], section.sigil)
                 environ_vars |= accessed_vars(statement[2], section.sigil)
             elif statement[0] == ':':
                 raise RuntimeError('Step input should be specified before others')
@@ -222,7 +224,7 @@ if 'sos_handle_parameter_' in globals():
     for statement in section.statements[input_statement_idx:]:
         # if input is undertermined, we can only process output:
         if statement[0] == '=':
-            signature_vars |= accessed_vars(statement[1] + '=' + statement[2], section.sigil)
+            signature_vars |= accessed_vars('='.join(statement[1:3]), section.sigil)
         elif statement[0] == ':':
             key, value, _ = statement[1:]
             # output, depends, and process can be processed multiple times
@@ -247,7 +249,7 @@ if 'sos_handle_parameter_' in globals():
         'step_input': step_input,
         'step_output': step_output,
         'step_depends': step_depends,
-        'environ_vars': environ_vars,
+        'environ_vars': environ_vars - local_vars,
         'signature_vars': signature_vars,
         'changed_vars': changed_vars
         }
