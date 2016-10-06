@@ -243,7 +243,8 @@ class Base_Executor:
                 mo = [(x, self.match(target, x.options['provides'])) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
                 if not mo:
-                    raise RuntimeError('No step to generate target {}'.format(target))
+                    raise RuntimeError('No step to generate target {} requested by {}'.format(target,
+                        ', '.join([x.step_name() for x in dag.steps_depending_on(target)])))
                 if len(mo) > 1:
                     raise RuntimeError('Multiple steps {} to generate target {}'.format(', '.join(str(x[0].options['provides']) for x in mo), target))
                 #
@@ -342,7 +343,8 @@ class Base_Executor:
                 mo = [(x, self.match(target, x.options['provides'])) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
                 if not mo:
-                    raise RuntimeError('No step to generate target {}'.format(target))
+                    raise RuntimeError('No step to generate target {} requested by {}'.format(target,
+                        ', '.join([x.step_name() for x in dag.steps_depending_on(target)])))
                 if len(mo) > 1:
                     raise RuntimeError('Multiple steps {} to generate target {}'.format(', '.join(str(x[0].options['provides']) for x in mo), target))
                 #
