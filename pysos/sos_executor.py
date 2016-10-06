@@ -154,7 +154,7 @@ class Base_Executor:
         if 'skip' in section.options:
             val_skip = section.options['skip']
             if val_skip is None or val_skip is True:
-                env.logger.info('Step ``{}_{}`` is ``ignored`` due to skip option.'.format(section.name, section.index))
+                env.logger.info('Step ``{}`` is ``ignored`` due to skip option.'.format(section.step_name()))
                 return True
             elif val_skip is not False:
                 raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
@@ -231,7 +231,7 @@ class Base_Executor:
             #
             # NOTE: if a section has option 'alias', the execution of this step would
             # change dictionary, essentially making all later steps rely on this step.
-            dag.add_step(section.uuid, res['__step_name__'], idx, res['__step_input__'], res['__step_depends__'], res['__step_output__'],
+            dag.add_step(section.uuid, section.step_name(), idx, res['__step_input__'], res['__step_depends__'], res['__step_output__'],
                 context={'__signature_vars__': signature_vars, '__environ_vars__': environ_vars, '__changed_vars__': changed_vars})
 
         while True:

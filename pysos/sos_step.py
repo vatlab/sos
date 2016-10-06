@@ -613,10 +613,7 @@ class Base_Step_Executor:
         #
         # * step_name:  name of the step, can be used by step process to determine
         #               actions dynamically.
-        if isinstance(self.step.index, int):
-            env.sos_dict.set('step_name', '{}_{}'.format(self.step.name, self.step.index))
-        else:
-            env.sos_dict.set('step_name', '{}'.format(self.step.name))
+        env.sos_dict.set('step_name', self.step.step_name(False))
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.step.context)
 
@@ -655,7 +652,7 @@ class Base_Step_Executor:
         elif len(input_statement_idx) == 1:
             input_statement_idx = input_statement_idx[0]
         else:
-            raise RuntimeError('More than one step input are specified in step {}_{}'.format(self.step.name, self.step.index))
+            raise RuntimeError('More than one step input are specified in step {}'.format(self.step.step_name()))
 
         # if there is an input statement, execute the statements before it, and then the input statement
         if input_statement_idx is not None:
@@ -968,7 +965,7 @@ class Prepare_Step_Executor(Queued_Step_Executor):
 
     def log(self, stage=0, msg=None):
         if stage == 'start':
-            env.logger.trace('Preparing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
+            env.logger.trace('Preparing ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
 
 class SP_Step_Executor(Queued_Step_Executor):
     '''Single process step executor'''
@@ -1004,10 +1001,7 @@ class SP_Step_Executor(Queued_Step_Executor):
 
     def log(self, stage=None, msg=None):
         if stage == 'start':
-            if isinstance(self.step.index, int):
-                env.logger.info('Executing ``{}_{}``: {}'.format(self.step.name, self.step.index, self.step.comment.strip()))
-            else:
-                env.logger.info('Executing ``{}``: {}'.format(self.step.name, self.step.comment.strip()))
+            env.logger.info('Executing ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
         elif stage == 'input statement':
             env.logger.trace('Handling input statement {}'.format(msg))
         elif stage == '_input':

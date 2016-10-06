@@ -121,6 +121,9 @@ var = 1
         # allowed names
         for name in ['a5', 'a_5', '*_0', 'a*1_100']:
             SoS_Script('[{}]'.format(name))
+        # allowed names with alias
+        for name in ['a5 (p1)', 'a_5 (something fun)', '*_0 (no way)', 'a*1_100']:
+            SoS_Script('[{}]'.format(name))
         # no directive in global section
         self.assertRaises(ParsingError, SoS_Script,
             '''input: 'filename' ''')
@@ -131,6 +134,7 @@ var = 1
             '''[1]\n[3]\n[2,1]''')
         self.assertRaises(ParsingError, SoS_Script,
             '''[a_1]\n[a_3]\n[*_1]''')
+        #
         # no duplicated section header
         SoS_Script('''[a_1]\n[a_3]\n[b*_1]''')
 

@@ -64,6 +64,7 @@ class SoS_Step:
         # A step will not have a name and index until it is copied to separate workflows
         self.name = None
         self.index = None
+        self.alias = None
         # it initially hold multiple names with/without wildcard characters
         self.names = names
         self.options = on_demand_options(options)
@@ -92,6 +93,18 @@ class SoS_Step:
         self._action = None
         self._action_options = ''
         self._script = ''
+
+    def step_name(self, alias=True):
+        if alias and self.alias:
+            if isinstance(self.index, int):
+                return '{}_{} ({})'.format(self.name, self.index, self.alias)
+            else:
+                return '{} ({})'.format(self.name, self.alias)
+        else:
+            if isinstance(self.index, int):
+                return '{}_{}'.format(self.name, self.index)
+            else:
+                return self.name
 
     def indented_script(self):
         ''' check self._script and see if it is indented '''
@@ -330,7 +343,7 @@ class SoS_Workflow:
         self.auxiliary_sections = []
         #
         for section in sections:
-            for name, index in section.names:
+            for name, index, alias in section.names:
                 if 'provides' in section.options or 'alias' in section.options or 'shared' in section.options:
                     self.auxiliary_sections.append(section)
                     self.auxiliary_sections[-1].name = section.names[0][0]
@@ -341,6 +354,7 @@ class SoS_Workflow:
                     self.sections.append(copy.deepcopy(section))
                     self.sections[-1].name = workflow_name
                     self.sections[-1].index = 0 if index is None else int(index)
+                    self.sections[-1].alias = alias
                     self.sections[-1].uuid = uuid4()
         #
         # sort sections by index
@@ -532,7 +546,7 @@ class SoS_Script:
         else:
             # if name_map, we only include selected names from the script
             for section in script.sections:
-                for name, index in section.names:
+                for name, index, _ in section.names:
                     if any(fnmatch.fnmatch(x, name) for x in name_map):
                         # match ...
                         self.sections.append(section)
@@ -774,13 +788,13 @@ for __n, __v in {}.items():
                 for name in section_name.split(','):
                     mo = SOS_SECTION_NAME.match(name)
                     if mo:
-                        n, i, di = mo.group('name', 'index', 'default_index')
+                        n, i, di, al = mo.group('name', 'index', 'default_index', 'alias')
                         if n:
                             if i is None and '*' in n:
                                 parsing_errors.append(lineno, line, 'Unindexed section name cannot contain wildcard character (*).')
-                            step_names.append([n, i])
+                            step_names.append([n, i, al])
                         if di:
-                            step_names.append(['default', di])
+                            step_names.append(['default', di, al])
                     else:
                         parsing_errors.append(lineno, line, 'Invalid section name')
                 if section_option is not None:
@@ -1011,7 +1025,7 @@ for __n, __v in {}.items():
         # if there is no section in the script, we create a default section with only global
         # definition. This avoids the problem that a script would not run without any section
         if not self.sections:
-            self.sections.append(SoS_Step(self.content, [('default', None)]))
+            self.sections.append(SoS_Step(self.content, [('default', None, None)]))
         #
         for section in self.sections:
             # for nested / included sections, we need to keep their own global definition
@@ -1068,7 +1082,7 @@ for __n, __v in {}.items():
                 # section global is shared by all workflows
                 sections.append(section)
                 continue
-            for name, index in section.names:
+            for name, index, _ in section.names:
                 # exact match or filename like match if name contains * etc
                 if fnmatch.fnmatch(wf_name, name):
                     sections.append(section)
