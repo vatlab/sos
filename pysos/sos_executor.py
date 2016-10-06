@@ -34,7 +34,7 @@ from queue import Empty
 from ._version import __version__
 from .sos_step import Prepare_Step_Executor, SP_Step_Executor, MP_Step_Executor, RQ_Step_Executor, \
     Celery_Step_Executor, Interactive_Step_Executor, analyze_section
-from .utils import env, Error, WorkflowDict,  get_traceback, ProgressBar, frozendict, dict_merge
+from .utils import env, Error, WorkflowDict, get_traceback, ProgressBar, frozendict, dict_merge, short_repr
 from .sos_eval import Undetermined, SoS_exec
 from .sos_script import SoS_Script
 from .sos_syntax import SOS_SECTION_HEADER, SOS_KEYWORDS
@@ -562,8 +562,6 @@ class Base_Executor:
             #env.logger.error('completed')
         prog.done()
 
-
-
 class MP_Executor(Base_Executor):
     #
     # Execute a workflow sequentially in batch mode
@@ -575,7 +573,7 @@ class MP_Executor(Base_Executor):
     def step_executor(self, section, queue):
         return MP_Step_Executor(section, queue)
 
-    def summarize(self, dag):
+    def summarize(self, dag, failed_messages={}):
         # final summary
         failed_steps, pending_steps = dag.pending()
         if not failed_steps:
@@ -585,12 +583,16 @@ class MP_Executor(Base_Executor):
                 env.logger.error('Failed steps:')
                 for x in failed_steps:
                     section = self.workflow.section_by_id(x._step_uuid)
-                    env.logger.error('    {}: {}'.format(section.name + ('_' + str(section.index) if isinstance(section.index, int) else ''), section.comment.strip()))
+                    env.logger.error('    {}: {}'.format(section.name + ('_' + str(section.index) if isinstance(section.index, int) else ''),
+                        short_repr(section.comment.strip())))
+                    if x._node_uuid in failed_messages:
+                        env.logger.warning(failed_messages[x._node_uuid])
             if pending_steps:
                 env.logger.error('Pending steps:')
                 for x in pending_steps:
                     section = self.workflow.section_by_id(x._step_uuid)
-                    env.logger.error('    {}: {}'.format(section.name + ('_' + str(section.index) if isinstance(section.index, int) else ''), section.comment.strip()))
+                    env.logger.error('    {}: {}'.format(section.name + ('_' + str(section.index) if isinstance(section.index, int) else ''),
+                        short_repr(section.comment.strip())))
             raise RuntimeError('Workflow {} is terminated prematurally with {} failed and {} pending steps'
                         .format(self.workflow.name, len(failed_steps), len(pending_steps)))
 
@@ -612,6 +614,7 @@ class MP_Executor(Base_Executor):
         #
         procs = [None for x in range(env.max_jobs)]
         prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
+        failed_messages = {}
         while True:
             # step 1: check existing jobs and see if they are completed
             for idx, proc in enumerate(procs):
@@ -642,6 +645,7 @@ class MP_Executor(Base_Executor):
                 # if the job is failed
                 elif isinstance(res, Exception):
                     runnable._status = 'failed'
+                    failed_messages[u] = repr(res)
                     prog.progress(1)
                     procs[idx] = None
                 else:
@@ -714,7 +718,7 @@ class MP_Executor(Base_Executor):
             else:
                 time.sleep(0.1)
         prog.done()
-        self.summarize(dag)
+        self.summarize(dag, failed_messages)
 
 class RQ_Executor(MP_Executor):
     def __init__(self, workflow, args=[], config_file=None, nested=False):
