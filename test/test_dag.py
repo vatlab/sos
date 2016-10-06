@@ -548,13 +548,11 @@ strict digraph "" {
 "B1 (B1.txt)";
 "B2 (B2.txt)";
 "C3 (C3.txt)";
-"B1 (B1.txt)";
 "B3 (B3.txt)" -> "B2 (B2.txt)";
 "C4 (C4.txt)" -> "C3 (C3.txt)";
 "C4 (C4.txt)" -> "C2 (C2.txt)";
 "C2 (C2.txt)" -> "C1 (C1.txt)";
 "C1 (C1.txt)" -> "B2 (B2.txt)";
-"B2 (B2.txt)" -> "B1 (B1.txt)";
 "B2 (B2.txt)" -> "B1 (B1.txt)";
 "C3 (C3.txt)" -> "C1 (C1.txt)";
 }
@@ -576,7 +574,6 @@ strict digraph "" {
 "C4 (C4.txt)";
 "B2 (B2.txt)";
 "C3 (C3.txt)";
-"B2 (B2.txt)";
 "B3 (B3.txt)";
 "C2 (C2.txt)";
 "C1 (C1.txt)";
@@ -584,9 +581,7 @@ strict digraph "" {
 "C4 (C4.txt)" -> "C3 (C3.txt)";
 "C3 (C3.txt)" -> "C1 (C1.txt)";
 "B3 (B3.txt)" -> "B2 (B2.txt)";
-"B3 (B3.txt)" -> "B2 (B2.txt)";
 "C2 (C2.txt)" -> "C1 (C1.txt)";
-"C1 (C1.txt)" -> "B2 (B2.txt)";
 "C1 (C1.txt)" -> "B2 (B2.txt)";
 }
 ''')

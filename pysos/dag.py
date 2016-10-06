@@ -23,11 +23,11 @@
 import networkx as nx
 from collections import defaultdict
 import copy
-from uuid import uuid4
+import pickle
 
 from .utils import env
 from .sos_eval import Undetermined
-from .target import FileTarget
+from .target import FileTarget, sos_variable, textMD5
 
 
 #
@@ -103,7 +103,11 @@ class SoS_Node(object):
         #      self._depends_targets,  self._output_targets))
         self._context = copy.deepcopy(context)
         self._status = None
-        self._node_uuid = uuid4()
+        # unique ID to avoid add duplicate nodes ...
+        self._node_uuid = textMD5(pickle.dumps((step_uuid, node_name, node_index,
+                input_targets, depends_targets, output_targets,
+                [(k, sorted(list(context[k])) if isinstance(context[k], set) else context[k])
+                    for k in sorted(context.keys())])))
 
     def __repr__(self):
         return self._node_id
@@ -124,6 +128,8 @@ class SoS_DAG(nx.DiGraph):
     def add_step(self, step_uuid, node_name, node_index, input_targets, depends_targets,
         output_targets, context={}):
         node = SoS_Node(step_uuid, node_name, node_index, input_targets, depends_targets, output_targets, context)
+        if node._node_uuid in [x._node_uuid for x in self.nodes()]:
+            return
         if not isinstance(input_targets, (type(None), Undetermined)):
             for x in input_targets:
                 self._all_dependent_files[x].append(node)
@@ -133,6 +139,8 @@ class SoS_DAG(nx.DiGraph):
         if not isinstance(output_targets, (type(None), Undetermined)):
             for x in output_targets:
                 self._all_output_files[x].append(node)
+        for x in context['__changed_vars__']:
+            self._all_output_files[sos_variable(x)].append(node)
         self.add_node(node)
 
     def find_executable(self):
@@ -171,6 +179,9 @@ class SoS_DAG(nx.DiGraph):
         except Exception:
             # if there is no cycle, an exception is given
             return []
+
+    def pending(self):
+        return [x for x in self.nodes() if x._status == 'failed'], [x for x in self.nodes() if x._status is None]
 
     def dangling(self, targets):
         return [x for x in list(self._all_dependent_files.keys()) + ([] if targets is None else targets) \
