@@ -174,9 +174,6 @@ if 'sos_handle_parameter_' in globals():
             raise ValueError('Option shared should be one or list of strings, or a mapping of expressions. {} provided'.format(vars))
         changed_vars |= set(vars.keys())
 
-    if 'alias' in section.options:
-        changed_vars.add(section.options['alias'])
-
     # look for input statement.
     input_statement_idx = [idx for idx,x in enumerate(section.statements) if x[0] == ':' and x[1] == 'input']
     if not input_statement_idx:
@@ -419,20 +416,20 @@ class Base_Step_Executor:
             for vidx in range(loop_size):
                 for idx in range(len(_tmp_vars)):
                     for fe in fe_all.split(','):
+                        if fe.split('.')[0] not in env.sos_dict:
+                            raise ValueError('Variable {} does not exist.'.format(fe))
                         if '.' in fe:
-                            if fe.split('.')[0] not in env.sos_dict:
-                                raise ValueError('Variable {} does not exist.'.format(fe))
-                            _tmp_vars[idx]['_' + fe.split('.')[0]] = getattr(env.sos_dict[fe.split('.')[0]], fe.split('.', 1)[-1])[vidx]
+                            var_name = '_' + fe.replace('.', '_')
+                            values = getattr(env.sos_dict[fe.split('.')[0]], fe.split('.', 1)[-1])
                         else:
-                            if fe not in env.sos_dict:
-                                raise ValueError('Variable {} does not exist.'.format(fe))
+                            var_name = '_' + fe
                             values = env.sos_dict[fe]
-                            if isinstance(values, Sequence):
-                                _tmp_vars[idx]['_' + fe] = values[vidx]
-                            elif isinstance(values, pd.DataFrame):
-                                _tmp_vars[idx]['_' + fe] = values.iloc[vidx]
-                            else:
-                                raise ValueError('Unrecognized for_each variable {}'.format(fe))
+                        if isinstance(values, Sequence):
+                            _tmp_vars[idx][var_name] = values[vidx]
+                        elif isinstance(values, pd.DataFrame):
+                            _tmp_vars[idx][var_name] = values.iloc[vidx]
+                        else:
+                            raise ValueError('Unrecognized for_each variable {}'.format(fe))
                 _vars.extend(copy.deepcopy(_tmp_vars))
 
     # directive input
@@ -581,29 +578,16 @@ class Base_Step_Executor:
         if '__execute_errors__' in env.sos_dict:
             result['__execute_errors__'] = env.sos_dict['__execute_errors__']
         result['__changed_vars__'] = set()
-        if 'alias' in self.step.options:
-            result[self.step.options['alias']] = copy.deepcopy(env.sos_dict[self.step.options['alias']])
-            result['__changed_vars__'].add(self.step.options['alias'])
         if 'shared' in self.step.options:
             vars = self.step.options['shared']
             if isinstance(vars, str):
-                vars = {vars:vars}
-            elif isinstance(vars, Sequence):
-                vars = {x:x for x in vars}
-            elif not isinstance(vars, Mapping):
+                vars = [vars]
+            elif isinstance(vars, Mapping):
+                vars = vars.keys()
+            elif not isinstance(vars, Sequence):
                 raise ValueError('Option shared should be one or list of strings, or a mapping of expressions. {} provided'.format(vars))
-            for var, val in vars.items():
-                if var == val:
-                    if var not in env.sos_dict:
-                        raise RuntimeError('Shared variable {} is not defined in step {}.'
-                            .format(var, env.sos_dict['step_name']))
-                    result[var] = env.sos_dict[var]
-                else:
-                    try:
-                        result[var] = SoS_eval(val)
-                    except Exception as e:
-                        raise RuntimeError('Failed to evaluate shared variable {} from expression {}: {}'
-                            .format(var, val, e))
+            for var in vars:
+                result[var] = copy.deepcopy(env.sos_dict[var])
             result['__changed_vars__'] |= set(vars)
 
         if hasattr(env, 'accessed_vars'):
@@ -858,30 +842,18 @@ class Base_Step_Executor:
                 # not available in prepare mode.
                 sig.write()
         self.log('output')
-        #
-        # alias output needs to be inserted here
-        if 'alias' in self.step.options:
-            step_info = StepInfo()
-            step_info.set('step_name', env.sos_dict['step_name'])
-            step_info.set('input', env.sos_dict['input'])
-            step_info.set('output', env.sos_dict['output'])
-            step_info.set('depends', env.sos_dict['depends'])
-            # the step might be skipped
-            # if in prepare mode, there is no __environ_vars etc. This should be fixed
-            # in later work on prepare mode
-            if env.run_mode == 'prepare':
-                for statement in self.step.statements:
-                     if statement[0] == '=' and statement[1] in env.sos_dict and pickleable(env.sos_dict[statement[1]]):
-                         step_info.set(statement[1], env.sos_dict[statement[1]])
-            else:
-                for var in env.sos_dict['__environ_vars__'] | env.sos_dict['__signature_vars__']:
-                    if not var in env.sos_dict:
+        # variables defined by the shared option needs to be available to be verified
+        if 'shared' in self.step.options:
+            if isinstance(self.step.options['shared'], Mapping):
+                for var, val in self.step.options['shared'].items():
+                    if var == val:
                         continue
-                    if isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
-                        step_info.set(var, env.sos_dict[var])
-                    else:
-                        env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, env.sos_dict[var]))
-            env.sos_dict.set(self.step.options['alias'], copy.deepcopy(step_info))
+                    try:
+                        env.sos_dict.set(var, SoS_eval(val))
+                    except Exception as e:
+                        raise RuntimeError('Failed to evaluate shared variable {} from expression {}: {}'
+                            .format(var, val, e))
+        #
         self.verify_output()
         return self.collect_result()
 

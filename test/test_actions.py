@@ -117,47 +117,47 @@ def func_run():
 def func_both():
     return 1
 
-[0:alias='result']
+[0: shared=('b', 'c')]
 b=func_run()
 c=func_both()
 """)
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        self.assertTrue(isinstance(env.sos_dict['result'].b, Undetermined))
-        self.assertEqual(env.sos_dict['result'].c, 1)
+        self.assertTrue(isinstance(env.sos_dict['b'], Undetermined))
+        self.assertEqual(env.sos_dict['c'], 1)
         #
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['result'].b, 1)
-        self.assertEqual(env.sos_dict['result'].c, 1)
+        self.assertEqual(env.sos_dict['b'], 1)
+        self.assertEqual(env.sos_dict['c'], 1)
 
     def testGetOutput(self):
         '''Test utility function get_output'''
         script = SoS_Script(r"""
-[0: alias='test']
+[0: shared='ret']
 ret = get_output('echo blah')
 """)
         wf = script.workflow()
         # should be ok
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['test'].ret, 'blah\n')
+        self.assertEqual(env.sos_dict['ret'], 'blah\n')
         #
         script = SoS_Script(r"""
-[0: alias='test']
+[0: shared='ret']
 ret = get_output('echo blah', show_command=True)
 """)
         wf = script.workflow()
         # should be ok
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['test'].ret, '$ echo blah\nblah\n')
+        self.assertEqual(env.sos_dict['ret'], '$ echo blah\nblah\n')
         #
         script = SoS_Script(r"""
-[0: alias='test']
+[0: shared='ret']
 ret = get_output('echo blah', show_command=True, prompt='% ')
 """)
         wf = script.workflow()
         # should be ok
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['test'].ret, '% echo blah\nblah\n')
+        self.assertEqual(env.sos_dict['ret'], '% echo blah\nblah\n')
         #
         script = SoS_Script(r"""
 [0]
@@ -282,7 +282,7 @@ warn_if(len(input) == 1)
     def testStopIf(self):
         '''Test action stop_if'''
         script = SoS_Script(r'''
-[0: alias='res']
+[0: shared='result']
 rep = range(20)
 result = []
 input: for_each='rep'
@@ -292,7 +292,7 @@ result.append(_rep)
 ''')
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['res'].result, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        self.assertEqual(env.sos_dict['result'], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
     def testRun(self):
         '''Test action run'''

@@ -229,8 +229,6 @@ class Base_Executor:
             #
             # build DAG with input and output files of step
             #
-            # NOTE: if a section has option 'alias', the execution of this step would
-            # change dictionary, essentially making all later steps rely on this step.
             dag.add_step(section.uuid, section.step_name(), idx, res['__step_input__'], res['__step_depends__'], res['__step_output__'],
                 context={'__signature_vars__': signature_vars, '__environ_vars__': environ_vars, '__changed_vars__': changed_vars})
 
@@ -417,7 +415,7 @@ class Base_Executor:
                 section.options.set('provides',
                     section.options['provides'] + [sos_variable(var) for var in changed_vars])
 
-            # NOTE: if a section has option 'alias', the execution of this step would
+            # NOTE: if a section has option 'shared', the execution of this step would
             # change dictionary, essentially making all later steps rely on this step.
             dag.add_step(section.uuid,
                 res['step_name'],

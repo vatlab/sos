@@ -344,7 +344,7 @@ class SoS_Workflow:
         #
         for section in sections:
             for name, index, alias in section.names:
-                if 'provides' in section.options or 'alias' in section.options or 'shared' in section.options:
+                if 'provides' in section.options or 'shared' in section.options:
                     self.auxiliary_sections.append(section)
                     self.auxiliary_sections[-1].name = section.names[0][0]
                     self.auxiliary_sections[-1].uuid = uuid4()
@@ -471,7 +471,7 @@ class SoS_Script:
         # workflows in this script, from sections that are not skipped.
         all_section_steps = sum([x.names for x in self.sections], [])
         forward_section_steps = sum([x.names for x in self.sections if \
-            not any(opt in x.options for opt in ('provides', 'shared', 'alias'))], [])
+            not any(opt in x.options for opt in ('provides', 'shared'))], [])
         # (name, None) is auxiliary steps
         self.workflows = list(set([x[0] for x in all_section_steps if '*' not in x[0]]))
         forward_workflows = list(set([x[0] for x in forward_section_steps if '*' not in x[0]]))
@@ -1078,7 +1078,7 @@ for __n, __v in {}.items():
         sections = []
         for section in self.sections:
             # skip, skip=True, skip=1 etc are all allowed.
-            if 'provides' in section.options or 'alias' in section.options or 'shared' in section.options:
+            if 'provides' in section.options or 'shared' in section.options:
                 # section global is shared by all workflows
                 sections.append(section)
                 continue

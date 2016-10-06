@@ -90,19 +90,19 @@ class TestParser(unittest.TestCase):
         script = SoS_Script('''
 parameter: skip = 0
 
-[0: alias='a', skip=skip==0]
+[0: shared={'a':'var'}, skip=skip==0]
 var = 0
 
-[1: alias='b', skip=skip==1]
+[1: shared={'b': 'var'}, skip=skip==1]
 var = 1
 
 ''')
         wf = script.workflow()
         Base_Executor(wf, args=['--skip', '0']).run()
-        self.assertEqual(env.sos_dict['b'].var, 1)
+        self.assertEqual(env.sos_dict['b'], 1)
         #
         Base_Executor(wf, args=['--skip', '1']).run()
-        self.assertEqual(env.sos_dict['a'].var, 0)
+        self.assertEqual(env.sos_dict['a'], 0)
 
     def testSections(self):
         '''Test section definitions'''
@@ -116,7 +116,7 @@ var = 1
         for badoption in ['sigil=a', 'sigil="[]"', 'sigil="| |"']:
             self.assertRaises((ValueError, ParsingError), SoS_Script, '[0:{}]'.format(badoption))
         # good options
-        for goodoption in ['sigil="[ ]"', 'alias="a"']:
+        for goodoption in ['sigil="[ ]"', 'shared="a"']:
             SoS_Script('[0:{}]'.format(goodoption))
         # allowed names
         for name in ['a5', 'a_5', '*_0', 'a*1_100']:
@@ -542,7 +542,7 @@ input: 'a.pdf', files
         #
         # test input types
         script = SoS_Script('''
-[0:alias='test']
+[0:shared={'i':'input', 'o':'output'}]
 files = ('a${i}' for i in range(2))
 input: {'a.txt', 'b.txt'}, files
 output: ('a${x}' for x in _input)
@@ -550,8 +550,8 @@ output: ('a${x}' for x in _input)
 ''')
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        self.assertEqual(sorted(env.sos_dict['test'].input), ['a.txt', 'a0', 'a1', 'b.txt'])
-        self.assertEqual(sorted(env.sos_dict['test'].output), ['aa.txt', 'aa0', 'aa1', 'ab.txt'])
+        self.assertEqual(sorted(env.sos_dict['i']), ['a.txt', 'a0', 'a1', 'b.txt'])
+        self.assertEqual(sorted(env.sos_dict['o']), ['aa.txt', 'aa0', 'aa1', 'ab.txt'])
 
 
     def testGroupBy(self):

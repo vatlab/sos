@@ -30,7 +30,7 @@ SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active']
 SOS_ACTION_OPTIONS = ['workdir', 'docker_image', 'docker_file', 'active']
 
 SOS_DIRECTIVES = ['input', 'output', 'depends', 'task', 'parameter']
-SOS_SECTION_OPTIONS = ['alias', 'skip', 'sigil', 'provides', 'shared']
+SOS_SECTION_OPTIONS = ['skip', 'sigil', 'provides', 'shared']
 
 SOS_KEYWORDS = SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS + SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS \
     + SOS_ACTION_OPTIONS + SOS_DIRECTIVES + SOS_SECTION_OPTIONS
@@ -125,7 +125,7 @@ _SECTION_NAME_TMPL = '''
     (?(name)                           # if there is name
     (_(?P<index>\d+))?                 #   optional _index
     |(?P<default_index>\d+))           # no name, then index
-    \s*(?P<alias>                         # optional alias
+    \s*(?P<alias>                      # optional alias
     \(
     [^)]+
     \)

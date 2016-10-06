@@ -112,27 +112,27 @@ for b in range(5):
         self.assertEqual(env.sos_dict['res'], '01234')
         #
         script = SoS_Script(r"""
-[0: alias='res']
+[0: shared={'res':'output'}]
 input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
 output: ['{}_{}_processed.txt'.format(x,y) for x,y in zip(name, model)]
 
 """)
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['res'].output,  ['a_1_processed.txt', 'b_2_processed.txt', 'c_2_processed.txt'])
+        self.assertEqual(env.sos_dict['res'],  ['a_1_processed.txt', 'b_2_processed.txt', 'c_2_processed.txt'])
         #
         script = SoS_Script(r"""
-[0: alias='res']
+[0: shared={'res':'output'}]
 input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
 output: ['${x}_${y}_process.txt' for x,y in zip(name, model)]
 
 """)
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['res'].output,  ['a_1_process.txt', 'b_2_process.txt', 'c_2_process.txt'])
+        self.assertEqual(env.sos_dict['res'],  ['a_1_process.txt', 'b_2_process.txt', 'c_2_process.txt'])
         #
         script = SoS_Script(r"""
-[0: alias='res']
+[0: shared={'res':'output'}]
 def add_a(x):
     return ['a'+_x for _x in x]
 
@@ -142,7 +142,7 @@ output: add_a(['${x}_${y}_process.txt' for x,y in zip(name, model)])
 """)
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['res'].output,  ['aa_1_process.txt', 'ab_2_process.txt', 'ac_2_process.txt'])
+        self.assertEqual(env.sos_dict['res'],  ['aa_1_process.txt', 'ab_2_process.txt', 'ac_2_process.txt'])
 
     def testGlobalVars(self):
         '''Test SoS defined variables'''
@@ -161,18 +161,18 @@ def myfunc(a):
     sum(range(5))
     return ['a' + x for x in a]
 
-[0: alias='test']
+[0: shared={'test':'input'}]
 input: myfunc(['a.txt', 'b.txt'])
 """)
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['test'].input, ['aa.txt', 'ab.txt'])
+        self.assertEqual(env.sos_dict['test'], ['aa.txt', 'ab.txt'])
         # in nested workflow?
         script = SoS_Script(r"""
 def myfunc(a):
     return ['a' + x for x in a]
 
-[mse: alias='test']
+[mse: shared={'test':'output'}]
 input: myfunc(['a.txt', 'b.txt'])
 
 [1]
@@ -187,13 +187,13 @@ sos_run('mse')
     def testInput(self):
         '''Test input specification'''
         script = SoS_Script(r"""
-[0:alias='res']
+[0: shared={'res':'output'}]
 input: '*.py'
 output: [x + '.res' for x in _input]
 """)
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        self.assertTrue('test_execute.py.res' in env.sos_dict['res'].output)
+        self.assertTrue('test_execute.py.res' in env.sos_dict['res'])
 
     def testForEach(self):
         '''Test for_each option of input'''
@@ -239,7 +239,7 @@ processed.append((_par, _res))
         #
         # test for each for pandas dataframe
         script = SoS_Script(r"""
-[0: alias='res']
+[0: shared={'res':'output'}]
 import pandas as pd
 data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 
@@ -248,7 +248,7 @@ output: '${_data["A"]}_${_data["B"]}_${_data["C"]}.txt'
 """)
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['res'].output, ['1_2_Hello.txt', '2_4_World.txt'])
+        self.assertEqual(env.sos_dict['res'], ['1_2_Hello.txt', '2_4_World.txt'])
 
     def testPairedWith(self):
         '''Test option paired_with '''
@@ -291,31 +291,6 @@ output: expand_pattern('{base}-{name}-{par}.txt'), expand_pattern('{par}.txt')
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
         self.assertEqual(env.sos_dict['_output'], ['a-20-a-20.txt', 'b-10-b-10.txt', '20.txt', '10.txt'])
-
-
-    def testAlias(self):
-        '''Test option alias'''
-        self.touch(['a.txt', 'b.txt', 'a.pdf'])
-        script = SoS_Script(r"""
-[0: alias='oa']
-files = ['a.txt', 'b.txt']
-names = ['a', 'b', 'c']
-c = ['1', '2']
-counter = "0"
-
-input: 'a.pdf', files, group_by='single', paired_with='names', for_each='c'
-
-counter = str(int(counter) + 1)
-
-[1: alias = 'ob']
-input: oa.input
-output: [x + '.res' for x in _input]
-""")
-        wf = script.workflow()
-        Base_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['oa'].input, ["a.pdf", 'a.txt', 'b.txt'])
-        self.assertEqual(env.sos_dict['ob'].output, ["a.pdf.res", 'a.txt.res', 'b.txt.res'])
-        #
 
     def testShared(self):
         '''Test option shared'''
@@ -396,7 +371,7 @@ a = 5
         '''Test input option filetype'''
         self.touch(['a.txt', 'b.txt', 'a.pdf', 'b.html'])
         script = SoS_Script(r"""
-[0: alias='res']
+[0: shared={'res':'output'}]
 files = ['a.txt', 'b.txt']
 counter = 0
 
@@ -407,7 +382,7 @@ output: '${_input}.res'
 """)
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['res'].output, ['a.txt.res', 'b.txt.res'])
+        self.assertEqual(env.sos_dict['res'], ['a.txt.res', 'b.txt.res'])
         #
         script = SoS_Script(r"""
 [0: shared='counter']
@@ -439,7 +414,7 @@ counter += 1
         '''Test deriving output files from input files'''
         self.touch(['a.txt', 'b.txt'])
         script = SoS_Script(r"""
-[0: alias='step', shared='counter']
+[0: shared={'counter':'counter', 'step':'output'}]
 files = ['a.txt', 'b.txt']
 counter = 0
 
@@ -451,7 +426,7 @@ counter += 1
         wf = script.workflow()
         Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['counter'], 2)
-        self.assertEqual(env.sos_dict['step'].output, ['a.txt.bak', 'b.txt.bak'])
+        self.assertEqual(env.sos_dict['step'], ['a.txt.bak', 'b.txt.bak'])
 
     def testWorkdir(self):
         '''Test workdir option for runtime environment'''
@@ -575,7 +550,7 @@ sos_run('nested')
 def myfunc():
   return 'a'
 
-[1: alias='test']
+[1: shared={'test':'output'}]
 output: myfunc()
 
 myfunc()
@@ -583,7 +558,7 @@ myfunc()
 """)
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['test'].output, ['a'])
+        self.assertEqual(env.sos_dict['test'], ['a'])
         # User defined function should also work under nested workflows
         # This is difficult because the 'local namespace' is usually
         # not seen inside function definition. The solution now is to
@@ -594,7 +569,7 @@ def myfunc():
     # test if builtin functions (sum and range) can be used here.
     return 'a' + str(sum(range(10)))
 
-[1: alias='test']
+[1: shared={'test':'output'}]
 output: [myfunc() for i in range(10)][0]
 
 myfunc()
@@ -602,13 +577,13 @@ myfunc()
 """)
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['test'].output, ['a45'])
+        self.assertEqual(env.sos_dict['test'], ['a45'])
 
     def testReadOnlyStepVars(self):
         '''Test if the step variables can be changed.'''
         #
         script = SoS_Script(r"""
-[1: alias='test']
+[1: shared={'test':'output'}]
 output: 'a.txt'
 
 [2]
@@ -622,7 +597,7 @@ test.output=['ab.txt']
     def testReadOnlyInputOutputVars(self):
         '''Test readonly input output vars'''
         script = SoS_Script(r"""
-[1: alias='test']
+[1: shared='test']
 output: 'a.txt'
 _output = ['b.txt']
 
@@ -650,68 +625,45 @@ print(a)
         self.assertRaises((RuntimeError, ExecuteError), Base_Executor(wf).run)
         # however, alias should be sent back
         script = SoS_Script(r"""
-[1: alias='shared']
+[1: shared={'shared': 'output'}]
 input: 'a.txt'
 output: 'b.txt'
 
-[2: alias='tt']
-print(shared.input)
+[2: shared={'tt':'output'}]
+print(shared)
 
-output: [x + '.res' for x in shared.input]
+output: [x + '.res' for x in shared]
 
 """)
         wf = script.workflow()
         Base_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['shared'].output, ['b.txt'])
-        self.assertEqual(env.sos_dict['tt'].output, ['a.txt.res'])
+        self.assertEqual(env.sos_dict['shared'], ['b.txt'])
+        self.assertEqual(env.sos_dict['tt'], ['b.txt.res'])
         #
         # this include other variables set in the step
         script = SoS_Script(r"""
-[1: alias='shared']
+[1: shared={'shared':'c', 'd':'d'}]
 input: 'a.txt'
 output: 'b.txt'
 
 c = 'c.txt'
 d = 1
 
-[2: alias='d']
+[2: shared={'d': 'e'}]
 # this should fail because a is defined in another step
-print(shared.input)
+print(shared)
 
-output: shared.c
+output: shared
 
-e = shared.d + 1
+e = d + 1
 
 """)
         wf = script.workflow()
         # I would like to disallow accessing variables defined
         # in other cases.
         Base_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['shared'].c, 'c.txt')
-        self.assertEqual(env.sos_dict['d'].e, 2)
-        #
-        # aliased variables are readonly
-        script = SoS_Script(r"""
-[1: alias='shared']
-input: 'a.txt'
-output: 'b.txt'
-
-c = 'c.txt'
-d = 1
-
-[2: alias='d']
-# this should fail because a is defined in another step
-print(shared.input)
-
-output: shared.c
-
-shared.d += 1
-
-""")
-        wf = script.workflow()
-        # I would like to disallow accessing variables defined
-        # in other cases.
-        self.assertRaises((ExecuteError, RuntimeError), Base_Executor(wf).prepare)
+        self.assertEqual(env.sos_dict['shared'], 'c.txt')
+        self.assertEqual(env.sos_dict['d'], 2)
 
     def testSklearnImportFailure(self):
         '''Test problem with Sklean when using Celery/multiprocessing'''
@@ -733,7 +685,7 @@ check_command('a1')
 [1: skip=blah]
 
 check_command('a2')
-[2: alias=unrecognized]
+[2]
 check_command('a3')
 [3]
 check_command('a4')
@@ -744,7 +696,7 @@ check_command('a4')
         try:
             Base_Executor(wf).prepare()
         except Exception as e:
-            self.assertEqual(len(e.errors), 5)
+            self.assertEqual(len(e.errors), 4)
 
     def testSearchPath(self):
         '''Test if any action should exit in five seconds in prepare mode'''
@@ -795,7 +747,7 @@ print('hay, I am crazy')
             os.mkdir('temp')
         #
         script = SoS_Script('''
-[10: alias='test']
+[10: shared={'test':'output'}]
 ofiles = []
 output: dynamic(ofiles)
 
@@ -807,7 +759,7 @@ for i in range(4):
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['test'].output, ['temp/something{}.html'.format(x) for x in range(4)])
+        self.assertEqual(env.sos_dict['test'], ['temp/something{}.html'.format(x) for x in range(4)])
         #
         shutil.rmtree('temp')
 
@@ -825,7 +777,7 @@ for i in range(5):
     run('touch temp/test_${i}.txt')
 
 
-[10: alias='test']
+[10: shared={'test':'output'}]
 input: dynamic('temp/*.txt'), group_by='single'
 output: dynamic('temp/*.txt.bak')
 
@@ -834,10 +786,10 @@ touch ${_input}.bak
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['test'].output, ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
+        self.assertEqual(env.sos_dict['test'], ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
         # this time we use th existing signature
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['test'].output, ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
+        self.assertEqual(env.sos_dict['test'], ['temp/test_{}.txt.bak'.format(x) for x in range(5)])
         #
         shutil.rmtree('temp')
 
@@ -875,7 +827,7 @@ touch temp/${ff}
         os.mkdir('temp')
         env.sig_mode = 'ignore'
         script = SoS_Script('''
-[1: alias='res']
+[1: shared={'res':'output'}]
 import random
 if run_mode == 'run':
     for i in range(3):
@@ -1065,7 +1017,7 @@ if run_mode == 'run':
    run('''echo "a.txt" > 'temp/a.txt' ''')
    run('''echo "b.txt" > 'temp/b.txt' ''')
 
-[1: alias='oa']
+[1: shared={'oa':'output'}]
 dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
@@ -1088,7 +1040,7 @@ if run_mode == 'run':
     run('''echo "a.txt" > 'temp/a.txt' ''')
     run('''echo "b.txt" > 'temp/b.txt' ''')
 
-[1: alias='oa']
+[1: shared={'oa':'output'}]
 dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
@@ -1113,7 +1065,7 @@ run:
 
 echo "b.txt" > 'temp/b.txt'
 
-[1: alias='oa']
+[1: shared={'oa':'output'}]
 dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
@@ -1157,36 +1109,6 @@ print(a)
         self.assertLess(time.time() - st, 1)
         FileTarget('a.txt').remove('both')
 
-    def testSignatureWithAlias(self):
-        '''Test restoration of signature from alias'''
-        FileTarget('a.txt').remove('both')
-        # for alias
-        script = SoS_Script(r"""
-import time
-[0: alias='a']
-output: 'a.txt'
-run:
-   sleep 3
-   touch a.txt
-
-b = 5
-
-[1]
-print(a.b)
-
-""")
-        # alias should also be recovered.
-        wf = script.workflow('default')
-        st = time.time()
-        Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 3)
-        # rerun
-        st = time.time()
-        Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 1)
-        FileTarget('a.txt').remove('both')
-
-
     def testSignatureWithoutOutput(self):
         # signature without output file
         self._testSignature(r"""
@@ -1203,7 +1125,7 @@ run:
 
 echo "b.txt" > 'temp/b.txt'
 
-[1: alias='oa']
+[1: shared={'oa':'output'}]
 dest = ['temp/c.txt', 'temp/d.txt']
 input: 'temp/a.txt', 'temp/b.txt', group_by='single', paired_with='dest'
 output: _dest
@@ -1259,7 +1181,7 @@ cp ${_input} ${_dest}
             self.assertTrue(tc.read(), 'a.txt')
         with open('temp/d.txt') as td:
             self.assertTrue(td.read(), 'b.txt')
-        self.assertEqual(env.sos_dict['oa'].output, ['temp/c.txt', 'temp/d.txt'])
+        self.assertEqual(env.sos_dict['oa'], ['temp/c.txt', 'temp/d.txt'])
         #
         # now in assert mode, the signature should be there
         env.sig_mode = 'assert'

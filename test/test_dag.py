@@ -813,52 +813,6 @@ A_1 -> A_3;
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')
 
-    def testAliasDependency(self):
-        #
-        # shared variable should introduce additional dependency
-        #
-        for f in ['A1.txt']:
-            FileTarget(f).remove('both')
-        #
-        # A1 introduces a shared variable ss, A3 depends on ss but not A2
-        #
-        script = SoS_Script('''
-[A_1: alias='p']
-ss = 'A1'
-
-[A_2]
-input: None
-
-sh:
-    sleep 3
-
-[A_3]
-input: None
-import time
-time.sleep(3)
-with open('${p.ss}.txt', 'w') as tmp:
-    tmp.write('test')
-
-''')
-        wf = script.workflow('A')
-        dag = Base_Executor(wf).initialize_dag()
-        self.assertDAG(dag,
-'''
-strict digraph "" {
-A_3;
-A_1;
-A_2;
-A_1 -> A_3;
-}
-''')
-        env.max_jobs = 3
-        st = time.time()
-        MP_Executor(wf).run()
-        self.assertLess(time.time() - st, 5)
-        for f in ['A1.txt']:
-            self.assertTrue(FileTarget(f).exists())
-            FileTarget(f).remove('both')
-
 
     def testLiteralConnection(self):
         '''Testing the connection of steps with by variables.'''
@@ -925,13 +879,13 @@ A_4 -> A_5;
 [A: shared='b']
 b = 1
 
-[C: alias='c']
+[C: shared={'c':'k'}]
 k = 2
 
 [all: shared='p']
 depends: sos_variable('c'), sos_variable('b')
 
-p = c.k + b
+p = c + b
 
 ''')
         wf = script.workflow('all')
