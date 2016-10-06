@@ -29,7 +29,7 @@ import fnmatch
 
 from io import StringIO
 from tokenize import generate_tokens
-from collections.abc import Sequence, Iterable
+from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
 from .utils import env, Error, AbortExecution, short_repr, \
@@ -167,10 +167,12 @@ if 'sos_handle_parameter_' in globals():
     if 'shared' in section.options:
         vars = section.options['shared']
         if isinstance(vars, str):
-            vars = [vars]
-        elif not isinstance(vars, Sequence):
-            raise ValueError('Option shared should be one or list of strings. {} provided'.format(vars))
-        changed_vars |= set(vars)
+            vars = {vars: vars}
+        elif isinstance(vars, Sequence):
+            vars = {x:x for x in vars}
+        elif not isinstance(vars, Mapping):
+            raise ValueError('Option shared should be one or list of strings, or a mapping of expressions. {} provided'.format(vars))
+        changed_vars |= set(vars.keys())
 
     if 'alias' in section.options:
         changed_vars.add(section.options['alias'])
@@ -585,14 +587,23 @@ class Base_Step_Executor:
         if 'shared' in self.step.options:
             vars = self.step.options['shared']
             if isinstance(vars, str):
-                vars = [vars]
-            elif not isinstance(vars, Sequence):
-                raise ValueError('Option shared should be one or list of strings. {} provided'.format(vars))
-            for var in vars:
-                if var not in env.sos_dict:
-                    raise RuntimeError('Shared variable {} is not defined in step {}.'
-                        .format(var, env.sos_dict['step_name']))
-                result[var] = env.sos_dict[var]
+                vars = {vars:vars}
+            elif isinstance(vars, Sequence):
+                vars = {x:x for x in vars}
+            elif not isinstance(vars, Mapping):
+                raise ValueError('Option shared should be one or list of strings, or a mapping of expressions. {} provided'.format(vars))
+            for var, val in vars.items():
+                if var == val:
+                    if var not in env.sos_dict:
+                        raise RuntimeError('Shared variable {} is not defined in step {}.'
+                            .format(var, env.sos_dict['step_name']))
+                    result[var] = env.sos_dict[var]
+                else:
+                    try:
+                        result[var] = SoS_eval(val)
+                    except Exception as e:
+                        raise RuntimeError('Failed to evaluate shared variable {} from expression {}: {}'
+                            .format(var, val, e))
             result['__changed_vars__'] |= set(vars)
 
         if hasattr(env, 'accessed_vars'):

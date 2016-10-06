@@ -315,6 +315,7 @@ output: [x + '.res' for x in _input]
         Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['oa'].input, ["a.pdf", 'a.txt', 'b.txt'])
         self.assertEqual(env.sos_dict['ob'].output, ["a.pdf.res", 'a.txt.res', 'b.txt.res'])
+        #
 
     def testShared(self):
         '''Test option shared'''
@@ -360,6 +361,36 @@ a = 5
         Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['res'], 3)
         self.assertEqual(env.sos_dict['a'], 30)
+        # test multiple vars
+        script = SoS_Script(r"""
+parameter: res = 1
+parameter: a = 30
+
+[1: shared=('res', 'a')]
+res = 3
+a = 5
+
+""")
+        wf = script.workflow()
+        Base_Executor(wf).prepare()
+        self.assertEqual(env.sos_dict['res'], 3)
+        self.assertEqual(env.sos_dict['a'], 5)
+        #
+        # test expression
+        script = SoS_Script(r"""
+parameter: res = 1
+parameter: a = 30
+
+[1: shared={'res': 'res + 6', 'c': 'a'}]
+res = 3
+a = 5
+
+""")
+        wf = script.workflow()
+        Base_Executor(wf).prepare()
+        self.assertEqual(env.sos_dict['res'], 9)
+        self.assertEqual(env.sos_dict['c'], 5)
+
 
     def testFileType(self):
         '''Test input option filetype'''
