@@ -24,7 +24,8 @@ import sys
 import types
 import hashlib
 import shutil
-from .utils import env, Error, WorkflowDict
+import fasteners
+from .utils import env, Error, WorkflowDict, short_repr
 from .sos_eval import Undetermined
 
 __all__ = ['dynamic', 'executable']
@@ -340,6 +341,15 @@ class RuntimeInfo:
             except Exception as e:
                 raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
         self.proc_info = '{}.exe_info'.format(info_file)
+
+        self.lock = fasteners.InterProcessLock(self.proc_info)
+        if not self.lock.acquire(blocking=False):
+            env.logger.warning('Waiting for a lock for output files {}'.format(short_repr(self.output_files)))
+            if not self.lock.acquire(blocking=True):
+                raise RuntimeError('Failed to obtain a lock')
+
+    def __del__(self):
+        self.lock.release()
 
     def set(self, files, file_type):
         # add signature file if input and output files are dynamic

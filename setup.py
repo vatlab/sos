@@ -169,6 +169,8 @@ setup(name = "sos",
     cmdclass={'install': InstallWithConfigurations},
     install_requires=[
           'psutil',
+          # for file lock
+          'fasteners',
           'pyyaml',
           'docker-py',
           'blessings',
