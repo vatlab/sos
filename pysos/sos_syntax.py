@@ -125,11 +125,9 @@ _SECTION_NAME_TMPL = '''
     (?(name)                           # if there is name
     (_(?P<index>\d+))?                 #   optional _index
     |(?P<default_index>\d+))           # no name, then index
-    \s*(?P<alias>                      # optional alias
-    \(
-    [^)]+
-    \)
-    )?
+    \s*(\(\s*
+    (?P<alias>[^)]+)                   # optional alias
+    \s*\))?
     \s*$
     '''
 

@@ -702,160 +702,166 @@ class Base_Step_Executor:
         # signatures of each index, which can remain to be None if no output
         # is defined.
         signatures = [None for x in self._groups]
-        for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
-            # other variables
-            env.sos_dict.update(v)
-            env.sos_dict.set('_input', g)
-            self.log('_input')
-            env.sos_dict.set('_index', idx)
-            for statement in self.step.statements[input_statement_idx:]:
-                # if input is undertermined, we can only process output:
-                if isinstance(g, Undetermined) and statement[0] != ':':
-                    return self.collect_result()
-                if statement[0] == '=':
-                    self.assign(statement[1], statement[2])
-                elif statement[0] == ':':
-                    key, value, _ = statement[1:]
-                    # output, depends, and process can be processed multiple times
-                    try:
-                        args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
-                        # dynamic output or dependent files
-                        if key == 'output':
-                            ofiles = self.expand_output_files(value, *args)
-                            if not isinstance(g, (type(None), Undetermined)) and not isinstance(ofiles, (type(None), Undetermined)):
-                                if any(x in g for x in ofiles):
-                                    raise RuntimeError('Overlapping input and output files: {}'
-                                        .format(', '.join(x for x in ofiles if x in g)))
-                            # set variable _output and output
-                            self.process_output_args(ofiles, **kwargs)
+        try:
+            for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
+                # other variables
+                env.sos_dict.update(v)
+                env.sos_dict.set('_input', g)
+                self.log('_input')
+                env.sos_dict.set('_index', idx)
+                for statement in self.step.statements[input_statement_idx:]:
+                    # if input is undertermined, we can only process output:
+                    if isinstance(g, Undetermined) and statement[0] != ':':
+                        return self.collect_result()
+                    if statement[0] == '=':
+                        self.assign(statement[1], statement[2])
+                    elif statement[0] == ':':
+                        key, value, _ = statement[1:]
+                        # output, depends, and process can be processed multiple times
+                        try:
+                            args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
+                            # dynamic output or dependent files
+                            if key == 'output':
+                                ofiles = self.expand_output_files(value, *args)
+                                if not isinstance(g, (type(None), Undetermined)) and not isinstance(ofiles, (type(None), Undetermined)):
+                                    if any(x in g for x in ofiles):
+                                        raise RuntimeError('Overlapping input and output files: {}'
+                                            .format(', '.join(x for x in ofiles if x in g)))
+                                # set variable _output and output
+                                self.process_output_args(ofiles, **kwargs)
 
-                            # ofiles can be Undetermined
-                            sg = self.step_signature(idx)
-                            if sg is not None and not isinstance(g, Undetermined):
-                                signatures[idx] = RuntimeInfo(sg, env.sos_dict['_input'],
-                                    env.sos_dict['_output'], env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
-                                if env.sig_mode == 'default':
-                                    res = signatures[idx].validate()
-                                    if res:
-                                        # in this case, an Undetermined output can get real output files
-                                        # from a signature
-                                        env.sos_dict.set('input', res['input'])
-                                        env.sos_dict.set('depends', res['depends'])
-                                        env.sos_dict.set('output', res['output'])
-                                        env.sos_dict.update(res['vars'])
-                                        env.logger.info('Step ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
-                                        skip_index = True
-                                elif env.sig_mode == 'assert':
-                                    if not signatures[idx].validate():
-                                        env.logger.info('Step ``{}`` (index={}) is ``rerun`` due to signature mismatch'.format(env.sos_dict['step_name'], idx))
-                                        raise RuntimeError('Signature mismatch.')
-                                elif env.sig_mode == 'construct':
-                                    if signatures[idx].write():
-                                        env.logger.info('Step ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
-                                        skip_index = True
+                                # ofiles can be Undetermined
+                                sg = self.step_signature(idx)
+                                if sg is not None and not isinstance(g, Undetermined):
+                                    signatures[idx] = RuntimeInfo(sg, env.sos_dict['_input'],
+                                        env.sos_dict['_output'], env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
+                                    if env.sig_mode == 'default':
+                                        res = signatures[idx].validate()
+                                        if res:
+                                            # in this case, an Undetermined output can get real output files
+                                            # from a signature
+                                            env.sos_dict.set('input', res['input'])
+                                            env.sos_dict.set('depends', res['depends'])
+                                            env.sos_dict.set('output', res['output'])
+                                            env.sos_dict.update(res['vars'])
+                                            env.logger.info('Step ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
+                                            skip_index = True
+                                    elif env.sig_mode == 'assert':
+                                        if not signatures[idx].validate():
+                                            env.logger.info('Step ``{}`` (index={}) is ``rerun`` due to signature mismatch'.format(env.sos_dict['step_name'], idx))
+                                            raise RuntimeError('Signature mismatch.')
+                                    elif env.sig_mode == 'construct':
+                                        if signatures[idx].write():
+                                            env.logger.info('Step ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
+                                            skip_index = True
 
-                            if skip_index:
-                                break
-                        elif key == 'depends':
-                            dfiles = self.expand_depends_files(*args)
-                            # dfiles can be Undetermined
-                            self.process_depends_args(dfiles, **kwargs)
-                        elif key == 'task':
-                            self.process_task_args(*args, **kwargs)
-                        else:
-                            raise RuntimeError('Unrecognized directive {}'.format(key))
-                    except UnknownTarget:
-                        raise
-                    except Exception as e:
-                        # if input is Undertermined, it is possible that output cannot be processed
-                        # due to that, and we just return
-                        if isinstance(g, Undetermined):
-                            return self.collect_result()
-                        raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
-                else:
-                    try:
-                        self.execute(statement[1])
-                    except AbortExecution as e:
-                        if e.message:
-                            env.logger.warning(e)
-                        skip_index = True
-                        break
-            # if this index is skipped, go directly to the next one
-            if skip_index:
-                skip_index = False
-                continue
-            # finally, tasks..
-            if not self.step.task:
-                continue
+                                if skip_index:
+                                    break
+                            elif key == 'depends':
+                                dfiles = self.expand_depends_files(*args)
+                                # dfiles can be Undetermined
+                                self.process_depends_args(dfiles, **kwargs)
+                            elif key == 'task':
+                                self.process_task_args(*args, **kwargs)
+                            else:
+                                raise RuntimeError('Unrecognized directive {}'.format(key))
+                        except UnknownTarget:
+                            raise
+                        except Exception as e:
+                            # if input is Undertermined, it is possible that output cannot be processed
+                            # due to that, and we just return
+                            if isinstance(g, Undetermined):
+                                return self.collect_result()
+                            raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
+                    else:
+                        try:
+                            self.execute(statement[1])
+                        except AbortExecution as e:
+                            if e.message:
+                                env.logger.warning(e)
+                            skip_index = True
+                            break
+                # if this index is skipped, go directly to the next one
+                if skip_index:
+                    skip_index = False
+                    continue
+                # finally, tasks..
+                if not self.step.task:
+                    continue
 
-            # check if the task is active
-            if '_runtime' in env.sos_dict and 'active' in env.sos_dict['_runtime']:
-                active = env.sos_dict['_runtime']['active']
-                if isinstance(active, int):
-                    if active >= 0 and env.sos_dict['_index'] != active:
-                        continue
-                    if active < 0 and env.sos_dict['_index'] != active + env.sos_dict['__num_groups__']:
-                        continue
-                elif isinstance(active, Sequence):
-                    allowed_index = list([x if x >= 0 else env.sos_dict['__num_groups__'] + x for x in active])
-                    if env.sos_dict['_index'] not in allowed_index:
-                        continue
-                elif isinstance(active, slice):
-                    allowed_index = list(range(env.sos_dict['__num_groups__']))[active]
-                    if env.sos_dict['_index'] not in allowed_index:
-                        continue
-                else:
-                    raise RuntimeError('Unacceptable value for option active: {}'.format(active))
+                # check if the task is active
+                if '_runtime' in env.sos_dict and 'active' in env.sos_dict['_runtime']:
+                    active = env.sos_dict['_runtime']['active']
+                    if isinstance(active, int):
+                        if active >= 0 and env.sos_dict['_index'] != active:
+                            continue
+                        if active < 0 and env.sos_dict['_index'] != active + env.sos_dict['__num_groups__']:
+                            continue
+                    elif isinstance(active, Sequence):
+                        allowed_index = list([x if x >= 0 else env.sos_dict['__num_groups__'] + x for x in active])
+                        if env.sos_dict['_index'] not in allowed_index:
+                            continue
+                    elif isinstance(active, slice):
+                        allowed_index = list(range(env.sos_dict['__num_groups__']))[active]
+                        if env.sos_dict['_index'] not in allowed_index:
+                            continue
+                    else:
+                        raise RuntimeError('Unacceptable value for option active: {}'.format(active))
 
-            self.log('task')
-            try:
-                self.submit_task()
-            except Exception as e:
-                # FIXME: cannot catch exception from subprocesses
-                if env.verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(short_repr(self.step.task), e))
+                self.log('task')
+                try:
+                    self.submit_task()
+                except Exception as e:
+                    # FIXME: cannot catch exception from subprocesses
+                    if env.verbosity > 2:
+                        sys.stderr.write(get_traceback())
+                    raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(short_repr(self.step.task), e))
+                #
+                # endfor loop for each input group
+                #
+            # check results? This is only meaningful for pool
+            self.wait_for_results()
+            # check results
+            if not all(x['succ'] == 0 for x in self.proc_results):
+                raise RuntimeError('Step process returns non-zero value')
+            # if output is Undetermined, re-evalulate it
             #
-            # endfor loop for each input group
+            # NOTE: dynamic output is evaluated at last, so it sets output,
+            # not _output. For the same reason, signatures can be wrong if it has
+            # Undetermined output.
+            if env.run_mode == 'run' and isinstance(env.sos_dict['output'], Undetermined):
+                self.reevaluate_output()
+                # if output is no longer Undetermined, set it to output
+                # of each signature
+                for sig in signatures:
+                    if sig is not None:
+                        sig.set(env.sos_dict['output'], 'output')
             #
-        # check results? This is only meaningful for pool
-        self.wait_for_results()
-        # check results
-        if not all(x['succ'] == 0 for x in self.proc_results):
-            raise RuntimeError('Step process returns non-zero value')
-        # if output is Undetermined, re-evalulate it
-        #
-        # NOTE: dynamic output is evaluated at last, so it sets output,
-        # not _output. For the same reason, signatures can be wrong if it has
-        # Undetermined output.
-        if env.run_mode == 'run' and isinstance(env.sos_dict['output'], Undetermined):
-            self.reevaluate_output()
-            # if output is no longer Undetermined, set it to output
-            # of each signature
             for sig in signatures:
                 if sig is not None:
-                    sig.set(env.sos_dict['output'], 'output')
-        #
-        for sig in signatures:
-            if sig is not None:
-                # signature write can fail for various reasons, for example when files are
-                # not available in prepare mode.
-                sig.write()
-        self.log('output')
-        # variables defined by the shared option needs to be available to be verified
-        if 'shared' in self.step.options:
-            if isinstance(self.step.options['shared'], Mapping):
-                for var, val in self.step.options['shared'].items():
-                    if var == val:
-                        continue
-                    try:
-                        env.sos_dict.set(var, SoS_eval(val))
-                    except Exception as e:
-                        raise RuntimeError('Failed to evaluate shared variable {} from expression {}: {}'
-                            .format(var, val, e))
-        #
-        self.verify_output()
-        return self.collect_result()
+                    # signature write can fail for various reasons, for example when files are
+                    # not available in prepare mode.
+                    sig.write()
+            self.log('output')
+            # variables defined by the shared option needs to be available to be verified
+            if 'shared' in self.step.options:
+                if isinstance(self.step.options['shared'], Mapping):
+                    for var, val in self.step.options['shared'].items():
+                        if var == val:
+                            continue
+                        try:
+                            env.sos_dict.set(var, SoS_eval(val))
+                        except Exception as e:
+                            raise RuntimeError('Failed to evaluate shared variable {} from expression {}: {}'
+                                .format(var, val, e))
+            #
+            self.verify_output()
+            return self.collect_result()
+        finally:
+            # release all signatures
+            for sig in signatures:
+                if sig is not None:
+                    sig.release()
 
 class Queued_Step_Executor(Base_Step_Executor):
     # this class execute the step in a separate process
@@ -1103,6 +1109,18 @@ class MP_Step_Executor(SP_Step_Executor):
             self.pool.close()
             self.pool.join()
 
+    def log(self, stage=None, msg=None):
+        if stage == 'start':
+            env.logger.info('Executing ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
+        elif stage == '_input':
+            if env.sos_dict['_input'] is not None:
+                env.logger.debug('{} _input: ``{}``'.format(self.step.step_name(), short_repr(env.sos_dict['_input'])))
+        elif stage == 'input':
+            if env.sos_dict['input'] is not None:
+                env.logger.info('{} input:    ``{}``'.format(self.step.step_name(), short_repr(env.sos_dict['input'])))
+        elif stage == 'output':
+            if env.sos_dict['output'] is not None:
+                env.logger.info('{} output:   ``{}``'.format(self.step.step_name(), short_repr(env.sos_dict['output'])))
 
 class RQ_Step_Executor(SP_Step_Executor):
     #

@@ -347,9 +347,12 @@ class RuntimeInfo:
             env.logger.warning('Waiting for a lock for output files {}'.format(short_repr(self.output_files)))
             if not self.lock.acquire(blocking=True):
                 raise RuntimeError('Failed to obtain a lock')
+        else:
+            env.logger.trace('Lock acquired for output files {}'.format(short_repr(self.output_files)))
 
-    def __del__(self):
+    def release(self):
         self.lock.release()
+        env.logger.trace('Lock released for output files {}'.format(short_repr(self.output_files)))
 
     def set(self, files, file_type):
         # add signature file if input and output files are dynamic
