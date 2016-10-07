@@ -22,6 +22,7 @@
 #
 import os
 import sys
+import fasteners
 
 #
 # subcommand convert
@@ -118,12 +119,14 @@ def cmd_prepare(args, workflow_args):
 
     if args.__bin_dirs__:
         for d in args.__bin_dirs__:
-            if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
-                os.makedirs(os.path.expanduser(d))
-            elif not os.path.isdir(os.path.expanduser(d)):
-                raise ValueError('directory does not exist: {}'.format(d))
+            with fasteners.InterProcessLock('/tmp/sos_lock_bin'):
+                if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
+                    # if two sos commands start at the same time, only one of them 
+                    # will create the directory
+                    os.makedirs(os.path.expanduser(d))
+                elif not os.path.isdir(os.path.expanduser(d)):
+                    raise ValueError('directory does not exist: {}'.format(d))
         os.environ['PATH'] = os.pathsep.join([os.path.expanduser(x) for x in args.__bin_dirs__]) + os.pathsep + os.environ['PATH']
-
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)

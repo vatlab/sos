@@ -36,7 +36,7 @@ from .utils import env, Error, AbortExecution, short_repr, \
     get_traceback, pickleable, transcribe, WorkflowDict
 from .pattern import extract_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
-from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget
+from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 
@@ -548,7 +548,9 @@ class Base_Step_Executor:
     def assign(self, key, value):
         try:
             env.sos_dict[key] = SoS_eval(value, self.step.sigil)
-        except UnknownTarget as e:
+        except UnknownTarget:
+            raise
+        except UnavailableLock:
             raise
         except Exception as e:
             raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
@@ -558,7 +560,9 @@ class Base_Step_Executor:
             self.last_res = SoS_exec(stmt, self.step.sigil)
         except AbortExecution:
             raise
-        except UnknownTarget as e:
+        except UnknownTarget:
+            raise
+        except UnavailableLock:
             raise
         except Exception as e:
             raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(stmt), e))
@@ -674,6 +678,8 @@ class Base_Step_Executor:
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
             except UnknownTarget:
                 raise
+            except UnavailableLock:
+                raise
             except Exception as e:
                 if '__execute_errors__' in env.sos_dict and env.sos_dict['__execute_errors__'].errors:
                     raise env.sos_dict['__execute_errors__']
@@ -766,6 +772,8 @@ class Base_Step_Executor:
                             else:
                                 raise RuntimeError('Unrecognized directive {}'.format(key))
                         except UnknownTarget:
+                            raise
+                        except UnavailableLock:
                             raise
                         except Exception as e:
                             # if input is Undertermined, it is possible that output cannot be processed

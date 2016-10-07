@@ -1555,6 +1555,33 @@ python:
             FileTarget('myfile_{}.txt'.format(t)).remove('both')
 
 
+    def testExecutionLock(self):
+        '''Test execution lock of two processes'''
+        with open('lock.sos', 'w') as lock:
+            lock.write(r'''
+import time
+[A_1]
+output: 'a.txt'
+time.sleep(3)
+with open('a.txt', 'w') as txt:
+    txt.write('A1\n')
+
+# A1 and A2 are independent
+[A_2]
+input: None
+output: 'b.txt'
+time.sleep(3)
+with open('b.txt', 'w') as txt:
+    txt.write('A2\n')
+        ''')
+        st = time.time()
+        ret1 = subprocess.Popen('sos run lock', shell=True)
+        ret2 = subprocess.Popen('sos run lock', shell=True)
+        ret1.wait()
+        ret2.wait()
+        # two processes execute A_1 and A_2 separately
+        self.assertLess(time.time() - st, 5)
+
 
 if __name__ == '__main__':
     unittest.main()
