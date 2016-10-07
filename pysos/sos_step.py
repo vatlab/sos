@@ -899,8 +899,8 @@ def _expand_file_list(ignore_unknown, *args):
         elif isinstance(arg, Iterable):
             # in case arg is a Generator, check its type will exhaust it
             arg = list(arg)
-            if not all(isinstance(x, str) for x in arg):
-                raise RuntimeError('Invalid file: {}'.format(arg))
+            if not all(isinstance(x, (str, BaseTarget)) for x in arg):
+                raise RuntimeError('Invalid target: {}'.format(arg))
             ifiles.extend(arg)
         else:
             raise RuntimeError('Unrecognized file: {}'.format(arg))

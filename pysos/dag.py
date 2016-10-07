@@ -120,7 +120,7 @@ class SoS_Node(object):
 class SoS_DAG(nx.DiGraph):
     def __init__(self):
         nx.DiGraph.__init__(self)
-        self._all_input_files = defaultdict(list)
+        # all_dependent files includes input and depends files
         self._all_dependent_files = defaultdict(list)
         self._all_output_files = defaultdict(list)
 
@@ -185,10 +185,10 @@ class SoS_DAG(nx.DiGraph):
             return []
 
     def steps_depending_on(self, target):
-        if target not in self._all_input_files:
+        if target not in self._all_dependent_files:
             raise RuntimeError('Target {} not requested by any step'.format(target))
         else:
-            return self._all_input_files[target]
+            return self._all_dependent_files[target]
 
     def pending(self):
         return [x for x in self.nodes() if x._status == 'failed'], [x for x in self.nodes() if x._status is None]
