@@ -137,8 +137,11 @@ def short_repr(obj, noneAsNA=False):
     elif isinstance(obj, collections.Sequence): # should be a list or tuple
         return repr(obj).split(' ')[0] + ' ...] ({} items)'.format(len(obj))
     elif isinstance(obj, dict):
-        first_key = obj.keys()[0]
-        return '{{{!r}:{!r}, ...}} ({} items)'.format(first_key, obj[first_key], len(obj))
+        if obj:
+            first_key = list(obj.keys())[0]
+            return '{{{!r}:{!r}, ...}} ({} items)'.format(first_key, obj[first_key], len(obj))
+        else:
+            return '{}'
     else:
         return '{}...'.format(repr(obj)[:40])
 

@@ -727,6 +727,8 @@ class Base_Step_Executor:
                             args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
                             # dynamic output or dependent files
                             if key == 'output':
+                                # if output is defined, its default value needs to be cleared
+                                env.sos_dict.set('output', None)
                                 ofiles = self.expand_output_files(value, *args)
                                 if not isinstance(g, (type(None), Undetermined)) and not isinstance(ofiles, (type(None), Undetermined)):
                                     if any(x in g for x in ofiles):
