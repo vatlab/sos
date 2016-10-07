@@ -21,11 +21,10 @@
 #
 import os
 import sys
-import types
 import hashlib
 import shutil
 import fasteners
-from .utils import env, Error, WorkflowDict, short_repr
+from .utils import env, Error, short_repr
 from .sos_eval import Undetermined
 
 __all__ = ['dynamic', 'executable']

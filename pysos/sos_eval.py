@@ -376,10 +376,7 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
             env.logger.trace('Executing statement:\n{}'.format(stmts))
         #
         try:
-            if env.run_mode == 'interactive':
-                act = DelayedAction(env.logger.warning, 'Running {}'.format(short_repr(code)))
-            else:
-                act = None
+            act = DelayedAction(env.logger.warning, 'Running {}'.format(short_repr(code)))
             if idx + 1 == len(code_group) and _is_expr(stmts):
                 res = eval(stmts, _dict)
             else:

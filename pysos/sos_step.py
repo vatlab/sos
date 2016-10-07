@@ -24,7 +24,6 @@ import sys
 import copy
 import time
 import glob
-import types
 import fnmatch
 
 from io import StringIO
@@ -33,7 +32,7 @@ from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
 from .utils import env, Error, AbortExecution, short_repr, \
-    get_traceback, pickleable, transcribe, WorkflowDict
+    get_traceback, transcribe, ActivityNotifier
 from .pattern import extract_pattern
 from .sos_eval import  SoS_eval, SoS_exec, Undetermined
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, UnavailableLock
@@ -880,12 +879,15 @@ class Queued_Step_Executor(Base_Step_Executor):
 
     def run(self):
         try:
+            notifier = ActivityNotifier('Running {}'.format(self.step.step_name()))
             res = Base_Step_Executor.run(self)
             self.queue.put(res)
         except Exception as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             self.queue.put(e)
+        finally:
+            del notifier
 
 def _expand_file_list(ignore_unknown, *args):
     ifiles = []
@@ -1040,6 +1042,7 @@ class SP_Step_Executor(Queued_Step_Executor):
 
     def expand_depends_files(self, *args, **kwargs):
         '''handle directive depends'''
+        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         return _expand_file_list(False, *args)
 
     def reevaluate_output(self):
@@ -1145,7 +1148,8 @@ class RQ_Step_Executor(SP_Step_Executor):
             # if pool, it must not be in prepare mode and have
             # __signature_vars__
             env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_idx'}),
+                | {'_input', '_output', '_depends', 'input', 'output',
+                    'depends', '_index', '__args__', 'step_name'}),
             self.step.sigil
             ) )
 
@@ -1179,7 +1183,8 @@ class Celery_Step_Executor(SP_Step_Executor):
             self.step.task,         # task
             self.step.global_def,   # global process
             env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                | {'step_name', '_index', '_input', '_output', '_depends', 'input', 'output', 'depends', '_idx'}),
+                | {'_input', '_output', '_depends', 'input', 'output',
+                    'depends', '_index', '__args__', 'step_name'}),
             self.step.sigil
             )) )
 
