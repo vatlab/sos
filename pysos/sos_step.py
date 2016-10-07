@@ -34,7 +34,7 @@ from itertools import tee, combinations
 from .utils import env, Error, AbortExecution, short_repr, \
     get_traceback, transcribe, ActivityNotifier
 from .pattern import extract_pattern
-from .sos_eval import  SoS_eval, SoS_exec, Undetermined
+from .sos_eval import SoS_eval, SoS_exec, Undetermined
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
@@ -103,10 +103,12 @@ def execute_task(task, global_def, sos_dict, sigil):
         # step process
         SoS_exec(task, sigil)
         os.chdir(env.exec_dir)
+    except Exception as e:
+        return {'succ': 1, 'exception': e, 'path': os.environ['PATH']}
     except KeyboardInterrupt:
         raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
     env.deregister_process(os.getpid())
-    return {'succ': 0, 'output': env.sos_dict['_output']}
+    return {'succ': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
 
 
 def analyze_section(section, default_input=None):
@@ -831,8 +833,9 @@ class Base_Step_Executor:
             # check results? This is only meaningful for pool
             self.wait_for_results()
             # check results
-            if not all(x['succ'] == 0 for x in self.proc_results):
-                raise RuntimeError('Step process returns non-zero value')
+            for x in self.proc_results:
+                if x['succ'] != 0:
+                    raise x['exception']
             # if output is Undetermined, re-evalulate it
             #
             # NOTE: dynamic output is evaluated at last, so it sets output,
@@ -1143,6 +1146,13 @@ class RQ_Step_Executor(SP_Step_Executor):
         self.redis_queue = redis_queue
 
     def submit_task(self):
+        if '_runtime' not in env.sos_dict:
+            env.sos_dict.set('_runtime', {'workdir': env.exec_dir})
+        elif 'workdir' not in env.sos_dict['_runtime']:
+            env.sos_dict['_runtime']['workdir'] = env.exec_dir
+        #
+        # tell subprocess where pysos.runtime is
+        env.sos_dict['_runtime']['_module'] = sos_runtime.__file__
         self.proc_results.append( self.redis_queue.enqueue(
             execute_task,            # function
             self.step.task,          # task
@@ -1151,7 +1161,7 @@ class RQ_Step_Executor(SP_Step_Executor):
             # __signature_vars__
             env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
                 | {'_input', '_output', '_depends', 'input', 'output',
-                    'depends', '_index', '__args__', 'step_name'}),
+                    'depends', '_index', '__args__', 'step_name', '_runtime'}),
             self.step.sigil
             ) )
 
@@ -1186,7 +1196,7 @@ class Celery_Step_Executor(SP_Step_Executor):
             self.step.global_def,   # global process
             env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
                 | {'_input', '_output', '_depends', 'input', 'output',
-                    'depends', '_index', '__args__', 'step_name'}),
+                    'depends', '_index', '__args__', 'step_name', '_runtime'}),
             self.step.sigil
             )) )
 

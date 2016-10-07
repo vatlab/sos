@@ -372,8 +372,8 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
             continue
         if env.run_mode == 'prepare':
             env.logger.trace('Preparing statement:\n{}'.format(stmts))
-        else:
-            env.logger.trace('Executing statement:\n{}'.format(stmts))
+        #else:
+        #    env.logger.trace('Executing statement:\n{}'.format(stmts))
         #
         try:
             act = DelayedAction(env.logger.warning, 'Running {}'.format(short_repr(code)))
