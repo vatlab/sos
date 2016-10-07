@@ -95,16 +95,15 @@ class SoS_Step:
         self._script = ''
 
     def step_name(self, alias=True):
-        if alias and self.alias:
-            if isinstance(self.index, int):
-                return '{}_{} ({})'.format(self.name, self.index, self.alias)
-            else:
-                return '{} ({})'.format(self.name, self.alias)
+        if not self.name:
+            n, i, a = self.names[0]
+            return n + \
+                    ('_{}'.format(i) if isinstance(i, str) and i.isdigit() else '') + \
+                    (' ({})'.format(a) if alias and a else '')
         else:
-            if isinstance(self.index, int):
-                return '{}_{}'.format(self.name, self.index)
-            else:
-                return self.name
+            return self.name + \
+                    ('_{}'.format(self.index) if isinstance(self.index, int) else '') + \
+                    (' ({})'.format(self.alias) if alias and self.alias else '')
 
     def indented_script(self):
         ''' check self._script and see if it is indented '''
@@ -290,10 +289,10 @@ class SoS_Step:
         for idx, statement in enumerate(self.statements):
             if statement[0] == ':' and statement[1] == 'parameter':
                 if '=' not in statement[2]:
-                    raise ValueError('In valid parameter definition: {}'.format(statement[2]))
+                    raise ValueError('{}:  Invalid parameter definition: {}'.format(self.step_name(), statement[2]))
                 name, value = statement[2].split('=', 1)
                 if not value.strip():
-                    raise ValueError('In valid parameter definition: {}'.format(statement[2]))
+                    raise ValueError('{}: Invalid parameter definition: {}'.format(self.step_name(), statement[2]))
                 self.statements[idx] = ['!', 'if "sos_handle_parameter_" in globals():\n    {} = sos_handle_parameter_({!r}, {})\n'.format(name, name.strip(), value)]
         #
         task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
@@ -308,11 +307,11 @@ class SoS_Step:
                 self.task += '{} = {}'.format(statement[1], statement[2])
             elif statement[0] == ':':
                 if statement[1] in ('input', 'output', 'depends'):
-                    raise ValueError('Step task should be defined as the last item in a SoS step')
+                    raise ValueError('{}: Step task should be defined as the last item in a SoS step'.format(self.step_name()))
                 elif statement[1] == 'task':
-                    raise ValueError('Only one task is allowed for a step')
+                    raise ValueError('{}: Only one task is allowed for a step'.format(self.step_name()))
                 elif statement[1] == 'parameter':
-                    raise ValueError('Parameters should be defined before step task')
+                    raise ValueError('{}: Parameters should be defined before step task'.format(self.step_name()))
                 # ignore ...
                 self.task += '\n'
             else:
