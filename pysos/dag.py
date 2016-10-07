@@ -24,6 +24,7 @@ import networkx as nx
 from collections import defaultdict
 import copy
 import pickle
+import time
 
 from .utils import env
 from .sos_eval import Undetermined
@@ -119,6 +120,7 @@ class SoS_Node(object):
 class SoS_DAG(nx.DiGraph):
     def __init__(self):
         nx.DiGraph.__init__(self)
+        self._all_input_files = defaultdict(list)
         self._all_dependent_files = defaultdict(list)
         self._all_output_files = defaultdict(list)
 
@@ -156,11 +158,13 @@ class SoS_DAG(nx.DiGraph):
                         break
                 if not with_dependency:
                     return node
-        # it there is no job to be executed
-        # it should be all completed
-        #for node in self.nodes():
-        #    if node._status not in ('running', 'completed'):
-        #        raise RuntimeError('{} is not completed yet has dependency'.format(node._node_id))
+        # if no node could be found, let use try pending ones
+        for node in self.nodes():
+            # if it has not been executed
+            if node._status == 'pending':
+                time.sleep(0.5)
+                return node
+        #
         return None
 
     def node_by_id(self, node_uuid):

@@ -38,6 +38,14 @@ class UnknownTarget(Error):
         Error.__init__(self, 'Unknown target %s' % target)
         self.target = target
 
+
+class UnavailableLock(Error):
+    """Raised when there are errors in prepare mode. Such errors are not raised
+    immediately, but will be collected and raised at the end """
+
+    def __init__(self, output):
+        Error.__init__(self, 'Failed to obtain a lock for output %s' % short_repr(output))
+
 #
 # Runtime signature
 #
@@ -335,18 +343,17 @@ class RuntimeInfo:
             info_file = os.path.join('.sos', '.runtime', rel_path)
         # path to file
         sig_path = os.path.split(info_file)[0]
-        if not os.path.isdir(sig_path):
-            try:
-                os.makedirs(sig_path)
-            except Exception as e:
-                raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
+        with fasteners.InterProcessLock('/tmp/lock_sig'):
+            if not os.path.isdir(sig_path):
+                try:
+                    os.makedirs(sig_path)
+                except Exception as e:
+                    raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
         self.proc_info = '{}.exe_info'.format(info_file)
 
-        self.lock = fasteners.InterProcessLock(self.proc_info)
+        self.lock = fasteners.InterProcessLock(self.proc_info + '_')
         if not self.lock.acquire(blocking=False):
-            env.logger.warning('Waiting for a lock for output files {}'.format(short_repr(self.output_files)))
-            if not self.lock.acquire(blocking=True):
-                raise RuntimeError('Failed to obtain a lock')
+            raise UnavailableLock(self.output_files)
         else:
             env.logger.trace('Lock acquired for output files {}'.format(short_repr(self.output_files)))
 
