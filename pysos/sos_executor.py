@@ -262,7 +262,14 @@ class Base_Executor:
                         env.sos_dict.set(k, v[0])
                 #
                 # for auxiliary, we need to set input and output, here
-                env.sos_dict['__default_output__'] = [target]
+                # now, if the step does not provide any alternative (e.g. no variable generated
+                # from patten), we should specify all output as output of step. Otherwise the
+                # step will be created for multiple outputs. issue #243
+                if mo[0][1]:
+                    env.sos_dict['__default_output__'] = [target]
+                else:
+                    env.sos_dict['__default_output__'] = section.options['provides']
+                # for auxiliary, we need to set input and output, here
                 # will become input, set to None
                 env.sos_dict['__step_output__'] = None
                 #
@@ -307,7 +314,8 @@ class Base_Executor:
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
                 # with identical names.
-                dag.add_step(section.uuid, '{} ({})'.format(res['__step_name__'], target), None, res['__step_input__'],
+                dag.add_step(section.uuid, '{} ({})'.format(res['__step_name__'],
+                    short_repr(env.sos_dict['__default_output__'])), None, res['__step_input__'],
                     res['__step_depends__'], res['__step_output__'], context=context)
         #dag.show_nodes()
         #
@@ -343,6 +351,9 @@ class Base_Executor:
             # find matching steps
             # check auxiliary steps and see if any steps provides it
             for target in dangling_targets:
+                # target might no longer be dangling after a section is added.
+                if target not in dag.dangling(targets):
+                    continue
                 mo = [(x, self.match(target, x.options['provides'])) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
                 if not mo:
@@ -364,7 +375,13 @@ class Base_Executor:
                         env.sos_dict.set(k, v[0])
                 #
                 # for auxiliary, we need to set input and output, here
-                env.sos_dict['__default_output__'] = [target]
+                # now, if the step does not provide any alternative (e.g. no variable generated
+                # from patten), we should specify all output as output of step. Otherwise the
+                # step will be created for multiple outputs. issue #243
+                if mo[0][1]:
+                    env.sos_dict['__default_output__'] = [target]
+                else:
+                    env.sos_dict['__default_output__'] = section.options['provides']
                 # will become input, set to None
                 env.sos_dict['__step_output__'] = None
                 #
@@ -383,7 +400,8 @@ class Base_Executor:
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
                 # with identical names.
-                dag.add_step(section.uuid, '{} ({})'.format(section.step_name(), target), None, res['step_input'],
+                dag.add_step(section.uuid, '{} ({})'.format(section.step_name(),
+                    short_repr(env.sos_dict['__default_output__'])), None, res['step_input'],
                     res['step_depends'], res['step_output'], context=context)
                 resolved += 1
         return resolved

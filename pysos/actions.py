@@ -467,17 +467,18 @@ class SoS_ExecuteScript:
                     env.register_process(pid, 'Runing {}'.format(script_file))
                     ret = p.wait()
                     summarizeExecution(pid)
+
+                if ret != 0:
+                    with open(debug_script_file, 'w') as sfile:
+                        sfile.write(self.script)
+                    cmd = self.interpreter.replace('{}', shlex.quote(debug_script_file))
+                    raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" under {} to test it.'
+                        .format(debug_script_file, cmd, os.getcwd()))
             except Exception as e:
                 env.logger.error('Failed to execute script: {}'.format(e))
             finally:
                 env.deregister_process(p.pid)
                 os.remove(script_file)
-            if ret != 0:
-                with open(debug_script_file, 'w') as sfile:
-                    sfile.write(self.script)
-                cmd = self.interpreter.replace('{}', shlex.quote(debug_script_file))
-                raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" under {} to test it.'
-                    .format(debug_script_file, cmd, os.getcwd()))
 
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
