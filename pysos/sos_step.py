@@ -90,8 +90,12 @@ def execute_task(task, global_def, sos_dict, sigil):
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
     try:
+        # set current directory if specified
         if '_runtime' in sos_dict and 'workdir' in sos_dict['_runtime']:
             os.chdir(os.path.expanduser(sos_dict['_runtime']['workdir']))
+        # set $PATH if specified
+        if '_runtime' in sos_dict and 'PATH' in sos_dict['_runtime']:
+            os.environ['PATH'] = sos_dict['_runtime']['PATH']
         env.sos_dict.quick_update(sos_dict)
         SoS_exec('import os, sys, glob')
         SoS_exec('from pysos.runtime import *')
@@ -1150,9 +1154,9 @@ class RQ_Step_Executor(SP_Step_Executor):
             env.sos_dict.set('_runtime', {'workdir': env.exec_dir})
         elif 'workdir' not in env.sos_dict['_runtime']:
             env.sos_dict['_runtime']['workdir'] = env.exec_dir
+        env.sos_dict['_runtime']['PATH'] = os.environ['PATH']
         #
         # tell subprocess where pysos.runtime is
-        env.sos_dict['_runtime']['_module'] = sos_runtime.__file__
         self.proc_results.append( self.redis_queue.enqueue(
             execute_task,            # function
             self.step.task,          # task
@@ -1190,6 +1194,11 @@ class Celery_Step_Executor(SP_Step_Executor):
     def submit_task(self):
         # if concurrent is set, create a pool object
         from .celery import celery_execute_task
+        if '_runtime' not in env.sos_dict:
+            env.sos_dict.set('_runtime', {'workdir': env.exec_dir})
+        elif 'workdir' not in env.sos_dict['_runtime']:
+            env.sos_dict['_runtime']['workdir'] = env.exec_dir
+        env.sos_dict['_runtime']['PATH'] = os.environ['PATH']
         self.proc_results.append(
             celery_execute_task.apply_async((     # function
             self.step.task,         # task

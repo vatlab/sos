@@ -551,6 +551,7 @@ def pickleable(obj):
         pickle.dumps(obj)
         return True
     except:
+        env.logger.warning('Object {} is not passed because it is not pickleable'.format(short_repr(obj)))
         return False
 
 class ProgressBar:

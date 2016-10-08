@@ -476,6 +476,7 @@ class SoS_ExecuteScript:
                         .format(debug_script_file, cmd, os.getcwd()))
             except Exception as e:
                 env.logger.error('Failed to execute script: {}'.format(e))
+                raise
             finally:
                 env.deregister_process(p.pid)
                 os.remove(script_file)
