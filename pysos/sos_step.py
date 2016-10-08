@@ -1155,11 +1155,25 @@ class RQ_Step_Executor(SP_Step_Executor):
         elif 'workdir' not in env.sos_dict['_runtime']:
             env.sos_dict['_runtime']['workdir'] = env.exec_dir
         env.sos_dict['_runtime']['PATH'] = os.environ['PATH']
+        if 'walltime' in env.sos_dict['_runtime']:
+            walltime = env.sos_dict['_runtime']
+            if isinstance(walltime, str):
+                if walltime.count(':') > 2:
+                    raise ValueError('Incorrect format.')
+                try:
+                    walltime = sum([int(val)*60**idx  for idx, val in enumerate(walltime.split(':')[-1::-1])])
+                except Exception:
+                    raise ValueError('Unacceptable walltime {} (can be "HH:MM:SS" or a number (seconds))'.format(walltime))
+        else:
+            # bioinformatics can be running for long time...
+            # let me assume a longest running time of 1 month
+            walltime = 60*60*24*30
         #
         # tell subprocess where pysos.runtime is
-        self.proc_results.append( self.redis_queue.enqueue(
+        self.proc_results.append(
+            self.redis_queue.enqueue(
             execute_task,            # function
-            self.step.task,          # task
+            args=(self.step.task,          # task
             self.step.global_def,    # global process
             # if pool, it must not be in prepare mode and have
             # __signature_vars__
@@ -1167,7 +1181,8 @@ class RQ_Step_Executor(SP_Step_Executor):
                 | {'_input', '_output', '_depends', 'input', 'output',
                     'depends', '_index', '__args__', 'step_name', '_runtime'}),
             self.step.sigil
-            ) )
+            ),
+            timeout=walltime))
 
     def wait_for_results(self):
         while True:
