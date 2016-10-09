@@ -350,10 +350,10 @@ input: 'a.txt'
         self.assertDAG(dag,
 '''
 strict digraph "" {
-"K (b.txt)";
+"K ['b.txt']";
 C_3;
 C_2;
-"K (b.txt)" -> C_2;
+"K ['b.txt']" -> C_2;
 }
 ''')
 
@@ -446,25 +446,25 @@ sh:
         self.assertDAG(dag,
 '''
 strict digraph "" {
-"C4 (C4.txt)";
-"B1 (B1.txt)";
-"C1 (C1.txt)";
-"C2 (C2.txt)";
-"C3 (C3.txt)";
+"C4 ['C4.txt']";
+"B1 ['B1.txt']";
+"C1 ['C1.txt']";
+"C2 ['C2.txt']";
+"C3 ['C3.txt']";
 A_1;
-"B2 (B2.txt)";
-"B3 (B3.txt)";
+"B2 ['B2.txt']";
+"B3 ['B3.txt']";
 A_2;
-"C4 (C4.txt)" -> "C2 (C2.txt)";
-"C4 (C4.txt)" -> "C3 (C3.txt)";
-"B1 (B1.txt)" -> A_1;
-"C1 (C1.txt)" -> "B2 (B2.txt)";
-"C2 (C2.txt)" -> "C1 (C1.txt)";
-"C3 (C3.txt)" -> "C1 (C1.txt)";
+"C4 ['C4.txt']" -> "C2 ['C2.txt']";
+"C4 ['C4.txt']" -> "C3 ['C3.txt']";
+"B1 ['B1.txt']" -> A_1;
+"C1 ['C1.txt']" -> "B2 ['B2.txt']";
+"C2 ['C2.txt']" -> "C1 ['C1.txt']";
+"C3 ['C3.txt']" -> "C1 ['C1.txt']";
 A_1 -> A_2;
-"B2 (B2.txt)" -> "B1 (B1.txt)";
-"B2 (B2.txt)" -> A_2;
-"B3 (B3.txt)" -> "B2 (B2.txt)";
+"B2 ['B2.txt']" -> "B1 ['B1.txt']";
+"B2 ['B2.txt']" -> A_2;
+"B3 ['B3.txt']" -> "B2 ['B2.txt']";
 }
 ''')
         Base_Executor(wf).run()
@@ -541,20 +541,20 @@ sh:
         self.assertDAG(dag,
 '''
 strict digraph "" {
-"B3 (B3.txt)";
-"C4 (C4.txt)";
-"C2 (C2.txt)";
-"C1 (C1.txt)";
-"B1 (B1.txt)";
-"B2 (B2.txt)";
-"C3 (C3.txt)";
-"B3 (B3.txt)" -> "B2 (B2.txt)";
-"C4 (C4.txt)" -> "C3 (C3.txt)";
-"C4 (C4.txt)" -> "C2 (C2.txt)";
-"C2 (C2.txt)" -> "C1 (C1.txt)";
-"C1 (C1.txt)" -> "B2 (B2.txt)";
-"B2 (B2.txt)" -> "B1 (B1.txt)";
-"C3 (C3.txt)" -> "C1 (C1.txt)";
+"B3 ['B3.txt']";
+"C4 ['C4.txt']";
+"C2 ['C2.txt']";
+"C1 ['C1.txt']";
+"B1 ['B1.txt']";
+"B2 ['B2.txt']";
+"C3 ['C3.txt']";
+"B3 ['B3.txt']" -> "B2 ['B2.txt']";
+"C4 ['C4.txt']" -> "C3 ['C3.txt']";
+"C4 ['C4.txt']" -> "C2 ['C2.txt']";
+"C2 ['C2.txt']" -> "C1 ['C1.txt']";
+"C1 ['C1.txt']" -> "B2 ['B2.txt']";
+"B2 ['B2.txt']" -> "B1 ['B1.txt']";
+"C3 ['C3.txt']" -> "C1 ['C1.txt']";
 }
 ''')
         Base_Executor(wf).run(targets=['B1.txt'])
@@ -571,18 +571,18 @@ strict digraph "" {
         self.assertDAG(dag,
 '''
 strict digraph "" {
-"C4 (C4.txt)";
-"B2 (B2.txt)";
-"C3 (C3.txt)";
-"B3 (B3.txt)";
-"C2 (C2.txt)";
-"C1 (C1.txt)";
-"C4 (C4.txt)" -> "C2 (C2.txt)";
-"C4 (C4.txt)" -> "C3 (C3.txt)";
-"C3 (C3.txt)" -> "C1 (C1.txt)";
-"B3 (B3.txt)" -> "B2 (B2.txt)";
-"C2 (C2.txt)" -> "C1 (C1.txt)";
-"C1 (C1.txt)" -> "B2 (B2.txt)";
+"C4 ['C4.txt']";
+"B2 ['B2.txt']";
+"C3 ['C3.txt']";
+"B3 ['B3.txt']";
+"C2 ['C2.txt']";
+"C1 ['C1.txt']";
+"C4 ['C4.txt']" -> "C2 ['C2.txt']";
+"C4 ['C4.txt']" -> "C3 ['C3.txt']";
+"C3 ['C3.txt']" -> "C1 ['C1.txt']";
+"B3 ['B3.txt']" -> "B2 ['B2.txt']";
+"C2 ['C2.txt']" -> "C1 ['C1.txt']";
+"C1 ['C1.txt']" -> "B2 ['B2.txt']";
 }
 ''')
         Base_Executor(wf).run(targets=['B2.txt', 'C2.txt'])
@@ -600,10 +600,10 @@ strict digraph "" {
         self.assertDAG(dag,
 '''
 strict digraph "" {
-"B3 (B3.txt)";
-"C2 (C2.txt)";
-"C4 (C4.txt)";
-"C4 (C4.txt)" -> "C2 (C2.txt)";
+"B3 ['B3.txt']";
+"C2 ['C2.txt']";
+"C4 ['C4.txt']";
+"C4 ['C4.txt']" -> "C2 ['C2.txt']";
 }
 ''')
         Base_Executor(wf).run(targets=['B3.txt', 'C2.txt'])
@@ -654,17 +654,17 @@ sh:
         self.assertDAG(dag,
 '''
 strict digraph "" {
-"P (B2.txt.p)";
-"B1 (B1.txt)";
-"B2 (B2.txt)";
+"P ['B2.txt.p']";
+"B1 ['B1.txt']";
+"B2 ['B2.txt']";
 A_2;
 A_1;
-"P (B1.txt.p)";
-"P (B2.txt.p)" -> A_1;
-"B1 (B1.txt)" -> "P (B1.txt.p)";
-"B2 (B2.txt)" -> "P (B2.txt.p)";
+"P ['B1.txt.p']";
+"P ['B2.txt.p']" -> A_1;
+"B1 ['B1.txt']" -> "P ['B1.txt.p']";
+"B2 ['B2.txt']" -> "P ['B2.txt.p']";
 A_1 -> A_2;
-"P (B1.txt.p)" -> A_1;
+"P ['B1.txt.p']" -> A_1;
 }
 ''')
         Base_Executor(wf).run()
@@ -711,8 +711,8 @@ sh:
 strict digraph "" {
 A_1;
 A_2;
-"B (B2.txt)";
-"B (B2.txt)" -> A_2;
+"B ['B2.txt']";
+"B ['B2.txt']" -> A_2;
 }
 ''')
         env.max_jobs = 4
