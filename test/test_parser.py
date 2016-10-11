@@ -26,7 +26,7 @@ import subprocess
 
 from pysos.utils import env, ArgumentError
 from pysos.sos_script import SoS_Script, ParsingError
-from pysos.sos_executor import Base_Executor, ExecuteError
+from pysos.sos_executor import Base_Executor
 from pysos.target import FileTarget
 
 class TestParser(unittest.TestCase):
@@ -154,7 +154,7 @@ var = 1
         #script = SoS_Script('''a = b\n[0] ''')
         #wf = script.workflow()
         #dag = Base_Executor(wf).prepare()
-        #self.assertRaises(ExecuteError, Base_Executor(wf).run, dag)
+        #self.assertRaises(ValueError, Base_Executor(wf).run, dag)
         # multi-line string literal
         SoS_Script('''a = """
 this is a multi line
@@ -271,21 +271,21 @@ parameter: b = int
 [0]
 ''')
         wf = script.workflow()
-        self.assertRaises((ExecuteError, ArgumentError), Base_Executor(wf).prepare)
+        self.assertRaises(ArgumentError, Base_Executor(wf).prepare)
         #
         script = SoS_Script('''
 parameter: b = list
 [0]
 ''')
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
+        self.assertRaises(ArgumentError, Base_Executor(wf).prepare)
         # also require the type
         script = SoS_Script('''
 parameter: b = int
 [0]
 ''')
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf, args=['--b', 'file']).prepare)
+        self.assertRaises(ArgumentError, Base_Executor(wf, args=['--b', 'file']).prepare)
         #
         script = SoS_Script('''
 parameter: b = int
@@ -657,6 +657,7 @@ executed.append(_input)
                          ['a4.txt', 'a5.txt', 'a6.txt'],
                          ['a7.txt', 'a8.txt', 'a9.txt']])
         # number of files should be divisible by group_by
+        self.touch(['a{}.txt'.format(x) for x in range(1, 10)])
         script = SoS_Script('''
 [0]
 
@@ -667,7 +668,7 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        self.assertRaises((ExecuteError, RuntimeError), Base_Executor(wf).prepare)
+        self.assertRaises(ValueError, Base_Executor(wf).prepare)
         # incorrect value causes an exception
         script = SoS_Script('''
 [0]
@@ -679,7 +680,7 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        self.assertRaises((ExecuteError, RuntimeError), Base_Executor(wf).prepare)
+        self.assertRaises(ValueError, Base_Executor(wf).prepare)
 
     def testSectionActions(self):
         '''Test actions of sections'''
@@ -920,7 +921,7 @@ input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2+c')
 ''')
         wf = script.workflow('c')
-        self.assertRaises((ExecuteError, RuntimeError), Base_Executor(wf).run)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
         #
         # nested subworkflow is allowed
         script = SoS_Script('''
