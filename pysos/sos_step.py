@@ -58,7 +58,7 @@ class StepInfo(object):
     def __repr__(self):
         return '{' + ', '.join('{}: {!r}'.format(x,y) for x,y in self.__dict__.items()) + '}'
 
-def execute_task(task, global_def, sos_dict, sigil):
+def execute_task(task, global_def, sos_dict, signature, sigil):
     '''A function that execute specified task within a local dictionary
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
@@ -87,6 +87,8 @@ def execute_task(task, global_def, sos_dict, sigil):
         return {'succ': 1, 'exception': e, 'path': os.environ['PATH']}
     except KeyboardInterrupt:
         raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
+    if signature is not None:
+        signature.write()
     env.deregister_process(os.getpid())
     return {'succ': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
 
@@ -507,7 +509,7 @@ class Base_Step_Executor:
     def reevaluate_output(self):
         pass
 
-    def submit_task(self):
+    def submit_task(self, signature):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
         self.proc_results.append(
@@ -516,6 +518,7 @@ class Base_Step_Executor:
             '',                       # local execusion, no need to re-run global
             # do not clone dict
             env.sos_dict,
+            signature,
             self.step.sigil
             ))
 
@@ -774,6 +777,8 @@ class Base_Step_Executor:
                     continue
                 # finally, tasks..
                 if not self.step.task:
+                    if signatures[idx] is not None:
+                        signatures[idx].write()
                     continue
 
                 # check if the task is active
@@ -797,7 +802,7 @@ class Base_Step_Executor:
 
                 self.log('task')
                 try:
-                    self.submit_task()
+                    self.submit_task(signatures[idx])
                 except Exception as e:
                     # FIXME: cannot catch exception from subprocesses
                     if env.verbosity > 2:
@@ -824,10 +829,7 @@ class Base_Step_Executor:
                 for sig in signatures:
                     if sig is not None:
                         sig.set(env.sos_dict['output'], 'output')
-            #
-            for sig in signatures:
-                if sig is not None:
-                    sig.write()
+
             self.log('output')
             # variables defined by the shared option needs to be available to be verified
             if 'shared' in self.step.options:
@@ -1081,7 +1083,7 @@ class MP_Step_Executor(SP_Step_Executor):
         SP_Step_Executor.__init__(self, step, queue)
         self.pool = None
 
-    def submit_task(self):
+    def submit_task(self, signature):
         # if concurrent is set, create a pool object
         import multiprocessing as mp
         if self.pool is None and env.max_jobs > 1 and len(self._groups) > 1 and \
@@ -1097,6 +1099,7 @@ class MP_Step_Executor(SP_Step_Executor):
                 # __signature_vars__
                 env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
                     | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_idx'}),
+                signature,
                 self.step.sigil
                 )))
         else:
@@ -1107,6 +1110,7 @@ class MP_Step_Executor(SP_Step_Executor):
                 '',                       # local execusion, no need to re-run global
                 # do not clone dict
                 env.sos_dict,
+                signature,
                 self.step.sigil
                 ))
 
@@ -1149,7 +1153,7 @@ class RQ_Step_Executor(SP_Step_Executor):
         SP_Step_Executor.__init__(self, step, queue)
         self.redis_queue = redis_queue
 
-    def submit_task(self):
+    def submit_task(self, signature):
         if '_runtime' not in env.sos_dict:
             env.sos_dict.set('_runtime', {'workdir': env.exec_dir})
         elif 'workdir' not in env.sos_dict['_runtime']:
@@ -1180,6 +1184,7 @@ class RQ_Step_Executor(SP_Step_Executor):
             env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
                 | {'_input', '_output', '_depends', 'input', 'output',
                     'depends', '_index', '__args__', 'step_name', '_runtime'}),
+            signature,
             self.step.sigil
             ),
             timeout=walltime))
@@ -1206,7 +1211,7 @@ class Celery_Step_Executor(SP_Step_Executor):
     def __init__(self, step, queue):
         SP_Step_Executor.__init__(self, step, queue)
 
-    def submit_task(self):
+    def submit_task(self, signature):
         # if concurrent is set, create a pool object
         from .celery import celery_execute_task
         if '_runtime' not in env.sos_dict:
@@ -1221,6 +1226,7 @@ class Celery_Step_Executor(SP_Step_Executor):
             env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
                 | {'_input', '_output', '_depends', 'input', 'output',
                     'depends', '_index', '__args__', 'step_name', '_runtime'}),
+            signature,
             self.step.sigil
             )) )
 
