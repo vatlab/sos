@@ -50,32 +50,6 @@ def __null_func__(*args, **kwargs):
     to evaluate functions of input, output, and depends directives.'''
     return args, kwargs
 
-class ExecuteError(Error):
-    """Raised when there are errors in prepare mode. Such errors are not raised
-    immediately, but will be collected and raised at the end """
-
-    def __init__(self, workflow):
-        Error.__init__(self, 'SoS workflow contains errors: %s' % workflow)
-        self.workflow = workflow
-        self.errors = []
-        self.traces = []
-        self.args = (workflow, )
-
-    def append(self, line, error):
-        lines = [x for x in line.split('\n') if x.strip()]
-        if not lines:
-            short_line = '<empty>'
-        else:
-            short_line = lines[0][:40] if len(lines[0]) > 40 else lines[0]
-        if short_line in self.errors:
-            return
-        self.errors.append(short_line)
-        self.traces.append(get_traceback())
-        if isinstance(error, Exception):
-            self.message += '\n[%s] %s:\n\t%s' % (short_line, error.__class__.__name__, error)
-        else:
-            self.message += '\n[%s]:\n\t%s' % (short_line, error)
-
 class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
@@ -105,7 +79,6 @@ class Base_Executor:
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__step_output__', [])
-        env.sos_dict.set('__execute_errors__', ExecuteError('' if self.workflow is None else self.workflow.name))
 
         # load configuration files
         cfg = {}
@@ -145,7 +118,7 @@ class Base_Executor:
         if section.global_def:
             try:
                 SoS_exec(section.global_def)
-            except Exception as e:
+            except RuntimeError as e:
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
                 raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
@@ -447,14 +420,16 @@ class Base_Executor:
         '''Execute the script in dryrun mode.'''
         try:
             self.run(targets=targets, mode='dryun')
-        except Exception as e:
+        # only runtime errors are ignored
+        except RuntimeError as e:
             env.logger.warning('Workflow cannot be completed in dryrun mode: {}'.format(e))
 
     def prepare(self, targets=None):
         '''Execute the script in prepare mode.'''
         try:
             self.run(targets=targets, mode='prepare')
-        except Exception as e:
+        # only runtime errors are ignored
+        except RuntimeError as e:
             env.logger.warning('Workflow cannot be completed in prepare mode: {}'.format(e))
 
 class MP_Executor(Base_Executor):
@@ -467,29 +442,6 @@ class MP_Executor(Base_Executor):
 
     def step_executor(self, section, queue):
         return MP_Step_Executor(section, queue)
-
-    def summarize(self, dag, failed_messages={}):
-        # final summary
-        failed_steps, pending_steps = dag.pending()
-        if not failed_steps:
-            env.logger.info('Workflow {} has been executed successfully.'.format(self.workflow.name))
-        else:
-            if failed_steps:
-                env.logger.error('Failed steps:')
-                for x in failed_steps:
-                    section = self.workflow.section_by_id(x._step_uuid)
-                    env.logger.error('    {}: {}'.format(section.name + ('_' + str(section.index) if isinstance(section.index, int) else ''),
-                        short_repr(section.comment.strip())))
-                    if x._node_uuid in failed_messages:
-                        env.logger.warning(failed_messages[x._node_uuid])
-            if pending_steps:
-                env.logger.error('Pending steps:')
-                for x in pending_steps:
-                    section = self.workflow.section_by_id(x._step_uuid)
-                    env.logger.error('    {}: {}'.format(section.name + ('_' + str(section.index) if isinstance(section.index, int) else ''),
-                        short_repr(section.comment.strip())))
-            raise RuntimeError('Workflow {} is terminated prematurally with {} failed and {} pending steps'
-                        .format(self.workflow.name, len(failed_steps), len(pending_steps)))
 
     def run(self, targets=None):
         '''Execute a workflow with specified command line args. If sub is True, this
@@ -592,7 +544,7 @@ class MP_Executor(Base_Executor):
                 # SoS namespace.
                 try:
                     SoS_exec(section.global_def)
-                except Exception as e:
+                except RuntimeError as e:
                     if env.verbosity > 2:
                         sys.stderr.write(get_traceback())
                     raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
@@ -622,6 +574,29 @@ class MP_Executor(Base_Executor):
                 time.sleep(0.1)
         prog.done()
         self.summarize(dag, failed_messages)
+
+    def summarize(self, dag, failed_messages={}):
+        # final summary
+        failed_steps, pending_steps = dag.pending()
+        if not failed_steps:
+            env.logger.info('Workflow {} has been executed successfully.'.format(self.workflow.name))
+        else:
+            if failed_steps:
+                env.logger.error('Failed steps:')
+                for x in failed_steps:
+                    section = self.workflow.section_by_id(x._step_uuid)
+                    env.logger.error('    {}: {}'.format(section.name + ('_' + str(section.index) if isinstance(section.index, int) else ''),
+                        short_repr(section.comment.strip())))
+                    if x._node_uuid in failed_messages:
+                        env.logger.warning(failed_messages[x._node_uuid])
+            if pending_steps:
+                env.logger.error('Pending steps:')
+                for x in pending_steps:
+                    section = self.workflow.section_by_id(x._step_uuid)
+                    env.logger.error('    {}: {}'.format(section.name + ('_' + str(section.index) if isinstance(section.index, int) else ''),
+                        short_repr(section.comment.strip())))
+            raise RuntimeError('Workflow {} is terminated prematurally with {} failed and {} pending steps'
+                        .format(self.workflow.name, len(failed_steps), len(pending_steps)))
 
 class RQ_Executor(MP_Executor):
     def __init__(self, workflow, args=[], config_file=None, nested=False):

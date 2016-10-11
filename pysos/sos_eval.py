@@ -297,16 +297,7 @@ def SoS_eval(expr, sigil='${ }'):
     interpolate expressions) strings.'''
     from .target import UnknownTarget
     expr = ConvertString(expr, sigil)
-    try:
-        return eval(expr, env.sos_dict._dict)
-    except UnknownTarget:
-        raise
-    except Exception as e:
-        if env.run_mode not in ['run', 'interactive']:
-            env.sos_dict['__execute_errors__'].append(expr, e)
-            return None
-        else:		
-            raise
+    return eval(expr, env.sos_dict._dict)
 
 def _is_expr(expr):
     try:
@@ -384,18 +375,6 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
                 res = eval(stmts, _dict)
             else:
                 exec(stmts, _dict)
-        except UnknownTarget:
-            raise
-        except AbortExecution:
-            raise
-        except Exception as e:
-            if env.run_mode == 'prepare':
-                if isinstance(e, (IndexError, NameError, InterpolationError)):
-                    env.logger.warning('Failed to execute {} in prepare mode: {}'.format(short_repr(code), e))
-                else:
-                    env.sos_dict['__execute_errors__'].append(code, e)
-            else:
-                raise
         finally:
             del act
         executed += stmts + '\n'

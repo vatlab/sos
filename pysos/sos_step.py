@@ -42,30 +42,6 @@ from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIO
 __all__ = []
 
 
-class ExecuteError(Error):
-    '''Raised when there are errors in prepare mode. Such errors are not raised
-    immediately, but will be collected and raised at the end'''
-    def __init__(self, workflow):
-        Error.__init__(self, 'SoS workflow contains errors: %s' % workflow)
-        self.workflow = workflow
-        self.errors = []
-        self.traces = []
-        self.args = (workflow, )
-
-    def append(self, line, error):
-        lines = [x for x in line.split('\n') if x.strip()]
-        if not lines:
-            short_line = '<empty>'
-        else:
-            short_line = lines[0][:40] if len(lines[0]) > 40 else lines[0]
-        self.errors.append(short_line)
-        self.traces.append(get_traceback())
-        if isinstance(error, Exception):
-            self.message += '\n[%s] %s:\n\t%s' % (short_line, error.__class__.__name__, error)
-        else:
-            self.message += '\n[%s]:\n\t%s' % (short_line, error)
-
-
 class StepInfo(object):
     '''A simple class to hold input, output, and index of step. Its attribute can
     only be set using an interface, and cannot be assigned. This is to make sure
@@ -162,7 +138,7 @@ def analyze_section(section, default_input=None):
 if 'sos_handle_parameter_' in globals():
     del sos_handle_parameter_
 ''' + section.global_def)
-        except Exception as e:
+        except RuntimeException as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
@@ -584,8 +560,6 @@ class Base_Step_Executor:
             '__step_depends__': env.sos_dict['depends'],
             '__step_name__': env.sos_dict['step_name'],
         }
-        if '__execute_errors__' in env.sos_dict:
-            result['__execute_errors__'] = env.sos_dict['__execute_errors__']
         result['__changed_vars__'] = set()
         if 'shared' in self.step.options:
             vars = self.step.options['shared']
@@ -656,7 +630,7 @@ class Base_Step_Executor:
         elif len(input_statement_idx) == 1:
             input_statement_idx = input_statement_idx[0]
         else:
-            raise RuntimeError('More than one step input are specified in step {}'.format(self.step.step_name()))
+            raise ValueError('More than one step input are specified in step {}'.format(self.step.step_name()))
 
         # if there is an input statement, execute the statements before it, and then the input statement
         if input_statement_idx is not None:
@@ -665,7 +639,7 @@ class Base_Step_Executor:
                 if statement[0] == '=':
                     self.assign(statement[1], statement[2])
                 elif statement[0] == ':':
-                    raise RuntimeError('Step input should be specified before others')
+                    raise ValueError('Step input should be specified before others')
                 else:
                     try:
                         self.execute(statement[1])
@@ -686,10 +660,7 @@ class Base_Step_Executor:
             except UnavailableLock:
                 raise
             except Exception as e:
-                if '__execute_errors__' in env.sos_dict and env.sos_dict['__execute_errors__'].errors:
-                    raise env.sos_dict['__execute_errors__']
-                else:
-                    raise RuntimeError('Failed to process input statement {}: {}'.format(stmt, e))
+                raise ValueError('Failed to process input statement {}: {}'.format(stmt, e))
 
             input_statement_idx += 1
         else:
