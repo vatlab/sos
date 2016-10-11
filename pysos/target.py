@@ -42,8 +42,10 @@ class UnavailableLock(Error):
     """Raised when there are errors in prepare mode. Such errors are not raised
     immediately, but will be collected and raised at the end """
 
-    def __init__(self, output):
-        Error.__init__(self, 'Failed to obtain a lock for output %s' % short_repr(output))
+    def __init__(self, signature):
+        Error.__init__(self, 'Failed to obtain a lock for output %s' % short_repr(signature[0]))
+        self.output = signature[0]
+        self.sig_file = signature[1]
 
 #
 # Runtime signature
@@ -352,7 +354,7 @@ class RuntimeInfo:
 
         self.lock = fasteners.InterProcessLock(self.proc_info + '_')
         if not self.lock.acquire(blocking=False):
-            raise UnavailableLock(self.output_files)
+            raise UnavailableLock((self.output_files, self.proc_info))
         else:
             env.logger.trace('Lock acquired for output files {}'.format(short_repr(self.output_files)))
 

@@ -25,8 +25,9 @@ from collections import defaultdict
 import copy
 import pickle
 import time
+import fasteners
 
-from .utils import env
+from .utils import env, ActivityNotifier, short_repr
 from .sos_eval import Undetermined
 from .target import FileTarget, sos_variable, textMD5
 
@@ -159,12 +160,24 @@ class SoS_DAG(nx.DiGraph):
                 if not with_dependency:
                     return node
         # if no node could be found, let use try pending ones
-        for node in self.nodes():
-            # if it has not been executed
-            if node._status == 'pending':
-                time.sleep(0.5)
-                return node
-        #
+        pending_jobs = [x for x in self.nodes() if x._status == 'pending']
+        if pending_jobs:
+            try:
+                notifier = ActivityNotifier('Waiting for another process for output {}'
+                    .format(short_repr(node._signature[0])))
+                while True:
+                    for node in pending_jobs:
+                        # if it has not been executed
+                        lock = fasteners.InterProcessLock(node._signature[1] + '_')
+                        if lock.acquire(blocking=False):
+                            lock.release()
+                            node._status = None
+                            return node
+                    time.sleep(0.5)
+            except Exception as e:
+                env.logger.error(e)
+            finally:
+                notifier.stop()
         return None
 
     def node_by_id(self, node_uuid):
