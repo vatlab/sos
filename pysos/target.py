@@ -324,7 +324,7 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Output files must be a list of filenames or Undetermined for runtime signature.')
         
-        self.signature_vars = {x: env.sos_dict[x] for x in signature_vars}
+        self.signature_vars = {x: env.sos_dict[x] for x in signature_vars if x in env.sos_dict}
 
         self.sig_files = []
 
