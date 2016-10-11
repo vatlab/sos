@@ -324,7 +324,7 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Output files must be a list of filenames or Undetermined for runtime signature.')
         
-        self.signature_vars = {x: env.sos_dict[x] for x in signature_vars if x in env.sos_dict}
+        self.signature_vars = signature_vars
 
         self.sig_files = []
 
@@ -411,13 +411,14 @@ class RuntimeInfo:
                 else:
                     return False
             md5.write('# context\n')
-            for var in sorted(self.signature_vars.keys()):
+            for var in sorted(self.signature_vars):
                 # var can be local and not passed as outside environment
                 if var in env.sos_dict:
-                    if isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
-                        md5.write('{} = {!r}\n'.format(var, self.signature_vars[var]))
+                    value = env.sos_dict[var]
+                    if isinstance(value, (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
+                        md5.write('{} = {!r}\n'.format(var, value))
                     else:
-                        env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, self.signature_vars[var]))
+                        env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, value))
             md5.write('# step process\n')
             md5.write(self.script)
         return True

@@ -34,7 +34,7 @@ from pysos.sos_script import SoS_Script
 from pysos._version import __version__
 from pysos.utils import env, WorkflowDict
 from pysos.sos_eval import Undetermined, SoS_exec
-from pysos.sos_executor import Base_Executor, MP_Executor, Interactive_Executor
+from pysos.sos_executor import Base_Executor, MP_Executor, Interactive_Executor, ExecuteError
 from pysos.sos_script import ParsingError
 from pysos.signature import FileTarget
 import subprocess
@@ -518,7 +518,7 @@ a += 1
 
 """)
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
 
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''
@@ -591,7 +591,7 @@ test.output=['ab.txt']
 
 """)
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
 
     def testReadOnlyInputOutputVars(self):
         '''Test readonly input output vars'''
@@ -605,7 +605,7 @@ _output = ['b.txt']
         env.run_mode = 'prepare'
         # I would like to disallow setting _output directly, but this is
         # not the case now.
-        self.assertRaises(RuntimeError, Base_Executor(wf).prepare)
+        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
 
     def testLocalNamespace(self):
         '''Test if steps are well separated.'''
@@ -620,7 +620,7 @@ print(a)
 
 """)
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
         # however, alias should be sent back
         script = SoS_Script(r"""
 [1: shared={'shared': 'output'}]
@@ -1211,7 +1211,7 @@ cp ${_input} ${_dest}
         #script = SoS_Script('comment = 1\n' + text)
         #wf = script.workflow()
         #env.sig_mode = 'assert'
-        #self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        #self.assertRaises(ExecuteError, Base_Executor(wf).run)
 
     def testReexecution(self):
         '''Test -f option of sos run'''

@@ -26,7 +26,7 @@ import subprocess
 
 from pysos.utils import env, ArgumentError
 from pysos.sos_script import SoS_Script, ParsingError
-from pysos.sos_executor import Base_Executor
+from pysos.sos_executor import Base_Executor, ExecuteError
 from pysos.target import FileTarget
 
 class TestParser(unittest.TestCase):
@@ -668,7 +668,7 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        self.assertRaises(ValueError, Base_Executor(wf).prepare)
+        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
         # incorrect value causes an exception
         script = SoS_Script('''
 [0]
@@ -680,7 +680,7 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        self.assertRaises(ValueError, Base_Executor(wf).prepare)
+        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
 
     def testSectionActions(self):
         '''Test actions of sections'''
@@ -921,7 +921,7 @@ input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2+c')
 ''')
         wf = script.workflow('c')
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
         #
         # nested subworkflow is allowed
         script = SoS_Script('''

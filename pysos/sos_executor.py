@@ -50,7 +50,7 @@ class ExecuteError(Error):
     immediately, but will be collected and raised at the end """
 
     def __init__(self, workflow):
-        Error.__init__(self, 'SoS workflow contains errors: %s' % workflow)
+        Error.__init__(self, 'Failed to execute workflow %s' % workflow)
         self.workflow = workflow
         self.errors = []
         self.traces = []
@@ -356,6 +356,7 @@ class Base_Executor:
         prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
         self.reset_dict()
         env.sos_dict.set('run_mode', env.run_mode)
+        exec_error = ExecuteError(self.workflow.name)
         while True:
             # find any step that can be executed and run it, and update the DAT
             # with status.
@@ -423,7 +424,9 @@ class Base_Executor:
                 env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
             # if the job is failed
             elif isinstance(res, Exception):
-                raise res
+                runnable._status = 'failed'
+                exec_error.append(runnable._node_id, res)
+                prog.progress(1)
             else:#
                 for k, v in res.items():
                     env.sos_dict.set(k, v)
@@ -441,6 +444,21 @@ class Base_Executor:
                 prog.progress(1)
             #env.logger.error('completed')
         prog.done()
+        if exec_error.errors:
+            failed_steps, pending_steps = dag.pending()
+            if failed_steps:
+                sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
+                exec_error.append(self.workflow.name,
+                    RuntimeError('{} failed step{}: {}'.format(len(sections), 
+                        's' if len(sections) > 1 else '', ', '.join(sections))))
+            if pending_steps:
+                sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in pending_steps]
+                exec_error.append(self.workflow.name,
+                    RuntimeError('{} pending step{}: {}'.format(len(sections),
+                        's' if len(sections) > 1 else '', ', '.join(sections))))
+            raise exec_error
+        else:
+            env.logger.info('Workflow {} is executed successfully.'.format(self.workflow.name))
 
     def dryrun(self, targets=None):
         '''Execute the script in dryrun mode.'''
@@ -487,7 +505,7 @@ class MP_Executor(Base_Executor):
         #
         procs = [None for x in range(env.max_jobs)]
         prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
-        failed_messages = {}
+        exec_error = ExecuteError(self.workflow.name)
         while True:
             # step 1: check existing jobs and see if they are completed
             for idx, proc in enumerate(procs):
@@ -526,7 +544,7 @@ class MP_Executor(Base_Executor):
                 # if the job is failed
                 elif isinstance(res, Exception):
                     runnable._status = 'failed'
-                    failed_messages[u] = repr(res)
+                    exec_error.append(runnable._node_id, res)
                     prog.progress(1)
                     procs[idx] = None
                 else:
@@ -599,30 +617,21 @@ class MP_Executor(Base_Executor):
             else:
                 time.sleep(0.1)
         prog.done()
-        self.summarize(dag, failed_messages)
-
-    def summarize(self, dag, failed_messages={}):
-        # final summary
-        failed_steps, pending_steps = dag.pending()
-        if not failed_steps:
-            env.logger.info('Workflow {} has been executed successfully.'.format(self.workflow.name))
-        else:
+        if exec_error.errors:
+            failed_steps, pending_steps = dag.pending()
             if failed_steps:
-                env.logger.error('Failed steps:')
-                for x in failed_steps:
-                    section = self.workflow.section_by_id(x._step_uuid)
-                    env.logger.error('    {}: {}'.format(section.name + ('_' + str(section.index) if isinstance(section.index, int) else ''),
-                        short_repr(section.comment.strip())))
-                    if x._node_uuid in failed_messages:
-                        env.logger.warning(failed_messages[x._node_uuid])
+                sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
+                exec_error.append(self.workflow.name,
+                    RuntimeError('{} failed step{}: {}'.format(len(sections), 
+                        's' if len(sections) > 1 else '', ', '.join(sections))))
             if pending_steps:
-                env.logger.error('Pending steps:')
-                for x in pending_steps:
-                    section = self.workflow.section_by_id(x._step_uuid)
-                    env.logger.error('    {}: {}'.format(section.name + ('_' + str(section.index) if isinstance(section.index, int) else ''),
-                        short_repr(section.comment.strip())))
-            raise RuntimeError('Workflow {} is terminated prematurally with {} failed and {} pending steps'
-                        .format(self.workflow.name, len(failed_steps), len(pending_steps)))
+                sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in pending_steps]
+                exec_error.append(self.workflow.name,
+                    RuntimeError('{} pending step{}: {}'.format(len(sections), 
+                        's' if len(sections) > 1 else '', ', '.join(sections))))
+            raise exec_error
+        else:
+            env.logger.info('Workflow {} is executed successfully.'.format(self.workflow.name))
 
 class RQ_Executor(MP_Executor):
     def __init__(self, workflow, args=[], config_file=None, nested=False):

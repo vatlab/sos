@@ -827,8 +827,6 @@ class Base_Step_Executor:
             #
             for sig in signatures:
                 if sig is not None:
-                    # signature write can fail for various reasons, for example when files are
-                    # not available in prepare mode.
                     sig.write()
             self.log('output')
             # variables defined by the shared option needs to be available to be verified

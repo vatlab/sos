@@ -42,7 +42,7 @@ from pysos.utils import env
 from pysos.sos_eval import  Undetermined
 from pysos.actions import DockerClient
 from docker.errors import DockerException
-from pysos.sos_executor import Base_Executor
+from pysos.sos_executor import Base_Executor, ExecuteError
 from pysos.signature import FileTarget
 
 import socket
@@ -103,6 +103,25 @@ except (TimeoutException, DockerException) as e:
     has_docker = False
 
 class TestActions(unittest.TestCase):
+    def setUp(self):
+        env.reset()
+        self.temp_files = []
+
+    def tearDown(self):
+        for f in self.temp_files:
+            FileTarget(f).remove('both')
+
+    def touch(self, files):
+        '''create temporary files'''
+        if isinstance(files, str):
+            files = [files]
+        #
+        for f in files:
+            with open(f, 'w') as tmp:
+                tmp.write('test')
+        #
+        self.temp_files.extend(files)
+
     def testSoSAction(self):
         '''Test sos_action decorator'''
         script = SoS_Script(r"""
@@ -164,7 +183,7 @@ get_output('catmouse')
 """)
         wf = script.workflow()
         # should fail in prepare mode
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
         #
         #
         script = SoS_Script(r"""
@@ -173,7 +192,7 @@ ret = get_output('cat -h')
 """)
         wf = script.workflow()
         # this should give a warning and return false
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
 
     def testCheckCommand(self):
         '''Test action check_command'''
@@ -191,7 +210,7 @@ check_command('catmouse')
 """)
         wf = script.workflow()
         # should fail in prepare mode
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
         #
         wf = script.workflow()
         #
@@ -209,7 +228,7 @@ check_command('ls -l')
 fail_if(check_command('cat -h') != 0, 'command return non-zero')
 """)
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
         #
         # check check_command is the command is stuck
         script = SoS_Script(r"""
@@ -226,7 +245,7 @@ fail_if(check_command('sleep 4') != 0, 'Command time out')
 """)
         wf = script.workflow()
         # this should pass
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
         #
         # test reading this file
         script = SoS_Script(r"""
@@ -235,7 +254,7 @@ check_command('cat test_actions.py', 'abcde' + 'fgh')
 """)
         wf = script.workflow()
         # should raise an error
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
         #
         script = SoS_Script(r"""
 check_command('cat test_actions.py', 'testSearchOutput')
@@ -246,6 +265,7 @@ check_command('cat test_actions.py', 'testSearchOutput')
 
     def testFailIf(self):
         '''Test action fail if'''
+        self.touch('a.txt')
         script = SoS_Script(r"""
 [0]
 input: 'a.txt'
@@ -253,7 +273,7 @@ fail_if(len(input) == 1)
 """)
         wf = script.workflow()
         # should fail in prepare mode
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
@@ -270,7 +290,7 @@ warn_if(input is None, 'Expect to see a warning message')
         wf = script.workflow()
         # should see a warning message.
         Base_Executor(wf).prepare()
-        #self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        #self.assertRaises(ExecuteError, Base_Executor(wf).run)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
@@ -308,7 +328,7 @@ run:
 echo 'Echo
 ''')
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
 
     def testBash(self):
         '''Test action bash'''
@@ -325,7 +345,7 @@ bash:
 echo 'Echo
 ''')
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
     
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testBashInDocker(self):
@@ -354,7 +374,7 @@ sh:
 echo 'Echo
 ''')
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
@@ -367,7 +387,7 @@ sh: docker_image='ubuntu'
 echo 'Echo
 ''')
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).run)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
         #
         # this should give us a warning if RAM is less than 4G
         Base_Executor(wf).prepare()
@@ -629,7 +649,7 @@ check_R_library('stephens999/ashr')
 check_R_library('edgeRRRR')
 ''')
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).prepare)
+        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerBuild(self):
@@ -744,13 +764,13 @@ download: dest_dir='tmp', decompress=True
 ''')
         start = time.time()
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).prepare)
+        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq-hg18_20100817.DB'))
         self.assertGreater(time.time() - start, 5)
         # this will be fast
         start = time.time()
         wf = script.workflow()
-        self.assertRaises(RuntimeError, Base_Executor(wf).prepare)
+        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
         self.assertLess(time.time() - start, 3)
         # 
         # test decompress tar.gz file
