@@ -285,6 +285,14 @@ class Base_Executor:
                 section.options.set('provides',
                     section.options['provides'] + [sos_variable(var) for var in changed_vars])
 
+            context={'__signature_vars__': signature_vars,
+                    '__environ_vars__': environ_vars,
+                    '__changed_vars__': changed_vars }
+
+            # for nested workflow, the input is specified by sos_run, not None.
+            if self.nested and idx == 0:
+                context['__step_output__'] = env.sos_dict['__step_output__']
+
             # NOTE: if a section has option 'shared', the execution of this step would
             # change dictionary, essentially making all later steps rely on this step.
             dag.add_step(section.uuid,
@@ -293,9 +301,7 @@ class Base_Executor:
                 res['step_input'],
                 res['step_depends'],
                 res['step_output'],
-                context={'__signature_vars__': signature_vars,
-                    '__environ_vars__': environ_vars,
-                    '__changed_vars__': changed_vars })
+                context = context)
             default_input = res['step_output']
         #
         # analyze auxiliary steps

@@ -835,10 +835,11 @@ sos_run('a+b')
         env.sig_mode = 'ignore'
         wf = script.workflow('c')
         Base_Executor(wf).prepare()
-        self.assertEqual(env.sos_dict['executed'], ['c_0', 'a_1', 'a_2', 'a_3', 'a_4',
-            'b_1', 'b_2', 'b_3', 'b_4'])
-        self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], None, None, None, ['b.begin'], None, None, None])
+        # order of execution is not guaranteed
+        self.assertEqual(sorted(env.sos_dict['executed']), sorted(['c_0', 'a_1', 'a_2', 'a_3', 'a_4',
+            'b_1', 'b_2', 'b_3', 'b_4']))
         # step will be looped
+        self.touch(['a.txt', 'b.txt'])
         script = SoS_Script('''
 if 'executed' not in locals():
     executed = []
@@ -919,7 +920,7 @@ input: 'a.txt', 'b.txt', group_by='single'
 sos_run('a_2+c')
 ''')
         wf = script.workflow('c')
-        self.assertRaises((ExecuteError, RuntimeError), Base_Executor(wf).prepare)
+        self.assertRaises((ExecuteError, RuntimeError), Base_Executor(wf).run)
         #
         # nested subworkflow is allowed
         script = SoS_Script('''
