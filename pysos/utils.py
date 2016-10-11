@@ -37,7 +37,6 @@ import yaml
 import urllib
 import argparse
 from collections.abc import Sequence
-import threading
 from io import StringIO
 from html.parser import HTMLParser
 

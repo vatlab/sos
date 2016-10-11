@@ -976,6 +976,9 @@ class Prepare_Step_Executor(Queued_Step_Executor):
         if stage == 'start':
             env.logger.trace('Preparing ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
 
+    def verify_output(self):
+        # do nothing
+
 class SP_Step_Executor(Queued_Step_Executor):
     '''Single process step executor'''
     def __init__(self, step, queue):

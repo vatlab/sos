@@ -90,53 +90,7 @@ def cmd_convert(args, style_args):
         env.logger.error(e)
         sys.exit(1)
 
-#
-# subcommand inspect
-#
-def cmd_inspect(args, workflow_args):
-    from .utils import env, get_traceback
-    from .sos_script import SoS_Script
-    from .sos_executor import Base_Executor
-    env.verbosity = args.verbosity
-    try:
-        script = SoS_Script(filename=args.script)
-        workflow = script.workflow(args.workflow)
-        Base_Executor(workflow, args=workflow_args, config_file=args.__config__)
-    except Exception as e:
-        if args.verbosity and args.verbosity > 2:
-            sys.stderr.write(get_traceback())
-        env.logger.error(e)
-        sys.exit(1)
 
-#
-# subcommand prepare
-#
-def cmd_prepare(args, workflow_args):
-    from .utils import env, get_traceback
-    from .sos_script import SoS_Script
-    from .sos_executor import Base_Executor
-    env.verbosity = args.verbosity
-
-    if args.__bin_dirs__:
-        for d in args.__bin_dirs__:
-            with fasteners.InterProcessLock('/tmp/sos_lock_bin'):
-                if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
-                    # if two sos commands start at the same time, only one of them 
-                    # will create the directory
-                    os.makedirs(os.path.expanduser(d))
-                elif not os.path.isdir(os.path.expanduser(d)):
-                    raise ValueError('directory does not exist: {}'.format(d))
-        os.environ['PATH'] = os.pathsep.join([os.path.expanduser(x) for x in args.__bin_dirs__]) + os.pathsep + os.environ['PATH']
-    try:
-        script = SoS_Script(filename=args.script)
-        workflow = script.workflow(args.workflow)
-        executor = Base_Executor(workflow, args=workflow_args, config_file=args.__config__)
-        executor.prepare()
-    except Exception as e:
-        if args.verbosity and args.verbosity > 2:
-            sys.stderr.write(get_traceback())
-        env.logger.error(e)
-        sys.exit(1)
 
 #
 # subcommand run
@@ -186,9 +140,9 @@ def cmd_run(args, workflow_args):
             executor = Celery_Executor(workflow, args=workflow_args, config_file=args.__config__)
         else:
             raise ValueError('Only the default multiprocessing and a rq engine is allowed')
-        # inspect currently does not do anything
-        if args.__inspect__:
-            return
+        #
+        if args.__dryrun__:
+            executor.dryrun(args.__targets__)
         elif args.__prepare__:
             executor.prepare(args.__targets__)
         else:
@@ -200,6 +154,32 @@ def cmd_run(args, workflow_args):
             sys.stderr.write(get_traceback())
         env.logger.error(e)
         sys.exit(1)
+
+#
+# subcommand dryrun
+#
+def cmd_dryrun(args, workflow_args):
+    args.__rerun__ = False
+    args.__construct__ = False
+    args.__engine__ = None
+    args.__max_jobs__ = 1
+    args.__discard__ =  []
+    args.__dryrun__ = True
+    args.__prepare__ = True
+    cmd_run(args, workflow_args)
+
+#
+# subcommand prepare
+#
+def cmd_prepare(args, workflow_args):
+    args.__rerun__ = False
+    args.__construct__ = False
+    args.__engine__ = None
+    args.__max_jobs__ = 1
+    args.__discard__ =  []
+    args.__dryrun__ = False
+    args.__prepare__ = True
+    cmd_run(args, workflow_args)
 
 #
 # command start

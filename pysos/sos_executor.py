@@ -182,165 +182,6 @@ class Base_Executor:
                 return True
         return False
 
-    def prepare(self, targets=None):
-        '''Run the script in prepare mode to prepare resources.'''
-        self.reset_dict()
-        #env.logger.info('Preparing workflow {}'.format(self.workflow.name))
-        env.run_mode = 'prepare'
-        # passing run_mode to SoS dict so that users can execute blocks of
-        # python statements in different run modes.
-        env.sos_dict.set('run_mode', env.run_mode)
-
-        # process step of the pipelinp
-        #
-        if not self.nested:
-            env.sos_dict.set('__step_output__', None)
-
-        dag = SoS_DAG()
-        for idx, section in enumerate(self.workflow.sections):
-            if self.skip(section):
-                continue
-            #
-            # execute section with specified input
-            queue = mp.Queue()
-            executor = Prepare_Step_Executor(section, queue)
-            proc = mp.Process(target=executor.run)
-            proc.start()
-            res = queue.get()
-            proc.join()
-            # if the job is failed
-            if isinstance(res, Exception):
-                raise RuntimeError(res)
-            #
-            # environ vars are variables used on and before input statement
-            # signature vars are variables used after input statement
-            environ_vars = set()
-            signature_vars = set()
-            changed_vars = set()
-            for k, v in res.items():
-                if k == '__environ_vars__':
-                    environ_vars = v - self._base_symbols
-                elif k == '__signature_vars__':
-                    signature_vars = v - self._base_symbols
-                elif k == '__changed_vars__':
-                    changed_vars = v
-                else:
-                    env.sos_dict.set(k, v)
-
-            # parameters, if used in the step, should be considered environmental
-            environ_vars |= env.parameter_vars & signature_vars
-            #
-            # build DAG with input and output files of step
-            #
-            dag.add_step(section.uuid, section.step_name(), idx, res['__step_input__'], res['__step_depends__'], res['__step_output__'],
-                context={'__signature_vars__': signature_vars, '__environ_vars__': environ_vars, '__changed_vars__': changed_vars})
-
-        while True:
-            dangling_targets = dag.dangling(targets)
-            if not dangling_targets:
-                break
-            env.logger.info('Resolving {} objects from {} nodes'.format(len(dangling_targets), dag.number_of_nodes()))
-            # find matching steps
-            # check auxiliary steps and see if any steps provides it
-            for target in dangling_targets:
-                mo = [(x, self.match(target, x.options['provides'])) for x in self.workflow.auxiliary_sections]
-                mo = [x for x in mo if x[1] is not False]
-                if not mo:
-                    raise RuntimeError('No step to generate target {} requested by {}'.format(target,
-                        ', '.join(set([self.workflow.section_by_id(x._step_uuid).step_name() for x in dag.steps_depending_on(target)]))))
-                if len(mo) > 1:
-                    raise RuntimeError('Multiple steps {} to generate target {}'.format(', '.join(str(x[0].options['provides']) for x in mo), target))
-                #
-                # only one step, we need to process it # execute section with specified input
-                #
-                # NOTE:  Auxiliary can be called with different output files and matching pattern
-                # so we are actually creating a new section each time we need an auxillary step.
-                #
-                section = mo[0][0]
-                if isinstance(mo[0][1], dict):
-                    for k,v in mo[0][1].items():
-                        env.sos_dict.set(k, v[0])
-                #
-                # for auxiliary, we need to set input and output, here
-                # now, if the step does not provide any alternative (e.g. no variable generated
-                # from patten), we should specify all output as output of step. Otherwise the
-                # step will be created for multiple outputs. issue #243
-                if mo[0][1]:
-                    env.sos_dict['__default_output__'] = [target]
-                elif isinstance(section.options['provides'], Sequence):
-                    env.sos_dict['__default_output__'] = section.options['provides']
-                else:
-                    env.sos_dict['__default_output__'] = [section.options['provides']]
-                # for auxiliary, we need to set input and output, here
-                # will become input, set to None
-                env.sos_dict['__step_output__'] = None
-                #
-                queue = mp.Queue()
-                executor = Prepare_Step_Executor(section, queue)
-                proc = mp.Process(target=executor.run)
-                proc.start()
-                res = queue.get()
-                proc.join()
-                # if the job is failed
-                if isinstance(res, Exception):
-                    raise RuntimeError(res)
-                #
-                environ_vars = set()
-                signature_vars = set()
-                changed_vars = set()
-                for k, v in res.items():
-                    if k == '__environ_vars__':
-                        environ_vars = v - self._base_symbols
-                    elif k == '__signature_vars__':
-                        signature_vars = v - self._base_symbols
-                    elif k == '__changed_vars__':
-                        changed_vars = v
-                    else:
-                        env.sos_dict.set(k, v)
-
-                # parameters, if used in the step, should be considered environmental
-                environ_vars |= env.parameter_vars & signature_vars
-                #
-                if isinstance(env.sos_dict['__step_output__'], (type(None), Undetermined)):
-                    raise RuntimeError('Output of auxiliary step cannot be undetermined, output containing {} is expected.'.format(target))
-                # build DAG with input and output files of step
-                env.logger.info('Adding step {} with output {}'.format(res['__step_name__'], target))
-                if isinstance(mo[0][1], dict):
-                    context = mo[0][1]
-                else:
-                    context = {}
-                context['__signature_vars__'] = signature_vars
-                context['__environ_vars__'] = environ_vars
-                context['__changed_vars__'] = changed_vars
-                context['__default_output__'] = [target]
-                # NOTE: If a step is called multiple times with different targets, it is much better
-                # to use different names because pydotplus can be very slow in handling graphs with nodes
-                # with identical names.
-                dag.add_step(section.uuid, '{} {}'.format(res['__step_name__'],
-                    short_repr(env.sos_dict['__default_output__'])), None, res['__step_input__'],
-                    res['__step_depends__'], res['__step_output__'], context=context)
-        #dag.show_nodes()
-        #
-        # at the end
-        exception = env.sos_dict['__execute_errors__']
-        if exception.errors:
-            # if there is any error, raise it
-            raise exception
-
-        # now, there should be no dangling targets, let us connect nodes
-        dag.build(self.workflow.auxiliary_sections)
-        # trim the DAG if targets are specified
-        if targets:
-            dag = dag.subgraph_from(targets)
-        # write DAG for debugging purposes
-        dag.write_dot(os.path.join(env.exec_dir, '.sos', '{}.dot'.format(self.workflow.name)))
-        # check error
-        cycle = dag.circular_dependencies()
-        if cycle:
-            raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
-
-        return dag
-
     def resolve_dangling_targets(self, dag, targets=None):
         '''Feed dangling targets with their dependncies from auxiliary steps,
         optionally add other targets'''
@@ -493,19 +334,17 @@ class Base_Executor:
         #dag.show_nodes()
         return dag
 
-    def run(self, targets=None):
+    def run(self, targets=None, mode='run'):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
         self.reset_dict()
-        env.run_mode = 'run'
+        env.run_mode = mode
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
         env.sos_dict.set('run_mode', env.run_mode)
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
-        if not 'run_mode' in env.sos_dict:
-            raise ValueError('HHH')
         #
         SoS_exec('from pysos.runtime import sos_handle_parameter_')
         #
@@ -592,6 +431,14 @@ class Base_Executor:
                 prog.progress(1)
             #env.logger.error('completed')
         prog.done()
+
+    def dryrun(self, targets=None):
+        '''Execute the script in dryrun mode.'''
+        self.run(targets=targets, mode='dryun')
+
+    def prepare(self, targets=None):
+        '''Execute the script in prepare mode.'''
+        self.run(targets=targets, mode='prepare')
 
 class MP_Executor(Base_Executor):
     #

@@ -24,7 +24,7 @@ import sys
 import argparse
 
 from pysos._version import SOS_FULL_VERSION
-from pysos.main import cmd_run, cmd_inspect, cmd_prepare, cmd_convert, cmd_config, cmd_start
+from pysos.main import cmd_run, cmd_dryrun, cmd_prepare, cmd_convert, cmd_config, cmd_start
 
 def addCommonArgs(parser):
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         should be passed using option `--name value` and multi-value parameters
         should be passed using option `--name value1 value2`. '''
     transcript_help = '''Name of a file that records the execution transcript of
-        the script. The transcript will be recorded in inspect and run mode but
+        the script. The transcript will be recorded in dryrun and run mode but
         might differ in content because of dynamic input and output of scripts.
         If the option is specified wiht no value, the transcript will be written
         to standard error output.'''
@@ -119,10 +119,10 @@ if __name__ == '__main__':
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
         description='''SoS scripts are by default executed in run mode where all
-            the script is run in inspect mode to check syntax error, prepare mode
+            the script is run in dryrun mode to check syntax error, prepare mode
             to prepare resources, and run mode to execute the pipelines. Run mode
             options allow you to execute these steps selectively.''')
-    runmode.add_argument('-i', action='store_true', dest='__inspect__',
+    runmode.add_argument('-i', action='store_true', dest='__dryrun__',
         help='''Check the syntax of specified sos script without executing it.''')
     runmode.add_argument('-p', action='store_true', dest='__prepare__',
         help='''Execute the workflow in preparation mode in which SoS prepare
@@ -138,11 +138,11 @@ if __name__ == '__main__':
     addCommonArgs(parser)
     parser.set_defaults(func=cmd_run)
     #
-    # command inspect
-    parser = subparsers.add_parser('inspect',
+    # command dryrun
+    parser = subparsers.add_parser('dryrun',
         description='''Inspect specified script for syntax errors''',
         epilog=workflow_options,
-        help='Execute a SoS script in inspect mode')
+        help='Execute a SoS script in dryrun mode')
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
@@ -150,8 +150,13 @@ if __name__ == '__main__':
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary
             CONF in the SoS script being executed.''')
+    parser.add_argument('-t', dest='__targets__', metavar='FILES', default=[],
+        nargs='+', help='''One of more files or alias of other targets that
+            will be the target of execution. If specified, SoS will execute
+            only part of a workflow or multiple workflows or auxiliary steps
+            to generate specified targets. ''')
     addCommonArgs(parser)
-    parser.set_defaults(func=cmd_inspect)
+    parser.set_defaults(func=cmd_dryrun)
     #
     # command prepare
     parser = subparsers.add_parser('prepare',
@@ -167,6 +172,11 @@ if __name__ == '__main__':
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary
             CONF in the SoS script being executed.''')
+    parser.add_argument('-t', dest='__targets__', metavar='FILES', default=[],
+        nargs='+', help='''One of more files or alias of other targets that
+            will be the target of execution. If specified, SoS will execute
+            only part of a workflow or multiple workflows or auxiliary steps
+            to generate specified targets. ''')
     parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIRS',
         default=['~/.sos/bin'], help=bindir_help)
     addCommonArgs(parser)
