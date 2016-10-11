@@ -944,13 +944,36 @@ def _expand_file_list(ignore_unknown, *args):
                 tmp.extend(expanded)
     return tmp
 
-class Prepare_Step_Executor(Queued_Step_Executor):
+
+class Dryrun_Step_Executor(Queued_Step_Executor):
+    '''Run script in prepare mode'''
     def __init__(self, step, queue):
         env.run_mode = 'prepare'
-        env.accessed_vars = set()
+        if hasattr(env, 'accessed_vars'):
+            delattr(env, 'accessed_vars')
         Queued_Step_Executor.__init__(self, step, queue)
 
+    def log(self, stage=0, msg=None):
+        if stage == 'start':
+            env.logger.info('Checking ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
+        elif stage == 'input':
+            if env.sos_dict['input'] is not None:
+                env.logger.info('input:    ``{}``'.format(short_repr(env.sos_dict['input'])))
+        elif stage == 'output':
+            if env.sos_dict['output'] is not None:
+                env.logger.info('output:   ``{}``'.format(short_repr(env.sos_dict['output'])))
+
+    def expand_depends_files(self, *args, **kwargs):
+        '''handle directive depends'''
+        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+        return _expand_file_list(False, *args)
+
+    def verify_output(self):
+        # do nothing to verify output
+        return
+
     def expand_input_files(self, value, *args):
+        # in prepare mode, we do not resolve unknown targets
         if any(isinstance(x, dynamic) for x in args):
             return Undetermined(value)
         # if unspecified, use __step_output__ as input (default)
@@ -959,12 +982,6 @@ class Prepare_Step_Executor(Queued_Step_Executor):
         else:
             return _expand_file_list(True, *args)
 
-    def prepare_input_loop(self):
-        # we start another round of check for accessed_vars so that we can create
-        # signature for loops
-        self.environ_vars = env.accessed_vars
-        env.accessed_vars = set()
-
     def expand_depends_files(self, *args):
         '''handle directive depends'''
         if any(isinstance(x, dynamic) for x in args):
@@ -972,12 +989,22 @@ class Prepare_Step_Executor(Queued_Step_Executor):
         else:
             return _expand_file_list(True, *args)
 
+class Prepare_Step_Executor(Dryrun_Step_Executor):
+    '''Run script in prepare mode'''
+    def __init__(self, step, queue):
+        env.run_mode = 'dryrun'
+        Dryrun_Step_Executor.__init__(self, step, queue)
+
     def log(self, stage=0, msg=None):
         if stage == 'start':
-            env.logger.trace('Preparing ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
+            env.logger.info('Preparing ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
+        elif stage == 'input':
+            if env.sos_dict['input'] is not None:
+                env.logger.info('input:    ``{}``'.format(short_repr(env.sos_dict['input'])))
+        elif stage == 'output':
+            if env.sos_dict['output'] is not None:
+                env.logger.info('output:   ``{}``'.format(short_repr(env.sos_dict['output'])))
 
-    def verify_output(self):
-        # do nothing
 
 class SP_Step_Executor(Queued_Step_Executor):
     '''Single process step executor'''

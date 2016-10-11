@@ -32,7 +32,7 @@ import multiprocessing as mp
 from queue import Empty
 
 from ._version import __version__
-from .sos_step import Prepare_Step_Executor, SP_Step_Executor, MP_Step_Executor, RQ_Step_Executor, \
+from .sos_step import Dryrun_Step_Executor, Prepare_Step_Executor, SP_Step_Executor, MP_Step_Executor, RQ_Step_Executor, \
     Celery_Step_Executor, Interactive_Step_Executor, analyze_section
 from .utils import env, Error, WorkflowDict, get_traceback, ProgressBar, frozendict, dict_merge, short_repr
 from .sos_eval import Undetermined, SoS_exec
@@ -385,7 +385,12 @@ class Base_Executor:
             # execute section with specified input
             runnable._status = 'running'
             q = mp.Queue()
-            executor = SP_Step_Executor(section, q)
+            if mode == 'run':
+                executor = SP_Step_Executor(section, q)
+            elif mode == 'prepare':
+                executor = Prepare_Step_Executor(section, q)
+            else:
+                executor = Dryrun_Step_Executor(section, q)
             p = mp.Process(target=executor.run)
             p.start()
             #
@@ -434,11 +439,17 @@ class Base_Executor:
 
     def dryrun(self, targets=None):
         '''Execute the script in dryrun mode.'''
-        self.run(targets=targets, mode='dryun')
+        try:
+            self.run(targets=targets, mode='dryun')
+        except Exception as e:
+            env.logger.warning('Workflow cannot be completed in dryrun mode: {}'.format(e))
 
     def prepare(self, targets=None):
         '''Execute the script in prepare mode.'''
-        self.run(targets=targets, mode='prepare')
+        try:
+            self.run(targets=targets, mode='prepare')
+        except Exception as e:
+            env.logger.warning('Workflow cannot be completed in prepare mode: {}'.format(e))
 
 class MP_Executor(Base_Executor):
     #
