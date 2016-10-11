@@ -499,8 +499,11 @@ def sos_run(workflow, **kwargs):
     for k,v in kwargs.items():
         env.sos_dict.set(k, v)
     env.sos_dict.set('__step_output__', copy.deepcopy(env.sos_dict['_input']))
-    if env.run_mode == 'prepare':
-        env.logger.debug('Preparing nested workflow {}'.format(workflow))
+    if env.run_mode == 'dryrun':
+        env.logger.info('Checking nested workflow {}'.format(workflow))
+        return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).dryrun()
+    elif env.run_mode == 'prepare':
+        env.logger.info('Preparing nested workflow {}'.format(workflow))
         return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
     elif env.run_mode == 'run':
         env.logger.info('Executing workflow ``{}`` with input ``{}``'

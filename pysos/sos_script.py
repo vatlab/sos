@@ -388,6 +388,10 @@ class SoS_Workflow:
             # keep only selected steps (and the global section)
             self.sections = [x for x in self.sections if x.index < 0 or all_steps[x.index]]
         #
+        if len(self.sections) == 0:
+            env.logger.warning('Workflow {} has no forward step and {} auxiliary steps'
+                .format(workflow_name, len(self.auxiliary_sections)))
+
         env.logger.debug('Workflow {} created with {} sections: {}'
             .format(workflow_name, len(self.sections),
             ', '.join('{}_{}'.format(section.name,
