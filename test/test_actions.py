@@ -40,7 +40,6 @@ from contextlib import contextmanager
 from pysos.sos_script import SoS_Script
 from pysos.utils import env
 from pysos.sos_eval import  Undetermined
-from pysos.sos_executor import ExecuteError
 from pysos.actions import DockerClient
 from docker.errors import DockerException
 from pysos.sos_executor import Base_Executor
@@ -165,7 +164,7 @@ get_output('catmouse')
 """)
         wf = script.workflow()
         # should fail in prepare mode
-        self.assertRaises((ExecuteError, RuntimeError), Base_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
         #
         #
         script = SoS_Script(r"""
@@ -174,7 +173,7 @@ ret = get_output('cat -h')
 """)
         wf = script.workflow()
         # this should give a warning and return false
-        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
 
     def testCheckCommand(self):
         '''Test action check_command'''
@@ -192,7 +191,7 @@ check_command('catmouse')
 """)
         wf = script.workflow()
         # should fail in prepare mode
-        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
         #
         wf = script.workflow()
         #
@@ -210,7 +209,7 @@ check_command('ls -l')
 fail_if(check_command('cat -h') != 0, 'command return non-zero')
 """)
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
         #
         # check check_command is the command is stuck
         script = SoS_Script(r"""
@@ -227,7 +226,7 @@ fail_if(check_command('sleep 4') != 0, 'Command time out')
 """)
         wf = script.workflow()
         # this should pass
-        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
         #
         # test reading this file
         script = SoS_Script(r"""
@@ -236,7 +235,7 @@ check_command('cat test_actions.py', 'abcde' + 'fgh')
 """)
         wf = script.workflow()
         # should raise an error
-        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
         #
         script = SoS_Script(r"""
 check_command('cat test_actions.py', 'testSearchOutput')
@@ -254,7 +253,7 @@ fail_if(len(input) == 1)
 """)
         wf = script.workflow()
         # should fail in prepare mode
-        self.assertRaises((ExecuteError, RuntimeError), Base_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
         script = SoS_Script(r"""
 [0]
 input: 'a.txt', 'b.txt'
@@ -630,7 +629,7 @@ check_R_library('stephens999/ashr')
 check_R_library('edgeRRRR')
 ''')
         wf = script.workflow()
-        self.assertRaises((ExecuteError, RuntimeError), Base_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).prepare)
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerBuild(self):
@@ -745,13 +744,13 @@ download: dest_dir='tmp', decompress=True
 ''')
         start = time.time()
         wf = script.workflow()
-        self.assertRaises((RuntimeError, ExecuteError), Base_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).prepare)
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq-hg18_20100817.DB'))
         self.assertGreater(time.time() - start, 5)
         # this will be fast
         start = time.time()
         wf = script.workflow()
-        self.assertRaises((RuntimeError, ExecuteError), Base_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).prepare)
         self.assertLess(time.time() - start, 3)
         # 
         # test decompress tar.gz file

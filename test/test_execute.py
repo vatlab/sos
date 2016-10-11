@@ -34,7 +34,7 @@ from pysos.sos_script import SoS_Script
 from pysos._version import __version__
 from pysos.utils import env, WorkflowDict
 from pysos.sos_eval import Undetermined, SoS_exec
-from pysos.sos_executor import Base_Executor, MP_Executor, Interactive_Executor, ExecuteError
+from pysos.sos_executor import Base_Executor, MP_Executor, Interactive_Executor
 from pysos.sos_script import ParsingError
 from pysos.signature import FileTarget
 import subprocess
@@ -591,8 +591,7 @@ test.output=['ab.txt']
 
 """)
         wf = script.workflow()
-        env.run_mode = 'prepare'
-        self.assertRaises((RuntimeError, ExecuteError), Base_Executor(wf).prepare)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
 
     def testReadOnlyInputOutputVars(self):
         '''Test readonly input output vars'''
@@ -621,8 +620,7 @@ print(a)
 
 """)
         wf = script.workflow()
-        env.run_mode = 'run'
-        self.assertRaises((RuntimeError, ExecuteError), Base_Executor(wf).run)
+        self.assertRaises(RuntimeError, Base_Executor(wf).run)
         # however, alias should be sent back
         script = SoS_Script(r"""
 [1: shared={'shared': 'output'}]
