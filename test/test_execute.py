@@ -1581,5 +1581,32 @@ with open('b.txt', 'w') as txt:
         self.assertLess(time.time() - st, 5)
 
 
+    def testOutputFromSignature(self):
+        'Test restoration of output from signature'''
+        self.touch(['1.txt', '2.txt'])
+        script = SoS_Script('''
+parameter: K = [2,3]
+
+[work_1]
+input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
+output: expand_pattern('{_name}.out')
+run:
+  touch ${_output}
+
+[work_2]
+
+input: group_by = 'single', pattern = '{name}.{ext}', paired_with = ['K']
+output: expand_pattern('{_name}.{_K}.out')
+run: 
+  touch ${_output}
+    ''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # for the second run, output should be correctly constructed
+        Base_Executor(wf).run()
+        for file in ['1.txt', '2.txt']:
+            FileTarget(file).remove('both')
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -725,9 +725,9 @@ class Base_Step_Executor:
                                         if res:
                                             # in this case, an Undetermined output can get real output files
                                             # from a signature
-                                            env.sos_dict.set('input', res['input'])
-                                            env.sos_dict.set('depends', res['depends'])
-                                            env.sos_dict.set('output', res['output'])
+                                            env.sos_dict.set('_input', res['input'])
+                                            env.sos_dict.set('_depends', res['depends'])
+                                            env.sos_dict.set('_output', res['output'])
                                             env.sos_dict.update(res['vars'])
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
