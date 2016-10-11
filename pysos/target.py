@@ -358,6 +358,22 @@ class RuntimeInfo:
         else:
             env.logger.trace('Lock acquired for output files {}'.format(short_repr(self.output_files)))
 
+    def __getstate__(self):
+        return {'proc_info': self.proc_info,
+                'input_files': self.input_files,
+                'output_files': self.output_files,
+                'dependent_files': self.dependent_files,
+                'signature_vars': self.signature_vars,
+                'script': self.script}
+
+    def __setstate__(self, dict):
+        self.proc_info = dict['proc_info']
+        self.input_files = dict['input_files']
+        self.output_files = dict['output_files']
+        self.dependent_files = dict['dependent_files']
+        self.signature_vars = dict['signature_vars']
+        self.script = dict['script']
+
     def release(self):
         self.lock.release()
         env.logger.trace('Lock released for output files {}'.format(short_repr(self.output_files)))

@@ -72,7 +72,7 @@ class TestExecute(unittest.TestCase):
         self.assertEqual(subprocess.call('sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos run -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos inspect -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos dryrun -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos prepare scripts/master.sos', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
         # a redirect bug related to blessing
         self.assertEqual(subprocess.call('sos run scripts/slave1.sos -v1 > /dev/null', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
@@ -680,21 +680,24 @@ print(0)
         script = SoS_Script('''
 [0]
 check_command('a1')
-[1: skip=blah]
+[1: skip='blah']
 
 check_command('a2')
 [2]
+input: None
 check_command('a3')
 [3]
 check_command('a4')
 
 ''')
         wf = script.workflow()
-        # we should see a single error with 4 messages.
+        # we should see a single error with 2 messages.
+        # because 2 being on a separate branch will be executed but
+        # the later steps will not be executed
         try:
             Base_Executor(wf).prepare()
         except Exception as e:
-            self.assertEqual(len(e.errors), 4)
+            self.assertEqual(len(e.errors), 3)
 
     def testSearchPath(self):
         '''Test if any action should exit in five seconds in prepare mode'''
