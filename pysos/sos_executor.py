@@ -267,8 +267,10 @@ class Base_Executor:
                 # step will be created for multiple outputs. issue #243
                 if mo[0][1]:
                     env.sos_dict['__default_output__'] = [target]
-                else:
+                elif isinstance(section.options['provides'], Sequence):
                     env.sos_dict['__default_output__'] = section.options['provides']
+                else:
+                    env.sos_dict['__default_output__'] = [section.options['provides']]
                 # for auxiliary, we need to set input and output, here
                 # will become input, set to None
                 env.sos_dict['__step_output__'] = None
@@ -314,7 +316,7 @@ class Base_Executor:
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
                 # with identical names.
-                dag.add_step(section.uuid, '{} ({})'.format(res['__step_name__'],
+                dag.add_step(section.uuid, '{} {}'.format(res['__step_name__'],
                     short_repr(env.sos_dict['__default_output__'])), None, res['__step_input__'],
                     res['__step_depends__'], res['__step_output__'], context=context)
         #dag.show_nodes()
@@ -380,8 +382,10 @@ class Base_Executor:
                 # step will be created for multiple outputs. issue #243
                 if mo[0][1]:
                     env.sos_dict['__default_output__'] = [target]
-                else:
+                elif isinstance(section.options['provides'], Sequence):
                     env.sos_dict['__default_output__'] = section.options['provides']
+                else:
+                    env.sos_dict['__default_output__'] = [section.options['provides']]
                 # will become input, set to None
                 env.sos_dict['__step_output__'] = None
                 #
@@ -396,11 +400,11 @@ class Base_Executor:
                 context['__signature_vars__'] = res['signature_vars']
                 context['__environ_vars__'] = res['environ_vars']
                 context['__changed_vars__'] = res['changed_vars']
-                context['__default_output__'] = [target]
+                context['__default_output__'] = env.sos_dict['__default_output__']
                 # NOTE: If a step is called multiple times with different targets, it is much better
                 # to use different names because pydotplus can be very slow in handling graphs with nodes
                 # with identical names.
-                dag.add_step(section.uuid, '{} ({})'.format(section.step_name(),
+                dag.add_step(section.uuid, '{} {}'.format(section.step_name(),
                     short_repr(env.sos_dict['__default_output__'])), None, res['step_input'],
                     res['step_depends'], res['step_output'], context=context)
                 resolved += 1
@@ -566,6 +570,7 @@ class Base_Executor:
                     raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
             elif isinstance(res, UnavailableLock):
                 runnable._status = 'pending'
+                runnable._signature = (res.output, res.sig_file)
                 env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
             # if the job is failed
             elif isinstance(res, Exception):

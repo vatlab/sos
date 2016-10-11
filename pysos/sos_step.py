@@ -734,7 +734,8 @@ class Base_Step_Executor:
                             # dynamic output or dependent files
                             if key == 'output':
                                 # if output is defined, its default value needs to be cleared
-                                env.sos_dict.set('output', None)
+                                if idx == 0:
+                                    env.sos_dict.set('output', None)
                                 ofiles = self.expand_output_files(value, *args)
                                 if not isinstance(g, (type(None), Undetermined)) and not isinstance(ofiles, (type(None), Undetermined)):
                                     if any(x in g for x in ofiles):
@@ -896,7 +897,7 @@ class Queued_Step_Executor(Base_Step_Executor):
                 sys.stderr.write(get_traceback())
             self.queue.put(e)
         finally:
-            del notifier
+            notifier.stop()
 
 def _expand_file_list(ignore_unknown, *args):
     ifiles = []

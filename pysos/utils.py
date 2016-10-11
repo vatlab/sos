@@ -31,6 +31,7 @@ import glob
 import math
 import collections
 import traceback
+import threading
 import pickle
 import yaml
 import urllib
@@ -916,26 +917,29 @@ def pretty_size(n,pow=0,b=1024,u='B',pre=['']+[p+'i'for p in'KMGTPEZY']):
     pow,n=min(int(math.log(max(n*b**pow,1),b)),len(pre)-1),n*b**pow
     return "%%.%if %%s%%s"%abs(pow%(-pow-1))%(n/b**float(pow),pre[pow],u)
 
-class ActivityNotifier:
-    def __init__(self, msg, delay=10):
-        self.timer = threading.Timer(delay, self.report)
+class ActivityNotifier(threading.Thread):
+    def __init__(self, msg, delay=5):
+        threading.Thread.__init__(self)
         self.msg = msg
         self.start_time = time.time()
-        self.timer.start()
         self.delay = delay
+        self.event = threading.Event()
+        self.start()
 
-    def report(self):
+    def run(self):
         while True:
+            self.event.wait(self.delay)
+            if self.event.is_set():
+                break
             second_elapsed = time.time() - self.start_time
             sys.stderr.write('\r' + self.msg + ' ({}{})'.format(
                 '' if second_elapsed < 86400 else '{} day{} '
                 .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
                 time.strftime('%H:%M:%S', time.gmtime(second_elapsed))))
             sys.stderr.flush()
-            time.sleep(self.delay)
 
-    def __del__(self):
-        self.timer.cancel()
+    def stop(self):
+        self.event.set()
 
 class DelayedAction:
     '''Call the passed function with param after a few seconds. It is most often
