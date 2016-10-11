@@ -543,7 +543,7 @@ def check_command(cmd, pattern = None, quiet=False):
     cmd_name = shlex.split(cmd)[0]
     full_name = shutil.which(cmd_name)
     if not full_name:
-        raise RuntimeError('Command ``{}`` not found!'.format(cmd_name))
+        raise ValueError('Command ``{}`` not found!'.format(cmd_name))
     if not quiet:
         env.logger.info('Command ``{}`` is located as ``{}``.'.format(cmd, full_name))
     if pattern is None and len(shlex.split(cmd)) == 1:
@@ -565,7 +565,7 @@ def check_command(cmd, pattern = None, quiet=False):
     if pattern:
         pattern = [pattern] if isinstance(pattern, str) else pattern
         if all([re.search(x, output, re.MULTILINE) is None for x in pattern]):
-            raise RuntimeError('Output of command ``{}`` does not match specified regular expression ``{}``.'
+            raise ValueError('Output of command ``{}`` does not match specified regular expression ``{}``.'
                 .format(cmd, ' or '.join(pattern)))
     _check_command_cache[cmd] = ret_val
     return ret_val

@@ -45,6 +45,32 @@ from .pattern import extract_pattern
 __all__ = []
 
 
+class ExecuteError(Error):
+    """Raised when there are errors in prepare mode. Such errors are not raised
+    immediately, but will be collected and raised at the end """
+
+    def __init__(self, workflow):
+        Error.__init__(self, 'SoS workflow contains errors: %s' % workflow)
+        self.workflow = workflow
+        self.errors = []
+        self.traces = []
+        self.args = (workflow, )
+
+    def append(self, line, error):
+        lines = [x for x in line.split('\n') if x.strip()]
+        if not lines:
+            short_line = '<empty>'
+        else:
+            short_line = lines[0][:40] if len(lines[0]) > 40 else lines[0]
+        if short_line in self.errors:
+            return
+        self.errors.append(short_line)
+        self.traces.append(get_traceback())
+        if isinstance(error, Exception):
+            self.message += '\n[%s] %s:\n\t%s' % (short_line, error.__class__.__name__, error)
+        else:
+            self.message += '\n[%s]:\n\t%s' % (short_line, error)
+
 def __null_func__(*args, **kwargs):
     '''This function will be passed to SoS's namespace and be executed
     to evaluate functions of input, output, and depends directives.'''
