@@ -128,15 +128,15 @@ def cmd_run(args, workflow_args):
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
-        if args.__engine__ is None:
+        if args.__queue__ is None:
             if args.__max_jobs__ == 1:
                 # single process executor
                 executor = Base_Executor(workflow, args=workflow_args, config_file=args.__config__)
             else:
                 executor = MP_Executor(workflow, args=workflow_args, config_file=args.__config__)
-        elif args.__engine__ == 'rq':
+        elif args.__queue__ == 'rq':
             executor = RQ_Executor(workflow, args=workflow_args, config_file=args.__config__)
-        elif args.__engine__ == 'celery':
+        elif args.__queue__ == 'celery':
             executor = Celery_Executor(workflow, args=workflow_args, config_file=args.__config__)
         else:
             raise ValueError('Only the default multiprocessing and a rq engine is allowed')
@@ -161,7 +161,7 @@ def cmd_run(args, workflow_args):
 def cmd_dryrun(args, workflow_args):
     args.__rerun__ = False
     args.__construct__ = False
-    args.__engine__ = None
+    args.__queue__ = None
     args.__max_jobs__ = 1
     args.__discard__ =  []
     args.__dryrun__ = True
@@ -174,7 +174,7 @@ def cmd_dryrun(args, workflow_args):
 def cmd_prepare(args, workflow_args):
     args.__rerun__ = False
     args.__construct__ = False
-    args.__engine__ = None
+    args.__queue__ = None
     args.__max_jobs__ = 1
     args.__discard__ =  []
     args.__dryrun__ = False

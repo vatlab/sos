@@ -103,12 +103,12 @@ if __name__ == '__main__':
             to generate specified targets. ''')
     parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIRS',
         default=['~/.sos/bin'], help=bindir_help)
-    parser.add_argument('-e', dest='__engine__', metavar='ENGINE',
-        help='''Task-processing engine. SoS by default uses a local multiprocessing
-            engine where tasks are executed by different processes. Supported
-            engines include a 'rq' engine where tasks will be distributed to one or
-            more rq-workers with assistance from a redis server, and a 'celery' engine
-            where tasks will be distributed to celery workers.''')
+    parser.add_argument('-q', dest='__queue__', metavar='QUEUE',
+        help='''Task-processing queue. SoS by default uses a local multiprocessing
+            queue where tasks are executed by different processes. Supported task
+            queues include a 'rq' engine where tasks will be distributed to one or
+            more rq-workers with assistance from a redis server, and a 'celery'
+            quque where tasks will be distributed to celery workers.''')
     #parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
     #    const='__STDOUT__', nargs='?',
     #    help='''Name of a file that records output from report lines
