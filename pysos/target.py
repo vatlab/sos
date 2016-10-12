@@ -30,13 +30,14 @@ from .sos_eval import Undetermined
 __all__ = ['dynamic', 'executable']
 
 class UnknownTarget(Error):
-    """Raised when there are errors in prepare mode. Such errors are not raised
-    immediately, but will be collected and raised at the end """
-
     def __init__(self, target):
         Error.__init__(self, 'Unknown target %s' % target)
         self.target = target
 
+class RemovedTarget(Error):
+    def __init__(self, target):
+        Error.__init__(self, 'Removed target %s' % target)
+        self.target = target
 
 class UnavailableLock(Error):
     """Raised when there are errors in prepare mode. Such errors are not raised
@@ -497,6 +498,7 @@ class RuntimeInfo:
                     if freal.exists('target'):
                         fmd5 = freal.calc_md5()
                     elif freal.exists('signature'):
+                        env.logger.info('Validate with signature of non-existing target {}'.format(freal))
                         fmd5 = freal.md5()
                     else:
                         env.logger.trace('File {} not exist'.format(f))

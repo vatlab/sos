@@ -1662,5 +1662,44 @@ run:
             FileTarget(file).remove('both')
 
 
+    def testRemovedIntermediateFiles(self):
+        '''Test behavior of workflow with removed internediate files'''
+        FileTarget('a.txt').remove('both')
+        FileTarget('aa.txt').remove('both')
+        script = SoS_Script('''
+[10]
+output: 'a.txt'
+sh:
+    sleep 2
+    echo "a" > a.txt
+
+[20]
+output: 'aa.txt'
+sh:
+    sleep 2
+    cat ${input} > ${output}
+''')
+        wf = script.workflow()
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertTrue(FileTarget('aa.txt').exists())
+        self.assertGreater(time.time() - st, 3.5)
+        # rerun should be faster
+        os.remove('a.txt')
+        os.remove('aa.txt')
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 1)
+        #
+        # now we request the generation of target
+        FileTarget('aa.txt').remove('both')
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 3.5)
+        #
+        FileTarget('a.txt').remove('both')
+        FileTarget('aa.txt').remove('both')
+
+
 if __name__ == '__main__':
     unittest.main()

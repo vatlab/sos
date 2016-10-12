@@ -35,7 +35,7 @@ from .utils import env, AbortExecution, short_repr, \
     get_traceback, transcribe, ActivityNotifier
 from .pattern import extract_pattern
 from .sos_eval import SoS_eval, SoS_exec, Undetermined
-from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, UnavailableLock
+from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 
@@ -561,6 +561,8 @@ class Base_Step_Executor:
             env.sos_dict[key] = SoS_eval(value, self.step.sigil)
         except UnknownTarget:
             raise
+        except RemovedTarget:
+            raise
         except UnavailableLock:
             raise
         except Exception as e:
@@ -572,6 +574,8 @@ class Base_Step_Executor:
         except AbortExecution:
             raise
         except UnknownTarget:
+            raise
+        except RemovedTarget:
             raise
         except UnavailableLock:
             raise
@@ -698,6 +702,8 @@ class Base_Step_Executor:
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
             except UnknownTarget:
                 raise
+            except RemovedTarget:
+                raise
             except UnavailableLock:
                 raise
             except Exception as e:
@@ -780,9 +786,10 @@ class Base_Step_Executor:
                                         if signatures[idx].write():
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
-
                                 if skip_index:
                                     break
+                                else:
+                                    self.verify_input()
                             elif key == 'depends':
                                 dfiles = self.expand_depends_files(*args)
                                 # dfiles can be Undetermined
@@ -792,6 +799,8 @@ class Base_Step_Executor:
                             else:
                                 raise RuntimeError('Unrecognized directive {}'.format(key))
                         except UnknownTarget:
+                            raise
+                        except RemovedTarget:
                             raise
                         except UnavailableLock:
                             raise
@@ -986,6 +995,9 @@ class Dryrun_Step_Executor(Queued_Step_Executor):
             if env.sos_dict['output'] is not None:
                 env.logger.info('output:   ``{}``'.format(short_repr(env.sos_dict['output'])))
 
+    def verify_input(self):
+        return
+
     def verify_output(self):
         # do nothing to verify output
         return
@@ -1032,6 +1044,18 @@ class SP_Step_Executor(Queued_Step_Executor):
             delattr(env, 'accessed_vars')
         Queued_Step_Executor.__init__(self, step, queue)
         self.step_tokens = self.get_tokens()
+
+    def verify_input(self):
+        # now, if we are actually going to run the script, we
+        # need to check the input files actually exists, not just the signatures
+        if isinstance(env.sos_dict['_input'], list):
+            for target in env.sos_dict['_input']:
+                # if the file does not exist (although the signature exists)
+                # request generation of files
+                if isinstance(target, str) and not FileTarget(target).exists('target'):
+                    # remove the signature and regenerate the file
+                    FileTarget(target).remove('signature')
+                    raise RemovedTarget(target)
 
     def get_tokens(self):
         '''Get tokens after input statement'''
