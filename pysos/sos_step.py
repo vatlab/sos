@@ -151,12 +151,21 @@ if 'sos_handle_parameter_' in globals():
     if 'shared' in section.options:
         vars = section.options['shared']
         if isinstance(vars, str):
+            changed_vars.add(vars)
             vars = {vars: vars}
         elif isinstance(vars, Sequence):
-            vars = {x:x for x in vars}
-        elif not isinstance(vars, Mapping):
-            raise ValueError('Option shared should be one or list of strings, or a mapping of expressions. {} provided'.format(vars))
-        changed_vars |= set(vars.keys())
+            for item in vars:
+                if isinstance(item, str):
+                    changed_vars.add(item)
+                elif isinstance(item, Mapping):
+                    changed_vars |= set(item.keys())
+                else:
+                    raise ValueError('Option shared should be a string, a mapping of expression, or list of string or mappings. {} provided'.format(vars))
+        elif isinstance(vars, Mapping):
+            changed_vars |= set(vars.keys())
+        else:
+            raise ValueError('Option shared should be a string, a mapping of expression, or list of string or mappings. {} provided'.format(vars))
+
 
     # look for input statement.
     input_statement_idx = [idx for idx,x in enumerate(section.statements) if x[0] == ':' and x[1] == 'input']
@@ -585,14 +594,25 @@ class Base_Step_Executor:
         if 'shared' in self.step.options:
             vars = self.step.options['shared']
             if isinstance(vars, str):
-                vars = [vars]
+                result['__changed_vars__'].add(vars)
+                result[vars] = copy.deepcopy(env.sos_dict[vars])
             elif isinstance(vars, Mapping):
-                vars = vars.keys()
-            elif not isinstance(vars, Sequence):
-                raise ValueError('Option shared should be one or list of strings, or a mapping of expressions. {} provided'.format(vars))
-            for var in vars:
-                result[var] = copy.deepcopy(env.sos_dict[var])
-            result['__changed_vars__'] |= set(vars)
+                result['__changed_vars__'] |= vars.keys()
+                for var in vars.keys():
+                    result[var] = copy.deepcopy(env.sos_dict[var])
+            elif isinstance(vars, Sequence):
+                for item in vars:
+                    if isinstance(item, str):
+                        result['__changed_vars__'].add(item)
+                        result[item] = copy.deepcopy(env.sos_dict[item])
+                    elif isinstance(item, Mapping):
+                        result['__changed_vars__'] |= item.keys()
+                        for var in item.keys():
+                            result[var] = copy.deepcopy(env.sos_dict[var])
+                    else:
+                        raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(vars))
+            else:
+                raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(vars))
 
         if hasattr(env, 'accessed_vars'):
             result['__environ_vars__'] = self.environ_vars
@@ -861,6 +881,19 @@ class Base_Step_Executor:
                         except Exception as e:
                             raise RuntimeError('Failed to evaluate shared variable {} from expression {}: {}'
                                 .format(var, val, e))
+                # if there are dictionaries in the sequence, e.g.
+                # shared=['A', 'B', {'C':'D"}]
+                elif isinstance(self.step.options['shared'], Sequence):
+                    for item in self.step.options['shared']:
+                        if isinstance(item, Mapping):
+                            for var, val in item.items():
+                                if var == val:
+                                    continue
+                                try:
+                                    env.sos_dict.set(var, SoS_eval(val))
+                                except Exception as e:
+                                    raise RuntimeError('Failed to evaluate shared variable {} from expression {}: {}'
+                                        .format(var, val, e))
             #
             self.verify_output()
             return self.collect_result()
