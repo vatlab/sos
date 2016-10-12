@@ -516,9 +516,9 @@ class Base_Step_Executor:
         elif 'workdir' not in env.sos_dict['_runtime']:
             env.sos_dict['_runtime']['workdir'] = env.exec_dir
         if 'env' in env.sos_dict['_runtime']:
-            env.sos_dict['_runtime']['env'].update({x:y for x,y in os.environ.items() if x not in env.sos_dict['_runtime']['env']})
+            env.sos_dict['_runtime']['env'].update({x:y for x,y in os.environ.items() if x not in env.sos_dict['_runtime']['env'] and isinstance(y, str)})
         else:
-            env.sos_dict['_runtime']['env'] = os.environ
+            env.sos_dict['_runtime']['env'] = {x:y for x,y in os.environ.items() if isinstance(y, str)}
         if 'prepend_path' in env.sos_dict['_runtime']:
             if isinstance(env.sos_dict['_runtime']['prepend_path'], str):
                 env.sos_dict['_runtime']['env']['PATH'] = env.sos_dict['_runtime']['prepend_path'] + os.pathsep + env.sos_dict['_runtime']['env']['PATH']
