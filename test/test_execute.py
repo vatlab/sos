@@ -365,7 +365,20 @@ a = 5
         Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['res'], 9)
         self.assertEqual(env.sos_dict['c'], 5)
+        # test mixed vars and mapping
+        script = SoS_Script(r"""
+parameter: res = 1
+parameter: a = 30
 
+[1: shared=['res', {'c': 'a'}]]
+res = 3
+a = 5
+
+""")
+        wf = script.workflow()
+        Base_Executor(wf).prepare()
+        self.assertEqual(env.sos_dict['res'], 3)
+        self.assertEqual(env.sos_dict['c'], 5)
 
     def testFileType(self):
         '''Test input option filetype'''
