@@ -485,6 +485,44 @@ if run_mode == 'run':
         MP_Executor(wf).run()
         self.assertLess(time.time() - start, 6)
 
+    def testPrependPath(self):
+        '''Test prepend path'''
+        import stat
+        if not os.path.isdir('temp'):
+            os.mkdir('temp')
+        with open('temp/temp_cmd', 'w') as tc:
+            tc.write('echo "a"')
+        os.chmod('temp/temp_cmd', stat.S_IXUSR | stat.S_IWUSR | stat.S_IRUSR)
+        #
+        script = SoS_Script(r"""
+[1]
+task:
+sh:
+    temp_cmd
+""")
+        wf = script.workflow()
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        # use option env
+        script = SoS_Script(r"""
+[1]
+task: env={'PATH': 'temp' + os.pathsep + os.environ['PATH']}
+sh:
+    temp_cmd
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        #
+        #
+        script = SoS_Script(r"""
+[1]
+task: prepend_path='temp'
+sh:
+    temp_cmd
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+
     def testRunmode(self):
         '''Test the runmode decoration'''
         script = SoS_Script(r"""
