@@ -69,9 +69,10 @@ def execute_task(task, global_def, sos_dict, signature, sigil):
         # set current directory if specified
         if '_runtime' in sos_dict and 'workdir' in sos_dict['_runtime']:
             os.chdir(os.path.expanduser(sos_dict['_runtime']['workdir']))
-        # set $PATH if specified
-        if '_runtime' in sos_dict and 'PATH' in sos_dict['_runtime']:
-            os.environ['PATH'] = sos_dict['_runtime']['PATH']
+        # set environ ...
+        if '_runtime' in sos_dict and 'env' in sos_dict['_runtime']:
+            os.environ.update(sos_dict['_runtime']['env'])
+
         env.sos_dict.quick_update(sos_dict)
         SoS_exec('import os, sys, glob')
         SoS_exec('from pysos.runtime import *')
@@ -509,6 +510,16 @@ class Base_Step_Executor:
     def reevaluate_output(self):
         pass
 
+    def prepare_runtime(self):
+        if '_runtime' not in env.sos_dict:
+            env.sos_dict.set('_runtime', {'workdir': env.exec_dir})
+        elif 'workdir' not in env.sos_dict['_runtime']:
+            env.sos_dict['_runtime']['workdir'] = env.exec_dir
+        if 'env' in env.sos_dict['_runtime']:
+            env.sos_dict['_runtime']['env'].update({x:y for x,y in os.environ.items() if x not in env.sos_dict['_runtime']['env']})
+        else:
+            env.sos_dict['_runtime']['env'] = os.environ
+
     def submit_task(self, signature):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
@@ -802,6 +813,7 @@ class Base_Step_Executor:
 
                 self.log('task')
                 try:
+                    self.prepare_runtime()
                     self.submit_task(signatures[idx])
                 except Exception as e:
                     # FIXME: cannot catch exception from subprocesses
@@ -1093,7 +1105,7 @@ class MP_Step_Executor(SP_Step_Executor):
                 # if pool, it must not be in prepare mode and have
                 # __signature_vars__
                 env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                    | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_idx'}),
+                    | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_idx', '_runtime'}),
                 signature,
                 self.step.sigil
                 )))
@@ -1149,11 +1161,6 @@ class RQ_Step_Executor(SP_Step_Executor):
         self.redis_queue = redis_queue
 
     def submit_task(self, signature):
-        if '_runtime' not in env.sos_dict:
-            env.sos_dict.set('_runtime', {'workdir': env.exec_dir})
-        elif 'workdir' not in env.sos_dict['_runtime']:
-            env.sos_dict['_runtime']['workdir'] = env.exec_dir
-        env.sos_dict['_runtime']['PATH'] = os.environ['PATH']
         if 'walltime' in env.sos_dict['_runtime']:
             walltime = env.sos_dict['_runtime']
             if isinstance(walltime, str):
@@ -1166,7 +1173,7 @@ class RQ_Step_Executor(SP_Step_Executor):
         else:
             # bioinformatics can be running for long time...
             # let me assume a longest running time of 1 month
-            walltime = 60*60*24*30
+            walltime = 60*60*24*30 
         #
         # tell subprocess where pysos.runtime is
         self.proc_results.append(
@@ -1209,11 +1216,6 @@ class Celery_Step_Executor(SP_Step_Executor):
     def submit_task(self, signature):
         # if concurrent is set, create a pool object
         from .celery import celery_execute_task
-        if '_runtime' not in env.sos_dict:
-            env.sos_dict.set('_runtime', {'workdir': env.exec_dir})
-        elif 'workdir' not in env.sos_dict['_runtime']:
-            env.sos_dict['_runtime']['workdir'] = env.exec_dir
-        env.sos_dict['_runtime']['PATH'] = os.environ['PATH']
         self.proc_results.append(
             celery_execute_task.apply_async((     # function
             self.step.task,         # task
