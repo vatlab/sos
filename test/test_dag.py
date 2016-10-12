@@ -893,5 +893,25 @@ p = c + b
         self.assertTrue(env.sos_dict['p'], 3)
 
 
+    def testReverseSharedVariable(self):
+        '''Test shared variables defined in auxiliary steps'''
+        FileTarget('a.txt').remove('both')
+        script = SoS_Script(r'''
+[A: shared='b', provides='a.txt']
+b = 1
+sh:
+    touch a.txt
+
+[B_1]
+depends: 'a.txt'
+
+[B_2]
+print(b)
+
+''')
+        wf = script.workflow('B')
+        Base_Executor(wf).run()
+        self.assertTrue(env.sos_dict['b'], 1)
+
 if __name__ == '__main__':
     unittest.main()
