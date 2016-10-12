@@ -119,10 +119,11 @@ def cmd_run(args, workflow_args):
 
     if args.__bin_dirs__:
         for d in args.__bin_dirs__:
-            if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
-                os.makedirs(os.path.expanduser(d))
-            elif not os.path.isdir(os.path.expanduser(d)):
-                raise ValueError('directory does not exist: {}'.format(d))
+            with fasteners.InterProcessLock('/tmp/sos_lock_bin'):
+                if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
+                    os.makedirs(os.path.expanduser(d))
+                elif not os.path.isdir(os.path.expanduser(d)):
+                    raise ValueError('directory does not exist: {}'.format(d))
         os.environ['PATH'] = os.pathsep.join([os.path.expanduser(x) for x in args.__bin_dirs__]) + os.pathsep + os.environ['PATH']
             
     try:

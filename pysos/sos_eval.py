@@ -25,7 +25,7 @@ from io import StringIO
 from shlex import quote
 from tokenize import generate_tokens, untokenize, NAME, STRING
 
-from .utils import env, Error, short_repr, DelayedAction, AbortExecution
+from .utils import env, Error, short_repr, DelayedAction
 from .sos_syntax import FORMAT_SPECIFIER, SIMPLE_SUB 
 
 # function interpolate is needed because it is required by the SoS
@@ -295,7 +295,6 @@ def accessed_vars(statement, sigil='${ }'):
 def SoS_eval(expr, sigil='${ }'):
     '''Evaluate an expression after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
-    from .target import UnknownTarget
     expr = ConvertString(expr, sigil)
     return eval(expr, env.sos_dict._dict)
 
@@ -309,7 +308,6 @@ def _is_expr(expr):
 def SoS_exec(stmts, sigil='${ }', _dict=None):
     '''Execute a statement after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
-    from .target import UnknownTarget
     # the trouble here is that we have to execute the statements line by line
     # because the variables defined. The trouble is in cases such as class
     # definition

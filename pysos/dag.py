@@ -163,8 +163,8 @@ class SoS_DAG(nx.DiGraph):
         pending_jobs = [x for x in self.nodes() if x._status == 'pending']
         if pending_jobs:
             try:
-                notifier = ActivityNotifier('Waiting for another process for output {}'
-                    .format(short_repr(node._signature[0])))
+                notifier = ActivityNotifier('Waiting for another process for output {}'.format(short_repr(
+                    sum([node._signature[0] for node in pending_jobs], []))))
                 while True:
                     for node in pending_jobs:
                         # if it has not been executed

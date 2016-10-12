@@ -31,7 +31,7 @@ from tokenize import generate_tokens
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
-from .utils import env, Error, AbortExecution, short_repr, \
+from .utils import env, AbortExecution, short_repr, \
     get_traceback, transcribe, ActivityNotifier
 from .pattern import extract_pattern
 from .sos_eval import SoS_eval, SoS_exec, Undetermined
@@ -140,7 +140,7 @@ def analyze_section(section, default_input=None):
 if 'sos_handle_parameter_' in globals():
     del sos_handle_parameter_
 ''' + section.global_def)
-        except RuntimeException as e:
+        except RuntimeError as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
@@ -933,11 +933,6 @@ class Dryrun_Step_Executor(Queued_Step_Executor):
         elif stage == 'output':
             if env.sos_dict['output'] is not None:
                 env.logger.info('output:   ``{}``'.format(short_repr(env.sos_dict['output'])))
-
-    def expand_depends_files(self, *args, **kwargs):
-        '''handle directive depends'''
-        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-        return _expand_file_list(False, *args)
 
     def verify_output(self):
         # do nothing to verify output
