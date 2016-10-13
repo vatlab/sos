@@ -27,11 +27,13 @@ import textwrap
 import shutil
 
 from io import StringIO
+from tokenize import generate_tokens
 from collections import defaultdict
 from uuid import uuid4
 
 from .utils import env, Error, dehtml, locate_script, text_repr
 from .sos_eval import on_demand_options
+from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
     SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
@@ -279,6 +281,29 @@ class SoS_Step:
         self._action_options = None
         self._script = ''
 
+    def get_tokens(self):
+        '''Get tokens after input statement'''
+        def _get_tokens(statement):
+            return [x[1] for x in generate_tokens(StringIO(statement).readline)]
+
+        tokens = []
+        for statement in self.statements:
+            if statement[0] == ':':
+                # we only keep statements after input
+                if statement[1] == 'input':
+                    tokens = []
+                continue
+            if statement[0] == '=':
+                tokens.extend([statement[1], statement[0]])
+                tokens.extend(_get_tokens(statement[2]))
+            else:
+                tokens.extend(_get_tokens(statement[1]))
+
+        if self.task:
+            tokens.extend(_get_tokens(self.task))
+
+        return ' '.join(tokens)
+
     def finalize(self):
         ''' split statement and task by last directive '''
         self.wrap_script()
@@ -319,6 +344,10 @@ class SoS_Step:
         # remove task from self.statement
         if task_directive:
             self.statements = self.statements[:start_task]
+
+        #
+        self.tokens = self.get_tokens()
+        self.md5 = textMD5(self.context.md5 + self.tokens)
 
     def show(self):
         '''Output for command sos show'''
@@ -434,6 +463,12 @@ class SoS_ScriptContent:
     def __init__(self, content='', filename=None):
         self.content = content
         self.filename = filename
+        if content:
+            self.md5 = textMD5(self.content)
+        else:
+            with open(self.filename) as script:
+                self.md5 = textMD5(script.read())
+        
 
 class SoS_Script:
     def __init__(self, content='', filename=None, transcript=None):

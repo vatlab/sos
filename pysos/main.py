@@ -183,6 +183,81 @@ def cmd_prepare(args, workflow_args):
     cmd_run(args, workflow_args)
 
 #
+# command clean
+#
+def get_tracked_files(sig_file):
+    with open(sig_file) as sig:
+        start = False
+        files = []
+        for line in sig:
+            if line.startswith('# input and dependent files'):
+                start = True
+                continue
+            if line.startswith('#'):
+                continue
+            if start:
+                files.append(line.strip())
+        return set(files)
+
+def cmd_clean(args, unknown_args):
+    import glob
+    from .utils import env
+    import shutil
+    from collections import OrderedDict
+    sig_files = glob.glob('.sos/*.sig')
+    if not sig_files:
+        sys.exit('No executed workflows.')
+    tracked_files = set()
+    for sig_file in sig_files:
+        tracked_files |= get_tracked_files(sig_file)
+    #
+    tracked_files = {os.path.abspath(os.path.expanduser(x)) for x in tracked_files}
+    tracked_dirs = {os.path.dirname(x) for x in tracked_files}
+    removed_files = []
+    removed_dirs = []
+    env.logger.info('{} tracked files from {} runs are identified.'.format(len(tracked_files), len(sig_files)))
+    for dirname, subdir, filelist in os.walk('.'):
+        subdir[:] = [d for d in subdir if not d.startswith('.')]
+        removed_files.extend([os.path.join(dirname, x) for x in filelist if os.path.abspath(os.path.join(dirname, x)) not in tracked_files])
+        removed_dirs.extend([os.path.join(dirname, x) for x in subdir if os.path.abspath(os.path.join(dirname, x)) not in tracked_dirs])
+    #
+    def dedup_files(_list):
+        return OrderedDict((item, None) for item in _list).keys()
+
+    def dedup_dirs(_list):
+        dirs = OrderedDict()
+        for item in _list:
+            if not any(item.startswith(x) for x in dirs):
+                dirs[item] = None
+        return dirs.keys()
+
+    if args.__dryrun__:
+        if not args.__files__ and not args.__dirs__:
+            print('\n'.join(tracked_files))
+            print('{} files are tracked.'.format(len(tracked_files)))
+        if args.__files__:
+            rf = dedup_files(removed_files)
+            print('\n'.join(rf))
+            print('{} files to be removed.'.format(len(rf)))
+        if args.__dirs__:
+            rd = dedup_dirs(removed_dirs)
+            print('\n'.join(rd))
+            print('{} directories to be removed.'.format(len(rd)))
+    else:
+        if not args.__files__ and not args.__dirs__:
+            sys.exit('One of options -n -f -d needs to be specified.')
+        if args.__files__:
+            rf = dedup_files(removed_files)
+            for f in rf:
+                os.remove(f)
+            print('{} files are removed'.format(f))
+        if args.__dirs__:
+            rd = dedup_dirs(removed_dirs)
+            for d in rd:
+                shutil.rmtree(d)
+            print('{} directories are removed'.format(d))
+
+#
 # command start
 #
 def cmd_start(args, unknown_args):

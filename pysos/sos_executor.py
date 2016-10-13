@@ -31,6 +31,7 @@ from collections.abc import Sequence
 import multiprocessing as mp
 from queue import Empty
 
+from io import StringIO
 from ._version import __version__
 from .sos_step import Dryrun_Step_Executor, Prepare_Step_Executor, SP_Step_Executor, MP_Step_Executor, RQ_Step_Executor, \
     Celery_Step_Executor, Interactive_Step_Executor, analyze_section
@@ -39,7 +40,7 @@ from .sos_eval import SoS_exec
 from .sos_script import SoS_Script
 from .sos_syntax import SOS_SECTION_HEADER, SOS_KEYWORDS
 from .dag import SoS_DAG
-from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable
+from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5
 from .pattern import extract_pattern
 
 __all__ = []
@@ -339,6 +340,28 @@ class Base_Executor:
         #dag.show_nodes()
         return dag
 
+    def save_workflow_signature(self, dag):
+        '''Save tracked files in .sos so that untracked files can be cleaned by command
+        sos clean.
+        '''
+        with StringIO() as sig:
+            sig.write('# Sections\n')
+            for step in self.workflow.sections + self.workflow.auxiliary_sections:
+                sig.write('{}: {}\n'.format(step.step_name(), step.md5))
+            sig.write('# Command line options\n')
+            sig.write('{}\n'.format(self.args))
+            sig_content = sig.getvalue()
+        md5 = textMD5(sig_content)[:16]
+        with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(md5)), 'w') as sigfile:
+            sigfile.write(sig_content)
+            sigfile.write('# input and dependent files\n')
+            for target in sorted(x for x in dag._all_dependent_files if isinstance(x, str)):
+                sigfile.write('{}\n'.format(target))
+            sigfile.write('# output files\n')
+            for target in sorted(x for x in dag._all_output_files if isinstance(x, str)):
+                sigfile.write('{}\n'.format(target))   
+        return md5
+        
     def run(self, targets=None, mode='run'):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
@@ -460,7 +483,8 @@ class Base_Executor:
                         's' if len(sections) > 1 else '', ', '.join(sections))))
             raise exec_error
         else:
-            env.logger.info('Workflow {} is executed successfully.'.format(self.workflow.name))
+            sig = self.save_workflow_signature(dag)
+            env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, sig))
 
     def dryrun(self, targets=None):
         '''Execute the script in dryrun mode.'''
@@ -635,7 +659,8 @@ class MP_Executor(Base_Executor):
                         's' if len(sections) > 1 else '', ', '.join(sections))))
             raise exec_error
         else:
-            env.logger.info('Workflow {} is executed successfully.'.format(self.workflow.name))
+            sig = self.save_workflow_signature(dag)
+            env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, sig))
 
 class RQ_Executor(MP_Executor):
     def __init__(self, workflow, args=[], config_file=None, nested=False):

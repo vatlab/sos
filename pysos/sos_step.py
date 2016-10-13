@@ -26,8 +26,6 @@ import time
 import glob
 import fnmatch
 
-from io import StringIO
-from tokenize import generate_tokens
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
@@ -1043,7 +1041,6 @@ class SP_Step_Executor(Queued_Step_Executor):
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
         Queued_Step_Executor.__init__(self, step, queue)
-        self.step_tokens = self.get_tokens()
 
     def verify_input(self):
         # now, if we are actually going to run the script, we
@@ -1057,28 +1054,6 @@ class SP_Step_Executor(Queued_Step_Executor):
                     FileTarget(target).remove('signature')
                     raise RemovedTarget(target)
 
-    def get_tokens(self):
-        '''Get tokens after input statement'''
-        def _get_tokens(statement):
-            return [x[1] for x in generate_tokens(StringIO(statement).readline)]
-
-        tokens = []
-        for statement in self.step.statements:
-            if statement[0] == ':':
-                # we only keep statements after input
-                if statement[1] == 'input':
-                    tokens = []
-                continue
-            if statement[0] == '=':
-                tokens.extend([statement[1], statement[0]])
-                tokens.extend(_get_tokens(statement[2]))
-            else:
-                tokens.extend(_get_tokens(statement[1]))
-
-        if self.step.task:
-            tokens.extend(_get_tokens(self.step.task))
-
-        return ' '.join(tokens)
 
     def log(self, stage=None, msg=None):
         if stage == 'start':
@@ -1120,7 +1095,7 @@ class SP_Step_Executor(Queued_Step_Executor):
             if var in env.sos_dict and isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
                 env_vars.append('{} = {!r}\n'.format(var, env.sos_dict[var]))
 
-        return ''.join(env_vars) + '\n' + self.step_tokens
+        return ''.join(env_vars) + '\n' + self.step.tokens
 
     def expand_depends_files(self, *args, **kwargs):
         '''handle directive depends'''
