@@ -432,8 +432,8 @@ class Base_Executor:
                 runnable._status = None
                 target = res.target
                 if self.resolve_dangling_targets(dag, [target]) == 0:
-                    raise RuntimeError('Failed to resolve {} requested by {}.'
-                        .format(dag.steps_depending_on(target), target))
+                    raise RuntimeError('Failed to resolve {}{}.'
+                        .format(target, dag.steps_depending_on(target, self.workflow)))
                 # now, there should be no dangling targets, let us connect nodes
                 # this can be done more efficiently
                 dag.build(self.workflow.auxiliary_sections)
@@ -552,8 +552,8 @@ class MP_Executor(Base_Executor):
                     runnable._status = None
                     target = res.target
                     if self.resolve_dangling_targets(dag, [target]) == 0:
-                        raise RuntimeError('Failed to resolve {} requested by {}.'
-                            .format(dag.steps_depending_on(target), target))
+                        raise RuntimeError('Failed to resolve {}{}.'
+                            .format(target, dag.steps_depending_on(target, self.workflow)))
                     # now, there should be no dangling targets, let us connect nodes
                     # this can be done more efficiently
                     dag.build(self.workflow.auxiliary_sections)
