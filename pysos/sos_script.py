@@ -345,10 +345,6 @@ class SoS_Step:
         if task_directive:
             self.statements = self.statements[:start_task]
 
-        #
-        self.tokens = self.get_tokens()
-        self.md5 = textMD5(self.context.md5 + self.tokens)
-
     def show(self):
         '''Output for command sos show'''
         textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
@@ -1069,6 +1065,9 @@ for __n, __v in {}.items():
             # for nested / included sections, we need to keep their own global definition
             if '.' not in section.names[0][0]:
                 section.global_def = self.global_def
+            #
+            section.tokens = section.get_tokens()
+            section.md5 = textMD5(self.content.md5 + section.tokens)
 
     def workflow(self, workflow_name=None):
         '''Return a workflow with name_step+name_step specified in wf_name
