@@ -217,14 +217,9 @@ class WorkflowDict(object):
             if key in self._readonly_vars:
                 cmp_res = self.__cmp_values__(self._dict[key], self._readonly_vars[key])
                 if not cmp_res:
-                    if env.run_mode == 'interactive':
-                        if cmp_res is False:
-                            env.logger.warning('Readonly variable {} is changed from {} to {}'
-                                .format(key, self._readonly_vars[key], self._dict[key]))
-                        self._readonly_vars[key] = self._dict[key]
-                    else:
+                    if env.run_mode != 'interactive':
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
-                            .format(key, self._dict[key], self._readonly_vars[key]))
+                            .format(key, short_repr(self._dict[key]), short_repr(self._readonly_vars[key])))
             elif key in self._dict:
                 self._readonly_vars[key] = self._dict[key]
 
@@ -236,24 +231,14 @@ class WorkflowDict(object):
             if key in self._dict:
                 cmp_res = self.__cmp_values__(self._dict[key], self._readonly_vars[key])
                 if not cmp_res:
-                    if env.run_mode == 'interactive':
-                        if cmp_res is False:
-                            env.logger.warning('Readonly variable {} is changed from {} to {}'
-                                .format(key, self._readonly_vars[key], self._dict[key]))
-                        self._readonly_vars[key] = self._dict[key]
-                    else:
+                    if env.run_mode != 'interactive':
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
-                            .format(key, self._dict[key], self._readonly_vars[key]))
+                            .format(key, short_repr(self._dict[key]), short_repr(self._readonly_vars[key])))
                 cmp_res = self.__cmp_values__(value, self._dict[key])
                 if not cmp_res:
-                    if env.run_mode == 'interactive':
-                        if cmp_res is False:
-                            env.logger.warning('Readonly variable {} is changed from {} to {}'
-                                .format(key, self._dict[key], value))
-                        self._dict[key] = value
-                    else:
+                    if env.run_mode != 'interactive':
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
-                            .format(key, self._dict[key], value))
+                            .format(key, short_repr(self._dict[key]), short_repr(value)))
 
     def _log(self, key, value):
         env.logger.debug('Set ``{}`` = ``{}``'.format(key, short_repr(value)))
