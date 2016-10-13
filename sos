@@ -122,8 +122,9 @@ if __name__ == '__main__':
             the script is run in dryrun mode to check syntax error, prepare mode
             to prepare resources, and run mode to execute the pipelines. Run mode
             options allow you to execute these steps selectively.''')
-    runmode.add_argument('-i', action='store_true', dest='__dryrun__',
-        help='''Check the syntax of specified sos script without executing it.''')
+    runmode.add_argument('-n', action='store_true', dest='__dryrun__',
+        help='''Execute a workflow without executing any actions. This can be
+            used to check the syntax of a SoS file.''')
     runmode.add_argument('-p', action='store_true', dest='__prepare__',
         help='''Execute the workflow in preparation mode in which SoS prepare
             the execution of workflow by, for example, download required
