@@ -215,11 +215,23 @@ def cmd_clean(args, unknown_args):
     tracked_dirs = {os.path.dirname(x) for x in tracked_files}
     removed_files = []
     removed_dirs = []
-    env.logger.info('{} tracked files from {} runs are identified.'.format(len(tracked_files), len(sig_files)))
-    for dirname, subdir, filelist in os.walk('.'):
-        subdir[:] = [d for d in subdir if not d.startswith('.')]
-        removed_files.extend([os.path.join(dirname, x) for x in filelist if os.path.abspath(os.path.join(dirname, x)) not in tracked_files])
-        removed_dirs.extend([os.path.join(dirname, x) for x in subdir if os.path.abspath(os.path.join(dirname, x)) not in tracked_dirs])
+    if tracked_files:
+        env.logger.info('{} tracked files from {} run{} are identified.'
+                .format(len(tracked_files), len(sig_files), 's' if len(sig_files) > 1 else ''))
+    else:
+        env.logger.info('No tracked file from {} run{} are identified.'
+                .format(len(sig_files), 's' if len(sig_files) > 1 else ''))
+    for dir in args.dirs:
+        if not os.path.isdir(dir):
+            sys.exit('Invalid directory to be cleaned: {}'.format(dir))
+        relpath = os.path.relpath(dir, '.')
+        if relpath.startswith('.'):
+            sys.exit('Only subdirectories of the current directory can be cleaned. {} specified.'.format(dir))
+        for dirname, subdir, filelist in os.walk(dir):
+            env.logger.warning((dirname, subdir, filelist))
+            subdir[:] = [d for d in subdir if not d.startswith('.')]
+            removed_files.extend([os.path.join(dirname, x) for x in filelist if os.path.abspath(os.path.join(dirname, x)) not in tracked_files])
+            removed_dirs.extend([os.path.join(dirname, x) for x in subdir if os.path.abspath(os.path.join(dirname, x)) not in tracked_dirs])
     #
     def dedup_files(_list):
         return OrderedDict((item, None) for item in _list).keys()
@@ -250,12 +262,15 @@ def cmd_clean(args, unknown_args):
             rf = dedup_files(removed_files)
             for f in rf:
                 os.remove(f)
-            print('{} files are removed'.format(f))
+            print('{} files are removed'.format(len(rf)))
         if args.__dirs__:
             rd = dedup_dirs(removed_dirs)
             for d in rd:
-                shutil.rmtree(d)
-            print('{} directories are removed'.format(d))
+                if os.path.isdir(d):
+                    shutil.rmtree(d)
+                else:
+                    os.unlink(d)
+            print('{} directories are removed'.format(len(rd)))
 
 #
 # command start
