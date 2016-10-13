@@ -739,6 +739,11 @@ class SoS_Kernel(Kernel):
             self.send_response(self.iopub_socket, 'stream',
                   {'name': 'stdout', 'text': 'Connection file: {}\n{}'.format(cfile, conn_info)})
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+        elif code.startswith('%matplotlib'):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            self.shell.enable_gui = lambda gui: None
+            gui, backend = self.shell.enable_matplotlib(options)
+            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('%set'):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_set(options)
