@@ -1700,6 +1700,42 @@ sh:
         FileTarget('a.txt').remove('both')
         FileTarget('aa.txt').remove('both')
 
+    def testSharedVarInPairedWith(self):
+        self.touch(['1.txt', '2.txt'])
+        script = SoS_Script('''
+[work_1: shared = {'data': 'output'}]
+input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
+output: expand_pattern('{_name}.out')
+run:
+  touch ${_output}
+
+[work_2]
+input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}', paired_with = ['data']
+output: expand_pattern('{_name}.out2')
+run:
+  touch ${_data} ${_output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+    def testSharedVarInForEach(self):
+        self.touch(['1.txt', '2.txt'])
+        script = SoS_Script('''
+[work_1: shared = {'data': 'output'}]
+input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
+output: expand_pattern('{_name}.out')
+run:
+  touch ${_output}
+
+[work_2]
+input: "1.txt", "2.txt", group_by = 'single', for_each = 'data, data',  pattern = '{name}.{ext}'
+output: expand_pattern('{_name}.out2')
+run:
+  touch ${_data} ${_output}
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
 if __name__ == '__main__':
     unittest.main()

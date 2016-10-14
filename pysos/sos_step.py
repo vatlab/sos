@@ -199,6 +199,27 @@ if 'sos_handle_parameter_' in globals():
                     step_input = default_input
             elif not any(isinstance(x, dynamic) for x in args):
                 step_input = _expand_file_list(True, *args)
+            if 'paired_with' in kwargs:
+                pw = kwargs['paired_with']
+                if pw is None or not pw:
+                    pass
+                elif isinstance(pw, str):
+                    environ_vars.add(pw)
+                elif isinstance(pw, Iterable):
+                    environ_vars |= set(pw)
+                else:
+                    raise ValueError('Unacceptable value for parameter paired_with: {}'.format(pw))
+            if 'for_each' in kwargs:
+                fe = kwargs['for_each']
+                if fe is None or not fe:
+                    pass
+                elif isinstance(fe, str):
+                    environ_vars |= set([x.strip() for x in fe.split(',')])
+                elif isinstance(fe, Sequence):
+                    for fei in fe:
+                        environ_vars |= set([x.strip() for x in fei.split(',')])
+                else:
+                    raise ValueError('Unacceptable value for parameter fe: {}'.format(fe))
         except Exception as e:
             # if anything is not evalutable, keep Undetermined
             env.logger.debug('Input of step {}_{} is set to Undertermined: {}'
@@ -325,7 +346,7 @@ class Base_Step_Executor:
         elif isinstance(paired_with, str):
             paired_with = [paired_with]
         elif isinstance(paired_with, Iterable):
-            paired_with = paired_with
+            paired_with = list(paired_with)
         else:
             raise ValueError('Unacceptable value for parameter paired_with: {}'.format(paired_with))
         #
@@ -382,7 +403,7 @@ class Base_Step_Executor:
         #
         for fe_all in for_each:
             loop_size = None
-            for fe in fe_all.split(','):
+            for fe in [x.strip() for x in fe_all.split(',')]:
                 values = env.sos_dict[fe]
                 if not isinstance(values, Sequence):
                     try:
@@ -406,7 +427,7 @@ class Base_Step_Executor:
             _vars.clear()
             for vidx in range(loop_size):
                 for idx in range(len(_tmp_vars)):
-                    for fe in fe_all.split(','):
+                    for fe in [x.strip() for x in fe_all.split(',')]:
                         if fe.split('.')[0] not in env.sos_dict:
                             raise ValueError('Variable {} does not exist.'.format(fe))
                         if '.' in fe:
