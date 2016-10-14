@@ -55,19 +55,42 @@ from io import StringIO
 
 
 class FlushableStringIO(StringIO):
+    '''This is a string buffer for output, but it will only
+    keep the first 200 lines and the last 10 lines.
+    '''
     def __init__(self, kernel, name, *args, **kwargs):
         StringIO.__init__(self, *args, **kwargs)
         self.kernel = kernel
         self.name = name
+        self.nlines = 0
+
+    def write(self, content):
+        if self.nlines > 1000:
+            return
+        nlines = content.count('\n')
+        if self.nlines + nlines > 1000:
+            StringIO.write(self, '\n'.join(content.split('\n')[:200]))
+        else:
+            StringIO.write(self, content)
+        self.nlines += nlines
 
     def flush(self):
-        value = self.getvalue()
+        content = self.getvalue()
+        if self.nlines > 1000:
+            lines = content.split('\n')
+            content = '\n'.join(lines[:180]) + \
+                '\n-- {} more lines --\n'.format(self.nlines - 180)
+        elif self.nlines > 200:
+            lines = content.split('\n')
+            content = '\n'.join(lines[:180]) + \
+                '\n-- {} lines --\n'.format(self.nlines - 190) + \
+                '\n'.join(lines[-10:])
         self.kernel.send_response(self.kernel.iopub_socket, 'stream',
-            {'name': self.name, 'text': value})
+            {'name': self.name, 'text': content})
         self.truncate(0)
         self.seek(0)
-        return len(value.strip())
-
+        self.nlines = 0
+        return len(content.strip())
 
 __all__ = ['SoS_Exporter', 'SoS_Kernel']
 
@@ -272,16 +295,6 @@ class SoS_Kernel(Kernel):
 
     def __init__(self, **kwargs):
         super(SoS_Kernel, self).__init__(**kwargs)
-        self._start_sos()
-
-    def _start_sos(self):
-        env.sos_dict = WorkflowDict()
-        SoS_exec('import os, sys, glob')
-        SoS_exec('from pysos.runtime import *')
-        SoS_exec("run_mode = 'interactive'")
-        self.executor = Interactive_Executor()
-        self.original_keys = set(env.sos_dict._dict.keys())
-        self.original_keys.add('__builtins__')
         self.options = ''
         self.kernel = 'sos'
         self.banner = self.banner + '\nConnection file {}'.format(os.path.basename(find_connection_file()))
@@ -300,12 +313,22 @@ class SoS_Kernel(Kernel):
         self.previewer = {'*': SoS_FilePreviewer().preview, '*.bam': BioPreviewer().preview }
 
         self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
-        env.sos_dict.set('__summary_report__', self.report_file)
         if os.path.isfile(self.report_file):
             os.remove(self.report_file)
         # touch the file
         with open(self.report_file, 'w'):
             pass
+        self.original_keys = None
+
+    def _reset_dict(self):
+        env.sos_dict = WorkflowDict()
+        SoS_exec('import os, sys, glob')
+        SoS_exec('from pysos.runtime import *')
+        SoS_exec("run_mode = 'interactive'")
+        self.executor = Interactive_Executor()
+        self.original_keys = set(env.sos_dict._dict.keys())
+        self.original_keys.add('__builtins__')
+        env.sos_dict.set('__summary_report__', self.report_file)
 
     @contextlib.contextmanager
     def redirect_sos_io(self):
@@ -465,7 +488,7 @@ class SoS_Kernel(Kernel):
                       {'name': 'stderr', 'text': 'Unrecognized sosdict option {}'.format(action)})
                 return
         if 'reset' in actions:
-            self.send_result(self._reset())
+            self.send_result(self._reset_dict())
         if 'keys' in actions:
             if 'all' in actions:
                 self.send_result(env.sos_dict._dict.keys())
@@ -731,6 +754,8 @@ class SoS_Kernel(Kernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
+        if self.original_keys is None:
+            self._reset_dict()
         if code == 'import os\n_pid = os.getpid()':
             # this is a special probing command from vim-ipython. Let us handle it specially
             # so that vim-python can get the pid.
