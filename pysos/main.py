@@ -225,47 +225,49 @@ def cmd_clean(args, unknown_args):
         if not os.path.isdir(dir):
             sys.exit('Invalid directory to be cleaned: {}'.format(dir))
         relpath = os.path.relpath(dir, '.')
-        if relpath.startswith('.'):
+        if relpath.startswith('..'):
             sys.exit('Only subdirectories of the current directory can be cleaned. {} specified.'.format(dir))
         for dirname, subdir, filelist in os.walk(dir):
-            env.logger.warning((dirname, subdir, filelist))
-            subdir[:] = [d for d in subdir if not d.startswith('.')]
-            removed_files.extend([os.path.join(dirname, x) for x in filelist if os.path.abspath(os.path.join(dirname, x)) not in tracked_files])
-            removed_dirs.extend([os.path.join(dirname, x) for x in subdir if os.path.abspath(os.path.join(dirname, x)) not in tracked_dirs])
+            # we do not remove files under the current directory
+            if dirname != '.':
+                removed_files.extend([os.path.join(dirname, x) for x in filelist if os.path.abspath(os.path.join(dirname, x)) \
+                    not in tracked_files and not x.startswith('.')])
+            # we do not track dot directories 
+            untracked_dirs = [x for x in subdir if os.path.abspath(os.path.join(dirname, x)) not in tracked_dirs and not x.startswith('.')]
+            removed_dirs.extend([os.path.join(dirname, x) for x in untracked_dirs])
+            # do not scan the directory if it does not contain any tracked files
+            subdir[:] = [d for d in subdir if d not in untracked_dirs and not d.startswith('.')]
     #
-    def dedup_files(_list):
+    def dedup(_list):
         return OrderedDict((item, None) for item in _list).keys()
-
-    def dedup_dirs(_list):
-        dirs = OrderedDict()
-        for item in _list:
-            if not any(item.startswith(x) for x in dirs):
-                dirs[item] = None
-        return dirs.keys()
 
     if args.__dryrun__:
         if not args.__files__ and not args.__dirs__:
             print('\n'.join(tracked_files))
             print('{} files are tracked.'.format(len(tracked_files)))
         if args.__files__:
-            rf = dedup_files(removed_files)
-            print('\n'.join(rf))
+            rf = dedup(removed_files)
+            for r in rf:
+                print('Would remove {}'.format(r))
             print('{} files to be removed.'.format(len(rf)))
         if args.__dirs__:
-            rd = dedup_dirs(removed_dirs)
-            print('\n'.join(rd))
+            rd = dedup(removed_dirs)
+            for d in rd:
+                print('Would remove {}'.format(d))
             print('{} directories to be removed.'.format(len(rd)))
     else:
         if not args.__files__ and not args.__dirs__:
             sys.exit('One of options -n -f -d needs to be specified.')
         if args.__files__:
-            rf = dedup_files(removed_files)
+            rf = dedup(removed_files)
             for f in rf:
+                print('Removing {}'.format(f))
                 os.remove(f)
             print('{} files are removed'.format(len(rf)))
         if args.__dirs__:
-            rd = dedup_dirs(removed_dirs)
+            rd = dedup(removed_dirs)
             for d in rd:
+                print('Removing {}'.format(rd))
                 if os.path.isdir(d):
                     shutil.rmtree(d)
                 else:
