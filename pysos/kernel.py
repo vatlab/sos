@@ -48,6 +48,7 @@ from IPython.core.error import UsageError
 from IPython.core.display import HTML
 from ipykernel.kernelbase import Kernel
 from jupyter_client import manager, find_connection_file
+from ipykernel.zmqshell import ZMQDisplayPublisher
 
 from textwrap import dedent
 from io import StringIO
@@ -288,8 +289,16 @@ class SoS_Kernel(Kernel):
         self.kernels = {}
         self.original_kernel = None
         self.format_obj = self.shell.display_formatter.format
+
+        # InteractiveShell uses a default publisher that only displays text/plain
+        # using the ZMQDisplayPublisher will display matplotlib inline figures
+        self.shell.display_pub = ZMQDisplayPublisher()
+        self.shell.display_pub.session = self.session
+        self.shell.display_pub.pub_socket = self.iopub_socket
+
         self.shell.enable_gui = lambda x: False
         self.previewer = {'*': SoS_FilePreviewer().preview, '*.bam': BioPreviewer().preview }
+
         self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
         env.sos_dict.set('__summary_report__', self.report_file)
         if os.path.isfile(self.report_file):
@@ -823,6 +832,8 @@ class SoS_Kernel(Kernel):
             try:
                 self.run_sos_code(code, silent)
                 self.shell.user_ns.update(env.sos_dict._dict)
+                # trigger post processing of object and display matplotlib figures
+                self.shell.events.trigger('post_execute')
                 return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
             except Exception as e:
                 stream_content = {'name': 'stderr', 'text': str(e)}
