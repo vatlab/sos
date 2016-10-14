@@ -394,8 +394,8 @@ class SoS_Workflow:
                 if item.isdigit():
                     # pipeline:100
                     all_steps[int(item)] = True
-                elif '-' in item and item.count('-') == 1:
-                    l, u = item.split('-')
+                elif ':' in item and item.count(':') == 1:
+                    l, u = item.split(':')
                     if (l and not l.isdigit()) or (u and not u.isdigit()) or \
                         (l and u and int(l) > int(u)):
                         raise ValueError('Invalid pipeline step item {}'.format(item))
@@ -1091,7 +1091,7 @@ for __n, __v in {}.items():
                 combined_wf.name = workflow_name
                 return combined_wf
             # if a single workflow
-            # workflow_10-15 etc
+            # workflow_10:15 etc
             mo = SOS_SUBWORKFLOW.match(workflow_name)
             if not mo:
                 raise ValueError('Incorrect workflow name {}'.format(workflow_name))

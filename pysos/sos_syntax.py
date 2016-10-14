@@ -138,7 +138,7 @@ _SUBWORKFLOW_TMPL = '''
     [a-zA-Z*]                          # cannot start with _ etc
     ([\w\d_]*?))                       # can have _ and digit
     (_(?P<steps>                       # index start from _
-    [\d\s-]+))?                        # with - and digit
+    [\d\s:]+))?                        # with - and digit
     \s*$                               # end
     '''
 
