@@ -177,7 +177,7 @@ def cmd_prepare(args, workflow_args):
     cmd_run(args, workflow_args)
 
 #
-# command clean
+# command remove
 #
 def get_tracked_files(sig_file):
     with open(sig_file) as sig:
@@ -193,11 +193,12 @@ def get_tracked_files(sig_file):
                 files.append(line.strip())
         return set(files)
 
-def cmd_clean(args, unknown_args):
+def cmd_remove(args, unknown_args):
     import glob
     from .utils import env
     import shutil
     from collections import OrderedDict
+
     sig_files = glob.glob('.sos/*.sig')
     if not sig_files:
         sys.exit('No executed workflows.')
@@ -207,66 +208,110 @@ def cmd_clean(args, unknown_args):
     #
     tracked_files = {os.path.abspath(os.path.expanduser(x)) for x in tracked_files}
     tracked_dirs = {os.path.dirname(x) for x in tracked_files}
-    removed_files = []
-    removed_dirs = []
+
     if tracked_files:
         env.logger.info('{} tracked files from {} run{} are identified.'
                 .format(len(tracked_files), len(sig_files), 's' if len(sig_files) > 1 else ''))
     else:
         env.logger.info('No tracked file from {} run{} are identified.'
                 .format(len(sig_files), 's' if len(sig_files) > 1 else ''))
-    for dir in args.dirs:
-        if not os.path.isdir(dir):
-            sys.exit('Invalid directory to be cleaned: {}'.format(dir))
-        relpath = os.path.relpath(dir, '.')
+    #
+    specified_tracked_files = []
+    specified_tracked_dirs = []
+    specified_untracked_files = []
+    specified_untracked_dirs = []
+    #
+    if not args.targets:
+        sys.exit('No files or directories to be removed.')
+    # 
+    env.logger.error(tracked_files)
+    env.logger.error(tracked_dirs)
+    for target in args.targets:
+        target = os.path.expanduser(target)
+        if not os.path.exists(target):
+            sys.exit('Invalid file or directory to be removed: {}'.format(target))
+        # file
+        if os.path.isfile(target):
+            if os.path.abspath(target) in tracked_files:
+                specified_tracked_files.append(target)
+            else:
+                specified_untracked_files.append(target)
+            continue
+        # directory
+        relpath = os.path.relpath(target, '.')
         if relpath.startswith('..'):
-            sys.exit('Only subdirectories of the current directory can be cleaned. {} specified.'.format(dir))
-        for dirname, subdir, filelist in os.walk(dir):
+            sys.exit('Only subdirectories of the current directory can be removed. {} specified.'.format(target))
+
+        for dirname, dirlist, filelist in os.walk(target):
             # we do not remove files under the current directory
             if dirname != '.':
-                removed_files.extend([os.path.join(dirname, x) for x in filelist if os.path.abspath(os.path.join(dirname, x)) \
-                    not in tracked_files and not x.startswith('.')])
+                for x in filelist:
+                    # ignore hidden file
+                    if x.startswith('.'):
+                        continue
+                    if os.path.abspath(os.path.join(dirname, x)) in tracked_files:
+                        specified_tracked_files.append(os.path.join(dirname, x))
+                    else:
+                        specified_untracked_files.append(os.path.join(dirname, x))
             # we do not track dot directories 
-            untracked_dirs = [x for x in subdir if os.path.abspath(os.path.join(dirname, x)) not in tracked_dirs and not x.startswith('.')]
-            removed_dirs.extend([os.path.join(dirname, x) for x in untracked_dirs])
-            # do not scan the directory if it does not contain any tracked files
-            subdir[:] = [d for d in subdir if d not in untracked_dirs and not d.startswith('.')]
+            dir_with_tracked_files = []
+            for x in dirlist:
+                # ignore hidden directories such as .git
+                if x.startswith('.'):
+                    continue
+                if any(y.startswith(os.path.abspath(os.path.join(dirname, x))) for y in tracked_dirs):
+                    dir_with_tracked_files.append(x)
+                    specified_tracked_dirs.append(os.path.join(dirname, x))
+                else:
+                    specified_untracked_dirs.append(os.path.join(dirname, x))
+
+            # do not scan the directory if it does not contain any tracked files because
+            # they will be handled as a total directory
+            dirlist[:] = dir_with_tracked_files
     #
     def dedup(_list):
         return OrderedDict((item, None) for item in _list).keys()
 
-    if args.__dryrun__:
-        if not args.__files__ and not args.__dirs__:
-            print('\n'.join(tracked_files))
-            print('{} files are tracked.'.format(len(tracked_files)))
-        if args.__files__:
-            rf = dedup(removed_files)
-            for r in rf:
-                print('Would remove {}'.format(r))
-            print('{} files to be removed.'.format(len(rf)))
-        if args.__dirs__:
-            rd = dedup(removed_dirs)
-            for d in rd:
-                print('Would remove {}'.format(d))
-            print('{} directories to be removed.'.format(len(rd)))
-    else:
-        if not args.__files__ and not args.__dirs__:
-            sys.exit('One of options -n -f -d needs to be specified.')
-        if args.__files__:
-            rf = dedup(removed_files)
-            for f in rf:
-                print('Removing {}'.format(f))
-                os.remove(f)
-            print('{} files are removed'.format(len(rf)))
-        if args.__dirs__:
-            rd = dedup(removed_dirs)
-            for d in rd:
-                print('Removing {}'.format(rd))
+    if args.__tracked__ or not args.__untracked__:
+        for f in specified_tracked_files:
+            if args.__dryrun__:
+                print('Would remove tracked file {} and its signature'.format(f))
+            else:
+                print('Removing tracked file {} and its signature'.format(f))
+                FileTarget(x).remove('both')
+        # note: signatures of tracked files under
+        # these directories should have been removed.
+        for d in sorted(specified_tracked_dirs, key=len, reverse=True):
+            if args.__dryrun__:
+                print('Would remove {} with tracked files if empty'.format(d))
+            else:
+                #if os.listdir(d):
+                if not os.listdir(d):
+                    print('Removing {} with tracked files'.format(d))
+                    if os.path.isdir(d):
+                        shutil.rmtree(d)
+                    else:
+                        os.unlink(d)
+                else:
+                    print('Do not remove {} with tracked file because it is not empty')
+    if args.__untracked__ or not args.__tracked__:
+        for f in specified_untracked_files:
+            if args.__dryrun__:
+                print('Would remove untracked file {}'.format(f))
+            else:
+                print('Removing untracked file {}'.format(f))
+                os.remove(x)
+        # note: signatures of tracked files under
+        # these directories should have been removed.
+        for d in specified_untracked_dirs:
+            if args.__dryrun__:
+                print('Would remove untracked directory {}'.format(d))
+            else:
+                print('Removing untracked directory {}'.format(d))
                 if os.path.isdir(d):
                     shutil.rmtree(d)
                 else:
                     os.unlink(d)
-            print('{} directories are removed'.format(len(rd)))
 
 #
 # command start
