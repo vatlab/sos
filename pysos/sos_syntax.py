@@ -108,7 +108,14 @@ class LazyRegex(object):
 # Regular expressions for parsing section headers and options
 _SECTION_HEADER_TMPL = r'''
     ^\[\s*                             # [
-    (?P<section_name>[^:]+)            # digit, alphabet, _, ',', and () for description
+    (?P<section_name>
+    [a-zA-Z*0-9_]+                     # name,
+    \s*(\([^)]*\))?                    # optional alias
+    (\s*,\s*                           # ,
+    [a-zA-Z*0-9_]+                     # another name
+    \s*(\([^)]*\))?                    # alias
+    )*                                 # optional second or more 
+    )                                  # section names
     (:\s*                              # :
     (?P<section_option>.*)             # section options
     )?                                 # optional

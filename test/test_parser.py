@@ -350,6 +350,7 @@ parameter: b = False
         script = SoS_Script('''
 a = 4
 parameter: a = 5
+[0]
 ''')
         wf = script.workflow()
         Base_Executor(wf, args=['--a', 7]).prepare()
@@ -358,6 +359,7 @@ parameter: a = 5
         # test parameters with dash
         script = SoS_Script('''
 parameter: a_b = 5
+[0]
 ''')
         wf = script.workflow()
         Base_Executor(wf, args=['--a_b', '10']).prepare()
@@ -368,6 +370,7 @@ parameter: a_b = 5
         #
         script = SoS_Script('''
 parameter: a_b = int
+[0]
 ''')
         wf = script.workflow()
         Base_Executor(wf, args=['--a_b', '10']).prepare()
@@ -1275,6 +1278,7 @@ a=2
 %elif
 a=2
 %endif
+[0]
 ''')
         # test if else
         script = SoS_Script('''
@@ -1283,6 +1287,7 @@ a = 1
 %else
 a = 2
 %endif
+[0]
 ''')
         wf = script.workflow()
         Base_Executor(wf).prepare()
