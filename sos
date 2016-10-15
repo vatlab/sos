@@ -178,7 +178,7 @@ if __name__ == '__main__':
     addCommonArgs(parser)
     parser.set_defaults(func=cmd_prepare)
     #
-    # command show
+    # command convert
     #
     parser = subparsers.add_parser('convert',
         description='''The show command displays details of all workflows
@@ -188,7 +188,6 @@ if __name__ == '__main__':
             workflow) if a workflow is specified.''',
         epilog='''Extra command line argument could be specified to customize
             the style of html, markdown, and terminal output. ''',
-        aliases=['show', 'view'],
         help='View a SoS script or workflow in various formats')
     parser.add_argument('from_file', metavar='FILENAME',
         help='''File to be converted, can be a SoS script or a Jupyter
@@ -229,7 +228,7 @@ if __name__ == '__main__':
     addCommonArgs(parser)
     parser.set_defaults(func=cmd_convert)
     #
-    # command clean
+    # command 
     #
     parser = subparsers.add_parser('clean',
         description='''Clean untracked files and directories of executed
