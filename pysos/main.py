@@ -113,10 +113,6 @@ def cmd_run(args, workflow_args):
     else:
         env.sig_mode = 'default'
 
-    for filename in args.__discard__:
-        # remove also signature of file if it exists
-        FileTarget(filename).remove('both')
-
     if args.__bin_dirs__:
         for d in args.__bin_dirs__:
             with fasteners.InterProcessLock('/tmp/sos_lock_bin'):
@@ -164,7 +160,6 @@ def cmd_dryrun(args, workflow_args):
     args.__construct__ = False
     args.__queue__ = None
     args.__max_jobs__ = 1
-    args.__discard__ =  []
     args.__dryrun__ = True
     args.__prepare__ = True
     cmd_run(args, workflow_args)
@@ -177,7 +172,6 @@ def cmd_prepare(args, workflow_args):
     args.__construct__ = False
     args.__queue__ = None
     args.__max_jobs__ = 1
-    args.__discard__ =  []
     args.__dryrun__ = False
     args.__prepare__ = True
     cmd_run(args, workflow_args)
