@@ -99,7 +99,6 @@ def cmd_run(args, workflow_args):
     import atexit
     from .utils import env, get_traceback
     from .sos_script import SoS_Script
-    from .target import FileTarget
     from .sos_executor import Base_Executor, MP_Executor, RQ_Executor, Celery_Executor
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
@@ -198,6 +197,7 @@ def cmd_remove(args, unknown_args):
     from .utils import env
     import shutil
     from collections import OrderedDict
+    from .target import FileTarget
 
     sig_files = glob.glob('.sos/*.sig')
     if not sig_files:
@@ -207,7 +207,18 @@ def cmd_remove(args, unknown_args):
         tracked_files |= get_tracked_files(sig_file)
     #
     tracked_files = {os.path.abspath(os.path.expanduser(x)) for x in tracked_files}
-    tracked_dirs = {os.path.dirname(x) for x in tracked_files}
+    tracked_dirs = set()
+    # need to get all directories along the path
+    for x in tracked_files:
+        relpath = os.path.relpath(x, '.')
+        if relpath.startswith('..'):
+            # we do not care about tracked files outside of current directory
+            continue
+        # add all path to tracked file as tracked directories
+        tmp = relpath
+        while os.sep in tmp:
+            tmp = os.path.dirname(tmp)
+            tracked_dirs.add(os.path.abspath(tmp))
 
     if tracked_files:
         env.logger.info('{} tracked files from {} run{} are identified.'
@@ -228,6 +239,10 @@ def cmd_remove(args, unknown_args):
         target = os.path.expanduser(target)
         if not os.path.exists(target):
             sys.exit('Invalid file or directory to be removed: {}'.format(target))
+        relpath = os.path.relpath(target, '.')
+        if relpath.startswith('..'):
+            # we do not care about tracked files outside of current directory
+            sys.exit('Only subdirectories of the current directory can be removed. {} specified.'.format(target))
         # file
         if os.path.isfile(target):
             if os.path.abspath(target) in tracked_files:
@@ -235,11 +250,13 @@ def cmd_remove(args, unknown_args):
             else:
                 specified_untracked_files.append(target)
             continue
+        # we will not remove . itself
+        elif os.path.isdir(target) and os.path.abspath(target) != os.path.abspath('.'):
+            if os.path.abspath(target) in tracked_dirs:
+                specified_tracked_dirs.append(target)
+            else:
+                specified_untracked_dirs.append(target)
         # directory
-        relpath = os.path.relpath(target, '.')
-        if relpath.startswith('..'):
-            sys.exit('Only subdirectories of the current directory can be removed. {} specified.'.format(target))
-
         for dirname, dirlist, filelist in os.walk(target):
             # we do not remove files under the current directory
             if dirname != '.':
@@ -262,7 +279,6 @@ def cmd_remove(args, unknown_args):
                     specified_tracked_dirs.append(os.path.join(dirname, x))
                 else:
                     specified_untracked_dirs.append(os.path.join(dirname, x))
-
             # do not scan the directory if it does not contain any tracked files because
             # they will be handled as a total directory
             dirlist[:] = dir_with_tracked_files
@@ -270,18 +286,21 @@ def cmd_remove(args, unknown_args):
     def dedup(_list):
         return OrderedDict((item, None) for item in _list).keys()
 
+    # in case of tracked or all, we need to remove signature
     if args.__tracked__ or not args.__untracked__:
         for f in specified_tracked_files:
             if args.__dryrun__:
-                print('Would remove tracked file {} and its signature'.format(f))
+                if args.__tracked__:
+                    print('Would remove tracked file {} and its signature'.format(f))
             else:
                 print('Removing tracked file {} and its signature'.format(f))
-                FileTarget(x).remove('both')
+                FileTarget(f).remove('both')
         # note: signatures of tracked files under
         # these directories should have been removed.
         for d in sorted(specified_tracked_dirs, key=len, reverse=True):
             if args.__dryrun__:
-                print('Would remove {} with tracked files if empty'.format(d))
+                if args.__tracked__:
+                    print('Would remove {} with tracked files if empty'.format(d))
             else:
                 #if os.listdir(d):
                 if not os.listdir(d):
@@ -291,14 +310,14 @@ def cmd_remove(args, unknown_args):
                     else:
                         os.unlink(d)
                 else:
-                    print('Do not remove {} with tracked file because it is not empty')
-    if args.__untracked__ or not args.__tracked__:
+                    print('Do not remove {} with tracked file because it is not empty'.format(d))
+    elif args.__untracked__:
         for f in specified_untracked_files:
             if args.__dryrun__:
                 print('Would remove untracked file {}'.format(f))
             else:
                 print('Removing untracked file {}'.format(f))
-                os.remove(x)
+                os.remove(f)
         # note: signatures of tracked files under
         # these directories should have been removed.
         for d in specified_untracked_dirs:
@@ -310,6 +329,21 @@ def cmd_remove(args, unknown_args):
                     shutil.rmtree(d)
                 else:
                     os.unlink(d)
+    # in case of all, we need to remove everything
+    if not args.__tracked__ and not args.__untracked__:
+        for target in args.targets:
+            if args.__dryrun__:
+                print('Would remove {}'.format(target))
+            elif os.path.isfile(target):
+                print('Removing {}'.format(target))
+                os.remove(target)
+            elif os.path.isdir(target):
+                print('Removing {}'.format(target))
+                shutil.rmtree(target)
+            elif os.path.exists(target):
+                print('Removing {}'.format(target))
+                os.unlink(target)
+                
 
 #
 # command start
