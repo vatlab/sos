@@ -286,6 +286,20 @@ def cmd_remove(args, unknown_args):
     def dedup(_list):
         return OrderedDict((item, None) for item in _list).keys()
 
+    def get_response(msg):
+        if args.__confirm__:
+            print(msg)
+            return True
+        while True:
+            res = input('{} (y/n/a)? '.format(msg))
+            if res == 'a':
+                args.__confirm__ = True
+                return True
+            elif res == 'y':
+                return True
+            elif res == 'n':
+                return False
+
     # in case of tracked or all, we need to remove signature
     if args.__tracked__ or not args.__untracked__:
         for f in specified_tracked_files:
@@ -293,8 +307,8 @@ def cmd_remove(args, unknown_args):
                 if args.__tracked__:
                     print('Would remove tracked file {} and its signature'.format(f))
             else:
-                print('Removing tracked file {} and its signature'.format(f))
-                FileTarget(f).remove('both')
+                if get_response('Remove tracked file {} and its signature'.format(f)):
+                    FileTarget(f).remove('both')
         # note: signatures of tracked files under
         # these directories should have been removed.
         for d in sorted(specified_tracked_dirs, key=len, reverse=True):
@@ -304,11 +318,11 @@ def cmd_remove(args, unknown_args):
             else:
                 #if os.listdir(d):
                 if not os.listdir(d):
-                    print('Removing {} with tracked files'.format(d))
-                    if os.path.isdir(d):
-                        shutil.rmtree(d)
-                    else:
-                        os.unlink(d)
+                    if get_response('Remove {} with tracked files'.format(d)):
+                        if os.path.isdir(d):
+                            shutil.rmtree(d)
+                        else:
+                            os.unlink(d)
                 else:
                     print('Do not remove {} with tracked file because it is not empty'.format(d))
     elif args.__untracked__:
@@ -316,35 +330,34 @@ def cmd_remove(args, unknown_args):
             if args.__dryrun__:
                 print('Would remove untracked file {}'.format(f))
             else:
-                print('Removing untracked file {}'.format(f))
-                os.remove(f)
+                if get_response('Remove untracked file {}'.format(f)):
+                    os.remove(f)
         # note: signatures of tracked files under
         # these directories should have been removed.
         for d in specified_untracked_dirs:
             if args.__dryrun__:
                 print('Would remove untracked directory {}'.format(d))
             else:
-                print('Removing untracked directory {}'.format(d))
-                if os.path.isdir(d):
-                    shutil.rmtree(d)
-                else:
-                    os.unlink(d)
+                if get_response('Remove untracked directory {}'.format(d)):
+                    if os.path.isdir(d):
+                        shutil.rmtree(d)
+                    else:
+                        os.unlink(d)
     # in case of all, we need to remove everything
     if not args.__tracked__ and not args.__untracked__:
         for target in args.targets:
+            target = os.path.expanduser(target)
             if args.__dryrun__:
                 print('Would remove {}'.format(target))
-            elif os.path.isfile(target):
-                print('Removing {}'.format(target))
-                os.remove(target)
-            elif os.path.isdir(target):
-                print('Removing {}'.format(target))
-                shutil.rmtree(target)
             elif os.path.exists(target):
-                print('Removing {}'.format(target))
-                os.unlink(target)
-                
-
+                if get_response('Remove {}'.format(target)):
+                    if os.path.isfile(target):
+                        os.remove(target)
+                    elif os.path.isdir(target):
+                        if os.path.abspath(target) != os.path.abspath('.'):
+                            shutil.rmtree(target)
+                    else:
+                        os.unlink(target)
 #
 # command start
 #

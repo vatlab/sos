@@ -75,7 +75,7 @@ sh:
 
     def testRemoveAllTracked(self):
         '''test list files'''
-        subprocess.call('sos remove . -t', shell=True)
+        subprocess.call('sos remove . -t -y', shell=True)
         self.assertExists(['ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_f1', 'ut_d1/ut_f2', 'ut_d2/ut_d3/ut_f3'])
         self.assertNonExists(['t_d1/t_f2', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2'])
         # this is the tricky part, directory containing untracked file should remain
@@ -83,13 +83,13 @@ sh:
         
     def testRemoveSpecificTracked(self):
         # note the t_f1, which is under current directory and has to be remove specifically.
-        subprocess.call('sos remove t_f1 ut_f1 t_d2 ut_d2 -t', shell=True)
+        subprocess.call('sos remove t_f1 ut_f1 t_d2 ut_d2 -t -y', shell=True)
         self.assertExists(['ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_f1', 'ut_d1/ut_f2', 'ut_d2/ut_d3/ut_f3', 't_d1/t_f2', 't_d1', 't_d1/ut_f4'])
         self.assertNonExists(['t_f1', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2'])
 
     def testRemoveAllUntracked(self):
         '''test list files'''
-        subprocess.call('sos remove . -u', shell=True)
+        subprocess.call('sos remove . -u -y', shell=True)
         self.assertNonExists(['ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_d1/ut_f2', 't_d1/ut_f4', 'ut_d2/ut_d3/ut_f3'])
         self.assertExists(['t_d1/t_f2', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2', 't_d1', 't_f1'])
         # this is the tricky part, files under the current directory are not removed
@@ -97,13 +97,13 @@ sh:
 
     def testRemoveSpecificUntracked(self):
         # note the t_f1, which is under current directory and has to be remove specifically.
-        subprocess.call('sos remove t_f1 ut_f1 ut_d1/ut_f2 t_d1 -u', shell=True)
+        subprocess.call('sos remove t_f1 ut_f1 ut_d1/ut_f2 t_d1 -u -y', shell=True)
         self.assertNonExists(['ut_f1', 'ut_d1/ut_f2', 't_d1/ut_f4'])
         self.assertExists(['t_d1/t_f2', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2', 't_d1', 't_f1'])
         self.assertExists(['ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_d2/ut_d3/ut_f3'])
 
     def testRemoveAll(self):
-        subprocess.call('sos remove ut_d1 t_d1 ut_d2/ut_d3', shell=True)
+        subprocess.call('sos remove ut_d1 t_d1 ut_d2/ut_d3 -y', shell=True)
         self.assertNonExists(['ut_d1', 't_d1', 'ut_d2/ut_d3'])
         self.assertExists(['t_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2', 't_f1'])
 
