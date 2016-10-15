@@ -576,6 +576,7 @@ class MP_Executor(Base_Executor):
                     dag.regenerate_target(res.target)
                 elif isinstance(res, UnavailableLock):
                     runnable._status = 'pending'
+                    runnable._signature = (res.output, res.sig_file)
                     section = self.workflow.section_by_id(runnable._step_uuid)
                     env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
                     # move away to let other tasks to run first

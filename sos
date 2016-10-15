@@ -52,9 +52,9 @@ if __name__ == '__main__':
         name `default`) or defines only a single workflow. A subworkflow or a
         combined workflow can also be specified, where a subworkflow executes a
         subset of workflow (`name_steps` where `steps` can be `n` (a step `n`),
-        `-n` (up to step `n`), `n-m` (from step `n` to `m`), and `n-` (from step
+        `:n` (up to step `n`), `n:m` (from step `n` to `m`), and `n:` (from step
         `n`)), and a combined workflow executes to multiple (sub)workflows
-        combined by `+` (e.g. `A_0+B+B`).'''
+        combined by `+` (e.g. `A_0+B+C`).'''
     workflow_options = '''Arbitrary parameters defined by the [parameters] step
         of the script, and [parameters] steps of other scripts if nested workflows
         are defined in other SoS files (option `source`). The name, default and
@@ -91,12 +91,12 @@ if __name__ == '__main__':
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary
             CONF in the SoS script being executed.''')
-    parser.add_argument('-t', dest='__targets__', metavar='FILES', default=[],
+    parser.add_argument('-t', dest='__targets__', metavar='FILE', default=[],
         nargs='+', help='''One of more files or alias of other targets that
             will be the target of execution. If specified, SoS will execute
             only part of a workflow or multiple workflows or auxiliary steps
             to generate specified targets.''')
-    parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIRS',
+    parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIR',
         default=['~/.sos/bin'], help=bindir_help)
     parser.add_argument('-q', dest='__queue__', metavar='QUEUE',
         help='''Task-processing queue. SoS by default uses a local multiprocessing
@@ -188,7 +188,7 @@ if __name__ == '__main__':
             workflow) if a workflow is specified.''',
         epilog='''Extra command line argument could be specified to customize
             the style of html, markdown, and terminal output. ''',
-        help='View a SoS script or workflow in various formats')
+        help='Convert between sos and other file formats such as html and Jupyter notebooks')
     parser.add_argument('from_file', metavar='FILENAME',
         help='''File to be converted, can be a SoS script or a Jupyter
             notebook.''')
@@ -231,6 +231,7 @@ if __name__ == '__main__':
     # command remove 
     #
     parser = subparsers.add_parser('remove',
+        help='''Remove tracked and/or untracked files with their signatures''',
         description='''Remove specified files and directories and their
             signatures (if available). Optionally, you can remove only 
             tracked files (input, output and intermediate files of executed
@@ -263,6 +264,7 @@ if __name__ == '__main__':
     # command config
     #
     parser = subparsers.add_parser('config',
+        help='''Set, unset or get the value of system or local configuration files''',
         description='''The config command displays, set, and unset configuration
             variables defined in global or local configuration files.''')
     parser.add_argument('-g', '--global', action='store_true', dest='__global_config__',

@@ -78,7 +78,7 @@ class TestExecute(unittest.TestCase):
         self.assertEqual(subprocess.call('sos run scripts/slave1.sos -v1 > /dev/null', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos prepare file://{}/scripts/master.sos'.format(os.getcwd()), stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
         self.assertEqual(subprocess.call('sos prepare scripts/master.sos L', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
-        self.assertEqual(subprocess.call('sos show -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
+        self.assertEqual(subprocess.call('sos convert -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         #
         self.assertEqual(subprocess.call('sos config -h', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
         self.assertEqual(subprocess.call('sos config -g --get', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 0)
@@ -1636,8 +1636,8 @@ with open('b.txt', 'w') as txt:
     txt.write('A2\n')
         ''')
         st = time.time()
-        ret1 = subprocess.Popen('sos run lock', shell=True)
-        ret2 = subprocess.Popen('sos run lock', shell=True)
+        ret1 = subprocess.Popen('sos run lock -j1', shell=True)
+        ret2 = subprocess.Popen('sos run lock -j1', shell=True)
         ret1.wait()
         ret2.wait()
         # two processes execute A_1 and A_2 separately
