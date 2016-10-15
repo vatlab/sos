@@ -224,8 +224,6 @@ def cmd_remove(args, unknown_args):
     if not args.targets:
         sys.exit('No files or directories to be removed.')
     # 
-    env.logger.error(tracked_files)
-    env.logger.error(tracked_dirs)
     for target in args.targets:
         target = os.path.expanduser(target)
         if not os.path.exists(target):
