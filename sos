@@ -95,7 +95,7 @@ if __name__ == '__main__':
         nargs='+', help='''One of more files or alias of other targets that
             will be the target of execution. If specified, SoS will execute
             only part of a workflow or multiple workflows or auxiliary steps
-            to generate specified targets. ''')
+            to generate specified targets.''')
     parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIRS',
         default=['~/.sos/bin'], help=bindir_help)
     parser.add_argument('-q', dest='__queue__', metavar='QUEUE',

@@ -327,8 +327,6 @@ class RuntimeInfo:
         
         self.signature_vars = signature_vars
 
-        self.sig_files = []
-
         if isinstance(self.output_files, Undetermined) or not self.output_files:
             sig_name = 'Dynamic_' + textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))
         else:
@@ -451,13 +449,19 @@ class RuntimeInfo:
         if isinstance(self.output_files, Undetermined):
             env.logger.trace('Fail because of undetermined output files.')
             return False
-        self.sig_files = self.input_files + self.output_files + self.dependent_files
-        for x in self.sig_files:
+        sig_files = self.input_files + self.output_files + self.dependent_files
+        for x in sig_files:
             if not x.exists('any'):
                 env.logger.trace('Missing target {}'.format(x))
                 return False
         #
-        files_checked = {x.fullname():False for x in self.sig_files if not isinstance(x, Undetermined)}
+        if '__hard_target__' in env.sos_dict:
+            for x in self.output_files:
+                if not x.exists('target'):
+                    env.logger.trace('Missing real target {}'.format(x))
+                    return False
+        #
+        files_checked = {x.fullname():False for x in sig_files if not isinstance(x, Undetermined)}
         res = {'input': [], 'output': [], 'depends': [], 'vars': {}}
         cur_type = 'input'
         with open(self.proc_info) as md5:

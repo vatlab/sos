@@ -1396,7 +1396,7 @@ output: 'largefile.txt'
 
 python:
     import time
-    time.sleep(5)
+    time.sleep(3)
     with open('${output}', 'w') as out:
         for i in range(1000):
             out.write('{}\n'.format(i))
@@ -1405,20 +1405,29 @@ python:
         wf = script.workflow()
         st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 5)
-        # rerun, but remove output
+        self.assertGreater(time.time() - st, 3)
+        # rerun, because this is the final target, it has to be
+        # re-generated
         os.remove('largefile.txt')
         st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 3)
-        # however, the file will not be regenerated
-        self.assertFalse(os.path.isfile('largefile.txt'))
-        # if we discard largefile.txt, it should slow down again
+        self.assertGreater(time.time() - st, 3)
+        # 
+        self.assertTrue(os.path.isfile('largefile.txt'))
+        # we discard just the signature, the step will be ignored
+        # as long as the file is not touched.
         st = time.time()
         FileTarget('largefile.txt').remove('signature')
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 5)
-        os.remove('largefile.txt')
+        self.assertLess(time.time() - st, 0.5)
+        #
+        # now if we touch the file, it needs to be regenerated
+        st = time.time()
+        with open('largefile.txt', 'a') as lf:
+            lf.write('something')
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 3)
+        FileTarget('largefile.txt').remove('both')
 
     def testSignatureWithParameter(self):
         '''Test signature'''
@@ -1685,13 +1694,23 @@ sh:
         self.assertTrue(FileTarget('aa.txt').exists())
         self.assertGreater(time.time() - st, 3.5)
         # rerun should be faster
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 1)
+        # if we remove the middle result, it should not matter
         os.remove('a.txt')
-        os.remove('aa.txt')
         st = time.time()
         Base_Executor(wf).run()
         self.assertLess(time.time() - st, 1)
         #
+        # if we remove the final result, it will be rebuilt
+        os.remove('aa.txt')
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 1.5)
+        #
         # now we request the generation of target
+        FileTarget('a.txt').remove('target')
         FileTarget('aa.txt').remove('both')
         st = time.time()
         Base_Executor(wf).run()
