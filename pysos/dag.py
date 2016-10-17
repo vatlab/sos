@@ -173,7 +173,7 @@ class SoS_DAG(nx.DiGraph):
                             lock.release()
                             node._status = None
                             return node
-                    time.sleep(0.5)
+                    time.sleep(0.1)
             except Exception as e:
                 env.logger.error(e)
             finally:

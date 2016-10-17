@@ -417,9 +417,11 @@ def SoS_Action(run_mode=['run', 'interactive']):
 
 
 class SoS_ExecuteScript:
-    def __init__(self, script, interpreter, suffix):
+    def __init__(self, script, interpreter, suffix, args=''):
         self.script = script
         self.interpreter = interpreter
+        if args:
+            self.interpreter += ' ' + args
         self.suffix = suffix
 
     def run(self, **kwargs):
@@ -526,8 +528,8 @@ def sos_run(workflow, **kwargs):
         raise RuntimeError('Action sos_run is not supported in interactive mode')
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def execute_script(script, interpreter, suffix, **kwargs):
-    return SoS_ExecuteScript(script, interpreter, suffix).run(**kwargs)
+def execute_script(script, interpreter, suffix, args='', **kwargs):
+    return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
 
 _check_command_cache = {}
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
@@ -812,59 +814,59 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     return 0
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def run(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/bash', '.sh').run(**kwargs)
+def run(script, args='', **kwargs):
+    return SoS_ExecuteScript(script, '/bin/bash', '.sh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def bash(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/bash', '.sh').run(**kwargs)
+def bash(script, args='', **kwargs):
+    return SoS_ExecuteScript(script, '/bin/bash', '.sh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def csh(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/csh', '.csh').run(**kwargs)
+def csh(script, args='', **kwargs):
+    return SoS_ExecuteScript(script, '/bin/csh', '.csh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def tcsh(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/tcsh', '.sh').run(**kwargs)
+def tcsh(script, args='', **kwargs):
+    return SoS_ExecuteScript(script, '/bin/tcsh', '.sh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def zsh(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/zsh', '.zsh').run(**kwargs)
+def zsh(script, args='', **kwargs):
+    return SoS_ExecuteScript(script, '/bin/zsh', '.zsh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def sh(script, **kwargs):
-    return SoS_ExecuteScript(script, '/bin/sh', '.sh').run(**kwargs)
+def sh(script, args='', **kwargs):
+    return SoS_ExecuteScript(script, '/bin/sh', '.sh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def python(script, **kwargs):
-    return SoS_ExecuteScript(script, 'python', '.py').run(**kwargs)
+def python(script, args='', **kwargs):
+    return SoS_ExecuteScript(script, 'python', '.py', args).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def python3(script, **kwargs):
-    return SoS_ExecuteScript(script, 'python3', '.py').run(**kwargs)
+def python3(script, args='', **kwargs):
+    return SoS_ExecuteScript(script, 'python3', '.py', args).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def perl(script, **kwargs):
-    return SoS_ExecuteScript(script, 'perl', '.pl').run(**kwargs)
+def perl(script, args='', **kwargs):
+    return SoS_ExecuteScript(script, 'perl', '.pl', args).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def ruby(script, **kwargs):
-    return SoS_ExecuteScript(script, 'ruby', '.rb').run(**kwargs)
+def ruby(script, args='', **kwargs):
+    return SoS_ExecuteScript(script, 'ruby', '.rb', args).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def node(script, **kwargs):
-    return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
+def node(script, args='', **kwargs):
+    return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def JavaScript(script, **kwargs):
-    return SoS_ExecuteScript(script, 'node', '.js').run(**kwargs)
+def JavaScript(script, args='', **kwargs):
+    return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def R(script, **kwargs):
+def R(script, args='', **kwargs):
     # > getOption('defaultPackages')
     # [1] "datasets"  "utils"     "grDevices" "graphics"  "stats"     "methods"
     return SoS_ExecuteScript(
-        script, 'Rscript --default-packages=datasets,methods,utils,stats,grDevices,graphics ', '.R').run(**kwargs)
+        script, 'Rscript --default-packages=datasets,methods,utils,stats,grDevices,graphics ', '.R', args).run(**kwargs)
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def check_R_library(name, version = None, repos = 'http://cran.us.r-project.org'):

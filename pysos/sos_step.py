@@ -1137,7 +1137,7 @@ class SP_Step_Executor(Queued_Step_Executor):
             raise RuntimeError('Output of a completed step cannot be undetermined.')
         for target in env.sos_dict['output']:
             if isinstance(target, str):
-                if not FileTarget(target).exists('any'):
+                if not FileTarget(target).exists('target' if '__hard_target__' in env.sos_dict else 'any'):
                     raise RuntimeError('Output target {} does not exist after the completion of step {}'
                             .format(target, env.sos_dict['step_name']))
             elif not target.exists('any'):

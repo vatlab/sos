@@ -376,6 +376,18 @@ echo 'Echo
         wf = script.workflow()
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
 
+    def testArgs(self):
+        '''Test args option of scripts'''
+        FileTarget('a.txt').remove('both')
+        script = SoS_Script(r'''
+[0]
+sh: args='-n'
+    touch a.txt
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertFalse(os.path.exists('a.txt'))
+
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testShInDocker(self):

@@ -292,6 +292,10 @@ class Base_Executor:
             # for nested workflow, the input is specified by sos_run, not None.
             if self.nested and idx == 0:
                 context['__step_output__'] = env.sos_dict['__step_output__']
+            # for regular workflow, the output of the last step has
+            # to exist (existence of signature does not count)
+            if not self.nested and idx + 1 == len(self.workflow.sections):
+                context['__hard_target__'] = True
 
             # NOTE: if a section has option 'shared', the execution of this step would
             # change dictionary, essentially making all later steps rely on this step.
@@ -373,6 +377,13 @@ class Base_Executor:
         env.sos_dict.set('run_mode', env.run_mode)
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
+        #
+        # if targets are specified and there are only signatures for them, we need
+        # to remove the signature and really generate them
+        if targets:
+            for t in targets:
+                if not FileTarget(t).exists('target'):
+                    FileTarget(t).remove('signature')
         #
         SoS_exec('from pysos.runtime import sos_handle_parameter_')
         #
@@ -489,7 +500,7 @@ class Base_Executor:
     def dryrun(self, targets=None):
         '''Execute the script in dryrun mode.'''
         try:
-            self.run(targets=targets, mode='dryun')
+            self.run(targets=targets, mode='dryrun')
         # only runtime errors are ignored
         except RuntimeError as e:
             env.logger.warning('Workflow cannot be completed in dryrun mode: {}'.format(e))
@@ -513,12 +524,12 @@ class MP_Executor(Base_Executor):
     def step_executor(self, section, queue):
         return MP_Step_Executor(section, queue)
 
-    def run(self, targets=None):
+    def run(self, targets=None, mode='run'):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
         self.reset_dict()
-        env.run_mode = 'run'
+        env.run_mode = mode
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
         env.sos_dict.set('run_mode', env.run_mode)
@@ -565,6 +576,7 @@ class MP_Executor(Base_Executor):
                     dag.regenerate_target(res.target)
                 elif isinstance(res, UnavailableLock):
                     runnable._status = 'pending'
+                    runnable._signature = (res.output, res.sig_file)
                     section = self.workflow.section_by_id(runnable._step_uuid)
                     env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
                     # move away to let other tasks to run first
