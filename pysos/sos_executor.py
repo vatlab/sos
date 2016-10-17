@@ -677,7 +677,7 @@ class MP_Executor(Base_Executor):
 class RQ_Executor(MP_Executor):
     def __init__(self, workflow, args=[], config_file=None, nested=False):
         MP_Executor.__init__(self, workflow, args, config_file, nested=nested)
-        env.__task_engine__ = 'RQ'
+        env.__task_engine__ = 'rq'
 
         from rq import Queue as rqQueue
         from redis import Redis

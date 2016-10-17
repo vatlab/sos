@@ -24,6 +24,7 @@ import os
 from pysos.sos_script import SoS_Script
 from pysos.utils import env
 from pysos.target import FileTarget
+from pysos.sos_executor import RQ_Executor
 
 import unittest
 import subprocess
@@ -75,8 +76,12 @@ run:
 sos_run("work_1+work_2")
 ''')
         self.touch(['1.txt', '2.txt'])
+        subprocess.call('sos clean . -t -y', shell=True)
         wf = script.workflow()
-        RQ_Executor(wf).execute()
+        RQ_Executor(wf).run()
+        for f in ['1.out', '1.out2', '2.out', '2.out2']:
+            self.assertTrue(FileTarget(f).exists('target'))
+            FileTarget(f).remove('both')
 
 
 if __name__ == '__main__':
