@@ -340,13 +340,20 @@ class SoS_Kernel(Kernel):
         sys.stdout = save_stdout
         sys.stderr = save_stderr
 
-    def do_inspect(self, code, cursor_pos, detail_level=0):
-        'Inspect code'
-        return {
-            'status': 'ok',
-            'found': 'true',
-            'data': {x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys and not x.startswith('__')},
-            'metadata':''}
+    #
+    # Right now we are not sure what to return for do_inspect
+    # http://jupyter-client.readthedocs.io/en/latest/messaging.html
+    # returnning sos_dict is wasteful and is prone to error (unpickleable objects
+    # causing error messages)
+    #
+    #def do_inspect(self, code, cursor_pos, detail_level=0):
+    #    'Inspect code'
+    #    # x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys and not x.startswith('__')},
+    #    return {
+    #        'status': 'ok',
+    #        'found': 'true',
+    #        'data': {}, #
+    #        'metadata': {}}
 
     def do_is_complete(self, code):
         '''check if new line is in order'''
