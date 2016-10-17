@@ -500,7 +500,7 @@ class Base_Executor:
     def dryrun(self, targets=None):
         '''Execute the script in dryrun mode.'''
         try:
-            self.run(targets=targets, mode='dryun')
+            self.run(targets=targets, mode='dryrun')
         # only runtime errors are ignored
         except RuntimeError as e:
             env.logger.warning('Workflow cannot be completed in dryrun mode: {}'.format(e))
@@ -524,12 +524,12 @@ class MP_Executor(Base_Executor):
     def step_executor(self, section, queue):
         return MP_Step_Executor(section, queue)
 
-    def run(self, targets=None):
+    def run(self, targets=None, mode='run'):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
         self.reset_dict()
-        env.run_mode = 'run'
+        env.run_mode = mode
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
         env.sos_dict.set('run_mode', env.run_mode)
