@@ -940,6 +940,9 @@ class ActivityNotifier(threading.Thread):
         while True:
             self.event.wait(self.delay)
             if self.event.is_set():
+                if registered:
+                    sys.stderr.write('\n')
+                    sys.stderr.flush()
                 break
             if not registered:
                 self.uuid = uuid.uuid4().hex
