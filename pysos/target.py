@@ -327,20 +327,14 @@ class RuntimeInfo:
         
         self.signature_vars = signature_vars
 
-        if isinstance(self.output_files, Undetermined) or not self.output_files:
-            sig_name = 'Dynamic_' + textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))
-        else:
-            sig_name = os.path.realpath(self.output_files[0].fullname() + '_' + \
-                textMD5('{} {} {} {}'.format(self.script, self.input_files, self.output_files, self.dependent_files)))
-        #
-        # If the output path is outside of the current working directory
-        rel_path = os.path.relpath(sig_name, env.exec_dir)
-        # if this file is not relative to cache, use global signature file
-        if rel_path.startswith('../'):
-            info_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep))
-        else:
-            # if this file is relative to cache, use local directory
-            info_file = os.path.join('.sos', '.runtime', rel_path)
+        sig_name = textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))
+        info_file = os.path.join('.sos', '.runtime', sig_name)
+        if not isinstance(self.output_files, Undetermined) and self.output_files:
+            # If the output path is outside of the current working directory
+            rel_path = os.path.relpath(os.path.realpath(self.output_files[0].fullname()), env.exec_dir)
+            # if this file is not relative to cache, use global signature file
+            if rel_path.startswith('../'):
+                info_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep))
         # path to file
         sig_path = os.path.split(info_file)[0]
         with fasteners.InterProcessLock('/tmp/lock_sig'):
