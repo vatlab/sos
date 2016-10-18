@@ -260,7 +260,7 @@ class TestUtils(unittest.TestCase):
 
     def testProgressBar(self):
         '''Test progress bar'''
-        env.verbosity = 2
+        env.verbosity = 1
         prog = ProgressBar('test', 100)
         for i in range(100):
             prog.update(i)

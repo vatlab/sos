@@ -614,24 +614,24 @@ def downloadURL(URL, dest, decompress=False, index=None):
     term_width = shutil.get_terminal_size((80, 20)).columns
     try:
         env.logger.debug('Download {} to {}'.format(URL, dest))
-        prog = ProgressBar(message, disp=env.verbosity > 1, index=index)
+        prog = ProgressBar(message, disp=env.verbosity > 1)
         sig = FileTarget(dest)
         if os.path.isfile(dest):
             if env.sig_mode == 'construct':
-                prog.done(message + ': \033[32m writing signature {}\033[0m'.format(' '*(term_width - len(message) - 21)))
+                prog.done(message + ': \033[32m writing signature\033[0m')
                 sig.write_sig()
-                prog.done(message + ': \033[32m signature calculated {}\033[0m'.format(' '*(term_width - len(message) - 24)))
+                prog.done(message + ': \033[32m signature calculated\033[0m')
                 return True
             elif env.sig_mode == 'ignore':
-                prog.done(message + ': \033[32m use existing {}\033[0m'.format(' '*(term_width - len(message) - 15)))
+                prog.done(message + ': \033[32m use existing\033[0m')
                 return True
             else:
-                prog.done(message + ': \033[32m Validating signature {}\033[0m'.format(' '*(term_width - len(message) - 26)))
+                prog.done(message + ': \033[32m Validating signature\033[0m')
                 if sig.validate():
-                    prog.done(message + ': \033[32m Validated {}\033[0m'.format(' '*(term_width - len(message) - 15)))
+                    prog.done(message + ': \033[32m Validated\033[0m')
                     return True
                 else:
-                    prog.done(message + ':\033[91m Signature mismatch {}\033[0m'.format(' '*(term_width - len(message) - 22)))
+                    prog.done(message + ':\033[91m Signature mismatch\033[0m')
         #
         # Stop using pycurl because of libcurl version compatibility problems
         # that happen so often and difficult to fix. Error message looks like
@@ -671,14 +671,14 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     f.write(buffer)
                     prog.urllibUpdate(file_size, file_size_dl)
             except urllib.error.HTTPError as e:
-                prog.done(message + ':\033[91m {} Error {}\033[0m'.format(e.code, ' '*(term_width - len(message) - 12)))
+                prog.done(message + ':\033[91m {} Error\033[0m'.format(e.code))
                 try:
                     os.remove(dest_tmp)
                 except OSError:
                     pass
                 return False
             except Exception as e:
-                prog.done(message + ':\033[91m {} {}\033[0m'.format(e, ' '*(term_width - len(message) - len(repr(e)))))
+                prog.done(message + ':\033[91m {}\033[0m'.format(e))
                 try:
                     os.remove(dest_tmp)
                 except OSError:
@@ -689,7 +689,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
         decompressed = 0
         if decompress:
             if zipfile.is_zipfile(dest):
-                prog.done(message + ':\033[91m Decompressing {}\033[0m'.format(' '*(term_width - len(message) - 16)))
+                prog.done(message + ':\033[91m Decompressing\033[0m')
                 zip = zipfile.ZipFile(dest)
                 zip.extractall(dest_dir)
                 names = zip.namelist()
@@ -700,7 +700,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                         sig.add(os.path.join(dest_dir, name))
                         decompressed += 1
             elif tarfile.is_tarfile(dest):
-                prog.done(message + ':\033[91m Decompressing {}\033[0m'.format(' '*(term_width - len(message) - 16)))
+                prog.done(message + ':\033[91m Decompressing\033[0m')
                 with tarfile.open(dest, 'r:*') as tar:
                     tar.extractall(dest_dir)
                     # only extract files
@@ -712,7 +712,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                             sig.add(os.path.join(dest_dir, name))
                             decompressed += 1
             elif dest.endswith('.gz'):
-                prog.done(message + ':\033[91m Decompressing {}\033[0m'.format(' '*(term_width - len(message) - 16)))
+                prog.done(message + ':\033[91m Decompressing\033[0m')
                 decomp = dest[:-3]
                 with gzip.open(dest, 'rb') as fin, open(decomp, 'wb') as fout:
                     buffer = fin.read(100000)
@@ -729,15 +729,15 @@ def downloadURL(URL, dest, decompress=False, index=None):
         # if downloaded files contains .md5 signature, use them to validate
         # downloaded files.
         if os.path.isfile(dest + '.md5'):
-            prog.done(message + ':\033[91m Verifying md5 signature {}\033[0m'.format(' '*(term_width - len(message) - 28)))
+            prog.done(message + ':\033[91m Verifying md5 signature\033[0m')
             with open(dest + '.md5') as md5:
                 rec_md5 = md5.readline().split()[0].strip()
                 obs_md5 = fileMD5(dest, partial=False)
                 if rec_md5 != obs_md5:
-                    prog.done(message + ':\033[91m MD5 signature mismatch {}\033[0m'.format(' '*(term_width - len(message) - 25)))
+                    prog.done(message + ':\033[91m MD5 signature mismatch\033[0m')
                     env.logger.warning('md5 signature mismatch for downloaded file {} (recorded {}, observed {})'
                         .format(filename[:-4], rec_md5, obs_md5))
-            prog.done(message + ':\033[91m MD5 signature verified {}\033[0m'.format(' '*(term_width - len(message) - 26)))
+            prog.done(message + ':\033[91m MD5 signature verified\033[0m')
     except Exception as e:
         if env.verbosity > 2:
              sys.stderr.write(get_traceback())

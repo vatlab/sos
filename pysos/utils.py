@@ -39,6 +39,7 @@ import argparse
 from collections.abc import Sequence
 from io import StringIO
 from html.parser import HTMLParser
+import fasteners
 
 __all__ = ['logger', 'get_output']
 
@@ -544,7 +545,7 @@ class ProgressBar:
     1. it can start from the middle with init count
     '''
     # no ncurse support under windows
-    def __init__(self, message, totalCount = None, disp=True, index=None):
+    def __init__(self, message, totalCount = None, disp=True):
         if not disp:
             self.update = self.empty
             self.curlUpdate = self.empty
@@ -555,13 +556,8 @@ class ProgressBar:
             self.finished = 0
             return
         # windows system does not support ncurse
-        if sys.platform == 'win32':
-            self.index = None
-        else:
-            self.index = index
-        if self.index is not None:
-            import blessings
-            self.term = blessings.Terminal(stream=sys.stderr)
+        import blessings
+        self.term = blessings.Terminal(stream=sys.stderr)
         self.main = message
         self.main_start_time = time.time()
         self.message = self.main
@@ -574,7 +570,24 @@ class ProgressBar:
         self.init_count = self.count
         #
         self.finished = 0
+        with fasteners.InterProcessLock('/tmp/sos_progress_'):
+            with open('/tmp/sos_progress_', 'a') as prog_index:
+                prog_index.write('{}\n'.format(message))
         self.reset('', totalCount)
+
+    def get_index(self):
+        with fasteners.InterProcessLock('/tmp/sos_progress_'):
+            with open('/tmp/sos_progress_') as prog_index:
+                lines = prog_index.readlines()
+                try:
+                    idx = lines[::-1].index(self.message + '\n')
+                except:
+                    return 0
+            # try to keep the file small
+            if len(lines) > 200:
+                with open('/tmp/sos_progress_', 'w') as prog_index:
+                    prog_index.write(''.join(lines[-100:]))
+            return idx
 
     def reset(self, msg='', totalCount = None):
         if msg:
@@ -677,10 +690,7 @@ class ProgressBar:
             width = self.term_width - len(msg[0]) - len(msg[1]) - m3Len - len(msg[4])
             msg[6] = ' '*width
         # use stderr to avoid messing up process output
-        if self.index is None:
-            sys.stderr.write('\r' + ''.join(msg))
-        else:
-            with self.term.location( 0, self.term.height - self.index - 1):
+        with self.term.location( 0, self.term.height - self.get_index() - 1):
                 sys.stderr.write('\r' + ''.join(msg))
 
     def done(self, done_msg=''):
@@ -727,12 +737,8 @@ class ProgressBar:
             msg[3] = ''
             msg[4] = ''
             msg[5] = ''
-        if self.index is None:
-            sys.stderr.write('\r' + ''.join(msg) + '\n')
-            sys.stderr.flush()
-        else:
-            with self.term.location(0, self.term.height - self.index - 1):
-                sys.stderr.write('\r' + ''.join(msg))
+        with self.term.location(0, self.term.height - self.get_index() - 1):
+                sys.stderr.write('\r' + ''.join(msg) + self.term.clear_eol)
                 sys.stderr.flush()
 
 
@@ -910,17 +916,40 @@ class ActivityNotifier(threading.Thread):
         self.event = threading.Event()
         self.start()
 
+    def get_index(self):
+        with fasteners.InterProcessLock('/tmp/sos_progress_'):
+            with open('/tmp/sos_progress_') as prog_index:
+                lines = prog_index.readlines()
+                try:
+                    idx = lines[::-1].index(self.msg + '\n')
+                except:
+                    return 0
+            # try to keep the file small
+            if len(lines) > 200:
+                with open('/tmp/sos_progress_', 'w') as prog_index:
+                    prog_index.write(''.join(lines[-100:]))
+            return idx
+
     def run(self):
+        import blessings
+        registered = False
+        self.term = blessings.Terminal(stream=sys.stderr)
         while True:
             self.event.wait(self.delay)
             if self.event.is_set():
                 break
+            if not registered:
+                with fasteners.InterProcessLock('/tmp/sos_progress_'):
+                    with open('/tmp/sos_progress_', 'a') as prog_index:
+                        prog_index.write('{}\n'.format(self.msg))
+                registered = True
             second_elapsed = time.time() - self.start_time
-            sys.stderr.write('\r' + self.msg + ' ({}{})'.format(
-                '' if second_elapsed < 86400 else '{} day{} '
-                .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
-                time.strftime('%H:%M:%S', time.gmtime(second_elapsed))))
-            sys.stderr.flush()
+            with self.term.location(0, self.term.height - self.get_index() - 1):
+                sys.stderr.write('\r' + self.msg + ' ({}{}){}'.format(
+                    '' if second_elapsed < 86400 else '{} day{} '
+                    .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
+                    time.strftime('%H:%M:%S', time.gmtime(second_elapsed)), self.term.clear_eol))
+                sys.stderr.flush()
 
     def stop(self):
         self.event.set()
