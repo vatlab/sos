@@ -46,7 +46,7 @@ from pysos.sos_executor import Base_Executor, ExecuteError
 from pysos.signature import FileTarget
 
 import socket
-def internet_on(host='8.8.8.8', port=53, timeout=3):
+def internet_on(host='8.8.8.8', port=80, timeout=3):
     '''Test if internet is connected '''
     try:
         socket.setdefaulttimeout(timeout)
