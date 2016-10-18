@@ -573,13 +573,13 @@ class ProgressBar:
         self.finished = 0
         self.uuid = uuid.uuid4().hex
         with fasteners.InterProcessLock('/tmp/sos_progress_'):
-            with open('/tmp/sos_progress_', 'a') as prog_index:
+            with open('/tmp/sos_progress', 'a') as prog_index:
                 prog_index.write('{}\n'.format(self.uuid))
         self.reset('', totalCount)
 
     def get_index(self):
         with fasteners.InterProcessLock('/tmp/sos_progress_'):
-            with open('/tmp/sos_progress_') as prog_index:
+            with open('/tmp/sos_progress') as prog_index:
                 lines = prog_index.readlines()
                 try:
                     idx = lines[::-1].index(self.uuid + '\n')
@@ -588,7 +588,7 @@ class ProgressBar:
                     return 0
             # try to keep the file small
             if len(lines) > 200:
-                with open('/tmp/sos_progress_', 'w') as prog_index:
+                with open('/tmp/sos_progress', 'w') as prog_index:
                     prog_index.write(''.join(lines[-100:]))
             return idx
 
@@ -921,7 +921,7 @@ class ActivityNotifier(threading.Thread):
 
     def get_index(self):
         with fasteners.InterProcessLock('/tmp/sos_progress_'):
-            with open('/tmp/sos_progress_') as prog_index:
+            with open('/tmp/sos_progress') as prog_index:
                 lines = prog_index.readlines()
                 try:
                     idx = lines[::-1].index(self.uuid + '\n')
@@ -929,7 +929,7 @@ class ActivityNotifier(threading.Thread):
                     return 0
             # try to keep the file small
             if len(lines) > 200:
-                with open('/tmp/sos_progress_', 'w') as prog_index:
+                with open('/tmp/sos_progress', 'w') as prog_index:
                     prog_index.write(''.join(lines[-100:]))
             return idx
 
@@ -947,7 +947,7 @@ class ActivityNotifier(threading.Thread):
             if not registered:
                 self.uuid = uuid.uuid4().hex
                 with fasteners.InterProcessLock('/tmp/sos_progress_'):
-                    with open('/tmp/sos_progress_', 'a') as prog_index:
+                    with open('/tmp/sos_progress', 'a') as prog_index:
                         prog_index.write('{}\n'.format(self.uuid))
                 registered = True
             second_elapsed = time.time() - self.start_time

@@ -345,6 +345,8 @@ class RuntimeInfo:
                     raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
         self.proc_info = '{}.exe_info'.format(info_file)
 
+        # we will need to lock on a file that we do not really write to
+        # otherwise the lock will be broken when we write to it.
         self.lock = fasteners.InterProcessLock(self.proc_info + '_')
         if not self.lock.acquire(blocking=False):
             raise UnavailableLock((self.output_files, self.proc_info))
