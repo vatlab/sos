@@ -86,6 +86,19 @@ class Base_Executor:
         self.args = args
         self.nested = nested
         self.config_file = config_file
+        # interactive mode does not pass workflow
+        if self.workflow:
+            self.md5 = self.create_signature()
+
+    def create_signature(self):
+        with StringIO() as sig:
+            sig.write('# Sections\n')
+            for step in self.workflow.sections + self.workflow.auxiliary_sections:
+                sig.write('{}: {}\n'.format(step.step_name(), step.md5))
+            sig.write('# Command line options\n')
+            sig.write('{}\n'.format(self.args))
+            self.sig_content = sig.getvalue()
+        return textMD5(self.sig_content)[:16]
 
     def reset_dict(self):
         # if creating a new dictionary, set it up with some basic varibles
@@ -341,30 +354,20 @@ class Base_Executor:
         if cycle:
             raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
 
-        #dag.show_nodes()
         return dag
 
     def save_workflow_signature(self, dag):
         '''Save tracked files in .sos so that untracked files can be cleaned by command
         sos clean.
         '''
-        with StringIO() as sig:
-            sig.write('# Sections\n')
-            for step in self.workflow.sections + self.workflow.auxiliary_sections:
-                sig.write('{}: {}\n'.format(step.step_name(), step.md5))
-            sig.write('# Command line options\n')
-            sig.write('{}\n'.format(self.args))
-            sig_content = sig.getvalue()
-        md5 = textMD5(sig_content)[:16]
-        with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(md5)), 'w') as sigfile:
-            sigfile.write(sig_content)
+        with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'w') as sigfile:
+            sigfile.write(self.sig_content)
             sigfile.write('# input and dependent files\n')
             for target in sorted(x for x in dag._all_dependent_files if isinstance(x, str)):
                 sigfile.write('{}\n'.format(target))
             sigfile.write('# output files\n')
             for target in sorted(x for x in dag._all_output_files if isinstance(x, str)):
                 sigfile.write('{}\n'.format(target))   
-        return md5
         
     def run(self, targets=None, mode='run'):
         '''Execute a workflow with specified command line args. If sub is True, this
@@ -494,8 +497,8 @@ class Base_Executor:
                         's' if len(sections) > 1 else '', ', '.join(sections))))
             raise exec_error
         else:
-            sig = self.save_workflow_signature(dag)
-            env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, sig))
+            self.save_workflow_signature(dag)
+            env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
 
     def dryrun(self, targets=None):
         '''Execute the script in dryrun mode.'''
