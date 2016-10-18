@@ -741,7 +741,7 @@ class ProgressBar:
             msg[4] = ''
             msg[5] = ''
         with self.term.location(0, self.term.height - self.get_index() - 1):
-                sys.stderr.write('\r' + ''.join(msg) + self.term.clear_eol)
+                sys.stderr.write('\r{}{}\n'.format(''.join(msg), self.term.clear_eol))
                 sys.stderr.flush()
 
 

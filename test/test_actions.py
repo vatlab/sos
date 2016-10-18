@@ -778,7 +778,7 @@ download: dest_dir='tmp', decompress=True
         wf = script.workflow()
         self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq-hg18_20100817.DB'))
-        self.assertGreater(time.time() - start, 5)
+        self.assertGreater(time.time() - start, 3)
         # this will be fast
         start = time.time()
         wf = script.workflow()
