@@ -583,8 +583,7 @@ class ProgressBar:
                 lines = prog_index.readlines()
                 try:
                     idx = lines[::-1].index(self.uuid + '\n')
-                except Exception as e:
-                    env.logger.error(e)
+                except:
                     return 0
             # try to keep the file small
             if len(lines) > 200:
