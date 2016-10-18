@@ -39,6 +39,7 @@ import argparse
 from collections.abc import Sequence
 from io import StringIO
 from html.parser import HTMLParser
+import uuid
 import fasteners
 
 __all__ = ['logger', 'get_output']
@@ -570,9 +571,10 @@ class ProgressBar:
         self.init_count = self.count
         #
         self.finished = 0
+        self.uuid = uuid.uuid4().hex
         with fasteners.InterProcessLock('/tmp/sos_progress_'):
             with open('/tmp/sos_progress_', 'a') as prog_index:
-                prog_index.write('{}\n'.format(message))
+                prog_index.write('{}\n'.format(self.uuid))
         self.reset('', totalCount)
 
     def get_index(self):
@@ -580,8 +582,9 @@ class ProgressBar:
             with open('/tmp/sos_progress_') as prog_index:
                 lines = prog_index.readlines()
                 try:
-                    idx = lines[::-1].index(self.message + '\n')
-                except:
+                    idx = lines[::-1].index(self.uuid + '\n')
+                except Exception as e:
+                    env.logger.error(e)
                     return 0
             # try to keep the file small
             if len(lines) > 200:
@@ -921,7 +924,7 @@ class ActivityNotifier(threading.Thread):
             with open('/tmp/sos_progress_') as prog_index:
                 lines = prog_index.readlines()
                 try:
-                    idx = lines[::-1].index(self.msg + '\n')
+                    idx = lines[::-1].index(self.uuid + '\n')
                 except:
                     return 0
             # try to keep the file small
@@ -939,9 +942,10 @@ class ActivityNotifier(threading.Thread):
             if self.event.is_set():
                 break
             if not registered:
+                self.uuid = uuid.uuid4().hex
                 with fasteners.InterProcessLock('/tmp/sos_progress_'):
                     with open('/tmp/sos_progress_', 'a') as prog_index:
-                        prog_index.write('{}\n'.format(self.msg))
+                        prog_index.write('{}\n'.format(self.uuid))
                 registered = True
             second_elapsed = time.time() - self.start_time
             with self.term.location(0, self.term.height - self.get_index() - 1):
