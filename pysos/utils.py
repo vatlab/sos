@@ -941,7 +941,7 @@ class ActivityNotifier(threading.Thread):
             self.event.wait(self.delay)
             if self.event.is_set():
                 if registered:
-                    sys.stderr.write('\n')
+                    sys.stderr.write("\r\033[K")
                     sys.stderr.flush()
                 break
             if not registered:
