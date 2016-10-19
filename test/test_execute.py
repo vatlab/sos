@@ -1560,7 +1560,7 @@ task: concurrent=True
 python:
     # ${gvar}
     with open(${_output!r}, 'w') as tmp:
-        tmp.write('${_tt}')
+        tmp.write('${_tt}_${_index}')
 
 ''')
         wf = script.workflow()
@@ -1568,7 +1568,7 @@ python:
         MP_Executor(wf).run()
         for t in range(10, 13):
             with open('myfile_{}.txt'.format(t)) as tmp:
-                self.assertEqual(tmp.read(), str(t))
+                self.assertEqual(tmp.read(), str(t) + '_' + str(t-10))
             FileTarget('myfile_{}.txt'.format(t)).remove('both')
 
 
