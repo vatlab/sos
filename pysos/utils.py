@@ -313,8 +313,11 @@ class RuntimeEnvironments(object):
         self.running_jobs = 0
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
-        if not os.path.isdir('.sos'):
-            os.mkdir('.sos')
+        if not os.path.isdir('.sos/.runtime'):
+            with fasteners.InterProcessLock('/tmp/sos_runtime_lock'):
+                # the directory might haver been created during waiting
+                if not os.path.isdir('.sos/.runtime'):
+                    os.makedirs('.sos/.runtime')
 
     def register_process(self, pid, msg=''):
         '''Register a process used by this SoS instance. It will also be

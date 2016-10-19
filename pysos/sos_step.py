@@ -976,7 +976,7 @@ def _expand_file_list(ignore_unknown, *args):
                 tmp.append(ifile)
             else:
                 raise UnknownTarget(ifile)
-        elif os.path.isfile(os.path.expanduser(ifile)):
+        elif FileTarget(ifile).exists():
             tmp.append(ifile)
         else:
             expanded = sorted(glob.glob(os.path.expanduser(ifile)))

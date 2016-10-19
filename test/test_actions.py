@@ -43,7 +43,7 @@ from pysos.sos_eval import  Undetermined
 from pysos.actions import DockerClient
 from docker.errors import DockerException
 from pysos.sos_executor import Base_Executor, ExecuteError
-from pysos.signature import FileTarget
+from pysos.target import FileTarget
 
 import socket
 def internet_on(host='8.8.8.8', port=53, timeout=3):

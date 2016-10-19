@@ -36,7 +36,7 @@ from pysos.utils import env, WorkflowDict
 from pysos.sos_eval import Undetermined, SoS_exec
 from pysos.sos_executor import Base_Executor, MP_Executor, Interactive_Executor, ExecuteError
 from pysos.sos_script import ParsingError
-from pysos.signature import FileTarget
+from pysos.target import FileTarget
 import subprocess
 
 class TestExecute(unittest.TestCase):
