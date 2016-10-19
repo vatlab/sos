@@ -1345,6 +1345,37 @@ sh:
         self.assertLess(time.time() - st, 2)
         FileTarget('lls').remove('both')
 
+    def testDependsEnvVariable(self):
+        '''Testing target env_variable.'''
+        FileTarget('a.txt').remove('both')
+        script = SoS_Script('''
+[0]
+depends: env_variable('AA')
+output:  'a.txt'
+sh:
+    sleep 2
+    echo $AA > a.txt
+''')
+        wf = script.workflow()
+        os.environ['AA'] = 'A1'
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 1.5)
+        with open('a.txt') as at:
+            self.assertEqual(at.read(), 'A1\n')
+        # test validation
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 1)
+        # now if we change var, it should be rerun
+        os.environ['AA'] = 'A2'
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 1.5)
+        with open('a.txt') as at:
+            self.assertEqual(at.read(), 'A2\n')
+        FileTarget('a.txt').remove('both')
+
     def testProvidesExecutable(self):
         '''Testing provides executable target.'''
         # change $PATH so that lls can be found at the current
@@ -1529,7 +1560,7 @@ task: concurrent=True
 python:
     # ${gvar}
     with open(${_output!r}, 'w') as tmp:
-        tmp.write('${_tt}')
+        tmp.write('${_tt}_${_index}')
 
 ''')
         wf = script.workflow()
@@ -1537,7 +1568,7 @@ python:
         MP_Executor(wf).run()
         for t in range(10, 13):
             with open('myfile_{}.txt'.format(t)) as tmp:
-                self.assertEqual(tmp.read(), str(t))
+                self.assertEqual(tmp.read(), str(t) + '_' + str(t-10))
             FileTarget('myfile_{}.txt'.format(t)).remove('both')
 
 
