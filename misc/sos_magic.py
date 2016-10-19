@@ -60,7 +60,7 @@ class SoS_Magics(Magics):
 
     def _reset(self):
         env.sos_dict = WorkflowDict()
-        SoS_exec('from pysos import *')
+        SoS_exec('from pysos.runtime import *')
         env.sos_dict.set('__interactive__', True)
         self.executor = Interactive_Executor()
         self.original_keys = set(env.sos_dict._dict.keys())
@@ -93,7 +93,7 @@ class SoS_Magics(Magics):
                     #    env.logger.warning('{} ignored for statement execution'.format(line))
                     return SoS_exec(cell)
                 except:
-                    return self.executor.run_interactive(cell, command_line=self.options + line.strip())
+                    return self.executor.run(cell, command_line=self.options + line.strip())
 
     @line_magic
     def sospaste(self, line):
@@ -116,7 +116,7 @@ class SoS_Magics(Magics):
                 compile(block, '<string>', 'exec')
                 return SoS_exec(block)
             except:
-                return self.executor.run_interactive(block, command_line=self.options + line.strip())
+                return self.executor.run(block, command_line=self.options + line.strip())
 
     @line_magic
     def sosset(self, line):

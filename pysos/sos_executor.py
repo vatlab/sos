@@ -728,7 +728,7 @@ class Interactive_Executor(Base_Executor):
         parser = argparse.ArgumentParser()
         # no default workflow so it will execute any workflow if the code piece
         # defines only one workflow
-        parser.add_argument('workflow', metavar='WORKFLOW', nargs='?')
+        # 
         # parser.add_argument('-j', type=int, metavar='JOBS', default=1, dest='__max_jobs__')
         parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
         #parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
@@ -745,6 +745,39 @@ class Interactive_Executor(Base_Executor):
     def parse_script(self, code):
         '''Used by the kernel to judge if the code is complete'''
         return SoS_Script(content=code)
+
+    def set_dict(self, args):
+        env.sos_dict.set('__null_func__', __null_func__)
+        env.sos_dict.set('SOS_VERSION', __version__)
+
+        # load configuration files
+        cfg = {}
+        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yaml')
+        if os.path.isfile(sos_config_file):
+            try:
+                with open(sos_config_file) as config:
+                    cfg = yaml.safe_load(config)
+            except Exception as e:
+                raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+        # local config file
+        sos_config_file = 'config.yaml'
+        if os.path.isfile(sos_config_file):
+            try:
+                with open(sos_config_file) as config:
+                    dict_merge(cfg, yaml.safe_load(config))
+            except Exception as e:
+                raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+        if args.__config__ is not None:
+            # user-specified configuration file.
+            if not os.path.isfile(args.__config__):
+                raise RuntimeError('Config file {} not found'.format(args.__config__))
+            try:
+                with open(args.__config__) as config:
+                    dict_merge(cfg, yaml.safe_load(config))
+            except Exception as e:
+                raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config_file, e))
+        # set config to CONFIG
+        env.sos_dict.set('CONFIG', frozendict(cfg))
 
     def run(self, block, command_line=''):
         '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer
@@ -768,7 +801,10 @@ class Interactive_Executor(Base_Executor):
         env.run_mode = 'interactive'
         try:
             args, workflow_args = self.parse_command_line(command_line)
-            self.workflow = script.workflow(args.workflow)
+            env.sos_dict.set('__args__', workflow_args)
+            env.sos_dict.set('__unknown_args__', workflow_args)
+            self.set_dict(args)
+            self.workflow = script.workflow()
 
             if args.__rerun__:
                 env.sig_mode = 'ignore'
