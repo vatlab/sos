@@ -56,11 +56,23 @@ class StepInfo(object):
     def __repr__(self):
         return '{' + ', '.join('{}: {!r}'.format(x,y) for x,y in self.__dict__.items()) + '}'
 
-def execute_task(task, global_def, sos_dict, signature, sigil):
+class TaskParams(object):
+    '''A parameter object that encaptulates parameters sending to
+    task executors. This would makes the output of workers, especially
+    in the web interface much cleaner (issue #259)'''
+    def __init__(self, name, data):
+        self.name = name
+        self.data = data
+
+    def __repr__(self):
+        return self.name
+
+def execute_task(params):
     '''A function that execute specified task within a local dictionary
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
     process or remotely on a different machine.'''
+    task, global_def, sos_dict, signature, sigil = params.data
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
     try:
@@ -558,15 +570,18 @@ class Base_Step_Executor:
     def submit_task(self, signature):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
+        param = TaskParams(
+            name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+            data = (
+                self.step.task,           # task
+                '',                       # local execusion, no need to re-run global
+                # do not clone dict
+                env.sos_dict,
+                signature,
+                self.step.sigil))
+
         self.proc_results.append(
-            execute_task(             # function
-            self.step.task,           # task
-            '',                       # local execusion, no need to re-run global
-            # do not clone dict
-            env.sos_dict,
-            signature,
-            self.step.sigil
-            ))
+            execute_task(param)) 
 
     def wait_for_results(self):
         # no waiting is necessary by default (prepare mode etc)
@@ -1158,27 +1173,40 @@ class MP_Step_Executor(SP_Step_Executor):
             self.pool = mp.Pool(min(env.max_jobs, len(self._groups)))
 
         if self.pool:
-            self.proc_results.append(self.pool.apply_async(
-                execute_task,            # function
-                (self.step.task,         # task
-                self.step.global_def,    # global process
-                # if pool, it must not be in prepare mode and have
-                # __signature_vars__
-                env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                    | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_index', '_runtime'}),
-                signature,
-                self.step.sigil
-                )))
+            param = TaskParams(
+                name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+                data = (
+                    self.step.task,         # task
+                    self.step.global_def,    # global process
+                    # if pool, it must not be in prepare mode and have
+                    # __signature_vars__
+                    env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
+                        | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_index', '_runtime'}),
+                    signature,
+                    self.step.sigil
+                ))
+
+            self.proc_results.append(
+                self.pool.apply_async(
+                    execute_task,            # function
+                        (param, )
+                    )
+            )
         else:
-            # execute in existing process
+            param = TaskParams(
+                name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+                data = (
+                    self.step.task,           # task
+                    '',                       # local execusion, no need to re-run global
+                    # do not clone dict
+                    env.sos_dict,
+                    signature,
+                    self.step.sigil
+                ))
+
             self.proc_results.append(
                 execute_task(             # function
-                self.step.task,           # task
-                '',                       # local execusion, no need to re-run global
-                # do not clone dict
-                env.sos_dict,
-                signature,
-                self.step.sigil
+                    param
                 ))
 
     def wait_for_results(self):
@@ -1236,19 +1264,24 @@ class RQ_Step_Executor(SP_Step_Executor):
             walltime = 60*60*24*30 
         #
         # tell subprocess where pysos.runtime is
+        param = TaskParams(
+            name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+            data = (
+                self.step.task,          # task
+                self.step.global_def,    # global process
+                # if pool, it must not be in prepare mode and have
+                # __signature_vars__
+                env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
+                    | {'_input', '_output', '_depends', 'input', 'output',
+                        'depends', '_index', '__args__', 'step_name', '_runtime'}),
+                signature,
+                self.step.sigil
+            ))
+
         self.proc_results.append(
             self.redis_queue.enqueue(
             execute_task,            # function
-            args=(self.step.task,          # task
-            self.step.global_def,    # global process
-            # if pool, it must not be in prepare mode and have
-            # __signature_vars__
-            env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                | {'_input', '_output', '_depends', 'input', 'output',
-                    'depends', '_index', '__args__', 'step_name', '_runtime'}),
-            signature,
-            self.step.sigil
-            ),
+            args=(param,),
             timeout=walltime))
 
     def wait_for_results(self):
@@ -1276,16 +1309,22 @@ class Celery_Step_Executor(SP_Step_Executor):
     def submit_task(self, signature):
         # if concurrent is set, create a pool object
         from .celery import celery_execute_task
+        param = TaskParams(
+            name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+            data = (
+                self.step.task,         # task
+                self.step.global_def,   # global process
+                env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
+                    | {'_input', '_output', '_depends', 'input', 'output',
+                        'depends', '_index', '__args__', 'step_name', '_runtime'}),
+                signature,
+                self.step.sigil
+            ))
+
         self.proc_results.append(
-            celery_execute_task.apply_async((     # function
-            self.step.task,         # task
-            self.step.global_def,   # global process
-            env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                | {'_input', '_output', '_depends', 'input', 'output',
-                    'depends', '_index', '__args__', 'step_name', '_runtime'}),
-            signature,
-            self.step.sigil
-            )) )
+            celery_execute_task.apply_async(
+                (param,)
+            ))
 
     def wait_for_results(self):
         while True:
