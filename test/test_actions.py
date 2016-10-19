@@ -43,7 +43,7 @@ from pysos.sos_eval import  Undetermined
 from pysos.actions import DockerClient
 from docker.errors import DockerException
 from pysos.sos_executor import Base_Executor, ExecuteError
-from pysos.signature import FileTarget
+from pysos.target import FileTarget
 
 import socket
 def internet_on(host='8.8.8.8', port=53, timeout=3):
@@ -778,7 +778,7 @@ download: dest_dir='tmp', decompress=True
         wf = script.workflow()
         self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq-hg18_20100817.DB'))
-        self.assertGreater(time.time() - start, 5)
+        self.assertGreater(time.time() - start, 3)
         # this will be fast
         start = time.time()
         wf = script.workflow()

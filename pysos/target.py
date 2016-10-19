@@ -27,7 +27,7 @@ import fasteners
 from .utils import env, Error, short_repr
 from .sos_eval import Undetermined
 
-__all__ = ['dynamic', 'executable']
+__all__ = ['dynamic', 'executable', 'env_variable', 'sos_variable']
 
 class UnknownTarget(Error):
     def __init__(self, target):
@@ -130,7 +130,7 @@ class FileTarget(BaseTarget):
     def remove(self, mode='both'):
         if mode in ('both', 'target') and os.path.isfile(self.fullname()):
             os.remove(self.fullname())
-        if mode in ('both', 'signature') and  os.path.isfile(self.sig_file()):
+        if mode in ('both', 'signature') and os.path.isfile(self.sig_file()):
             os.remove(self.sig_file())
 
     def fullname(self):
@@ -140,14 +140,17 @@ class FileTarget(BaseTarget):
         if self._sig_file is not None:
             return self._sig_file
         # If the output path is outside of the current working directory
-        rel_path = os.path.relpath(os.path.abspath(self.fullname()), env.exec_dir)
+        fullname = os.path.abspath(self.fullname())
+        name_md5 = textMD5(fullname)
+        rel_path = os.path.relpath(fullname, env.exec_dir)
+
         # if this file is not relative to cache, use global signature file
         if rel_path.startswith('../'):
             self._sig_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime',
-                os.path.abspath(self.fullname()).lstrip(os.sep) + '.file_info')
+                name_md5 + '.file_info')
         else:
             # if this file is relative to cache, use local directory
-            self._sig_file = os.path.join('.sos', '.runtime', rel_path + '.file_info')
+            self._sig_file = os.path.join('.sos', '.runtime', name_md5 + '.file_info')
         return self._sig_file
         
     def __eq__(self, other):
@@ -156,12 +159,6 @@ class FileTarget(BaseTarget):
     def write_sig(self):
         '''Write .file_info file with signature'''
         # path to file
-        sig_path = os.path.split(self.sig_file())[0]
-        if not os.path.isdir(sig_path):
-            try:
-                os.makedirs(sig_path)
-            except Exception as e:
-                raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
         with open(self.sig_file(), 'w') as md5:
             self.calc_md5()
             md5.write('{}\t{}\n'.format(self.fullname(), self.md5()))
@@ -218,7 +215,7 @@ class executable(BaseTarget):
     '''A target for an executable command.'''
     def __init__(self, cmd):
         self._cmd = cmd
-        self.sig_file = os.path.join('.sos/.runtime/__executable_{}.sig'.format(self._cmd))
+        self.sig_file = os.path.join('.sos/.runtime/{}.sig'.format(self.md5()))
 
     def exists(self, mode='any'):
         if mode in ('any', 'target') and shutil.which(self._cmd):
@@ -240,14 +237,8 @@ class executable(BaseTarget):
         return textMD5(self._cmd)
 
     def write_sig(self):
-        '''Write .file_info file with signature'''
+        '''Write .sig file with signature'''
         # path to file
-        sig_path = os.path.split(self.sig_file)[0]
-        if not os.path.isdir(sig_path):
-            try:
-                os.makedirs(sig_path)
-            except Exception as e:
-                raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
         with open(self.sig_file, 'w') as md5:
             md5.write('{}\t{}\n'.format(self.fullname(), self.md5()))
 
@@ -278,7 +269,6 @@ class sos_variable(BaseTarget):
         return textMD5(self._var)
 
     def write_sig(self):
-        '''Write .file_info file with signature'''
         pass
 
     def __hash__(self):
@@ -287,6 +277,35 @@ class sos_variable(BaseTarget):
     def __eq__(self, obj):
         return isinstance(obj, sos_variable) and self._var == obj._var
 
+
+class env_variable(BaseTarget):
+    '''A target for an environmental variable.'''
+    def __init__(self, var):
+        self._var = var
+
+    def exists(self, mode='any'):
+        return self._var in os.environ
+
+    def fullname(self):
+        return 'env_variable {}'.format(self._var)
+
+    def __repr__(self):
+        return 'env_variable("{}")'.format(self._var)
+
+    def calc_md5(self):
+        return textMD5(repr(os.environ[self._var]))
+
+    def md5(self):
+        return textMD5(repr(os.environ[self._var]))
+
+    def write_sig(self):
+        pass
+
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __eq__(self, obj):
+        return isinstance(obj, sos_variable) and self._var == obj._var
 
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
@@ -327,30 +346,20 @@ class RuntimeInfo:
         
         self.signature_vars = signature_vars
 
-        if isinstance(self.output_files, Undetermined) or not self.output_files:
-            sig_name = 'Dynamic_' + textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))
-        else:
-            sig_name = os.path.realpath(self.output_files[0].fullname() + '_' + \
-                textMD5('{} {} {} {}'.format(self.script, self.input_files, self.output_files, self.dependent_files)))
-        #
-        # If the output path is outside of the current working directory
-        rel_path = os.path.relpath(sig_name, env.exec_dir)
-        # if this file is not relative to cache, use global signature file
-        if rel_path.startswith('../'):
-            info_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep))
-        else:
-            # if this file is relative to cache, use local directory
-            info_file = os.path.join('.sos', '.runtime', rel_path)
+        sig_name = textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))
+        info_file = os.path.join('.sos', '.runtime', sig_name)
+        if not isinstance(self.output_files, Undetermined) and self.output_files:
+            # If the output path is outside of the current working directory
+            rel_path = os.path.relpath(os.path.realpath(self.output_files[0].fullname()), env.exec_dir)
+            # if this file is not relative to cache, use global signature file
+            if rel_path.startswith('../'):
+                info_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep))
         # path to file
         sig_path = os.path.split(info_file)[0]
-        with fasteners.InterProcessLock('/tmp/lock_sig'):
-            if not os.path.isdir(sig_path):
-                try:
-                    os.makedirs(sig_path)
-                except Exception as e:
-                    raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
         self.proc_info = '{}.exe_info'.format(info_file)
 
+        # we will need to lock on a file that we do not really write to
+        # otherwise the lock will be broken when we write to it.
         self.lock = fasteners.InterProcessLock(self.proc_info + '_')
         if not self.lock.acquire(blocking=False):
             raise UnavailableLock((self.output_files, self.proc_info))

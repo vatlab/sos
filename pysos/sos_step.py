@@ -976,7 +976,7 @@ def _expand_file_list(ignore_unknown, *args):
                 tmp.append(ifile)
             else:
                 raise UnknownTarget(ifile)
-        elif os.path.isfile(os.path.expanduser(ifile)):
+        elif FileTarget(ifile).exists():
             tmp.append(ifile)
         else:
             expanded = sorted(glob.glob(os.path.expanduser(ifile)))
@@ -1165,7 +1165,7 @@ class MP_Step_Executor(SP_Step_Executor):
                 # if pool, it must not be in prepare mode and have
                 # __signature_vars__
                 env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                    | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_idx', '_runtime'}),
+                    | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_index', '_runtime'}),
                 signature,
                 self.step.sigil
                 )))
