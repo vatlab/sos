@@ -27,7 +27,7 @@ import fasteners
 from .utils import env, Error, short_repr
 from .sos_eval import Undetermined
 
-__all__ = ['dynamic', 'executable']
+__all__ = ['dynamic', 'executable', 'env_variable', 'sos_variable']
 
 class UnknownTarget(Error):
     def __init__(self, target):
@@ -287,6 +287,35 @@ class sos_variable(BaseTarget):
     def __eq__(self, obj):
         return isinstance(obj, sos_variable) and self._var == obj._var
 
+
+class env_variable(BaseTarget):
+    '''A target for an environmental variable.'''
+    def __init__(self, var):
+        self._var = var
+
+    def exists(self, mode='any'):
+        return self._var in os.environ
+
+    def fullname(self):
+        return 'env_variable {}'.format(self._var)
+
+    def __repr__(self):
+        return 'env_variable("{}")'.format(self._var)
+
+    def calc_md5(self):
+        return textMD5(repr(os.environ[self._var]))
+
+    def md5(self):
+        return textMD5(repr(os.environ[self._var]))
+
+    def write_sig(self):
+        pass
+
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __eq__(self, obj):
+        return isinstance(obj, sos_variable) and self._var == obj._var
 
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
