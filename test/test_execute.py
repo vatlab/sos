@@ -20,10 +20,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-# passing string as unicode to python 2 version of SoS
-# to ensure compatibility
-from __future__ import unicode_literals
-
 import os
 import time
 import glob
