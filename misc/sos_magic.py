@@ -42,6 +42,7 @@
 # ]
 #
 
+import copy
 from pysos.utils import env, WorkflowDict
 from pysos.sos_eval import SoS_exec, SoS_eval
 from pysos.sos_executor import Interactive_Executor
@@ -131,6 +132,24 @@ class SoS_Magics(Magics):
                 self.options = ''
             else:
                 print('Usage: set persistent sos options such as -v3 -i (inspect) -p (prepare) -t (transcribe)')
+
+    @line_magic
+    def sosget(self, line):
+        'Magic that get a variable from sos dictionary and set to Python dictionary'
+        # do not return __builtins__ beacuse it is too long...
+        for var in [x.strip() for x in line.split() if x.strip()]:
+            if var not in env.sos_dict:
+                raise RuntimeError('{} not exist in sos dict.'.format(var))
+            self.shell.user_ns[var] = copy.deepcopy(env.sos_dict[var])
+
+    @line_magic
+    def sosput(self, line):
+        'Magic that get a variable from sos dictionary and set to Python dictionary'
+        # do not return __builtins__ beacuse it is too long...
+        for var in [x.strip() for x in line.split() if x.strip()]:
+            if var not in self.shell.user_ns:
+                raise RuntimeError('{} not exist in python dict.'.format(var))
+            env.sos_dict[var] = copy.deepcopy(self.shell.user_ns[var])
 
     @line_magic
     def sosdict(self, line):

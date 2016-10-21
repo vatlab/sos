@@ -24,14 +24,14 @@ import unittest
 from IPython.terminal.embed import InteractiveShellEmbed
 
 
-class TestExecute(unittest.TestCase):
+class TestIpython(unittest.TestCase):
     def setUp(self):
         self.ipshell = InteractiveShellEmbed()
         self.ipshell.run_cell('%load_ext sos_magic')
         
     def assertDictValue(self, key, value):
         self.ipshell.run_cell('__sos_dict__ = %sosdict')
-        self.assertTrue(self.ipshell.user_ns['__sos_dict__'][key] == value)
+        self.assertEqual(self.ipshell.user_ns['__sos_dict__'][key], value)
         
     def testSoSDict(self):
         '''Test sos dict magic'''
@@ -47,6 +47,22 @@ class TestExecute(unittest.TestCase):
 parameter: rep = 5
 ''')
         self.assertDictValue('rep', 3)
+
+    def testSoSPut(self):
+        '''test %put'''
+        self.ipshell.run_cell('a = 12345')
+        self.ipshell.run_cell('b = "12345"')
+        self.ipshell.run_cell('%sosput a b')
+        self.assertDictValue('a', 12345)
+        self.assertDictValue('b', "12345")
+
+    def testGet(self):
+        '''test %get'''
+        self.ipshell.run_cell('%sos a = 12345')
+        self.ipshell.run_cell('%sos b = "12345"')
+        self.ipshell.run_cell('%sosget a b')
+        self.assertEqual(self.ipshell.user_ns['a'], 12345)
+        self.assertEqual(self.ipshell.user_ns['b'], "12345")
 
 if __name__ == '__main__':
     unittest.main()
