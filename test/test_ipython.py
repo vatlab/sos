@@ -42,8 +42,9 @@ class TestIpython(unittest.TestCase):
             self.assertTrue(key in self.ipshell.user_ns['keys'])
 
     def testSet(self):
-        '''test --set'''
-        self.ipshell.run_cell('''%%sos --rep 3
+        '''test %sosset'''
+        self.ipshell.run_cell('''%sosset --rep 3''')
+        self.ipshell.run_cell('''%%sos
 parameter: rep = 5
 ''')
         self.assertDictValue('rep', 3)

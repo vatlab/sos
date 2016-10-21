@@ -553,7 +553,7 @@ class SoS_Kernel(Kernel):
                 if msg_type == 'status':
                     _execution_state = sub_msg["content"]["execution_state"]
 
-    def handle_magic_push(self, options):
+    def handle_magic_put(self, options):
         items = options.split()
         if self.kernel == 'python':
             # if it is a python kernel, passing specified SoS variables to it
@@ -577,7 +577,7 @@ class SoS_Kernel(Kernel):
                                 )
                         except Exception as e:
                             self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stderr', 'text': 'Failed to push variable {}: {}'.format(', '.join(items), e)})
+                                {'name': 'stderr', 'text': 'Failed to put variable {}: {}'.format(', '.join(items), e)})
                         break
         elif self.kernel == 'ir':
             # if it is a python kernel, passing specified SoS variables to it
@@ -816,9 +816,9 @@ class SoS_Kernel(Kernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_get(options)
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-        elif code.startswith('%push'):
+        elif code.startswith('%put'):
             options, remaining_code = self.get_magic_and_code(code, False)
-            self.handle_magic_push(options)
+            self.handle_magic_put(options)
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('%paste'):
             options, remaining_code = self.get_magic_and_code(code, True)
