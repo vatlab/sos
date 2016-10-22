@@ -70,6 +70,40 @@ def stop_sos_kernel():
     KM.shutdown_kernel(now=True)
     KM = None
 
+def get_result(iopub):
+    """retrieve result from an execution"""
+    while True:
+        msg = iopub.get_msg(block=True, timeout=1)
+        msg_type = msg['msg_type']
+        content = msg['content']
+        if msg_type == 'status' and content['execution_state'] == 'idle':
+            # idle message signals end of output
+            break
+        elif msg['msg_type'] == 'execute_result':
+            result = content['data']
+        else:
+            # other output, ignored
+            pass
+    # text/plain can have fronzen dict, this is ok,
+    from pysos.utils import frozendict
+    # it can also have dict_keys, we will have to redefine it
+    def dict_keys(args):
+        return args
+    return eval(result['text/plain'])
+
+def clear_channels(iopub):
+    """assemble stdout/err from an execution"""
+    while True:
+        msg = iopub.get_msg(block=True, timeout=1)
+        msg_type = msg['msg_type']
+        content = msg['content']
+        if msg_type == 'status' and content['execution_state'] == 'idle':
+            # idle message signals end of output
+            break
+        else:
+            # other output, ignored
+            pass
+
 class TestKernel(unittest.TestCase):
 #    def testInterpolation(self):
 #        with sos_kernel() as kc:
@@ -79,6 +113,27 @@ class TestKernel(unittest.TestCase):
 #            self.assertEqual(stdout, 'a=111\n')
 #            self.assertEqual(stderr, '')
 #
+    def testMagicDict(self):
+        '''Test %dict magic'''
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            msg_id, content = execute(kc=kc, code="a=12345")
+            clear_channels(iopub)
+            msg_id, content = execute(kc=kc, code="%dict")
+            self.assertEqual(get_result(iopub)['a'], 12345)
+            #
+            msg_id, content = execute(kc=kc, code="%dict keys")
+            self.assertTrue('a' in get_result(iopub))
+            #
+            msg_id, content = execute(kc=kc, code="%dict reset")
+            self.assertTrue('a' not in get_result(iopub))
+            #
+            msg_id, content = execute(kc=kc, code="%dict keys all")
+            res = get_result(iopub)
+            for key in ('run', 'sh', 'tcsh', 'expand_pattern'):
+                self.assertTrue(key in res)
+
+
 #
 #    def testShell(self):
 #        with sos_kernel() as kc:
@@ -92,19 +147,19 @@ class TestKernel(unittest.TestCase):
 #        with sos_kernel() as kc:
 #            iopub = kc.iopub_channel
 #            msg_id, content = execute(kc=kc, code="!cd ..")
-#            assemble_output(iopub)
+#            clear_channels(iopub)
 #            msg_id, content = execute(kc=kc, code="print(os.getcwd())")
 #            stdout, stderr = assemble_output(iopub)
 #            self.assertTrue(stdout.strip().upper().endswith('SOS'))
 #            self.assertEqual(stderr, '')
 #            msg_id, content = execute(kc=kc, code="!cd test")
         
-    def testSubKernel(self):
-        with sos_kernel() as kc:
-            iopub = kc.iopub_channel
-            msg_id, content = execute(kc=kc, code="%use R")
-            assemble_output(iopub)
-            msg_id, content = execute(kc=kc, code="a <- 1024\na")
+#    def testSubKernel(self):
+#        with sos_kernel() as kc:
+#            iopub = kc.iopub_channel
+#            msg_id, content = execute(kc=kc, code="%use R")
+#            clear_channels(iopub)
+#            msg_id, content = execute(kc=kc, code="a <- 1024\na")
             #stdout, stderr = assemble_output(iopub)
             #self.assertEqual(stdout, '1024\n')
     
