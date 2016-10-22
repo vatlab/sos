@@ -35,8 +35,6 @@ from ipykernel.tests.utils import assemble_output, start_new_kernel, flush_chann
 
 import os
 import atexit
-import nose
-import nose.tools as nt
 
 KM = None
 KC = None
@@ -78,10 +76,28 @@ class TestKernel(unittest.TestCase):
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code="print('a=${100+11}')")
             stdout, stderr = assemble_output(iopub)
-            nt.assert_equal(stdout, 'a=111\n')
-            nt.assert_equal(stderr, '')
+            self.assertEqual(stdout, 'a=111\n')
+            self.assertEqual(stderr, '')
 
 
+    def testShell(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            msg_id, content = execute(kc=kc, code="!ls test_kernel.py")
+            stdout, stderr = assemble_output(iopub)
+            self.assertEqual(stdout, 'test_kernel.py\n')
+            self.assertEqual(stderr, '')
 
+    def testCD(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            msg_id, content = execute(kc=kc, code="!cd ..")
+            assemble_output(iopub)
+            msg_id, content = execute(kc=kc, code="print(os.getcwd())")
+            stdout, stderr = assemble_output(iopub)
+            self.assertTrue(stdout.strip().upper().endswith('SOS'))
+            self.assertEqual(stderr, '')
+            msg_id, content = execute(kc=kc, code="!cd test")
+        
 if __name__ == '__main__':
     unittest.main()
