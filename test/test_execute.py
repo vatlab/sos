@@ -1395,21 +1395,6 @@ depends: executable('lls')
         self.assertGreater(time.time() - st, 2)
         FileTarget('lls').remove('both')
 
-    def testInteractiveExecutor(self):
-        '''tes interactive mode'''
-        # the kernel is not started yet so there is no symbol
-        env.sos_dict = WorkflowDict()
-        SoS_exec('import os, sys, glob')
-        SoS_exec('from pysos.runtime import *')
-        SoS_exec("run_mode = 'interactive'")
-
-        executor = Interactive_Executor()
-        executor.run('a=1')
-        self.assertEqual(executor.run('a'), 1)
-        self.assertEqual(executor.run('b=a\nb'), 1)
-        executor.run('run:\necho "a"')
-        self.assertRaises(RuntimeError, executor.run, 'c')
-        # execute shell command is handled by the kernel, not executor
 
     def testSignatureAfterRemovalOfFiles(self):
         '''test action shrink'''
