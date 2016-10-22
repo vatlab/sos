@@ -71,33 +71,42 @@ def stop_sos_kernel():
     KM = None
 
 class TestKernel(unittest.TestCase):
-    def testInterpolation(self):
-        with sos_kernel() as kc:
-            iopub = kc.iopub_channel
-            msg_id, content = execute(kc=kc, code="print('a=${100+11}')")
-            stdout, stderr = assemble_output(iopub)
-            self.assertEqual(stdout, 'a=111\n')
-            self.assertEqual(stderr, '')
-
-
-    def testShell(self):
-        with sos_kernel() as kc:
-            iopub = kc.iopub_channel
-            msg_id, content = execute(kc=kc, code="!ls test_kernel.py")
-            stdout, stderr = assemble_output(iopub)
-            self.assertEqual(stdout, 'test_kernel.py\n')
-            self.assertEqual(stderr, '')
-
-    def testCD(self):
-        with sos_kernel() as kc:
-            iopub = kc.iopub_channel
-            msg_id, content = execute(kc=kc, code="!cd ..")
-            assemble_output(iopub)
-            msg_id, content = execute(kc=kc, code="print(os.getcwd())")
-            stdout, stderr = assemble_output(iopub)
-            self.assertTrue(stdout.strip().upper().endswith('SOS'))
-            self.assertEqual(stderr, '')
-            msg_id, content = execute(kc=kc, code="!cd test")
+#    def testInterpolation(self):
+#        with sos_kernel() as kc:
+#            iopub = kc.iopub_channel
+#            msg_id, content = execute(kc=kc, code="print('a=${100+11}')")
+#            stdout, stderr = assemble_output(iopub)
+#            self.assertEqual(stdout, 'a=111\n')
+#            self.assertEqual(stderr, '')
+#
+#
+#    def testShell(self):
+#        with sos_kernel() as kc:
+#            iopub = kc.iopub_channel
+#            msg_id, content = execute(kc=kc, code="!ls test_kernel.py")
+#            stdout, stderr = assemble_output(iopub)
+#            self.assertEqual(stdout, 'test_kernel.py\n')
+#            self.assertEqual(stderr, '')
+#
+#    def testCD(self):
+#        with sos_kernel() as kc:
+#            iopub = kc.iopub_channel
+#            msg_id, content = execute(kc=kc, code="!cd ..")
+#            assemble_output(iopub)
+#            msg_id, content = execute(kc=kc, code="print(os.getcwd())")
+#            stdout, stderr = assemble_output(iopub)
+#            self.assertTrue(stdout.strip().upper().endswith('SOS'))
+#            self.assertEqual(stderr, '')
+#            msg_id, content = execute(kc=kc, code="!cd test")
         
+    def testSubKernel(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            msg_id, content = execute(kc=kc, code="%use R")
+            assemble_output(iopub)
+            msg_id, content = execute(kc=kc, code="a <- 1024\na")
+            #stdout, stderr = assemble_output(iopub)
+            #self.assertEqual(stdout, '1024\n')
+    
 if __name__ == '__main__':
     unittest.main()
