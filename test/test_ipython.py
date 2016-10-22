@@ -36,10 +36,33 @@ class TestIpython(unittest.TestCase):
     def testSoSDict(self):
         '''Test sos dict magic'''
         self.ipshell.run_cell('%sosdict')
+        self.ipshell.run_cell('keys = %sosdict keys')
+        # this make sure the symbols are imported
+        for key in ['run', 'R', 'bash', 'python', 'sos_variable']:
+            self.assertTrue(key not in self.ipshell.user_ns['keys'])
+        #
         self.ipshell.run_cell('keys = %sosdict keys all')
         # this make sure the symbols are imported
         for key in ['run', 'R', 'bash', 'python', 'sos_variable']:
             self.assertTrue(key in self.ipshell.user_ns['keys'])
+        #
+        # add something
+        self.ipshell.run_cell('%sos a=1')
+        self.assertDictValue('a', 1)
+        #
+        # reset
+        self.ipshell.run_cell('%sosdict reset')
+        self.ipshell.run_cell('__sos_dict__ = %sosdict')
+        self.assertTrue('a' not in self.ipshell.user_ns['__sos_dict__'])
+
+    def testSoS(self):
+        '''Test magic %sos'''
+        self.ipshell.run_cell('''%sos a=10''')
+        self.ipshell.run_cell('''%sos b=['file1.txt', 'file2.txt']''')
+        self.ipshell.run_cell('''%sos c='${b!r,}' ''')
+        self.assertDictValue('a', 10)
+        self.assertDictValue('b', ['file1.txt', 'file2.txt'])
+        self.assertDictValue('c', "'file1.txt','file2.txt'")
 
     def testSet(self):
         '''test %sosset'''
