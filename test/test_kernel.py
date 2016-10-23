@@ -31,7 +31,7 @@ import unittest
 from contextlib import contextmanager
 from pysos.kernel import SoS_Kernel
 from jupyter_client import manager
-from ipykernel.tests.utils import assemble_output, start_new_kernel, flush_channels, stop_global_kernel, execute
+from ipykernel.tests.utils import assemble_output, start_new_kernel, flush_channels, stop_global_kernel, execute, wait_for_idle
 
 import os
 import atexit
@@ -72,6 +72,7 @@ def stop_sos_kernel():
 
 def get_result(iopub):
     """retrieve result from an execution"""
+    result = None
     while True:
         msg = iopub.get_msg(block=True, timeout=1)
         msg_type = msg['msg_type']
@@ -89,7 +90,10 @@ def get_result(iopub):
     # it can also have dict_keys, we will have to redefine it
     def dict_keys(args):
         return args
-    return eval(result['text/plain'])
+    if result is None:
+        return None
+    else:
+        return eval(result['text/plain'])
 
 def clear_channels(iopub):
     """assemble stdout/err from an execution"""
@@ -105,14 +109,14 @@ def clear_channels(iopub):
             pass
 
 class TestKernel(unittest.TestCase):
-#    def testInterpolation(self):
-#        with sos_kernel() as kc:
-#            iopub = kc.iopub_channel
-#            msg_id, content = execute(kc=kc, code="print('a=${100+11}')")
-#            stdout, stderr = assemble_output(iopub)
-#            self.assertEqual(stdout, 'a=111\n')
-#            self.assertEqual(stderr, '')
-#
+    def testInterpolation(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            msg_id, content = execute(kc=kc, code="print('a=${100+11}')")
+            stdout, stderr = assemble_output(iopub)
+            self.assertEqual(stdout, 'a=111\n')
+            self.assertEqual(stderr, '')
+
     def testMagicDict(self):
         '''Test %dict magic'''
         with sos_kernel() as kc:
@@ -133,35 +137,36 @@ class TestKernel(unittest.TestCase):
             for key in ('run', 'sh', 'tcsh', 'expand_pattern'):
                 self.assertTrue(key in res)
 
+    def testShell(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            msg_id, content = execute(kc=kc, code="!ls test_kernel.py")
+            stdout, stderr = assemble_output(iopub)
+            self.assertEqual(stdout, 'test_kernel.py\n')
+            self.assertEqual(stderr, '')
 
-#
-#    def testShell(self):
-#        with sos_kernel() as kc:
-#            iopub = kc.iopub_channel
-#            msg_id, content = execute(kc=kc, code="!ls test_kernel.py")
-#            stdout, stderr = assemble_output(iopub)
-#            self.assertEqual(stdout, 'test_kernel.py\n')
-#            self.assertEqual(stderr, '')
-#
-#    def testCD(self):
-#        with sos_kernel() as kc:
-#            iopub = kc.iopub_channel
-#            msg_id, content = execute(kc=kc, code="!cd ..")
-#            clear_channels(iopub)
-#            msg_id, content = execute(kc=kc, code="print(os.getcwd())")
-#            stdout, stderr = assemble_output(iopub)
-#            self.assertTrue(stdout.strip().upper().endswith('SOS'))
-#            self.assertEqual(stderr, '')
-#            msg_id, content = execute(kc=kc, code="!cd test")
+    def testCD(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            msg_id, content = execute(kc=kc, code="!cd ..")
+            clear_channels(iopub)
+            msg_id, content = execute(kc=kc, code="print(os.getcwd())")
+            stdout, stderr = assemble_output(iopub)
+            self.assertTrue(stdout.strip().upper().endswith('SOS'))
+            self.assertEqual(stderr, '')
+            msg_id, content = execute(kc=kc, code="!cd test")
         
-#    def testSubKernel(self):
-#        with sos_kernel() as kc:
-#            iopub = kc.iopub_channel
-#            msg_id, content = execute(kc=kc, code="%use R")
-#            clear_channels(iopub)
-#            msg_id, content = execute(kc=kc, code="a <- 1024\na")
+    def testSubKernel(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            msg_id, content = execute(kc=kc, code="%use R")
+            stdout, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="a <- 1024\na")
+            #res = get_result(iopub)
             #stdout, stderr = assemble_output(iopub)
-            #self.assertEqual(stdout, '1024\n')
+            #self.assertEqual(res, '1024\n')
     
 if __name__ == '__main__':
     unittest.main()

@@ -433,20 +433,16 @@ class SoS_Kernel(Kernel):
         if kernel and kernel != 'sos':
             if kernel != self.kernel:
                 if kernel in self.kernels:
-                    #self.send_response(self.iopub_socket, 'stream',
-                    #    {'name': 'stdout', 'text': 'Using kernel "{}"\n'.format(kernel)})
                     self.KM, self.KC = self.kernels[kernel]
                     self.kernel = kernel
                 else:
                     try:
                         self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)
-                        #self.send_response(self.iopub_socket, 'stream',
-                        #    {'name': 'stdout', 'text': 'Kernel "{}" started\n'.format(kernel)})
                         self.KM, self.KC = self.kernels[kernel]
                         self.kernel = kernel
                     except Exception as e:
                         self.send_response(self.iopub_socket, 'stream',
-                            {'name': 'stdout', 'text': 'Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e)})
+                            {'name': 'stderr', 'text': 'Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e)})
         else:
             # kernel == '' or kernel == 'sos'
             if kernel == '':
