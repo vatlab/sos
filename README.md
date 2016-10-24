@@ -2,7 +2,12 @@
 with scripts in different languages, glue them with Python expressions and
 variables, and execute them as powerful workflows under different environemtns. It is designed for data scienticists and bioinformatics who routinely work with scripts in different languages such as R, Python, Perl, and bash.
 
-As a **notebook tool** that promotes [literate programming](https://en.wikipedia.org/wiki/Literate_programming), SoS allows you to perform and record your analysis in different languages in a single [Jupyter notebook](http://jupyter.org/), with seamless integration of multiple Jupyter kernels (e.g. python, and [R](https://github.com/IRkernel/IRkernel). Main features of SoS notebook are demonstrated in a [tutorial](https://github.com/BoPeng/SOS/blob/master/examples/NotebookTutorial.ipynb) and an [example](https://github.com/BoPeng/SOS/blob/master/examples/example.ipynb).
+As a **notebook tool** that promotes [literate
+programming](https://en.wikipedia.org/wiki/Literate_programming), SoS
+allows you to perform and record your analysis in different languages in a
+single [Jupyter notebook](http://jupyter.org/), with seamless integration
+of multiple Jupyter kernels (e.g. python, and
+[R](https://github.com/IRkernel/IRkernel)). Main features of SoS notebook are demonstrated in a [tutorial](https://github.com/BoPeng/SOS/blob/master/examples/NotebookTutorial.ipynb) and an [example](https://github.com/BoPeng/SOS/blob/master/examples/example.ipynb).
 
 As a **workflow engine**, SoS helps you oraganize your commands and scripts in different languages into readable workflows that can be easily understood and modified by others. The workflows can be specified in both forward (step by step), makefile (dependency rules) and even a mixture of both styles. Beacuse of a great emphasis on readability, SoS is an easy-to-use alternative to specialized workflow systems such as [CWL](http://common-workflow-language.github.io/draft-3/) which makes it an ideal tool for the creation and maintainance of workflows that need to be frequently updated and shared with others.
 
@@ -49,7 +54,12 @@ Please find more information on **[SoS
 wiki](https://github.com/BoPeng/SOS/wiki)**, or use the following links
 directly:
 
-* [Quick start guide](https://github.com/BoPeng/SOS/wiki/Quick-Start)
+* [Quick start guide](https://github.com/BoPeng/SOS/wiki/1.-Quick-Start)
 * [Tutorial](https://github.com/BoPeng/SOS/blob/master/examples/NotebookTutorial.ipynb) and [example](https://github.com/BoPeng/SOS/blob/master/examples/example.ipynb) of Jupyter notebooks.
 * [A presentation about SoS](https://github.com/BoPeng/SOS/wiki/SoS_March2016.pdf) (updated on Apr. 7th, 2016 for version 0.5.7, already quite outdated given the rapid evolution of SoS)
-* [Complete documentation](https://github.com/BoPeng/SOS/wiki/Documentation)
+* [Complete documentation](https://github.com/BoPeng/SOS/wiki)
+* Tutorials on using SOS with
+[iPython](https://github.com/BoPeng/SOS/wiki/3.-Using-SoS-with-iPython),
+[Jupyter](https://github.com/BoPeng/SOS/wiki/4.-SoS-Notebook-Using-Jupyter),
+and [Spyder](https://github.com/BoPeng/SOS/wiki/5.-Using-Spyder-as-SoS-IDE).
+* A complex [RNASeq data analysis workflow](https://github.com/BoPeng/SOS/wiki/6.-A-Complete-Example) written in SoS.
