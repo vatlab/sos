@@ -93,7 +93,11 @@ def get_result(iopub):
     if result is None:
         return None
     else:
-        return eval(result['text/plain'])
+        try:
+            return eval(result['text/plain'])
+        except:
+            # result from R etc are not python syntax
+            return result['text/plain']
 
 def clear_channels(iopub):
     """assemble stdout/err from an execution"""
@@ -163,10 +167,47 @@ class TestKernel(unittest.TestCase):
             stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="a <- 1024\na")
-            #res = get_result(iopub)
-            #stdout, stderr = assemble_output(iopub)
-            #self.assertEqual(res, '1024\n')
+            msg_id, content = execute(kc=kc, code="a <- 1024")
+            stdout, stderr = assemble_output(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="a")
+            res = get_result(iopub)
+            self.assertEqual(res, '[1] 1024')
     
+    def testMagicPut(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            msg_id, content = execute(kc=kc, code="%use R")
+            stdout, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="a <- 1024")
+            stdout, stderr = assemble_output(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%put a")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="a")
+            res = get_result(iopub)
+            self.assertEqual(res, 1024)
+
+    def testMagicGet(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            msg_id, content = execute(kc=kc, code="a = 1025")
+            clear_channels(iopub)
+            msg_id, content = execute(kc=kc, code="%use R")
+            stdout, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%get a")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="a")
+            res = get_result(iopub)
+            self.assertEqual(res, '[1] 1025')
+
 if __name__ == '__main__':
     unittest.main()
