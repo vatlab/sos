@@ -237,7 +237,20 @@ def R_repr(obj):
     elif isinstance(obj, Sequence):
         return 'c(' + ','.join(R_repr(x) for x in obj) + ')'
     else:
-        raise UsageError('{} cannot be converted to R'.format(short_repr(obj)))
+        import pandas
+        if isinstance(obj, pandas.DataFrame):
+            try:
+                import feather
+            except ImportError:
+                raise UsageError('The feather-format module is required to pass pandas DataFrame as R data.frame'
+                    'See https://github.com/wesm/feather/tree/master/python for details.')
+            feather_tmp_ = os.path.join(env.exec_dir, '.sos', '__data.feather')
+            if os.path.isfile(feather_tmp_):
+                os.remove(feather_tmp_)
+            feather.write_dataframe(obj, feather_tmp_)
+            return 'read_feather("{}")'.format(feather_tmp_)
+        else:
+            raise UsageError('Passing {} from Python to R is not yet supported.'.format(short_repr(obj)))
 
 # an R function that tries to convert an R object to Python repr
 dputToString_func = '''
@@ -272,7 +285,13 @@ def python2R(name):
     if name not in env.sos_dict:
         raise UsageError('{} not exist'.format(name))
     try:
-        return '{} <- {}'.format(name, R_repr(env.sos_dict[name]))
+        r_repr = R_repr(env.sos_dict[name])
+        # there can be some more general solution but right now let us just
+        # do this.
+        if 'read_feather' in r_repr:
+            return 'library(feather)\n{} <- {}'.format(name, r_repr)
+        else:
+            return '{} <- {}'.format(name, r_repr)
     except Exception as e:
         raise UsageError('Failed to convert variable {} to R: {}'.format(name, e))
 
@@ -533,7 +552,12 @@ class SoS_Kernel(Kernel):
             self.KC.execute("import pickle\nglobals().update(pickle.loads({!r}))".format(sos_data),
                 silent=True, store_history=False)
         elif self.kernel == 'ir':
-            sos_data = '\n'.join(python2R(x) for x in items)
+            try:
+                sos_data = '\n'.join(python2R(x) for x in items)
+            except Exception as e:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stderr', 'text': 'Failed to get variable: {}'.format(e)})
+                return
             self.KC.execute(sos_data, silent=True, store_history=False)
         else:
             self.send_response(self.iopub_socket, 'stream',

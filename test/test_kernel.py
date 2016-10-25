@@ -209,5 +209,28 @@ class TestKernel(unittest.TestCase):
             res = get_result(iopub)
             self.assertEqual(res, '[1] 1025')
 
+    def testPutPythonDataFrameToR(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # create a data frame
+            msg_id, content = execute(kc=kc, code='''
+import pandas as pd
+import numpy as np
+arr = np.random.randn(1000) 
+arr[::10] = np.nan
+df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
+''')
+            clear_channels(iopub)
+            msg_id, content = execute(kc=kc, code="%use R")
+            stdout, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%get df")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="dim(df)")
+            res = get_result(iopub)
+            self.assertEqual(res, '[1] 1000   10')
+
 if __name__ == '__main__':
     unittest.main()
