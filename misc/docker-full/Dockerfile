@@ -30,13 +30,23 @@ MAINTAINER Bo Peng <bpeng@mdanderson.org>
 
 WORKDIR ${HOME}
 
-# these should be installed automatically by sos
+# install the latest version of R-base because IRKernel supports only R 3.2
+# or higher
+RUN     echo "deb http://cran.rstudio.com/bin/linux/ubuntu precise/" >> /etc/apt/sources.list
+RUN     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
 RUN     apt-get update
-RUN     apt-get install -y R-base
+RUN     apt-get upgrade
+RUN     apt-get install r-base r-base-core r-recommended r-base-dev
+
+
 RUN     apt-get install -y libzmq3-dev libcurl4-openssl-dev 
 RUN     Rscript -e "install.packages(c('rzmq','repr','IRkernel','IRdisplay'), repos = c('http://irkernel.github.io/', 'http://cran.us.r-project.org'))" 
 RUN     Rscript -e "IRkernel::installspec()"
+
 		
+RUN     Rscript -e "install.packages('feather')"
+RUN     pip install feather-format
+
 RUN     mkdir -p workspace/notebooks workspace/data .ipython/profile_default
 
 RUN     (echo "c = get_config()" && \
