@@ -232,5 +232,24 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             res = get_result(iopub)
             self.assertEqual(res, '[1] 1000   10')
 
+    def testPutRDataFrameToPython(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # create a data frame
+            msg_id, content = execute(kc=kc, code='''
+%use R
+''')
+            clear_channels(iopub)
+            msg_id, content = execute(kc=kc, code="%put mtcars")
+            stdout, stderr = assemble_output(iopub)
+            self.assertEqual(stderr, '')
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%use sos")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="mtcars.shape")
+            res = get_result(iopub)
+            self.assertEqual(res, '32, 11')
+
 if __name__ == '__main__':
     unittest.main()
