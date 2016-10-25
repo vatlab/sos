@@ -36,6 +36,13 @@ Note that
 create symbolic links of `sos` and `sos-runner` commands in
 `/usr/local/bin`.
 
+The following packages are needed if you are using SoS with R
+
+* [IRKernel](https://github.com/IRkernel/IRkernel) R kernel for Jupyter
+* Python [feather-format](https://github.com/wesm/feather) module and R
+  [feather library](https://cran.r-project.org/web/packages/feather/index.html) for exchanging data frames between SoS/Python DataFrame and R data.frame.
+
+
 If you are using docker, you can run SoS directly using command
 
 ```
