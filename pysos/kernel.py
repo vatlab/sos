@@ -307,6 +307,8 @@ kernel_init_command = {
         ..py.repr.matrix(obj)
     } else if (is.data.frame(obj)) {
         ..py.repr.dataframe(obj)
+    } else if (is.null(obj)) {
+        'None'
     } else if (is.integer(obj)) {
         if (length(obj) == 1)
             ..py.repr.integer.1(obj)
