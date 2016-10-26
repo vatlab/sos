@@ -252,15 +252,15 @@ def R_repr(obj):
         else:
             raise UsageError('Passing {} from Python to R is not yet supported.'.format(short_repr(obj)))
 
-# an R function that tries to convert an R object to Python repr
-dputToString_func = '''
+kernel_init_command = {
+    'ir': '''
 dputToString <- function (obj) {
   con <- textConnection(NULL,open="w")
   tryCatch({dput(obj,con);
            textConnectionValue(con)},
            finally=close(con))
 }
-'''
+'''}
 
 def from_R_repr(expr):
     '''
@@ -459,6 +459,8 @@ class SoS_Kernel(Kernel):
                         self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)
                         self.KM, self.KC = self.kernels[kernel]
                         self.kernel = kernel
+                        if self.kernel in kernel_init_command:
+                            self.run_cell(kernel_init_command[self.kernel], False)
                     except Exception as e:
                         self.send_response(self.iopub_socket, 'stream',
                             {'name': 'stderr', 'text': 'Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e)})
@@ -601,7 +603,7 @@ class SoS_Kernel(Kernel):
                         break
         elif self.kernel == 'ir':
             # if it is a python kernel, passing specified SoS variables to it
-            self.KC.execute('{}\ndputToString(list({}))'.format(dputToString_func, 
+            self.KC.execute('dputToString(list({}))'.format(
                 ','.join('{0}={0}'.format(x) for x in items)),
                 silent=False, store_history=False)
             # first thing is wait for any side effects (output, stdin, etc.)
@@ -625,7 +627,14 @@ class SoS_Kernel(Kernel):
                                 {'name': 'stderr', 'text': str(e)})
                         break
         else:
-            raise UsageError('Can only pass variables to python kernel')
+            self.send_response(self.iopub_socket, 'stream',
+                                {'name': 'stderr', 'text': 'Can only pass variables to python kernel'})
+        #
+        # verify
+        for item in items:
+            if not item in env.sos_dict:
+                self.send_response(self.iopub_socket, 'stream',
+                                {'name': 'stderr', 'text': 'Failed to put variable {} to SoS namespace'.format(item)})
 
     def handle_shell_command(self, cmd):
         # interpolate command
