@@ -271,9 +271,9 @@ kernel_init_command = {
     'ir': '''
 ..py.repr.logic.1 <- function(obj) {
     if(obj)
-        'TRUE'
+        'True'
     else
-        'FALSE'
+        'False'
 }
 ..py.repr.integer.1 <- function(obj) {
     as.character(obj)
