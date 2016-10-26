@@ -212,7 +212,7 @@ class TestKernel(unittest.TestCase):
             res = get_result(iopub)
             self.assertEqual(res, '[1] 1025')
 
-    def testPutPythonDataFrameToR(self):
+    def testGetPythonDataFrameFromR(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
@@ -234,6 +234,49 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             msg_id, content = execute(kc=kc, code="dim(df)")
             res = get_result(iopub)
             self.assertEqual(res, '[1] 1000   10')
+
+    def testGetPythonDataFromR(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # create a data frame
+            msg_id, content = execute(kc=kc, code="null_var = None")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="num_var = 123")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="import numpy\nnum_arr_var = numpy.array([1, 2, 3])")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="logic_var = True")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="logic_arr_var = [True, False, True]")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="char_var = '123'")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="char_arr_var = ['1', '2', '3']")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="list_var = [1, 2, '3']")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="dict_var = dict(a=1, b=2, c='3')")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="set_var = set(1, 2, '3')")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="mat_var = numpy.matrix([[1,2],[3,4]])")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%use R")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%get null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var")
+            # need to test passed values
 
     def testPutRDataFrameToPython(self):
         with sos_kernel() as kc:

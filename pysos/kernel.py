@@ -28,6 +28,7 @@ import copy
 import fnmatch
 import contextlib
 import subprocess
+import tempfile
 
 import zipfile
 import tarfile
@@ -232,25 +233,47 @@ class BioPreviewer(SoS_FilePreviewer):
             return SoS_FilePreviewer.preview(filename)
 
 def R_repr(obj):
-    if isinstance(obj, (int, float, str)):
+    if isinstance(obj, bool):
+        return 'TRUE' if obj else 'FALSE'
+    elif isinstance(obj, (int, float, str)):
         return repr(obj)
     elif isinstance(obj, Sequence):
         return 'c(' + ','.join(R_repr(x) for x in obj) + ')'
+    elif obj is None:
+        return 'NULL'
+    elif isinstance(obj, dict):
+        return 'list(' + ','.join('{}={}'.format(x, R_repr(y)) for x,y in obj.items()) + ')'
+    elif isinstance(obj, set):
+        return 'list(' + ','.join(R_repr(x) for x in obj) + ')'
     else:
+        import numpy
         import pandas
-        if isinstance(obj, pandas.DataFrame):
+        if isinstance(obj, (numpy.intc, numpy.intp, numpy.int8, numpy.int16, numpy.int32, numpy.int64,\
+                numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32, \
+                numpy.float64)):
+            return repr(obj)
+        elif isinstance(obj, numpy.matrixlib.defmatrix.matrix):
+            try:
+                import feather
+            except ImportError:
+                raise UsageError('The feather-format module is required to pass numpy matrix as R matrix'
+                    'See https://github.com/wesm/feather/tree/master/python for details.')
+            feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
+            feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
+            return 'data.matrix(read_feather("{}"))'.format(feather_tmp_)
+        elif isinstance(obj, numpy.ndarray):
+            return 'c(' + ','.join(R_repr(x) for x in obj) + ')'
+        elif isinstance(obj, pandas.DataFrame):
             try:
                 import feather
             except ImportError:
                 raise UsageError('The feather-format module is required to pass pandas DataFrame as R data.frame'
                     'See https://github.com/wesm/feather/tree/master/python for details.')
-            feather_tmp_ = os.path.join(env.exec_dir, '.sos', '__data.feather')
-            if os.path.isfile(feather_tmp_):
-                os.remove(feather_tmp_)
+            feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
             feather.write_dataframe(obj, feather_tmp_)
             return 'read_feather("{}")'.format(feather_tmp_)
         else:
-            raise UsageError('Passing {} from Python to R is not yet supported.'.format(short_repr(obj)))
+            return repr('Unsupported datatype {}'.format(short_repr(obj)))
 
 # R    length (n)    Python
 # NULL        None
@@ -286,12 +309,18 @@ kernel_init_command = {
     dQuote(obj)
 }        
 ..py.repr.dataframe <- function(obj) {
+    if (!require("feather")) {
+        install.packages('feather', repos='http://cran.stat.ucla.edu/')
+        }
     library(feather)
     tf = tempfile('feather')
     write_feather(obj, tf)
     paste0("read_dataframe('", tf, "')")
 }
 ..py.repr.matrix <- function(obj) {
+    if (!require("feather")) {
+        install.packages('feather', repos='http://cran.stat.ucla.edu/')
+        }
     library(feather)
     tf = tempfile('feather')
     write_feather(as.data.frame(obj), tf)
@@ -372,7 +401,11 @@ def python2R(name):
         # there can be some more general solution but right now let us just
         # do this.
         if 'read_feather' in r_repr:
-            return 'library(feather)\n{} <- {}'.format(name, r_repr)
+            return '''if (!require("feather")) {{
+                install.packages('feather', repos='http://cran.stat.ucla.edu/')
+                }}
+                library(feather)
+                {} <- {}'''.format(name, r_repr)
         else:
             return '{} <- {}'.format(name, r_repr)
     except Exception as e:
@@ -665,6 +698,8 @@ class SoS_Kernel(Kernel):
                 msg_type = sub_msg['header']['msg_type']
                 if msg_type == 'status':
                     _execution_state = sub_msg["content"]["execution_state"]
+                self.send_response(self.iopub_socket, msg_type,
+                     sub_msg['content'])
 
     def handle_magic_put(self, options):
         items = options.split()
