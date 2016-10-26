@@ -32,6 +32,7 @@ from contextlib import contextmanager
 from pysos.kernel import SoS_Kernel
 from jupyter_client import manager
 from ipykernel.tests.utils import assemble_output, start_new_kernel, flush_channels, stop_global_kernel, execute, wait_for_idle
+from pysos.utils import frozendict
 
 import os
 import atexit
@@ -249,6 +250,60 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             msg_id, content = execute(kc=kc, code="mtcars.shape")
             res = get_result(iopub)
             self.assertEqual(res, (32, 11))
+
+    def testPutRDataToPython(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # create a data frame
+            msg_id, content = execute(kc=kc, code='%use R')
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="null_var = NULL")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="num_var = 123")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="num_arr_var = c(1, 2, 3)")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="logic_var = TRUE")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="logic_arr_var = c(TRUE, FALSE, TRUE)")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="char_var = '123'")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="char_arr_var = c(1, 2, '3')")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="list_var = list(1, 2, '3')")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="named_list_var = list(a=1, b=2, c='3')")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="mat_var = matrix(c(1,2,3,4), nrow=2)")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var named_list_var")
+            clear_channels(iopub)
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var named_list_var")
+            res = get_result(iopub)
+            #
+            self.assertEqual(res['null_var'], None)
+            self.assertEqual(res['num_var'], 123)
+            self.assertEqual(res['num_arr_var'], [1,2,3])
+            self.assertEqual(res['logic_var'], True)
+            self.assertEqual(res['logic_arr_var'], [True, False, True])
+            self.assertEqual(res['char_var'], '123')
+            self.assertEqual(res['char_arr_var'], ['1', '2', '3'])
+            self.assertEqual(res['list_var'], [1,2,'3'])
+            self.assertEqual(res['named_list_var'], {'a': 1, 'b': 2, 'c': '3'})
+            self.assertEqual(res['mat_var'], None)
 
 if __name__ == '__main__':
     unittest.main()
