@@ -589,23 +589,26 @@ class SoS_Kernel(Kernel):
         'Magic that displays content of the dictionary'
         # do not return __builtins__ beacuse it is too long...
         actions = line.strip().split()
-        keys = [x for x in actions if x not in ['reset', 'all', 'keys']]
+        keys = [x for x in actions if not x.startswith('-')]
         for x in keys:
             if not x in env.sos_dict:
                 self.send_response(self.iopub_socket, 'stream',
                       {'name': 'stderr', 'text': 'Unrecognized sosdict option or variable name {}'.format(x)})
                 return
-        if 'reset' in actions:
+        for x in [x for x in actions if x.startswith('-')]:
+            if not x in ['-r', '--reset', '-k', '--keys', '-a', '--all']:
+                raise RuntimeError('Unrecognized option {} for magic %dict'.format(x))
+        if '--reset' in actions or '-r' in actions:
             self.send_result(self._reset_dict())
-        if 'keys' in actions:
-            if 'all' in actions:
+        if '--keys' in actions or '-k' in actions:
+            if '--all' in actions or '-a' in actions:
                 self.send_result(env.sos_dict._dict.keys())
             elif keys:
                 self.send_result(set(keys))
             else:
                 self.send_result({x for x in env.sos_dict._dict.keys() if not x.startswith('__')} - self.original_keys)
         else:
-            if 'all' in actions:
+            if '--all' in actions or '-a' in actions:
                 self.send_result(env.sos_dict._dict)
             elif keys:
                 self.send_result({x:y for x,y in env.sos_dict._dict.items() if x in keys})

@@ -132,13 +132,13 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code="%dict")
             self.assertEqual(get_result(iopub)['a'], 12345)
             #
-            msg_id, content = execute(kc=kc, code="%dict keys")
+            msg_id, content = execute(kc=kc, code="%dict --keys")
             self.assertTrue('a' in get_result(iopub))
             #
-            msg_id, content = execute(kc=kc, code="%dict reset")
+            msg_id, content = execute(kc=kc, code="%dict --reset")
             self.assertTrue('a' not in get_result(iopub))
             #
-            msg_id, content = execute(kc=kc, code="%dict keys all")
+            msg_id, content = execute(kc=kc, code="%dict --keys --all")
             res = get_result(iopub)
             for key in ('run', 'sh', 'tcsh', 'expand_pattern'):
                 self.assertTrue(key in res)
