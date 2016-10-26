@@ -252,28 +252,104 @@ def R_repr(obj):
         else:
             raise UsageError('Passing {} from Python to R is not yet supported.'.format(short_repr(obj)))
 
+# R    length (n)    Python
+# NULL        None
+# logical    1    boolean
+# integer    1    integer
+# numeric    1    double
+# character    1    unicode
+# logical    n > 1    array
+# integer    n > 1    array
+# numeric    n > 1    list
+# character    n > 1    list
+# list without names    n > 0    list
+# list with names    n > 0    dict
+# matrix    n > 0    array
+# data.frame    n > 0    DataFrame
+
 kernel_init_command = {
     'ir': '''
-dputToString <- function (obj) {
-  con <- textConnection(NULL,open="w")
-  tryCatch({dput(obj,con);
-           textConnectionValue(con)},
-           finally=close(con))
+..py.repr.logic.1 <- function(obj) {
+    if(obj)
+        'TRUE'
+    else
+        'FALSE'
+}
+..py.repr.integer.1 <- function(obj) {
+    as.character(obj)
+}
+..py.repr.double.1 <- function(obj) {
+    as.character(obj)
+}  
+..py.repr.character.1 <- function(obj) {
+    options(useFancyQuotes=FALSE)
+    dQuote(obj)
+}        
+..py.repr.dataframe <- function(obj) {
+    library(feather)
+    tf = tempfile('feather')
+    write_feather(obj, tf)
+    paste0("read_dataframe('", tf, "')")
+}
+..py.repr.matrix <- function(obj) {
+    library(feather)
+    tf = tempfile('feather')
+    write_feather(as.data.frame(obj), tf)
+    paste0("read_dataframe('", tf, "').as_matrix()")
+}
+..py.repr.n <- function(obj) {
+    paste("[",
+        paste(sapply(obj, ..py.repr), collapse=','),
+        "]")
+}
+..py.repr <- function(obj) {
+    if (is.matrix(obj)) {
+        ..py.repr.matrix(obj)
+    } else if (is.data.frame(obj)) {
+        ..py.repr.dataframe(obj)
+    } else if (is.integer(obj)) {
+        if (length(obj) == 1)
+            ..py.repr.integer.1(obj)
+        else
+            ..py.repr.n(obj)
+    } else if (is.double(obj)){
+        if (length(obj) == 1)
+            ..py.repr.double.1(obj)
+        else
+            ..py.repr.n(obj)
+    } else if (is.character(obj)) {
+        if (length(obj) == 1)
+            ..py.repr.character.1(obj)
+        else
+            ..py.repr.n(obj)
+    } else if (is.list(obj)) {
+        # if the list has no name
+        if (is.null(names(obj)))
+            ..py.repr.n(obj)
+        else {
+            options(useFancyQuotes=FALSE)
+            paste("{",
+                  paste(sapply(names(obj), function (x)
+                      paste(dQuote(as.character(x)), ":", ..py.repr(obj[[x]]))),
+                      collapse=','),
+                  "}")
+        }
+    } else {
+        error("Failed to convert")
+    }
 }
 '''}
 
 def from_R_repr(expr):
     '''
-    Convert text in the following format to a Python object
-
-    '[1] "structure(list(a = 1, b = \\"a\\"), .Names = c(\\"a\\", \\"b\\"))"'
+    Convert expression returned from R to python
     '''
     try:
-        text = expr[20:-1].split('), .Names')[0].replace('\\', '')
-        convert_funcs = {
-            'c': lambda *args: list(args)
-        }
-        return eval('dict({})'.format(text), convert_funcs)
+        if 'read_dataframe' in expr:
+            from feather import read_dataframe
+        # the result is something like
+        # [1] "{'a': 1}"
+        return eval(eval(expr.split(' ', 1)[-1]))
     except Exception as e:
         raise UsageError('Failed to convert {} to Python object: {}'.format(expr, e))
 
@@ -603,7 +679,7 @@ class SoS_Kernel(Kernel):
                         break
         elif self.kernel == 'ir':
             # if it is a python kernel, passing specified SoS variables to it
-            self.KC.execute('dputToString(list({}))'.format(
+            self.KC.execute('..py.repr(list({}))'.format(
                 ','.join('{0}={0}'.format(x) for x in items)),
                 silent=False, store_history=False)
             # first thing is wait for any side effects (output, stdin, etc.)
