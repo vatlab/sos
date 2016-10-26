@@ -156,19 +156,24 @@ class SoS_Magics(Magics):
         'Magic that displays content of the dictionary'
         # do not return __builtins__ beacuse it is too long...
         actions = line.strip().split()
-        for action in actions:
-            if action not in ['reset', 'all', 'keys']:
-                raise RuntimeError('Unrecognized sosdict option {}'.format(action))
+        keys = [x for x in actions if x not in ['reset', 'all', 'keys']]
+        for x in keys:
+            if not x in env.sos_dict:
+                raise RuntimeError('Unrecognized sosdict option or variable name {}'.format(x))
         if 'reset' in actions:
             return self._reset()
         if 'keys' in actions:
             if 'all' in actions:
                 return env.sos_dict._dict.keys()
+            elif keys:
+                self.send_result(set(keys))
             else:
                 return {x for x in env.sos_dict._dict.keys() if not x.startswith('__')} - self.original_keys
         else:
             if 'all' in actions:
                 return env.sos_dict._dict
+            elif keys:
+                self.send_result({x:y for x,y in env.sos_dict._dict.items() if x in keys})
             else:
                 return {x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys and not x.startswith('__')}
 

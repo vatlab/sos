@@ -269,7 +269,7 @@ def R_repr(obj):
 
 kernel_init_command = {
     'ir': '''
-..py.repr.logic.1 <- function(obj) {
+..py.repr.logical.1 <- function(obj) {
     if(obj)
         'True'
     else
@@ -324,6 +324,11 @@ kernel_init_command = {
             ..py.repr.character.1(obj)
         else
             ..py.repr.n(obj)
+    } else if (is.logical(obj)) {
+        if (length(obj) == 1)
+            ..py.repr.logical.1(obj)
+        else
+            ..py.repr.n(obj)
     } else if (is.list(obj)) {
         # if the list has no name
         if (is.null(names(obj)))
@@ -337,7 +342,7 @@ kernel_init_command = {
                   "}")
         }
     } else {
-        error("Failed to convert")
+        "'Untransferrable variable'"
     }
 }
 '''}
@@ -562,7 +567,7 @@ class SoS_Kernel(Kernel):
                 try:
                     self.kernels[kernel][0].shutdown_kernel(restart=False)
                 except Exception as e:
-                    env.logger.warning('Failed to shutdown kernel {}: {}'.format(kernel, e))
+                    env.logger.warning('Failed to shutdown kernel {}: {}\n'.format(kernel, e))
             #
             try:
                 self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)
@@ -584,21 +589,26 @@ class SoS_Kernel(Kernel):
         'Magic that displays content of the dictionary'
         # do not return __builtins__ beacuse it is too long...
         actions = line.strip().split()
-        for action in actions:
-            if action not in ['reset', 'all', 'keys']:
+        keys = [x for x in actions if x not in ['reset', 'all', 'keys']]
+        for x in keys:
+            if not x in env.sos_dict:
                 self.send_response(self.iopub_socket, 'stream',
-                      {'name': 'stderr', 'text': 'Unrecognized sosdict option {}'.format(action)})
+                      {'name': 'stderr', 'text': 'Unrecognized sosdict option or variable name {}'.format(x)})
                 return
         if 'reset' in actions:
             self.send_result(self._reset_dict())
         if 'keys' in actions:
             if 'all' in actions:
                 self.send_result(env.sos_dict._dict.keys())
+            elif keys:
+                self.send_result(set(keys))
             else:
                 self.send_result({x for x in env.sos_dict._dict.keys() if not x.startswith('__')} - self.original_keys)
         else:
             if 'all' in actions:
                 self.send_result(env.sos_dict._dict)
+            elif keys:
+                self.send_result({x:y for x,y in env.sos_dict._dict.items() if x in keys})
             else:
                 self.send_result({x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys and not x.startswith('__')})
 
@@ -636,7 +646,7 @@ class SoS_Kernel(Kernel):
                 sos_data = '\n'.join(python2R(x) for x in items)
             except Exception as e:
                 self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stderr', 'text': 'Failed to get variable: {}'.format(e)})
+                    {'name': 'stderr', 'text': 'Failed to get variable: {}\n'.format(e)})
                 return
             self.KC.execute(sos_data, silent=True, store_history=False)
         else:
@@ -677,7 +687,7 @@ class SoS_Kernel(Kernel):
                                 )
                         except Exception as e:
                             self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stderr', 'text': 'Failed to put variable {}: {}'.format(', '.join(items), e)})
+                                {'name': 'stderr', 'text': 'Failed to put variable {}: {}\n'.format(', '.join(items), e)})
                         break
         elif self.kernel == 'ir':
             # if it is a python kernel, passing specified SoS variables to it
@@ -712,7 +722,7 @@ class SoS_Kernel(Kernel):
         for item in items:
             if not item in env.sos_dict:
                 self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stderr', 'text': 'Failed to put variable {} to SoS namespace'.format(item)})
+                                {'name': 'stderr', 'text': 'Failed to put variable {} to SoS namespace\n'.format(item)})
 
     def handle_shell_command(self, cmd):
         # interpolate command
@@ -726,7 +736,7 @@ class SoS_Kernel(Kernel):
                         new_cmd.strip() + '\n## -- End interpolated command --\n'})
         except Exception as e:
             self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(short_repr(cmd), e)})
+                {'name': 'stdout', 'text': 'Failed to interpolate {}: {}\n'.format(short_repr(cmd), e)})
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': str(e)})
         # command cd is handled differently because it is the only one that
