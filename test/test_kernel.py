@@ -34,6 +34,7 @@ from jupyter_client import manager
 from ipykernel.tests.utils import assemble_output, start_new_kernel, flush_channels, stop_global_kernel, execute, wait_for_idle
 from pysos.utils import frozendict
 
+from numpy import array
 import os
 import atexit
 
@@ -293,7 +294,6 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var named_list_var")
             res = get_result(iopub)
-            #
             self.assertEqual(res['null_var'], None)
             self.assertEqual(res['num_var'], 123)
             self.assertEqual(res['num_arr_var'], [1,2,3])
@@ -303,7 +303,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             self.assertEqual(res['char_arr_var'], ['1', '2', '3'])
             self.assertEqual(res['list_var'], [1,2,'3'])
             self.assertEqual(res['named_list_var'], {'a': 1, 'b': 2, 'c': '3'})
-            self.assertEqual(res['mat_var'], None)
+            self.assertEqual(res['mat_var'].shape, (2,2))
 
 if __name__ == '__main__':
     unittest.main()
