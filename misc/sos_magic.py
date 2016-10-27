@@ -162,7 +162,7 @@ class SoS_Magics(Magics):
                 raise RuntimeError('Unrecognized sosdict option or variable name {}'.format(x))
         for x in [x for x in actions if x.startswith('-')]:
             if not x in ['-r', '--reset', '-k', '--keys', '-a', '--all']:
-                raise RuntimeError('Unrecognized option {} for magic %dict'.format(x))
+                raise RuntimeError('Unrecognized option {} for magic %sosdict'.format(x))
         if '--reset' in actions or '-r' in actions:
             return self._reset()
         if '--keys' in actions or '-k' in actions:
