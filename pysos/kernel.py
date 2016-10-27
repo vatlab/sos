@@ -29,6 +29,7 @@ import fnmatch
 import contextlib
 import subprocess
 import tempfile
+import argparse
 
 import zipfile
 import tarfile
@@ -572,16 +573,18 @@ class SoS_Kernel(Kernel):
         reply['content']['execution_count'] = self.execution_count
         return reply['content']
 
-    def switch_kernel(self, kernel):
+    def switch_kernel(self, kernel, ret_vars=[]):
         if kernel and kernel != 'sos':
             if kernel != self.kernel:
                 if kernel in self.kernels:
-                    self.KM, self.KC = self.kernels[kernel]
+                    # switch to an active kernel
+                    self.KM, self.KC, self.RET_VARS = self.kernels[kernel]
                     self.kernel = kernel
                 else:
                     try:
-                        self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)
-                        self.KM, self.KC = self.kernels[kernel]
+                        # start a new kernel
+                        self.kernels[kernel] = list(manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)) + [ret_vars]
+                        self.KM, self.KC, self.RET_VARS = self.kernels[kernel]
                         self.kernel = kernel
                         if self.kernel in kernel_init_command:
                             self.run_cell(kernel_init_command[self.kernel], False)
@@ -590,12 +593,13 @@ class SoS_Kernel(Kernel):
                             {'name': 'stderr', 'text': 'Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e)})
         else:
             # kernel == '' or kernel == 'sos'
-            if kernel == '':
+            if not kernel:
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Kernel "{}" is used.\n'.format(self.kernel)})
             elif kernel == 'sos':
-                #self.send_response(self.iopub_socket, 'stream',
-                #    {'name': 'stdout', 'text': 'Switching back to sos kernel\n'})
+                # if we are switching back to sos, the return variables need to be 
+                # returned
+                self.handle_magic_put(self.RET_VARS)
                 self.kernel = 'sos'
 
     def restart_kernel(self, kernel):
@@ -670,8 +674,7 @@ class SoS_Kernel(Kernel):
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Usage: set persistent sos options such as -v 3 (debug output) -p (prepare) and -t (transcribe)\n'})
 
-    def handle_magic_get(self, options):
-        items = options.split()
+    def handle_magic_get(self, items):
         for item in items:
             if item not in env.sos_dict:
                 self.send_response(self.iopub_socket, 'stream',
@@ -708,8 +711,9 @@ class SoS_Kernel(Kernel):
                     self.send_response(self.iopub_socket, msg_type,
                         sub_msg['content'])
 
-    def handle_magic_put(self, options):
-        items = options.split()
+    def handle_magic_put(self, items):
+        if not items:
+            return
         if self.kernel == 'python':
             # if it is a python kernel, passing specified SoS variables to it
             self.KC.execute('import pickle\npickle.dumps({{ {} }})'.format(','.join('"{0}":{0}'.format(x) for x in items)),
@@ -929,6 +933,13 @@ class SoS_Kernel(Kernel):
                 {'execution_count': self.execution_count, 'data': format_dict,
                 'metadata': md_dict})
 
+    def parse_in_out_vars(self, args):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('kernel', nargs='?', default='')
+        parser.add_argument('-i', '--in', nargs='*', dest='in_vars')
+        parser.add_argument('-o', '--out', nargs='*', dest='out_vars')
+        return parser.parse_args(args)
+
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
         if self.original_keys is None:
@@ -968,27 +979,33 @@ class SoS_Kernel(Kernel):
             return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
         elif code.startswith('%with'):
             options, remaining_code = self.get_magic_and_code(code, False)
-            if options == 'R':
-                options = 'ir'
+            args = self.parse_in_out_vars(options.split())
+            if args.kernel == 'R':
+                args.kernel = 'ir'
             original_kernel = self.kernel
-            self.switch_kernel(options)
+            self.switch_kernel(args.kernel, args.out_vars)
+            if args.in_vars:
+                self.handle_magic_get(args.in_vars)
             try:
                 return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.switch_kernel(original_kernel)
         elif code.startswith('%use'):
             options, remaining_code = self.get_magic_and_code(code, False)
-            if options == 'R':
-                options = 'ir'
-            self.switch_kernel(options)
+            args = self.parse_in_out_vars(options.split())
+            if args.kernel == 'R':
+                args.kernel = 'ir'
+            if args.in_vars:
+                self.handle_magic_get(args.in_vars)
+            self.switch_kernel(args.kernel, args.out_vars)
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('%get'):
             options, remaining_code = self.get_magic_and_code(code, False)
-            self.handle_magic_get(options)
+            self.handle_magic_get(options.split())
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('%put'):
             options, remaining_code = self.get_magic_and_code(code, False)
-            self.handle_magic_put(options)
+            self.handle_magic_put(options.split())
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('%paste'):
             options, remaining_code = self.get_magic_and_code(code, True)
