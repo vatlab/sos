@@ -24,7 +24,7 @@
 #
 # to build it.
 #
-FROM mdabioinfo/sos:latest
+FROM mdabioinfo/sos-base:latest
 
 MAINTAINER Bo Peng <bpeng@mdanderson.org>
 
@@ -32,20 +32,18 @@ WORKDIR ${HOME}
 
 # install the latest version of R-base because IRKernel supports only R 3.2
 # or higher
-RUN     echo "deb http://cran.rstudio.com/bin/linux/ubuntu precise/" >> /etc/apt/sources.list
-RUN     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
+RUN     echo "deb http://lib.stat.cmu.edu/R/CRAN/bin/linux/debian jessie-cran3/" >> /etc/apt/sources.list
+RUN     apt-key adv --keyserver keys.gnupg.net --recv-key 6212B7B7931C4BB16280BA1306F90DE5381BA480
 RUN     apt-get update
-RUN     apt-get upgrade
-RUN     apt-get install r-base r-base-core r-recommended r-base-dev
+RUN     apt-get install -y  --force-yes libjpeg-dev r-base r-base-core r-recommended r-base-dev
 
 
-RUN     apt-get install -y libzmq3-dev libcurl4-openssl-dev 
-RUN     Rscript -e "install.packages(c('rzmq','repr','IRkernel','IRdisplay'), repos = c('http://irkernel.github.io/', 'http://cran.us.r-project.org'))" 
+RUN     apt-get install -y libzmq3-dev libcurl4-openssl-dev libssl-dev
+RUN     Rscript -e "install.packages(c('rzmq', 'feather', 'devtools'), repos ='http://cran.us.r-project.org')" 
+RUN     Rscript -e "devtools::install_github(paste0('IRkernel/', c('repr', 'IRdisplay', 'IRkernel')))"
 RUN     Rscript -e "IRkernel::installspec()"
 
-		
-RUN     Rscript -e "install.packages('feather')"
-RUN     pip install feather-format
+RUN     conda install -y feather-format -c conda-forge
 
 RUN     mkdir -p workspace/notebooks workspace/data .ipython/profile_default
 
