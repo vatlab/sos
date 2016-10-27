@@ -7,7 +7,8 @@ in different languages. It is designed for data scienticists and bioinformatics 
 As a **file format** that help you record all your analysis into a single
 script with minimal effort, SoS allows you to include scripts in different
 languages literally into a `.sos` files, and execute it as a single
-workflow.
+workflow. The basis of this format is demonstrated in our [Quick start
+guide](https://github.com/BoPeng/SOS/wiki/1.-Quick-Start).
 
 As an **interactive environment** and **notebook tool** that promotes [literate
 programming](https://en.wikipedia.org/wiki/Literate_programming), SoS
