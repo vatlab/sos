@@ -769,7 +769,7 @@ class SoS_Kernel(Kernel):
                     else:
                         # irkernel (since the new version) does not produce execute_result, only
                         # display_data
-                        if msg_type == 'display_data':
+                        if msg_type in ('display_data', 'execute_result'):
                             #self.send_response(self.iopub_socket, 'stream',
                             #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
                             try:
