@@ -233,15 +233,30 @@ class BioPreviewer(SoS_FilePreviewer):
         else:
             return SoS_FilePreviewer.preview(filename)
 
+def homogeneous_type(seq):
+    iseq = iter(seq)
+    first_type = type(next(iseq))
+    if first_type in (int, float):
+        return True if all( (type(x) in (int, float)) for x in iseq ) else False
+    else:
+        return True if all( (type(x) is first_type) for x in iseq ) else False
+
 def R_repr(obj):
     if isinstance(obj, bool):
         return 'TRUE' if obj else 'FALSE'
     elif isinstance(obj, (int, float, str)):
         return repr(obj)
     elif isinstance(obj, Sequence):
-        # we could use c(  ) but Python sequence can hold data
-        # with different types
-        return 'list(' + ','.join(R_repr(x) for x in obj) + ')'
+        if len(obj) == 0:
+            return 'c()'
+
+        # if the data is of homogeneous type, let us use c()
+        # otherwise use list()
+        # this can be confusion but list can be difficult to handle
+        if homogeneous_type(obj):
+            return 'c(' + ','.join(R_repr(x) for x in obj) + ')'
+        else:
+            return 'list(' + ','.join(R_repr(x) for x in obj) + ')'
     elif obj is None:
         return 'NULL'
     elif isinstance(obj, dict):
@@ -510,16 +525,8 @@ class SoS_Kernel(Kernel):
         #
         if SOS_SECTION_HEADER.match(lines[-1]):
             return {'status': 'incomplete', 'indent': ''}
-        # check syntax??
-        try:
-            compile(code, '<string>', 'exec')
-            return {'status': 'complete', 'indent': ''}
-        except:
-            try:
-                self.executor.parse_script(code)
-                return {'status': 'complete', 'indent': ''}
-            except:
-                return {'status': 'unknown', 'indent': ''}
+        #
+        return {'status': 'incomplete', 'indent': ''}
 
     def get_magic_and_code(self, code, warn_remaining=False):
         lines = code.split('\n')
@@ -578,13 +585,15 @@ class SoS_Kernel(Kernel):
             if kernel != self.kernel:
                 if kernel in self.kernels:
                     # switch to an active kernel
-                    self.KM, self.KC, self.RET_VARS = self.kernels[kernel]
+                    self.KM, self.KC = self.kernels[kernel]
+                    self.RET_VARS = ret_vars
                     self.kernel = kernel
                 else:
                     try:
                         # start a new kernel
-                        self.kernels[kernel] = list(manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)) + [ret_vars]
-                        self.KM, self.KC, self.RET_VARS = self.kernels[kernel]
+                        self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)
+                        self.KM, self.KC = self.kernels[kernel]
+                        self.RET_VARS = ret_vars
                         self.kernel = kernel
                         if self.kernel in kernel_init_command:
                             self.run_cell(kernel_init_command[self.kernel], False)
@@ -600,6 +609,7 @@ class SoS_Kernel(Kernel):
                 # if we are switching back to sos, the return variables need to be 
                 # returned
                 self.handle_magic_put(self.RET_VARS)
+                self.RET_VARS = []
                 self.kernel = 'sos'
 
     def restart_kernel(self, kernel):
@@ -1068,7 +1078,7 @@ class SoS_Kernel(Kernel):
 
     def do_shutdown(self, restart):
         #
-        for name, (km, kv, _) in self.kernels.items():
+        for name, (km, kv) in self.kernels.items():
             try:
                 km.shutdown_kernel(restart=restart)
             except Exception as e:

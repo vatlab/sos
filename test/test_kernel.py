@@ -357,5 +357,18 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 
+    def testWith(self):
+        '''Test magic with'''
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # create a data frame
+            msg_id, content = execute(kc=kc, code='var = [1, 2, 3, 4]')
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code='%with R -i var -o m\nm=mean(var)')
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%dict m")
+            res = get_result(iopub)
+            self.assertEqual(res['m'], 2.5)
+
 if __name__ == '__main__':
     unittest.main()
