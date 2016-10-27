@@ -1193,7 +1193,7 @@ cp ${_input} ${_dest}
             FileTarget(f).remove('both')
         #
         # only the first step
-        wf = script.workflow('default_0')
+        wf = script.workflow('default:0')
         start = time.time()
         env.sig_mode = 'default'
         if env.max_jobs == 1:

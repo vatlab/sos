@@ -394,8 +394,8 @@ class SoS_Workflow:
                 if item.isdigit():
                     # pipeline:100
                     all_steps[int(item)] = True
-                elif ':' in item and item.count(':') == 1:
-                    l, u = item.split(':')
+                elif '-' in item and item.count('-') == 1:
+                    l, u = item.split('-')
                     if (l and not l.isdigit()) or (u and not u.isdigit()) or \
                         (l and u and int(l) > int(u)):
                         raise ValueError('Invalid pipeline step item {}'.format(item))

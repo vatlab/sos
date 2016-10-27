@@ -175,7 +175,7 @@ string """
         '''Test parameters section'''
         # directive not allowed in parameters
         script = SoS_Script(filename='scripts/section1.sos')
-        wf = script.workflow('chapter_0')
+        wf = script.workflow('chapter:0')
         #self.assertRaises(ArgumentError, Base_Executor(wf).run,
         #    args=['--not_exist'])
         #self.assertRaises(ArgumentError, Base_Executor(wf).run,
@@ -784,7 +784,7 @@ executed.append(step_name)
         self.assertEqual(env.sos_dict['a'], 1)
         self.assertEqual(env.sos_dict['input_b1'], ['out_a_4'])
         #
-        wf = script.workflow('a_ 1:2 + a_4 + b_3:')
+        wf = script.workflow('a: 1-2 + a:4 + b:3-')
         Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['executed'], ['a_1', 'a_2', 'a_4',
             'b_3', 'b_4'])
@@ -883,7 +883,7 @@ executed.append(step_name)
 [c_1:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
-sos_run('a_2')
+sos_run('a:2')
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).prepare()
@@ -902,7 +902,7 @@ executed.append(step_name)
 [c_1:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
-sos_run('a_2')
+sos_run('a:2')
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).prepare()
@@ -940,7 +940,7 @@ executed.append(step_name)
 executed.append(step_name)
 [b_2:shared='executed']
 executed.append(step_name)
-sos_run('a_1+a_2')
+sos_run('a:1-2')
 [c_0:shared='executed']
 executed.append(step_name)
 [c_1:shared='executed']
@@ -967,11 +967,11 @@ executed.append(step_name)
 [b:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
-sos_run('a_3+a_1')
+sos_run('a:3+a:1')
 [d:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
-sos_run('a_2')
+sos_run('a:2')
 [e2_2:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
