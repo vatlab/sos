@@ -757,7 +757,9 @@ class SoS_Kernel(Kernel):
                     if msg_type == 'status':
                         _execution_state = sub_msg["content"]["execution_state"]
                     else:
-                        if msg_type == 'execute_result':
+                        # irkernel (since the new version) does not produce execute_result, only
+                        # display_data
+                        if msg_type == 'display_data':
                             #self.send_response(self.iopub_socket, 'stream',
                             #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
                             try:
@@ -1066,7 +1068,7 @@ class SoS_Kernel(Kernel):
 
     def do_shutdown(self, restart):
         #
-        for name, (km, kv) in self.kernels.items():
+        for name, (km, kv, _) in self.kernels.items():
             try:
                 km.shutdown_kernel(restart=restart)
             except Exception as e:
