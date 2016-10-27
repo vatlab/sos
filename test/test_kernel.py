@@ -31,7 +31,8 @@ import unittest
 from contextlib import contextmanager
 from pysos.kernel import SoS_Kernel
 from jupyter_client import manager
-from ipykernel.tests.utils import assemble_output, start_new_kernel, flush_channels, stop_global_kernel, execute, wait_for_idle
+from ipykernel.tests.utils import assemble_output, start_new_kernel,\
+    flush_channels, stop_global_kernel, execute, wait_for_idle
 from pysos.utils import frozendict
 
 from numpy import array
@@ -89,6 +90,7 @@ def get_result(iopub):
             pass
     # text/plain can have fronzen dict, this is ok,
     from pysos.utils import frozendict
+    from numpy import array
     # it can also have dict_keys, we will have to redefine it
     def dict_keys(args):
         return args
@@ -128,16 +130,13 @@ class TestKernel(unittest.TestCase):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code="a=12345")
-            clear_channels(iopub)
-            msg_id, content = execute(kc=kc, code="%dict")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%dict a")
             self.assertEqual(get_result(iopub)['a'], 12345)
-            #
             msg_id, content = execute(kc=kc, code="%dict --keys")
             self.assertTrue('a' in get_result(iopub))
-            #
             msg_id, content = execute(kc=kc, code="%dict --reset")
             self.assertTrue('a' not in get_result(iopub))
-            #
             msg_id, content = execute(kc=kc, code="%dict --keys --all")
             res = get_result(iopub)
             for key in ('run', 'sh', 'tcsh', 'expand_pattern'):
@@ -155,7 +154,7 @@ class TestKernel(unittest.TestCase):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code="!cd ..")
-            clear_channels(iopub)
+            wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="print(os.getcwd())")
             stdout, stderr = assemble_output(iopub)
             self.assertTrue(stdout.strip().upper().endswith('SOS'))
@@ -168,13 +167,13 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code="%use R")
             stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
-            wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="a <- 1024")
-            stdout, stderr = assemble_output(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="a")
             res = get_result(iopub)
             self.assertEqual(res, '[1] 1024')
+            msg_id, content = execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
     
     def testMagicPut(self):
         with sos_kernel() as kc:
@@ -182,12 +181,9 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code="%use R")
             stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
-            wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="a <- 1024")
-            stdout, stderr = assemble_output(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%put a")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
@@ -199,18 +195,17 @@ class TestKernel(unittest.TestCase):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code="a = 1025")
-            clear_channels(iopub)
+            wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%use R")
             stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
-            clear_channels(iopub)
-            wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%get a")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="a")
             res = get_result(iopub)
             self.assertEqual(res, '[1] 1025')
+            msg_id, content = execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
 
     def testGetPythonDataFrameFromR(self):
         with sos_kernel() as kc:
@@ -227,113 +222,91 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             msg_id, content = execute(kc=kc, code="%use R")
             stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
-            wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%get df")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="dim(df)")
             res = get_result(iopub)
             self.assertEqual(res, '[1] 1000   10')
+            msg_id, content = execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
 
     def testGetPythonDataFromR(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            # create a data frame
             msg_id, content = execute(kc=kc, code="null_var = None")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="num_var = 123")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="import numpy\nnum_arr_var = numpy.array([1, 2, 3])")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="logic_var = True")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="logic_arr_var = [True, False, True]")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="char_var = '123'")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="char_arr_var = ['1', '2', '3']")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="list_var = [1, 2, '3']")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="dict_var = dict(a=1, b=2, c='3')")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="set_var = set(1, 2, '3')")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="mat_var = numpy.matrix([[1,2],[3,4]])")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%use R")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%get null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var")
+            wait_for_idle(kc)
             # need to test passed values
+            msg_id, content = execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
 
     def testPutRDataFrameToPython(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
             msg_id, content = execute(kc=kc, code='%use R')
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%put mtcars")
             stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
-            wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%use sos")
-            clear_channels(iopub)
+            wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="mtcars.shape")
             res = get_result(iopub)
             self.assertEqual(res, (32, 11))
+            msg_id, content = execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
 
     def testPutRDataToPython(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
             msg_id, content = execute(kc=kc, code='%use R')
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="null_var = NULL")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="num_var = 123")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="num_arr_var = c(1, 2, 3)")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="logic_var = TRUE")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="logic_arr_var = c(TRUE, FALSE, TRUE)")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="char_var = '123'")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="char_arr_var = c(1, 2, '3')")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="list_var = list(1, 2, '3')")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="named_list_var = list(a=1, b=2, c='3')")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="mat_var = matrix(c(1,2,3,4), nrow=2)")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var named_list_var")
-            clear_channels(iopub)
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var named_list_var")
             res = get_result(iopub)
@@ -347,6 +320,8 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             self.assertEqual(res['list_var'], [1,2,'3'])
             self.assertEqual(res['named_list_var'], {'a': 1, 'b': 2, 'c': '3'})
             self.assertEqual(res['mat_var'].shape, (2,2))
+            msg_id, content = execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
 
 if __name__ == '__main__':
     unittest.main()

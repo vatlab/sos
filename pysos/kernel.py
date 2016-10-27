@@ -554,11 +554,17 @@ class SoS_Kernel(Kernel):
                 msg_type = sub_msg['header']['msg_type']
                 if msg_type == 'status':
                     _execution_state = sub_msg["content"]["execution_state"]
-                elif msg_type in ('execute_input', 'execute_result'):
-                    # override execution count with the master count,
-                    # not sure if it is needed
-                    sub_msg['content']['execution_count'] = self.execution_count
-                self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
+                else:
+                    if msg_type in ('execute_input', 'execute_result'):
+                        # override execution count with the master count,
+                        # not sure if it is needed
+                        sub_msg['content']['execution_count'] = self.execution_count
+                    #
+                    # NOTE: we do not send status of sub kernel alone because
+                    # these are generated automatically during the execution of
+                    # "this cell" in SoS kernel
+                    #
+                    self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
         # now get the real result
         reply = self.KC.get_shell_msg(timeout=10)
         reply['content']['execution_count'] = self.execution_count
@@ -661,8 +667,6 @@ class SoS_Kernel(Kernel):
             else:
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Usage: set persistent sos options such as -v 3 (debug output) -p (prepare) and -t (transcribe)\n'})
-  
-            self.switch_kernel(options)
 
     def handle_magic_get(self, options):
         items = options.split()
@@ -698,8 +702,9 @@ class SoS_Kernel(Kernel):
                 msg_type = sub_msg['header']['msg_type']
                 if msg_type == 'status':
                     _execution_state = sub_msg["content"]["execution_state"]
-                self.send_response(self.iopub_socket, msg_type,
-                     sub_msg['content'])
+                else:
+                    self.send_response(self.iopub_socket, msg_type,
+                        sub_msg['content'])
 
     def handle_magic_put(self, options):
         items = options.split()
@@ -716,17 +721,21 @@ class SoS_Kernel(Kernel):
                     msg_type = sub_msg['header']['msg_type']
                     if msg_type == 'status':
                         _execution_state = sub_msg["content"]["execution_state"]
-                    elif msg_type == 'execute_result':
-                        #self.send_response(self.iopub_socket, 'stream',
-                        #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
-                        try:
-                            env.sos_dict.update(
-                                pickle.loads(eval(sub_msg['content']['data']['text/plain']))
-                                )
-                        except Exception as e:
-                            self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stderr', 'text': 'Failed to put variable {}: {}\n'.format(', '.join(items), e)})
-                        break
+                    else:
+                        if msg_type == 'execute_result':
+                            #self.send_response(self.iopub_socket, 'stream',
+                            #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
+                            try:
+                                env.sos_dict.update(
+                                    pickle.loads(eval(sub_msg['content']['data']['text/plain']))
+                                    )
+                            except Exception as e:
+                                self.send_response(self.iopub_socket, 'stream',
+                                    {'name': 'stderr', 'text': 'Failed to put variable {}: {}\n'.format(', '.join(items), e)})
+                            break
+                        else:
+                            self.send_response(self.iopub_socket, msg_type,
+                                sub_msg['content'])
         elif self.kernel == 'ir':
             # if it is a python kernel, passing specified SoS variables to it
             self.KC.execute('..py.repr(list({}))'.format(
@@ -741,17 +750,21 @@ class SoS_Kernel(Kernel):
                     msg_type = sub_msg['header']['msg_type']
                     if msg_type == 'status':
                         _execution_state = sub_msg["content"]["execution_state"]
-                    elif msg_type == 'execute_result':
-                        #self.send_response(self.iopub_socket, 'stream',
-                        #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
-                        try:
-                            env.sos_dict.update(
-                                from_R_repr(sub_msg['content']['data']['text/plain'])
-                                )
-                        except Exception as e:
-                             self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stderr', 'text': str(e)})
-                        break
+                    else:
+                        if msg_type == 'execute_result':
+                            #self.send_response(self.iopub_socket, 'stream',
+                            #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
+                            try:
+                                env.sos_dict.update(
+                                    from_R_repr(sub_msg['content']['data']['text/plain'])
+                                    )
+                            except Exception as e:
+                                 self.send_response(self.iopub_socket, 'stream',
+                                    {'name': 'stderr', 'text': str(e)})
+                            break
+                        else:
+                            self.send_response(self.iopub_socket, msg_type,
+                                sub_msg['content'])
         else:
             self.send_response(self.iopub_socket, 'stream',
                                 {'name': 'stderr', 'text': 'Can only pass variables to python kernel'})
