@@ -1,8 +1,15 @@
-**Script of Scripts (SoS)** is a workflow engine that allows you to work
-with scripts in different languages, glue them with Python expressions and
-variables, and execute them as powerful workflows under different environemtns. It is designed for data scienticists and bioinformatics who routinely work with scripts in different languages such as R, Python, Perl, and bash.
+**Script of Scripts (SoS)** is a **file format** for the inclusion of
+scripts in multiple languages into a single executable script, an
+**interactive environment** and **notebook tool** for working with different scripts, and
+a **workflow engine** for the execution of workflows consisting with scripts
+in different languages. It is designed for data scienticists and bioinformatics who routinely work with scripts in different languages such as R, Python, Perl, and bash.
 
-As a **notebook tool** that promotes [literate
+As a **file format** that help you record all your analysis into a single
+script with minimal effort, SoS allows you to include scripts in different
+languages literally into a `.sos` files, and execute it as a single
+workflow.
+
+As an **interactive environment** and **notebook tool** that promotes [literate
 programming](https://en.wikipedia.org/wiki/Literate_programming), SoS
 allows you to perform and record your analysis in different languages in a
 single [Jupyter notebook](http://jupyter.org/), with seamless integration
