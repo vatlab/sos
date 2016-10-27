@@ -238,7 +238,9 @@ def R_repr(obj):
     elif isinstance(obj, (int, float, str)):
         return repr(obj)
     elif isinstance(obj, Sequence):
-        return 'c(' + ','.join(R_repr(x) for x in obj) + ')'
+        # we could use c(  ) but Python sequence can hold data
+        # with different types
+        return 'list(' + ','.join(R_repr(x) for x in obj) + ')'
     elif obj is None:
         return 'NULL'
     elif isinstance(obj, dict):
