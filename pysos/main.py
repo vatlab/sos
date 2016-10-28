@@ -120,7 +120,7 @@ def cmd_run(args, workflow_args):
                 elif not os.path.isdir(os.path.expanduser(d)):
                     raise ValueError('directory does not exist: {}'.format(d))
         os.environ['PATH'] = os.pathsep.join([os.path.expanduser(x) for x in args.__bin_dirs__]) + os.pathsep + os.environ['PATH']
-            
+
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
@@ -201,7 +201,7 @@ def cmd_remove(args, unknown_args):
 
     sig_files = glob.glob('.sos/*.sig')
     if not sig_files:
-        sys.exit('No executed workflows.')
+        sys.exit('No executed workflow is identified.')
     tracked_files = set()
     for sig_file in sig_files:
         tracked_files |= get_tracked_files(sig_file)
@@ -234,7 +234,7 @@ def cmd_remove(args, unknown_args):
     #
     if not args.targets:
         sys.exit('No files or directories to be removed.')
-    # 
+    #
     for target in args.targets:
         target = os.path.expanduser(target)
         if not os.path.exists(target):
@@ -268,7 +268,7 @@ def cmd_remove(args, unknown_args):
                         specified_tracked_files.append(os.path.join(dirname, x))
                     else:
                         specified_untracked_files.append(os.path.join(dirname, x))
-            # we do not track dot directories 
+            # we do not track dot directories
             dir_with_tracked_files = []
             for x in dirlist:
                 # ignore hidden directories such as .git
@@ -494,4 +494,102 @@ def cmd_config(args, workflow_args):
             config.write(yaml.safe_dump(cfg, default_flow_style=False))
 
 
+#
+# command pack
+#
+def locate_files(session, includes, excludes, all_files):
+    import fnmatch
+    sig_files = glob.glob('.sos/*.sig')
+    if not sig_files:
+        sys.exit('No executed workflow is identified.')
+    if not session:
+        if len(sig_files) == 1:
+            sig_file = sig_files[0]
+        else:
+            sys.exit('More than one sessions have been executed.'
+                'Please specify one of the sessions to save.\n '
+                'Available sessions are:\n' +
+                '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
+    else:
+        matched = [x for x in sig_files if os.path.basename(x).startswith(session)]
+        if len(matched) == 1:
+            sig_file = matched[0]
+        elif not matched:
+            sys.exit('No session matches specified session ID ({})'.format(session) +
+                'Available sessions are:\n' +
+                '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
+        else:
+            sys.exit('More than one matching sessions have been located.'
+                'Please specify one of the sessions to save.\n '
+                'Available sessions are:\n' +
+                '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
+    #
+    tracked_files = get_tracked_files(sig_file)
+    # all
+    if not all_files:
+        external_files = []
+        for x in tracked_files:
+            relpth = os.path.relpath(x, '.')
+            if relpath.startswith('..'):
+                env.logger.info('{} is excluded. Use option --all to include tracked files outside of current directory.'.format(x))
+                external_files.append(x)
+        tracked_files -= set(external_files)
+    # include
+    for inc in includes:
+        if os.path.isfile(os.path.expanduser(inc)):
+            tracked_files.add(os.path.expanduser(inc))
+        else:
+            sys.exit('Extra include file {} does not exist'.format(inc))
+    # excludle
+    for ex in exclude:
+        tracked_files = [x for x in tracked_files if not fnmatch.fnmatch(x, ex)]
+    #
+    return tracked_files
+
+from io import FileIO
+class ProgressFileObj(FileIO):
+    '''A wrapper of a file object that update a progress bar
+    during file read.
+    '''
+    def __init__(self, prog, *args, **kwargs):
+        FileIO.__init__(self, *args, **kwargs)
+        self.prog = prog
+
+    def read(self, n, *args):
+        self.prog.progressBy(n)
+        return FileIO.read(self, n, *args)
+
+def cmd_pack(args, unknown_args):
+    import tarfile
+    from .utils import pretty_size
+    #
+    files = locate_files(args.session, args.include, args.exclude, args.__all__)
+    #
+    # get information about files
+    file_sizes = {x: os.path.getsize(x) for x in files}
+    # getting file size to create progress bar
+    total_size = sum(file_sizes.values())
+    env.logger.info('{} files ({}) will be archived.'.format(len(files), pretty_size(total_size)))
+
+    prog = ProgressBar(name, total_size)
+    with tarfile.TarFile.gzopen(args.output, mode='w', compresslevel=5) as archive:
+        # add .archive.info file
+        for f in files:
+            tarinfo = archive.gettarinfo(f, arcname=f)
+            archive.addfile(tarinfo, ProgressFileObj(prog, f, 'rb'))
+    prog.done()
+#
+#
+# command unpack
+#
+
+def cmd_unpack(args, unknown_args):
+    prog = ProgressBar('Extracting {}'.format(args.archive), os.path.getsize(args.archive))
+    try:
+        with tarfile.open(fileobj=ProgressFileObj(prog, args.archive, 'rb')) as archive:
+            archive.extractall(path=args.dest)
+    except Exception as e:
+        raise ValueError('Failed to unpack SoS archive: {}'.format(e))
+    #
+    prog.done()
 
