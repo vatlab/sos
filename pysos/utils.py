@@ -554,6 +554,7 @@ class ProgressBar:
             self.update = self.empty
             self.curlUpdate = self.empty
             self.progress = self.empty
+            self.progressBy = self.empty
             self.outputProgress = self.empty
             self.done = self.empty
             self.main = ''
@@ -617,6 +618,13 @@ class ProgressBar:
             return
         self.count = count
         self.outputProgress()
+
+    def progressBy(self, count):
+        self.last_progress_count += count
+        if self.last_progress_count > self.min_progress_count:
+            self.count += self.last_progress_count
+            self.outputProgress()
+            self.last_progress_count = 0
 
     def urllibUpdate(self, total, existing):
         '''Update called from pycurl'''

@@ -253,9 +253,10 @@ if __name__ == '__main__':
     parser.add_argument('-n', action='store_true', dest='__dryrun__',
         help='''List files or directories to be removed, without actually
             removing them.''')
-    parser.add_argument('-y', action='store_true', dest='__confirm__',
+    parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
         help='''Remove files without confirmation, suitable for batch removal
             of files.''')
+    addCommonArgs(parser)
     parser.set_defaults(func=cmd_remove)
     #
     # command start
@@ -311,13 +312,12 @@ if __name__ == '__main__':
         help='''ID of the session to be saved, which can be any number of
         digits (even 0 if only one session is available) as long as it can
         uniquely determine a workflow session.''')
-    parser.add_argument('-o', '--output', default='-',
-        help='''Output file, which can be a file or standard output ('-',
-        default). File extension .sosar will be automatically appended
+    parser.add_argument('-o', '--output', required=True,
+        help='''Output file. File extension .sar will be automatically appended
         if not specified.''')
-    parser.add_argument('-i', '--include', nargs='*',
+    parser.add_argument('-i', '--include', nargs='*', default=[],
         help='''Additional files to be incldued in the archive.''')
-    parser.add_argument('-e', '--exclude', nargs='*',
+    parser.add_argument('-e', '--exclude', nargs='*', default=[],
         help='''Files that should not be archived. The parameter should be
         one or more patterns (e.g. '*.bam').''')
     parser.add_argument('-a', '--all', action='store_true', dest='__all__',
@@ -325,6 +325,9 @@ if __name__ == '__main__':
         working directory.''')
     parser.add_argument('-m', '--message', nargs='*',
         help='''A short message to be included into the archive.''')
+    parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
+        help='''Overwrite output file if it already exists''')
+    addCommonArgs(parser)
     parser.set_defaults(func=cmd_pack)
     #
     # command unpack
@@ -338,10 +341,11 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--dest', default='.',
         help='''Directory where a sos archive would be unpacked. Default to
         current directory.''')
-    parser.add_argument('-f', '--force', action='store_true',
+    parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
         help='''Overwrite existing files without promoting users. This option
         can be dangerous to use. Note that SoS checks file signature and
         ignores existing files that are identical to those in the archive.''')
+    addCommonArgs(parser)
     parser.set_defaults(func=cmd_unpack)
     #
     #

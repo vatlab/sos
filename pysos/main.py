@@ -23,6 +23,7 @@
 import os
 import sys
 import fasteners
+from io import FileIO
 
 #
 # subcommand convert
@@ -57,7 +58,7 @@ def cmd_convert(args, style_args):
                 try:
                     script = SoS_Script(filename=args.from_file, transcript=transcript)
                 except Exception as e:
-                    script = None
+                    script = Ne
                     env.logger.warning(e)
             if args.workflow:
                 if not script:
@@ -497,17 +498,19 @@ def cmd_config(args, workflow_args):
 #
 # command pack
 #
-def locate_files(session, includes, excludes, all_files):
+def locate_files(session, include, exclude, all_files):
     import fnmatch
+    import glob
+    from .utils import env
     sig_files = glob.glob('.sos/*.sig')
     if not sig_files:
-        sys.exit('No executed workflow is identified.')
+        raise ValueError('No executed workflow is identified.')
     if not session:
         if len(sig_files) == 1:
             sig_file = sig_files[0]
         else:
-            sys.exit('More than one sessions have been executed.'
-                'Please specify one of the sessions to save.\n '
+            raise ValueError('More than one sessions have been executed. '
+                'Please specify one of the sessions to save.\n'
                 'Available sessions are:\n' +
                 '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
     else:
@@ -515,11 +518,11 @@ def locate_files(session, includes, excludes, all_files):
         if len(matched) == 1:
             sig_file = matched[0]
         elif not matched:
-            sys.exit('No session matches specified session ID ({})'.format(session) +
+            raise ValueError('No session matches specified session ID ({}). '.format(session) +
                 'Available sessions are:\n' +
                 '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
         else:
-            sys.exit('More than one matching sessions have been located.'
+            raise ValueError('More than one matching sessions have been located. '
                 'Please specify one of the sessions to save.\n '
                 'Available sessions are:\n' +
                 '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
@@ -529,24 +532,23 @@ def locate_files(session, includes, excludes, all_files):
     if not all_files:
         external_files = []
         for x in tracked_files:
-            relpth = os.path.relpath(x, '.')
+            relpath = os.path.relpath(x, '.')
             if relpath.startswith('..'):
                 env.logger.info('{} is excluded. Use option --all to include tracked files outside of current directory.'.format(x))
                 external_files.append(x)
         tracked_files -= set(external_files)
     # include
-    for inc in includes:
+    for inc in include:
         if os.path.isfile(os.path.expanduser(inc)):
             tracked_files.add(os.path.expanduser(inc))
         else:
-            sys.exit('Extra include file {} does not exist'.format(inc))
+            raise ValueError('Extra include file {} does not exist'.format(inc))
     # excludle
     for ex in exclude:
         tracked_files = [x for x in tracked_files if not fnmatch.fnmatch(x, ex)]
     #
     return tracked_files
 
-from io import FileIO
 class ProgressFileObj(FileIO):
     '''A wrapper of a file object that update a progress bar
     during file read.
@@ -559,11 +561,19 @@ class ProgressFileObj(FileIO):
         self.prog.progressBy(n)
         return FileIO.read(self, n, *args)
 
+
 def cmd_pack(args, unknown_args):
     import tarfile
-    from .utils import pretty_size
+    import tempfile
+    from .utils import pretty_size, env, ProgressBar
+    from .target import fileMD5
     #
-    files = locate_files(args.session, args.include, args.exclude, args.__all__)
+    env.verbosity = args.verbosity
+    try:
+        files = locate_files(args.session, args.include, args.exclude, args.__all__)
+    except Exception as e:
+        env.logger.error(e)
+        sys.exit(1)
     #
     # get information about files
     file_sizes = {x: os.path.getsize(x) for x in files}
@@ -571,23 +581,99 @@ def cmd_pack(args, unknown_args):
     total_size = sum(file_sizes.values())
     env.logger.info('{} files ({}) will be archived.'.format(len(files), pretty_size(total_size)))
 
-    prog = ProgressBar(name, total_size)
-    with tarfile.TarFile.gzopen(args.output, mode='w', compresslevel=5) as archive:
+    if not args.output.endswith('.sar'):
+        args.output = args.output + '.sar'
+
+    def get_response(msg):
+        if args.__confirm__:
+            print(msg)
+            return True
+        while True:
+            res = input('{} (y/n)? '.format(msg))
+            if res == 'y':
+                return True
+            elif res == 'n':
+                return False
+
+    if os.path.isfile(args.output) and not args.__confirm__ and not get_response('Overwrite {}'.format(args.output)):
+        env.logger.info('Operation aborted due to existing output file')
+        sys.exit(0)
+
+    prog = ProgressBar('Checking', total_size, disp=args.verbosity == 1)
+    manifest_file = tempfile.NamedTemporaryFile(delete=False).name
+    with open(manifest_file, 'w') as manifest:
+        # add .archive.info file
+        for f in files:
+            env.logger.info('Checking {}'.format(f))
+            manifest.write('{}\t{}\n'.format(f, fileMD5(f)))
+    prog.done()
+    #
+    prog = ProgressBar(args.output, total_size, disp=args.verbosity == 1)
+    with tarfile.TarFile.open(args.output, mode='w:gz') as archive:
+        # add manifest
+        archive.add(manifest_file, arcname='__MANIFEST__.txt')
         # add .archive.info file
         for f in files:
             tarinfo = archive.gettarinfo(f, arcname=f)
-            archive.addfile(tarinfo, ProgressFileObj(prog, f, 'rb'))
+            archive.addfile(tarinfo, f if args.verbosity != 1 else ProgressFileObj(prog, f, 'rb'))
+            env.logger.info('Adding {}'.format(f))
     prog.done()
+
 #
 #
 # command unpack
 #
-
 def cmd_unpack(args, unknown_args):
-    prog = ProgressBar('Extracting {}'.format(args.archive), os.path.getsize(args.archive))
+    import tarfile
+    from .utils import env, ProgressBar
+    from .target import fileMD5
+    import tempfile
+
+    env.verbosity = args.verbosity
+    def get_response(msg):
+        if args.__confirm__:
+            print(msg)
+            return True
+        while True:
+            res = input('{} (y/n)? '.format(msg))
+            if res == 'a':
+                args.__confirm__ = True
+                return True
+            elif res == 'y':
+                return True
+            elif res == 'n':
+                return False
+
+    prog = ProgressBar('Extracting {}'.format(args.archive), os.path.getsize(args.archive), disp=args.verbosity==1)
     try:
         with tarfile.open(fileobj=ProgressFileObj(prog, args.archive, 'rb')) as archive:
-            archive.extractall(path=args.dest)
+            manifest_file = archive.next()
+            if manifest_file.name != '__MANIFEST__.txt':
+                raise ValueError('Manifest not found in SoS archive {}.'.format(args.archive))
+            archive.extract(manifest_file)
+            md5 = {}
+            with open(manifest_file.name) as manifest:
+                for line in manifest:
+                    fields = line.split()
+                    md5[fields[0]] = fields[1].strip()
+            os.remove(manifest_file.name)
+
+            while True:
+                f = archive.next()
+                if f is None:
+                    break
+                # if it is absolute path?
+                if f.name.startswith(os.sep):
+                    if not get_response('Extract {} to outside of current directory'.format(f.name)):
+                        continue
+                elif os.path.isfile(os.path.join(args.dest, f.name)):
+                    if fileMD5(os.path.join(args.dest, f.name)) == md5[f.name]:
+                        env.logger.info('Ignore identical {}'.format(f.name))
+                        continue
+                    if not get_response('Overwrite existing file {}'.format(f.name)):
+                        continue
+                env.logger.info('Extracting {}'.format(f.name))
+                archive.extract(f, path=args.dest)
     except Exception as e:
         raise ValueError('Failed to unpack SoS archive: {}'.format(e))
     #
