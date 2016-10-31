@@ -1181,7 +1181,8 @@ class MP_Step_Executor(SP_Step_Executor):
                     # if pool, it must not be in prepare mode and have
                     # __signature_vars__
                     env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                        | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_index', '_runtime'}),
+                        | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_index',
+                        '_runtime', '__workflow_sig__'}),
                     signature,
                     self.step.sigil
                 ))
@@ -1273,7 +1274,8 @@ class RQ_Step_Executor(SP_Step_Executor):
                 # __signature_vars__
                 env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
                     | {'_input', '_output', '_depends', 'input', 'output',
-                        'depends', '_index', '__args__', 'step_name', '_runtime'}),
+                        'depends', '_index', '__args__', 'step_name', '_runtime',
+                        '__workflow_sig__'}),
                 signature,
                 self.step.sigil
             ))
@@ -1316,7 +1318,8 @@ class Celery_Step_Executor(SP_Step_Executor):
                 self.step.global_def,   # global process
                 env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
                     | {'_input', '_output', '_depends', 'input', 'output',
-                        'depends', '_index', '__args__', 'step_name', '_runtime'}),
+                        'depends', '_index', '__args__', 'step_name', '_runtime',
+                        '__workflow_sig__'}),
                 signature,
                 self.step.sigil
             ))

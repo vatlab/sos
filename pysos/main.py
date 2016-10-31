@@ -180,9 +180,11 @@ def cmd_prepare(args, workflow_args):
 # command remove
 #
 def get_tracked_files(sig_file):
+    from .target import FileTarget
     with open(sig_file) as sig:
         start = False
-        files = []
+        tracked_files = []
+        runtime_files = [sig_file]
         for line in sig:
             if line.startswith('# input and dependent files'):
                 start = True
@@ -190,8 +192,12 @@ def get_tracked_files(sig_file):
             if line.startswith('#'):
                 continue
             if start:
-                files.append(line.strip())
-        return set(files)
+                tracked_files.append(line.strip())
+                runtime_files.append(FileTarget(line.strip()).sig_file())
+            else:
+                if line.endswith('exe_info\n'):
+                    runtime_files.append(line.strip())
+    return set(tracked_files), set(runtime_files)
 
 def cmd_remove(args, unknown_args):
     import glob
@@ -202,10 +208,10 @@ def cmd_remove(args, unknown_args):
 
     sig_files = glob.glob('.sos/*.sig')
     if not sig_files:
-        sys.exit('No executed workflow is identified.')
+        raise sys.exit('No executed workflow is identified.')
     tracked_files = set()
     for sig_file in sig_files:
-        tracked_files |= get_tracked_files(sig_file)
+        tracked_files |= get_tracked_files(sig_file)[0]
     #
     tracked_files = {os.path.abspath(os.path.expanduser(x)) for x in tracked_files}
     tracked_dirs = set()
@@ -527,7 +533,7 @@ def locate_files(session, include, exclude, all_files):
                 'Available sessions are:\n' +
                 '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
     #
-    tracked_files = get_tracked_files(sig_file)
+    tracked_files, runtime_file = get_tracked_files(sig_file)
     # all
     if not all_files:
         external_files = []
@@ -547,7 +553,7 @@ def locate_files(session, include, exclude, all_files):
     for ex in exclude:
         tracked_files = [x for x in tracked_files if not fnmatch.fnmatch(x, ex)]
     #
-    return tracked_files
+    return tracked_files, runtime_files
 
 class ProgressFileObj(FileIO):
     '''A wrapper of a file object that update a progress bar
@@ -570,16 +576,16 @@ def cmd_pack(args, unknown_args):
     #
     env.verbosity = args.verbosity
     try:
-        files = locate_files(args.session, args.include, args.exclude, args.__all__)
+        tracked_files, runtime_files = locate_files(args.session, args.include, args.exclude, args.__all__)
     except Exception as e:
         env.logger.error(e)
         sys.exit(1)
     #
     # get information about files
-    file_sizes = {x: os.path.getsize(x) for x in files}
+    file_sizes = {x: os.path.getsize(x) for x in tracked_files}
     # getting file size to create progress bar
     total_size = sum(file_sizes.values())
-    env.logger.info('{} files ({}) will be archived.'.format(len(files), pretty_size(total_size)))
+    env.logger.info('{} files ({}) will be archived.'.format(len(tracked_files), pretty_size(total_size)))
 
     if not args.output.endswith('.sar'):
         args.output = args.output + '.sar'
@@ -602,10 +608,12 @@ def cmd_pack(args, unknown_args):
     prog = ProgressBar('Checking', total_size, disp=args.verbosity == 1)
     manifest_file = tempfile.NamedTemporaryFile(delete=False).name
     with open(manifest_file, 'w') as manifest:
+        # write message in repr format (with "\n") to keep it in the same line
+        manifest.write('# {!r}'.format(args.message if args.message else ''))
         # add .archive.info file
-        for f in files:
+        for f in tracked_files:
             env.logger.info('Checking {}'.format(f))
-            manifest.write('{}\t{}\n'.format(f, fileMD5(f)))
+            manifest.write('{}\t{}\t{}\n'.format(f, os.path.getsize(f), fileMD5(f)))
     prog.done()
     #
     prog = ProgressBar(args.output, total_size, disp=args.verbosity == 1)
@@ -613,13 +621,16 @@ def cmd_pack(args, unknown_args):
         # add manifest
         archive.add(manifest_file, arcname='__MANIFEST__.txt')
         # add .archive.info file
-        for f in files:
+        for f in tracked_files:
             tarinfo = archive.gettarinfo(f, arcname=f)
             archive.addfile(tarinfo, f if args.verbosity != 1 else ProgressFileObj(prog, f, 'rb'))
             env.logger.info('Adding {}'.format(f))
+        env.logger.info('Adding runtime files')
+        for f in runtime_files:
+            tarinfo = archive.gettarinfo(f, arcname=f)
+            archive.addfile(tarinfo)
     prog.done()
 
-#
 #
 # command unpack
 #
@@ -672,7 +683,8 @@ def cmd_unpack(args, unknown_args):
                         continue
                     if not get_response('Overwrite existing file {}'.format(f.name)):
                         continue
-                env.logger.info('Extracting {}'.format(f.name))
+                if not f.name.startswith('.sos/'):
+                    env.logger.info('Extracting {}'.format(f.name))
                 archive.extract(f, path=args.dest)
     except Exception as e:
         raise ValueError('Failed to unpack SoS archive: {}'.format(e))

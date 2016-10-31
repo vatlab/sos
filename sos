@@ -302,29 +302,37 @@ if __name__ == '__main__':
     # command pack
     #
     parser = subparsers.add_parser('pack',
-        help='''Collect all input, output, intermediate, and runtime files
+        help='''Collect all input, output, and tracked intermediate files
         related to a workflow run and bundle them into a single archive.
         The archive can be examined (without unpacking) with command "sos
-        show" and be unpacked with command "sos unpack". SoS does not
+        show" and be unpacked with command "sos unpack". This command does not
         include files outside of the current working directory unless they
         are specified by option --include, or --all.''')
     parser.add_argument('session', nargs='?',
         help='''ID of the session to be saved, which can be any number of
-        digits (even 0 if only one session is available) as long as it can
-        uniquely determine a workflow session.''')
-    parser.add_argument('-o', '--output', required=True,
-        help='''Output file. File extension .sar will be automatically appended
-        if not specified.''')
+        digits as long as it can uniquely determine a workflow session. This
+        parameter can be ignored if only one session is available.''')
+    parser.add_argument('-o', '--output', required=True, default="-",
+        help='''Output file, which can be a file with extension ".sar" (the
+        extension will be be automatically appended if needed), or "-" for
+        standard output (default).''')
     parser.add_argument('-i', '--include', nargs='*', default=[],
-        help='''Additional files to be incldued in the archive.''')
+        help='''Additional files or directories to be incldued in the archive.
+        SoS will archive all files under specified directories, including
+        hidden directories such as ".git". Option --exclude could be used
+        to exclude these files.''')
     parser.add_argument('-e', '--exclude', nargs='*', default=[],
-        help='''Files that should not be archived. The parameter should be
-        one or more patterns (e.g. '*.bam').''')
+        help='''Files that should be excluded from archive. The parameter
+        should be one or more patterns that match the whole path (e.g.
+        "output/*.log" or file or directory names such as "tmp" or "*.bam".
+        ''')
     parser.add_argument('-a', '--all', action='store_true', dest='__all__',
-        help='''Include all files even if they reside outside of the current
-        working directory.''')
-    parser.add_argument('-m', '--message', nargs='*',
-        help='''A short message to be included into the archive.''')
+        help='''Include all tracked files even if they reside outside of the
+        current working directory.''')
+    parser.add_argument('-m', '--message', 
+        help='''A short message to be included into the archive. Because the
+        message would be lost during unpacking, it is highly recommended that
+        you create a README file and include it with option --include.''')
     parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
         help='''Overwrite output file if it already exists''')
     addCommonArgs(parser)
@@ -333,14 +341,28 @@ if __name__ == '__main__':
     # command unpack
     #
     parser = subparsers.add_parser('unpack',
-        help='''Unpack a sos archive to a specified directory. Files that were
-        outside of the project directory would be extracted in this directory
-        as well.''')
+        help='''Unpack a sos archive to a specified directory. For security
+        reasons, files that were outside of the project directory would be
+        extracted in this directory unless option -e is specified.''')
     parser.add_argument('archive',
         help='''SoS archive saved by command sos pack''')
+    parser.add_argument('files',
+        help='''An optional list of files to be processed, which can be exact
+        filenames or patterns (e.g. "*.bam")''')
     parser.add_argument('-d', '--dest', default='.',
         help='''Directory where a sos archive would be unpacked. Default to
         current directory.''')
+    parser.add_argument('-l', '--list', action='store_true', dest='__list__',
+        help='''List content of the archive instead of extracting it. The names,
+        uncompressed file sizes  and  modification  dates and times of the
+        specified files are printed, along with totals  for  all  files
+        specified.''')
+    parser.add_argument('-e', '--external', action='store_true',
+        help='''Extract files outside of the project to their external destinations.
+        This option can be dangerous because it can overwrite system files silently
+        if accompanied with option -y.''')
+    parser.add_argument('-n', '--no', action='store_true', dest='__no_overwrite__',
+        help='''Do not overwrite existing files without promoting users.''')
     parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
         help='''Overwrite existing files without promoting users. This option
         can be dangerous to use. Note that SoS checks file signature and

@@ -89,6 +89,11 @@ class Base_Executor:
         # interactive mode does not pass workflow
         if self.workflow:
             self.md5 = self.create_signature()
+            # remove old workflow file.
+            if os.path.isfile(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5))):
+                os.remove(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
+        else:
+            self.md5 = None
 
     def create_signature(self):
         with StringIO() as sig:
@@ -113,6 +118,7 @@ class Base_Executor:
         env.sos_dict = WorkflowDict()
 
         # inject a few things
+        env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
         env.sos_dict.set('__unknown_args__', self.args)
@@ -360,7 +366,7 @@ class Base_Executor:
         '''Save tracked files in .sos so that untracked files can be cleaned by command
         sos clean.
         '''
-        with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'w') as sigfile:
+        with open(env.sos_dict['__workflow_sig__'], 'a') as sigfile:
             sigfile.write(self.sig_content)
             sigfile.write('# input and dependent files\n')
             for target in sorted(x for x in dag._all_dependent_files if isinstance(x, str)):

@@ -445,6 +445,11 @@ class RuntimeInfo:
                         env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, value))
             md5.write('# step process\n')
             md5.write(self.script)
+        # successfully write signature, write in workflow runtime info
+        workflow_sig = env.sos_dict['__workflow_sig__']
+        with fasteners.InterProcessLock(workflow_sig + '_'):
+            with open(workflow_sig, 'a') as wf:
+                wf.write(self.proc_info + '\n')
         return True
 
     def validate(self):
@@ -529,5 +534,10 @@ class RuntimeInfo:
             env.logger.trace('No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y)))
             return False
         env.logger.trace('Signature matches and returns {}'.format(res))
+        # validation success, record signature used
+        workflow_sig = env.sos_dict['__workflow_sig__']
+        with fasteners.InterProcessLock(workflow_sig + '_'):
+            with open(workflow_sig, 'a') as wf:
+                wf.write(self.proc_info + '\n')
         return res
 
