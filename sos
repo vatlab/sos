@@ -312,7 +312,7 @@ if __name__ == '__main__':
         help='''ID of the session to be saved, which can be any number of
         digits as long as it can uniquely determine a workflow session. This
         parameter can be ignored if only one session is available.''')
-    parser.add_argument('-o', '--output', required=True, default="-",
+    parser.add_argument('-o', '--output', default="-",
         help='''Output file, which can be a file with extension ".sar" (the
         extension will be be automatically appended if needed), or "-" for
         standard output (default).''')
@@ -346,7 +346,7 @@ if __name__ == '__main__':
         extracted in this directory unless option -e is specified.''')
     parser.add_argument('archive',
         help='''SoS archive saved by command sos pack''')
-    parser.add_argument('files',
+    parser.add_argument('files', nargs='*',
         help='''An optional list of files to be processed, which can be exact
         filenames or patterns (e.g. "*.bam")''')
     parser.add_argument('-d', '--dest', default='.',
@@ -355,8 +355,7 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--list', action='store_true', dest='__list__',
         help='''List content of the archive instead of extracting it. The names,
         uncompressed file sizes  and  modification  dates and times of the
-        specified files are printed, along with totals  for  all  files
-        specified.''')
+        specified files are printed, along with totals for all files specified.''')
     parser.add_argument('-e', '--external', action='store_true',
         help='''Extract files outside of the project to their external destinations.
         This option can be dangerous because it can overwrite system files silently

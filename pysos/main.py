@@ -182,21 +182,27 @@ def cmd_prepare(args, workflow_args):
 def get_tracked_files(sig_file):
     from .target import FileTarget
     with open(sig_file) as sig:
-        start = False
+        with_tracked = False
+        with_runtime = False
         tracked_files = []
         runtime_files = [sig_file]
         for line in sig:
+            if line.startswith('# runtime signatures'):
+                with_runtime = True
+                with_tracked = False
+                continue
             if line.startswith('# input and dependent files'):
-                start = True
+                with_tracked = True
                 continue
             if line.startswith('#'):
                 continue
-            if start:
-                tracked_files.append(line.strip())
-                runtime_files.append(FileTarget(line.strip()).sig_file())
-            else:
-                if line.endswith('exe_info\n'):
-                    runtime_files.append(line.strip())
+            if with_tracked:
+                tracked_files.append(line.rsplit('\t', 2)[0])
+                t = FileTarget(line.strip())
+                if t.exists('signature'):
+                    runtime_files.append(t.sig_file())
+            elif with_runtime:
+                runtime_files.append(line.strip())
     return set(tracked_files), set(runtime_files)
 
 def cmd_remove(args, unknown_args):
@@ -533,7 +539,7 @@ def locate_files(session, include, exclude, all_files):
                 'Available sessions are:\n' +
                 '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
     #
-    tracked_files, runtime_file = get_tracked_files(sig_file)
+    tracked_files, runtime_files = get_tracked_files(sig_file)
     # all
     if not all_files:
         external_files = []
@@ -572,7 +578,7 @@ def cmd_pack(args, unknown_args):
     import tarfile
     import tempfile
     from .utils import pretty_size, env, ProgressBar
-    from .target import fileMD5
+    from .target import FileTarget
     #
     env.verbosity = args.verbosity
     try:
@@ -587,8 +593,12 @@ def cmd_pack(args, unknown_args):
     total_size = sum(file_sizes.values())
     env.logger.info('{} files ({}) will be archived.'.format(len(tracked_files), pretty_size(total_size)))
 
-    if not args.output.endswith('.sar'):
-        args.output = args.output + '.sar'
+    if args.output == '-':
+        tar_args = {'fileobj': sys.stdout.buffer, 'mode': 'w:gz'}
+    elif not args.output.endswith('.sar'):
+        tar_args = {'name': args.output + '.sar', 'mode': 'w:gz'}
+    else:
+        tar_args = {'name': args.output, 'mode': 'w:gz'}
 
     def get_response(msg):
         if args.__confirm__:
@@ -609,21 +619,22 @@ def cmd_pack(args, unknown_args):
     manifest_file = tempfile.NamedTemporaryFile(delete=False).name
     with open(manifest_file, 'w') as manifest:
         # write message in repr format (with "\n") to keep it in the same line
-        manifest.write('# {!r}'.format(args.message if args.message else ''))
+        manifest.write('# {!r}\n'.format(args.message if args.message else ''))
         # add .archive.info file
         for f in tracked_files:
             env.logger.info('Checking {}'.format(f))
-            manifest.write('{}\t{}\t{}\n'.format(f, os.path.getsize(f), fileMD5(f)))
+            ft = FileTarget(f)
+            manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.md5()))
     prog.done()
     #
     prog = ProgressBar(args.output, total_size, disp=args.verbosity == 1)
-    with tarfile.TarFile.open(args.output, mode='w:gz') as archive:
+    with tarfile.TarFile.open(**tar_args) as archive:
         # add manifest
         archive.add(manifest_file, arcname='__MANIFEST__.txt')
         # add .archive.info file
         for f in tracked_files:
             tarinfo = archive.gettarinfo(f, arcname=f)
-            archive.addfile(tarinfo, f if args.verbosity != 1 else ProgressFileObj(prog, f, 'rb'))
+            archive.addfile(tarinfo, None if args.verbosity != 1 else ProgressFileObj(prog, f, 'rb'))
             env.logger.info('Adding {}'.format(f))
         env.logger.info('Adding runtime files')
         for f in runtime_files:
@@ -636,9 +647,10 @@ def cmd_pack(args, unknown_args):
 #
 def cmd_unpack(args, unknown_args):
     import tarfile
-    from .utils import env, ProgressBar
+    from .utils import env, ProgressBar, pretty_size
     from .target import fileMD5
     import tempfile
+    import time
 
     env.verbosity = args.verbosity
     def get_response(msg):
@@ -655,20 +667,37 @@ def cmd_unpack(args, unknown_args):
             elif res == 'n':
                 return False
 
-    prog = ProgressBar('Extracting {}'.format(args.archive), os.path.getsize(args.archive), disp=args.verbosity==1)
-    try:
+    prog = ProgressBar('Extracting {}'.format(args.archive), os.path.getsize(args.archive),
+        disp=args.verbosity==1 and not args.__list__)
+    #try:
+    if True:
         with tarfile.open(fileobj=ProgressFileObj(prog, args.archive, 'rb')) as archive:
             manifest_file = archive.next()
             if manifest_file.name != '__MANIFEST__.txt':
                 raise ValueError('Manifest not found in SoS archive {}.'.format(args.archive))
             archive.extract(manifest_file)
             md5 = {}
+            if args.__list__:
+                print('   Length    Date   Time   Name')
+                print('   ------    ----   ----   ----')
             with open(manifest_file.name) as manifest:
+                line = manifest.readline()
+                total_size = 0
+                total_files = 0
                 for line in manifest:
                     fields = line.split()
-                    md5[fields[0]] = fields[1].strip()
+                    # name, mtime, size, md5
+                    if args.__list__:
+                        print('{:>9s}  {:>12s}  {}'.format(pretty_size(int(fields[2])),
+                            time.strftime('%m-%d-%y %H:%M', time.gmtime(float(fields[1]))), fields[0]))
+                        total_size += int(fields[2])
+                        total_files += 1
+                    md5[fields[0]] = fields[3].strip()
             os.remove(manifest_file.name)
-
+            if args.__list__:
+                print('   ------                  ----')
+                print('{:>9s}                  {} files'.format(pretty_size(total_size), total_files) )
+                return
             while True:
                 f = archive.next()
                 if f is None:
@@ -686,8 +715,8 @@ def cmd_unpack(args, unknown_args):
                 if not f.name.startswith('.sos/'):
                     env.logger.info('Extracting {}'.format(f.name))
                 archive.extract(f, path=args.dest)
-    except Exception as e:
-        raise ValueError('Failed to unpack SoS archive: {}'.format(e))
+    #except Exception as e:
+    #    raise ValueError('Failed to unpack SoS archive: {}'.format(e))
     #
     prog.done()
 

@@ -136,6 +136,12 @@ class FileTarget(BaseTarget):
     def fullname(self):
         return os.path.expanduser(self._filename)
         
+    def size(self):
+        return os.path.getsize(self._filename)
+    
+    def mtime(self):
+        return os.path.getmtime(self._filename)
+
     def sig_file(self):
         if self._sig_file is not None:
             return self._sig_file
@@ -174,10 +180,13 @@ class FileTarget(BaseTarget):
         '''Return md5'''
         if self._md5 is not None:
             return self._md5
-        with open(self.sig_file()) as md5:
-            line = md5.readline()
-            f, m = line.rsplit('\t', 1)
-            return m.strip()
+        if not os.path.isfile(self.sig_file()):
+            return calc_md5()
+        else:
+            with open(self.sig_file()) as md5:
+                line = md5.readline()
+                f, m = line.rsplit('\t', 1)
+                return m.strip()
 
     def validate(self):
         '''Check if file matches its signature'''

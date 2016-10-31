@@ -87,11 +87,15 @@ class Base_Executor:
         self.nested = nested
         self.config_file = config_file
         # interactive mode does not pass workflow
-        if self.workflow:
+        if self.workflow and not nested:
             self.md5 = self.create_signature()
             # remove old workflow file.
-            if os.path.isfile(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5))):
-                os.remove(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
+            with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'w') as sig:
+                sig.write('# workflow: {}\n'.format(self.workflow.name))
+                sig.write('# configuration: {}\n'.format(config_file))
+                sig.write('# start time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
+                sig.write(self.sig_content)
+                sig.write('# runtime signatures\n')
         else:
             self.md5 = None
 
@@ -367,13 +371,15 @@ class Base_Executor:
         sos clean.
         '''
         with open(env.sos_dict['__workflow_sig__'], 'a') as sigfile:
-            sigfile.write(self.sig_content)
+            sigfile.write('# end time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
             sigfile.write('# input and dependent files\n')
             for target in sorted(x for x in dag._all_dependent_files if isinstance(x, str)):
-                sigfile.write('{}\n'.format(target))
+                t = FileTarget(target)
+                sigfile.write('{}\t{}\t{}\n'.format(target, t.size(), t.md5()))
             sigfile.write('# output files\n')
             for target in sorted(x for x in dag._all_output_files if isinstance(x, str)):
-                sigfile.write('{}\n'.format(target))   
+                t = FileTarget(target)
+                sigfile.write('{}\t{}\t{}\n'.format(target, t.size(), t.md5()))   
         
     def run(self, targets=None, mode='run'):
         '''Execute a workflow with specified command line args. If sub is True, this
