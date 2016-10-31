@@ -42,6 +42,12 @@ import atexit
 KM = None
 KC = None
 
+try:
+    import feather
+    with_feather = True
+except ImportError:
+    with_feather = False
+
 @contextmanager
 def sos_kernel():
     """Context manager for the global kernel instance
@@ -226,6 +232,7 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 
+    @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testGetPythonDataFrameFromR(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
@@ -249,6 +256,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 
+    @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testGetPythonDataFromR(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
@@ -299,6 +307,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             self.assertEqual(res['dict_var'], {'a': 1, 'b': 2, 'c': '3'})
             self.assertEqual(res['mat_var'].shape, (2,2))
 
+    @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testPutRDataFrameToPython(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
@@ -317,6 +326,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 
+    @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testPutRDataToPython(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel

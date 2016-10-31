@@ -211,7 +211,7 @@ class FileTarget(BaseTarget):
             return False
         with open(self.sig_file()) as md5:
             for line in md5:
-                f, m = line.rsplit('\t', 1)
+                f, _, _, m = line.rsplit('\t', 3)
                 if not os.path.isfile(f):
                     return False
                 if fileMD5(f) != m.strip():
