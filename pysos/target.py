@@ -137,10 +137,26 @@ class FileTarget(BaseTarget):
         return os.path.expanduser(self._filename)
         
     def size(self):
-        return os.path.getsize(self._filename)
+        if os.path.isfile(self._filename):
+            return os.path.getsize(self.fullname())
+        elif os.path.isfile(self.sig_file()):
+            with open(self.sig_file()) as md5:
+                line = md5.readline()
+                _, _, s, _ = line.rsplit('\t', 3)
+                return s.strip()
+        else:
+            raise RuntimeError('{} or its signature does not exist.'.format(self._filename))
     
     def mtime(self):
-        return os.path.getmtime(self._filename)
+        if os.path.isfile(self._filename):
+            return os.path.getmtime(self.fullname())
+        elif os.path.isfile(self.sig_file()):
+            with open(self.sig_file()) as md5:
+                line = md5.readline()
+                _, t, _, _ = line.rsplit('\t', 3)
+                return t.strip()
+        else:
+            raise RuntimeError('{} or its signature does not exist.'.format(self._filename))
 
     def sig_file(self):
         if self._sig_file is not None:
@@ -167,7 +183,8 @@ class FileTarget(BaseTarget):
         # path to file
         with open(self.sig_file(), 'w') as md5:
             self.calc_md5()
-            md5.write('{}\t{}\n'.format(self.fullname(), self.md5()))
+            md5.write('{}\t{}\t{}\t{}\n'.format(self.fullname(), os.path.getmtime(self.fullname()),
+                os.path.getsize(self.fullname()), self.md5()))
             for f in self._attachments:
                 md5.write('{}\t{}\n'.format(f, fileMD5(f)))
 
@@ -181,11 +198,11 @@ class FileTarget(BaseTarget):
         if self._md5 is not None:
             return self._md5
         if not os.path.isfile(self.sig_file()):
-            return calc_md5()
+            return self.calc_md5()
         else:
             with open(self.sig_file()) as md5:
                 line = md5.readline()
-                f, m = line.rsplit('\t', 1)
+                _, _, _, m = line.rsplit('\t', 3)
                 return m.strip()
 
     def validate(self):
