@@ -23,7 +23,7 @@ import os
 import collections
 from io import StringIO
 from shlex import quote
-from tokenize import generate_tokens, untokenize, NAME, STRING
+from tokenize import generate_tokens, untokenize, NAME, STRING, INDENT
 
 from .utils import env, Error, short_repr, DelayedAction
 from .sos_syntax import FORMAT_SPECIFIER, SIMPLE_SUB 
@@ -44,6 +44,21 @@ class InterpolationError(Error):
             msg = '{}: {}'.format(msg, text)
         Error.__init__(self, msg)
         self.args = (text, msg)
+
+def sos_compile(expr, *args, **kwargs):
+    ''' Compiling an statement but ignores tab error (mixed tab and space'''
+    try:
+        compile(expr, *args, **kwargs)
+    except TabError:
+        # if tab error, try to fix it by replacing \t with 4 spaces
+        result = []
+        for toknum, tokval, _, _, _  in generate_tokens(StringIO(expr).readline):
+            if toknum == INDENT and '\t' in tokval:
+                tokval = tokval.replace('\t', '    ')
+            # the resusting string is put back to the expression (or statement)
+            result.append((toknum, tokval))
+        # other compiling errors are still raised
+        compile(untokenize(result), *args, **kwargs)
 
 #
 # String intepolation
@@ -174,7 +189,7 @@ class SoS_String:
                         fmt = None
                         conversion = None
                     # if the syntax is correct
-                    compile(expr, '<string>', 'eval')
+                    sos_compile(expr, '<string>', 'eval')
                     try:
                         if hasattr(self, 'accessed_vars'):
                             self.accessed_vars |= accessed_vars(expr)
@@ -252,10 +267,12 @@ def ConvertString(s, sigil):
     string interpolation. Not sure how to handle this option right now.
     '''
     left_sigil = sigil.split(' ')[0]
-    if left_sigil not in s:
+    if left_sigil not in s and not '\t' in s:
         return s
     result = []
     # tokenize the input syntax.
+    indent_space = False
+    indent_tab = False
     for toknum, tokval, _, _, _  in generate_tokens(StringIO(s).readline):
         if toknum == STRING:
             # if this item is a string that uses triple single quote
@@ -265,8 +282,16 @@ def ConvertString(s, sigil):
             # we then perform interpolation on the string and put it back to expression
             if left_sigil in tokval:
                 tokval = 'interpolate(' + tokval + ", \'" + sigil + "', locals())"
+        if toknum == INDENT:
+            if '\t' in tokval:
+                tokval = tokval.replace('\t', '    ')
+                indent_tab = True
+            elif ' ' in tokval:
+                indent_space = True
         # the resusting string is put back to the expression (or statement)
         result.append((toknum, tokval))
+    if indent_space and indent_tab:
+        env.logger.warning('Tabs converted to 4 spaces due to mixed use of tab and space in statement {}'.format(short_repr(s)))
     return untokenize(result)
 
 accessed_vars_cache = {}
@@ -300,7 +325,7 @@ def SoS_eval(expr, sigil='${ }'):
 
 def _is_expr(expr):
     try:
-        compile(expr, '<string>', 'eval')
+        sos_compile(expr, '<string>', 'eval')
         return True
     except:
         return False
@@ -330,7 +355,7 @@ def SoS_exec(stmts, sigil='${ }', _dict=None):
     while True:
         try:
             # test current group
-            compile(code_group[idx], filename = '<string>', mode='exec')
+            sos_compile(code_group[idx], filename = '<string>', mode='exec')
             # if it is ok, go next
             idx += 1
             if idx == len(code_group):

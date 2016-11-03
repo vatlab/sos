@@ -62,6 +62,21 @@ class TestParser(unittest.TestCase):
         # not the default value of 1.0
         self.assertEqual(script.format_version, '1.1')
 
+    def testMixedTabAndSpace(self):
+        '''Test handling of mixed tab and space'''
+        script = SoS_Script('''
+[1: shared=['a', 'b', 'c']]
+if True:
+    a = 1
+\tb = 2
+\tc= 3
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertEqual(env.sos_dict['a'], 1)
+        self.assertEqual(env.sos_dict['b'], 2)
+        self.assertEqual(env.sos_dict['c'], 3)
+
     def testWorkflows(self):
         '''Test workflows defined in SoS script'''
         script = SoS_Script('''[0]''')
