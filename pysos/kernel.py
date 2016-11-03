@@ -288,7 +288,16 @@ def R_repr(obj):
                 raise UsageError('The feather-format module is required to pass pandas DataFrame as R data.frame'
                     'See https://github.com/wesm/feather/tree/master/python for details.')
             feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
-            feather.write_dataframe(obj, feather_tmp_)
+            try:
+                data = obj.copy()
+                feather.write_dataframe(data, feather_tmp_)
+            except:
+                # if data cannot be written, we try to manipulate data
+                # frame to have consistent types and try again
+                for c in data.columns:
+                    if not homogeneous_type(data[c]):
+                        data[c] = [str(x) for x in data[c]]
+                feather.write_dataframe(data, feather_tmp_)
             return 'read_feather("{}")'.format(feather_tmp_)
         else:
             return repr('Unsupported datatype {}'.format(short_repr(obj)))
