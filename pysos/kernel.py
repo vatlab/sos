@@ -25,6 +25,7 @@ import sys
 import base64
 import imghdr
 import copy
+import re
 import fnmatch
 import contextlib
 import subprocess
@@ -455,6 +456,18 @@ class SoS_Kernel(Kernel):
     banner = "SoS kernel - script of scripts"
     shell = InteractiveShell.instance()
 
+    MAGIC_DICT = re.compile('^%dict(\s|$)')
+    MAGIC_CONNECT_INFO = re.compile('^%connect_info(\s|$)')
+    MAGIC_MATPLOTLIB = re.compile('^%matplotlib(\s|$)')
+    MAGIC_SET = re.compile('^%set(\s|$)')
+    MAGIC_RESTART = re.compile('^%restart(\s|$)')
+    MAGIC_WITH = re.compile('^%with(\s|$)')
+    MAGIC_USE = re.compile('^%use(\s|$)')
+    MAGIC_GET = re.compile('^%get(\s|$)')
+    MAGIC_PUT = re.compile('^%put(\s|$)')
+    MAGIC_PASTE = re.compile('^%paste(\s|$)')
+    MAGIC_RUN = re.compile('^%run(\s|$)')
+
     def __init__(self, **kwargs):
         super(SoS_Kernel, self).__init__(**kwargs)
         self.options = ''
@@ -865,6 +878,8 @@ class SoS_Kernel(Kernel):
                     })
                 raise
             except KeyboardInterrupt:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stderr', 'text': 'Keyboard Interrupt\n'})
                 return {'status': 'abort', 'execution_count': self.execution_count}
             finally:
                 sys.stderr.flush()
@@ -969,12 +984,12 @@ class SoS_Kernel(Kernel):
             # this is a special probing command from vim-ipython. Let us handle it specially
             # so that vim-python can get the pid.
             return 
-        if code.startswith('%dict'):
+        if self.MAGIC_DICT.match(code):
             # %dict should be the last magic
             options, remaining_code = self.get_magic_and_code(code, True)
             self.handle_magic_dict(options)
             return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
-        elif code.startswith('%connect_info'):
+        elif self.MAGIC_CONNECT_INFO.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             cfile = find_connection_file()
             with open(cfile) as conn:
@@ -982,23 +997,23 @@ class SoS_Kernel(Kernel):
             self.send_response(self.iopub_socket, 'stream',
                   {'name': 'stdout', 'text': 'Connection file: {}\n{}'.format(cfile, conn_info)})
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-        elif code.startswith('%matplotlib'):
+        elif self.MAGIC_MATPLOTLIB.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.shell.enable_gui = lambda gui: None
             gui, backend = self.shell.enable_matplotlib(options)
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-        elif code.startswith('%set'):
+        elif self.MAGIC_SET.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_set(options)
             # self.options will be set to inflence the execution of remaing_code
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-        elif code.startswith('%restart'):
+        elif self.MAGIC_RESTART.match(code):
             options, remaining_code = self.get_magic_and_code(code, True)
             if options == 'R':
                 options = 'ir'
             self.restart_kernel(options)
             return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
-        elif code.startswith('%with'):
+        elif self.MAGIC_WITH.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             args = self.parse_in_out_vars(options.split())
             if args.kernel == 'R':
@@ -1011,7 +1026,7 @@ class SoS_Kernel(Kernel):
                 return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.switch_kernel(original_kernel)
-        elif code.startswith('%use'):
+        elif self.MAGIC_USE.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             args = self.parse_in_out_vars(options.split())
             if args.kernel == 'R':
@@ -1020,15 +1035,15 @@ class SoS_Kernel(Kernel):
                 self.handle_magic_get(args.in_vars)
             self.switch_kernel(args.kernel, args.out_vars)
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-        elif code.startswith('%get'):
+        elif self.MAGIC_GET.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_get(options.split())
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-        elif code.startswith('%put'):
+        elif self.MAGIC_PUT.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_put(options.split())
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-        elif code.startswith('%paste'):
+        elif self.MAGIC_PASTE.match(code):
             options, remaining_code = self.get_magic_and_code(code, True)
             self.options += ' ' + options.strip()
             try:
@@ -1042,7 +1057,7 @@ class SoS_Kernel(Kernel):
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': code.strip() + '\n## -- End pasted text --\n'})
             return self.do_execute(code, silent, store_history, user_expressions, allow_stdin)
-        elif code.startswith('%run'):
+        elif self.MAGIC_RUN.match(code):
             options, remaining_code = self.get_magic_and_code(code, True)
             old_options = self.options
             self.options += ' ' + options
@@ -1066,7 +1081,12 @@ class SoS_Kernel(Kernel):
             except Exception as e:
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(short_repr(code), e)})
-            return self.run_cell(code, store_history)
+            try:
+                return self.run_cell(code, store_history)
+            except KeyboardInterrupt:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stderr', 'text': 'Keyboard Interrupt\n'})
+                return {'status': 'abort', 'execution_count': self.execution_count}
         else:
             # run sos
             try:
