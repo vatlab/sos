@@ -978,6 +978,8 @@ class SoS_Kernel(Kernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
+        if code.startswith('\n') or code.startswith(' '):
+            code = re.sub('^\s*\n', '', code, re.M)
         if self.original_keys is None:
             self._reset_dict()
         if code == 'import os\n_pid = os.getpid()':
