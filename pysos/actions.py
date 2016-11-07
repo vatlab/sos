@@ -451,24 +451,23 @@ class SoS_ExecuteScript:
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
                     p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
                     pid = p.pid
-                    m = ProcessMonitor(pid, msg=self.script)
-                    m.start()
                     env.register_process(p.pid, 'Runing {}'.format(script_file))
                     out, err = p.communicate()
                     sys.stdout.write(out.decode())
                     sys.stderr.write(err.decode())
                     ret = p.returncode
-                    summarizeExecution(pid)
                     sys.stdout.flush()
                     sys.stderr.flush()
                 else:
                     p = subprocess.Popen(cmd, shell=True)
                     pid = p.pid
-                    m = ProcessMonitor(pid, msg=self.script)
-                    m.start()
+                    if '__step_sig__' in env.sos_dict and env.sos_dict['__step_sig__'] is not None:
+                        m = ProcessMonitor(pid, msg=self.script, sig=env.sos_dict['__step_sig__'])
+                        m.start()
                     env.register_process(pid, 'Runing {}'.format(script_file))
                     ret = p.wait()
-                    summarizeExecution(pid)
+                    if '__step_sig__' in env.sos_dict and env.sos_dict['__step_sig__'] is not None:
+                        summarizeExecution(pid)
 
                 if ret != 0:
                     with open(debug_script_file, 'w') as sfile:
@@ -1206,13 +1205,16 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
             sys.stdout.write(out.decode())
             sys.stderr.write(err.decode())
             ret = p.returncode
-            summarizeExecution(pid)
         else:
             p = subprocess.Popen(cmd, shell=True)
             pid = p.pid
+            if '__step_sig__' in env.sos_dict and env.sos_dict['__step_sig__'] is not None:
+                m = ProcessMonitor(pid, msg=self.script, sig=env.sos_dict['__step_sig__'])
+                m.start()
             env.register_process(pid, 'Runing {}'.format(script_file))
             ret = p.wait()
-            summarizeExecution(pid)
+            if '__step_sig__' in env.sos_dict and env.sos_dict['__step_sig__'] is not None:
+                summarizeExecution(pid)
     except Exception as e:
         env.logger.error(e)
     finally:

@@ -337,13 +337,14 @@ class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.
     '''
-    def __init__(self, script, input_files=[], output_files=[], dependent_files = [], signature_vars = []):
+    def __init__(self, step_md5, script, input_files=[], output_files=[], dependent_files = [], signature_vars = []):
         '''Runtime information for specified output files
 
         output_files:
             intended output file
 
         '''
+        self.step_md5 = step_md5
         self.script = script
         # input can only be a list of files
         if not isinstance(input_files, list):
@@ -393,7 +394,8 @@ class RuntimeInfo:
             env.logger.trace('Lock acquired for output files {}'.format(short_repr(self.output_files)))
 
     def __getstate__(self):
-        return {'proc_info': self.proc_info,
+        return {'step_md5': self.step_md5,
+                'proc_info': self.proc_info,
                 'input_files': self.input_files,
                 'output_files': self.output_files,
                 'dependent_files': self.dependent_files,
@@ -401,6 +403,7 @@ class RuntimeInfo:
                 'script': self.script}
 
     def __setstate__(self, dict):
+        self.step_md5 = dict['step_md5']
         self.proc_info = dict['proc_info']
         self.input_files = dict['input_files']
         self.output_files = dict['output_files']
@@ -475,7 +478,7 @@ class RuntimeInfo:
         workflow_sig = env.sos_dict['__workflow_sig__']
         with fasteners.InterProcessLock(workflow_sig + '_'):
             with open(workflow_sig, 'a') as wf:
-                wf.write('EXE_SIG\t{}\n'.format(self.proc_info))
+                wf.write('EXE_SIG\tstep={}\tsession={}\n'.format(self.step_md5, os.path.basename(self.proc_info).split('.')[0]))
         return True
 
     def validate(self):

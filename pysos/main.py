@@ -191,7 +191,7 @@ def get_tracked_files(sig_file):
                 if t.exists('signature'):
                     runtime_files.append(t.sig_file())
             elif line.startswith('EXE_SIG'):
-                runtime_files.append(line.split('\t', 1)[-1].strip())
+                runtime_files.append('.sos/.runtime/{}.exe_info'.format(line.split('session=', 1)[1].strip()))
     return set(tracked_files), set(runtime_files)
 
 def cmd_remove(args, unknown_args):
@@ -628,6 +628,7 @@ def cmd_pack(args, unknown_args):
         env.logger.info('Adding runtime files')
         for f in runtime_files:
             tarinfo = archive.gettarinfo(f, arcname=f)
+            env.logger.trace('Adding {}'.format(f))
             archive.addfile(tarinfo)
     prog.done()
 

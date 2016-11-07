@@ -92,12 +92,19 @@ def execute_task(params):
         if global_def:
             SoS_exec(global_def, sigil)
         # step process
+        if signature is None:
+            env.sos_dict.set('__step_sig__', None)
+        else:
+            env.sos_dict.set('__step_sig__', os.path.basename(signature.proc_info).split('.')[0])
         SoS_exec(task, sigil)
         os.chdir(env.exec_dir)
     except Exception as e:
         return {'succ': 1, 'exception': e, 'path': os.environ['PATH']}
     except KeyboardInterrupt:
         raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
+    finally:
+        env.sos_dict.set('__step_sig__', None)
+
     if signature is not None:
         signature.write()
     env.deregister_process(os.getpid())
@@ -598,13 +605,19 @@ class Base_Step_Executor:
         except Exception as e:
             raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
 
-    def execute(self, stmt):
+    def execute(self, stmt, sig=None):
         try:
+            if sig is None:
+                env.sos_dict.set('__step_sig__', None)
+            else:
+                env.sos_dict.set('__step_sig__', os.path.basename(sig.proc_info).split('.')[0])
             self.last_res = SoS_exec(stmt, self.step.sigil)
         except (AbortExecution, UnknownTarget, RemovedTarget, UnavailableLock):
             raise
         except Exception as e:
             raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(stmt), e))
+        finally:
+            env.sos_dict.set('__step_sig__', None)
 
     def collect_result(self):
         # only results will be sent back to the master process
@@ -789,7 +802,7 @@ class Base_Step_Executor:
                                 # ofiles can be Undetermined
                                 sg = self.step_signature(idx)
                                 if sg is not None and not isinstance(g, Undetermined):
-                                    signatures[idx] = RuntimeInfo(sg, env.sos_dict['_input'],
+                                    signatures[idx] = RuntimeInfo(self.step.md5, sg, env.sos_dict['_input'],
                                         env.sos_dict['_output'], env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
                                     if env.sig_mode == 'default':
                                         res = signatures[idx].validate()
@@ -832,7 +845,7 @@ class Base_Step_Executor:
                             raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                     else:
                         try:
-                            self.execute(statement[1])
+                            self.execute(statement[1], signatures[idx])
                         except AbortExecution as e:
                             if e.message:
                                 env.logger.warning(e)
