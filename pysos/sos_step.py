@@ -593,11 +593,7 @@ class Base_Step_Executor:
     def assign(self, key, value):
         try:
             env.sos_dict[key] = SoS_eval(value, self.step.sigil)
-        except UnknownTarget:
-            raise
-        except RemovedTarget:
-            raise
-        except UnavailableLock:
+        except (UnknownTarget, RemovedTarget, UnavailableLock):
             raise
         except Exception as e:
             raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
@@ -605,13 +601,7 @@ class Base_Step_Executor:
     def execute(self, stmt):
         try:
             self.last_res = SoS_exec(stmt, self.step.sigil)
-        except AbortExecution:
-            raise
-        except UnknownTarget:
-            raise
-        except RemovedTarget:
-            raise
-        except UnavailableLock:
+        except (AbortExecution, UnknownTarget, RemovedTarget, UnavailableLock):
             raise
         except Exception as e:
             raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(stmt), e))
@@ -832,11 +822,7 @@ class Base_Step_Executor:
                                 self.process_task_args(*args, **kwargs)
                             else:
                                 raise RuntimeError('Unrecognized directive {}'.format(key))
-                        except UnknownTarget:
-                            raise
-                        except RemovedTarget:
-                            raise
-                        except UnavailableLock:
+                        except (UnknownTarget, RemovedTarget, UnavailableLock):
                             raise
                         except Exception as e:
                             # if input is Undertermined, it is possible that output cannot be processed
