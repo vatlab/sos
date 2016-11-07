@@ -1052,9 +1052,9 @@ class SoS_Kernel(Kernel):
                    }
             if args.kernel == 'R':
                 args.kernel = 'ir'
+            self.switch_kernel(args.kernel, args.out_vars)
             if args.in_vars:
                 self.handle_magic_get(args.in_vars)
-            self.switch_kernel(args.kernel, args.out_vars)
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_GET.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
