@@ -479,6 +479,15 @@ class RuntimeInfo:
         with fasteners.InterProcessLock(workflow_sig + '_'):
             with open(workflow_sig, 'a') as wf:
                 wf.write('EXE_SIG\tstep={}\tsession={}\n'.format(self.step_md5, os.path.basename(self.proc_info).split('.')[0]))
+                for f in self.input_files:
+                    if isinstance(f, FileTarget):
+                        wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.md5()))
+                for f in self.dependent_files:
+                    if isinstance(f, FileTarget):
+                        wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.md5()))
+                for f in self.output_files:
+                    if isinstance(f, FileTarget):
+                        wf.write('OUT_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.md5()))
         return True
 
     def validate(self):

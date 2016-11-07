@@ -186,7 +186,8 @@ def get_tracked_files(sig_file):
         runtime_files = [sig_file]
         for line in sig:
             if line.startswith('IN_FILE') or line.startswith('OUT_FILE'):
-                tracked_files.append(line.rsplit('\t', 3)[1])
+                # format is something like IN_FILE\tfilename=xxxx\tsession=...
+                tracked_files.append(line.rsplit('\t', 4)[1][9:])
                 t = FileTarget(tracked_files[-1])
                 if t.exists('signature'):
                     runtime_files.append(t.sig_file())
@@ -617,13 +618,16 @@ def cmd_pack(args, unknown_args):
     prog.done()
     #
     prog = ProgressBar(args.output, total_size, disp=args.verbosity == 1)
-    with tarfile.TarFile.open(**tar_args) as archive:
+    with tarfile.open(**tar_args) as archive:
         # add manifest
         archive.add(manifest_file, arcname='__MANIFEST__.txt')
         # add .archive.info file
         for f in tracked_files:
-            tarinfo = archive.gettarinfo(f, arcname=f)
-            archive.addfile(tarinfo, None if args.verbosity != 1 else ProgressFileObj(prog, f, 'rb'))
+            if args.verbosity == 1:
+                tarinfo = archive.gettarinfo(f, arcname=f)
+                archive.addfile(tarinfo, fileobj=ProgressFileObj(prog, f, 'rb'))
+            else:
+                archive.add(f)
             env.logger.info('Adding {}'.format(f))
         env.logger.info('Adding runtime files')
         for f in runtime_files:

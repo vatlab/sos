@@ -373,13 +373,6 @@ class Base_Executor:
         with open(env.sos_dict['__workflow_sig__'], 'a') as sigfile:
             sigfile.write('# end time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
             sigfile.write('# input and dependent files\n')
-            for target in sorted(x for x in dag._all_dependent_files if isinstance(x, str)):
-                t = FileTarget(target)
-                sigfile.write('IN_FILE\t{}\t{}\t{}\n'.format(target, t.size(), t.md5()))
-            sigfile.write('# output files\n')
-            for target in sorted(x for x in dag._all_output_files if isinstance(x, str)):
-                t = FileTarget(target)
-                sigfile.write('OUT_FILE\t{}\t{}\t{}\n'.format(target, t.size(), t.md5()))   
         
     def run(self, targets=None, mode='run'):
         '''Execute a workflow with specified command line args. If sub is True, this
