@@ -475,7 +475,7 @@ class RuntimeInfo:
         workflow_sig = env.sos_dict['__workflow_sig__']
         with fasteners.InterProcessLock(workflow_sig + '_'):
             with open(workflow_sig, 'a') as wf:
-                wf.write(self.proc_info + '\n')
+                wf.write('EXE_SIG\t{}\n'.format(self.proc_info))
         return True
 
     def validate(self):

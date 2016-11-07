@@ -23,6 +23,7 @@ import os
 import psutil
 import threading
 import time
+import fasteners
 from datetime import datetime
 from .utils import env
 
@@ -99,7 +100,11 @@ def summarizeExecution(pid):
             if int(nch) > peak_nch:
                 peak_nch = int(nch)
     if start_time is not None and end_time is not None:
-        env.logger.info('Completed in {:.1f} seconds with {} child{} and {:.1f}% peak ({:.1f}% avg) CPU and {:.1f}Mb peak ({:.1f}Mb avg) memory usage'
-            .format(end_time - start_time, peak_nch, 'ren' if peak_nch > 1 else '', peak_cpu, accu_cpu/count, peak_mem/1024/1024, accu_mem/1024/1024/count))
+        # successfully write signature, write in workflow runtime info
+        workflow_sig = env.sos_dict['__workflow_sig__']
+        with fasteners.InterProcessLock(workflow_sig + '_'):
+            with open(workflow_sig, 'a') as wf:
+                wf.write('EXE_RESOURCE\tsession={}\tnproc={}\ttime={:.1f}s\tcpu_peak={:.1f}\tcpu_avg={:.1f}\tmem_peak={:.1f}Mb\tmem_avg={:.1f}Mb\n'.format(
+                    'NA', peak_nch, end_time - start_time, peak_cpu, accu_cpu/count, peak_mem/1024/1024, accu_mem/1024/1024/count))
         
 
