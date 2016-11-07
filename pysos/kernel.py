@@ -38,7 +38,7 @@ import gzip
 import pickle
 from collections.abc import Sequence
 
-from .utils import env, WorkflowDict, short_repr, pretty_size, dehtml
+from .utils import env, WorkflowDict, short_repr, pretty_size, dehtml, _parse_error
 from ._version import __sos_version__, __version__
 from .sos_eval import SoS_exec, interpolate
 from .sos_executor import Interactive_Executor
@@ -974,6 +974,7 @@ class SoS_Kernel(Kernel):
         parser.add_argument('kernel', nargs='?', default='')
         parser.add_argument('-i', '--in', nargs='*', dest='in_vars')
         parser.add_argument('-o', '--out', nargs='*', dest='out_vars')
+        parser.error = _parse_error
         return parser.parse_args(args)
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
@@ -1017,7 +1018,17 @@ class SoS_Kernel(Kernel):
             return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
         elif self.MAGIC_WITH.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
-            args = self.parse_in_out_vars(options.split())
+            try:
+                args = self.parse_in_out_vars(options.split())
+            except Exception as e:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stderr', 'text': 'Invalid option "{}": {}\n'.format(options, e)})
+                return {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self.execution_count,
+                   }
             if args.kernel == 'R':
                 args.kernel = 'ir'
             original_kernel = self.kernel
@@ -1030,12 +1041,22 @@ class SoS_Kernel(Kernel):
                 self.switch_kernel(original_kernel)
         elif self.MAGIC_USE.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
-            args = self.parse_in_out_vars(options.split())
+            try:
+                args = self.parse_in_out_vars(options.split())
+            except Exception as e:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stderr', 'text': 'Invalid option "{}": {}\n'.format(options, e)})
+                return {'status': 'abort',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self.execution_count,
+                   }
             if args.kernel == 'R':
                 args.kernel = 'ir'
+            self.switch_kernel(args.kernel, args.out_vars)
             if args.in_vars:
                 self.handle_magic_get(args.in_vars)
-            self.switch_kernel(args.kernel, args.out_vars)
             return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_GET.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
