@@ -182,27 +182,16 @@ def cmd_prepare(args, workflow_args):
 def get_tracked_files(sig_file):
     from .target import FileTarget
     with open(sig_file) as sig:
-        with_tracked = False
-        with_runtime = False
         tracked_files = []
         runtime_files = [sig_file]
         for line in sig:
-            if line.startswith('# runtime signatures'):
-                with_runtime = True
-                with_tracked = False
-                continue
-            if line.startswith('# input and dependent files'):
-                with_tracked = True
-                continue
-            if line.startswith('#'):
-                continue
-            if with_tracked:
-                tracked_files.append(line.rsplit('\t', 2)[0])
-                t = FileTarget(line.strip())
+            if line.startswith('IN_FILE') or line.startswith('OUT_FILE'):
+                tracked_files.append(line.rsplit('\t', 3)[1])
+                t = FileTarget(tracked_files[-1])
                 if t.exists('signature'):
                     runtime_files.append(t.sig_file())
-            elif with_runtime:
-                runtime_files.append(line.strip())
+            elif line.startswith('EXE_SIG'):
+                runtime_files.append(line.split('\t', 1)[-1].strip())
     return set(tracked_files), set(runtime_files)
 
 def cmd_remove(args, unknown_args):
