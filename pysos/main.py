@@ -543,6 +543,10 @@ def locate_files(session, include, exclude, all_files):
     for inc in include:
         if os.path.isfile(os.path.expanduser(inc)):
             tracked_files.add(os.path.expanduser(inc))
+        elif os.path.isdir(os.path.expanduser(inc)):
+            for dirname, dirlist, filelist in os.walk(os.path.expanduser(inc)):
+                tracked_files.update(os.path.join(dirname, x) for x in filelist if not x.startswith('.'))
+                dirlist[:] = [x for x in dirlist if not x.startswith('.')]
         else:
             raise ValueError('Extra include file {} does not exist'.format(inc))
     # excludle
@@ -615,6 +619,9 @@ def cmd_pack(args, unknown_args):
             env.logger.info('Checking {}'.format(f))
             ft = FileTarget(f)
             manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.md5()))
+        for f in runtime_files:
+            ft = FileTarget(f)
+            manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.md5()))
     prog.done()
     #
     prog = ProgressBar(args.output, total_size, disp=args.verbosity == 1)
@@ -649,10 +656,10 @@ def cmd_unpack(args, unknown_args):
     env.verbosity = args.verbosity
     def get_response(msg):
         if args.__confirm__:
-            print(msg)
+            print(msg + '? y')
             return True
         while True:
-            res = input('{} (y/n)? '.format(msg))
+            res = input('{} (y/n/a)? '.format(msg))
             if res == 'a':
                 args.__confirm__ = True
                 return True
@@ -682,6 +689,8 @@ def cmd_unpack(args, unknown_args):
                     fields = line.split()
                     # name, mtime, size, md5
                     if args.__list__:
+                        if fields[0].startswith('.sos'):
+                            continue
                         print('{:>9s}  {:>12s}  {}'.format(pretty_size(int(fields[2])),
                             time.strftime('%m-%d-%y %H:%M', time.gmtime(float(fields[1]))), fields[0]))
                         total_size += int(fields[2])
@@ -700,9 +709,12 @@ def cmd_unpack(args, unknown_args):
                 if f.name.startswith(os.sep):
                     if not get_response('Extract {} to outside of current directory'.format(f.name)):
                         continue
+                # runtime file?
                 elif os.path.isfile(os.path.join(args.dest, f.name)):
+                    # signature files should not have md5
                     if fileMD5(os.path.join(args.dest, f.name)) == md5[f.name]:
-                        env.logger.info('Ignore identical {}'.format(f.name))
+                        if not f.name.startswith('.sos'):
+                            env.logger.info('Ignore identical {}'.format(f.name))
                         continue
                     if not get_response('Overwrite existing file {}'.format(f.name)):
                         continue

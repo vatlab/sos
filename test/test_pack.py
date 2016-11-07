@@ -42,6 +42,7 @@ sh:
 
 [1]
 output:  't_d1/t_f2'
+task:
 sh:
     dd if=/dev/urandom of=${output} count=50000
     dd if=/dev/urandom of=t_d1/ut_f4 count=500
@@ -76,15 +77,22 @@ sh:
 
     def testPackUnpack(self):
         '''Test pack command'''
-        subprocess.call('sos pack -o a.sar', shell=True)
-        subprocess.call('sos pack -o b.sar -i t_d1/ut_f4', shell=True)
-        subprocess.call('sos unpack a.sar', shell=True)
-        subprocess.call('sos unpack a.sar -d tmp', shell=True)
-        subprocess.call('sos unpack a.sar -l', shell=True)
+        self.assertEqual(subprocess.call('sos pack -o a.sar', shell=True), 0)
+        # extra file
+        self.assertEqual(subprocess.call('sos pack -o b.sar -i t_d1/ut_f4', shell=True), 0)
+        # extra directory
+        self.assertEqual(subprocess.call('sos pack -o b.sar -i t_d1', shell=True), 0)
+        # unpack
+        self.assertEqual(subprocess.call('sos unpack a.sar', shell=True), 0)
+        # unpack to a different directory
+        self.assertEqual(subprocess.call('sos unpack a.sar -d tmp', shell=True), 0)
+        # list content
+        self.assertEqual(subprocess.call('sos unpack a.sar -l', shell=True), 0)
 
     def tearDown(self):
         os.chdir('..')
         shutil.rmtree('temp')
+        pass
 
 if __name__ == '__main__':
     unittest.main()
