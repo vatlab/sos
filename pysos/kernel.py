@@ -154,13 +154,21 @@ class SoS_FilePreviewer():
         elif filename.lower().endswith('.csv') or filename.lower().endswith('.tsv'):
             try:
                 import pandas
-                data = pandas.read_csv(filename, nrows=10)
-                html = data.to_html()
+                data = pandas.read_csv(filename)
+                html = data._repr_html_()
+                return 'display_data', { 'text/html': HTML(html).data}
+            except Exception:
+                pass
+        elif filename.lower().endswith('.xlsx') or filename.lower().endswith('.xls'):
+            try:
+                import pandas
+                data = pandas.read_excel(filename)
+                html = data._repr_html_()
                 return 'display_data', { 'text/html': HTML(html).data}
             except Exception:
                 pass
         # is it a compressed file?
-        if zipfile.is_zipfile(filename):
+        elif zipfile.is_zipfile(filename):
             zip = zipfile.ZipFile(filename)
             names = zip.namelist()
             return '{} files\n'.format(len(names)) + '\n'.join(names[:5]) + ('\n...' if len(names) > 5 else '')
