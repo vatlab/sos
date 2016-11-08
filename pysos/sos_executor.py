@@ -92,6 +92,8 @@ class Base_Executor:
             # remove old workflow file.
             with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'w') as sig:
                 sig.write('# workflow: {}\n'.format(self.workflow.name))
+                sig.write('# script: {}\n'.format(self.workflow.content.filename))
+                sig.write('# included: {}\n'.format(','.join(self.workflow.content.included)))
                 sig.write('# configuration: {}\n'.format(config_file))
                 sig.write('# start time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
                 sig.write(self.sig_content)

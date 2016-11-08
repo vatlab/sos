@@ -302,8 +302,8 @@ if __name__ == '__main__':
     # command pack
     #
     parser = subparsers.add_parser('pack',
-        help='''Collect all input, output, and tracked intermediate files
-        related to a workflow run and bundle them into a single archive.
+        help='''Collect sos scripts, all input, output, and tracked intermediate
+        files related to a workflow run and bundle them into a single archive.
         The archive can be examined (without unpacking) with command "sos
         show" and be unpacked with command "sos unpack". This command does not
         include files outside of the current working directory unless they
@@ -348,10 +348,17 @@ if __name__ == '__main__':
         help='''SoS archive saved by command sos pack''')
     parser.add_argument('files', nargs='*',
         help='''An optional list of files to be processed, which can be exact
-        filenames or patterns (e.g. "*.bam")''')
+        filenames or patterns (e.g. "*.bam"). No runtime information will be
+        extracted if this option is specified.''')
     parser.add_argument('-d', '--dest', default='.',
         help='''Directory where a sos archive would be unpacked. Default to
         current directory.''')
+    parser.add_argument('-s', '--script', action='store_true',
+        help='''If specified, extract sos script(s) related to the workflow
+        to the current or specified directory (option --dest), regardless of
+        their original locations in the filesystem. Note that sos scripts are
+        not extracted by default because they are usually external and it is
+        dangerous to overwrite existing scripts with archived ones.''')
     parser.add_argument('-l', '--list', action='store_true', dest='__list__',
         help='''List content of the archive instead of extracting it. The names,
         uncompressed file sizes  and  modification  dates and times of the

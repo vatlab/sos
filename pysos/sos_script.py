@@ -359,8 +359,9 @@ class SoS_Step:
 class SoS_Workflow:
     '''A SoS workflow with multiple steps. It is created from multiple sections of a SoS script
     and consists of multiple SoS_Step.'''
-    def __init__(self, workflow_name, allowed_steps, sections, description):
+    def __init__(self, content, workflow_name, allowed_steps, sections, description):
         '''create a workflow from its name and a list of SoS_Sections (using name matching)'''
+        self.content = content
         self.name = workflow_name
         self.description = description
         self.sections = []
@@ -459,12 +460,29 @@ class SoS_ScriptContent:
     def __init__(self, content='', filename=None):
         self.content = content
         self.filename = filename
-        if content:
-            self.md5 = textMD5(self.content)
+        self.included = []
+        self.md5 = self.calc_md5()
+
+    def calc_md5(self):
+        if self.content:
+            cnt = self.content
         else:
             with open(self.filename) as script:
-                self.md5 = textMD5(script.read())
-        
+                cnt = script.read()
+        # additional files
+        for filename in self.included:
+            with open(filename) as script:
+                cnt += script.read()
+        #
+        return textMD5(cnt)
+
+    def add(self, content='', filename=None):
+        if content:
+            raise RuntimeError('Include can only add file, not script')
+        if filename not in self.included:
+            self.included.append(filename)
+            self.md5 = self.calc_md5()
+
 
 class SoS_Script:
     def __init__(self, content='', filename=None, transcript=None):
@@ -553,6 +571,7 @@ class SoS_Script:
                 content = locate_script(sos_file + '.sos')
         except Exception as e:
             raise RuntimeError('Source file for nested workflow {} does not exist: {}'.format(sos_file, e))
+        self.content.add(*content)
         script = SoS_Script(*content)
         if not alias:
             alias = sos_file
@@ -573,6 +592,7 @@ class SoS_Script:
                 content = locate_script(sos_file + '.sos')
         except Exception as e:
             raise RuntimeError('Source file for nested workflow {} does not exist: {}'.format(sos_file, e))
+        self.content.add(*content)
         script = SoS_Script(*content)
         if not name_map:
             self.sections.extend(script.sections)
@@ -713,6 +733,7 @@ for __n, __v in {}.items():
                 if self.transcript:
                     self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
                 continue
+
             # comments in SoS scripts are mostly informative
             if line.startswith('#'):
                 # Comment blocks before any section
@@ -777,6 +798,9 @@ for __n, __v in {}.items():
                 # in the front of the script
                 if cursect is None:
                     comment_block += 1
+                    # if the first line of the script is empty
+                    if not self.descriptions:
+                        self.descriptions.append('')
                     self.descriptions.append('')
                 else:
                     if cursect.category() in ('statements', 'script'):
@@ -1060,7 +1084,10 @@ for __n, __v in {}.items():
         # definition being the content.
         if not self.sections:
             self.sections.append(SoS_Step(self.content, [('default', None, None)]))
-            self.sections[0].statements = global_section[0][1].statements
+            if global_section:
+                self.sections[0].statements = global_section[0][1].statements
+            else:
+                self.sections[0].statements = []
             self.global_def = ''
         #
         for section in self.sections:
@@ -1126,7 +1153,7 @@ for __n, __v in {}.items():
                 if fnmatch.fnmatch(wf_name, name):
                     sections.append(section)
                     break
-        return SoS_Workflow(wf_name, allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
+        return SoS_Workflow(self.content, wf_name, allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
 
     def show(self):
         textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)

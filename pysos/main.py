@@ -183,6 +183,7 @@ def get_tracked_files(sig_file):
     from .target import FileTarget
     with open(sig_file) as sig:
         tracked_files = []
+        script_files = []
         runtime_files = [sig_file]
         for line in sig:
             if line.startswith('IN_FILE') or line.startswith('OUT_FILE'):
@@ -193,7 +194,11 @@ def get_tracked_files(sig_file):
                     runtime_files.append(t.sig_file())
             elif line.startswith('EXE_SIG'):
                 runtime_files.append('.sos/.runtime/{}.exe_info'.format(line.split('session=', 1)[1].strip()))
-    return set(tracked_files), set(runtime_files)
+            elif line.startswith('# script:'):
+                script_files.append(line.split(':', 1)[1].strip())
+            elif line.startswith('# included:'):
+                script_files.extend(line.split(':', 1)[-1].strip().split(','))
+    return script_files, set(tracked_files), set(runtime_files)
 
 def cmd_remove(args, unknown_args):
     import glob
@@ -207,7 +212,7 @@ def cmd_remove(args, unknown_args):
         raise sys.exit('No executed workflow is identified.')
     tracked_files = set()
     for sig_file in sig_files:
-        tracked_files |= get_tracked_files(sig_file)[0]
+        tracked_files |= get_tracked_files(sig_file)[1]
     #
     tracked_files = {os.path.abspath(os.path.expanduser(x)) for x in tracked_files}
     tracked_dirs = set()
@@ -529,7 +534,7 @@ def locate_files(session, include, exclude, all_files):
                 'Available sessions are:\n' +
                 '\n'.join(os.path.basename(x)[:-4] for x in sig_files))
     #
-    tracked_files, runtime_files = get_tracked_files(sig_file)
+    script_files, tracked_files, runtime_files = get_tracked_files(sig_file)
     # all
     if not all_files:
         external_files = []
@@ -553,7 +558,7 @@ def locate_files(session, include, exclude, all_files):
     for ex in exclude:
         tracked_files = [x for x in tracked_files if not fnmatch.fnmatch(x, ex)]
     #
-    return tracked_files, runtime_files
+    return script_files, tracked_files, runtime_files
 
 class ProgressFileObj(FileIO):
     '''A wrapper of a file object that update a progress bar
@@ -576,7 +581,7 @@ def cmd_pack(args, unknown_args):
     #
     env.verbosity = args.verbosity
     try:
-        tracked_files, runtime_files = locate_files(args.session, args.include, args.exclude, args.__all__)
+        script_files, tracked_files, runtime_files = locate_files(args.session, args.include, args.exclude, args.__all__)
     except Exception as e:
         env.logger.error(e)
         sys.exit(1)
@@ -615,6 +620,9 @@ def cmd_pack(args, unknown_args):
         # write message in repr format (with "\n") to keep it in the same line
         manifest.write('# {!r}\n'.format(args.message if args.message else ''))
         # add .archive.info file
+        for f in script_files:
+            ft = FileTarget(f)
+            manifest.write('{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.md5()))
         for f in tracked_files:
             env.logger.info('Checking {}'.format(f))
             ft = FileTarget(f)
@@ -627,20 +635,31 @@ def cmd_pack(args, unknown_args):
     prog = ProgressBar(args.output, total_size, disp=args.verbosity == 1)
     with tarfile.open(**tar_args) as archive:
         # add manifest
-        archive.add(manifest_file, arcname='__MANIFEST__.txt')
+        archive.add(manifest_file, arcname='MANIFEST.txt')
         # add .archive.info file
+        for f in script_files:
+            env.logger.info('Adding {}'.format(os.path.basename(f)))
+            archive.add(f, arcname='scripts/' + os.path.basename(f))
         for f in tracked_files:
-            if args.verbosity == 1:
-                tarinfo = archive.gettarinfo(f, arcname=f)
-                archive.addfile(tarinfo, fileobj=ProgressFileObj(prog, f, 'rb'))
-            else:
-                archive.add(f)
             env.logger.info('Adding {}'.format(f))
+            relpath = os.path.relpath(f, '.')
+            if relpath.startswith('..'):
+                # external files
+                if args.verbosity == 1:
+                    tarinfo = archive.gettarinfo(f, arcname='external/' + f)
+                    archive.addfile(tarinfo, fileobj=ProgressFileObj(prog, f, 'rb'))
+                else:
+                    archive.add(f, arcname='external/' + f)
+            else:
+                if args.verbosity == 1:
+                    tarinfo = archive.gettarinfo(f, arcname='tracked/' + f)
+                    archive.addfile(tarinfo, fileobj=ProgressFileObj(prog, f, 'rb'))
+                else:
+                    archive.add(f, arcname='tracked/' + f)
         env.logger.info('Adding runtime files')
         for f in runtime_files:
-            tarinfo = archive.gettarinfo(f, arcname=f)
             env.logger.trace('Adding {}'.format(f))
-            archive.addfile(tarinfo)
+            archive.add(f, arcname='runtime/' + f[5:])
     prog.done()
 
 #
@@ -651,6 +670,7 @@ def cmd_unpack(args, unknown_args):
     from .utils import env, ProgressBar, pretty_size
     from .target import fileMD5
     import tempfile
+    import fnmatch
     import time
 
     env.verbosity = args.verbosity
@@ -670,11 +690,10 @@ def cmd_unpack(args, unknown_args):
 
     prog = ProgressBar('Extracting {}'.format(args.archive), os.path.getsize(args.archive),
         disp=args.verbosity==1 and not args.__list__)
-    #try:
-    if True:
+    try:
         with tarfile.open(fileobj=ProgressFileObj(prog, args.archive, 'rb')) as archive:
             manifest_file = archive.next()
-            if manifest_file.name != '__MANIFEST__.txt':
+            if manifest_file.name != 'MANIFEST.txt':
                 raise ValueError('Manifest not found in SoS archive {}.'.format(args.archive))
             archive.extract(manifest_file)
             md5 = {}
@@ -705,24 +724,53 @@ def cmd_unpack(args, unknown_args):
                 f = archive.next()
                 if f is None:
                     break
-                # if it is absolute path?
-                if f.name.startswith(os.sep):
-                    if not get_response('Extract {} to outside of current directory'.format(f.name)):
+                if args.files:
+                    # see if filename matches specified name
+                    selected = False
+                    for pattern in args.files:
+                        # runtime information is not extracted with the specification of any file
+                        if f.name.startswith('runtime/'):
+                            continue
+                        m_name = f.name.split('/', 1)[-1]
+                        if fnmatch.fnmatch(m_name, pattern) or fnmatch.fnmatch(os.path.basename(m_name), pattern):
+                            selected=True
+                            break
+                    if not selected:
+                        env.logger.debug('Ignore {}'.format(m_name))
                         continue
+                # hacking f.name to correct destination
+                if f.name.startswith('external/'):
+                    if not get_response('Extract {} to outside of current directory'.format(f.name[9:])):
+                        continue
+                    f.name = f.name[9:]
+                elif f.name.startswith('tracked/'):
+                    f.name = f.name[8:]
+                elif f.name.startswith('runtime/'):
+                    f.name = os.path.join('.sos', f.name[8:])
+                elif f.name.startswith('scripts/'):
+                    if not args.script:
+                        env.logger.debug('Ignore {}'.format(f.name[8:]))
+                        continue
+                    f.name = f.name[8:]
+                else:
+                    raise RuntimeError('Unexpected file {} from SoS archive'.format(f.name))
+
+                dest_file = os.path.join(args.dest, f.name)
                 # runtime file?
-                elif os.path.isfile(os.path.join(args.dest, f.name)):
+                if os.path.isfile(dest_file):
                     # signature files should not have md5
-                    if fileMD5(os.path.join(args.dest, f.name)) == md5[f.name]:
+                    if fileMD5(dest_file) == md5[f.name]:
                         if not f.name.startswith('.sos'):
                             env.logger.info('Ignore identical {}'.format(f.name))
                         continue
                     if not get_response('Overwrite existing file {}'.format(f.name)):
                         continue
-                if not f.name.startswith('.sos/'):
+                if not f.name.startswith('.sos'):
                     env.logger.info('Extracting {}'.format(f.name))
+                else:
+                    env.logger.debug('Extracting {}'.format(f.name))
                 archive.extract(f, path=args.dest)
-    #except Exception as e:
-    #    raise ValueError('Failed to unpack SoS archive: {}'.format(e))
-    #
+    except Exception as e:
+        raise ValueError('Failed to unpack SoS archive: {}'.format(e))
     prog.done()
 
