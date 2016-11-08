@@ -210,16 +210,32 @@ class TestKernel(unittest.TestCase):
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%put a")
             wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%put __k_k")
+            wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="a")
             res = get_result(iopub)
             self.assertEqual(res, 1024)
+            # strange name
+            msg_id, content = execute(kc=kc, code="%use R")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code=".a.b <- 22")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%put .a.b")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="_a_b")
+            res = get_result(iopub)
+            self.assertEqual(res, 22)
 
     def testMagicGet(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code="a = 1025")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="_b_a = 22")
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%use R")
             stdout, stderr = assemble_output(iopub)
@@ -229,6 +245,12 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code="a")
             res = get_display_data(iopub)
             self.assertEqual(res, '[1] 1025')
+            #
+            msg_id, content = execute(kc=kc, code="%get _b_a")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code=".b_a")
+            res = get_display_data(iopub)
+            self.assertEqual(res, '[1] 22')
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 

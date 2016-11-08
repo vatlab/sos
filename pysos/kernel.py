@@ -319,7 +319,7 @@ def R_repr(obj):
 # data.frame    n > 0    DataFrame
 
 kernel_init_command = {
-    'ir': '''
+    'ir': r'''
 ..py.repr.logical.1 <- function(obj) {
     if(obj)
         'True'
@@ -394,7 +394,7 @@ kernel_init_command = {
             options(useFancyQuotes=FALSE)
             paste("{",
                   paste(sapply(names(obj), function (x)
-                      paste(dQuote(as.character(x)), ":", ..py.repr(obj[[x]]))),
+                      paste(dQuote(gsub("\\.", "_", as.character(x))), ":", ..py.repr(obj[[x]]))),
                       collapse=','),
                   "}")
         }
@@ -433,9 +433,9 @@ def python2R(name):
                 install.packages('feather', repos='http://cran.stat.ucla.edu/')
                 }}
                 library(feather)
-                {} <- {}'''.format(name, r_repr)
+                {} <- {}'''.format('.' + name[1:] if name.startswith('_') else name, r_repr)
         else:
-            return '{} <- {}'.format(name, r_repr)
+            return '{} <- {}'.format('.' + name[1:] if name.startswith('_') else name, r_repr)
     except Exception as e:
         raise UsageError('Failed to convert variable {} to R: {}'.format(name, e))
 
@@ -719,6 +719,10 @@ class SoS_Kernel(Kernel):
             self.KC.execute("import pickle\nglobals().update(pickle.loads({!r}))".format(sos_data),
                 silent=True, store_history=False)
         elif self.kernel == 'ir':
+            for item in items:
+                if item.startswith('_'):
+                    self.send_response(self.iopub_socket, 'stream',
+                        {'name': 'stderr', 'text': 'Variable {} is imported as {}\n'.format(item, '.' + item[1:])})
             try:
                 sos_data = '\n'.join(python2R(x) for x in items)
             except Exception as e:
@@ -774,7 +778,16 @@ class SoS_Kernel(Kernel):
                         else:
                             self.send_response(self.iopub_socket, msg_type,
                                 sub_msg['content'])
+            # verify
+            for item in items:
+                if not item in env.sos_dict:
+                    self.send_response(self.iopub_socket, 'stream',
+                                {'name': 'stderr', 'text': 'Failed to put variable {} to SoS namespace\n'.format(item)})
         elif self.kernel == 'ir':
+            for item in items:
+                if '.' in item:
+                    self.send_response(self.iopub_socket, 'stream',
+                        {'name': 'stderr', 'text': 'Variable {} is exported as {}\n'.format(item, item.replace('.', '_'))})
             # if it is a python kernel, passing specified SoS variables to it
             self.KC.execute('..py.repr(list({}))'.format(
                 ','.join('{0}={0}'.format(x) for x in items)),
@@ -805,15 +818,14 @@ class SoS_Kernel(Kernel):
                         else:
                             self.send_response(self.iopub_socket, msg_type,
                                 sub_msg['content'])
+            # verify
+            for item in items:
+                if not item.replace('.', '_') in env.sos_dict:
+                    self.send_response(self.iopub_socket, 'stream',
+                                {'name': 'stderr', 'text': 'Failed to put variable {} to SoS namespace\n'.format(item)})
         else:
             self.send_response(self.iopub_socket, 'stream',
                                 {'name': 'stderr', 'text': 'Can only pass variables to python kernel'})
-        #
-        # verify
-        for item in items:
-            if not item in env.sos_dict:
-                self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stderr', 'text': 'Failed to put variable {} to SoS namespace\n'.format(item)})
 
     def handle_shell_command(self, cmd):
         # interpolate command
