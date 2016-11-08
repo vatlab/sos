@@ -838,12 +838,7 @@ class SoS_Kernel(Kernel):
 
     def handle_magic_preview(self, options):
         try:
-            new_options = interpolate(options, sigil='${ }', local_dict=env.sos_dict._dict)
-            if new_options != options:
-                options = new_options
-                self.send_response(self.iopub_socket, 'stream',
-                        {'name': 'stdout', 'text':
-                        '%preview {}\n## -- End interpolated command --\n'.format(new_options.strip())})
+            options = interpolate(options, sigil='${ }', local_dict=env.sos_dict._dict)
         except Exception as e:
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': 'Failed to interpolate {}: {}\n'.format(short_repr(options), e)})
@@ -853,6 +848,14 @@ class SoS_Kernel(Kernel):
         # find filenames
         import shlex
         items = shlex.split(options)
+        if not items:
+            return
+        self.send_response(self.iopub_socket, 'display_data',
+            {
+              'source': 'SoS',
+              'metadata': {},
+              'data': { 'text/html': HTML('<pre>## -- %preview {} --</pre>'.format(options)).data}
+            })
         # expand items
         for item in items:
             self.preview(item)
@@ -927,7 +930,6 @@ class SoS_Kernel(Kernel):
                 sys.stdout.flush()
         #
         if not silent:
-            start_output = True
             # Send standard output
             if os.path.isfile('.sos/report.md'):
                 with open('.sos/report.md') as sr:
@@ -941,7 +943,6 @@ class SoS_Kernel(Kernel):
                             'metadata': {},
                             'data': {'text/markdown': sos_report}
                         })
-                    start_output = False
             #
             if 'input' in env.sos_dict:
                 input_files = env.sos_dict['input']
@@ -955,12 +956,11 @@ class SoS_Kernel(Kernel):
                 output_files = []
             # use a table to list input and/or output file if exist
             if input_files or output_files:
-                if not start_output:
-                    self.send_response(self.iopub_socket, 'display_data',
+                self.send_response(self.iopub_socket, 'display_data',
                         {
                             'source': 'SoS',
                             'metadata': {},
-                            'data': { 'text/html': HTML('<hr color="black" width="60%">').data}
+                            'data': { 'text/html': HTML('<pre>## -- Preview output --</pre>').data}
                         })
                 self.send_response(self.iopub_socket, 'display_data',
                         {
