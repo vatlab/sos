@@ -870,8 +870,6 @@ class SoS_Kernel(Kernel):
 
     def run_sos_code(self, code, silent):
         code = dedent(code)
-        last_input = [] if '__step_input__' not in env.sos_dict else copy.deepcopy(env.sos_dict['__step_input__'])
-        last_output = [] if '__step_output__' not in env.sos_dict else copy.deepcopy(env.sos_dict['__step_output__'])
         if os.path.isfile('.sos/report.md'):
             os.remove('.sos/report.md')
         with self.redirect_sos_io():
@@ -914,12 +912,12 @@ class SoS_Kernel(Kernel):
                         })
                     start_output = False
             #
-            if '__step_input__' in env.sos_dict and env.sos_dict['__step_input__'] != last_input:
-                input_files = env.sos_dict['__step_input__']
+            if 'input' in env.sos_dict:
+                input_files = env.sos_dict['input']
             else:
                 input_files = []
-            if '__step_output__' in env.sos_dict and env.sos_dict['__step_output__'] != last_output:
-                output_files = env.sos_dict['__step_output__']
+            if 'output' in env.sos_dict:
+                output_files = env.sos_dict['output']
                 if output_files is None:
                     output_files = []
             else:

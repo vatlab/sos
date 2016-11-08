@@ -319,6 +319,10 @@ class Base_Step_Executor:
         else:
             return _expand_file_list(True, *args)
 
+    def verify_input(self):
+        '''Check if input files exist.'''
+        pass
+
     def verify_output(self):
         '''Check if intended output actually exists.'''
         pass
