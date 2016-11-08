@@ -843,7 +843,7 @@ class SoS_Kernel(Kernel):
                 options = new_options
                 self.send_response(self.iopub_socket, 'stream',
                         {'name': 'stdout', 'text':
-                        new_options.strip() + '\n## -- End interpolated command --\n'})
+                        '%preview {}\n## -- End interpolated command --\n'.format(new_options.strip())})
         except Exception as e:
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': 'Failed to interpolate {}: {}\n'.format(short_repr(options), e)})
@@ -1026,6 +1026,16 @@ class SoS_Kernel(Kernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
+        ret = self._do_execute(code=code, silent=silent, store_history=store_history,
+            user_expressions=user_expressions, allow_stdin=allow_stdin)
+        # make sure post_executed is triggered after the completion of all cell content
+        self.shell.user_ns.update(env.sos_dict._dict)
+        # trigger post processing of object and display matplotlib figures
+        self.shell.events.trigger('post_execute')
+        return ret
+
+    def _do_execute(self, code, silent, store_history=True, user_expressions=None,
+                   allow_stdin=False):
         if code.startswith('\n') or code.startswith(' '):
             code = re.sub('^\s*\n', '', code, re.M)
         if self.original_keys is None:
@@ -1046,17 +1056,17 @@ class SoS_Kernel(Kernel):
                 conn_info = conn.read()
             self.send_response(self.iopub_socket, 'stream',
                   {'name': 'stdout', 'text': 'Connection file: {}\n{}'.format(cfile, conn_info)})
-            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_MATPLOTLIB.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.shell.enable_gui = lambda gui: None
             gui, backend = self.shell.enable_matplotlib(options)
-            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_SET.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_set(options)
             # self.options will be set to inflence the execution of remaing_code
-            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_RESTART.match(code):
             options, remaining_code = self.get_magic_and_code(code, True)
             if options == 'R':
@@ -1083,7 +1093,7 @@ class SoS_Kernel(Kernel):
             if args.in_vars:
                 self.handle_magic_get(args.in_vars)
             try:
-                return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.switch_kernel(original_kernel)
         elif self.MAGIC_USE.match(code):
@@ -1104,15 +1114,15 @@ class SoS_Kernel(Kernel):
             self.switch_kernel(args.kernel, args.out_vars)
             if args.in_vars:
                 self.handle_magic_get(args.in_vars)
-            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_GET.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_get(options.split())
-            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_PUT.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_put(options.split())
-            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_PASTE.match(code):
             options, remaining_code = self.get_magic_and_code(code, True)
             self.options += ' ' + options.strip()
@@ -1126,26 +1136,25 @@ class SoS_Kernel(Kernel):
             #
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': code.strip() + '\n## -- End pasted text --\n'})
-            return self.do_execute(code, silent, store_history, user_expressions, allow_stdin)
+            return self._do_execute(code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_RUN.match(code):
             options, remaining_code = self.get_magic_and_code(code, True)
             old_options = self.options
             self.options += ' ' + options
             try:
-                return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.options = old_options
         elif self.MAGIC_PREVIEW.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
-                ret = self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.handle_magic_preview(options)
-            return ret
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_shell_command(code.split(' ')[0][1:] + ' ' + options)
-            return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.kernel != 'sos':
             # handle string interpolation before sending to the underlying kernel
             try:
@@ -1168,9 +1177,6 @@ class SoS_Kernel(Kernel):
             # run sos
             try:
                 self.run_sos_code(code, silent)
-                self.shell.user_ns.update(env.sos_dict._dict)
-                # trigger post processing of object and display matplotlib figures
-                self.shell.events.trigger('post_execute')
                 return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
             except Exception as e:
                 stream_content = {'name': 'stderr', 'text': str(e)}
