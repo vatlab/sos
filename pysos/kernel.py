@@ -475,6 +475,7 @@ class SoS_Kernel(Kernel):
     MAGIC_PUT = re.compile('^%put(\s|$)')
     MAGIC_PASTE = re.compile('^%paste(\s|$)')
     MAGIC_RUN = re.compile('^%run(\s|$)')
+    MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
 
     def __init__(self, **kwargs):
         super(SoS_Kernel, self).__init__(**kwargs)
@@ -835,6 +836,27 @@ class SoS_Kernel(Kernel):
             self.send_response(self.iopub_socket, 'stream',
                                 {'name': 'stderr', 'text': 'Can only pass variables to python kernel'})
 
+    def handle_magic_preview(self, options):
+        try:
+            new_options = interpolate(options, sigil='${ }', local_dict=env.sos_dict._dict)
+            if new_options != options:
+                options = new_options
+                self.send_response(self.iopub_socket, 'stream',
+                        {'name': 'stdout', 'text':
+                        new_options.strip() + '\n## -- End interpolated command --\n'})
+        except Exception as e:
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': 'Failed to interpolate {}: {}\n'.format(short_repr(options), e)})
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': str(e)})
+            return
+        # find filenames
+        import shlex
+        items = shlex.split(options)
+        # expand items
+        for item in items:
+            self.preview(item)
+
     def handle_shell_command(self, cmd):
         # interpolate command
         try:
@@ -850,6 +872,7 @@ class SoS_Kernel(Kernel):
                 {'name': 'stdout', 'text': 'Failed to interpolate {}: {}\n'.format(short_repr(cmd), e)})
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': str(e)})
+            return
         # command cd is handled differently because it is the only one that
         # has effect on sos.
         if cmd.startswith('cd ') or cmd.startswith('cd\t'):
@@ -951,33 +974,39 @@ class SoS_Kernel(Kernel):
                         })
             # Send images, if any
             for filename in output_files:
+                self.preview(filename)
+
+    def preview(self, filename):
+        if not os.path.isfile(filename):
+            self.send_response(self.iopub_socket, 'stream',
+                 {'name': 'stderr', 'text': '\n> ' + filename + ' does not exist'})
+            return
+        self.send_response(self.iopub_socket, 'stream',
+             {'name': 'stdout', 'text': '\n> ' + filename + ' ({})'.format(pretty_size(os.path.getsize(filename)))})
+        previewer = [x for x in self.previewer.keys() if fnmatch.fnmatch(os.path.basename(filename), x)]
+        if not previewer:
+            return
+        # choose the longest matching pattern (e.g. '*' and '*.pdf', choose '*.pdf')
+        previewer_name = max(previewer, key=len)
+        previewer_func = self.previewer[previewer_name]
+        if not previewer_func:
+            return
+        if not callable(previewer_func):
+            raise RuntimeError('Previewer {} is not callable'.format(previewer_name))
+        try:
+            result = previewer_func(filename)
+            if not result:
+                return
+            if isinstance(result, str):
                 self.send_response(self.iopub_socket, 'stream',
-                     {'name': 'stdout', 'text': '\n> ' + filename + ' ({})'.format(pretty_size(os.path.getsize(filename)))})
-                previewer = [x for x in self.previewer.keys() if fnmatch.fnmatch(os.path.basename(filename), x)]
-                if not previewer:
-                    continue
-                else:
-                    # choose the longest matching pattern (e.g. '*' and '*.pdf', choose '*.pdf')
-                    previewer_name = max(previewer, key=len)
-                    previewer_func = self.previewer[previewer_name]
-                    if not previewer_func:
-                        continue
-                    if not callable(previewer_func):
-                        raise RuntimeError('Previewer {} is not callable'.format(previewer_name))
-                    try:
-                        result = previewer_func(filename)
-                        if not result:
-                            continue
-                        if isinstance(result, str):
-                            self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stdout', 'text': '\n'+result})
-                        else:
-                            msg_type, msg_data = result
-                            self.send_response(self.iopub_socket, msg_type,
-                                {'source': filename, 'data': msg_data, 'metadata': {}})
-                    except Exception as e:
-                        self.send_response(self.iopub_socket, 'stream',
-                            {'name': 'stderr', 'text': 'Failed to preview {}: {}'.format(filename, e) })
+                    {'name': 'stdout', 'text': '\n'+result})
+            else:
+                msg_type, msg_data = result
+                self.send_response(self.iopub_socket, msg_type,
+                    {'source': filename, 'data': msg_data, 'metadata': {}})
+        except Exception as e:
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stderr', 'text': 'Failed to preview {}: {}'.format(filename, e) })
 
     def send_result(self, res, silent=False):
         # this is Ok, send result back
@@ -1106,6 +1135,13 @@ class SoS_Kernel(Kernel):
                 return self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.options = old_options
+        elif self.MAGIC_PREVIEW.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            try:
+                ret = self.do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            finally:
+                self.handle_magic_preview(options)
+            return ret
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_shell_command(code.split(' ')[0][1:] + ' ' + options)
