@@ -40,7 +40,7 @@ from collections.abc import Sequence
 
 from .utils import env, WorkflowDict, short_repr, pretty_size, dehtml, _parse_error
 from ._version import __sos_version__, __version__
-from .sos_eval import SoS_exec, interpolate
+from .sos_eval import SoS_exec, SoS_eval, interpolate
 from .sos_executor import Interactive_Executor
 from .sos_syntax import SOS_SECTION_HEADER
 from .converter import SoS_Exporter
@@ -476,6 +476,7 @@ class SoS_Kernel(Kernel):
     MAGIC_PASTE = re.compile('^%paste(\s|$)')
     MAGIC_RUN = re.compile('^%run(\s|$)')
     MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
+    MAGIC_SHOW = re.compile('^%show(\s|$)')
 
     def __init__(self, **kwargs):
         super(SoS_Kernel, self).__init__(**kwargs)
@@ -854,11 +855,52 @@ class SoS_Kernel(Kernel):
             {
               'source': 'SoS',
               'metadata': {},
-              'data': { 'text/html': HTML('<pre>## -- %preview {} --</pre>'.format(options)).data}
+              'data': { 'text/html': HTML('<pre>## %preview {} --</pre>'.format(options)).data}
             })
         # expand items
         for item in items:
             self.preview(item)
+
+    def handle_magic_show(self, options):
+        try:
+            options = interpolate(options, sigil='${ }', local_dict=env.sos_dict._dict)
+        except Exception as e:
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': 'Failed to interpolate {}: {}\n'.format(short_repr(options), e)})
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': str(e)})
+            return
+        # it is strange to use shlex but we are trying to allow space in
+        # expressions here
+        import shlex
+        items = shlex.split(options)
+        if not items:
+            return
+        self.send_response(self.iopub_socket, 'display_data',
+            {
+              'source': 'SoS',
+              'metadata': {},
+              'data': { 'text/html': HTML('<pre>## %show {} --</pre>'.format(options)).data}
+            })
+        # show
+        for item in items:
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': item + ':\n'})
+            try:
+                if item in env.sos_dict:
+                    obj = env.sos_dict[item]
+                else:
+                    # we disallow other sigil
+                    obj = SoS_eval(item, sigil='${ }')
+                format_dict, md_dict = self.format_obj(obj)
+                self.send_response(self.iopub_socket, 'display_data',
+                    {'execution_count': self.execution_count, 'data': format_dict,
+                    'metadata': md_dict})
+            except Exception as e:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stderr', 'text': '\n> Failed to evaluate expression {}: {}'.format(item, e)})
+                continue
+
 
     def handle_shell_command(self, cmd):
         # interpolate command
@@ -1151,6 +1193,12 @@ class SoS_Kernel(Kernel):
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.handle_magic_preview(options)
+        elif self.MAGIC_SHOW.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            try:
+                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            finally:
+                self.handle_magic_show(options)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_shell_command(code.split(' ')[0][1:] + ' ' + options)
