@@ -52,6 +52,11 @@ RUN     (echo "c = get_config()" && \
          echo "c.NotebookApp.open_browser = False") \
          > $HOME/.ipython/profile_default/ipython_notebook_config.py
 
-EXPOSE  8888
+ENV TINI_VERSION v0.6.0
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
+RUN chmod +x /usr/bin/tini
+ENTRYPOINT ["/usr/bin/tini", "--"]
 
-RUN     jupyter notebook &
+EXPOSE 8888
+CMD ["jupyter", "notebook", "--port=8888","--no-browser"]
+
