@@ -476,7 +476,6 @@ class SoS_Kernel(Kernel):
     MAGIC_PASTE = re.compile('^%paste(\s|$)')
     MAGIC_RUN = re.compile('^%run(\s|$)')
     MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
-    MAGIC_SHOW = re.compile('^%show(\s|$)')
 
     def __init__(self, **kwargs):
         super(SoS_Kernel, self).__init__(**kwargs)
@@ -846,7 +845,7 @@ class SoS_Kernel(Kernel):
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': str(e)})
             return
-        # find filenames
+        # find filenames and quoted expressions
         import shlex
         items = shlex.split(options)
         if not items:
@@ -859,34 +858,12 @@ class SoS_Kernel(Kernel):
             })
         # expand items
         for item in items:
-            self.preview(item)
-
-    def handle_magic_show(self, options):
-        try:
-            options = interpolate(options, sigil='${ }', local_dict=env.sos_dict._dict)
-        except Exception as e:
-            self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': 'Failed to interpolate {}: {}\n'.format(short_repr(options), e)})
-            self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': str(e)})
-            return
-        # it is strange to use shlex but we are trying to allow space in
-        # expressions here
-        import shlex
-        items = shlex.split(options)
-        if not items:
-            return
-        self.send_response(self.iopub_socket, 'display_data',
-            {
-              'source': 'SoS',
-              'metadata': {},
-              'data': { 'text/html': HTML('<pre>## %show {} --</pre>'.format(options)).data}
-            })
-        # show
-        for item in items:
-            self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': item + ':\n'})
             try:
+                if os.path.isfile(item):
+                    self.preview(item)
+                    continue
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': item + ':\n'})
                 if item in env.sos_dict:
                     obj = env.sos_dict[item]
                 else:
@@ -898,9 +875,7 @@ class SoS_Kernel(Kernel):
                     'metadata': md_dict})
             except Exception as e:
                 self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stderr', 'text': '\n> Failed to evaluate expression {}: {}'.format(item, e)})
-                continue
-
+                    {'name': 'stderr', 'text': '\n> Failed to find file or evaluate expression {}: {}'.format(item, e)})
 
     def handle_shell_command(self, cmd):
         # interpolate command
@@ -1193,12 +1168,6 @@ class SoS_Kernel(Kernel):
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.handle_magic_preview(options)
-        elif self.MAGIC_SHOW.match(code):
-            options, remaining_code = self.get_magic_and_code(code, False)
-            try:
-                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-            finally:
-                self.handle_magic_show(options)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_shell_command(code.split(' ')[0][1:] + ' ' + options)
