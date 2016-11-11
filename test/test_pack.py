@@ -81,6 +81,11 @@ a = 1
         # this is the tricky part, directory containing untracked file should remain
         self.assertExists(['t_d1', 't_d1/ut_f4'])
 
+    def testDryrun(self):
+        '''Test dryrun mode'''
+        self.assertEqual(subprocess.call('sos pack -o b.sar -i t_d1/ut_f4 --dryrun', shell=True), 0)
+        self.assertFalse(os.path.isfile('b.sar'))
+
     def testPackUnpack(self):
         '''Test pack command'''
         self.assertEqual(subprocess.call('sos pack -o a.sar', shell=True), 0)

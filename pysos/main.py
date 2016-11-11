@@ -590,7 +590,6 @@ def cmd_pack(args, unknown_args):
     file_sizes = {x: os.path.getsize(x) for x in tracked_files}
     # getting file size to create progress bar
     total_size = sum(file_sizes.values())
-    env.logger.info('{} files ({}) will be archived.'.format(len(tracked_files), pretty_size(total_size)))
 
     if args.output == '-':
         tar_args = {'fileobj': sys.stdout.buffer, 'mode': 'w:gz'}
@@ -631,6 +630,13 @@ def cmd_pack(args, unknown_args):
             ft = FileTarget(f)
             manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.md5()))
     prog.done()
+    #
+    if args.dryrun:
+        print('A total of {} files ({}) with additional scripts and runtime files would be archived.'.
+            format(len(tracked_files), pretty_size(total_size)))
+        sys.exit(0)
+    else:
+        env.logger.info('Archiving {} files ({})...'.format(len(tracked_files), pretty_size(total_size)))
     #
     prog = ProgressBar(args.output, total_size, disp=args.verbosity == 1)
     with tarfile.open(**tar_args) as archive:

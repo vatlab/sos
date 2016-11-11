@@ -333,6 +333,9 @@ if __name__ == '__main__':
         help='''A short message to be included into the archive. Because the
         message would be lost during unpacking, it is highly recommended that
         you create a README file and include it with option --include.''')
+    parser.add_argument('-d', '--dryrun', action='store_true',
+        help='''List files to be included and total file size without actually
+        archiving them''')
     parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
         help='''Overwrite output file if it already exists''')
     addCommonArgs(parser)
