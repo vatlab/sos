@@ -166,14 +166,15 @@ class TestUtils(unittest.TestCase):
                 ('{0}"~/test_utils.py"!e{1}', os.path.expanduser('~/test_utils.py')),
                 ('{0}"test/test_utils.py"!b{1}', "test_utils.py"),
                 # preceded by \
-                #{'\{0}100{1}', '\{0}100{1}'.format(l,r)}
+                (r'\{0}100{1}', '{0}100{1}'.format(l, r)),
+                (r'\{0}100{1} {0}100+4{1}', '{0}100{1} 104'.format(l, r)),
             ]:
                 #print('Interpolating "{}" with sigal "{}"'.format(expr.format(l, r).replace('\n', r'\n'), sigil))
                 if isinstance(result, str):
-                    self.assertEqual(interpolate(expr.format(l, r), sigil=sigil), result)
+                    self.assertEqual(interpolate(expr.format(l, r), sigil=sigil), result, 'Failed to interpolate {} with sigil {}'.format(expr, sigil))
                 else:
                     # for cases when the order of output is not guaranteed
-                    self.assertTrue(interpolate(expr.format(l, r), sigil=sigil) in result)
+                    self.assertTrue(interpolate(expr.format(l, r), sigil=sigil) in result, 'Failed to interpolate {} with sigil {}'.format(expr, sigil))
         #
         # locals should be the one passed to the expression
         self.assertTrue('file_ws' in interpolate('${globals().keys()}', '${ }'))

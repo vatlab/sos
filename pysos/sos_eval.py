@@ -118,9 +118,11 @@ class SoS_String:
         # '' 'a} part1 ' ' expr2 ' 'nested }} and another' 'expr2 {}} and done'
         #
         pieces = self.left_pattern.split(text, 1)
+        if len(pieces) == 1:
+            return pieces[0].replace('\\' + self.l, self.l)
         # the first piece must be before sigil and be completed text
         #env.logger.trace('"{}" interpolated to "{}"'.format(text, res))
-        return pieces[0] + self._interpolate(pieces[1])
+        return (pieces[0] + self._interpolate(pieces[1])).replace('\\' + self.l, self.l)
 
     def direct_interpolate(self, text):
         pieces = SIMPLE_SUB.split(text)
