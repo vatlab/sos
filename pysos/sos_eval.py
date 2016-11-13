@@ -302,7 +302,7 @@ def ConvertString(s, sigil):
             return s
         # tokenize the input syntax.
         for toknum, tokval, _, _, _  in generate_tokens(StringIO(s).readline):
-            if toknum == STRING and not tokval.startswith('r'):
+            if toknum == STRING:
                 # if this item is a string that uses triple single quote
                 # if tokval.startswith("'''"):
                 #     # we convert it to a raw string

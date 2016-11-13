@@ -583,7 +583,8 @@ class SoS_Script:
         # The global definition of sos_file should be accessible as
         # sos_file.name
         self.sections.extend(script.sections)
-        self.global_def += '{} = sos_namespace_({}, r{!r})\n'.format(alias, text_repr(script.global_def), script.global_sigil)
+        self.global_def += '{} = sos_namespace_({}, r"\{}")\n'.format(alias, text_repr(script.global_def),
+            script.global_sigil)
 
     def _include_content(self, sos_file, name_map):
         try:
@@ -606,7 +607,8 @@ class SoS_Script:
                         # match ...
                         self.sections.append(section)
             # global_def is more complicated
-            self.global_def += '__{} = sos_namespace_({}, r{!r})\n'.format(sos_file, text_repr(script.global_def), script.global_sigil)
+            self.global_def += '__{} = sos_namespace_({}, r"\{}")\n'.format(sos_file, text_repr(script.global_def),
+                script.global_sigil)
             #
             self.global_def += '''
 for __n, __v in {}.items():
