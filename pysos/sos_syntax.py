@@ -162,7 +162,10 @@ _SECTION_OPTION_TMPL = '''
 _FORMAT_LINE_TMPL = r'''
     ^                                  # from first column
     \#fileformat\s*=\s*                # starts with #fileformat=SOS
-    (?P<format_name>.*)                # format name
+    (?P<format_name>\S*)               # format name
+    (\s*sigil\s*=\s*                   # format option
+    (?P<global_sigil>.*)
+    )?
     \s*$                               # till end of line
     '''
 
@@ -341,6 +344,9 @@ _FORMAT_SPECIFIER_TMPL = r'''
 # within it.
 #
 _SIMPLE_SUB_TMPL = r'''
+    (?<!                                # if not preceded by
+    \\                                  # a back slash
+    )
     \$\{                                # left sigil
     (                                   # capture variable name
     [_a-zA-Z]\w*                        # alpha numeric with no leading numeric

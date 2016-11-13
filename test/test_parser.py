@@ -61,6 +61,9 @@ class TestParser(unittest.TestCase):
         script = SoS_Script(filename='scripts/section1.sos')
         # not the default value of 1.0
         self.assertEqual(script.format_version, '1.1')
+        # test sigil
+        script = SoS_Script('''#fileformat=SOS1.0 sigil='[ ]' ''')
+        self.assertEqual(script.global_sigil, '[ ]')
 
     def testMixedTabAndSpace(self):
         '''Test handling of mixed tab and space'''

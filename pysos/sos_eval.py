@@ -20,6 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 import os
+import re
 import collections
 from io import StringIO
 from shlex import quote
@@ -71,11 +72,19 @@ class SoS_String:
     a special conversion flag !q that properly quote a filename so that
     it can be used safely within a shell script. '''
 
-    def __init__(self, sigil = '${ }', local_dict={}, trace_vars=False):
+    LEFT_PATTERNS = {
+        # if not preceded by a backslash
+        '${': re.compile(r'(?<!\\)\$\{')
+        }
+
+    def __init__(self, sigil, local_dict={}, trace_vars=False):
         # do not check sigil here because the function will be called quite frequently
         # the sigil will be checked when it is entered in SoS script.
         self.l, self.r = sigil.split(' ')
         self.default_sigil = sigil == '${ }'
+        if self.l not in self.LEFT_PATTERNS:
+            self.LEFT_PATTERNS[self.l] = re.compile(r'(?<!\\){}'.format(re.escape(self.l)))
+        self.left_pattern = self.LEFT_PATTERNS[self.l]
         self.error_count = 0
         self.local_dict = local_dict
         self.my_eval = eval
@@ -89,6 +98,7 @@ class SoS_String:
         # but we cannot really do it because of possible nested interpolation
         #
         # 'in' test is 10 times faster than split so we do this test first.
+        # here we do not consider the case of \${
         if self.l not in text:
             return text
         #
@@ -107,7 +117,7 @@ class SoS_String:
         #
         # '' 'a} part1 ' ' expr2 ' 'nested }} and another' 'expr2 {}} and done'
         #
-        pieces = text.split(self.l, 1)
+        pieces = self.left_pattern.split(text, 1)
         # the first piece must be before sigil and be completed text
         #env.logger.trace('"{}" interpolated to "{}"'.format(text, res))
         return pieces[0] + self._interpolate(pieces[1])
@@ -117,7 +127,7 @@ class SoS_String:
         # replace pieces 1, 3, 5, ... etc with their values
         for i in range(1, len(pieces), 2):
             if hasattr(self, 'accessed_vars'):
-                self.accessed_vars |= accessed_vars(pieces[i])
+                self.accessed_vars |= accessed_vars(pieces[i], '${ }')
                 pieces[i] = ''
             else:
                 pieces[i] = self._repr(eval(pieces[i], env.sos_dict._dict, self.local_dict))
@@ -192,7 +202,7 @@ class SoS_String:
                     sos_compile(expr, '<string>', 'eval')
                     try:
                         if hasattr(self, 'accessed_vars'):
-                            self.accessed_vars |= accessed_vars(expr)
+                            self.accessed_vars |= accessed_vars(expr, self.l + ' ' + self.r)
                             return self.interpolate(text[j+len(self.r):])
                         else:
                             result = eval(expr, env.sos_dict._dict, self.local_dict)
@@ -252,7 +262,7 @@ class SoS_String:
         else:
             return repr(obj) if fmt is None and conversion is None else self._format(obj, fmt, conversion)
 
-def interpolate(text, sigil='${ }', local_dict={}):
+def interpolate(text, sigil, local_dict={}):
     '''Evaluate expressions in `text` marked by specified `sigil` using provided
     global and local dictionaries, and replace the expressions with their formatted strings.'''
     return SoS_String(sigil, local_dict).interpolate(text)
@@ -266,36 +276,52 @@ def ConvertString(s, sigil):
     FIXME: the expression might have a dynamic option which should prevent
     string interpolation. Not sure how to handle this option right now.
     '''
-    left_sigil = sigil.split(' ')[0]
-    if left_sigil not in s and not '\t' in s:
-        return s
-    result = []
-    # tokenize the input syntax.
+    # if no sigil is specified, only check space/tab...
     indent_space = False
     indent_tab = False
-    for toknum, tokval, _, _, _  in generate_tokens(StringIO(s).readline):
-        if toknum == STRING:
-            # if this item is a string that uses triple single quote
-            # if tokval.startswith("'''"):
-            #     # we convert it to a raw string
-            #     tokval = u'r' + tokval
-            # we then perform interpolation on the string and put it back to expression
-            if left_sigil in tokval:
-                tokval = 'interpolate(' + tokval + ", \'" + sigil + "', locals())"
-        if toknum == INDENT:
-            if '\t' in tokval:
-                tokval = tokval.replace('\t', '    ')
-                indent_tab = True
-            elif ' ' in tokval:
-                indent_space = True
-        # the resusting string is put back to the expression (or statement)
-        result.append((toknum, tokval))
+    result = []
+    if sigil is None:
+        if '\t' not in s:
+            return s
+        for toknum, tokval, _, _, _  in generate_tokens(StringIO(s).readline):
+            if toknum == INDENT:
+                if '\t' in tokval:
+                    tokval = tokval.replace('\t', '    ')
+                    indent_tab = True
+                elif ' ' in tokval:
+                    indent_space = True
+            # the resusting string is put back to the expression (or statement)
+            result.append((toknum, tokval))
+        if indent_space and indent_tab:
+            env.logger.warning('Tabs converted to 4 spaces due to mixed use of tab and space in statement {}'.format(short_repr(s)))
+    else:
+        left_sigil = sigil.split(' ')[0]
+        if left_sigil not in s and not '\t' in s:
+            return s
+        # tokenize the input syntax.
+        for toknum, tokval, _, _, _  in generate_tokens(StringIO(s).readline):
+            if toknum == STRING and not tokval.startswith('r'):
+                # if this item is a string that uses triple single quote
+                # if tokval.startswith("'''"):
+                #     # we convert it to a raw string
+                #     tokval = u'r' + tokval
+                # we then perform interpolation on the string and put it back to expression
+                if left_sigil in tokval:
+                    tokval = 'interpolate(' + tokval + ", \'" + sigil + "', locals())"
+            if toknum == INDENT:
+                if '\t' in tokval:
+                    tokval = tokval.replace('\t', '    ')
+                    indent_tab = True
+                elif ' ' in tokval:
+                    indent_space = True
+            # the resusting string is put back to the expression (or statement)
+            result.append((toknum, tokval))
     if indent_space and indent_tab:
         env.logger.warning('Tabs converted to 4 spaces due to mixed use of tab and space in statement {}'.format(short_repr(s)))
     return untokenize(result)
 
 accessed_vars_cache = {}
-def accessed_vars(statement, sigil='${ }'):
+def accessed_vars(statement, sigil):
     '''Parse a Python statement and analyze the symbols used. The result
     will be used to determine what variables a step depends upon.'''
     global accessed_vars_cache
@@ -317,7 +343,7 @@ def accessed_vars(statement, sigil='${ }'):
         prev_tok = tokval
     return result
 
-def SoS_eval(expr, sigil='${ }'):
+def SoS_eval(expr, sigil):
     '''Evaluate an expression after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
     expr = ConvertString(expr, sigil)
@@ -330,7 +356,7 @@ def _is_expr(expr):
     except:
         return False
 
-def SoS_exec(stmts, sigil='${ }', _dict=None):
+def SoS_exec(stmts, sigil, _dict=None):
     '''Execute a statement after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
     # the trouble here is that we have to execute the statements line by line
@@ -415,7 +441,7 @@ class Undetermined(object):
             raise RuntimeError('Undetermined expression has to be a string: "{}" passed'.format(expr))
         self.expr = expr.strip()
 
-    def value(self, sigil='${ }'):
+    def value(self, sigil):
         return SoS_eval(self.expr, sigil)
 
     def __repr__(self):
@@ -428,16 +454,16 @@ class Undetermined(object):
 class sos_namespace_(object):
     '''A namespace that is created by evaluating statements
     and use the results as attributes of the object.'''
-    def __init__(self, stmts):
+    def __init__(self, stmts, sigil):
         # we need to define functions defined by sos ...
         exec('from pysos.runtime import *', self.__dict__)
         # the results of the statments will be saved as
         # attribute of this object.
-        SoS_exec(stmts, _dict=self.__dict__)
+        SoS_exec(stmts, _dict=self.__dict__, sigil=sigil)
 
 class on_demand_options(object):
     '''Expression that will be evaluated upon request.'''
-    def __init__(self, items={}, sigil='${ }'):
+    def __init__(self, items, sigil):
         self._expressions = {}
         self._expressions.update(items)
         self._sigil = sigil

@@ -61,7 +61,7 @@ class SoS_Magics(Magics):
 
     def _reset(self):
         env.sos_dict = WorkflowDict()
-        SoS_exec('from pysos.runtime import *')
+        SoS_exec('from pysos.runtime import *', None)
         env.sos_dict.set('__interactive__', True)
         self.executor = Interactive_Executor()
         self.original_keys = set(env.sos_dict._dict.keys())
@@ -76,23 +76,23 @@ class SoS_Magics(Magics):
             try:
                 # is it an expression?
                 compile(line, '<string>', 'eval')
-                return SoS_eval(line)
+                return SoS_eval(line, '${ }')
             except: # if it is satement
-                return SoS_exec(line)
+                return SoS_exec(line, '${ }')
         else:
             try:
                 # is it an expression?
                 compile(cell, '<string>', 'eval')
                 #if line.strip():
                 #    env.logger.warning('{} ignored for expression evaluation'.format(line))
-                return SoS_eval(cell)
+                return SoS_eval(cell, '${ }')
             except:
                 # is it a list of statement?
                 try:
                     compile(cell, '<string>', 'exec')
                     #if line.strip():
                     #    env.logger.warning('{} ignored for statement execution'.format(line))
-                    return SoS_exec(cell)
+                    return SoS_exec(cell, '${ }')
                 except:
                     return self.executor.run(cell, command_line=self.options + line.strip())
 
@@ -110,12 +110,12 @@ class SoS_Magics(Magics):
         try:
             # is it an expression?
             compile(block, '<string>', 'eval')
-            return SoS_eval(block)
+            return SoS_eval(block, '${ }')
         except:
             # is it a list of statement?
             try:
                 compile(block, '<string>', 'exec')
-                return SoS_exec(block)
+                return SoS_exec(block, '${ }')
             except:
                 return self.executor.run(block, command_line=self.options + line.strip())
 

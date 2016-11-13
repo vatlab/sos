@@ -72,7 +72,7 @@ def execute_task(params):
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
     process or remotely on a different machine.'''
-    task, global_def, sos_dict, signature, sigil = params.data
+    task, global_def, global_sigil, sos_dict, signature, sigil = params.data
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
     try:
@@ -84,13 +84,13 @@ def execute_task(params):
             os.environ.update(sos_dict['_runtime']['env'])
 
         env.sos_dict.quick_update(sos_dict)
-        SoS_exec('import os, sys, glob')
-        SoS_exec('from pysos.runtime import *')
+        SoS_exec('import os, sys, glob', None)
+        SoS_exec('from pysos.runtime import *', None)
         # re-execute global definition because some of the definitions in the
         # global section might not be pickaleable (e.g. functions) and cannot
         # be passed to this separate process.
         if global_def:
-            SoS_exec(global_def, sigil)
+            SoS_exec(global_def, global_sigil)
         # step process
         if signature is None:
             env.sos_dict.set('__step_sig__', None)
@@ -143,8 +143,8 @@ def analyze_section(section, default_input=None):
         env.sos_dict.set('__null_func__', __null_func__)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
-        SoS_exec('import os, sys, glob')
-        SoS_exec('from pysos.runtime import *')
+        SoS_exec('import os, sys, glob', None)
+        SoS_exec('from pysos.runtime import *', None)
 
     #
     # Here we need to get "contant" values from the global section
@@ -157,7 +157,7 @@ def analyze_section(section, default_input=None):
             SoS_exec('''
 if 'sos_handle_parameter_' in globals():
     del sos_handle_parameter_
-''' + section.global_def)
+''' + section.global_def, section.global_sigil)
         except RuntimeError as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
@@ -586,6 +586,7 @@ class Base_Step_Executor:
             data = (
                 self.step.task,           # task
                 '',                       # local execusion, no need to re-run global
+                '',
                 # do not clone dict
                 env.sos_dict,
                 signature,
@@ -923,7 +924,7 @@ class Base_Step_Executor:
                         if var == val:
                             continue
                         try:
-                            env.sos_dict.set(var, SoS_eval(val))
+                            env.sos_dict.set(var, SoS_eval(val, self.step.sigil))
                         except Exception as e:
                             raise RuntimeError('Failed to evaluate shared variable {} from expression {}: {}'
                                 .format(var, val, e))
@@ -936,7 +937,7 @@ class Base_Step_Executor:
                                 if var == val:
                                     continue
                                 try:
-                                    env.sos_dict.set(var, SoS_eval(val))
+                                    env.sos_dict.set(var, SoS_eval(val, self.step.sigil))
                                 except Exception as e:
                                     raise RuntimeError('Failed to evaluate shared variable {} from expression {}: {}'
                                         .format(var, val, e))
@@ -1181,6 +1182,7 @@ class MP_Step_Executor(SP_Step_Executor):
                 data = (
                     self.step.task,         # task
                     self.step.global_def,    # global process
+                    self.step.global_sigil,
                     # if pool, it must not be in prepare mode and have
                     # __signature_vars__
                     env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
@@ -1202,6 +1204,7 @@ class MP_Step_Executor(SP_Step_Executor):
                 data = (
                     self.step.task,           # task
                     '',                       # local execusion, no need to re-run global
+                    '',
                     # do not clone dict
                     env.sos_dict,
                     signature,
@@ -1273,6 +1276,7 @@ class RQ_Step_Executor(SP_Step_Executor):
             data = (
                 self.step.task,          # task
                 self.step.global_def,    # global process
+                self.step.global_sigil,
                 # if pool, it must not be in prepare mode and have
                 # __signature_vars__
                 env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
@@ -1319,6 +1323,7 @@ class Celery_Step_Executor(SP_Step_Executor):
             data = (
                 self.step.task,         # task
                 self.step.global_def,   # global process
+                self.step.global_sigil,
                 env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
                     | {'_input', '_output', '_depends', 'input', 'output',
                         'depends', '_index', '__args__', 'step_name', '_runtime',

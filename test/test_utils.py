@@ -165,6 +165,8 @@ class TestUtils(unittest.TestCase):
                 ('{0}"~/test_utils.py"!a{1}', os.path.expanduser('~/test_utils.py')),
                 ('{0}"~/test_utils.py"!e{1}', os.path.expanduser('~/test_utils.py')),
                 ('{0}"test/test_utils.py"!b{1}', "test_utils.py"),
+                # preceded by \
+                #{'\{0}100{1}', '\{0}100{1}'.format(l,r)}
             ]:
                 #print('Interpolating "{}" with sigal "{}"'.format(expr.format(l, r).replace('\n', r'\n'), sigil))
                 if isinstance(result, str):
@@ -174,9 +176,9 @@ class TestUtils(unittest.TestCase):
                     self.assertTrue(interpolate(expr.format(l, r), sigil=sigil) in result)
         #
         # locals should be the one passed to the expression
-        self.assertTrue('file_ws' in interpolate('${globals().keys()}'))
+        self.assertTrue('file_ws' in interpolate('${globals().keys()}', '${ }'))
         # 5:.5.0f does not work.
-        self.assertRaises(InterpolationError, interpolate, '${5:.${4/2.}f}')
+        self.assertRaises(InterpolationError, interpolate, '${5:.${4/2.}f}', '${ }')
 
     def testEval(self):
         '''Test the evaluation of SoS expression'''
@@ -200,12 +202,12 @@ class TestUtils(unittest.TestCase):
             ('''"${c!q}"''', "file1 file2 'file 3'"),
             ]:
             if isinstance(result, str):
-                self.assertEqual(SoS_eval(expression), result)
+                self.assertEqual(SoS_eval(expression, '${ }'), result)
             else:
-                self.assertTrue(SoS_eval(expression) in result)
+                self.assertTrue(SoS_eval(expression, '${ }') in result)
         #
         # interpolation will only happen in string
-        self.assertRaises(SyntaxError, SoS_eval, '''${a}''')
+        self.assertRaises(SyntaxError, SoS_eval, '''${a}''', '${ }')
 
     def testWorkflowDict(self):
         '''Test workflow dict with attribute access'''
@@ -247,16 +249,16 @@ class TestUtils(unittest.TestCase):
 
     def testAccessedVars(self):
         '''Test accessed vars of a SoS expression or statement.'''
-        self.assertEqual(accessed_vars('''a = 1'''), {'a'})
-        self.assertEqual(accessed_vars('''a = b + 2.0'''), {'a', 'b'})
-        self.assertEqual(accessed_vars('''a = "C"'''), {'a'})
-        self.assertEqual(accessed_vars('''a = "C" + "${D}"'''), {'a', 'D'})
-        self.assertEqual(accessed_vars('''a = 1 + "${D + 20:f}" '''), {'a', 'D'})
-        self.assertEqual(accessed_vars('''k, "a.txt", "b.txt", skip=True '''), {'k', 'skip', 'True'})
+        self.assertEqual(accessed_vars('''a = 1''', '${ }'), {'a'})
+        self.assertEqual(accessed_vars('''a = b + 2.0''', '${ }'), {'a', 'b'})
+        self.assertEqual(accessed_vars('''a = "C"''', '${ }'), {'a'})
+        self.assertEqual(accessed_vars('''a = "C" + "${D}"''', '${ }'), {'a', 'D'})
+        self.assertEqual(accessed_vars('''a = 1 + "${D + 20:f}" ''', '${ }'), {'a', 'D'})
+        self.assertEqual(accessed_vars('''k, "a.txt", "b.txt", skip=True ''', '${ }'), {'k', 'skip', 'True'})
         # this is a complicated case because the actual variable depends on the
         # result of an expression... However, in the NO-evaluation case, this is
         # the best we can do.
-        self.assertEqual(accessed_vars('''c + "${D + '${E}'}" '''), {'c', 'D', 'E'})
+        self.assertEqual(accessed_vars('''c + "${D + '${E}'}" ''', '${ }'), {'c', 'D', 'E'})
 
     def testProgressBar(self):
         '''Test progress bar'''
@@ -407,7 +409,7 @@ print(p1)
     def testOnDemandOptions(self):
         '''Test options that are evaluated upon request.'''
         options = on_demand_options(
-            {'a': '"est"', 'b': 'c', 'c': 'e + 2'}
+            {'a': '"est"', 'b': 'c', 'c': 'e + 2'}, '${ }'
         )
         env.sos_dict = WorkflowDict({
             'e': 10,
