@@ -58,7 +58,7 @@ def cmd_convert(args, style_args):
                 try:
                     script = SoS_Script(filename=args.from_file, transcript=transcript)
                 except Exception as e:
-                    script = Ne
+                    script = None
                     env.logger.warning(e)
             if args.workflow:
                 if not script:
@@ -83,8 +83,10 @@ def cmd_convert(args, style_args):
                     script_to_notebook(args.from_file, args.notebook)
                 elif args.term:
                     script_to_term(transcript_file, args.from_file, style_args)
-                else:
+                elif script:
                     script.show()
+                else:
+                    env.logger.error('No action to perform')
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
