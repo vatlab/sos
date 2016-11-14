@@ -163,9 +163,6 @@ _FORMAT_LINE_TMPL = r'''
     ^                                  # from first column
     \#fileformat\s*=\s*                # starts with #fileformat=SOS
     (?P<format_name>\S*)               # format name
-    (\s*sigil\s*=\s*                   # format option
-    (?P<global_sigil>.*)
-    )?
     \s*$                               # till end of line
     '''
 
@@ -224,10 +221,11 @@ _SOS_MAGIC_TMPL = r'''                  # SOS magic
     |run                                # %run
     |paste                              # %paste
     |set                                # %set
+    |get                                # %get
+    |preview                            # %preview
     |with                               # %with
     |use                                # %use
     |restart                            # %restart
-    |cd                                 # %cd
     )(\s+.*)?
     $
     '''
@@ -256,6 +254,12 @@ _SOS_ENDIF_TMPL = r'''                  # %endif
 
 _SOS_CELL_TMPL = r'''                   # %cell
     ^%cell(\s+.*)?
+    '''
+
+_SOS_SET_TMPL = r'''                    # set
+    ^%set(\s+
+    (?P<options>.*)
+    )?
     '''
 
 _SOS_INCLUDE_TMPL = r'''
@@ -384,6 +388,7 @@ SOS_IF = LazyRegex(_SOS_IF_TMPL, re.VERBOSE)
 SOS_ELIF = LazyRegex(_SOS_ELIF_TMPL, re.VERBOSE)
 SOS_ELSE = LazyRegex(_SOS_ELSE_TMPL, re.VERBOSE)
 SOS_ENDIF = LazyRegex(_SOS_ENDIF_TMPL, re.VERBOSE)
+SOS_SET = LazyRegex(_SOS_SET_TMPL, re.VERBOSE)
 SOS_CELL = LazyRegex(_SOS_CELL_TMPL, re.VERBOSE)
 SOS_INCLUDE = LazyRegex(_SOS_INCLUDE_TMPL, re.VERBOSE)
 SOS_FROM_INCLUDE = LazyRegex(_SOS_FROM_INCLUDE_TMPL, re.VERBOSE)

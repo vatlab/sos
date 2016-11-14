@@ -37,7 +37,7 @@ from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
     SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
-    SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_ENDIF, SOS_CELL, SOS_MAGIC, \
+    SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_SET, SOS_ENDIF, SOS_CELL, SOS_MAGIC, \
     INDENTED
 
 __all__ = ['SoS_Script']
@@ -641,9 +641,33 @@ for __n, __v in {}.items():
                 # ignore cell directive in batch mode
                 if self.transcript:
                     self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+
+                mo = SOS_SET.match(line)
+                if mo:
+                    options = mo.group('options').split(',')
+                    for opt in options:
+                        if opt.startswith('sigil='):
+                            global_sigil = opt[6:].strip()
+                            try:
+                                self.global_sigil = eval(global_sigil)
+                                env.logger.debug('Global sigil is set to {}'.format(self.global_sigil))
+                                if not self.global_sigil:
+                                    self.global_sigil = None
+                                elif not isinstance(self.global_sigil, str):
+                                    parsing_errors.append(lineno, line,
+                                        'A string is expected for option sigil. "{}" specified.'.format(global_sigil))
+                                elif ' ' not in self.global_sigil or self.global_sigil.count(' ') > 1:
+                                    parsing_errors.append(lineno, line,
+                                        'A sigil should be a string string with exactly one space. "{}" specified.'.format(self.global_sigil))
+                            except Exception as e:
+                                parsing_errors.append(lineno, line,
+                                    'Unrecognized default sigil "{}": {}'.format(global_sigil, e))                
+                        else:
+                            env.logger.warning('Ignored option {}'.format(opt))
                 continue
 
             if SOS_STRU.match(line):
+                env.logger.error(line)
                 # ignore cell directive in batch mode
                 if self.transcript:
                     self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
@@ -746,7 +770,7 @@ for __n, __v in {}.items():
                         # look for format information
                         mo = SOS_FORMAT_LINE.match(line)
                         if mo:
-                            format_name, global_sigil = mo.group('format_name', 'global_sigil')
+                            format_name = mo.group('format_name')
                             if not format_name.upper().startswith('SOS'):
                                 parsing_errors.append(lineno, line,
                                     'Unrecognized file format name {}. Expecting SOS.'.format(format_name))
@@ -756,20 +780,6 @@ for __n, __v in {}.items():
                             else:
                                 parsing_errors.append(lineno, line,
                                     'Unrecognized file format version in {}.'.format(format_name))
-                            if global_sigil:
-                                try:
-                                    self.global_sigil = eval(global_sigil)
-                                    if not self.global_sigil:
-                                        self.global_sigil = None
-                                    elif not isinstance(self.global_sigil, str):
-                                        parsing_errors.append(lineno, line,
-                                            'A string is expected for option sigil. "{}" specified.'.format(global_sigil))
-                                    elif ' ' not in self.global_sigil or self.global_sigil.count(' ') > 1:
-                                        parsing_errors.append(lineno, line,
-                                            'A sigil should be a string string with exactly one space. "{}" specified.'.format(self.global_sigil))
-                                except Exception as e:
-                                    parsing_errors.append(lineno, line,
-                                        'Unrecognized default sigil "{}": {}'.format(global_sigil, e))
                     elif comment_block > 1:
                         # anything before the first section can be pipeline
                         # description.
