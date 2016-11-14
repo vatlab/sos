@@ -63,8 +63,8 @@ class TestParser(unittest.TestCase):
         self.assertEqual(script.format_version, '1.1')
 
     def testSetSigil(self):
-        '''Test %set sigil'''
-        script = SoS_Script('''%set sigil='[ ]' ''')
+        '''Test %set_options sigil'''
+        script = SoS_Script('''%set_options sigil='[ ]' ''')
         self.assertEqual(script.global_sigil, '[ ]')
 
     def testMixedTabAndSpace(self):

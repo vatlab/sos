@@ -99,77 +99,78 @@ class TestUtils(unittest.TestCase):
             'files2': ['a/b.txt', 'c.d.txt'],
             'file_ws': ['d i r/f .txt']
             })
-        for sigil in ('${ }', '{ }', '[ ]', '%( )', '[[ ]]', '%( )s'):
+        for sigil in ('${ }', '{ }', '[ ]', '%( )', '[[ ]]', '%( )s', '# #', '` `'):
             l, r = sigil.split(' ')
-            for expr, result in [
-                ('{0}1{1}', '1'),
-                ('{0}a{1}', '100'),
-                ('{0}a+b{1}', '120'),
-                ('{0}a+b*5{1}', '200'),
-                ('{0}a+b*5{1} is 200', '200 is 200'),
-                ('{0}a+b*5{1} and {0}a{1}', '200 and 100'),
-                ('Pre {0}a+b*5{1} and {0}a{1} after', 'Pre 200 and 100 after'),
-                ('Nested {0}a+b*{0}b//2{1}{1}', 'Nested 300'),
-                ('Format {0}a:.5f{1}', 'Format 100.00000'),
-                ('{0}var2[:2]{1}', '1 2'),
-                ('{0}var2[1:]{1}', '2 3.1'),
+            for expr, result, nested in [
+                ('{0}1{1}', '1', False),
+                ('{0}a{1}', '100', False),
+                ('{0}a+b{1}', '120', False),
+                ('{0}a+b*5{1}', '200', False),
+                ('{0}a+b*5{1} is 200', '200 is 200', False),
+                ('{0}a+b*5{1} and {0}a{1}', '200 and 100', False),
+                ('Pre {0}a+b*5{1} and {0}a{1} after', 'Pre 200 and 100 after', False),
+                ('Nested {0}a+b*{0}b//2{1}{1}', 'Nested 300', True),
+                ('Format {0}a:.5f{1}', 'Format 100.00000', False),
+                ('{0}var2[:2]{1}', '1 2', False),
+                ('{0}var2[1:]{1}', '2 3.1', False),
                 # nested
-                ('Nested {0}a:.{0}4+1{1}f{1}', 'Nested 100.00000'),
+                ('Nested {0}a:.{0}4+1{1}f{1}', 'Nested 100.00000', True),
                 # deep nested
-                ('Triple Nested {0}a:.{0}4+{0}5//5{1}{1}f{1}', 'Triple Nested 100.00000'),
+                ('Triple Nested {0}a:.{0}4+{0}5//5{1}{1}f{1}', 'Triple Nested 100.00000', True),
                 # nested invalid
-                ('Nested invalid {0}"{0}a-{1}"{1}', 'Nested invalid {}a-{}'.format(l, r)),
-                ('Nested valid {0}"{0}a{1}-"{1}', 'Nested valid 100-'),
+                ('Nested invalid {0}"{0}a-{1}"{1}', 'Nested invalid {}a-{}'.format(l, r), True),
+                ('Nested valid {0}"{0}a{1}-"{1}', 'Nested valid 100-', True),
                 #
-                ('Dict {0}d{1}', ['Dict a b', 'Dict b a']),
-                ('set {0}e{1}', ['set 1 a', 'set a 1']),
-                ('Fmt {0}var1:.2f{1}', 'Fmt 0.50'),
-                ('Fmt {0}var2:.2f{1}', 'Fmt 1.00 2.00 3.10'),
-                ('LC {0}[x*2 for x in var2]{1}', 'LC 2 4 6.2'),
-                ('LC {0}[x*2 for x in var2]:.2f{1}', 'LC 2.00 4.00 6.20'),
+                ('Dict {0}d{1}', ['Dict a b', 'Dict b a'], False),
+                ('set {0}e{1}', ['set 1 a', 'set a 1'], False),
+                ('Fmt {0}var1:.2f{1}', 'Fmt 0.50', False),
+                ('Fmt {0}var2:.2f{1}', 'Fmt 1.00 2.00 3.10', False),
+                ('LC {0}[x*2 for x in var2]{1}', 'LC 2 4 6.2', False),
+                ('LC {0}[x*2 for x in var2]:.2f{1}', 'LC 2.00 4.00 6.20', False),
                 #
                 # [['a':'b', 'c':'d']['a']] works because
                 #     ['a':'b', 'c':'d']a
                 # is invalid so SoS does not consider ['a'] as nested expression
                 #
-                ('Newline {0}{{"a": "b", \n"c": "d"}}["a"]{1}', 'Newline b'),
+                ('Newline {0}{{"a": "b", \n"c": "d"}}["a"]{1}', 'Newline b', False),
                 #
                 # string literal within interpolated expression
-                ('Literal {0}"{0} {1}"{1}', 'Literal ' + sigil),
+                ('Literal {0}"{0} {1}"{1}', 'Literal ' + sigil, True),
                 #
-                ("{0}' {{}} '.format(a){1}", ' 100 '),
+                ("{0}' {{}} '.format(a){1}", ' 100 ', False),
                 #
-                ("{0}os.path.basename(file){1}", 'b.txt'),
-                ('{0}os.path.basename(file_ws[0]){1}', 'f .txt'),
+                ("{0}os.path.basename(file){1}", 'b.txt', False),
+                ('{0}os.path.basename(file_ws[0]){1}', 'f .txt', False),
                 #
                 # ! conversion
-                ('{0}file!r{1}', "'a/b.txt'"),
-                ('{0}file!s{1}', "a/b.txt"),
-                ('''{0}"a'b"!r{1}''', '"a\'b"'),
-                ('''{0}'a"b'!r{1}''', "'a\"b'"),
+                ('{0}file!r{1}', "'a/b.txt'", False),
+                ('{0}file!s{1}', "a/b.txt", False),
+                ('''{0}"a'b"!r{1}''', '"a\'b"', False),
+                ('''{0}'a"b'!r{1}''', "'a\"b'", False),
                 #
                 # !q conversion (added by SoS)
-                ('{0}file_ws[0]!q{1}', "'d i r/f .txt'"),
+                ('{0}file_ws[0]!q{1}', "'d i r/f .txt'", False),
                 #
                 # !, joined by ,
-                ('{0}var2!r,{1}', "1, 2, 3.1"),
-                ('{0}c!r,{1}', "'file1', 'file2', 'file3'"),
-                ('{0}c!,{1}', "file1, file2, file3"),
+                ('{0}var2!r,{1}', "1, 2, 3.1", False),
+                ('{0}c!r,{1}', "'file1', 'file2', 'file3'", False),
+                ('{0}c!,{1}', "file1, file2, file3", False),
                 #
-                ('{0}10000:,{1}', "10,000"),
+                ('{0}10000:,{1}', "10,000", False),
                 #
                 # full name by 'a'
-                ('{0}"test_utils.py"!a{1}', os.path.abspath('test_utils.py')),
-                ('{0}"a/b/c/test_utils.py"!b{1}', 'test_utils.py'),
-                ('{0}"a/b/c/test_utils.py"!d{1}', 'a/b/c'),
-                ('{0}"~/test_utils.py"!a{1}', os.path.expanduser('~/test_utils.py')),
-                ('{0}"~/test_utils.py"!e{1}', os.path.expanduser('~/test_utils.py')),
-                ('{0}"test/test_utils.py"!b{1}', "test_utils.py"),
+                ('{0}"test_utils.py"!a{1}', os.path.abspath('test_utils.py'), False),
+                ('{0}"a/b/c/test_utils.py"!b{1}', 'test_utils.py', False),
+                ('{0}"a/b/c/test_utils.py"!d{1}', 'a/b/c', False),
+                ('{0}"~/test_utils.py"!a{1}', os.path.expanduser('~/test_utils.py'), False),
+                ('{0}"~/test_utils.py"!e{1}', os.path.expanduser('~/test_utils.py'), False),
+                ('{0}"test/test_utils.py"!b{1}', "test_utils.py", False),
                 # preceded by \
-                (r'\{0}100{1}', '{0}100{1}'.format(l, r)),
-                (r'\{0}100{1} {0}100+4{1}', '{0}100{1} 104'.format(l, r)),
+                (r'\{0}100{1}', '{0}100{1}'.format(l, r), True),
+                (r'\{0}100{1} {0}100+4{1}', '{0}100{1} 104'.format(l, r), True),
             ]:
-                #print('Interpolating "{}" with sigal "{}"'.format(expr.format(l, r).replace('\n', r'\n'), sigil))
+                if l == r and nested:
+                    continue
                 if isinstance(result, str):
                     self.assertEqual(interpolate(expr.format(l, r), sigil=sigil), result, 'Failed to interpolate {} with sigil {}'.format(expr, sigil))
                 else:

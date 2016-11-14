@@ -37,7 +37,7 @@ from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
     SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
-    SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_SET, SOS_ENDIF, SOS_CELL, SOS_MAGIC, \
+    SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_OPTIONS, SOS_ENDIF, SOS_CELL, SOS_MAGIC, \
     INDENTED
 
 __all__ = ['SoS_Script']
@@ -642,27 +642,6 @@ for __n, __v in {}.items():
                 if self.transcript:
                     self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
 
-                mo = SOS_SET.match(line)
-                if mo:
-                    import shlex
-                    options = shlex.split(mo.group('options'))
-                    for opt in options:
-                        if opt.startswith('sigil='):
-                            self.global_sigil = opt[6:].strip()
-                            env.logger.debug('Global sigil is set to {}'.format(self.global_sigil))
-                            if self.global_sigil in ('None', ''):
-                                self.global_sigil = None
-                            elif ' ' not in self.global_sigil or self.global_sigil.count(' ') > 1:
-                                parsing_errors.append(lineno, line,
-                                    'A sigil should be a string string with exactly one space. "{}" specified.'.format(self.global_sigil))
-                        elif opt.startswith('verbosity='):
-                            verbosity = opt[10:].strip()
-                            if verbosity in ['0', '1', '2', '3', '4']:
-                                env.verbosity = int(verbosity)
-                            else:
-                                env.logger.warning('Invalid verbosity level {}'.format(verbosity))
-                        else:
-                            env.logger.warning('Ignored option {}'.format(opt))
                 continue
 
             if SOS_STRU.match(line):
@@ -748,6 +727,23 @@ for __n, __v in {}.items():
                 if mo:
                     condition_met = None
                     condition_ignore = False
+                    continue
+
+                mo = SOS_OPTIONS.match(line)
+                if mo:
+                    import shlex
+                    options = shlex.split(mo.group('options'))
+                    for opt in options:
+                        if opt.startswith('sigil='):
+                            self.global_sigil = opt[6:].strip()
+                            env.logger.debug('Global sigil is set to {}'.format(self.global_sigil))
+                            if self.global_sigil in ('None', ''):
+                                self.global_sigil = None
+                            elif ' ' not in self.global_sigil or self.global_sigil.count(' ') > 1:
+                                parsing_errors.append(lineno, line,
+                                    'A sigil should be a string string with exactly one space. "{}" specified.'.format(self.global_sigil))
+                        else:
+                            parsing_errors.append(lineno, line, 'Unrecognized sos option {}'.format(opt))
                     continue
 
                 else:

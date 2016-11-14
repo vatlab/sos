@@ -210,6 +210,7 @@ _SOS_STRU_TMPL = r'''                   # structural directive
     |else                               # %else
     |endif                              # %endif
     |cell                               # %cell
+    |set_options                        # %set_options
     |include                            # %include
     |from                               # %from
     )(\s+.*)?
@@ -256,8 +257,8 @@ _SOS_CELL_TMPL = r'''                   # %cell
     ^%cell(\s+.*)?
     '''
 
-_SOS_SET_TMPL = r'''                    # set
-    ^%set(\s+
+_SOS_OPTIONS_TMPL = r'''                # %set_options
+    ^%set_options(\s+
     (?P<options>.*)
     )?
     '''
@@ -388,7 +389,7 @@ SOS_IF = LazyRegex(_SOS_IF_TMPL, re.VERBOSE)
 SOS_ELIF = LazyRegex(_SOS_ELIF_TMPL, re.VERBOSE)
 SOS_ELSE = LazyRegex(_SOS_ELSE_TMPL, re.VERBOSE)
 SOS_ENDIF = LazyRegex(_SOS_ENDIF_TMPL, re.VERBOSE)
-SOS_SET = LazyRegex(_SOS_SET_TMPL, re.VERBOSE)
+SOS_OPTIONS = LazyRegex(_SOS_OPTIONS_TMPL, re.VERBOSE)
 SOS_CELL = LazyRegex(_SOS_CELL_TMPL, re.VERBOSE)
 SOS_INCLUDE = LazyRegex(_SOS_INCLUDE_TMPL, re.VERBOSE)
 SOS_FROM_INCLUDE = LazyRegex(_SOS_FROM_INCLUDE_TMPL, re.VERBOSE)

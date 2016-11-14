@@ -142,7 +142,7 @@ class SoS_String:
         '''
         # no matching }, must be wrong
         if self.r not in text:
-            raise InterpolationError(text[:20], "Missing {}".format(self.r))
+            raise InterpolationError(text[:20], "Missing ending sigil {}".format(self.r))
         #
         # location of first ending sigil
         i = text.index(self.r)

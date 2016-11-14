@@ -570,7 +570,7 @@ a += 1
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''
         script = SoS_Script(r"""
-%set sigil='[ ]'
+%set_options sigil='[ ]'
 import time
 import random
 
@@ -819,7 +819,7 @@ for i in range(4):
         os.mkdir('temp')
         #
         script = SoS_Script('''
-%set sigil='< >'
+%set_options sigil='< >'
 [1]
 
 for i in range(5):
@@ -852,7 +852,7 @@ touch <_input>.bak
         #
         env.sig_mode = 'ignore'
         script = SoS_Script('''
-%set sigil='%( )'
+%set_options sigil='%( )'
 [1]
 rep = range(5)
 input:  for_each='rep'
