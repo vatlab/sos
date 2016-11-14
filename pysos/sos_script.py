@@ -644,24 +644,23 @@ for __n, __v in {}.items():
 
                 mo = SOS_SET.match(line)
                 if mo:
-                    options = mo.group('options').split(',')
+                    import shlex
+                    options = shlex.split(mo.group('options'))
                     for opt in options:
                         if opt.startswith('sigil='):
-                            global_sigil = opt[6:].strip()
-                            try:
-                                self.global_sigil = eval(global_sigil)
-                                env.logger.debug('Global sigil is set to {}'.format(self.global_sigil))
-                                if not self.global_sigil:
-                                    self.global_sigil = None
-                                elif not isinstance(self.global_sigil, str):
-                                    parsing_errors.append(lineno, line,
-                                        'A string is expected for option sigil. "{}" specified.'.format(global_sigil))
-                                elif ' ' not in self.global_sigil or self.global_sigil.count(' ') > 1:
-                                    parsing_errors.append(lineno, line,
-                                        'A sigil should be a string string with exactly one space. "{}" specified.'.format(self.global_sigil))
-                            except Exception as e:
+                            self.global_sigil = opt[6:].strip()
+                            env.logger.debug('Global sigil is set to {}'.format(self.global_sigil))
+                            if self.global_sigil in ('None', ''):
+                                self.global_sigil = None
+                            elif ' ' not in self.global_sigil or self.global_sigil.count(' ') > 1:
                                 parsing_errors.append(lineno, line,
-                                    'Unrecognized default sigil "{}": {}'.format(global_sigil, e))                
+                                    'A sigil should be a string string with exactly one space. "{}" specified.'.format(self.global_sigil))
+                        elif opt.startswith('verbosity='):
+                            verbosity = opt[10:].strip()
+                            if verbosity in ['0', '1', '2', '3', '4']:
+                                env.verbosity = int(verbosity)
+                            else:
+                                env.logger.warning('Invalid verbosity level {}'.format(verbosity))
                         else:
                             env.logger.warning('Ignored option {}'.format(opt))
                 continue
