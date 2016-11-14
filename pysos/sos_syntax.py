@@ -162,7 +162,7 @@ _SECTION_OPTION_TMPL = '''
 _FORMAT_LINE_TMPL = r'''
     ^                                  # from first column
     \#fileformat\s*=\s*                # starts with #fileformat=SOS
-    (?P<format_name>.*)                # format name
+    (?P<format_name>\S*)               # format name
     \s*$                               # till end of line
     '''
 
@@ -210,6 +210,7 @@ _SOS_STRU_TMPL = r'''                   # structural directive
     |else                               # %else
     |endif                              # %endif
     |cell                               # %cell
+    |set_options                        # %set_options
     |include                            # %include
     |from                               # %from
     )(\s+.*)?
@@ -221,10 +222,11 @@ _SOS_MAGIC_TMPL = r'''                  # SOS magic
     |run                                # %run
     |paste                              # %paste
     |set                                # %set
+    |get                                # %get
+    |preview                            # %preview
     |with                               # %with
     |use                                # %use
     |restart                            # %restart
-    |cd                                 # %cd
     )(\s+.*)?
     $
     '''
@@ -253,6 +255,12 @@ _SOS_ENDIF_TMPL = r'''                  # %endif
 
 _SOS_CELL_TMPL = r'''                   # %cell
     ^%cell(\s+.*)?
+    '''
+
+_SOS_OPTIONS_TMPL = r'''                # %set_options
+    ^%set_options(\s+
+    (?P<options>.*)
+    )?
     '''
 
 _SOS_INCLUDE_TMPL = r'''
@@ -341,6 +349,9 @@ _FORMAT_SPECIFIER_TMPL = r'''
 # within it.
 #
 _SIMPLE_SUB_TMPL = r'''
+    (?<!                                # if not preceded by
+    \\                                  # a back slash
+    )
     \$\{                                # left sigil
     (                                   # capture variable name
     [_a-zA-Z]\w*                        # alpha numeric with no leading numeric
@@ -378,6 +389,7 @@ SOS_IF = LazyRegex(_SOS_IF_TMPL, re.VERBOSE)
 SOS_ELIF = LazyRegex(_SOS_ELIF_TMPL, re.VERBOSE)
 SOS_ELSE = LazyRegex(_SOS_ELSE_TMPL, re.VERBOSE)
 SOS_ENDIF = LazyRegex(_SOS_ENDIF_TMPL, re.VERBOSE)
+SOS_OPTIONS = LazyRegex(_SOS_OPTIONS_TMPL, re.VERBOSE)
 SOS_CELL = LazyRegex(_SOS_CELL_TMPL, re.VERBOSE)
 SOS_INCLUDE = LazyRegex(_SOS_INCLUDE_TMPL, re.VERBOSE)
 SOS_FROM_INCLUDE = LazyRegex(_SOS_FROM_INCLUDE_TMPL, re.VERBOSE)

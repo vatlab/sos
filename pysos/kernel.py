@@ -506,9 +506,9 @@ class SoS_Kernel(Kernel):
 
     def _reset_dict(self):
         env.sos_dict = WorkflowDict()
-        SoS_exec('import os, sys, glob')
-        SoS_exec('from pysos.runtime import *')
-        SoS_exec("run_mode = 'interactive'")
+        SoS_exec('import os, sys, glob', None)
+        SoS_exec('from pysos.runtime import *', None)
+        SoS_exec("run_mode = 'interactive'", None)
         self.executor = Interactive_Executor()
         self.original_keys = set(env.sos_dict._dict.keys())
         self.original_keys.add('__builtins__')
@@ -854,7 +854,7 @@ class SoS_Kernel(Kernel):
             {
               'source': 'SoS',
               'metadata': {},
-              'data': { 'text/html': HTML('<pre>## %preview {} --</pre>'.format(options)).data}
+              'data': { 'text/html': HTML('<pre>## %preview {}</pre>'.format(options)).data}
             })
         # expand items
         for item in items:

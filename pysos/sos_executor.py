@@ -115,8 +115,8 @@ class Base_Executor:
         # if creating a new dictionary, set it up with some basic varibles
         # and functions
         if self.nested:
-            SoS_exec('import os, sys, glob')
-            SoS_exec('from pysos.runtime import *')
+            SoS_exec('import os, sys, glob', None)
+            SoS_exec('from pysos.runtime import *', None)
             self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
             self._base_symbols -= {'dynamic'}
             return
@@ -161,15 +161,15 @@ class Base_Executor:
         # set config to CONFIG
         env.sos_dict.set('CONFIG', frozendict(cfg))
 
-        SoS_exec('import os, sys, glob')
-        SoS_exec('from pysos.runtime import *')
+        SoS_exec('import os, sys, glob', None)
+        SoS_exec('from pysos.runtime import *', None)
         self._base_symbols = set(dir(builtins)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
         self._base_symbols -= {'dynamic'}
 
     def skip(self, section):
         if section.global_def:
             try:
-                SoS_exec(section.global_def)
+                SoS_exec(section.global_def, section.global_sigil)
             except RuntimeError as e:
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
@@ -395,7 +395,7 @@ class Base_Executor:
                 if not FileTarget(t).exists('target'):
                     FileTarget(t).remove('signature')
         #
-        SoS_exec('from pysos.runtime import sos_handle_parameter_')
+        SoS_exec('from pysos.runtime import sos_handle_parameter_', None)
         #
         prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
         self.reset_dict()
@@ -418,7 +418,7 @@ class Base_Executor:
             # The consequence is that global definitions are available in
             # SoS namespace.
             try:
-                SoS_exec(section.global_def)
+                SoS_exec(section.global_def, section.global_sigil)
             except Exception as e:
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
@@ -546,7 +546,7 @@ class MP_Executor(Base_Executor):
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
         #
-        SoS_exec('from pysos.runtime import sos_handle_parameter_')
+        SoS_exec('from pysos.runtime import sos_handle_parameter_', None)
 
         # process step of the pipelinp
         #
@@ -637,7 +637,7 @@ class MP_Executor(Base_Executor):
                 # The consequence is that global definitions are available in
                 # SoS namespace.
                 try:
-                    SoS_exec(section.global_def)
+                    SoS_exec(section.global_def, section.global_sigil)
                 except RuntimeError as e:
                     if env.verbosity > 2:
                         sys.stderr.write(get_traceback())

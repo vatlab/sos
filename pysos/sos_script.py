@@ -37,7 +37,7 @@ from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
     SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
-    SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_ENDIF, SOS_CELL, SOS_MAGIC, \
+    SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_OPTIONS, SOS_ENDIF, SOS_CELL, SOS_MAGIC, \
     INDENTED
 
 __all__ = ['SoS_Script']
@@ -60,7 +60,7 @@ class SoS_Step:
     '''Parser of a SoS step. This class accepts strings sent by the parser, determine
     their types and add them to appropriate sections (directive, assignment, statement,
     scripts etc) '''
-    def __init__(self, context=None, names=[], options={}, is_global=False):
+    def __init__(self, context=None, names=[], options={}, is_global=False, global_sigil='${ }'):
         '''A sos step '''
         self.context = context
         # A step will not have a name and index until it is copied to separate workflows
@@ -69,7 +69,6 @@ class SoS_Step:
         self.alias = None
         # it initially hold multiple names with/without wildcard characters
         self.names = names
-        self.options = on_demand_options(options)
         self.comment = ''
         # comment at the end of a section that could be a workflow description
         self.back_comment = ''
@@ -84,12 +83,14 @@ class SoS_Step:
         # indicate the type of input of the last line
         self.values = []
         self.lineno = None
+        self.global_sigil = global_sigil
         #
         self.runtime_options = {}
+        self.options = on_demand_options(options, sigil=global_sigil)
         if 'sigil' in self.options:
             self.sigil = self.options['sigil']
         else:
-            self.sigil = '${ }'
+            self.sigil = global_sigil
         #
         # string mode to collect all strings as part of an action
         self._action = None
@@ -582,7 +583,8 @@ class SoS_Script:
         # The global definition of sos_file should be accessible as
         # sos_file.name
         self.sections.extend(script.sections)
-        self.global_def += '{} = sos_namespace_({})\n'.format(alias, text_repr(script.global_def))
+        self.global_def += '{} = sos_namespace_({}, r"\{}")\n'.format(alias, text_repr(script.global_def),
+            script.global_sigil)
 
     def _include_content(self, sos_file, name_map):
         try:
@@ -605,7 +607,8 @@ class SoS_Script:
                         # match ...
                         self.sections.append(section)
             # global_def is more complicated
-            self.global_def += '__{} = sos_namespace_({})\n'.format(sos_file, text_repr(script.global_def))
+            self.global_def += '__{} = sos_namespace_({}, r"\{}")\n'.format(sos_file, text_repr(script.global_def),
+                script.global_sigil)
             #
             self.global_def += '''
 for __n, __v in {}.items():
@@ -619,6 +622,7 @@ for __n, __v in {}.items():
         self.format_version = '1.0'
         self.descriptions = []
         self.gloal_def = ''
+        self.global_sigil = '${ }'
         #
         comment_block = 1
         # cursect always point to the last section
@@ -637,6 +641,7 @@ for __n, __v in {}.items():
                 # ignore cell directive in batch mode
                 if self.transcript:
                     self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+
                 continue
 
             if SOS_STRU.match(line):
@@ -722,6 +727,23 @@ for __n, __v in {}.items():
                 if mo:
                     condition_met = None
                     condition_ignore = False
+                    continue
+
+                mo = SOS_OPTIONS.match(line)
+                if mo:
+                    import shlex
+                    options = shlex.split(mo.group('options'))
+                    for opt in options:
+                        if opt.startswith('sigil='):
+                            self.global_sigil = opt[6:].strip()
+                            env.logger.debug('Global sigil is set to {}'.format(self.global_sigil))
+                            if self.global_sigil in ('None', ''):
+                                self.global_sigil = None
+                            elif ' ' not in self.global_sigil or self.global_sigil.count(' ') > 1:
+                                parsing_errors.append(lineno, line,
+                                    'A sigil should be a string string with exactly one space. "{}" specified.'.format(self.global_sigil))
+                        else:
+                            parsing_errors.append(lineno, line, 'Unrecognized sos option {}'.format(opt))
                     continue
 
                 else:
@@ -929,7 +951,7 @@ for __n, __v in {}.items():
                         if len(set(prev_names) & set(names)):
                             parsing_errors.append(lineno, line, 'Duplicate section names')
                 all_step_names.extend(step_names)
-                self.sections.append(SoS_Step(self.content, step_names, step_options))
+                self.sections.append(SoS_Step(self.content, step_names, step_options, global_sigil=self.global_sigil))
                 cursect = self.sections[-1]
                 if self.transcript:
                     self.transcript.write('SECTION\t{}\t{}'.format(lineno, line))
@@ -969,7 +991,7 @@ for __n, __v in {}.items():
                 else:
                     # should be in script or parameter mode, which is ok for global section
                     if cursect is None:
-                        self.sections.append(SoS_Step(is_global=True))
+                        self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
                         cursect = self.sections[-1]
                     if directive_name == 'parameter':
                         cursect.add_directive(directive_name, directive_value, lineno)
@@ -996,7 +1018,7 @@ for __n, __v in {}.items():
             mo = SOS_ASSIGNMENT.match(line)
             if mo:
                 if cursect is None:
-                    self.sections.append(SoS_Step(is_global=True))
+                    self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
                     cursect = self.sections[-1]
                 # check previous expression before a new assignment
                 if not cursect.isValid():
@@ -1031,7 +1053,7 @@ for __n, __v in {}.items():
             #
             # all others?
             if not cursect:
-                self.sections.append(SoS_Step(is_global=True))
+                self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
                 cursect = self.sections[-1]
                 cursect.add_statement(line, lineno)
                 if self.transcript:
@@ -1083,7 +1105,7 @@ for __n, __v in {}.items():
         # if there is no section in the script, we create a default section with global
         # definition being the content.
         if not self.sections:
-            self.sections.append(SoS_Step(self.content, [('default', None, None)]))
+            self.sections.append(SoS_Step(self.content, [('default', None, None)], global_sigil=self.global_sigil))
             if global_section:
                 self.sections[0].statements = global_section[0][1].statements
             else:

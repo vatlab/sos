@@ -41,11 +41,11 @@ output:  name
 sh:
     dd if=/dev/urandom of=${name} count=10000
 
-[1]
+[1: sigil='[ ]']
 output:  't_d1/t_f2'
 task:
 sh:
-    dd if=/dev/urandom of=${output} count=50000
+    dd if=/dev/urandom of=[output] count=50000
     dd if=/dev/urandom of=t_d1/ut_f4 count=500
 
 [2]
