@@ -570,12 +570,12 @@ a += 1
     def testPassingVarsToNestedWorkflow(self):
         '''Test if variables can be passed to nested workflows'''
         script = SoS_Script(r"""
-
+%set sigil='[ ]'
 import time
 import random
 
 [nested]
-print('I am nested ${nested} with seed ${seed}')
+print('I am nested [nested] with seed [seed]')
 
 [0]
 reps = range(5)
@@ -583,7 +583,7 @@ input: for_each='reps'
 task: concurrent=True
 nested = _reps
 seed = random.randint(1, 1000)
-print('Passing ${seed} to ${nested}')
+print('Passing [seed] to [nested]')
 sos_run('nested')
 
 """)
@@ -819,10 +819,11 @@ for i in range(4):
         os.mkdir('temp')
         #
         script = SoS_Script('''
+%set sigil='< >'
 [1]
 
 for i in range(5):
-    run('touch temp/test_${i}.txt')
+    run('touch temp/test_<i>.txt')
 
 
 [10: shared={'test':'output'}]
@@ -830,7 +831,7 @@ input: dynamic('temp/*.txt'), group_by='single'
 output: dynamic('temp/*.txt.bak')
 
 run:
-touch ${_input}.bak
+touch <_input>.bak
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -851,16 +852,17 @@ touch ${_input}.bak
         #
         env.sig_mode = 'ignore'
         script = SoS_Script('''
+%set sigil='%( )'
 [1]
 rep = range(5)
 input:  for_each='rep'
-output: 'temp/${_rep}.txt'
+output: 'temp/%(_rep).txt'
 
 # ff should change and be usable inside run
-ff = '${_rep}.txt'
+ff = '%(_rep).txt'
 run:
-echo ${ff}
-touch temp/${ff}
+echo %(ff)
+touch temp/%(ff)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()

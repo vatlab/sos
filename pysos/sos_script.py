@@ -667,7 +667,6 @@ for __n, __v in {}.items():
                 continue
 
             if SOS_STRU.match(line):
-                env.logger.error(line)
                 # ignore cell directive in batch mode
                 if self.transcript:
                     self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
