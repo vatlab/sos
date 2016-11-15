@@ -36,78 +36,6 @@ kernel_json = {
     "language":     "sos",
 }
 
-def patch_spyder():
-    '''Patch spyder to make it work with sos files and sos kernel '''
-    try:
-        # patch spyderlib/config.py for file extension
-        from spyderlib import config
-        src_file = config.__file__
-        spyderlib_dir = os.path.dirname(src_file)
-        with open(src_file, encoding='utf-8') as src:
-            content = src.read()
-        with open(src_file, 'w', encoding='utf-8') as src:
-            src.write(content.replace('''
-    (_("Cython/Pyrex files"), ('.pyx', '.pxd', '.pxi')),
-    (_("C files"), ('.c', '.h')),''', '''
-    (_("Cython/Pyrex files"), ('.pyx', '.pxd', '.pxi')),
-    (_("SoS files"), ('.sos', )),
-    (_("C files"), ('.c', '.h')),'''))
-        #
-        # patch spyderlib/cli_options.py to add command line option --kernel
-        src_file = os.path.join(spyderlib_dir, 'cli_options.py')
-        with open(src_file, encoding='utf-8') as src:
-            content = src.read()
-        with open(src_file, 'w', encoding='utf-8') as src:
-            src.write(content.replace('''with Python profiling)")
-    options, args = parser.parse_args()''',
-            '''with Python profiling)")
-    parser.add_option('--kernel', help="Jupyter kernel to start.")
-    options, args = parser.parse_args()'''))
-        #
-        # patch spyderlib.utils.sourcecode.py,
-        src_file = os.path.join(spyderlib_dir, 'utils', 'sourcecode.py')
-        with open(src_file, encoding='utf-8') as src:
-            content = src.read()
-        with open(src_file, 'w', encoding='utf-8') as src:
-            src.write(content.replace(
-                "'Python': ('py', 'pyw', 'python', 'ipy')",
-                "'Python': ('py', 'pyw', 'python', 'ipy', 'sos')")
-                .replace(
-                '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[')}''',
-                '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[', '%cell')}''')
-            )
-        #
-        # patch spyderlib/spyder.py
-        src_file = os.path.join(spyderlib_dir, 'spyder.py')
-        src_file = spyder.__file__
-        with open(src_file, encoding='utf-8') as src:
-            content = src.read()
-        with open(src_file, 'w', encoding='utf-8') as src:
-            src.write(content.replace(
-            '''
-    app.exec_()
-''',
-            '''
-    try:
-        if options.kernel == 'sos':
-            cfg_file = os.path.expanduser('~/.ipython/profile_default/ipython_config.py')
-            has_cfg = os.path.isfile(cfg_file)
-            if has_cfg:
-                os.rename(cfg_file, cfg_file + '.sos_bak')
-            with open(cfg_file, 'w') as cfg:
-                cfg.write("""c.IPKernelApp.kernel_class =  'pysos.kernel.SoS_Kernel'\n""")
-        app.exec_()
-    finally:
-        if options.kernel == 'sos':
-            os.remove(cfg_file)
-            if has_cfg:
-                os.rename(cfg_file + '.sos_bak', cfg_file)
-'''))
-        #
-        log.info('\nAllow spyder to accept .sos as input format.')
-    except Exception as e:
-        log.info('Failed to patch spyder to accept .sos file: {}'.format(e))
-
 class InstallWithConfigurations(install):
     def run(self):
         # Regular installation
@@ -145,12 +73,10 @@ class InstallWithConfigurations(install):
         if not os.path.isdir(prof_dir):
             os.makedirs(prof_dir)
         #
-        patch_spyder()
-        #
         shutil.copy('misc/sos_magic.py', ext_file)
         shutil.copy('misc/sos_ipython_profile.py', prof_file)
         #
-        log.info('\nSoS is installed and configured to use with vim, ipython, spyder, and Jupyter.')
+        log.info('\nSoS is installed and configured to use with vim, ipython, and Jupyter.')
         log.info('Use "set syntax=sos" to enable syntax highlighting.')
         log.info('Use "ipython --profile sos" to start ipython with sos magic.')
         #
@@ -165,6 +91,7 @@ class InstallWithConfigurations(install):
                 log.info('Use "jupyter notebook" to create or open SoS notebooks.')
             except:
                 log.error("\nWARNING: Could not install SoS Kernel as %s user." % self.user)
+        log.info('Run "python misc/patch_spyder.py" to patch spyder with sos support.')
         log.info('And "sos -h" to start using Script of Scripts.')
 
 setup(name = "sos",
