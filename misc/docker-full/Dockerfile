@@ -20,7 +20,7 @@
 
 # SoS official docker image for latest version of SoS. Use command
 # 
-#     docker build -t mdabioinfo/sos:latest docker-base 
+#     docker build -t mdabioinfo/sos:latest docker-full 
 #
 # to build it.
 #
@@ -57,6 +57,6 @@ ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/
 RUN chmod +x /usr/bin/tini
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-EXPOSE 8888
-CMD ["jupyter", "notebook", "--port=8888","--no-browser"]
+EXPOSE 80
+CMD ["jupyter", "notebook", "--port=80","--no-browser"]
 

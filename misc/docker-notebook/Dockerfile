@@ -28,35 +28,16 @@ FROM jupyter/datascience-notebook
 
 MAINTAINER Bo Peng <bpeng@mdanderson.org>
 
+USER    root
+
+RUN     conda install -y feather-format -c conda-forge
+RUN     pip install sos
+
 RUN     mkdir /home/mdabioinfo
+RUN     chown $NB_USER /home/mdabioinfo
 ENV     HOME  /home/mdabioinfo
 WORKDIR ${HOME}
 
-# let us also install some python and R/bioconductor packages
 
-# because it is called a "FULL" container, let us install popular python
-# and R packages
-RUN     conda install -y numpy scipy pandas scikit-learn nltk
-RUN     conda install -y -c https://conda.binstar.org/bpeng simuPOP
-
-# R bioconductor packages that I would use from time to time
-RUN     curl https://raw.githubusercontent.com/Bioconductor/bioc_docker/master/out/release_base/install.R -o /tmp/install.R
-RUN     R -f /tmp/install.R
-
-RUN     curl https://raw.githubusercontent.com/Bioconductor/bioc_docker/master/out/release_base/installFromBiocViews.R -o /tmp/installFromBiocViews.R
-RUN     R -f /tmp/installFromBiocViews.R
-
-RUN     curl https://raw.githubusercontent.com/Bioconductor/bioc_docker/master/out/release_core/installFromBiocViews.R -o /tmp/installCore.R
-RUN     R -f /tmp/installCore.R
-
-RUN     apt-get install -y libxml2 libxml2-dev
-RUN     Rscript -e
-"source('https://bioconductor.org/biocLite.R');biocLite('lumi')"
-RUN     curl https://raw.githubusercontent.com/Bioconductor/bioc_docker/master/out/release_sequencing/installFromBiocViews.R -o /tmp/installSequencing.R
-RUN     R -f /tmp/installSequencing.R
-
-# these should be installed automatically by sos
-RUN     conda install -y psutil
-RUN     pip install sos
 
 
