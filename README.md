@@ -53,18 +53,39 @@ exchanging data frames between SoS/Python DataFrame and R data.frame. This
 module is not installed by default because it need to compile from source
 or [install from conda](https://pypi.python.org/pypi/feather-format).
 
+## Running sos in Docker 
 
 If you are using docker, you can run SoS directly using command
 
 ```
 % docker run -it mdabioinfo/sos:latest /bin/bash
 ```
-or using another container 
+
+to enter a command prompt with sos command. More usefully, you can start a
+Jupyter server with [R](https://www.r-project.org/) and [IRkernel](https://github.com/IRkernel/IRkernel),
+Julia, Python, and SoS kernels, and many Python and R modules for data sciencists using command
+
 
 ```
-% docker run -it mdabioinfo/sos-full:latest /bin/bash
+% docker run -d -p 8888:8888 mdabioinfo/sos-notebook
 ```
-with [R](https://www.r-project.org/) and [IRkernel](https://github.com/IRkernel/IRkernel), and a running [Jupyter](http://jupyter.org/) server with SoS, python, and R kernels.
+
+After the docker is running in the background, you can start a browser and
+start working with a complete SoS environment with URL
+
+```
+http://localhost:8888
+```
+
+You can even use this docker image for your daily data analysis if you make
+your local directory available to the Jupyter server using command 
+
+```
+% docker run -d -p 8888:8888 -v $HOME:/home/jovyan/work  mdabioinfo/sos-notebook
+```
+
+This command mounts your home directory (`$HOME`) to the docker machine but
+you can specify any local directory.
 
 ## Documentation
 

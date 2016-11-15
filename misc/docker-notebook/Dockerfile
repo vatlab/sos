@@ -33,10 +33,7 @@ USER    root
 RUN     conda install -y feather-format -c conda-forge
 RUN     pip install sos
 
-RUN     mkdir /home/mdabioinfo
-RUN     chown $NB_USER /home/mdabioinfo
-ENV     HOME  /home/mdabioinfo
-WORKDIR ${HOME}
+USER    $NB_USER
 
 
 
