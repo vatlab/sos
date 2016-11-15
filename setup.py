@@ -37,41 +37,12 @@ kernel_json = {
 }
 
 def patch_spyder():
-    '''spyder does not recognize .sos extension. The only change we need to make it work is to
-    change the following code from
-
-        ALL_LANGUAGES = {
-                     'Python': ('py', 'pyw', 'python', 'ipy'),
-
-    to
-
-        ALL_LANGUAGES = {
-                     'Python': ('py', 'pyw', 'python', 'ipy', 'sos'),
-
-    in spyderlib.utils.sourcecode.py, and add 
-
-        (_("SoS files"), ('.sos', )),
-
-    to
-
-        EDIT_FILETYPES = (
-
-    in spyderlib.config.py.
-    '''
+    '''Patch spyder to make it work with sos files and sos kernel '''
     try:
-        from spyderlib.utils import sourcecode
-        src_file = sourcecode.__file__
-        with open(src_file, encoding='utf-8') as src:
-            content = src.read()
-        with open(src_file, 'w', encoding='utf-8') as src:
-            src.write(content.replace("'Python': ('py', 'pyw', 'python', 'ipy')",
-                "'Python': ('py', 'pyw', 'python', 'ipy', 'sos')")
-                .replace(
-                '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[')}''',
-                '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[', '%cell')}'''))
-        #
+        # patch spyderlib/config.py for file extension
         from spyderlib import config
         src_file = config.__file__
+        spyderlib_dir = os.path.dirname(src_file)
         with open(src_file, encoding='utf-8') as src:
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
@@ -81,6 +52,57 @@ def patch_spyder():
     (_("Cython/Pyrex files"), ('.pyx', '.pxd', '.pxi')),
     (_("SoS files"), ('.sos', )),
     (_("C files"), ('.c', '.h')),'''))
+        #
+        # patch spyderlib/cli_options.py to add command line option --kernel
+        src_file = os.path.join(spyderlib_dir, 'cli_options.py')
+        with open(src_file, encoding='utf-8') as src:
+            content = src.read()
+        with open(src_file, 'w', encoding='utf-8') as src:
+            src.write(content.replace('''with Python profiling)")
+    options, args = parser.parse_args()''',
+            '''with Python profiling)")
+    parser.add_option('--kernel', help="Jupyter kernel to start.")
+    options, args = parser.parse_args()'''))
+        #
+        # patch spyderlib.utils.sourcecode.py,
+        src_file = os.path.join(spyderlib_dir, 'utils', 'sourcecode.py')
+        with open(src_file, encoding='utf-8') as src:
+            content = src.read()
+        with open(src_file, 'w', encoding='utf-8') as src:
+            src.write(content.replace(
+                "'Python': ('py', 'pyw', 'python', 'ipy')",
+                "'Python': ('py', 'pyw', 'python', 'ipy', 'sos')")
+                .replace(
+                '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[')}''',
+                '''CELL_LANGUAGES = {'Python': ('#%%', '# %%', '# <codecell>', '# In[', '%cell')}''')
+            )
+        #
+        # patch spyderlib/spyder.py
+        src_file = os.path.join(spyderlib_dir, 'spyder.py')
+        src_file = spyder.__file__
+        with open(src_file, encoding='utf-8') as src:
+            content = src.read()
+        with open(src_file, 'w', encoding='utf-8') as src:
+            src.write(content.replace(
+            '''
+    app.exec_()
+''',
+            '''
+    try:
+        if options.kernel == 'sos':
+            cfg_file = os.path.expanduser('~/.ipython/profile_default/ipython_config.py')
+            has_cfg = os.path.isfile(cfg_file)
+            if has_cfg:
+                os.rename(cfg_file, cfg_file + '.sos_bak')
+            with open(cfg_file, 'w') as cfg:
+                cfg.write("""c.IPKernelApp.kernel_class =  'pysos.kernel.SoS_Kernel'\n""")
+        app.exec_()
+    finally:
+        if options.kernel == 'sos':
+            os.remove(cfg_file)
+            if has_cfg:
+                os.rename(cfg_file + '.sos_bak', cfg_file)
+'''))
         #
         log.info('\nAllow spyder to accept .sos as input format.')
     except Exception as e:
