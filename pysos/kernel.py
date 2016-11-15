@@ -339,11 +339,11 @@ kernel_init_command = {
 }
 ..py.repr.double.1 <- function(obj) {
     as.character(obj)
-}  
+}
 ..py.repr.character.1 <- function(obj) {
     options(useFancyQuotes=FALSE)
     dQuote(obj)
-}        
+}
 ..py.repr.dataframe <- function(obj) {
     if (!require("feather")) {
         install.packages('feather', repos='http://cran.stat.ucla.edu/')
@@ -569,7 +569,7 @@ class SoS_Kernel(Kernel):
         remaining_code = '\n'.join(lines[1:])
         if warn_remaining and remaining_code.strip():
             self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stderr', 'text': 
+                {'name': 'stderr', 'text':
                 'Statement {} ignored'.format(short_repr(remaining_code))})
         return command_line, remaining_code
 
@@ -637,7 +637,7 @@ class SoS_Kernel(Kernel):
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Kernel "{}" is used.\n'.format(self.kernel)})
             elif kernel == 'sos':
-                # if we are switching back to sos, the return variables need to be 
+                # if we are switching back to sos, the return variables need to be
                 # returned
                 self.handle_magic_put(self.RET_VARS)
                 self.RET_VARS = []
@@ -1060,7 +1060,7 @@ class SoS_Kernel(Kernel):
         if code == 'import os\n_pid = os.getpid()':
             # this is a special probing command from vim-ipython. Let us handle it specially
             # so that vim-python can get the pid.
-            return 
+            return
         if self.MAGIC_DICT.match(code):
             # %dict should be the last magic
             options, remaining_code = self.get_magic_and_code(code, True)
@@ -1212,6 +1212,330 @@ class SoS_Kernel(Kernel):
                 km.shutdown_kernel(restart=restart)
             except Exception as e:
                 env.logger.warning('Failed to shutdown kernel {}: {}'.format(name, e))
+
+
+
+#
+# The following is a hack to let SoS kernel work with spyder version > 3.0
+# A complete rewritten will be needed after spyder officially supports
+# third-party kernel.
+#
+# Note that this kernel is only used by Spyder, not by jupyter notebook
+# and qtconsole.
+#
+from ipykernel.comm import CommManager
+
+class SoS_SpyderKernel(SoS_Kernel):
+    """Spyder kernel for Jupyter"""
+
+    def __init__(self, *args, **kwargs):
+        super(SoS_SpyderKernel, self).__init__(*args, **kwargs)
+
+        self.namespace_view_settings = {}
+        self._pdb_obj = None
+        self._pdb_step = None
+        # ???
+        self.shell.kernel = self
+
+        self.comm_manager = CommManager(parent=self, kernel=self)
+
+        self.shell.configurables.append(self.comm_manager)
+        comm_msg_types = [ 'comm_open', 'comm_msg', 'comm_close' ]
+        for msg_type in comm_msg_types:
+            self.shell_handlers[msg_type] = getattr(self.comm_manager, msg_type)
+
+    def _reset_dict(self):
+        super(SoS_SpyderKernel, self)._reset_dict()
+        # spyder 3 executes commands such as
+        #
+        # get_ipython().kernel....
+        #
+        # so we will have to expose the shell to the SoS dictionary
+        env.sos_dict.set('__ipython__', self.shell)
+        SoS_exec('''
+def get_ipython():
+    return __ipython__
+''', None)
+
+    #
+    # The following is copied from spyder_kernel.py, which are needed for
+    # spyder to work. I cannot however derive this class also from
+    # SpyderKernel because that kernel assumes a ipkernel kernel.
+    #
+    @property
+    def _pdb_frame(self):
+        """Return current Pdb frame if there is any"""
+        if self._pdb_obj is not None and self._pdb_obj.curframe is not None:
+            return self._pdb_obj.curframe
+
+    @property
+    def _pdb_locals(self):
+        """
+        Return current Pdb frame locals if available. Otherwise
+        return an empty dictionary
+        """
+        if self._pdb_frame:
+            return self._pdb_obj.curframe_locals
+        else:
+            return {}
+
+    # -- Public API ---------------------------------------------------
+    # For the Variable Explorer
+    def get_namespace_view(self):
+        """
+        Return the namespace view
+
+        This is a dictionary with the following structure
+
+        {'a': {'color': '#800000', 'size': 1, 'type': 'str', 'view': '1'}}
+
+        Here:
+        * 'a' is the variable name
+        * 'color' is the color used to show it
+        * 'size' and 'type' are self-evident
+        * and'view' is its value or the text shown in the last column
+        """
+        settings = self.namespace_view_settings
+        if settings:
+            ns = self._get_current_namespace()
+            more_excluded_names = ['In', 'Out']
+            view = make_remote_view(ns, settings, more_excluded_names)
+            return view
+
+    def get_var_properties(self):
+        """
+        Get some properties of the variables in the current
+        namespace
+        """
+        settings = self.namespace_view_settings
+        if settings:
+            ns = self._get_current_namespace()
+            data = get_remote_data(ns, settings, mode='editable',
+                                   more_excluded_names=['In', 'Out'])
+
+            properties = {}
+            for name, value in list(data.items()):
+                properties[name] = {
+                    'is_list':  isinstance(value, (tuple, list)),
+                    'is_dict':  isinstance(value, dict),
+                    'len': self._get_len(value),
+                    'is_array': self._is_array(value),
+                    'is_image': self._is_image(value),
+                    'is_data_frame': self._is_data_frame(value),
+                    'is_series': self._is_series(value),
+                    'array_shape': self._get_array_shape(value),
+                    'array_ndim': self._get_array_ndim(value)
+                }
+
+            return properties
+        else:
+            return {}
+
+    def get_value(self, name):
+        """Get the value of a variable"""
+        ns = self._get_current_namespace()
+        value = ns[name]
+        publish_data({'__spy_data__': value})
+
+    def set_value(self, name, value):
+        """Set the value of a variable"""
+        ns = self._get_reference_namespace(name)
+        value = deserialize_object(value)[0]
+        if isinstance(value, CannedObject):
+            value = value.get_object()
+        ns[name] = value
+
+    def remove_value(self, name):
+        """Remove a variable"""
+        ns = self._get_reference_namespace(name)
+        ns.pop(name)
+
+    def copy_value(self, orig_name, new_name):
+        """Copy a variable"""
+        ns = self._get_reference_namespace(orig_name)
+        ns[new_name] = ns[orig_name]
+
+    def load_data(self, filename, ext):
+        """Load data from filename"""
+        glbs = self._mglobals()
+
+        load_func = iofunctions.load_funcs[ext]
+        data, error_message = load_func(filename)
+
+        if error_message:
+            return error_message
+
+        for key in list(data.keys()):
+            new_key = fix_reference_name(key, blacklist=list(glbs.keys()))
+            if new_key != key:
+                data[new_key] = data.pop(key)
+
+        try:
+            glbs.update(data)
+        except Exception as error:
+            return str(error)
+
+        return None
+
+    def save_namespace(self, filename):
+        """Save namespace into filename"""
+        ns = self._get_current_namespace()
+        settings = self.namespace_view_settings
+        data = get_remote_data(ns, settings, mode='picklable',
+                               more_excluded_names=['In', 'Out']).copy()
+        return iofunctions.save(data, filename)
+
+    # --- For Pdb
+    def get_pdb_step(self):
+        """Return info about pdb current frame"""
+        return self._pdb_step
+
+    # --- For the Help plugin
+    def is_defined(self, obj, force_import=False):
+        """Return True if object is defined in current namespace"""
+        ns = self._get_current_namespace(with_magics=True)
+        return isdefined(obj, force_import=force_import, namespace=ns)
+
+    def get_doc(self, objtxt):
+        """Get object documentation dictionary"""
+        obj, valid = self._eval(objtxt)
+        if valid:
+            return getdoc(obj)
+
+    def get_source(self, objtxt):
+        """Get object source"""
+        obj, valid = self._eval(objtxt)
+        if valid:
+            return getsource(obj)
+
+    # -- Private API ---------------------------------------------------
+    # --- For the Variable Explorer
+    def _get_current_namespace(self, with_magics=False):
+        """
+        Return current namespace
+
+        This is globals() if not debugging, or a dictionary containing
+        both locals() and globals() for current frame when debugging
+        """
+        ns = {}
+        glbs = self._mglobals()
+
+        if self._pdb_frame is None:
+            ns.update(glbs)
+        else:
+            ns.update(glbs)
+            ns.update(self._pdb_locals)
+
+        # Add magics to ns so we can show help about them on the Help
+        # plugin
+        if with_magics:
+            line_magics = self.shell.magics_manager.magics['line']
+            cell_magics = self.shell.magics_manager.magics['cell']
+            ns.update(line_magics)
+            ns.update(cell_magics)
+
+        return ns
+
+    def _get_reference_namespace(self, name):
+        """
+        Return namespace where reference name is defined
+
+        It returns the globals() if reference has not yet been defined
+        """
+        glbs = self._mglobals()
+        if self._pdb_frame is None:
+            return glbs
+        else:
+            lcls = self._pdb_locals
+            if name in lcls:
+                return lcls
+            else:
+                return glbs
+
+    def _mglobals(self):
+        """Return current globals -- handles Pdb frames"""
+        if self._pdb_frame is not None:
+            return self._pdb_frame.f_globals
+        else:
+            return self.shell.user_ns
+
+    def _get_len(self, var):
+        """Return sequence length"""
+        try:
+            return len(var)
+        except TypeError:
+            return None
+
+    def _is_array(self, var):
+        """Return True if variable is a NumPy array"""
+        try:
+            import numpy
+            return isinstance(var, numpy.ndarray)
+        except ImportError:
+            return False
+
+    def _is_image(self, var):
+        """Return True if variable is a PIL.Image image"""
+        try:
+            from PIL import Image
+            return isinstance(var, Image.Image)
+        except ImportError:
+            return False
+
+    def _is_data_frame(self, var):
+        """Return True if variable is a DataFrame"""
+        try:
+            from pandas import DataFrame
+            return isinstance(var, DataFrame)
+        except:
+            return False
+
+    def _is_series(self, var):
+        """Return True if variable is a Series"""
+        try:
+            from pandas import Series
+            return isinstance(var, Series)
+        except:
+            return False
+
+    def _get_array_shape(self, var):
+        """Return array's shape"""
+        try:
+            if self._is_array(var):
+                return var.shape
+            else:
+                return None
+        except AttributeError:
+            return None
+
+    def _get_array_ndim(self, var):
+        """Return array's ndim"""
+        try:
+            if self._is_array(var):
+                return var.ndim
+            else:
+                return None
+        except AttributeError:
+            return None
+
+    # --- For Pdb
+    def _register_pdb_session(self, pdb_obj):
+        """Register Pdb session to use it later"""
+        self._pdb_obj = pdb_obj
+
+    # --- For the Help plugin
+    def _eval(self, text):
+        """
+        Evaluate text and return (obj, valid)
+        where *obj* is the object represented by *text*
+        and *valid* is True if object evaluation did not raise any exception
+        """
+        assert is_text_string(text)
+        ns = self._get_current_namespace(with_magics=True)
+        try:
+            return eval(text, ns), True
+        except:
+            return None, False
 
 if __name__ == '__main__':
     from ipykernel.kernelapp import IPKernelApp

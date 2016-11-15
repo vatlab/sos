@@ -158,7 +158,7 @@ def patch_spyder3():
             if has_cfg:
                 os.rename(cfg_file, cfg_file + '.sos_bak')
             with open(cfg_file, 'w') as cfg:
-                cfg.write("""c.IPKernelApp.kernel_class =  'pysos.kernel.SoS_Kernel'\n""")
+                cfg.write("""c.IPKernelApp.kernel_class =  'pysos.kernel.SoS_SpyderKernel'\n""")
         app.exec_()
     finally:
         if options.kernel == 'sos':
