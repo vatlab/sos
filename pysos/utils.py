@@ -37,7 +37,8 @@ import yaml
 import urllib
 import argparse
 from collections.abc import Sequence
-from io import StringIO
+from io import StringIO, FileIO
+
 from html.parser import HTMLParser
 import uuid
 import fasteners
@@ -754,6 +755,18 @@ class ProgressBar:
                 sys.stderr.write('\r{}{}\n'.format(''.join(msg), self.term.clear_eol))
                 sys.stderr.flush()
 
+
+class ProgressFileObj(FileIO):
+    '''A wrapper of a file object that update a progress bar
+    during file read.
+    '''
+    def __init__(self, prog, *args, **kwargs):
+        FileIO.__init__(self, *args, **kwargs)
+        self.prog = prog
+
+    def read(self, n, *args):
+        self.prog.progressBy(n)
+        return FileIO.read(self, n, *args)
 
 class frozendict(dict):
     '''A fronzen dictionary that disallow changing of its elements

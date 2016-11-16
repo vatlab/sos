@@ -22,9 +22,6 @@
 #
 import os
 import sys
-import fasteners
-from io import FileIO
-
 
 script_help = '''A SoS script that defines one or more workflows. The
     script can be a filename or a URL from which the content of a SoS will
@@ -246,12 +243,13 @@ def cmd_run(args, workflow_args, batch_mode=True):
         env.sig_mode = 'default'
 
     if args.__bin_dirs__:
+        import fasteners
         for d in args.__bin_dirs__:
-            with fasteners.InterProcessLock('/tmp/sos_lock_bin'):
-                if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
+            if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
+                with fasteners.InterProcessLock('/tmp/sos_lock_bin'):
                     os.makedirs(os.path.expanduser(d))
-                elif not os.path.isdir(os.path.expanduser(d)):
-                    raise ValueError('directory does not exist: {}'.format(d))
+            elif not os.path.isdir(os.path.expanduser(d)):
+                raise ValueError('directory does not exist: {}'.format(d))
         os.environ['PATH'] = os.pathsep.join([os.path.expanduser(x) for x in args.__bin_dirs__]) + os.pathsep + os.environ['PATH']
 
     try:
@@ -831,23 +829,10 @@ def locate_files(session, include, exclude, all_files):
     #
     return script_files, tracked_files, runtime_files
 
-class ProgressFileObj(FileIO):
-    '''A wrapper of a file object that update a progress bar
-    during file read.
-    '''
-    def __init__(self, prog, *args, **kwargs):
-        FileIO.__init__(self, *args, **kwargs)
-        self.prog = prog
-
-    def read(self, n, *args):
-        self.prog.progressBy(n)
-        return FileIO.read(self, n, *args)
-
-
 def cmd_pack(args, unknown_args):
     import tarfile
     import tempfile
-    from .utils import pretty_size, env, ProgressBar
+    from .utils import pretty_size, env, ProgressBar, ProgressFileObj
     from .target import FileTarget
     #
     env.verbosity = args.verbosity
@@ -977,7 +962,7 @@ def add_unpack_arguments(parser):
 
 def cmd_unpack(args, unknown_args):
     import tarfile
-    from .utils import env, ProgressBar, pretty_size
+    from .utils import env, ProgressBar, pretty_size, ProgressFileObj
     from .target import fileMD5
     import tempfile
     import fnmatch
@@ -1179,7 +1164,7 @@ def main():
     add_unpack_arguments(parser)
     #
     if len(sys.argv) == 1:
-        subparsers.print_help()
+        master_parser.print_help()
         sys.exit(0)
     args, workflow_args = master_parser.parse_known_args()
     # calling the associated functions
