@@ -227,7 +227,7 @@ def add_run_arguments(parser):
     addCommonArgs(parser)
     parser.set_defaults(func=cmd_run)
 
-def cmd_run(args, workflow_args):
+def cmd_run(args, workflow_args, batch_mode=True):
     import atexit
     from .utils import env, get_traceback
     from .sos_script import SoS_Script
@@ -235,7 +235,8 @@ def cmd_run(args, workflow_args):
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
     # kill all remainging processes when the master process is killed.
-    atexit.register(env.cleanup)
+    if batch_mode:
+        atexit.register(env.cleanup)
     #
     if args.__rerun__:
         env.sig_mode = 'ignore'
@@ -281,11 +282,25 @@ def cmd_run(args, workflow_args):
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error(e)
-        sys.exit(1)
+        if batch_mode:
+            sys.exit(1)
+        else:
+            raise
 
 #
 # function runfile that is used by spyder to execute complete script
 #
+def runfile(script, args='', wdir='.', **kwargs):
+    import argparse
+    import shlex
+    from .utils import _parse_error
+    parser = argparse.ArgumentParser(description='''Execute a sos script''')
+    add_run_arguments(parser)
+    parser.error = _parse_error
+    args, workflow_args = parser.parse_known_args([script] + shlex.split(args))
+    # calling the associated functions
+    cmd_run(args, workflow_args, batch_mode=False)
+
 #
 # subcommand dryrun
 #

@@ -504,8 +504,14 @@ class SoS_Script:
             Among other things, section.names
         '''
         if filename:
-            filename = filename if filename.endswith('.sos') else filename + '.sos'
-            content, self.sos_script = locate_script(filename, start='.')
+            try:
+                content, self.sos_script = locate_script(filename, start='.')
+            except:
+                if not filename.endswith('.sos'):
+                    filename = filename + '.sos'
+                    content, self.sos_script = locate_script(filename, start='.')
+                else:
+                    raise
             self.content = SoS_ScriptContent(content, self.sos_script)
         else:
             self.sos_script = '<string>'
