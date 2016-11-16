@@ -20,10 +20,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-# passing string as unicode to python 2 version of SoS
-# to ensure compatibility
-from __future__ import unicode_literals
-
 import os
 import unittest
 import time
@@ -43,7 +39,7 @@ from pysos.sos_eval import  Undetermined
 from pysos.actions import DockerClient
 from docker.errors import DockerException
 from pysos.sos_executor import Base_Executor, ExecuteError
-from pysos.signature import FileTarget
+from pysos.target import FileTarget
 
 import socket
 def internet_on(host='8.8.8.8', port=80, timeout=3):

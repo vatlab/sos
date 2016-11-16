@@ -313,8 +313,11 @@ class RuntimeEnvironments(object):
         self.running_jobs = 0
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
-        if not os.path.isdir('.sos'):
-            os.mkdir('.sos')
+        if not os.path.isdir('.sos/.runtime'):
+            with fasteners.InterProcessLock('/tmp/sos_runtime_lock'):
+                # the directory might haver been created during waiting
+                if not os.path.isdir('.sos/.runtime'):
+                    os.makedirs('.sos/.runtime')
 
     def register_process(self, pid, msg=''):
         '''Register a process used by this SoS instance. It will also be
@@ -551,6 +554,7 @@ class ProgressBar:
             self.update = self.empty
             self.curlUpdate = self.empty
             self.progress = self.empty
+            self.progressBy = self.empty
             self.outputProgress = self.empty
             self.done = self.empty
             self.main = ''
@@ -573,22 +577,21 @@ class ProgressBar:
         self.finished = 0
         self.uuid = uuid.uuid4().hex
         with fasteners.InterProcessLock('/tmp/sos_progress_'):
-            with open('/tmp/sos_progress_', 'a') as prog_index:
+            with open('/tmp/sos_progress', 'a') as prog_index:
                 prog_index.write('{}\n'.format(self.uuid))
         self.reset('', totalCount)
 
     def get_index(self):
         with fasteners.InterProcessLock('/tmp/sos_progress_'):
-            with open('/tmp/sos_progress_') as prog_index:
+            with open('/tmp/sos_progress') as prog_index:
                 lines = prog_index.readlines()
                 try:
                     idx = lines[::-1].index(self.uuid + '\n')
-                except Exception as e:
-                    env.logger.error(e)
+                except:
                     return 0
             # try to keep the file small
             if len(lines) > 200:
-                with open('/tmp/sos_progress_', 'w') as prog_index:
+                with open('/tmp/sos_progress', 'w') as prog_index:
                     prog_index.write(''.join(lines[-100:]))
             return idx
 
@@ -615,6 +618,13 @@ class ProgressBar:
             return
         self.count = count
         self.outputProgress()
+
+    def progressBy(self, count):
+        self.last_progress_count += count
+        if self.last_progress_count > self.min_progress_count:
+            self.count += self.last_progress_count
+            self.outputProgress()
+            self.last_progress_count = 0
 
     def urllibUpdate(self, total, existing):
         '''Update called from pycurl'''
@@ -921,7 +931,7 @@ class ActivityNotifier(threading.Thread):
 
     def get_index(self):
         with fasteners.InterProcessLock('/tmp/sos_progress_'):
-            with open('/tmp/sos_progress_') as prog_index:
+            with open('/tmp/sos_progress') as prog_index:
                 lines = prog_index.readlines()
                 try:
                     idx = lines[::-1].index(self.uuid + '\n')
@@ -929,7 +939,7 @@ class ActivityNotifier(threading.Thread):
                     return 0
             # try to keep the file small
             if len(lines) > 200:
-                with open('/tmp/sos_progress_', 'w') as prog_index:
+                with open('/tmp/sos_progress', 'w') as prog_index:
                     prog_index.write(''.join(lines[-100:]))
             return idx
 
@@ -947,7 +957,7 @@ class ActivityNotifier(threading.Thread):
             if not registered:
                 self.uuid = uuid.uuid4().hex
                 with fasteners.InterProcessLock('/tmp/sos_progress_'):
-                    with open('/tmp/sos_progress_', 'a') as prog_index:
+                    with open('/tmp/sos_progress', 'a') as prog_index:
                         prog_index.write('{}\n'.format(self.uuid))
                 registered = True
             second_elapsed = time.time() - self.start_time

@@ -8,3 +8,6 @@ include misc/sos.vim
 include misc/sos_ipython_profile.py
 include misc/sos_codemirror.js
 include misc/sos_magic.py
+include misc/vim-ipython/ipy.vim
+include misc/vim-ipython/vim_ipython.py
+include misc/patch_spyder.py

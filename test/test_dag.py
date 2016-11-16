@@ -29,7 +29,7 @@ from io import StringIO
 from pysos.sos_script import SoS_Script
 from pysos.utils import env
 from pysos.sos_executor import Base_Executor, MP_Executor
-from pysos.signature import FileTarget
+from pysos.target import FileTarget
 
 
 class TestDAG(unittest.TestCase):

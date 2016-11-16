@@ -53,7 +53,7 @@ highlight link pythonBuiltin	Function
 syn match sos_section_head "^\[\s*\w\+.*\]\s*$"
 syn match sos_directive "^\(input\|output\|depends\|parameter\|task\)\s*:"
 syn match sos_preprocessor "^%\(if\|elif\|else\|endif\|cell\|include\|from\).*$"
-syn match sos_magic "^%\(with\|use\|set\|paste\|reset\|dict\|run\).*$"
+syn match sos_magic "^%\(with\|use\|set\|paste\|reset\|dict\|preview\|run\).*$"
 
 " match a line with non input/output/depends/task, and ends before a section
 " or another directive

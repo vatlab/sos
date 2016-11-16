@@ -32,12 +32,12 @@ from collections import defaultdict
 from uuid import uuid4
 
 from .utils import env, Error, dehtml, locate_script, text_repr
-from .sos_eval import on_demand_options
+from .sos_eval import on_demand_options, sos_compile
 from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
     SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
-    SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_ENDIF, SOS_CELL, SOS_MAGIC, \
+    SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_OPTIONS, SOS_ENDIF, SOS_CELL, SOS_MAGIC, \
     INDENTED
 
 __all__ = ['SoS_Script']
@@ -60,7 +60,7 @@ class SoS_Step:
     '''Parser of a SoS step. This class accepts strings sent by the parser, determine
     their types and add them to appropriate sections (directive, assignment, statement,
     scripts etc) '''
-    def __init__(self, context=None, names=[], options={}, is_global=False):
+    def __init__(self, context=None, names=[], options={}, is_global=False, global_sigil='${ }'):
         '''A sos step '''
         self.context = context
         # A step will not have a name and index until it is copied to separate workflows
@@ -69,7 +69,6 @@ class SoS_Step:
         self.alias = None
         # it initially hold multiple names with/without wildcard characters
         self.names = names
-        self.options = on_demand_options(options)
         self.comment = ''
         # comment at the end of a section that could be a workflow description
         self.back_comment = ''
@@ -84,12 +83,14 @@ class SoS_Step:
         # indicate the type of input of the last line
         self.values = []
         self.lineno = None
+        self.global_sigil = global_sigil
         #
         self.runtime_options = {}
+        self.options = on_demand_options(options, sigil=global_sigil)
         if 'sigil' in self.options:
             self.sigil = self.options['sigil']
         else:
-            self.sigil = '${ }'
+            self.sigil = global_sigil
         #
         # string mode to collect all strings as part of an action
         self._action = None
@@ -126,7 +127,7 @@ class SoS_Step:
                     if self.values[-1].strip().endswith(','):
                         return False
                     try:
-                        compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
+                        sos_compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
                     except:
                         return False
                     return True
@@ -147,7 +148,7 @@ class SoS_Step:
             return True
         try:
             if self.category() == 'expression':
-                compile(''.join(self.values), filename='<string>', mode='eval')
+                sos_compile(''.join(self.values), filename='<string>', mode='eval')
             elif self.category() == 'directive':
                 # we add func() because the expression can be multi-line and
                 # can have keyword-argument like options
@@ -160,9 +161,9 @@ class SoS_Step:
                 if self.values[-1].strip().endswith(','):
                     self.error_msg = 'Trailing ,'
                     return False
-                compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
+                sos_compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
             elif self.category() == 'statements':
-                compile(''.join(self.values), filename='<string>', mode='exec')
+                sos_compile((''.join(self.values)), filename='<string>', mode='exec')
             elif self.category() == 'script':
                 #
                 # A valid script has an identation defined at the first line. That is to say
@@ -359,8 +360,9 @@ class SoS_Step:
 class SoS_Workflow:
     '''A SoS workflow with multiple steps. It is created from multiple sections of a SoS script
     and consists of multiple SoS_Step.'''
-    def __init__(self, workflow_name, allowed_steps, sections, description):
+    def __init__(self, content, workflow_name, allowed_steps, sections, description):
         '''create a workflow from its name and a list of SoS_Sections (using name matching)'''
+        self.content = content
         self.name = workflow_name
         self.description = description
         self.sections = []
@@ -394,8 +396,8 @@ class SoS_Workflow:
                 if item.isdigit():
                     # pipeline:100
                     all_steps[int(item)] = True
-                elif ':' in item and item.count(':') == 1:
-                    l, u = item.split(':')
+                elif '-' in item and item.count('-') == 1:
+                    l, u = item.split('-')
                     if (l and not l.isdigit()) or (u and not u.isdigit()) or \
                         (l and u and int(l) > int(u)):
                         raise ValueError('Invalid pipeline step item {}'.format(item))
@@ -459,12 +461,29 @@ class SoS_ScriptContent:
     def __init__(self, content='', filename=None):
         self.content = content
         self.filename = filename
-        if content:
-            self.md5 = textMD5(self.content)
+        self.included = []
+        self.md5 = self.calc_md5()
+
+    def calc_md5(self):
+        if self.content:
+            cnt = self.content
         else:
             with open(self.filename) as script:
-                self.md5 = textMD5(script.read())
-        
+                cnt = script.read()
+        # additional files
+        for filename in self.included:
+            with open(filename) as script:
+                cnt += script.read()
+        #
+        return textMD5(cnt)
+
+    def add(self, content='', filename=None):
+        if content:
+            raise RuntimeError('Include can only add file, not script')
+        if filename not in self.included:
+            self.included.append(filename)
+            self.md5 = self.calc_md5()
+
 
 class SoS_Script:
     def __init__(self, content='', filename=None, transcript=None):
@@ -553,6 +572,7 @@ class SoS_Script:
                 content = locate_script(sos_file + '.sos')
         except Exception as e:
             raise RuntimeError('Source file for nested workflow {} does not exist: {}'.format(sos_file, e))
+        self.content.add(*content)
         script = SoS_Script(*content)
         if not alias:
             alias = sos_file
@@ -563,7 +583,8 @@ class SoS_Script:
         # The global definition of sos_file should be accessible as
         # sos_file.name
         self.sections.extend(script.sections)
-        self.global_def += '{} = sos_namespace_({})\n'.format(alias, text_repr(script.global_def))
+        self.global_def += '{} = sos_namespace_({}, r"\{}")\n'.format(alias, text_repr(script.global_def),
+            script.global_sigil)
 
     def _include_content(self, sos_file, name_map):
         try:
@@ -573,6 +594,7 @@ class SoS_Script:
                 content = locate_script(sos_file + '.sos')
         except Exception as e:
             raise RuntimeError('Source file for nested workflow {} does not exist: {}'.format(sos_file, e))
+        self.content.add(*content)
         script = SoS_Script(*content)
         if not name_map:
             self.sections.extend(script.sections)
@@ -585,7 +607,8 @@ class SoS_Script:
                         # match ...
                         self.sections.append(section)
             # global_def is more complicated
-            self.global_def += '__{} = sos_namespace_({})\n'.format(sos_file, text_repr(script.global_def))
+            self.global_def += '__{} = sos_namespace_({}, r"\{}")\n'.format(sos_file, text_repr(script.global_def),
+                script.global_sigil)
             #
             self.global_def += '''
 for __n, __v in {}.items():
@@ -599,6 +622,7 @@ for __n, __v in {}.items():
         self.format_version = '1.0'
         self.descriptions = []
         self.gloal_def = ''
+        self.global_sigil = '${ }'
         #
         comment_block = 1
         # cursect always point to the last section
@@ -617,6 +641,7 @@ for __n, __v in {}.items():
                 # ignore cell directive in batch mode
                 if self.transcript:
                     self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
+
                 continue
 
             if SOS_STRU.match(line):
@@ -704,6 +729,23 @@ for __n, __v in {}.items():
                     condition_ignore = False
                     continue
 
+                mo = SOS_OPTIONS.match(line)
+                if mo:
+                    import shlex
+                    options = shlex.split(mo.group('options'))
+                    for opt in options:
+                        if opt.startswith('sigil='):
+                            self.global_sigil = opt[6:].strip()
+                            env.logger.debug('Global sigil is set to {}'.format(self.global_sigil))
+                            if self.global_sigil in ('None', ''):
+                                self.global_sigil = None
+                            elif ' ' not in self.global_sigil or self.global_sigil.count(' ') > 1:
+                                parsing_errors.append(lineno, line,
+                                    'A sigil should be a string string with exactly one space. "{}" specified.'.format(self.global_sigil))
+                        else:
+                            parsing_errors.append(lineno, line, 'Unrecognized sos option {}'.format(opt))
+                    continue
+
                 else:
                     parsing_errors.append(lineno, line, 'Unrecognized SoS magic statement: {}'.format(line))
                     continue
@@ -713,6 +755,7 @@ for __n, __v in {}.items():
                 if self.transcript:
                     self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
                 continue
+
             # comments in SoS scripts are mostly informative
             if line.startswith('#'):
                 # Comment blocks before any section
@@ -777,6 +820,9 @@ for __n, __v in {}.items():
                 # in the front of the script
                 if cursect is None:
                     comment_block += 1
+                    # if the first line of the script is empty
+                    if not self.descriptions:
+                        self.descriptions.append('')
                     self.descriptions.append('')
                 else:
                     if cursect.category() in ('statements', 'script'):
@@ -840,7 +886,7 @@ for __n, __v in {}.items():
                     while True:
                         try:
                             # test current group
-                            compile(pieces[idx].strip(), filename = '<string>', mode='exec' if '=' in pieces[idx] else 'eval')
+                            sos_compile(pieces[idx].strip(), filename = '<string>', mode='exec' if '=' in pieces[idx] else 'eval')
                             # if it is ok, go next
                             idx += 1
                             if idx == len(pieces):
@@ -905,7 +951,7 @@ for __n, __v in {}.items():
                         if len(set(prev_names) & set(names)):
                             parsing_errors.append(lineno, line, 'Duplicate section names')
                 all_step_names.extend(step_names)
-                self.sections.append(SoS_Step(self.content, step_names, step_options))
+                self.sections.append(SoS_Step(self.content, step_names, step_options, global_sigil=self.global_sigil))
                 cursect = self.sections[-1]
                 if self.transcript:
                     self.transcript.write('SECTION\t{}\t{}'.format(lineno, line))
@@ -945,7 +991,7 @@ for __n, __v in {}.items():
                 else:
                     # should be in script or parameter mode, which is ok for global section
                     if cursect is None:
-                        self.sections.append(SoS_Step(is_global=True))
+                        self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
                         cursect = self.sections[-1]
                     if directive_name == 'parameter':
                         cursect.add_directive(directive_name, directive_value, lineno)
@@ -972,7 +1018,7 @@ for __n, __v in {}.items():
             mo = SOS_ASSIGNMENT.match(line)
             if mo:
                 if cursect is None:
-                    self.sections.append(SoS_Step(is_global=True))
+                    self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
                     cursect = self.sections[-1]
                 # check previous expression before a new assignment
                 if not cursect.isValid():
@@ -1007,7 +1053,7 @@ for __n, __v in {}.items():
             #
             # all others?
             if not cursect:
-                self.sections.append(SoS_Step(is_global=True))
+                self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
                 cursect = self.sections[-1]
                 cursect.add_statement(line, lineno)
                 if self.transcript:
@@ -1059,8 +1105,11 @@ for __n, __v in {}.items():
         # if there is no section in the script, we create a default section with global
         # definition being the content.
         if not self.sections:
-            self.sections.append(SoS_Step(self.content, [('default', None, None)]))
-            self.sections[0].statements = global_section[0][1].statements
+            self.sections.append(SoS_Step(self.content, [('default', None, None)], global_sigil=self.global_sigil))
+            if global_section:
+                self.sections[0].statements = global_section[0][1].statements
+            else:
+                self.sections[0].statements = []
             self.global_def = ''
         #
         for section in self.sections:
@@ -1126,7 +1175,7 @@ for __n, __v in {}.items():
                 if fnmatch.fnmatch(wf_name, name):
                     sections.append(section)
                     break
-        return SoS_Workflow(wf_name, allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
+        return SoS_Workflow(self.content, wf_name, allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
 
     def show(self):
         textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)

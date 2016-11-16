@@ -24,7 +24,8 @@ import sys
 import argparse
 
 from pysos._version import SOS_FULL_VERSION
-from pysos.main import cmd_run, cmd_dryrun, cmd_prepare, cmd_convert, cmd_remove, cmd_config, cmd_start
+from pysos.main import cmd_run, cmd_dryrun, cmd_prepare, cmd_convert, \
+    cmd_remove, cmd_config, cmd_start, cmd_pack, cmd_unpack
 
 def addCommonArgs(parser):
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
@@ -228,12 +229,12 @@ if __name__ == '__main__':
     addCommonArgs(parser)
     parser.set_defaults(func=cmd_convert)
     #
-    # command remove 
+    # command remove
     #
     parser = subparsers.add_parser('remove',
         help='''Remove tracked and/or untracked files with their signatures''',
         description='''Remove specified files and directories and their
-            signatures (if available). Optionally, you can remove only 
+            signatures (if available). Optionally, you can remove only
             tracked files (input, output and intermediate files of executed
             workflows) or untracked file from specified files and/or
             directories.''')
@@ -252,9 +253,10 @@ if __name__ == '__main__':
     parser.add_argument('-n', action='store_true', dest='__dryrun__',
         help='''List files or directories to be removed, without actually
             removing them.''')
-    parser.add_argument('-y', action='store_true', dest='__confirm__',
+    parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
         help='''Remove files without confirmation, suitable for batch removal
             of files.''')
+    addCommonArgs(parser)
     parser.set_defaults(func=cmd_remove)
     #
     # command start
@@ -296,6 +298,87 @@ if __name__ == '__main__':
         will create a list with multiple values.''')
     addCommonArgs(parser)
     parser.set_defaults(func=cmd_config)
+    #
+    # command pack
+    #
+    parser = subparsers.add_parser('pack',
+        help='''Collect sos scripts, all input, output, and tracked intermediate
+        files related to a workflow run and bundle them into a single archive.
+        The archive can be examined (without unpacking) with command "sos
+        show" and be unpacked with command "sos unpack". This command does not
+        include files outside of the current working directory unless they
+        are specified by option --include, or --all.''')
+    parser.add_argument('session', nargs='?',
+        help='''ID of the session to be saved, which can be any number of
+        digits as long as it can uniquely determine a workflow session. This
+        parameter can be ignored if only one session is available.''')
+    parser.add_argument('-o', '--output', default="-",
+        help='''Output file, which can be a file with extension ".sar" (the
+        extension will be be automatically appended if needed), or "-" for
+        standard output (default).''')
+    parser.add_argument('-i', '--include', nargs='*', default=[],
+        help='''Additional files or directories to be incldued in the archive.
+        SoS will archive all files under specified directories, including
+        hidden directories such as ".git". Option --exclude could be used
+        to exclude these files.''')
+    parser.add_argument('-e', '--exclude', nargs='*', default=[],
+        help='''Files that should be excluded from archive. The parameter
+        should be one or more patterns that match the whole path (e.g.
+        "output/*.log" or file or directory names such as "tmp" or "*.bam".
+        ''')
+    parser.add_argument('-a', '--all', action='store_true', dest='__all__',
+        help='''Include all tracked files even if they reside outside of the
+        current working directory.''')
+    parser.add_argument('-m', '--message', 
+        help='''A short message to be included into the archive. Because the
+        message would be lost during unpacking, it is highly recommended that
+        you create a README file and include it with option --include.''')
+    parser.add_argument('-d', '--dryrun', action='store_true',
+        help='''List files to be included and total file size without actually
+        archiving them''')
+    parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
+        help='''Overwrite output file if it already exists''')
+    addCommonArgs(parser)
+    parser.set_defaults(func=cmd_pack)
+    #
+    # command unpack
+    #
+    parser = subparsers.add_parser('unpack',
+        help='''Unpack a sos archive to a specified directory. For security
+        reasons, files that were outside of the project directory would be
+        extracted in this directory unless option -e is specified.''')
+    parser.add_argument('archive',
+        help='''SoS archive saved by command sos pack''')
+    parser.add_argument('files', nargs='*',
+        help='''An optional list of files to be processed, which can be exact
+        filenames or patterns (e.g. "*.bam"). No runtime information will be
+        extracted if this option is specified.''')
+    parser.add_argument('-d', '--dest', default='.',
+        help='''Directory where a sos archive would be unpacked. Default to
+        current directory.''')
+    parser.add_argument('-s', '--script', action='store_true',
+        help='''If specified, extract sos script(s) related to the workflow
+        to the current or specified directory (option --dest), regardless of
+        their original locations in the filesystem. Note that sos scripts are
+        not extracted by default because they are usually external and it is
+        dangerous to overwrite existing scripts with archived ones.''')
+    parser.add_argument('-l', '--list', action='store_true', dest='__list__',
+        help='''List content of the archive instead of extracting it. The names,
+        uncompressed file sizes  and  modification  dates and times of the
+        specified files are printed, along with totals for all files specified.''')
+    parser.add_argument('-e', '--external', action='store_true',
+        help='''Extract files outside of the project to their external destinations.
+        This option can be dangerous because it can overwrite system files silently
+        if accompanied with option -y.''')
+    parser.add_argument('-n', '--no', action='store_true', dest='__no_overwrite__',
+        help='''Do not overwrite existing files without promoting users.''')
+    parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
+        help='''Overwrite existing files without promoting users. This option
+        can be dangerous to use. Note that SoS checks file signature and
+        ignores existing files that are identical to those in the archive.''')
+    addCommonArgs(parser)
+    parser.set_defaults(func=cmd_unpack)
+    #
     #
     if len(sys.argv) == 1:
         master_parser.print_help()

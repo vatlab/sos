@@ -27,7 +27,7 @@ import fasteners
 from .utils import env, Error, short_repr
 from .sos_eval import Undetermined
 
-__all__ = ['dynamic', 'executable']
+__all__ = ['dynamic', 'executable', 'env_variable', 'sos_variable']
 
 class UnknownTarget(Error):
     def __init__(self, target):
@@ -130,24 +130,49 @@ class FileTarget(BaseTarget):
     def remove(self, mode='both'):
         if mode in ('both', 'target') and os.path.isfile(self.fullname()):
             os.remove(self.fullname())
-        if mode in ('both', 'signature') and  os.path.isfile(self.sig_file()):
+        if mode in ('both', 'signature') and os.path.isfile(self.sig_file()):
             os.remove(self.sig_file())
 
     def fullname(self):
         return os.path.expanduser(self._filename)
         
+    def size(self):
+        if os.path.isfile(self._filename):
+            return os.path.getsize(self.fullname())
+        elif os.path.isfile(self.sig_file()):
+            with open(self.sig_file()) as md5:
+                line = md5.readline()
+                _, _, s, _ = line.rsplit('\t', 3)
+                return s.strip()
+        else:
+            raise RuntimeError('{} or its signature does not exist.'.format(self._filename))
+    
+    def mtime(self):
+        if os.path.isfile(self._filename):
+            return os.path.getmtime(self.fullname())
+        elif os.path.isfile(self.sig_file()):
+            with open(self.sig_file()) as md5:
+                line = md5.readline()
+                _, t, _, _ = line.rsplit('\t', 3)
+                return t.strip()
+        else:
+            raise RuntimeError('{} or its signature does not exist.'.format(self._filename))
+
     def sig_file(self):
         if self._sig_file is not None:
             return self._sig_file
         # If the output path is outside of the current working directory
-        rel_path = os.path.relpath(os.path.abspath(self.fullname()), env.exec_dir)
+        fullname = os.path.abspath(self.fullname())
+        name_md5 = textMD5(fullname)
+        rel_path = os.path.relpath(fullname, env.exec_dir)
+
         # if this file is not relative to cache, use global signature file
         if rel_path.startswith('../'):
             self._sig_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime',
-                os.path.abspath(self.fullname()).lstrip(os.sep) + '.file_info')
+                name_md5 + '.file_info')
         else:
             # if this file is relative to cache, use local directory
-            self._sig_file = os.path.join('.sos', '.runtime', rel_path + '.file_info')
+            self._sig_file = os.path.join('.sos', '.runtime', name_md5 + '.file_info')
         return self._sig_file
         
     def __eq__(self, other):
@@ -156,15 +181,10 @@ class FileTarget(BaseTarget):
     def write_sig(self):
         '''Write .file_info file with signature'''
         # path to file
-        sig_path = os.path.split(self.sig_file())[0]
-        if not os.path.isdir(sig_path):
-            try:
-                os.makedirs(sig_path)
-            except Exception as e:
-                raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
         with open(self.sig_file(), 'w') as md5:
             self.calc_md5()
-            md5.write('{}\t{}\n'.format(self.fullname(), self.md5()))
+            md5.write('{}\t{}\t{}\t{}\n'.format(self.fullname(), os.path.getmtime(self.fullname()),
+                os.path.getsize(self.fullname()), self.md5()))
             for f in self._attachments:
                 md5.write('{}\t{}\n'.format(f, fileMD5(f)))
 
@@ -177,10 +197,13 @@ class FileTarget(BaseTarget):
         '''Return md5'''
         if self._md5 is not None:
             return self._md5
-        with open(self.sig_file()) as md5:
-            line = md5.readline()
-            f, m = line.rsplit('\t', 1)
-            return m.strip()
+        if not os.path.isfile(self.sig_file()):
+            return self.calc_md5()
+        else:
+            with open(self.sig_file()) as md5:
+                line = md5.readline()
+                _, _, _, m = line.rsplit('\t', 3)
+                return m.strip()
 
     def validate(self):
         '''Check if file matches its signature'''
@@ -188,7 +211,7 @@ class FileTarget(BaseTarget):
             return False
         with open(self.sig_file()) as md5:
             for line in md5:
-                f, m = line.rsplit('\t', 1)
+                f, _, _, m = line.rsplit('\t', 3)
                 if not os.path.isfile(f):
                     return False
                 if fileMD5(f) != m.strip():
@@ -218,7 +241,7 @@ class executable(BaseTarget):
     '''A target for an executable command.'''
     def __init__(self, cmd):
         self._cmd = cmd
-        self.sig_file = os.path.join('.sos/.runtime/__executable_{}.sig'.format(self._cmd))
+        self.sig_file = os.path.join('.sos/.runtime/{}.sig'.format(self.md5()))
 
     def exists(self, mode='any'):
         if mode in ('any', 'target') and shutil.which(self._cmd):
@@ -240,14 +263,8 @@ class executable(BaseTarget):
         return textMD5(self._cmd)
 
     def write_sig(self):
-        '''Write .file_info file with signature'''
+        '''Write .sig file with signature'''
         # path to file
-        sig_path = os.path.split(self.sig_file)[0]
-        if not os.path.isdir(sig_path):
-            try:
-                os.makedirs(sig_path)
-            except Exception as e:
-                raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
         with open(self.sig_file, 'w') as md5:
             md5.write('{}\t{}\n'.format(self.fullname(), self.md5()))
 
@@ -278,7 +295,6 @@ class sos_variable(BaseTarget):
         return textMD5(self._var)
 
     def write_sig(self):
-        '''Write .file_info file with signature'''
         pass
 
     def __hash__(self):
@@ -288,17 +304,47 @@ class sos_variable(BaseTarget):
         return isinstance(obj, sos_variable) and self._var == obj._var
 
 
+class env_variable(BaseTarget):
+    '''A target for an environmental variable.'''
+    def __init__(self, var):
+        self._var = var
+
+    def exists(self, mode='any'):
+        return self._var in os.environ
+
+    def fullname(self):
+        return 'env_variable {}'.format(self._var)
+
+    def __repr__(self):
+        return 'env_variable("{}")'.format(self._var)
+
+    def calc_md5(self):
+        return textMD5(repr(os.environ[self._var]))
+
+    def md5(self):
+        return textMD5(repr(os.environ[self._var]))
+
+    def write_sig(self):
+        pass
+
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __eq__(self, obj):
+        return isinstance(obj, sos_variable) and self._var == obj._var
+
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.
     '''
-    def __init__(self, script, input_files=[], output_files=[], dependent_files = [], signature_vars = []):
+    def __init__(self, step_md5, script, input_files=[], output_files=[], dependent_files = [], signature_vars = []):
         '''Runtime information for specified output files
 
         output_files:
             intended output file
 
         '''
+        self.step_md5 = step_md5
         self.script = script
         # input can only be a list of files
         if not isinstance(input_files, list):
@@ -327,30 +373,20 @@ class RuntimeInfo:
         
         self.signature_vars = signature_vars
 
-        if isinstance(self.output_files, Undetermined) or not self.output_files:
-            sig_name = 'Dynamic_' + textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))
-        else:
-            sig_name = os.path.realpath(self.output_files[0].fullname() + '_' + \
-                textMD5('{} {} {} {}'.format(self.script, self.input_files, self.output_files, self.dependent_files)))
-        #
-        # If the output path is outside of the current working directory
-        rel_path = os.path.relpath(sig_name, env.exec_dir)
-        # if this file is not relative to cache, use global signature file
-        if rel_path.startswith('../'):
-            info_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep))
-        else:
-            # if this file is relative to cache, use local directory
-            info_file = os.path.join('.sos', '.runtime', rel_path)
+        sig_name = textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))
+        info_file = os.path.join('.sos', '.runtime', sig_name)
+        if not isinstance(self.output_files, Undetermined) and self.output_files:
+            # If the output path is outside of the current working directory
+            rel_path = os.path.relpath(os.path.realpath(self.output_files[0].fullname()), env.exec_dir)
+            # if this file is not relative to cache, use global signature file
+            if rel_path.startswith('../'):
+                info_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep))
         # path to file
         sig_path = os.path.split(info_file)[0]
-        with fasteners.InterProcessLock('/tmp/lock_sig'):
-            if not os.path.isdir(sig_path):
-                try:
-                    os.makedirs(sig_path)
-                except Exception as e:
-                    raise RuntimeError('Failed to create runtime directory {}: {}'.format(sig_path, e))
         self.proc_info = '{}.exe_info'.format(info_file)
 
+        # we will need to lock on a file that we do not really write to
+        # otherwise the lock will be broken when we write to it.
         self.lock = fasteners.InterProcessLock(self.proc_info + '_')
         if not self.lock.acquire(blocking=False):
             raise UnavailableLock((self.output_files, self.proc_info))
@@ -358,7 +394,8 @@ class RuntimeInfo:
             env.logger.trace('Lock acquired for output files {}'.format(short_repr(self.output_files)))
 
     def __getstate__(self):
-        return {'proc_info': self.proc_info,
+        return {'step_md5': self.step_md5,
+                'proc_info': self.proc_info,
                 'input_files': self.input_files,
                 'output_files': self.output_files,
                 'dependent_files': self.dependent_files,
@@ -366,6 +403,7 @@ class RuntimeInfo:
                 'script': self.script}
 
     def __setstate__(self, dict):
+        self.step_md5 = dict['step_md5']
         self.proc_info = dict['proc_info']
         self.input_files = dict['input_files']
         self.output_files = dict['output_files']
@@ -436,6 +474,20 @@ class RuntimeInfo:
                         env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, value))
             md5.write('# step process\n')
             md5.write(self.script)
+        # successfully write signature, write in workflow runtime info
+        workflow_sig = env.sos_dict['__workflow_sig__']
+        with fasteners.InterProcessLock(workflow_sig + '_'):
+            with open(workflow_sig, 'a') as wf:
+                wf.write('EXE_SIG\tstep={}\tsession={}\n'.format(self.step_md5, os.path.basename(self.proc_info).split('.')[0]))
+                for f in self.input_files:
+                    if isinstance(f, FileTarget):
+                        wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.md5()))
+                for f in self.dependent_files:
+                    if isinstance(f, FileTarget):
+                        wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.md5()))
+                for f in self.output_files:
+                    if isinstance(f, FileTarget):
+                        wf.write('OUT_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.md5()))
         return True
 
     def validate(self):
@@ -520,5 +572,10 @@ class RuntimeInfo:
             env.logger.trace('No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y)))
             return False
         env.logger.trace('Signature matches and returns {}'.format(res))
+        # validation success, record signature used
+        workflow_sig = env.sos_dict['__workflow_sig__']
+        with fasteners.InterProcessLock(workflow_sig + '_'):
+            with open(workflow_sig, 'a') as wf:
+                wf.write(self.proc_info + '\n')
         return res
 

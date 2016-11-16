@@ -37,4 +37,10 @@ def importTests():
 
 if __name__ == '__main__':
     test_runner = unittest.TextTestRunner(verbosity=2)
-    test_runner.run(importTests())
+    try:
+        import nose
+        # we use nose for testing because the ipython tests have some namespace
+        # conflict with unittest.
+        nose.core.run(importTests())
+    except ImportError:
+        test_runner.run(importTests())

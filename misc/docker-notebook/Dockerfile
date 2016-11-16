@@ -20,30 +20,21 @@
 
 # SoS official docker image for latest version of SoS. Use command
 # 
-#     docker build -t mdabioinfo/sos:latest docker-base 
+#     docker build -t mdabioinfo/sos-notebook:latest docker-notebook
 #
 # to build it.
 #
-FROM mdabioinfo/sos:latest
+FROM jupyter/datascience-notebook
 
 MAINTAINER Bo Peng <bpeng@mdanderson.org>
 
-WORKDIR ${HOME}
+USER    root
 
-# these should be installed automatically by sos
-RUN     apt-get update
-RUN     apt-get install -y R-base
-RUN     apt-get install -y libzmq3-dev libcurl4-openssl-dev 
-RUN     Rscript -e "install.packages(c('rzmq','repr','IRkernel','IRdisplay'), repos = c('http://irkernel.github.io/', 'http://cran.us.r-project.org'))" 
-RUN     Rscript -e "IRkernel::installspec()"
-		
-RUN     mkdir -p workspace/notebooks workspace/data .ipython/profile_default
+RUN     conda install -y feather-format -c conda-forge
+RUN     pip install sos
 
-RUN     (echo "c = get_config()" && \
-         echo "c.NotebookApp.ip = '0.0.0.0'" && \
-         echo "c.NotebookApp.open_browser = False") \
-         > $HOME/.ipython/profile_default/ipython_notebook_config.py
+USER    $NB_USER
 
-EXPOSE  8888
 
-RUN     jupyter notebook &
+
+

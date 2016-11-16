@@ -56,11 +56,23 @@ class StepInfo(object):
     def __repr__(self):
         return '{' + ', '.join('{}: {!r}'.format(x,y) for x,y in self.__dict__.items()) + '}'
 
-def execute_task(task, global_def, sos_dict, signature, sigil):
+class TaskParams(object):
+    '''A parameter object that encaptulates parameters sending to
+    task executors. This would makes the output of workers, especially
+    in the web interface much cleaner (issue #259)'''
+    def __init__(self, name, data):
+        self.name = name
+        self.data = data
+
+    def __repr__(self):
+        return self.name
+
+def execute_task(params):
     '''A function that execute specified task within a local dictionary
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
     process or remotely on a different machine.'''
+    task, global_def, global_sigil, sos_dict, signature, sigil = params.data
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
     try:
@@ -72,20 +84,27 @@ def execute_task(task, global_def, sos_dict, signature, sigil):
             os.environ.update(sos_dict['_runtime']['env'])
 
         env.sos_dict.quick_update(sos_dict)
-        SoS_exec('import os, sys, glob')
-        SoS_exec('from pysos.runtime import *')
+        SoS_exec('import os, sys, glob', None)
+        SoS_exec('from pysos.runtime import *', None)
         # re-execute global definition because some of the definitions in the
         # global section might not be pickaleable (e.g. functions) and cannot
         # be passed to this separate process.
         if global_def:
-            SoS_exec(global_def, sigil)
+            SoS_exec(global_def, global_sigil)
         # step process
+        if signature is None:
+            env.sos_dict.set('__step_sig__', None)
+        else:
+            env.sos_dict.set('__step_sig__', os.path.basename(signature.proc_info).split('.')[0])
         SoS_exec(task, sigil)
         os.chdir(env.exec_dir)
     except Exception as e:
         return {'succ': 1, 'exception': e, 'path': os.environ['PATH']}
     except KeyboardInterrupt:
         raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
+    finally:
+        env.sos_dict.set('__step_sig__', None)
+
     if signature is not None:
         signature.write()
     env.deregister_process(os.getpid())
@@ -124,8 +143,8 @@ def analyze_section(section, default_input=None):
         env.sos_dict.set('__null_func__', __null_func__)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
-        SoS_exec('import os, sys, glob')
-        SoS_exec('from pysos.runtime import *')
+        SoS_exec('import os, sys, glob', None)
+        SoS_exec('from pysos.runtime import *', None)
 
     #
     # Here we need to get "contant" values from the global section
@@ -138,7 +157,7 @@ def analyze_section(section, default_input=None):
             SoS_exec('''
 if 'sos_handle_parameter_' in globals():
     del sos_handle_parameter_
-''' + section.global_def)
+''' + section.global_def, section.global_sigil)
         except RuntimeError as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
@@ -299,6 +318,10 @@ class Base_Step_Executor:
             return Undetermined(value)
         else:
             return _expand_file_list(True, *args)
+
+    def verify_input(self):
+        '''Check if input files exist.'''
+        pass
 
     def verify_output(self):
         '''Check if intended output actually exists.'''
@@ -558,15 +581,19 @@ class Base_Step_Executor:
     def submit_task(self, signature):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
+        param = TaskParams(
+            name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+            data = (
+                self.step.task,           # task
+                '',                       # local execusion, no need to re-run global
+                '',
+                # do not clone dict
+                env.sos_dict,
+                signature,
+                self.step.sigil))
+
         self.proc_results.append(
-            execute_task(             # function
-            self.step.task,           # task
-            '',                       # local execusion, no need to re-run global
-            # do not clone dict
-            env.sos_dict,
-            signature,
-            self.step.sigil
-            ))
+            execute_task(param)) 
 
     def wait_for_results(self):
         # no waiting is necessary by default (prepare mode etc)
@@ -578,28 +605,24 @@ class Base_Step_Executor:
     def assign(self, key, value):
         try:
             env.sos_dict[key] = SoS_eval(value, self.step.sigil)
-        except UnknownTarget:
-            raise
-        except RemovedTarget:
-            raise
-        except UnavailableLock:
+        except (UnknownTarget, RemovedTarget, UnavailableLock):
             raise
         except Exception as e:
             raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
 
-    def execute(self, stmt):
+    def execute(self, stmt, sig=None):
         try:
+            if sig is None:
+                env.sos_dict.set('__step_sig__', None)
+            else:
+                env.sos_dict.set('__step_sig__', os.path.basename(sig.proc_info).split('.')[0])
             self.last_res = SoS_exec(stmt, self.step.sigil)
-        except AbortExecution:
-            raise
-        except UnknownTarget:
-            raise
-        except RemovedTarget:
-            raise
-        except UnavailableLock:
+        except (AbortExecution, UnknownTarget, RemovedTarget, UnavailableLock):
             raise
         except Exception as e:
             raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(stmt), e))
+        finally:
+            env.sos_dict.set('__step_sig__', None)
 
     def collect_result(self):
         # only results will be sent back to the master process
@@ -784,7 +807,7 @@ class Base_Step_Executor:
                                 # ofiles can be Undetermined
                                 sg = self.step_signature(idx)
                                 if sg is not None and not isinstance(g, Undetermined):
-                                    signatures[idx] = RuntimeInfo(sg, env.sos_dict['_input'],
+                                    signatures[idx] = RuntimeInfo(self.step.md5, sg, env.sos_dict['_input'],
                                         env.sos_dict['_output'], env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
                                     if env.sig_mode == 'default':
                                         res = signatures[idx].validate()
@@ -817,11 +840,7 @@ class Base_Step_Executor:
                                 self.process_task_args(*args, **kwargs)
                             else:
                                 raise RuntimeError('Unrecognized directive {}'.format(key))
-                        except UnknownTarget:
-                            raise
-                        except RemovedTarget:
-                            raise
-                        except UnavailableLock:
+                        except (UnknownTarget, RemovedTarget, UnavailableLock):
                             raise
                         except Exception as e:
                             # if input is Undertermined, it is possible that output cannot be processed
@@ -831,7 +850,7 @@ class Base_Step_Executor:
                             raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                     else:
                         try:
-                            self.execute(statement[1])
+                            self.execute(statement[1], signatures[idx])
                         except AbortExecution as e:
                             if e.message:
                                 env.logger.warning(e)
@@ -905,7 +924,7 @@ class Base_Step_Executor:
                         if var == val:
                             continue
                         try:
-                            env.sos_dict.set(var, SoS_eval(val))
+                            env.sos_dict.set(var, SoS_eval(val, self.step.sigil))
                         except Exception as e:
                             raise RuntimeError('Failed to evaluate shared variable {} from expression {}: {}'
                                 .format(var, val, e))
@@ -918,7 +937,7 @@ class Base_Step_Executor:
                                 if var == val:
                                     continue
                                 try:
-                                    env.sos_dict.set(var, SoS_eval(val))
+                                    env.sos_dict.set(var, SoS_eval(val, self.step.sigil))
                                 except Exception as e:
                                     raise RuntimeError('Failed to evaluate shared variable {} from expression {}: {}'
                                         .format(var, val, e))
@@ -976,7 +995,7 @@ def _expand_file_list(ignore_unknown, *args):
                 tmp.append(ifile)
             else:
                 raise UnknownTarget(ifile)
-        elif os.path.isfile(os.path.expanduser(ifile)):
+        elif FileTarget(ifile).exists():
             tmp.append(ifile)
         else:
             expanded = sorted(glob.glob(os.path.expanduser(ifile)))
@@ -1158,27 +1177,43 @@ class MP_Step_Executor(SP_Step_Executor):
             self.pool = mp.Pool(min(env.max_jobs, len(self._groups)))
 
         if self.pool:
-            self.proc_results.append(self.pool.apply_async(
-                execute_task,            # function
-                (self.step.task,         # task
-                self.step.global_def,    # global process
-                # if pool, it must not be in prepare mode and have
-                # __signature_vars__
-                env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                    | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_idx', '_runtime'}),
-                signature,
-                self.step.sigil
-                )))
+            param = TaskParams(
+                name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+                data = (
+                    self.step.task,         # task
+                    self.step.global_def,    # global process
+                    self.step.global_sigil,
+                    # if pool, it must not be in prepare mode and have
+                    # __signature_vars__
+                    env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
+                        | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_index',
+                        '_runtime', '__workflow_sig__'}),
+                    signature,
+                    self.step.sigil
+                ))
+
+            self.proc_results.append(
+                self.pool.apply_async(
+                    execute_task,            # function
+                        (param, )
+                    )
+            )
         else:
-            # execute in existing process
+            param = TaskParams(
+                name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+                data = (
+                    self.step.task,           # task
+                    '',                       # local execusion, no need to re-run global
+                    '',
+                    # do not clone dict
+                    env.sos_dict,
+                    signature,
+                    self.step.sigil
+                ))
+
             self.proc_results.append(
                 execute_task(             # function
-                self.step.task,           # task
-                '',                       # local execusion, no need to re-run global
-                # do not clone dict
-                env.sos_dict,
-                signature,
-                self.step.sigil
+                    param
                 ))
 
     def wait_for_results(self):
@@ -1236,19 +1271,26 @@ class RQ_Step_Executor(SP_Step_Executor):
             walltime = 60*60*24*30 
         #
         # tell subprocess where pysos.runtime is
+        param = TaskParams(
+            name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+            data = (
+                self.step.task,          # task
+                self.step.global_def,    # global process
+                self.step.global_sigil,
+                # if pool, it must not be in prepare mode and have
+                # __signature_vars__
+                env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
+                    | {'_input', '_output', '_depends', 'input', 'output',
+                        'depends', '_index', '__args__', 'step_name', '_runtime',
+                        '__workflow_sig__'}),
+                signature,
+                self.step.sigil
+            ))
+
         self.proc_results.append(
             self.redis_queue.enqueue(
             execute_task,            # function
-            args=(self.step.task,          # task
-            self.step.global_def,    # global process
-            # if pool, it must not be in prepare mode and have
-            # __signature_vars__
-            env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                | {'_input', '_output', '_depends', 'input', 'output',
-                    'depends', '_index', '__args__', 'step_name', '_runtime'}),
-            signature,
-            self.step.sigil
-            ),
+            args=(param,),
             timeout=walltime))
 
     def wait_for_results(self):
@@ -1276,16 +1318,24 @@ class Celery_Step_Executor(SP_Step_Executor):
     def submit_task(self, signature):
         # if concurrent is set, create a pool object
         from .celery import celery_execute_task
+        param = TaskParams(
+            name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+            data = (
+                self.step.task,         # task
+                self.step.global_def,   # global process
+                self.step.global_sigil,
+                env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
+                    | {'_input', '_output', '_depends', 'input', 'output',
+                        'depends', '_index', '__args__', 'step_name', '_runtime',
+                        '__workflow_sig__'}),
+                signature,
+                self.step.sigil
+            ))
+
         self.proc_results.append(
-            celery_execute_task.apply_async((     # function
-            self.step.task,         # task
-            self.step.global_def,   # global process
-            env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                | {'_input', '_output', '_depends', 'input', 'output',
-                    'depends', '_index', '__args__', 'step_name', '_runtime'}),
-            signature,
-            self.step.sigil
-            )) )
+            celery_execute_task.apply_async(
+                (param,)
+            ))
 
     def wait_for_results(self):
         while True:

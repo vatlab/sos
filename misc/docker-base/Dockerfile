@@ -24,7 +24,7 @@
 #
 # to build it.
 #
-FROM python:3
+FROM continuumio/anaconda3
 
 MAINTAINER Bo Peng <bpeng@mdanderson.org>
 
@@ -33,6 +33,5 @@ ENV     HOME  /home/mdabioinfo
 WORKDIR ${HOME}
 
 # these should be installed automatically by sos
-RUN     pip install ipython notebook
 RUN     pip install sos
 

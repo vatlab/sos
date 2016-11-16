@@ -73,7 +73,7 @@ run:
   touch ${_data} ${_output}
 
 [default]
-sos_run("work_1+work_2")
+sos_run("work:1+work:2")
 ''')
         self.touch(['1.txt', '2.txt'])
         subprocess.call('sos clean . -t -y', shell=True)

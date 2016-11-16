@@ -86,13 +86,37 @@ class Base_Executor:
         self.args = args
         self.nested = nested
         self.config_file = config_file
+        # interactive mode does not pass workflow
+        if self.workflow and not nested:
+            self.md5 = self.create_signature()
+            # remove old workflow file.
+            with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'w') as sig:
+                sig.write('# workflow: {}\n'.format(self.workflow.name))
+                sig.write('# script: {}\n'.format(self.workflow.content.filename))
+                sig.write('# included: {}\n'.format(','.join(self.workflow.content.included)))
+                sig.write('# configuration: {}\n'.format(config_file))
+                sig.write('# start time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
+                sig.write(self.sig_content)
+                sig.write('# runtime signatures\n')
+        else:
+            self.md5 = None
+
+    def create_signature(self):
+        with StringIO() as sig:
+            sig.write('# Sections\n')
+            for step in self.workflow.sections + self.workflow.auxiliary_sections:
+                sig.write('{}: {}\n'.format(step.step_name(), step.md5))
+            sig.write('# Command line options\n')
+            sig.write('{}\n'.format(self.args))
+            self.sig_content = sig.getvalue()
+        return textMD5(self.sig_content)[:16]
 
     def reset_dict(self):
         # if creating a new dictionary, set it up with some basic varibles
         # and functions
         if self.nested:
-            SoS_exec('import os, sys, glob')
-            SoS_exec('from pysos.runtime import *')
+            SoS_exec('import os, sys, glob', None)
+            SoS_exec('from pysos.runtime import *', None)
             self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
             self._base_symbols -= {'dynamic'}
             return
@@ -100,6 +124,7 @@ class Base_Executor:
         env.sos_dict = WorkflowDict()
 
         # inject a few things
+        env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
         env.sos_dict.set('__unknown_args__', self.args)
@@ -136,15 +161,15 @@ class Base_Executor:
         # set config to CONFIG
         env.sos_dict.set('CONFIG', frozendict(cfg))
 
-        SoS_exec('import os, sys, glob')
-        SoS_exec('from pysos.runtime import *')
+        SoS_exec('import os, sys, glob', None)
+        SoS_exec('from pysos.runtime import *', None)
         self._base_symbols = set(dir(builtins)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
         self._base_symbols -= {'dynamic'}
 
     def skip(self, section):
         if section.global_def:
             try:
-                SoS_exec(section.global_def)
+                SoS_exec(section.global_def, section.global_sigil)
             except RuntimeError as e:
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
@@ -341,30 +366,15 @@ class Base_Executor:
         if cycle:
             raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
 
-        #dag.show_nodes()
         return dag
 
     def save_workflow_signature(self, dag):
         '''Save tracked files in .sos so that untracked files can be cleaned by command
         sos clean.
         '''
-        with StringIO() as sig:
-            sig.write('# Sections\n')
-            for step in self.workflow.sections + self.workflow.auxiliary_sections:
-                sig.write('{}: {}\n'.format(step.step_name(), step.md5))
-            sig.write('# Command line options\n')
-            sig.write('{}\n'.format(self.args))
-            sig_content = sig.getvalue()
-        md5 = textMD5(sig_content)[:16]
-        with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(md5)), 'w') as sigfile:
-            sigfile.write(sig_content)
+        with open(env.sos_dict['__workflow_sig__'], 'a') as sigfile:
+            sigfile.write('# end time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
             sigfile.write('# input and dependent files\n')
-            for target in sorted(x for x in dag._all_dependent_files if isinstance(x, str)):
-                sigfile.write('{}\n'.format(target))
-            sigfile.write('# output files\n')
-            for target in sorted(x for x in dag._all_output_files if isinstance(x, str)):
-                sigfile.write('{}\n'.format(target))   
-        return md5
         
     def run(self, targets=None, mode='run'):
         '''Execute a workflow with specified command line args. If sub is True, this
@@ -385,7 +395,7 @@ class Base_Executor:
                 if not FileTarget(t).exists('target'):
                     FileTarget(t).remove('signature')
         #
-        SoS_exec('from pysos.runtime import sos_handle_parameter_')
+        SoS_exec('from pysos.runtime import sos_handle_parameter_', None)
         #
         prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
         self.reset_dict()
@@ -408,7 +418,7 @@ class Base_Executor:
             # The consequence is that global definitions are available in
             # SoS namespace.
             try:
-                SoS_exec(section.global_def)
+                SoS_exec(section.global_def, section.global_sigil)
             except Exception as e:
                 if env.verbosity > 2:
                     sys.stderr.write(get_traceback())
@@ -494,8 +504,8 @@ class Base_Executor:
                         's' if len(sections) > 1 else '', ', '.join(sections))))
             raise exec_error
         else:
-            sig = self.save_workflow_signature(dag)
-            env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, sig))
+            self.save_workflow_signature(dag)
+            env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
 
     def dryrun(self, targets=None):
         '''Execute the script in dryrun mode.'''
@@ -536,7 +546,7 @@ class MP_Executor(Base_Executor):
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
         #
-        SoS_exec('from pysos.runtime import sos_handle_parameter_')
+        SoS_exec('from pysos.runtime import sos_handle_parameter_', None)
 
         # process step of the pipelinp
         #
@@ -627,7 +637,7 @@ class MP_Executor(Base_Executor):
                 # The consequence is that global definitions are available in
                 # SoS namespace.
                 try:
-                    SoS_exec(section.global_def)
+                    SoS_exec(section.global_def, section.global_sigil)
                 except RuntimeError as e:
                     if env.verbosity > 2:
                         sys.stderr.write(get_traceback())
@@ -672,7 +682,7 @@ class MP_Executor(Base_Executor):
             raise exec_error
         else:
             sig = self.save_workflow_signature(dag)
-            env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, sig))
+            env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
 
 class RQ_Executor(MP_Executor):
     def __init__(self, workflow, args=[], config_file=None, nested=False):
@@ -725,7 +735,7 @@ class Interactive_Executor(Base_Executor):
         parser = argparse.ArgumentParser()
         # no default workflow so it will execute any workflow if the code piece
         # defines only one workflow
-        parser.add_argument('workflow', metavar='WORKFLOW', nargs='?')
+        # 
         # parser.add_argument('-j', type=int, metavar='JOBS', default=1, dest='__max_jobs__')
         parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
         #parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
@@ -742,6 +752,39 @@ class Interactive_Executor(Base_Executor):
     def parse_script(self, code):
         '''Used by the kernel to judge if the code is complete'''
         return SoS_Script(content=code)
+
+    def set_dict(self, args):
+        env.sos_dict.set('__null_func__', __null_func__)
+        env.sos_dict.set('SOS_VERSION', __version__)
+
+        # load configuration files
+        cfg = {}
+        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yaml')
+        if os.path.isfile(sos_config_file):
+            try:
+                with open(sos_config_file) as config:
+                    cfg = yaml.safe_load(config)
+            except Exception as e:
+                raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+        # local config file
+        sos_config_file = 'config.yaml'
+        if os.path.isfile(sos_config_file):
+            try:
+                with open(sos_config_file) as config:
+                    dict_merge(cfg, yaml.safe_load(config))
+            except Exception as e:
+                raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+        if args.__config__ is not None:
+            # user-specified configuration file.
+            if not os.path.isfile(args.__config__):
+                raise RuntimeError('Config file {} not found'.format(args.__config__))
+            try:
+                with open(args.__config__) as config:
+                    dict_merge(cfg, yaml.safe_load(config))
+            except Exception as e:
+                raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config_file, e))
+        # set config to CONFIG
+        env.sos_dict.set('CONFIG', frozendict(cfg))
 
     def run(self, block, command_line=''):
         '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer
@@ -765,7 +808,10 @@ class Interactive_Executor(Base_Executor):
         env.run_mode = 'interactive'
         try:
             args, workflow_args = self.parse_command_line(command_line)
-            self.workflow = script.workflow(args.workflow)
+            env.sos_dict.set('__args__', workflow_args)
+            env.sos_dict.set('__unknown_args__', workflow_args)
+            self.set_dict(args)
+            self.workflow = script.workflow()
 
             if args.__rerun__:
                 env.sig_mode = 'ignore'

@@ -23,11 +23,12 @@ import os
 import psutil
 import threading
 import time
+import fasteners
 from datetime import datetime
 from .utils import env
 
 class ProcessMonitor(threading.Thread):
-    def __init__(self, pid, msg='', interval=1):
+    def __init__(self, pid, msg='', interval=1, sig=None):
         threading.Thread.__init__(self)
         self.pid = pid
         self.interval = interval
@@ -35,6 +36,8 @@ class ProcessMonitor(threading.Thread):
         with open(self.proc_file, 'w') as pd:
             if msg:
                 pd.write('# {}\n'.format(msg.replace('\n', '\n# ')))
+            if sig:
+                pd.write('# step_sig: {}\n'.format(sig))
             pd.write('#started at {}\n#\n'.format(datetime.now().strftime("%A, %d. %B %Y %I:%M%p")))
             pd.write('#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n')
                  
@@ -77,8 +80,11 @@ def summarizeExecution(pid):
     start_time = None
     end_time = None
     count = 0
+    sig = ''
     with open(proc_file) as proc:
         for line in proc:
+            if line.startswith('# step_sig:'):
+                sig = line.strip()[12:]
             if line.startswith('#'):
                 continue
             try:
@@ -99,7 +105,12 @@ def summarizeExecution(pid):
             if int(nch) > peak_nch:
                 peak_nch = int(nch)
     if start_time is not None and end_time is not None:
-        env.logger.info('Completed in {:.1f} seconds with {} child{} and {:.1f}% peak ({:.1f}% avg) CPU and {:.1f}Mb peak ({:.1f}Mb avg) memory usage'
-            .format(end_time - start_time, peak_nch, 'ren' if peak_nch > 1 else '', peak_cpu, accu_cpu/count, peak_mem/1024/1024, accu_mem/1024/1024/count))
+        # successfully write signature, write in workflow runtime info
+        workflow_sig = env.sos_dict['__workflow_sig__']
+        with fasteners.InterProcessLock(workflow_sig + '_'):
+            with open(workflow_sig, 'a') as wf:
+                wf.write('EXE_RESOURCE\tsession={}\tnproc={}\tstart={}\tend={}\tcpu_peak={:.1f}\tcpu_avg={:.1f}\tmem_peak={:.1f}Mb\tmem_avg={:.1f}Mb\n'.format(
+                    sig, peak_nch, start_time, end_time,
+                    peak_cpu, accu_cpu/count, peak_mem/1024/1024, accu_mem/1024/1024/count))
         
 
