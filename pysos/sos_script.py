@@ -32,7 +32,7 @@ from collections import defaultdict
 from uuid import uuid4
 
 from .utils import env, Error, dehtml, locate_script, text_repr
-from .sos_eval import on_demand_options, sos_compile
+from .sos_eval import on_demand_options, sos_compile, disable_single_quote_interpolation
 from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
@@ -583,7 +583,7 @@ class SoS_Script:
         # The global definition of sos_file should be accessible as
         # sos_file.name
         self.sections.extend(script.sections)
-        self.global_def += '{} = sos_namespace_({}, r"\{}")\n'.format(alias, text_repr(script.global_def),
+        self.global_def += '{} = sos_namespace_({}, r"\{}")\n'.format(alias, repr(script.global_def),
             script.global_sigil)
 
     def _include_content(self, sos_file, name_map):
@@ -607,7 +607,7 @@ class SoS_Script:
                         # match ...
                         self.sections.append(section)
             # global_def is more complicated
-            self.global_def += '__{} = sos_namespace_({}, r"\{}")\n'.format(sos_file, text_repr(script.global_def),
+            self.global_def += '__{} = sos_namespace_({}, r"\{}")\n'.format(sos_file, repr(script.global_def),
                 script.global_sigil)
             #
             self.global_def += '''
@@ -742,6 +742,12 @@ for __n, __v in {}.items():
                             elif ' ' not in self.global_sigil or self.global_sigil.count(' ') > 1:
                                 parsing_errors.append(lineno, line,
                                     'A sigil should be a string string with exactly one space. "{}" specified.'.format(self.global_sigil))
+                        elif opt.startswith('single_quote_interpolation='):
+                            if opt[27:].strip() == 'False':
+                                disable_single_quote_interpolation()
+                            elif opt[27:].strip() != 'True':
+                                parsing_errors.append(lineno, line, 'Unrecognized value for option single_quote_interpolation. True or False is expected, {} specified'
+                                    .format(opt[27:].strip()))
                         else:
                             parsing_errors.append(lineno, line, 'Unrecognized sos option {}'.format(opt))
                     continue

@@ -870,18 +870,19 @@ def locate_script(filename, start=''):
     #
     raise ValueError('Failed to locate {}'.format(filename))
 
-def text_repr(text):
+def text_repr(text, quote='double'):
     """Rich repr for ``text`` returning unicode, triple quoted if ``multiline``.
     """
-    if text.count('\n') <= 1:
-        return repr(text)
-    elif "'''" not in text and not text.endswith("'"):
-        return "r'''" + text + "'''"
-    elif '"""' not in text and not text.endswith('"'):
-        return 'r"""' + text + '"""'
-    else:
-        # cannot really use triple quote in this case
-        return repr(text)
+    return 'r"""' + text.replace('"', '\"') + '"""'
+    #if text.count('\n') <= 1:
+    #    return repr(text)
+    #elif "'''" not in text and not text.endswith("'"):
+    #    return "r'''" + text + "'''"
+    #elif '"""' not in text and not text.endswith('"'):
+    #    return 'r"""' + text + '"""'
+    #else:
+    #    # cannot really use triple quote in this case
+    #    return repr(text)
 
 def natural_keys(text):
     '''

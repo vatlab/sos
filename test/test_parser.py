@@ -271,7 +271,7 @@ a=100
 
 # comment
 
-parameter: b='${a+1}'
+parameter: b="${a+1}"
 [0]
 ''')
         wf = script.workflow()
@@ -566,9 +566,9 @@ input: 'a.pdf', files
         # test input types
         script = SoS_Script('''
 [0:shared={'i':'input', 'o':'output'}]
-files = ('a${i}' for i in range(2))
+files = ("a${i}" for i in range(2))
 input: {'a.txt', 'b.txt'}, files
-output: ('a${x}' for x in _input)
+output: ("a${x}" for x in _input)
 
 ''')
         wf = script.workflow()

@@ -145,7 +145,7 @@ class TestKernel(unittest.TestCase):
     def testInterpolation(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            msg_id, content = execute(kc=kc, code="print('a=${100+11}')")
+            msg_id, content = execute(kc=kc, code='print("a=${100+11}")')
             stdout, stderr = assemble_output(iopub)
             self.assertTrue(stdout.endswith('a=111\n'))
             self.assertEqual(stderr, '')
