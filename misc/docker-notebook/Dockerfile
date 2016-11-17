@@ -34,7 +34,7 @@ RUN     conda install -y feather-format -c conda-forge
 RUN     pip install sos
 
 USER    $NB_USER
-
+EXPOSE	8888
 
 
 
