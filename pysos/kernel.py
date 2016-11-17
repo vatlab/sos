@@ -467,6 +467,7 @@ class SoS_Kernel(Kernel):
     MAGIC_DICT = re.compile('^%dict(\s|$)')
     MAGIC_CONNECT_INFO = re.compile('^%connect_info(\s|$)')
     MAGIC_MATPLOTLIB = re.compile('^%matplotlib(\s|$)')
+    MAGIC_CD = re.compile('^%cd(\s|$)')
     MAGIC_SET = re.compile('^%set(\s|$)')
     MAGIC_RESTART = re.compile('^%restart(\s|$)')
     MAGIC_WITH = re.compile('^%with(\s|$)')
@@ -544,7 +545,7 @@ class SoS_Kernel(Kernel):
         code = code.strip()
         if not code:
             return {'status': 'complete', 'indent': ''}
-        if any(code.startswith(x) for x in ['%dict', '%paste']):
+        if any(code.startswith(x) for x in ['%dict', '%paste', '%edit', '%cd', '!']):
             return {'status': 'complete', 'indent': ''}
         if code.endswith(':') or code.endswith(','):
             return {'status': 'incomplete', 'indent': '  '}
@@ -836,14 +837,23 @@ class SoS_Kernel(Kernel):
             self.send_response(self.iopub_socket, 'stream',
                                 {'name': 'stderr', 'text': 'Can only pass variables to python kernel'})
 
-    def handle_magic_preview(self, options):
+    def _interpolate_option(self, option, quiet=False):
+        # interpolate command
         try:
-            options = interpolate(options, sigil='${ }', local_dict=env.sos_dict._dict)
+            new_option = interpolate(option, sigil='${ }', local_dict=env.sos_dict._dict)
+            if new_option != option and not quiet:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text':
+                    new_option.strip() + '\n## -- End interpolated command --\n'})
+            return new_option
         except Exception as e:
             self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': 'Failed to interpolate {}: {}\n'.format(short_repr(options), e)})
-            self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': str(e)})
+                {'name': 'stderr', 'text': 'Failed to interpolate {}: {}\n'.format(short_repr(option), e)})
+            return None
+
+    def handle_magic_preview(self, options):
+        options = self._interpolate_option(options, quiet=True)
+        if options is None:
             return
         # find filenames and quoted expressions
         import shlex
@@ -877,33 +887,26 @@ class SoS_Kernel(Kernel):
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stderr', 'text': '\n> Failed to find file or evaluate expression {}: {}'.format(item, e)})
 
-    def handle_shell_command(self, cmd):
+    def handle_magic_cd(self, option):
         # interpolate command
-        try:
-            new_cmd = interpolate(cmd, sigil='${ }', local_dict=env.sos_dict._dict)
-            if new_cmd != cmd:
-                cmd = new_cmd
-                if not cmd.startswith('cd ') and not cmd.startswith('cd\t'):
-                    self.send_response(self.iopub_socket, 'stream',
-                        {'name': 'stdout', 'text':
-                        new_cmd.strip() + '\n## -- End interpolated command --\n'})
-        except Exception as e:
-            self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': 'Failed to interpolate {}: {}\n'.format(short_repr(cmd), e)})
-            self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': str(e)})
+        option = self._interpolate_option(option, quiet=True)
+        if option is None:
             return
-        # command cd is handled differently because it is the only one that
-        # has effect on sos.
-        if cmd.startswith('cd ') or cmd.startswith('cd\t'):
-            to_dir = cmd[3:].strip()
-            try:
-                os.chdir(os.path.expanduser(os.path.expandvars(to_dir)))
-            except Exception as e:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stderr', 'text': repr(e)})
+        to_dir = option.strip()
+        try:
+            os.chdir(os.path.expanduser(to_dir))
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': os.getcwd()})
+        except Exception as e:
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stderr',
+                'text': 'Failed to change dir to {}: {}'.format(os.path.expanduser(to_dir), e)})
+
+    def handle_shell_command(self, cmd):
+        # interpolate command
+        cmd = self._interpolate_option(cmd, quiet=False)
+        if cmd is None:
+            return
         with self.redirect_sos_io():
             try:
                 p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -1168,22 +1171,19 @@ class SoS_Kernel(Kernel):
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.handle_magic_preview(options)
+        elif self.MAGIC_CD.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            self.handle_magic_cd(options)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_shell_command(code.split(' ')[0][1:] + ' ' + options)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.kernel != 'sos':
             # handle string interpolation before sending to the underlying kernel
-            try:
-                new_code = interpolate(code, sigil='${ }', local_dict=env.sos_dict._dict)
-                if new_code != code:
-                    code = new_code
-                    self.send_response(self.iopub_socket, 'stream',
-                        {'name': 'stdout', 'text':
-                        new_code.strip() + '\n## -- End interpolated text --\n'})
-            except Exception as e:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': 'Failed to interpolate {}: {}'.format(short_repr(code), e)})
+            code = self._interpolate_option(code, quiet=False)
+            if code is None:
+                return
             try:
                 return self.run_cell(code, store_history)
             except KeyboardInterrupt:
@@ -1228,6 +1228,8 @@ from ipykernel.comm import CommManager
 class SoS_SpyderKernel(SoS_Kernel):
     """Spyder kernel for Jupyter"""
 
+    MAGIC_EDIT = re.compile('^%edit(\s|$)')
+
     def __init__(self, *args, **kwargs):
         super(SoS_SpyderKernel, self).__init__(*args, **kwargs)
 
@@ -1244,6 +1246,43 @@ class SoS_SpyderKernel(SoS_Kernel):
         for msg_type in comm_msg_types:
             self.shell_handlers[msg_type] = getattr(self.comm_manager, msg_type)
 
+    def parse_edit_magic(self, args):
+        import shlex
+        parser = argparse.ArgumentParser()
+        parser.add_argument('filenames', nargs='+')
+        parser.add_argument('--cd', action='store_true', dest='__switch_dir__')
+        parser.error = _parse_error
+        return parser.parse_args(shlex.split(args))
+
+    def handle_magic_edit(self, options):
+        import subprocess
+        options = self._interpolate_option(options)
+        if options is None:
+            return
+        args = self.parse_edit_magic(options)
+        import1 = "import sys"
+        import2 = "from spyder.app.start import send_args_to_spyder"
+        code = "send_args_to_spyder([{}])".format(','.join('"{}"'.format(x) for x in args.filenames))
+        cmd = "{0} -c '{1}; {2}; {3}'".format(sys.executable,
+            import1, import2, code)
+        subprocess.call(cmd, shell=True)
+        if args.__switch_dir__:
+            script_dir = os.path.dirname(os.path.abspath(args.filenames[-1]))
+            os.chdir(script_dir)
+            self.send_response(self.iopub_socket, 'stream',
+                  {'name': 'stdout', 'text': 'Current working directory is set to {}\n'.format(script_dir)})
+
+    # add an additional magic that only useful for spyder
+    def _do_execute(self, code, silent, store_history=True, user_expressions=None,
+                   allow_stdin=False):
+        if self.MAGIC_EDIT.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            self.handle_magic_edit(options)
+            # self.options will be set to inflence the execution of remaing_code
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+        else:
+            return super(SoS_SpyderKernel, self)._do_execute(code, silent, store_history, user_expressions, allow_stdin)
+
     def _reset_dict(self):
         super(SoS_SpyderKernel, self)._reset_dict()
         # spyder 3 executes commands such as
@@ -1256,6 +1295,8 @@ class SoS_SpyderKernel(SoS_Kernel):
 def get_ipython():
     return __ipython__
 ''', None)
+        self.original_keys.add('__ipython__')
+        self.original_keys.add('get_ipython')
 
     #
     # The following is copied from spyder_kernel.py, which are needed for

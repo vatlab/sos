@@ -91,7 +91,7 @@ class TestExecute(unittest.TestCase):
 [0: shared='res']
 res = ''
 b = 200
-res += '${b}'
+res += "${b}"
 """)
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -101,7 +101,7 @@ res += '${b}'
 [0: shared='res']
 res = ''
 for b in range(5):
-    res += '${b}'
+    res += "${b}"
 """)
         wf = script.workflow()
         Base_Executor(wf).run()
@@ -120,7 +120,7 @@ output: ['{}_{}_processed.txt'.format(x,y) for x,y in zip(name, model)]
         script = SoS_Script(r"""
 [0: shared={'res':'output'}]
 input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
-output: ['${x}_${y}_process.txt' for x,y in zip(name, model)]
+output: ["${x}_${y}_process.txt" for x,y in zip(name, model)]
 
 """)
         wf = script.workflow()
@@ -133,7 +133,7 @@ def add_a(x):
     return ['a'+_x for _x in x]
 
 input: 'a_1.txt', 'b_2.txt', 'c_2.txt', pattern='{name}_{model}.txt'
-output: add_a(['${x}_${y}_process.txt' for x,y in zip(name, model)])
+output: add_a(["${x}_${y}_process.txt" for x,y in zip(name, model)])
 
 """)
         wf = script.workflow()
@@ -240,7 +240,7 @@ import pandas as pd
 data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
 
 input: for_each='data'
-output: '${_data["A"]}_${_data["B"]}_${_data["C"]}.txt'
+output: "${_data['A']}_${_data['B']}_${_data['C']}.txt"
 """)
         wf = script.workflow()
         Base_Executor(wf).prepare()
@@ -386,7 +386,7 @@ counter = 0
 
 input: 'a.pdf', files, filetype='*.txt', group_by='single'
 
-output: '${_input}.res'
+output: "${_input}.res"
 
 """)
         wf = script.workflow()
@@ -823,7 +823,7 @@ for i in range(4):
 [1]
 
 for i in range(5):
-    run('touch temp/test_<i>.txt')
+    run("touch temp/test_<i>.txt")
 
 
 [10: shared={'test':'output'}]
@@ -856,10 +856,10 @@ touch <_input>.bak
 [1]
 rep = range(5)
 input:  for_each='rep'
-output: 'temp/%(_rep).txt'
+output: "temp/%(_rep).txt"
 
 # ff should change and be usable inside run
-ff = '%(_rep).txt'
+ff = "%(_rep).txt"
 run:
 echo %(ff)
 touch temp/%(ff)
@@ -881,7 +881,7 @@ touch temp/%(ff)
 import random
 if run_mode == 'run':
     for i in range(3):
-        with open('temp/test_${random.randint(1, 100000)}.txt', 'w') as res:
+        with open("temp/test_${random.randint(1, 100000)}.txt", 'w') as res:
             res.write(str(i))
 
 ''')
@@ -899,7 +899,7 @@ if run_mode == 'run':
 rep = range(5)
 input: for_each = 'rep'
 # ff should change and be usable inside run
-ff = '${_rep}.txt'
+ff = "${_rep}.txt"
 run:  active=1,2
 echo ${ff}
 touch temp/${ff}
@@ -924,7 +924,7 @@ touch temp/${ff}
 rep = range(5)
 input: for_each = 'rep'
 # ff should change and be usable inside run
-ff = '${_rep}.txt'
+ff = "${_rep}.txt"
 run:  active=%s
 echo ${ff}
 touch temp/${ff}
@@ -944,7 +944,7 @@ touch temp/${ff}
 rep = range(5)
 input: for_each = 'rep'
 # ff should change and be usable inside run
-ff = '${_rep}.txt'
+ff = "${_rep}.txt"
 task:  active=%s
 run:
 echo ${ff}
@@ -1075,7 +1075,7 @@ output: _dest
 task:
 if run_mode == 'run':
     time.sleep(0.5)
-    run(''' cp ${_input} ${_dest} ''')
+    run(" cp ${_input} ${_dest} ")
 """)
         #
         env.max_jobs = 4
@@ -1098,7 +1098,7 @@ output: _dest
 task:
 if run_mode == 'run':
    time.sleep(0.5)
-   run(''' cp ${_input} ${_dest} ''')
+   run(" cp ${_input} ${_dest} ")
 """)
         # script format
         env.max_jobs = 4
@@ -1275,7 +1275,7 @@ output: 'a.txt'
 task:
 if run_mode == 'run':
    time.sleep(3)
-   run('touch ${output}')
+   run("touch ${output}")
 ''')
         wf = script.workflow()
         try:
@@ -1411,7 +1411,7 @@ output: 'largefile.txt'
 python:
     import time
     time.sleep(3)
-    with open('${output}', 'w') as out:
+    with open("${output}", 'w') as out:
         for i in range(1000):
             out.write('{}\n'.format(i))
 
@@ -1535,7 +1535,7 @@ parameter: gvar = 10
 # generate a file
 tt = range(gvar, gvar + 3)
 input: for_each='tt'
-output: 'myfile_${_tt}.txt'
+output: "myfile_${_tt}.txt"
 # additional comment
 
 # _tt should be used in task
@@ -1566,7 +1566,7 @@ parameter: gvar = 10
 [10]
 tt = [gvar]
 input: for_each='tt'
-output: 'myfile_${_tt}.txt'
+output: "myfile_${_tt}.txt"
 python:
     import time
     time.sleep(3)
@@ -1585,7 +1585,7 @@ parameter: gvar = 10
 [10]
 tt = [gvar, gvar + 1]
 input: for_each='tt'
-output: 'myfile_${_tt}.txt'
+output: "myfile_${_tt}.txt"
 python:
     import time
     time.sleep(3)
@@ -1611,7 +1611,7 @@ parameter: gvar = 10
 [10]
 tt = [gvar + 1]
 input: for_each='tt'
-output: 'myfile_${_tt}.txt'
+output: "myfile_${_tt}.txt"
 python:
     import time
     time.sleep(3)

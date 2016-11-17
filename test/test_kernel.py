@@ -145,7 +145,7 @@ class TestKernel(unittest.TestCase):
     def testInterpolation(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            msg_id, content = execute(kc=kc, code="print('a=${100+11}')")
+            msg_id, content = execute(kc=kc, code='print("a=${100+11}")')
             stdout, stderr = assemble_output(iopub)
             self.assertTrue(stdout.endswith('a=111\n'))
             self.assertEqual(stderr, '')
@@ -178,13 +178,13 @@ class TestKernel(unittest.TestCase):
     def testCD(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            msg_id, content = execute(kc=kc, code="!cd ..")
+            msg_id, content = execute(kc=kc, code="%cd ..")
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="print(os.getcwd())")
             stdout, stderr = assemble_output(iopub)
             self.assertTrue(stdout.strip().upper().endswith('SOS'))
             self.assertEqual(stderr, '')
-            msg_id, content = execute(kc=kc, code="!cd test")
+            msg_id, content = execute(kc=kc, code="%cd test")
         
     def testSubKernel(self):
         with sos_kernel() as kc:

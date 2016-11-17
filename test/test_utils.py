@@ -311,21 +311,21 @@ sos_run('sub')
 
     def testTextRepr(self):
         '''Test text_repr'''
-        for text in ['asdf g', 'a \\ng', r'a\nb']:
-            self.assertEqual(text_repr(text), repr(text))
+        #for text in ['asdf g', 'a \\ng', r'a\nb']:
+        #    self.assertEqual(text_repr(text), repr(text))
         self.assertEqual(text_repr(r'''a
-\nb'''), "'a\\n\\\\nb'")
+\nb'''), 'r"""a\n\\nb"""')
         self.assertEqual(text_repr(r"""a
-\nb'"""), '"a\\n\\\\nb\'"')
+\nb'"""), 'r"""a\n\\nb\'"""')
         self.assertEqual(text_repr(r"""a
-\nb''"""), '"a\\n\\\\nb\'\'"')
+\nb''"""), 'r"""a\n\\nb\'\'"""')
         self.assertEqual(text_repr(r"""a
-\nb'''"""), '"a\\n\\\\nb\'\'\'"')
+\nb'''"""), 'r"""a\n\\nb\'\'\'"""')
         self.assertEqual(text_repr(r"""a
-'''\nb'''"""), '"a\\n\'\'\'\\\\nb\'\'\'"')
+'''\nb'''"""), 'r"""a\n\'\'\'\\nb\'\'\'"""')
         self.assertEqual(text_repr(r'''a
 b
-\nc'''), "r'''a\nb\n\\nc'''")
+\nc'''), 'r"""a\nb\n\\nc"""')
 
 
     def performanceTestInterpolation(self):

@@ -59,7 +59,7 @@ class TestIpython(unittest.TestCase):
         '''Test magic %sos'''
         self.ipshell.run_cell('''%sos a=10''')
         self.ipshell.run_cell('''%sos b=['file1.txt', 'file2.txt']''')
-        self.ipshell.run_cell('''%sos c='${b!r,}' ''')
+        self.ipshell.run_cell('''%sos c="${b!r,}" ''')
         self.assertDictValue('a', 10)
         self.assertDictValue('b', ['file1.txt', 'file2.txt'])
         self.assertDictValue('c', "'file1.txt', 'file2.txt'")

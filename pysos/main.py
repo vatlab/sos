@@ -22,12 +22,80 @@
 #
 import os
 import sys
-import fasteners
-from io import FileIO
+
+script_help = '''A SoS script that defines one or more workflows. The
+    script can be a filename or a URL from which the content of a SoS will
+    be read. If a valid file cannot be located or downloaded, SoS will
+    search for the script in a search path specified by variable `sos_path`
+    defined in the global SoS configuration file (~/.sos/config.yaml).'''
+workflow_spec =  '''Name of the workflow to execute. This option can be
+    ignored if the script defines a default workflow (with no name or with
+    name `default`) or defines only a single workflow. A subworkflow or a
+    combined workflow can also be specified, where a subworkflow executes a
+    subset of workflow (`name_steps` where `steps` can be `n` (a step `n`),
+    `:n` (up to step `n`), `n:m` (from step `n` to `m`), and `n:` (from step
+    `n`)), and a combined workflow executes to multiple (sub)workflows
+    combined by `+` (e.g. `A_0+B+C`).'''
+workflow_options = '''Arbitrary parameters defined by the [parameters] step
+    of the script, and [parameters] steps of other scripts if nested workflows
+    are defined in other SoS files (option `source`). The name, default and
+    type of the parameters are specified in the script. Single value parameters
+    should be passed using option `--name value` and multi-value parameters
+    should be passed using option `--name value1 value2`. '''
+transcript_help = '''Name of a file that records the execution transcript of
+    the script. The transcript will be recorded in dryrun and run mode but
+    might differ in content because of dynamic input and output of scripts.
+    If the option is specified wiht no value, the transcript will be written
+    to standard error output.'''
+bindir_help = '''Extra directories in which SoS will look for executables before
+    standard $PATH. This option essentially prefix $PATH with these directories.
+    Note that the default value '~/.sos/bin' is by convention a default
+    directory for commands that are installed by SoS. You can use option '-b'
+    without value to disallow commands under ~/.sos/bin.'''
 
 #
 # subcommand convert
 #
+def add_convert_arguments(parser):
+    parser.add_argument('from_file', metavar='FILENAME',
+        help='''File to be converted, can be a SoS script or a Jupyter
+            notebook.''')
+    parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
+        help='''Workflow to be converted if the file being converted is a SoS
+            script.''')
+    parser.add_argument('--html', nargs='?', metavar='FILENAME', const='__BROWSER__',
+        help='''Generate a syntax-highlighted HTML file, write it to a
+            specified file, or view in a browser if no filename is specified.
+            Additional argument --raw can be used to specify a URL to raw file,
+            arguments --linenos and --style can be used to customize style of
+            html output. You can pass an arbitrary name to option --style get a
+            list of available styles.''')
+    parser.add_argument('--markdown', nargs='?', metavar='FILENAME', const='__STDOUT__',
+        help='''Convert script or workflow to markdown format and write it to
+            specified file, or standard output if not filename is specified.''')
+    parser.add_argument('--term', action='store_true',
+        help='''Output syntax-highlighted script or workflow to the terminal.
+            Additional arguments --bg=light|dark --lineno can be used to
+            customized output.''')
+    parser.add_argument('--notebook', nargs='?', metavar='FILENAME', const='__STDOUT__',
+        help='''Convert script or workflow to jupyter notebook format and write
+            it to specified file, or standard output if no filename is specified.
+            If the input file is a notebook, it will be converted to .sos (see
+            option --sos) then to notebook, resetting indexes and removing all
+            output cells.''')
+    parser.add_argument('--sos', nargs='?', metavar='SCRIPT', const='__STDOUT__',
+        help='''Convert specified Jupyter notebook to SoS format. The output
+            is the same as you use File -> Download as -> SoS (.sos) from
+            Jupyter with nbconvert version 4.2.0 or higher although you can
+            customize output using options --reorder (rearrange notebook cells
+            with execution order), --reset-index (reset indexes to 1, 2, 3, ..),
+            --add-header (add section header [index] if the cell does not start
+            with a header), --no-index (does not save cell index), --remove-magic
+            (remove cell magic), and --md-to-report (convert markdown cell to
+            code cell with report.)''')
+    addCommonArgs(parser)
+    parser.set_defaults(func=cmd_convert)
+
 def cmd_convert(args, style_args):
     import tempfile
     from .utils import env, get_traceback
@@ -98,7 +166,65 @@ def cmd_convert(args, style_args):
 #
 # subcommand run
 #
-def cmd_run(args, workflow_args):
+def add_run_arguments(parser):
+    parser.add_argument('script', metavar='SCRIPT', help=script_help)
+    parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
+        help=workflow_spec)
+    parser.add_argument('-j', type=int, metavar='JOBS', default=4, dest='__max_jobs__',
+        help='''Number of concurrent process allowed. A workflow is by default
+            executed sequentially (-j 1). If a greater than 1 number is specified
+            SoS will execute the workflow in parallel mode and execute up to
+            specified processes concurrently. These include looped processes
+            within a step (with runtime option `concurrent=True`) and steps with
+            non-missing required files.''')
+    parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE',
+        help='''A configuration file in the format of YAML/JSON. The content
+            of the configuration file will be available as a dictionary
+            CONF in the SoS script being executed.''')
+    parser.add_argument('-t', dest='__targets__', metavar='FILE', default=[],
+        nargs='+', help='''One of more files or alias of other targets that
+            will be the target of execution. If specified, SoS will execute
+            only part of a workflow or multiple workflows or auxiliary steps
+            to generate specified targets.''')
+    parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIR',
+        default=['~/.sos/bin'], help=bindir_help)
+    parser.add_argument('-q', dest='__queue__', metavar='QUEUE',
+        help='''Task-processing queue. SoS by default uses a local multiprocessing
+            queue where tasks are executed by different processes. Supported task
+            queues include a 'rq' engine where tasks will be distributed to one or
+            more rq-workers with assistance from a redis server, and a 'celery'
+            quque where tasks will be distributed to celery workers.''')
+    #parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
+    #    const='__STDOUT__', nargs='?',
+    #    help='''Name of a file that records output from report lines
+    #        (lines starts with !) and report action of the script. Report
+    #        will be written to standard output if the option is specified
+    #        without any value.''')
+    #parser.add_argument('-t', dest='__transcript__', nargs='?',
+    #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
+    runmode = parser.add_argument_group(title='Run mode options',
+        description='''SoS scripts are by default executed in run mode where all
+            the script is run in dryrun mode to check syntax error, prepare mode
+            to prepare resources, and run mode to execute the pipelines. Run mode
+            options allow you to execute these steps selectively.''')
+    runmode.add_argument('-n', action='store_true', dest='__dryrun__',
+        help='''Execute a workflow without executing any actions. This can be
+            used to check the syntax of a SoS file.''')
+    runmode.add_argument('-p', action='store_true', dest='__prepare__',
+        help='''Execute the workflow in preparation mode in which SoS prepare
+            the execution of workflow by, for example, download required
+            resources and docker images.''')
+    runmode.add_argument('-f', action='store_true', dest='__rerun__',
+        help='''Execute the workflow in a special run mode that ignores saved
+            runtime signatures and re-execute all the steps.''')
+    runmode.add_argument('-F', action='store_true', dest='__construct__',
+        help='''Execute the workflow in a special run mode that re-use existing
+            output files and recontruct runtime signatures if output files
+            exist.''')
+    addCommonArgs(parser)
+    parser.set_defaults(func=cmd_run)
+
+def cmd_run(args, workflow_args, batch_mode=True):
     import atexit
     from .utils import env, get_traceback
     from .sos_script import SoS_Script
@@ -106,7 +232,8 @@ def cmd_run(args, workflow_args):
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
     # kill all remainging processes when the master process is killed.
-    atexit.register(env.cleanup)
+    if batch_mode:
+        atexit.register(env.cleanup)
     #
     if args.__rerun__:
         env.sig_mode = 'ignore'
@@ -116,12 +243,13 @@ def cmd_run(args, workflow_args):
         env.sig_mode = 'default'
 
     if args.__bin_dirs__:
+        import fasteners
         for d in args.__bin_dirs__:
-            with fasteners.InterProcessLock('/tmp/sos_lock_bin'):
-                if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
+            if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
+                with fasteners.InterProcessLock('/tmp/sos_lock_bin'):
                     os.makedirs(os.path.expanduser(d))
-                elif not os.path.isdir(os.path.expanduser(d)):
-                    raise ValueError('directory does not exist: {}'.format(d))
+            elif not os.path.isdir(os.path.expanduser(d)):
+                raise ValueError('directory does not exist: {}'.format(d))
         os.environ['PATH'] = os.pathsep.join([os.path.expanduser(x) for x in args.__bin_dirs__]) + os.pathsep + os.environ['PATH']
 
     try:
@@ -152,11 +280,44 @@ def cmd_run(args, workflow_args):
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error(e)
-        sys.exit(1)
+        if batch_mode:
+            sys.exit(1)
+        else:
+            raise
+
+#
+# function runfile that is used by spyder to execute complete script
+#
+def runfile(script, args='', wdir='.', **kwargs):
+    import argparse
+    import shlex
+    from .utils import _parse_error
+    parser = argparse.ArgumentParser(description='''Execute a sos script''')
+    add_run_arguments(parser)
+    parser.error = _parse_error
+    args, workflow_args = parser.parse_known_args([script] + shlex.split(args))
+    # calling the associated functions
+    cmd_run(args, workflow_args, batch_mode=False)
 
 #
 # subcommand dryrun
 #
+def add_dryrun_arguments(parser):
+    parser.add_argument('script', metavar='SCRIPT', help=script_help)
+    parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
+        help=workflow_spec)
+    parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE',
+        help='''A configuration file in the format of YAML/JSON. The content
+            of the configuration file will be available as a dictionary
+            CONF in the SoS script being executed.''')
+    parser.add_argument('-t', dest='__targets__', metavar='FILES', default=[],
+        nargs='+', help='''One of more files or alias of other targets that
+            will be the target of execution. If specified, SoS will execute
+            only part of a workflow or multiple workflows or auxiliary steps
+            to generate specified targets. ''')
+    addCommonArgs(parser)
+    parser.set_defaults(func=cmd_dryrun)
+
 def cmd_dryrun(args, workflow_args):
     args.__rerun__ = False
     args.__construct__ = False
@@ -169,6 +330,24 @@ def cmd_dryrun(args, workflow_args):
 #
 # subcommand prepare
 #
+def add_prepare_arguments(parser):
+    parser.add_argument('script', metavar='SCRIPT', help=script_help)
+    parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
+        help=workflow_spec)
+    parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE',
+        help='''A configuration file in the format of YAML/JSON. The content
+            of the configuration file will be available as a dictionary
+            CONF in the SoS script being executed.''')
+    parser.add_argument('-t', dest='__targets__', metavar='FILES', default=[],
+        nargs='+', help='''One of more files or alias of other targets that
+            will be the target of execution. If specified, SoS will execute
+            only part of a workflow or multiple workflows or auxiliary steps
+            to generate specified targets. ''')
+    parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIRS',
+        default=['~/.sos/bin'], help=bindir_help)
+    addCommonArgs(parser)
+    parser.set_defaults(func=cmd_prepare)
+
 def cmd_prepare(args, workflow_args):
     args.__rerun__ = False
     args.__construct__ = False
@@ -181,6 +360,28 @@ def cmd_prepare(args, workflow_args):
 #
 # command remove
 #
+def add_remove_arguments(parser):
+    parser.add_argument('targets', nargs='*', metavar='FILE_OR_DIR',
+        help='''Files and directories to be removed, which should be under the
+            current directory (default). All, tracked, or untracked files
+            will be removed depending on other options ('-t' or '-u').
+            For safety reasons, files under the current directory have to be
+            listed (not as files under .) to be removed.''')
+    group = parser.add_mutually_exclusive_group(required=False)
+    group.add_argument('-t', action='store_true', dest='__tracked__', default=False,
+        help='''Remove tracked files and their signatures from specified files
+            and directories.''')
+    group.add_argument('-u', action='store_true', dest='__untracked__', default=False,
+        help='''Remove untracked files from specified files and directories.''')
+    parser.add_argument('-n', action='store_true', dest='__dryrun__',
+        help='''List files or directories to be removed, without actually
+            removing them.''')
+    parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
+        help='''Remove files without confirmation, suitable for batch removal
+            of files.''')
+    addCommonArgs(parser)
+    parser.set_defaults(func=cmd_remove)
+
 def get_tracked_files(sig_file):
     from .target import FileTarget
     with open(sig_file) as sig:
@@ -371,6 +572,10 @@ def cmd_remove(args, unknown_args):
 #
 # command start
 #
+def add_start_arguments(parser):
+    parser.add_argument('server_type', choices=('server', 'worker'), metavar='TYPE')
+    parser.set_defaults(func=cmd_start)
+
 def cmd_start(args, unknown_args):
     import subprocess
     if args.server_type == 'server':
@@ -386,6 +591,34 @@ def cmd_start(args, unknown_args):
 #
 # subcommand config
 #
+def add_config_arguments(parser):
+    parser.add_argument('-g', '--global', action='store_true', dest='__global_config__',
+        help='''If set, change global (~/.sos/config.yaml) instead of local
+        (.sos/config.yaml) configuration''')
+    parser.add_argument('-c', '--config', dest='__config_file__', metavar='CONFIG_FILE',
+        help='''User specified configuration file in YAML format. This file will not be
+        automatically loaded by SoS but can be specified using option `-c`''')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--get', nargs='*', metavar='OPTION', dest='__get_config__',
+        help='''Display values of specified configuration. The arguments of this
+        option can be a single configuration option or a list of option. Wildcard
+        characters are allowed to match more options (e.g. '*timeout', quotation
+        is needed to avoid shell expansion). If no option is given, all options
+        will be outputted.''')
+    group.add_argument('--unset', nargs='+', metavar='OPTION',  dest='__unset_config__',
+        help='''Unset (remove) settings for specified options. The arguments of this
+        option can be a single configuration option or a list of option. Wildcard
+        characters are allowed to match more options (e.g. '*timeout', or '*' for
+        all options, quotation is needed to avoid shell expansion).''')
+    group.add_argument('--set', nargs='+', metavar='KEY VALUE', dest='__set_config__',
+        help='''--set KEY VALUE sets VALUE to variable KEY. The value can be any valid
+        python expression (e.g. 5 for integer 5 and '{"c": 2, "d": 1}' for a dictionary)
+        with invalid expression (e.g. val without quote) considered as string. Syntax
+        'A.B=v' can be used to add {'B': v} to dictionary 'A', and --set KEY VALUE1 VALUE2 ...
+        will create a list with multiple values.''')
+    addCommonArgs(parser)
+    parser.set_defaults(func=cmd_config)
+
 def cmd_config(args, workflow_args):
     import fnmatch
     import yaml
@@ -507,6 +740,40 @@ def cmd_config(args, workflow_args):
 #
 # command pack
 #
+def add_pack_arguments(parser):
+    parser.add_argument('session', nargs='?',
+        help='''ID of the session to be saved, which can be any number of
+        digits as long as it can uniquely determine a workflow session. This
+        parameter can be ignored if only one session is available.''')
+    parser.add_argument('-o', '--output', default="-",
+        help='''Output file, which can be a file with extension ".sar" (the
+        extension will be be automatically appended if needed), or "-" for
+        standard output (default).''')
+    parser.add_argument('-i', '--include', nargs='*', default=[],
+        help='''Additional files or directories to be incldued in the archive.
+        SoS will archive all files under specified directories, including
+        hidden directories such as ".git". Option --exclude could be used
+        to exclude these files.''')
+    parser.add_argument('-e', '--exclude', nargs='*', default=[],
+        help='''Files that should be excluded from archive. The parameter
+        should be one or more patterns that match the whole path (e.g.
+        "output/*.log" or file or directory names such as "tmp" or "*.bam".
+        ''')
+    parser.add_argument('-a', '--all', action='store_true', dest='__all__',
+        help='''Include all tracked files even if they reside outside of the
+        current working directory.''')
+    parser.add_argument('-m', '--message',
+        help='''A short message to be included into the archive. Because the
+        message would be lost during unpacking, it is highly recommended that
+        you create a README file and include it with option --include.''')
+    parser.add_argument('-d', '--dryrun', action='store_true',
+        help='''List files to be included and total file size without actually
+        archiving them''')
+    parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
+        help='''Overwrite output file if it already exists''')
+    addCommonArgs(parser)
+    parser.set_defaults(func=cmd_pack)
+
 def locate_files(session, include, exclude, all_files):
     import fnmatch
     import glob
@@ -562,23 +829,10 @@ def locate_files(session, include, exclude, all_files):
     #
     return script_files, tracked_files, runtime_files
 
-class ProgressFileObj(FileIO):
-    '''A wrapper of a file object that update a progress bar
-    during file read.
-    '''
-    def __init__(self, prog, *args, **kwargs):
-        FileIO.__init__(self, *args, **kwargs)
-        self.prog = prog
-
-    def read(self, n, *args):
-        self.prog.progressBy(n)
-        return FileIO.read(self, n, *args)
-
-
 def cmd_pack(args, unknown_args):
     import tarfile
     import tempfile
-    from .utils import pretty_size, env, ProgressBar
+    from .utils import pretty_size, env, ProgressBar, ProgressFileObj
     from .target import FileTarget
     #
     env.verbosity = args.verbosity
@@ -673,9 +927,42 @@ def cmd_pack(args, unknown_args):
 #
 # command unpack
 #
+def add_unpack_arguments(parser):
+    parser.add_argument('archive',
+        help='''SoS archive saved by command sos pack''')
+    parser.add_argument('files', nargs='*',
+        help='''An optional list of files to be processed, which can be exact
+        filenames or patterns (e.g. "*.bam"). No runtime information will be
+        extracted if this option is specified.''')
+    parser.add_argument('-d', '--dest', default='.',
+        help='''Directory where a sos archive would be unpacked. Default to
+        current directory.''')
+    parser.add_argument('-s', '--script', action='store_true',
+        help='''If specified, extract sos script(s) related to the workflow
+        to the current or specified directory (option --dest), regardless of
+        their original locations in the filesystem. Note that sos scripts are
+        not extracted by default because they are usually external and it is
+        dangerous to overwrite existing scripts with archived ones.''')
+    parser.add_argument('-l', '--list', action='store_true', dest='__list__',
+        help='''List content of the archive instead of extracting it. The names,
+        uncompressed file sizes  and  modification  dates and times of the
+        specified files are printed, along with totals for all files specified.''')
+    parser.add_argument('-e', '--external', action='store_true',
+        help='''Extract files outside of the project to their external destinations.
+        This option can be dangerous because it can overwrite system files silently
+        if accompanied with option -y.''')
+    parser.add_argument('-n', '--no', action='store_true', dest='__no_overwrite__',
+        help='''Do not overwrite existing files without promoting users.''')
+    parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
+        help='''Overwrite existing files without promoting users. This option
+        can be dangerous to use. Note that SoS checks file signature and
+        ignores existing files that are identical to those in the archive.''')
+    addCommonArgs(parser)
+    parser.set_defaults(func=cmd_unpack)
+
 def cmd_unpack(args, unknown_args):
     import tarfile
-    from .utils import env, ProgressBar, pretty_size
+    from .utils import env, ProgressBar, pretty_size, ProgressFileObj
     from .target import fileMD5
     import tempfile
     import fnmatch
@@ -781,4 +1068,105 @@ def cmd_unpack(args, unknown_args):
     except Exception as e:
         raise ValueError('Failed to unpack SoS archive: {}'.format(e))
     prog.done()
+
+
+def addCommonArgs(parser):
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+            help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).'''),
+
+def main():
+    from pysos._version import SOS_FULL_VERSION
+    import argparse
+    master_parser = argparse.ArgumentParser(description='''A workflow system
+            for the execution of commands and scripts in different languages.''',
+        prog='sos',
+        fromfile_prefix_chars='@',
+        epilog='''Use 'sos cmd -h' for details about each subcommand. Please
+            contact Bo Peng (bpeng at mdanderson.org) if you have any question.''')
+
+    master_parser.add_argument('--version', action='version',
+        version='%(prog)s {}'.format(SOS_FULL_VERSION))
+    subparsers = master_parser.add_subparsers(title='subcommands')
+    #
+    # command run
+    parser = subparsers.add_parser('run',
+        description='Execute a workflow defined in script',
+        epilog=workflow_options,
+        help='Execute a SoS script')
+    add_run_arguments(parser)
+    #
+    # command dryrun
+    parser = subparsers.add_parser('dryrun',
+        description='''Inspect specified script for syntax errors''',
+        epilog=workflow_options,
+        help='Execute a SoS script in dryrun mode')
+    add_dryrun_arguments(parser)
+    #
+    # command prepare
+    parser = subparsers.add_parser('prepare',
+        description='''Execute a workflow in prepare mode in which SoS
+            prepares the exeuction of workflow by, for example, download
+            required resources and docker images.''',
+        epilog=workflow_options,
+        help='Execute a SoS script in prepare mode')
+    add_prepare_arguments(parser)
+    #
+    # command convert
+    parser = subparsers.add_parser('convert',
+        description='''The show command displays details of all workflows
+            defined in a script, including description of script, workflow,
+            steps, and command line parameters. The output can be limited
+            to a specified workflow (which can be a subworkflow or a combined
+            workflow) if a workflow is specified.''',
+        epilog='''Extra command line argument could be specified to customize
+            the style of html, markdown, and terminal output. ''',
+        help='Convert between sos and other file formats such as html and Jupyter notebooks')
+    add_convert_arguments(parser)
+    #
+    # command remove
+    parser = subparsers.add_parser('remove',
+        help='''Remove tracked and/or untracked files with their signatures''',
+        description='''Remove specified files and directories and their
+            signatures (if available). Optionally, you can remove only
+            tracked files (input, output and intermediate files of executed
+            workflows) or untracked file from specified files and/or
+            directories.''')
+    add_remove_arguments(parser)
+    #
+    # command start
+    #parser = subparsers.add_parser('start',
+    #    description='''Start server or worker''')
+    #add_start_arguments(parser)
+    #
+    # command config
+    parser = subparsers.add_parser('config',
+        help='''Set, unset or get the value of system or local configuration files''',
+        description='''The config command displays, set, and unset configuration
+            variables defined in global or local configuration files.''')
+    add_config_arguments(parser)
+    #
+    # command pack
+    parser = subparsers.add_parser('pack',
+        help='''Collect sos scripts, all input, output, and tracked intermediate
+        files related to a workflow run and bundle them into a single archive.
+        The archive can be examined (without unpacking) with command "sos
+        show" and be unpacked with command "sos unpack". This command does not
+        include files outside of the current working directory unless they
+        are specified by option --include, or --all.''')
+    add_pack_arguments(parser)
+    #
+    # command unpack
+    parser = subparsers.add_parser('unpack',
+        help='''Unpack a sos archive to a specified directory. For security
+        reasons, files that were outside of the project directory would be
+        extracted in this directory unless option -e is specified.''')
+    add_unpack_arguments(parser)
+    #
+    if len(sys.argv) == 1:
+        master_parser.print_help()
+        sys.exit(0)
+    args, workflow_args = master_parser.parse_known_args()
+    # calling the associated functions
+    args.func(args, workflow_args)
 

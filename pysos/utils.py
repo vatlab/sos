@@ -37,7 +37,8 @@ import yaml
 import urllib
 import argparse
 from collections.abc import Sequence
-from io import StringIO
+from io import StringIO, FileIO
+
 from html.parser import HTMLParser
 import uuid
 import fasteners
@@ -755,6 +756,18 @@ class ProgressBar:
                 sys.stderr.flush()
 
 
+class ProgressFileObj(FileIO):
+    '''A wrapper of a file object that update a progress bar
+    during file read.
+    '''
+    def __init__(self, prog, *args, **kwargs):
+        FileIO.__init__(self, *args, **kwargs)
+        self.prog = prog
+
+    def read(self, n, *args):
+        self.prog.progressBy(n)
+        return FileIO.read(self, n, *args)
+
 class frozendict(dict):
     '''A fronzen dictionary that disallow changing of its elements
     Copied from http://code.activestate.com/recipes/414283/
@@ -870,18 +883,19 @@ def locate_script(filename, start=''):
     #
     raise ValueError('Failed to locate {}'.format(filename))
 
-def text_repr(text):
+def text_repr(text, quote='double'):
     """Rich repr for ``text`` returning unicode, triple quoted if ``multiline``.
     """
-    if text.count('\n') <= 1:
-        return repr(text)
-    elif "'''" not in text and not text.endswith("'"):
-        return "r'''" + text + "'''"
-    elif '"""' not in text and not text.endswith('"'):
-        return 'r"""' + text + '"""'
-    else:
-        # cannot really use triple quote in this case
-        return repr(text)
+    return 'r"""' + text.replace('"', '\"') + '"""'
+    #if text.count('\n') <= 1:
+    #    return repr(text)
+    #elif "'''" not in text and not text.endswith("'"):
+    #    return "r'''" + text + "'''"
+    #elif '"""' not in text and not text.endswith('"'):
+    #    return 'r"""' + text + '"""'
+    #else:
+    #    # cannot really use triple quote in this case
+    #    return repr(text)
 
 def natural_keys(text):
     '''
