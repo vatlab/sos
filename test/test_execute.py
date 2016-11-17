@@ -1343,6 +1343,22 @@ sh:
         self.assertLess(time.time() - st, 2)
         FileTarget('lls').remove('both')
 
+    def testDependsRLibrary(self):
+        '''Testing depending on R_library'''
+        # first remove xtable package
+        subprocess.call('R CMD REMOVE xtable', shell=True)
+        script = SoS_Script('''
+[0]
+
+depends: R_library('xtable')
+R:
+    library('xtable')
+    ## Demonstrate data.frame
+    tli.table <- xtable(cars)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
     def testDependsEnvVariable(self):
         '''Testing target env_variable.'''
         FileTarget('a.txt').remove('both')
