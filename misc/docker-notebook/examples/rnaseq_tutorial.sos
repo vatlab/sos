@@ -1,0 +1,19 @@
+#!/usr/bin/env sos-runner
+#fileformat=SOS1.0
+
+! ## An example SOS workflow 
+
+! This workflow uses data from an RNA Seq tutorial https://github.com/griffithlab/rnaseq_tutorial/wiki/RNAseq-Data
+! without following the steps described there.
+
+[1]
+# download the data
+output:     'data/*.fastq.gz', dynamic=True
+download:   dest_dir='data'
+	http://genome.wustl.edu/pub/rnaseq/data/brain_vs_uhr_w_ercc/downsampled_5pc_chr22/HBR_UHR_ERCC_ds_5pc.tar
+run:        workdir='data'
+ 	tar -xf HBR_UHR_ERCC_ds_5pc.tar
+
+! ## Input file
+! ${get_output('ls data/*.fastq.gz', show_command=True)}
+

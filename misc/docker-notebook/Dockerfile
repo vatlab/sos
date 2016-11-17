@@ -36,5 +36,5 @@ RUN     pip install sos
 USER    $NB_USER
 EXPOSE	8888
 
-
-
+COPY ./examples/example.ipynb /home/jovyan/work
+COPY ./examples/NotebookTutorial.ipynb /home/jovyan/work
