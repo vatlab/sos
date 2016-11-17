@@ -467,6 +467,7 @@ class SoS_Kernel(Kernel):
     MAGIC_DICT = re.compile('^%dict(\s|$)')
     MAGIC_CONNECT_INFO = re.compile('^%connect_info(\s|$)')
     MAGIC_MATPLOTLIB = re.compile('^%matplotlib(\s|$)')
+    MAGIC_CD = re.compile('^%cd(\s|$)')
     MAGIC_SET = re.compile('^%set(\s|$)')
     MAGIC_RESTART = re.compile('^%restart(\s|$)')
     MAGIC_WITH = re.compile('^%with(\s|$)')
@@ -877,6 +878,32 @@ class SoS_Kernel(Kernel):
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stderr', 'text': '\n> Failed to find file or evaluate expression {}: {}'.format(item, e)})
 
+    def handle_magic_cd(self, option):
+        # interpolate command
+        try:
+            new_option = interpolate(option, sigil='${ }', local_dict=env.sos_dict._dict)
+            if new_option != option:
+                option = new_option
+                if not option.startswith('cd ') and not option.startswith('cd\t'):
+                    self.send_response(self.iopub_socket, 'stream',
+                        {'name': 'stdout', 'text':
+                        new_option.strip() + '\n## -- End interpolated command --\n'})
+        except Exception as e:
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': 'Failed to interpolate {}: {}\n'.format(short_repr(option), e)})
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': str(e)})
+            return
+        to_dir = option.strip()
+        try:
+            os.chdir(os.path.expanduser(to_dir))
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': os.getcwd()})
+        except Exception as e:
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stderr',
+                'text': 'Failed to change dir to {}: {}'.format(os.path.expanduser(to_dir), e)})
+
     def handle_shell_command(self, cmd):
         # interpolate command
         try:
@@ -893,17 +920,6 @@ class SoS_Kernel(Kernel):
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': str(e)})
             return
-        # command cd is handled differently because it is the only one that
-        # has effect on sos.
-        if cmd.startswith('cd ') or cmd.startswith('cd\t'):
-            to_dir = cmd[3:].strip()
-            try:
-                os.chdir(os.path.expanduser(os.path.expandvars(to_dir)))
-            except Exception as e:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stderr', 'text': repr(e)})
-            self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': os.getcwd()})
         with self.redirect_sos_io():
             try:
                 p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -1168,6 +1184,10 @@ class SoS_Kernel(Kernel):
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.handle_magic_preview(options)
+        elif self.MAGIC_CD.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            self.handle_magic_cd(options)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_shell_command(code.split(' ')[0][1:] + ' ' + options)
