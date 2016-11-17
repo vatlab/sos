@@ -1256,6 +1256,8 @@ class SoS_SpyderKernel(SoS_Kernel):
 def get_ipython():
     return __ipython__
 ''', None)
+        self.original_keys.add('__ipython__')
+        self.original_keys.add('get_ipython')
 
     #
     # The following is copied from spyder_kernel.py, which are needed for

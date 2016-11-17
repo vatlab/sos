@@ -321,7 +321,7 @@ C_3 -> C_4;
     def testAuxiliarySteps(self):
         script = SoS_Script('''
 [K: provides='{name}.txt']
-output: '${name}.txt'
+output: "${name}.txt"
 
 sh:
     touch '${name}.txt'
@@ -742,7 +742,7 @@ A_2;
         script = SoS_Script('''
 [A_1]
 parameter: num = 2
-input: 'B${num}.txt.p'
+input: "B${num}.txt.p"
 
 [B: provides='B{num}.txt']
 sh:
@@ -790,7 +790,7 @@ sh:
 input: None
 import time
 time.sleep(3)
-with open('${ss}.txt', 'w') as tmp:
+with open("${ss}.txt", 'w') as tmp:
     tmp.write('test')
 
 ''')

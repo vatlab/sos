@@ -29,6 +29,7 @@ from .actions import SoS_Action, execute_script, sos_run, check_command, \
 from .sos_eval import interpolate, sos_namespace_
 from .pattern import expand_pattern
 from .target import dynamic, executable, sos_variable, env_variable
+from .main import runfile
 
 # silent pyflakes
 SoS_Script
@@ -40,4 +41,5 @@ docker_build, docker_commit, report, pandoc, Rmarkdown
 interpolate, sos_namespace_
 expand_pattern
 dynamic, executable, sos_variable, env_variable
+runfile
 

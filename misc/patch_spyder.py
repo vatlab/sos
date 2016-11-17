@@ -73,20 +73,20 @@ def patch_spyder2():
             '''
     app.exec_()
 ''',
-            '''
+            r'''
     try:
         if options.kernel == 'sos':
             cfg_file = os.path.expanduser('~/.ipython/profile_default/ipython_config.py')
             has_cfg = os.path.isfile(cfg_file)
-            if has_cfg:
+            if has_cfg and not os.path.isfile(cfg_file + '.sos_bak'):
                 os.rename(cfg_file, cfg_file + '.sos_bak')
             with open(cfg_file, 'w') as cfg:
-                cfg.write("""c.IPKernelApp.kernel_class =  'pysos.kernel.SoS_Kernel'\n""")
+                cfg.write("c.IPKernelApp.kernel_class =  'pysos.kernel.SoS_Kernel'\n")
         app.exec_()
     finally:
         if options.kernel == 'sos':
             os.remove(cfg_file)
-            if has_cfg:
+            if os.path.isfile(cfg_file + '.sos_bak'):
                 os.rename(cfg_file + '.sos_bak', cfg_file)
 '''))
         #
@@ -150,20 +150,20 @@ def patch_spyder3():
             '''
     app.exec_()
 ''',
-            '''
+            r'''
     try:
         if options.kernel == 'sos':
             cfg_file = os.path.expanduser('~/.ipython/profile_default/ipython_config.py')
             has_cfg = os.path.isfile(cfg_file)
-            if has_cfg:
+            if has_cfg and not os.path.isfile(cfg_file + '.sos_bak'):
                 os.rename(cfg_file, cfg_file + '.sos_bak')
             with open(cfg_file, 'w') as cfg:
-                cfg.write("""c.IPKernelApp.kernel_class =  'pysos.kernel.SoS_SpyderKernel'\n""")
+                cfg.write("c.IPKernelApp.kernel_class =  'pysos.kernel.SoS_SpyderKernel'\n")
         app.exec_()
     finally:
         if options.kernel == 'sos':
             os.remove(cfg_file)
-            if has_cfg:
+            if os.path.isfile(cfg_file + '.sos_bak'):
                 os.rename(cfg_file + '.sos_bak', cfg_file)
 '''))
         #
