@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python
 #
 # This file is part of Script of Scripts (sos), a workflow system
 # for the execution of commands and scripts in different languages.
@@ -25,4 +25,10 @@
 #
 # #!/usr/bin/env sos-runner
 #
-sos run $*
+import sys
+from pysos.main import runfile
+if len(sys.argv) == 1:
+	# print error message
+	runfile(None)
+else:
+	runfile(sys.argv[1], args=sys.argv[2:])

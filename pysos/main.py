@@ -269,14 +269,20 @@ def cmd_run(args, workflow_args, batch_mode=True):
 #
 # function runfile that is used by spyder to execute complete script
 #
-def runfile(script, args='', wdir='.', **kwargs):
+def runfile(script=None, args='', wdir='.', **kwargs):
     import argparse
     import shlex
+    import sys
     from .utils import _parse_error
     parser = argparse.ArgumentParser(description='''Execute a sos script''')
     add_run_arguments(parser)
     parser.error = _parse_error
-    args, workflow_args = parser.parse_known_args([script] + shlex.split(args))
+    if isinstance(args, str):
+        args = shlex.split(args)
+    if script is None or '-h' in args:
+        parser.print_help()
+        sys.exit(0)
+    args, workflow_args = parser.parse_known_args([script] + args)
     # calling the associated functions
     cmd_run(args, workflow_args, batch_mode=False)
 
