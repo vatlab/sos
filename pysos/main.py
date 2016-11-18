@@ -1062,6 +1062,14 @@ def addCommonArgs(parser):
             help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).'''),
 
+
+def sosrun():
+	if len(sys.argv) == 1:
+		# print error message
+		runfile(None)
+	else:
+		runfile(sys.argv[1], args=sys.argv[2:])
+
 def main():
     from pysos._version import SOS_FULL_VERSION
     import argparse
@@ -1156,3 +1164,5 @@ def main():
     # calling the associated functions
     args.func(args, workflow_args)
 
+if __name__ == '__main__':
+    main()
