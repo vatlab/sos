@@ -1214,6 +1214,11 @@ class SoS_Kernel(Kernel):
                     'traceback': [],
                     'execution_count': self.execution_count,
                    }
+            finally:
+                # even if something goes wrong, we clear output so that the "preview"
+                # will not be viewed by a later step.
+                env.sos_dict.pop('input', None)
+                env.sos_dict.pop('output', None)
 
     def do_shutdown(self, restart):
         #
