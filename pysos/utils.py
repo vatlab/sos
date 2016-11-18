@@ -107,12 +107,18 @@ class ColoredFormatter(logging.Formatter):
         }
 
     def colorstr(self, astr, color):
-        return '\033[{}m{}\033[{}m'.format(color, astr,
-            self.COLOR_CODE['ENDC'])
+        if sys.platform == 'win32':
+            return astr
+        else:
+            return '\033[{}m{}\033[{}m'.format(color, astr,
+                self.COLOR_CODE['ENDC'])
 
     def emphasize(self, msg, level_color=0):
         # display text within `` and `` in green
-        return re.sub(r'``([^`]*)``', '\033[32m\\1\033[{}m'.format(level_color), str(msg))
+        if sys.platform == 'win32':
+            return str(msg).replace('``', '')
+        else:
+            return re.sub(r'``([^`]*)``', '\033[32m\\1\033[{}m'.format(level_color), str(msg))
 
     def format(self, record):
         level_name = record.levelname
