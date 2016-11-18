@@ -1054,10 +1054,20 @@ class SoS_Kernel(Kernel):
         self.shell.events.trigger('post_execute')
         return ret
 
+    def remove_leading_comments(self, code):
+        lines = code.splitlines()
+        try:
+            idx = [x.startswith('#') or not x.strip() for x in lines].index(False)
+            return os.linesep.join(lines[idx:])
+        except Exception as e:
+            # if all line is empty
+            return ''
+
     def _do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
-        if code.startswith('\n') or code.startswith(' '):
-            code = re.sub('^\s*\n', '', code, re.M)
+        # if the kernel is SoS, remove comments and newlines
+        code = self.remove_leading_comments(code)
+
         if self.original_keys is None:
             self._reset_dict()
         if code == 'import os\n_pid = os.getpid()':
@@ -1275,6 +1285,8 @@ class SoS_SpyderKernel(SoS_Kernel):
     # add an additional magic that only useful for spyder
     def _do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
+        code = self.remove_leading_comments(code)
+
         if self.MAGIC_EDIT.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_edit(options)
