@@ -883,19 +883,26 @@ def locate_script(filename, start=''):
     #
     raise ValueError('Failed to locate {}'.format(filename))
 
-def text_repr(text, quote='double'):
-    """Rich repr for ``text`` returning unicode, triple quoted if ``multiline``.
+def text_repr(text):
+    """return a valid string representation of text, but requires that
+    it is double quoted so that sos can interpolate text in script style
     """
-    return 'r"""' + text.replace('"', '\"') + '"""'
-    #if text.count('\n') <= 1:
-    #    return repr(text)
-    #elif "'''" not in text and not text.endswith("'"):
-    #    return "r'''" + text + "'''"
-    #elif '"""' not in text and not text.endswith('"'):
-    #    return 'r"""' + text + '"""'
-    #else:
-    #    # cannot really use triple quote in this case
-    #    return repr(text)
+    # in the simple case, we can just use r""" """
+    if '"""' not in text and not text.endswith('"'):
+        return 'r"""' + text + '"""'
+    # if things need to be quoted, let us first use repr
+    # to quote them
+    r = repr(text)
+    # if the result happens to be double quoted, good
+    # although it appears to me that Python 3 only use single quote.
+    if r.startswith('"'):
+        return r
+    # otherwise we have to manually change single quote to double quote
+    #
+    # The problem here is that the representation can have a bunch of \'
+    # and I have to hope that \' will be correctly interpreted in " "
+    # strings
+    return '"' + r.replace('"', r'\"')[1:-1] + '"'
 
 def natural_keys(text):
     '''
