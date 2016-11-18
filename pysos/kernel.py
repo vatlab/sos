@@ -864,7 +864,7 @@ class SoS_Kernel(Kernel):
             {
               'source': 'SoS',
               'metadata': {},
-              'data': { 'text/html': HTML('<pre>## %preview {}</pre>'.format(options)).data}
+              'data': { 'text/html': HTML('<pre><font color="green">## %preview {}</font></pre>'.format(options)).data}
             })
         # expand items
         for item in items:
@@ -872,8 +872,12 @@ class SoS_Kernel(Kernel):
                 if os.path.isfile(item):
                     self.preview(item)
                     continue
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': item + ':\n'})
+                self.send_response(self.iopub_socket, 'display_data',
+                    {'metadata': {},
+                    'data': {'text/plain': '>>> ' + item + ':\n',
+                        'text/html': HTML('<pre><font color="green">> {}:</font></pre>'.format(item)).data
+                        }
+                    })
                 if item in env.sos_dict:
                     obj = env.sos_dict[item]
                 else:
@@ -980,7 +984,7 @@ class SoS_Kernel(Kernel):
                         {
                             'source': 'SoS',
                             'metadata': {},
-                            'data': { 'text/html': HTML('<pre>## -- Preview output --</pre>').data}
+                            'data': { 'text/html': HTML('<pre><font color="green">## -- Preview output --</font></pre>').data}
                         })
                 self.send_response(self.iopub_socket, 'display_data',
                         {
@@ -1001,8 +1005,13 @@ class SoS_Kernel(Kernel):
             self.send_response(self.iopub_socket, 'stream',
                  {'name': 'stderr', 'text': '\n> ' + filename + ' does not exist'})
             return
-        self.send_response(self.iopub_socket, 'stream',
-             {'name': 'stdout', 'text': '\n> ' + filename + ' ({})'.format(pretty_size(os.path.getsize(filename)))})
+        self.send_response(self.iopub_socket, 'display_data',
+             {'metadata': {},
+             'data': {
+                 'text/plain': '\n> {} ({}):'.format(filename, pretty_size(os.path.getsize(filename))),
+                 'text/html': HTML('<pre><font color="green">> {} ({}):</font></pre>'.format(filename, pretty_size(os.path.getsize(filename)))).data,
+                }
+             })
         previewer = [x for x in self.previewer.keys() if fnmatch.fnmatch(os.path.basename(filename), x)]
         if not previewer:
             return
