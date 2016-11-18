@@ -144,7 +144,8 @@ setup(name = "sos",
 			'sos = pysos.main:main',
 			'sos-runner = pysos.main:sosrun',
 		],
-		'pygments_lexers': 'sos = pysos.converter:SoS_Lexer'
+		'pygments.lexers': [
+			'sos = pysos.converter:SoS_Lexer'
+		]
 	},
-  
 )
