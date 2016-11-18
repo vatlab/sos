@@ -35,7 +35,6 @@ import shutil
 import zipfile
 import gzip
 import tarfile
-import blessings
 
 from io import BytesIO
 from docker import Client
@@ -796,6 +795,7 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
             succ = [x.get() if isinstance(x, mp.pool.AsyncResult) else x for x in succ]
         #
         if sys.platform != 'win32':
+            import blessings
             t = blessings.Terminal(stream=sys.stderr)
             sys.stderr.write(t.move( t.height, 0)) # + '\n')
     else:

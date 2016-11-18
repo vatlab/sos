@@ -551,7 +551,7 @@ class ProgressBar:
     '''
     # no ncurse support under windows
     def __init__(self, message, totalCount = None, disp=True):
-        if not disp:
+        if not disp or sys.platform == 'win32':
             self.update = self.empty
             self.curlUpdate = self.empty
             self.progress = self.empty
@@ -965,28 +965,50 @@ class ActivityNotifier(threading.Thread):
             return idx
 
     def run(self):
-        import blessings
-        registered = False
-        self.term = blessings.Terminal(stream=sys.stderr)
-        while True:
-            self.event.wait(self.delay)
-            if self.event.is_set():
-                if registered:
-                    sys.stderr.write("\r\033[K")
+        if sys.platform != 'win32':
+            import blessings
+            registered = False
+            self.term = blessings.Terminal(stream=sys.stderr)
+            while True:
+                self.event.wait(self.delay)
+                if self.event.is_set():
+                    if registered:
+                        sys.stderr.write("\r\033[K")
+                        sys.stderr.flush()
+                    break
+                if not registered:
+                    self.uuid = uuid.uuid4().hex
+                    with fasteners.InterProcessLock('/tmp/sos_progress_'):
+                        with open('/tmp/sos_progress', 'a') as prog_index:
+                            prog_index.write('{}\n'.format(self.uuid))
+                    registered = True
+                second_elapsed = time.time() - self.start_time
+                with self.term.location(0, self.term.height - self.get_index() - 1):
+                    sys.stderr.write('\r' + self.msg + ' ({}{}){}'.format(
+                        '' if second_elapsed < 86400 else '{} day{} '
+                        .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
+                        time.strftime('%H:%M:%S', time.gmtime(second_elapsed)), self.term.clear_eol))
                     sys.stderr.flush()
-                break
-            if not registered:
-                self.uuid = uuid.uuid4().hex
-                with fasteners.InterProcessLock('/tmp/sos_progress_'):
-                    with open('/tmp/sos_progress', 'a') as prog_index:
-                        prog_index.write('{}\n'.format(self.uuid))
-                registered = True
-            second_elapsed = time.time() - self.start_time
-            with self.term.location(0, self.term.height - self.get_index() - 1):
-                sys.stderr.write('\r' + self.msg + ' ({}{}){}'.format(
-                    '' if second_elapsed < 86400 else '{} day{} '
-                    .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
-                    time.strftime('%H:%M:%S', time.gmtime(second_elapsed)), self.term.clear_eol))
+        else:
+            registered = False
+            while True:
+                self.event.wait(self.delay)
+                if self.event.is_set():
+                    if registered:
+                        sys.stderr.write("\r\033[K")
+                        sys.stderr.flush()
+                    break
+                if not registered:
+                    self.uuid = uuid.uuid4().hex
+                    with fasteners.InterProcessLock('/tmp/sos_progress_'):
+                        with open('/tmp/sos_progress', 'a') as prog_index:
+                            prog_index.write('{}\n'.format(self.uuid))
+                    registered = True
+                second_elapsed = time.time() - self.start_time
+                sys.stderr.write('\r' + self.msg + ' ({}{})'.format(
+                        '' if second_elapsed < 86400 else '{} day{} '
+                        .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
+                        time.strftime('%H:%M:%S', time.gmtime(second_elapsed)) ))
                 sys.stderr.flush()
 
     def stop(self):
