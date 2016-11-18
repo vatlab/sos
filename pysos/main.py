@@ -60,9 +60,6 @@ def add_convert_arguments(parser):
     parser.add_argument('from_file', metavar='FILENAME',
         help='''File to be converted, can be a SoS script or a Jupyter
             notebook.''')
-    parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
-        help='''Workflow to be converted if the file being converted is a SoS
-            script.''')
     parser.add_argument('--html', nargs='?', metavar='FILENAME', const='__BROWSER__',
         help='''Generate a syntax-highlighted HTML file, write it to a
             specified file, or view in a browser if no filename is specified.
@@ -100,9 +97,8 @@ def cmd_convert(args, style_args):
     import tempfile
     from .utils import env, get_traceback
     from .sos_script import SoS_Script
-    from .converter import script_to_html, workflow_to_html, script_to_markdown, \
-        workflow_to_markdown, script_to_notebook, workflow_to_notebook, \
-        script_to_term, workflow_to_term, notebook_to_script
+    from .converter import script_to_html, script_to_markdown, \
+        script_to_notebook, script_to_term, notebook_to_script
     env.verbosity = args.verbosity
     # convert from ...
     try:
@@ -128,33 +124,18 @@ def cmd_convert(args, style_args):
                 except Exception as e:
                     script = None
                     env.logger.warning(e)
-            if args.workflow:
-                if not script:
-                    raise RuntimeError('workflow {} is not available due to syntax error in script {}'.format(args.workflow, args.from_file))
-                workflow = script.workflow(args.workflow)
-                if args.html is not None:
-                    workflow_to_html(workflow, args.from_file, args.html, style_args)
-                elif args.markdown is not None:
-                    workflow_to_markdown(workflow, args.from_file, args.markdown, style_args)
-                elif args.notebook is not None:
-                    workflow_to_notebook(workflow, args.from_file, args.notebook)
-                elif args.term:
-                    workflow_to_term(workflow, args.from_file, style_args)
-                else:
-                    workflow.show()
+            if args.html is not None:
+                script_to_html(transcript_file, args.from_file, args.html, style_args)
+            elif args.markdown is not None:
+                script_to_markdown(transcript_file, args.from_file, args.markdown)
+            elif args.notebook is not None:
+                script_to_notebook(args.from_file, args.notebook)
+            elif args.term:
+                script_to_term(transcript_file, args.from_file, style_args)
+            elif script:
+                script.show()
             else:
-                if args.html is not None:
-                    script_to_html(transcript_file, args.from_file, args.html, style_args)
-                elif args.markdown is not None:
-                    script_to_markdown(transcript_file, args.from_file, args.markdown)
-                elif args.notebook is not None:
-                    script_to_notebook(args.from_file, args.notebook)
-                elif args.term:
-                    script_to_term(transcript_file, args.from_file, style_args)
-                elif script:
-                    script.show()
-                else:
-                    env.logger.error('No action to perform')
+                env.logger.error('No action to perform')
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -1114,11 +1095,10 @@ def main():
     #
     # command convert
     parser = subparsers.add_parser('convert',
-        description='''The show command displays details of all workflows
-            defined in a script, including description of script, workflow,
-            steps, and command line parameters. The output can be limited
-            to a specified workflow (which can be a subworkflow or a combined
-            workflow) if a workflow is specified.''',
+        description='''The convert command converts .sos to various formats including
+            .html for web display, to jupyter notebook (.ipynb), and to terminal
+            for syntax highlighted viewing on terminal. It also allows converting
+            from jupyter notebook (.ipynb) to sos script (.sos).''',
         epilog='''Extra command line argument could be specified to customize
             the style of html, markdown, and terminal output. ''',
         help='Convert between sos and other file formats such as html and Jupyter notebooks')
