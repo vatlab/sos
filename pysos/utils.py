@@ -107,12 +107,18 @@ class ColoredFormatter(logging.Formatter):
         }
 
     def colorstr(self, astr, color):
-        return '\033[{}m{}\033[{}m'.format(color, astr,
-            self.COLOR_CODE['ENDC'])
+        if sys.platform == 'win32':
+            return astr
+        else:
+            return '\033[{}m{}\033[{}m'.format(color, astr,
+                self.COLOR_CODE['ENDC'])
 
     def emphasize(self, msg, level_color=0):
         # display text within `` and `` in green
-        return re.sub(r'``([^`]*)``', '\033[32m\\1\033[{}m'.format(level_color), str(msg))
+        if sys.platform == 'win32':
+            return str(msg).replace('``', '')
+        else:
+            return re.sub(r'``([^`]*)``', '\033[32m\\1\033[{}m'.format(level_color), str(msg))
 
     def format(self, record):
         level_name = record.levelname
@@ -551,7 +557,7 @@ class ProgressBar:
     '''
     # no ncurse support under windows
     def __init__(self, message, totalCount = None, disp=True):
-        if not disp:
+        if not disp or sys.platform == 'win32':
             self.update = self.empty
             self.curlUpdate = self.empty
             self.progress = self.empty
@@ -883,19 +889,26 @@ def locate_script(filename, start=''):
     #
     raise ValueError('Failed to locate {}'.format(filename))
 
-def text_repr(text, quote='double'):
-    """Rich repr for ``text`` returning unicode, triple quoted if ``multiline``.
+def text_repr(text):
+    """return a valid string representation of text, but requires that
+    it is double quoted so that sos can interpolate text in script style
     """
-    return 'r"""' + text.replace('"', '\"') + '"""'
-    #if text.count('\n') <= 1:
-    #    return repr(text)
-    #elif "'''" not in text and not text.endswith("'"):
-    #    return "r'''" + text + "'''"
-    #elif '"""' not in text and not text.endswith('"'):
-    #    return 'r"""' + text + '"""'
-    #else:
-    #    # cannot really use triple quote in this case
-    #    return repr(text)
+    # in the simple case, we can just use r""" """
+    if '"""' not in text and not text.endswith('"'):
+        return 'r"""' + text + '"""'
+    # if things need to be quoted, let us first use repr
+    # to quote them
+    r = repr(text)
+    # if the result happens to be double quoted, good
+    # although it appears to me that Python 3 only use single quote.
+    if r.startswith('"'):
+        return r
+    # otherwise we have to manually change single quote to double quote
+    #
+    # The problem here is that the representation can have a bunch of \'
+    # and I have to hope that \' will be correctly interpreted in " "
+    # strings
+    return '"' + r.replace('"', r'\"')[1:-1] + '"'
 
 def natural_keys(text):
     '''
@@ -958,28 +971,50 @@ class ActivityNotifier(threading.Thread):
             return idx
 
     def run(self):
-        import blessings
-        registered = False
-        self.term = blessings.Terminal(stream=sys.stderr)
-        while True:
-            self.event.wait(self.delay)
-            if self.event.is_set():
-                if registered:
-                    sys.stderr.write("\r\033[K")
+        if sys.platform != 'win32':
+            import blessings
+            registered = False
+            self.term = blessings.Terminal(stream=sys.stderr)
+            while True:
+                self.event.wait(self.delay)
+                if self.event.is_set():
+                    if registered:
+                        sys.stderr.write("\r\033[K")
+                        sys.stderr.flush()
+                    break
+                if not registered:
+                    self.uuid = uuid.uuid4().hex
+                    with fasteners.InterProcessLock('/tmp/sos_progress_'):
+                        with open('/tmp/sos_progress', 'a') as prog_index:
+                            prog_index.write('{}\n'.format(self.uuid))
+                    registered = True
+                second_elapsed = time.time() - self.start_time
+                with self.term.location(0, self.term.height - self.get_index() - 1):
+                    sys.stderr.write('\r' + self.msg + ' ({}{}){}'.format(
+                        '' if second_elapsed < 86400 else '{} day{} '
+                        .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
+                        time.strftime('%H:%M:%S', time.gmtime(second_elapsed)), self.term.clear_eol))
                     sys.stderr.flush()
-                break
-            if not registered:
-                self.uuid = uuid.uuid4().hex
-                with fasteners.InterProcessLock('/tmp/sos_progress_'):
-                    with open('/tmp/sos_progress', 'a') as prog_index:
-                        prog_index.write('{}\n'.format(self.uuid))
-                registered = True
-            second_elapsed = time.time() - self.start_time
-            with self.term.location(0, self.term.height - self.get_index() - 1):
-                sys.stderr.write('\r' + self.msg + ' ({}{}){}'.format(
-                    '' if second_elapsed < 86400 else '{} day{} '
-                    .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
-                    time.strftime('%H:%M:%S', time.gmtime(second_elapsed)), self.term.clear_eol))
+        else:
+            registered = False
+            while True:
+                self.event.wait(self.delay)
+                if self.event.is_set():
+                    if registered:
+                        sys.stderr.write("\r\033[K")
+                        sys.stderr.flush()
+                    break
+                if not registered:
+                    self.uuid = uuid.uuid4().hex
+                    with fasteners.InterProcessLock('/tmp/sos_progress_'):
+                        with open('/tmp/sos_progress', 'a') as prog_index:
+                            prog_index.write('{}\n'.format(self.uuid))
+                    registered = True
+                second_elapsed = time.time() - self.start_time
+                sys.stderr.write('\r' + self.msg + ' ({}{})'.format(
+                        '' if second_elapsed < 86400 else '{} day{} '
+                        .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
+                        time.strftime('%H:%M:%S', time.gmtime(second_elapsed)) ))
                 sys.stderr.flush()
 
     def stop(self):

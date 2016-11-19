@@ -190,75 +190,6 @@ ret = get_output('cat -h')
         # this should give a warning and return false
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
 
-    def testCheckCommand(self):
-        '''Test action check_command'''
-        script = SoS_Script(r"""
-[0]
-check_command('cat')
-""")
-        wf = script.workflow()
-        # should be ok
-        Base_Executor(wf).run()
-        #
-        script = SoS_Script(r"""
-[0]
-check_command('catmouse')
-""")
-        wf = script.workflow()
-        # should fail in prepare mode
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
-        #
-        wf = script.workflow()
-        #
-        # should also check command with option
-        script = SoS_Script(r"""
-[0]
-check_command('ls -l')
-""")
-        wf = script.workflow()
-        # this should pass
-        Base_Executor(wf).run()
-        #
-        script = SoS_Script(r"""
-[0]
-fail_if(check_command('cat -h') != 0, 'command return non-zero')
-""")
-        wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
-        #
-        # check check_command is the command is stuck
-        script = SoS_Script(r"""
-[0]
-check_command('sleep 4')
-""")
-        wf = script.workflow()
-        # this should pass
-        Base_Executor(wf).prepare()
-        #
-        script = SoS_Script(r"""
-[0]
-fail_if(check_command('sleep 4') != 0, 'Command time out')
-""")
-        wf = script.workflow()
-        # this should pass
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
-        #
-        # test reading this file
-        script = SoS_Script(r"""
-[0]
-check_command('cat test_actions.py', 'abcde' + 'fgh')
-""")
-        wf = script.workflow()
-        # should raise an error
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
-        #
-        script = SoS_Script(r"""
-check_command('cat test_actions.py', 'testSearchOutput')
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-
     def testFailIf(self):
         '''Test action fail if'''
         self.touch('a.txt')
@@ -633,31 +564,6 @@ mean(nums)
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-
-    @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
-    def testCheckRLibrary(self):
-        '''Test action check_R_library'''
-        if not shutil.which('R'):
-            return 
-        script = SoS_Script(r'''
-[0]
-check_R_library('edgeR')
-''')
-        wf = script.workflow()
-        Base_Executor(wf).prepare()
-        script = SoS_Script(r'''
-[0]
-check_R_library('stephens999/ashr')
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-        script = SoS_Script(r'''
-[0]
-check_R_library('edgeRRRR')
-''')
-        wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerBuild(self):

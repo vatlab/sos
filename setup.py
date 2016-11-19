@@ -139,12 +139,13 @@ setup(name = "sos",
           'celery',
           'flower',
       ],
-    entry_points='''
-[pygments.lexers]
-sos = pysos.converter:SoS_Lexer
-''',
-    scripts = [
-        'sos',
-        'sos-runner',
-        ]
+    entry_points={
+		'console_scripts': [
+			'sos = pysos.main:main',
+			'sos-runner = pysos.main:sosrun',
+		],
+		'pygments.lexers': [
+			'sos = pysos.converter:SoS_Lexer'
+		]
+	},
 )

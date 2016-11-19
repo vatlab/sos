@@ -709,55 +709,6 @@ def script_to_html(transcript, script_file, html_file, style_args):
         env.logger.info('SoS script saved to {}'.format(html_file))
 
 
-def workflow_to_html(workflow, script_file, html_file, style_args):
-    '''
-    Write a HTML file with the transcript of a SOS file.
-    '''
-    if html_file == '__BROWSER__':
-        html_file = os.path.join('.sos', '{}.html'.format(os.path.basename(script_file)))
-    sargs = parse_html_args(style_args)
-    formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
-        **{x:y for x,y in sargs.items() if x != 'raw'})
-    with open(html_file, 'w') as html:
-        html.write(template_pre_style % ('{} - {}'.format(os.path.basename(script_file), workflow)))
-        html.write(inline_css)
-        # remove background definition so that we can use our own
-        html.write('\n'.join(x for x in formatter.get_style_defs().split('\n') if 'background' not in x))
-        if 'raw' in sargs and sargs['raw']:
-            raw_link = '<a href="{}" class="commit-tease-sha">{}</a>'.format(sargs['raw'], script_file)
-        else:
-            raw_link = script_file
-        html.write(template_pre_table % (os.path.basename(script_file), raw_link, ''))
-        #
-        html.write('<table class="highlight tab-size js-file-line-container">')
-        if workflow.sections and workflow.sections[0].global_def:
-            write_html_content('STATEMENT', workflow.sections[0].global_def, formatter, html)
-        #
-        for section in workflow.sections:
-            write_html_content('SECTION', '[{}_{}]'.format(section.name, section.index), formatter, html)
-            #
-            if section.comment:
-                write_html_content('COMMENT', '#' + section.comment, formatter, html)
-            for stmt in section.statements:
-                if stmt[0] == ':':
-                    write_html_content('DIRECTIVE', '{} : {}'.format(stmt[1], stmt[2]), formatter, html)
-                elif stmt[0] == '=':
-                    write_html_content('STATEMENT', '{} = {}'.format(stmt[1], stmt[2]), formatter, html)
-                else:
-                    write_html_content('STATEMENT', stmt[1].strip(), formatter, html)
-            if section.task:
-                #write_html_content('DIRECTIVE', 'task:', formatter, html)
-                write_html_content('STATEMENT', section.task.strip(), formatter, html)
-        html.write('</table>')
-        html.write(template_post_table)
-    #
-    if html_file.startswith('.sos'):
-        url = 'file://{}'.format(os.path.abspath(html_file))
-        env.logger.info('Viewing {} in a browser'.format(url))
-        webbrowser.open(url, new=2)
-    else:
-        env.logger.info('Workflow saved to {}'.format(html_file))
-
 #
 # Converter to Markdown
 #
@@ -833,38 +784,6 @@ def script_to_markdown(transcript, script_file, markdown_file):
         markdown_content(content_type, content, markdown)
     if markdown != sys.stdout:
         env.logger.info('SoS script saved to {}'.format(markdown_file))
-
-
-def workflow_to_markdown(workflow, script_file, markdown_file):
-    '''
-    Write a markdown file with the transcript of a SOS file.
-    '''
-    if markdown_file == '__STDOUT__':
-        markdown = sys.stdout
-    else:
-        markdown = open(markdown_file, 'w')
-    if workflow.sections and workflow.sections[0].global_def:
-        markdown_content('STATEMENT', workflow.sections[0].global_def, markdown)
-    #
-    for section in workflow.sections:
-        markdown_content('SECTION', '[{}_{}]'.format(section.name, section.index), markdown)
-        #
-        if section.comment:
-            markdown_content('COMMENT', '#' + section.comment, markdown)
-        for stmt in section.statements:
-            if stmt[0] == ':':
-                markdown_content('DIRECTIVE', '{} : {}'.format(stmt[1], stmt[2]), markdown)
-            elif stmt[0] == '=':
-                markdown_content('STATEMENT', '{} = {}'.format(stmt[1], stmt[2]), markdown)
-            else:
-                markdown_content('STATEMENT', stmt[1].strip(), markdown)
-        if section.task:
-            markdown_content('STATEMENT', section.task.strip(), markdown)
-        markdown_content('COMMENT', '\n', markdown)
-    #
-    if markdown != sys.stdout:
-        env.logger.info('Workflow saved to {}'.format(markdown_file))
-
 
 #
 # Converter from Notebook
@@ -1052,65 +971,6 @@ def script_to_notebook(script_file, notebook_file):
         env.logger.info('SoS script saved to {}'.format(notebook_file))
 
 
-def workflow_to_notebook(workflow, script_file, notebook_file):
-    '''
-    Write a notebook file with the transcript of a SOS file.
-    '''
-    cells = []
-    cell_count = 1
-    if workflow.sections and workflow.sections[0].global_def:
-        cells.append(
-            new_code_cell(
-            source = workflow.sections[0].global_def,
-            execution_count=cell_count)
-        )
-        cell_count += 1
-    #
-    for section in workflow.sections:
-        # FIXME: section option is ignored
-        cell_src_code = '[{}_{}]\n'.format(section.name, section.index)
-        #
-        if section.comment:
-            cell_src_code += '# ' + section.comment + '\n'
-        for stmt in section.statements:
-            if stmt[0] == ':':
-                cell_src_code += '{}: {}\n'.format(stmt[1], stmt[2])
-            elif stmt[0] == '=':
-                cell_src_code += '{} = {}\n'.format(stmt[1], stmt[2])
-            else:
-                cell_src_code += stmt[1].strip() + '\n'
-        if section.task:
-            cell_src_code += 'task:\n' + section.task.strip() + '\n'
-        cells.append(
-            new_code_cell(
-            source = cell_src_code,
-            execution_count=cell_count)
-        )
-        cell_count += 1
-    #
-    nb = new_notebook(cells = cells,
-        metadata = {
-            'kernelspec' : {
-                "display_name": "SoS",
-                "language": "sos",
-                "name": "sos"
-            },
-            "language_info": {
-                "file_extension": ".sos",
-                "mimetype": "text/x-sos",
-                "name": "sos",
-                "pygments_lexer": "python"
-            }
-        }
-    )
-    if notebook_file == '__STDOUT__':
-            nbformat.write(nb, sys.stdout, 4)
-    else:
-        with open(notebook_file, 'w') as notebook:
-            nbformat.write(nb, notebook, 4)
-        #
-        env.logger.info('Workflow saved to {}'.format(notebook_file))
-
 #
 # Output to terminal
 #
@@ -1203,28 +1063,3 @@ def script_to_term(transcript, script_file, style_args):
     if content:
         write_content(content_type, content, formatter)
 
-def workflow_to_term(workflow, script_file, style_args):
-    '''
-    Write a workflow to terminal
-    '''
-    sargs = parse_term_args(style_args)
-    env.logger.trace('Using style argument {}'.format(sargs))
-    formatter = TerminalFormatter(**sargs)
-    if workflow.sections and workflow.sections[0].global_def:
-        write_content('STATEMENT', workflow.sections[0].global_def, formatter)
-    #
-    for section in workflow.sections:
-        write_content('SECTION', '[{}_{}]'.format(section.name, section.index), formatter)
-        #
-        if section.comment:
-            write_content('COMMENT', '#' + section.comment, formatter)
-        for stmt in section.statements:
-            if stmt[0] == ':':
-                write_content('DIRECTIVE', '{} : {}'.format(stmt[1], stmt[2]), formatter)
-            elif stmt[0] == '=':
-                write_content('STATEMENT', '{} = {}'.format(stmt[1], stmt[2]), formatter)
-            else:
-                write_content('STATEMENT', stmt[1].strip(), formatter)
-        if section.task:
-            write_content('STATEMENT', section.task.strip(), formatter)
-        write_content('COMMENT', '\n', formatter)

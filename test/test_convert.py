@@ -26,8 +26,7 @@ import shutil
 
 from pysos.utils import env
 from pysos.sos_script import SoS_Script
-from pysos.converter import script_to_html, script_to_markdown, script_to_notebook, \
-    workflow_to_html, workflow_to_markdown, workflow_to_notebook, notebook_to_script
+from pysos.converter import script_to_html, script_to_markdown, script_to_notebook, notebook_to_script
 
 class TestConvert(unittest.TestCase):
     def setUp(self):
@@ -79,27 +78,6 @@ report('this is action report')
         for script_file in self.scripts:
             script_to_notebook(script_file, script_file + '.ipynb')
             notebook_to_script(script_file + '.ipynb', script_file) 
-
-    def testWorkflowToHtml(self):
-        '''Test sos show script --html'''
-        for script_file in self.scripts:
-            script = SoS_Script(filename=script_file)
-            wf = script.workflow()
-            workflow_to_html(wf, script_file, script_file + '.html', [])
-    
-    def testWorkflowToMarkdown(self):
-        '''Test sos show script --markdown'''
-        for script_file in self.scripts:
-            script = SoS_Script(filename=script_file)
-            wf = script.workflow()
-            workflow_to_markdown(wf, script_file, script_file + '.md')
-
-    def testWorkflowToNotebook(self):
-        '''Test converting sos script to notebook'''
-        for script_file in self.scripts:
-            script = SoS_Script(filename=script_file)
-            wf = script.workflow()
-            workflow_to_notebook(wf, script_file, script_file + '.ipynb')
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestConvert)

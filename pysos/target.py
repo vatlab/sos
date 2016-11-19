@@ -135,7 +135,7 @@ class FileTarget(BaseTarget):
 
     def fullname(self):
         return os.path.expanduser(self._filename)
-        
+
     def size(self):
         if os.path.isfile(self._filename):
             return os.path.getsize(self.fullname())
@@ -146,7 +146,7 @@ class FileTarget(BaseTarget):
                 return s.strip()
         else:
             raise RuntimeError('{} or its signature does not exist.'.format(self._filename))
-    
+
     def mtime(self):
         if os.path.isfile(self._filename):
             return os.path.getmtime(self.fullname())
@@ -174,7 +174,7 @@ class FileTarget(BaseTarget):
             # if this file is relative to cache, use local directory
             self._sig_file = os.path.join('.sos', '.runtime', name_md5 + '.file_info')
         return self._sig_file
-        
+
     def __eq__(self, other):
         return os.path.abspath(self.fullname()) == os.path.abspath(other.fullname())
 
@@ -223,7 +223,7 @@ class FileTarget(BaseTarget):
         return self._filename
 
 class dynamic(BaseTarget):
-    '''A dynamic executable that only handles input files when 
+    '''A dynamic executable that only handles input files when
     it is available.'''
     def __init__(self, target):
         self._target = target
@@ -239,22 +239,57 @@ class dynamic(BaseTarget):
 
 class executable(BaseTarget):
     '''A target for an executable command.'''
-    def __init__(self, cmd):
+    _available_commands = set()
+
+    def __init__(self, cmd, version=[], check_command=None):
         self._cmd = cmd
+        if isinstance(version, str):
+            self._version = [version]
+        else:
+            self._version = version
+        self._check_command = check_command
+        if self._version and not self._check_command:
+            self._check_command = cmd
         self.sig_file = os.path.join('.sos/.runtime/{}.sig'.format(self.md5()))
 
     def exists(self, mode='any'):
-        if mode in ('any', 'target') and shutil.which(self._cmd):
+        if (self._cmd, self._version) in self._available_commands:
             return True
+        if mode in ('any', 'target') and shutil.which(self._cmd):
+            if self._version:
+                import subprocess
+                try:
+                    output = subprocess.check_output(self._check_command,
+                        stderr=subprocess.STDOUT, shell=True, timeout=5).decode()
+                except subprocess.TimeoutExpired as e:
+                    env.logger.warning(e)
+                    return False
+                except subprocess.CalledProcessError as e:
+                    env.logger.warning(e)
+                    return False
+                for ver in self._version:
+                    if ver in output:
+                        self._available_commands.add((self._cmd, self._version))
+                        return True
+                return False
+            else:
+                self._available_commands.add((self._cmd, self._version))
+                return True
         if mode in ('any', 'signature') and os.path.isfile(self.sig_file):
             return True
         return False
 
     def fullname(self):
-        return 'command {}'.format(self._cmd)
-        
+        if self._version:
+            return 'command {} (version={})'.format(self._cmd, self._version)
+        else:
+            return 'command {}'.format(self._cmd)
+
     def __repr__(self):
-        return 'executable("{}")'.format(self._cmd)
+        if self._version:
+            return 'executable("{}", version={!r})'.format(self._cmd, self._version)
+        else:
+            return 'executable("{}")'.format(self._cmd)
 
     def calc_md5(self):
         return textMD5(self._cmd)
@@ -272,7 +307,7 @@ class executable(BaseTarget):
         return hash(repr(self))
 
     def __eq__(self, obj):
-        return isinstance(obj, executable) and self._cmd == obj._cmd
+        return isinstance(obj, executable) and self._cmd == obj._cmd and self._version == obj._version
 
 class sos_variable(BaseTarget):
     '''A target for a SoS variable.'''
@@ -333,6 +368,169 @@ class env_variable(BaseTarget):
     def __eq__(self, obj):
         return isinstance(obj, sos_variable) and self._var == obj._var
 
+class R_library(BaseTarget):
+    '''A target for a R library.'''
+
+    LIB_STATUS_CACHE = {}
+
+    def __init__(self, library, version = None, repos = 'http://cran.us.r-project.org'):
+        self._library = library
+        self._version = version
+        self._repos = repos
+
+    def _install(self, name, version, repos):
+        '''Check existence and version match of R library.
+        cran and bioc packages are unique yet might overlap with github.
+        Therefore if the input name is {repo}/{pkg} the package will be
+        installed from github if not available, else from cran or bioc
+        '''
+        from .pattern import glob_wildcards
+        from .sos_eval import interpolate
+        import tempfile
+        import shlex
+        import subprocess
+
+        output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
+        script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.R', delete=False).name
+        if len(glob_wildcards('{repo}/{pkg}', [name])['repo']):
+            # package is from github
+            self._intall('devtools', version, repos)
+            install_script = interpolate('''
+            options(warn=-1)
+            package_repo <- ${name!r}
+            package <- basename(package_repo)
+            if (require(package, character.only=TRUE, quietly=TRUE)) {
+                write(paste(package, packageVersion(package), "AVAILABLE"), file="${output_file}")
+            } else {
+                devtools::install_github(package_repo)
+                # if it still does not exist, write the package name to output
+                if (require(package, character.only=TRUE, quietly=TRUE)) {
+                    write(paste(package, packageVersion(package), "INSTALLED"), file="${output_file}")
+                } else {
+                    write(paste(package, "NA", "MISSING"), file="${output_file}")
+                    quit("no")
+                }
+            }
+            cur_version <- packageVersion(package)
+            ''', '${ }', locals())
+        else:
+            # package is from cran or bioc
+            install_script = interpolate('''
+            options(warn=-1)
+            package <- ${name!r}
+            if (require(package, character.only=TRUE, quietly=TRUE)) {
+                write(paste(package, packageVersion(package), "AVAILABLE"), file="${output_file}")
+            } else {
+                install.packages(package, repos="${repos}",
+                    quiet=FALSE)
+                # if the package still does not exist
+                if (!require(package, character.only=TRUE, quietly=TRUE)) {
+                    source("http://bioconductor.org/biocLite.R")
+                    biocLite(package, suppressUpdates=TRUE, suppressAutoUpdate=TRUE, ask=FALSE)
+                }
+                # if it still does not exist, write the package name to output
+                if (require(package, character.only=TRUE, quietly=TRUE)) {
+                    write(paste(package, packageVersion(package), "INSTALLED"), file="${output_file}")
+                } else {
+                    write(paste(package, "NA", "MISSING"), file="${output_file}")
+                    quit("no")
+                }
+            }
+            cur_version <- packageVersion(package)
+            ''', '${ }', locals())
+        version_script = ''
+        if version is not None:
+            version = [version] if isinstance(version, str) else version
+            operators = []
+            for idx, value in enumerate(version):
+                value = str(value)
+                if value.endswith('+'):
+                    operators.append('>=')
+                    version[idx] = value[:-1]
+                elif value.endswith('-'):
+                    operators.append('<')
+                    version[idx] = value[:-1]
+                else:
+                    operators.append('==')
+            # check version and mark version mismatch
+            # if current version satisfies any of the
+            # requirement the check program quits
+            for x, y in zip(version, operators):
+                version_script += '''
+                if (cur_version {1} {0}) {{
+                  quit("no")
+                }}
+                '''.format(repr(x), y)
+            version_script += 'write(paste(package, cur_version, "VERSION_MISMATCH"), file = {})'.\
+              format(repr(output_file))
+        # temporarily change the run mode to run to execute script
+        try:
+            with open(script_file, 'w') as sfile:
+                sfile.write(install_script + version_script)
+            cmd = 'Rscript --default-packages=utils ' + shlex.quote(script_file)
+            #
+            p = subprocess.Popen(cmd, shell=True)
+            ret = p.wait()
+            if ret != 0:
+                env.logger.warning('Failed to detect or install R library')
+                return False
+        except Exception as e:
+            env.logger.error('Failed to execute script: {}'.format(e))
+            return False
+        finally:
+            os.remove(script_file)
+
+        ret_val = False
+        with open(output_file) as tmp:
+            for line in tmp:
+                lib, version, status = line.split()
+                if status.strip() == "MISSING":
+                    env.logger.warning('R Library {} is not available and cannot be installed.'.format(lib))
+                elif status.strip() == 'AVAILABLE':
+                    env.logger.debug('R library {} ({}) is available'.format(lib, version))
+                    ret_val = True
+                elif status.strip() == 'INSTALLED':
+                    env.logger.debug('R library {} ({}) has been installed'.format(lib, version))
+                    ret_val = True
+                elif status.strip() == 'VERSION_MISMATCH':
+                    env.logger.warning('R library {} ({}) does not satisfy version requirement!'.format(lib, version))
+                else:
+                    raise RuntimeError('This should not happen: {}'.format(line))
+        try:
+            os.remove(output_file)
+        except:
+            pass
+        return ret_val
+
+    def exists(self, mode='any'):
+        if (self._library, self._version) in self.LIB_STATUS_CACHE:
+            return self.LIB_STATUS_CACHE[(self._library, self._version)]
+        else:
+            ret = self._install(self._library, self._version, self._repos)
+            self.LIB_STATUS_CACHE[(self._library, self._version)] = ret
+            return ret
+
+    def fullname(self):
+        return 'R_library {}'.format(self._library)
+
+    def __repr__(self):
+        return 'R_library("{}")'.format(self._library)
+
+    def calc_md5(self):
+        return textMD5(repr(self._library))
+
+    def md5(self):
+        return textMD5(repr(self._library))
+
+    def write_sig(self):
+        pass
+
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __eq__(self, obj):
+        return isinstance(obj, R_library) and self._library == obj._library
+
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.
@@ -370,7 +568,7 @@ class RuntimeInfo:
             self.output_files = output_files
         else:
             raise RuntimeError('Output files must be a list of filenames or Undetermined for runtime signature.')
-        
+
         self.signature_vars = signature_vars
 
         sig_name = textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))

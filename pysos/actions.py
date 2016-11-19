@@ -35,7 +35,6 @@ import shutil
 import zipfile
 import gzip
 import tarfile
-import blessings
 
 from io import BytesIO
 from docker import Client
@@ -50,13 +49,12 @@ from .sos_executor import Base_Executor, MP_Executor, RQ_Executor, Celery_Execut
 from .monitor import ProcessMonitor, summarizeExecution
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
-    'check_command', 'fail_if', 'warn_if', 'stop_if',
+    'fail_if', 'warn_if', 'stop_if',
     'download',
     'run', 'bash', 'csh', 'tcsh', 'zsh', 'sh',
     'python', 'python3',
     'perl', 'ruby', 'node', 'JavaScript',
-    'R', 'check_R_library',
-    'docker_build', 'docker_commit',
+    'R', 'docker_build', 'docker_commit',
     'report', 'pandoc', 'Rmarkdown',
     ]
 
@@ -426,9 +424,6 @@ class SoS_ExecuteScript:
 
     def run(self, **kwargs):
         transcribe(self.script, action=self.interpreter)
-        if env.run_mode == 'prepare':
-            check_command(self.interpreter.split()[0], quiet=True)
-            return
         if '{}' not in self.interpreter:
             self.interpreter += ' {}'
         debug_script_file = os.path.join(env.exec_dir, '.sos', '{}_{}{}'.format(env.sos_dict['step_name'],
@@ -526,50 +521,9 @@ def sos_run(workflow, **kwargs):
     elif env.run_mode == 'interactive':
         raise RuntimeError('Action sos_run is not supported in interactive mode')
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def execute_script(script, interpreter, suffix, args='', **kwargs):
     return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
-
-_check_command_cache = {}
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def check_command(cmd, pattern = None, quiet=False):
-    '''Raise an exception if output of `cmd` does not match specified `pattern`.
-    Multiple patterns can be specified as a list of patterns.
-    When pattern is None, check the existence of command `cmd`
-    and raise an error if command does not exist.'''
-    global _check_command_cache
-    if cmd in _check_command_cache:
-        return _check_command_cache[cmd]
-    ret_val = 0
-    cmd_name = shlex.split(cmd)[0]
-    full_name = shutil.which(cmd_name)
-    if not full_name:
-        raise ValueError('Command ``{}`` not found!'.format(cmd_name))
-    if not quiet:
-        env.logger.info('Command ``{}`` is located as ``{}``.'.format(cmd, full_name))
-    if pattern is None and len(shlex.split(cmd)) == 1:
-        return 0
-    try:
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True, timeout=2).decode()
-    except subprocess.TimeoutExpired as e:
-        output = e.output.decode()
-        ret_val = 1
-        env.logger.warning(e)
-        #env.logger.warning(e.output.decode())
-    except subprocess.CalledProcessError as e:
-        ret_val = e.returncode
-        output = e.output.decode()
-        env.logger.warning(e)
-    #
-    env.logger.trace('Output of command ``{}`` is ``{}``'.format(cmd, output))
-    #
-    if pattern:
-        pattern = [pattern] if isinstance(pattern, str) else pattern
-        if all([re.search(x, output, re.MULTILINE) is None for x in pattern]):
-            raise ValueError('Output of command ``{}`` does not match specified regular expression ``{}``.'
-                .format(cmd, ' or '.join(pattern)))
-    _check_command_cache[cmd] = ret_val
-    return ret_val
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def fail_if(expr, msg=''):
@@ -796,6 +750,7 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
             succ = [x.get() if isinstance(x, mp.pool.AsyncResult) else x for x in succ]
         #
         if sys.platform != 'win32':
+            import blessings
             t = blessings.Terminal(stream=sys.stderr)
             sys.stderr.write(t.move( t.height, 0)) # + '\n')
     else:
@@ -812,168 +767,60 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
         raise RuntimeError('Not all files have been downloaded')
     return 0
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def run(script, args='', **kwargs):
     return SoS_ExecuteScript(script, '/bin/bash', '.sh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def bash(script, args='', **kwargs):
     return SoS_ExecuteScript(script, '/bin/bash', '.sh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def csh(script, args='', **kwargs):
     return SoS_ExecuteScript(script, '/bin/csh', '.csh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def tcsh(script, args='', **kwargs):
     return SoS_ExecuteScript(script, '/bin/tcsh', '.sh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def zsh(script, args='', **kwargs):
     return SoS_ExecuteScript(script, '/bin/zsh', '.zsh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def sh(script, args='', **kwargs):
     return SoS_ExecuteScript(script, '/bin/sh', '.sh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def python(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'python', '.py', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def python3(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'python3', '.py', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def perl(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'perl', '.pl', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def ruby(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'ruby', '.rb', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def node(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def JavaScript(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def R(script, args='', **kwargs):
     # > getOption('defaultPackages')
     # [1] "datasets"  "utils"     "grDevices" "graphics"  "stats"     "methods"
     return SoS_ExecuteScript(
         script, 'Rscript --default-packages=datasets,methods,utils,stats,grDevices,graphics ', '.R', args).run(**kwargs)
-
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def check_R_library(name, version = None, repos = 'http://cran.us.r-project.org'):
-    '''Check existence and version match of R library.
-    cran and bioc packages are unique yet might overlap with github.
-    Therefore if the input name is {repo}/{pkg} the package will be
-    installed from github if not available, else from cran or bioc
-    '''
-    check_command('Rscript', quiet=True)
-    output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
-    if len(glob_wildcards('{repo}/{pkg}', [name])['repo']):
-        # package is from github
-        check_R_library('devtools')
-        install_script = interpolate('''
-        options(warn=-1)
-        package_repo <- ${name!r}
-        package <- basename(package_repo)
-        if (require(package, character.only=TRUE, quietly=TRUE)) {
-            write(paste(package, packageVersion(package), "AVAILABLE"), file="${output_file}")
-        } else {
-            devtools::install_github(package_repo)
-            # if it still does not exist, write the package name to output
-            if (require(package, character.only=TRUE, quietly=TRUE)) {
-                write(paste(package, packageVersion(package), "INSTALLED"), file="${output_file}")
-            } else {
-                write(paste(package, "NA", "MISSING"), file="${output_file}")
-                quit("no")
-            }
-        }
-        cur_version <- packageVersion(package)
-        ''', '${ }', locals())
-    else:
-        # package is from cran or bioc
-        install_script = interpolate('''
-        options(warn=-1)
-        package <- ${name!r}
-        if (require(package, character.only=TRUE, quietly=TRUE)) {
-            write(paste(package, packageVersion(package), "AVAILABLE"), file="${output_file}")
-        } else {
-            install.packages(package, repos="${repos}",
-                quiet=FALSE)
-            # if the package still does not exist
-            if (!require(package, character.only=TRUE, quietly=TRUE)) {
-                source("http://bioconductor.org/biocLite.R")
-                biocLite(package, suppressUpdates=TRUE, suppressAutoUpdate=TRUE, ask=FALSE)
-            }
-            # if it still does not exist, write the package name to output
-            if (require(package, character.only=TRUE, quietly=TRUE)) {
-                write(paste(package, packageVersion(package), "INSTALLED"), file="${output_file}")
-            } else {
-                write(paste(package, "NA", "MISSING"), file="${output_file}")
-                quit("no")
-            }
-        }
-        cur_version <- packageVersion(package)
-        ''', '${ }', locals())
-    version_script = ''
-    if version is not None:
-        version = [version] if isinstance(version, str) else version
-        operators = []
-        for idx, value in enumerate(version):
-            value = str(value)
-            if value.endswith('+'):
-                operators.append('>=')
-                version[idx] = value[:-1]
-            elif value.endswith('-'):
-                operators.append('<')
-                version[idx] = value[:-1]
-            else:
-                operators.append('==')
-        # check version and mark version mismatch
-        # if current version satisfies any of the
-        # requirement the check program quits
-        for x, y in zip(version, operators):
-            version_script += '''
-            if (cur_version {1} {0}) {{
-              quit("no")
-            }}
-            '''.format(repr(x), y)
-        version_script += 'write(paste(package, cur_version, "VERSION_MISMATCH"), file = {})'.\
-          format(repr(output_file))
-    # temporarily change the run mode to run to execute script
-    try:
-        env.run_mode = 'run'
-        SoS_ExecuteScript(install_script + version_script, 'Rscript --default-packages=utils', '.R').run()
-    finally:
-        env.run_mode = 'prepare'
-    ret_val = 0
-    with open(output_file) as tmp:
-        for line in tmp:
-            lib, version, status = line.split()
-            if status.strip() == "MISSING":
-                raise RuntimeError('R Library {} is not available and cannot be installed.'.format(lib))
-            elif status.strip() == 'AVAILABLE':
-                env.logger.info('R library {} ({}) is available'.format(lib, version))
-            elif status.strip() == 'INSTALLED':
-                env.logger.info('R library {} ({}) has been installed'.format(lib, version))
-            elif status.strip() == 'VERSION_MISMATCH':
-                env.logger.warning('R library {} ({}) does not satisfy version requirement!'.format(lib, version))
-                ret_val = 1
-            else:
-                raise RuntimeError('This should not happen: {}'.format(line))
-    try:
-        os.remove(output_file)
-    except:
-        pass
-    return ret_val
-
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def docker_build(dockerfile=None, **kwargs):
@@ -1030,8 +877,6 @@ def pandoc(script=None, output=None, **kwargs):
     pandoc(outputfile='report.html')
 
     '''
-    check_command('pandoc')
-    #
     # in run mode, collect report and call pandoc
     sos_script = env.sos_dict['__step_context__'].filename
     # this is the case for stirng input (test only)
@@ -1130,7 +975,7 @@ def pandoc(script=None, output=None, **kwargs):
     env.logger.info('Report saved to {}'.format(output))
 
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def Rmarkdown(script=None, output_file=None, **kwargs):
     '''This action can be used in three ways
 
@@ -1142,10 +987,6 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
     Rmarkdown(output_file='report.html')
 
     '''
-    # if in prepare mode, check for Rmarkdown command
-    if env.run_mode == 'prepare':
-        return check_R_library('knitr') + check_R_library('rmarkdown')
-    #
     # in run mode, collect report and call Rmarkdown
     sos_script = env.sos_dict['__step_context__'].filename
     # this is the case for stirng input (test only)

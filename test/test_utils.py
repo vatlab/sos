@@ -310,22 +310,28 @@ sos_run('sub')
         os.remove('tmp/SoS_March2016.pdf')
 
     def testTextRepr(self):
-        '''Test text_repr'''
-        #for text in ['asdf g', 'a \\ng', r'a\nb']:
-        #    self.assertEqual(text_repr(text), repr(text))
-        self.assertEqual(text_repr(r'''a
-\nb'''), 'r"""a\n\\nb"""')
-        self.assertEqual(text_repr(r"""a
-\nb'"""), 'r"""a\n\\nb\'"""')
-        self.assertEqual(text_repr(r"""a
-\nb''"""), 'r"""a\n\\nb\'\'"""')
-        self.assertEqual(text_repr(r"""a
-\nb'''"""), 'r"""a\n\\nb\'\'\'"""')
-        self.assertEqual(text_repr(r"""a
-'''\nb'''"""), 'r"""a\n\'\'\'\\nb\'\'\'"""')
-        self.assertEqual(text_repr(r'''a
-b
-\nc'''), 'r"""a\nb\n\\nc"""')
+        # the " as the last character can lead to problems...
+        script = SoS_Script('''
+run:
+    echo "Hi, This is from bash"''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        #
+        for text in ('"""a"""', '"b"',
+            r'"""\na\\nb"""', r"'''a\nb'''",
+            """ "a'\\"='" """): 
+            script = SoS_Script(r'''
+a = 1
+python:
+   with open('tmp.txt', 'w') as tmp:
+      tmp.write({} + '{}')
+k = """b"""'''.format(text, '${a}')
+)
+            wf = script.workflow()
+            Base_Executor(wf).run()
+            with open('tmp.txt') as tmp:
+                self.assertEqual(tmp.read(), eval(text) + '1')
+        os.remove('tmp.txt')
 
 
     def performanceTestInterpolation(self):
