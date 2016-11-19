@@ -634,31 +634,6 @@ mean(nums)
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
-    def testCheckRLibrary(self):
-        '''Test action check_R_library'''
-        if not shutil.which('R'):
-            return 
-        script = SoS_Script(r'''
-[0]
-check_R_library('edgeR')
-''')
-        wf = script.workflow()
-        Base_Executor(wf).prepare()
-        script = SoS_Script(r'''
-[0]
-check_R_library('stephens999/ashr')
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-        script = SoS_Script(r'''
-[0]
-check_R_library('edgeRRRR')
-''')
-        wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
-
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerBuild(self):
         '''Test action docker build'''

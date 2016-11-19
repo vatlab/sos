@@ -54,8 +54,7 @@ __all__ = ['SoS_Action', 'execute_script', 'sos_run',
     'run', 'bash', 'csh', 'tcsh', 'zsh', 'sh',
     'python', 'python3',
     'perl', 'ruby', 'node', 'JavaScript',
-    'R', 'check_R_library',
-    'docker_build', 'docker_commit',
+    'R', 'docker_build', 'docker_commit',
     'report', 'pandoc', 'Rmarkdown',
     ]
 
@@ -867,114 +866,6 @@ def R(script, args='', **kwargs):
     return SoS_ExecuteScript(
         script, 'Rscript --default-packages=datasets,methods,utils,stats,grDevices,graphics ', '.R', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def check_R_library(name, version = None, repos = 'http://cran.us.r-project.org'):
-    '''Check existence and version match of R library.
-    cran and bioc packages are unique yet might overlap with github.
-    Therefore if the input name is {repo}/{pkg} the package will be
-    installed from github if not available, else from cran or bioc
-    '''
-    check_command('Rscript', quiet=True)
-    output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
-    if len(glob_wildcards('{repo}/{pkg}', [name])['repo']):
-        # package is from github
-        check_R_library('devtools')
-        install_script = interpolate('''
-        options(warn=-1)
-        package_repo <- ${name!r}
-        package <- basename(package_repo)
-        if (require(package, character.only=TRUE, quietly=TRUE)) {
-            write(paste(package, packageVersion(package), "AVAILABLE"), file="${output_file}")
-        } else {
-            devtools::install_github(package_repo)
-            # if it still does not exist, write the package name to output
-            if (require(package, character.only=TRUE, quietly=TRUE)) {
-                write(paste(package, packageVersion(package), "INSTALLED"), file="${output_file}")
-            } else {
-                write(paste(package, "NA", "MISSING"), file="${output_file}")
-                quit("no")
-            }
-        }
-        cur_version <- packageVersion(package)
-        ''', '${ }', locals())
-    else:
-        # package is from cran or bioc
-        install_script = interpolate('''
-        options(warn=-1)
-        package <- ${name!r}
-        if (require(package, character.only=TRUE, quietly=TRUE)) {
-            write(paste(package, packageVersion(package), "AVAILABLE"), file="${output_file}")
-        } else {
-            install.packages(package, repos="${repos}",
-                quiet=FALSE)
-            # if the package still does not exist
-            if (!require(package, character.only=TRUE, quietly=TRUE)) {
-                source("http://bioconductor.org/biocLite.R")
-                biocLite(package, suppressUpdates=TRUE, suppressAutoUpdate=TRUE, ask=FALSE)
-            }
-            # if it still does not exist, write the package name to output
-            if (require(package, character.only=TRUE, quietly=TRUE)) {
-                write(paste(package, packageVersion(package), "INSTALLED"), file="${output_file}")
-            } else {
-                write(paste(package, "NA", "MISSING"), file="${output_file}")
-                quit("no")
-            }
-        }
-        cur_version <- packageVersion(package)
-        ''', '${ }', locals())
-    version_script = ''
-    if version is not None:
-        version = [version] if isinstance(version, str) else version
-        operators = []
-        for idx, value in enumerate(version):
-            value = str(value)
-            if value.endswith('+'):
-                operators.append('>=')
-                version[idx] = value[:-1]
-            elif value.endswith('-'):
-                operators.append('<')
-                version[idx] = value[:-1]
-            else:
-                operators.append('==')
-        # check version and mark version mismatch
-        # if current version satisfies any of the
-        # requirement the check program quits
-        for x, y in zip(version, operators):
-            version_script += '''
-            if (cur_version {1} {0}) {{
-              quit("no")
-            }}
-            '''.format(repr(x), y)
-        version_script += 'write(paste(package, cur_version, "VERSION_MISMATCH"), file = {})'.\
-          format(repr(output_file))
-    # temporarily change the run mode to run to execute script
-    try:
-        env.run_mode = 'run'
-        SoS_ExecuteScript(install_script + version_script, 'Rscript --default-packages=utils', '.R').run()
-    finally:
-        env.run_mode = 'prepare'
-    ret_val = 0
-    with open(output_file) as tmp:
-        for line in tmp:
-            lib, version, status = line.split()
-            if status.strip() == "MISSING":
-                raise RuntimeError('R Library {} is not available and cannot be installed.'.format(lib))
-            elif status.strip() == 'AVAILABLE':
-                env.logger.info('R library {} ({}) is available'.format(lib, version))
-            elif status.strip() == 'INSTALLED':
-                env.logger.info('R library {} ({}) has been installed'.format(lib, version))
-            elif status.strip() == 'VERSION_MISMATCH':
-                env.logger.warning('R library {} ({}) does not satisfy version requirement!'.format(lib, version))
-                ret_val = 1
-            else:
-                raise RuntimeError('This should not happen: {}'.format(line))
-    try:
-        os.remove(output_file)
-    except:
-        pass
-    return ret_val
-
-
 @SoS_Action(run_mode=['run', 'interactive'])
 def docker_build(dockerfile=None, **kwargs):
     '''docker build command. By default a script is sent to the docker build command but
@@ -1130,7 +1021,7 @@ def pandoc(script=None, output=None, **kwargs):
     env.logger.info('Report saved to {}'.format(output))
 
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def Rmarkdown(script=None, output_file=None, **kwargs):
     '''This action can be used in three ways
 
@@ -1142,10 +1033,6 @@ def Rmarkdown(script=None, output_file=None, **kwargs):
     Rmarkdown(output_file='report.html')
 
     '''
-    # if in prepare mode, check for Rmarkdown command
-    if env.run_mode == 'prepare':
-        return check_R_library('knitr') + check_R_library('rmarkdown')
-    #
     # in run mode, collect report and call Rmarkdown
     sos_script = env.sos_dict['__step_context__'].filename
     # this is the case for stirng input (test only)
