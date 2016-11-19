@@ -22,7 +22,7 @@
 
 from .sos_script import SoS_Script
 from .utils import logger, get_output, sos_handle_parameter_
-from .actions import SoS_Action, execute_script, sos_run, check_command, \
+from .actions import SoS_Action, execute_script, sos_run, \
     fail_if, warn_if, stop_if, download, run, bash, csh, tcsh, zsh, sh, \
     python, python3, perl, ruby, node, JavaScript, R, \
     docker_build, docker_commit, report, pandoc, Rmarkdown
@@ -34,7 +34,7 @@ from .main import runfile
 # silent pyflakes
 SoS_Script
 logger, get_output, sos_handle_parameter_
-SoS_Action, execute_script, sos_run, check_command
+SoS_Action, execute_script, sos_run
 fail_if, warn_if, stop_if, download, run, bash, csh, tcsh, zsh, sh
 python, python3, perl, ruby, node, JavaScript, R
 docker_build, docker_commit, report, pandoc, Rmarkdown

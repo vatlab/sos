@@ -49,7 +49,7 @@ from .sos_executor import Base_Executor, MP_Executor, RQ_Executor, Celery_Execut
 from .monitor import ProcessMonitor, summarizeExecution
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
-    'check_command', 'fail_if', 'warn_if', 'stop_if',
+    'fail_if', 'warn_if', 'stop_if',
     'download',
     'run', 'bash', 'csh', 'tcsh', 'zsh', 'sh',
     'python', 'python3',
@@ -424,9 +424,6 @@ class SoS_ExecuteScript:
 
     def run(self, **kwargs):
         transcribe(self.script, action=self.interpreter)
-        if env.run_mode == 'prepare':
-            check_command(self.interpreter.split()[0], quiet=True)
-            return
         if '{}' not in self.interpreter:
             self.interpreter += ' {}'
         debug_script_file = os.path.join(env.exec_dir, '.sos', '{}_{}{}'.format(env.sos_dict['step_name'],
@@ -524,50 +521,9 @@ def sos_run(workflow, **kwargs):
     elif env.run_mode == 'interactive':
         raise RuntimeError('Action sos_run is not supported in interactive mode')
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def execute_script(script, interpreter, suffix, args='', **kwargs):
     return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
-
-_check_command_cache = {}
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
-def check_command(cmd, pattern = None, quiet=False):
-    '''Raise an exception if output of `cmd` does not match specified `pattern`.
-    Multiple patterns can be specified as a list of patterns.
-    When pattern is None, check the existence of command `cmd`
-    and raise an error if command does not exist.'''
-    global _check_command_cache
-    if cmd in _check_command_cache:
-        return _check_command_cache[cmd]
-    ret_val = 0
-    cmd_name = shlex.split(cmd)[0]
-    full_name = shutil.which(cmd_name)
-    if not full_name:
-        raise ValueError('Command ``{}`` not found!'.format(cmd_name))
-    if not quiet:
-        env.logger.info('Command ``{}`` is located as ``{}``.'.format(cmd, full_name))
-    if pattern is None and len(shlex.split(cmd)) == 1:
-        return 0
-    try:
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True, timeout=2).decode()
-    except subprocess.TimeoutExpired as e:
-        output = e.output.decode()
-        ret_val = 1
-        env.logger.warning(e)
-        #env.logger.warning(e.output.decode())
-    except subprocess.CalledProcessError as e:
-        ret_val = e.returncode
-        output = e.output.decode()
-        env.logger.warning(e)
-    #
-    env.logger.trace('Output of command ``{}`` is ``{}``'.format(cmd, output))
-    #
-    if pattern:
-        pattern = [pattern] if isinstance(pattern, str) else pattern
-        if all([re.search(x, output, re.MULTILINE) is None for x in pattern]):
-            raise ValueError('Output of command ``{}`` does not match specified regular expression ``{}``.'
-                .format(cmd, ' or '.join(pattern)))
-    _check_command_cache[cmd] = ret_val
-    return ret_val
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def fail_if(expr, msg=''):
@@ -811,55 +767,55 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
         raise RuntimeError('Not all files have been downloaded')
     return 0
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def run(script, args='', **kwargs):
     return SoS_ExecuteScript(script, '/bin/bash', '.sh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def bash(script, args='', **kwargs):
     return SoS_ExecuteScript(script, '/bin/bash', '.sh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def csh(script, args='', **kwargs):
     return SoS_ExecuteScript(script, '/bin/csh', '.csh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def tcsh(script, args='', **kwargs):
     return SoS_ExecuteScript(script, '/bin/tcsh', '.sh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def zsh(script, args='', **kwargs):
     return SoS_ExecuteScript(script, '/bin/zsh', '.zsh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def sh(script, args='', **kwargs):
     return SoS_ExecuteScript(script, '/bin/sh', '.sh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def python(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'python', '.py', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def python3(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'python3', '.py', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def perl(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'perl', '.pl', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def ruby(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'ruby', '.rb', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def node(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def JavaScript(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def R(script, args='', **kwargs):
     # > getOption('defaultPackages')
     # [1] "datasets"  "utils"     "grDevices" "graphics"  "stats"     "methods"
@@ -921,8 +877,6 @@ def pandoc(script=None, output=None, **kwargs):
     pandoc(outputfile='report.html')
 
     '''
-    check_command('pandoc')
-    #
     # in run mode, collect report and call pandoc
     sos_script = env.sos_dict['__step_context__'].filename
     # this is the case for stirng input (test only)
