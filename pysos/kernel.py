@@ -109,6 +109,22 @@ def clipboard_get():
     else:
         return tkinter_clipboard_get()
 
+def get_supported_languages():
+    group = 'sos_languages'
+    result = {}
+    for entrypoint in pkg_resources.iter_entry_points(group=group):
+        # Grab the function that is the actual plugin.
+        name = entrypoint.name
+        try:
+            plugin = entrypoint.load()
+            result[name] = plugin()
+            # for convenience, we create two entries for, e.g. R and ir
+            if name != plugin.kernel_name:
+                result[kernel_name] = plugin()
+        except Exception as e:
+            env.logger.warning('Failed to load language {}: {}'.format(entrypoint.name, e))
+    return result
+
 def get_previewers():
     # Note: data is zest.releaser specific: we want to pass
     # something to the plugin
@@ -384,7 +400,7 @@ class SoS_Kernel(Kernel):
         self.banner = self.banner + '\nConnection file {}'.format(os.path.basename(find_connection_file()))
         # FIXME: this should in theory be a MultiKernelManager...
         self.kernels = {}
-        self.original_kernel = None
+        self.supported_languages = {}
         self.format_obj = self.shell.display_formatter.format
 
         # InteractiveShell uses a default publisher that only displays text/plain
@@ -514,6 +530,8 @@ class SoS_Kernel(Kernel):
         return reply['content']
 
     def switch_kernel(self, kernel, ret_vars=[]):
+        if self.supported_languages is None:
+            self.supported_languages = get_supported_languages()
         if kernel and kernel != 'sos':
             if kernel != self.kernel:
                 if kernel in self.kernels:
@@ -528,8 +546,10 @@ class SoS_Kernel(Kernel):
                         self.KM, self.KC = self.kernels[kernel]
                         self.RET_VARS = ret_vars
                         self.kernel = kernel
-                        if self.kernel in kernel_init_command:
-                            self.run_cell(kernel_init_command[self.kernel], False)
+                        if self.kernel in self.supported_languages:
+                            init_stmts = self.supported_languages[self.kernel].init_statements
+                            if init_stmts:
+                                self.run_cell(init_stmts, False)
                     except Exception as e:
                         self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e))
         else:
@@ -619,24 +639,32 @@ class SoS_Kernel(Kernel):
             if item not in env.sos_dict:
                 self.warn('Variable {} does not exist'.format(item))
                 return
-        if self.kernel == 'python':
+        if self.kernel == 'python3':
             # if it is a python kernel, passing specified SoS variables to it
             sos_data = pickle.dumps({x:env.sos_dict[x] for x in items})
             # this can fail if the underlying python kernel is python 2
             self.KC.execute("import pickle\nglobals().update(pickle.loads({!r}))".format(sos_data),
                 silent=True, store_history=False)
-        elif self.kernel == 'ir':
-            for item in items:
-                if item.startswith('_'):
-                    self.warn('Variable {} is imported as {}\n'.format(item, '.' + item[1:]))
+        elif self.kernel in self.supported_languages:
+            lan = self.supported_languages[self.kernel]
             try:
-                sos_data = '\n'.join(python2R(x) for x in items)
+                statements = []
+                for item in items:
+                    new_name, py_repr = lan.repr_obj(item)
+                    if new_name != item:
+                        self.warn('Variable {} is passed from SoS to kernel {} as {}'
+                            .format(item, self.kernel, new_name))
+                    statements.append(py_repr)
             except Exception as e:
                 self.warn('Failed to get variable: {}\n'.format(e))
                 return
-            self.KC.execute(sos_data, silent=True, store_history=False)
+                    self.warn('Variable {} is imported as {}\n'.format(item, '.' + item[1:]))
+            self.KC.execute('\n'.join(statements), silent=True, store_history=False)
+        elif self.kernel == 'sos':
+            self.warn('Magic %get can only be executed by subkernels')
+            return
         else:
-            self.warn('Can not pass variables to kernel {}'.format(self.kernel))
+            self.warn('Language {} does not support magic %get.'.format(self.kernel))
             return
         # first thing is wait for any side effects (output, stdin, etc.)
         _execution_state = "busy"
@@ -684,13 +712,9 @@ class SoS_Kernel(Kernel):
             for item in items:
                 if not item in env.sos_dict:
                     self.warn('Failed to put variable {} to SoS namespace\n'.format(item))
-        elif self.kernel == 'ir':
-            for item in items:
-                if '.' in item:
-                    self.warn('Variable {} is exported as {}\n'.format(item, item.replace('.', '_')))
-            # if it is a python kernel, passing specified SoS variables to it
-            self.KC.execute('..py.repr(list({}))'.format(
-                ','.join('{0}={0}'.format(x) for x in items)),
+        elif self.kernel in self.supported_languages:
+            lan = self.supported_languages[self.kernel]
+            self.KC.execute(lan.py_repr_of_obj(items)) ,
                 silent=False, store_history=False)
             # first thing is wait for any side effects (output, stdin, etc.)
             _execution_state = "busy"
@@ -707,7 +731,7 @@ class SoS_Kernel(Kernel):
                         if msg_type in ('display_data', 'execute_result'):
                             try:
                                 env.sos_dict.update(
-                                    from_R_repr(sub_msg['content']['data']['text/plain'])
+                                    lan.py_from_repr_of_obj(sub_msg['content']['data']['text/plain'])
                                     )
                             except Exception as e:
                                  self.warn(str(e))
@@ -719,8 +743,10 @@ class SoS_Kernel(Kernel):
             for item in items:
                 if not item.replace('.', '_') in env.sos_dict:
                     self.warn('Failed to put variable {} to SoS namespace\n'.format(item))
+        elif self.kernel == 'sos':
+            self.warn('Magic %put can only be executed by subkernels')
         else:
-            self.warn('Can only pass variables to python kernel')
+            self.warn('Language {} does not support magic %put.'.format(self.kernel))
 
     def _interpolate_option(self, option, quiet=False):
         # interpolate command
@@ -1004,8 +1030,6 @@ class SoS_Kernel(Kernel):
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_RESTART.match(code):
             options, remaining_code = self.get_magic_and_code(code, True)
-            if options == 'R':
-                options = 'ir'
             self.restart_kernel(options)
             return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
         elif self.MAGIC_WITH.match(code):
@@ -1020,8 +1044,6 @@ class SoS_Kernel(Kernel):
                     'traceback': [],
                     'execution_count': self.execution_count,
                    }
-            if args.kernel == 'R':
-                args.kernel = 'ir'
             original_kernel = self.kernel
             self.switch_kernel(args.kernel, args.out_vars)
             if args.in_vars:
@@ -1042,8 +1064,6 @@ class SoS_Kernel(Kernel):
                     'traceback': [],
                     'execution_count': self.execution_count,
                    }
-            if args.kernel == 'R':
-                args.kernel = 'ir'
             self.switch_kernel(args.kernel, args.out_vars)
             if args.in_vars:
                 self.handle_magic_get(args.in_vars)

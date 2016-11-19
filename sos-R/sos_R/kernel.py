@@ -210,6 +210,12 @@ R_init_statements = r'''
 }
 '''
 
+
+
+def py_repr_of_R_obj(items):
+    return '..py.repr(list({}))'.format(
+                ','.join('{0}={0}'.format(x) for x in items))
+
 def from_R_repr(expr):
     '''
     Convert expression returned from R to python
@@ -229,3 +235,5 @@ class sos_R:
         self.kernel_name = 'ir'
         self.init_statements = R_init_statements
         self.repr_obj = R_expr
+        self.py_repr_of_obj = py_repr_of_R_obj
+        self.py_from_repr_of_obj = from_R_repr

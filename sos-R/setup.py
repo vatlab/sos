@@ -20,13 +20,13 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from setuptools import setup
+from setuptools import find_packages, setup
 
 # obtain version of SoS-R
-with open('sos-R/_version.py') as version:
+with open('sos_R/_version.py') as version:
     exec(version.read())
 
-setup(name = "sos-bioinfo",
+setup(name = "sos-R",
     version = __version__,
     description = 'A module that provides support for the R-language for Script of Scripts (SoS)',
     author = 'Bo Peng',
@@ -46,11 +46,18 @@ setup(name = "sos-bioinfo",
         'Intended Audience :: Science/Research',
         'Programming Language :: Python :: 3 :: Only',
         ],
-    packages = ['sos-R'],
+    packages = find_packages(exclude=['test']),
     entry_points={
-		'sos-language': [
-			'R = sos-R.kernel:sos_R [R]',
-		]
+		'sos_languages': [
+			'R = sos_R.kernel:sos_R [R]',
+		],
+        'sos_targets': [
+            'R_library = sos_R.target:R_library'
+        ],
+        'sos_actions': [
+            'R = sos_R.actions:R',
+            'Rmarkdown = sos_R.actions:Rmarkdown',
+        ],
 	},
     extras_require = {
         # feather is used to convert between R and Python dataframes
