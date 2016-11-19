@@ -239,22 +239,57 @@ class dynamic(BaseTarget):
 
 class executable(BaseTarget):
     '''A target for an executable command.'''
-    def __init__(self, cmd):
+    _available_commands = set()
+
+    def __init__(self, cmd, version=[], check_command=None):
         self._cmd = cmd
+        if isinstance(version, str):
+            self._version = [version]
+        else:
+            self._version = version
+        self._check_command = check_command
+        if self._version and not self._check_command:
+            self._check_command = cmd
         self.sig_file = os.path.join('.sos/.runtime/{}.sig'.format(self.md5()))
 
     def exists(self, mode='any'):
-        if mode in ('any', 'target') and shutil.which(self._cmd):
+        if (self._cmd, self._version) in self._available_commands:
             return True
+        if mode in ('any', 'target') and shutil.which(self._cmd):
+            if self._version:
+                import subprocess
+                try:
+                    output = subprocess.check_output(self._check_command,
+                        stderr=subprocess.STDOUT, shell=True, timeout=5).decode()
+                except subprocess.TimeoutExpired as e:
+                    env.logger.warning(e)
+                    return False
+                except subprocess.CalledProcessError as e:
+                    env.logger.warning(e)
+                    return False
+                for ver in self._version:
+                    if ver in output:
+                        self._available_commands.add((self._cmd, self._version))
+                        return True
+                return False
+            else:
+                self._available_commands.add((self._cmd, self._version))
+                return True
         if mode in ('any', 'signature') and os.path.isfile(self.sig_file):
             return True
         return False
 
     def fullname(self):
-        return 'command {}'.format(self._cmd)
+        if self._version:
+            return 'command {} (version={})'.format(self._cmd, self._version)
+        else:
+            return 'command {}'.format(self._cmd)
 
     def __repr__(self):
-        return 'executable("{}")'.format(self._cmd)
+        if self._version:
+            return 'executable("{}", version={!r})'.format(self._cmd, self._version)
+        else:
+            return 'executable("{}")'.format(self._cmd)
 
     def calc_md5(self):
         return textMD5(self._cmd)
@@ -272,7 +307,7 @@ class executable(BaseTarget):
         return hash(repr(self))
 
     def __eq__(self, obj):
-        return isinstance(obj, executable) and self._cmd == obj._cmd
+        return isinstance(obj, executable) and self._cmd == obj._cmd and self._version == obj._version
 
 class sos_variable(BaseTarget):
     '''A target for a SoS variable.'''
