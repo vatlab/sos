@@ -146,6 +146,17 @@ setup(name = "sos",
 		],
 		'pygments.lexers': [
 			'sos = pysos.converter:SoS_Lexer'
-		]
+		],
+        'sos_previewers': [
+            'imghdr:what = pysos.preview:preview_img',
+            '*.pdf = pysos.preview:preview_pdf',
+            '*.html = pysos.preview:preview_html',
+            '*.csv = pysos.preview:preview_csv',
+            '*.xls = pysos.preview:preview_xls',
+            '*.xlsx = pysos.preview:preview_xls',
+            'zipfile:is_zipfile = pysos.preview:preview_zip',
+            'tarfile:is_tarfile = pysos.preview:preview_tar',
+            '*.gz = pysos.preview:preview_gz',
+        ],
 	},
 )

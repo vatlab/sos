@@ -31,6 +31,7 @@ import contextlib
 import subprocess
 import tempfile
 import argparse
+import pkg_resources
 
 import zipfile
 import tarfile
@@ -108,139 +109,26 @@ def clipboard_get():
     else:
         return tkinter_clipboard_get()
 
-class SoS_FilePreviewer():
-    def __init__(self):
-        pass
-
-    def display_data_for_image(self, filename):
-        with open(filename, 'rb') as f:
-            image = f.read()
-
-        image_type = imghdr.what(None, image)
-        image_data = base64.b64encode(image).decode('ascii')
-        if image_type != 'png':
+def get_previewers():
+    # Note: data is zest.releaser specific: we want to pass
+    # something to the plugin
+    group = 'sos.previewers'
+    result = []
+    for entrypoint in pkg_resources.iter_entry_points(group=group):
+        # Grab the function that is the actual plugin.
+        plugin = entrypoint.load()
+        # if ':' in entry point name, it should be a function
+        # in a module. Let us try to import the module
+        if ':' in entrypoint.name:
+            import importlib
+            mod, func = entrypoint.name.split(':')
             try:
-                from wand.image import Image
-                img = Image(filename=filename)
-                return { 'image/' + image_type: image_data,
-                    'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
-            except Exception:
-                return { 'image/' + image_type: image_data }
+                importlib.import_module(mod)
+                result[getattr(mod, func)] = plugin
+            except ImportError:
+                env.logger.warning('Failed to load function {}:{}'.format(mod, func))
         else:
-            return { 'image/' + image_type: image_data }
-
-    def preview(self, filename):
-        if imghdr.what(filename) is not None:
-            # image
-            return 'display_data', self.display_data_for_image(filename)
-        elif filename.lower().endswith('.pdf'):
-            try:
-                # this import will fail even if wand is installed
-                # if imagemagick is not installed properly.
-                from wand.image import Image
-                img = Image(filename=filename)
-                return 'display_data', {
-                    'text/html': HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data,
-                    'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
-            except Exception as e:
-                env.logger.error(e)
-                return 'display_data', { 'text/html':
-                    HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}
-        elif filename.lower().endswith('.html'):
-            with open(filename) as html:
-                content = html.read()
-            return 'display_data', { 'text/html': content,
-                'text/plain': dehtml(content) }
-        elif filename.lower().endswith('.csv') or filename.lower().endswith('.tsv'):
-            try:
-                import pandas
-                data = pandas.read_csv(filename)
-                html = data._repr_html_()
-                return 'display_data', { 'text/html': HTML(html).data}
-            except Exception:
-                pass
-        elif filename.lower().endswith('.xlsx') or filename.lower().endswith('.xls'):
-            try:
-                import pandas
-                data = pandas.read_excel(filename)
-                html = data._repr_html_()
-                return 'display_data', { 'text/html': HTML(html).data}
-            except Exception:
-                pass
-        # is it a compressed file?
-        elif zipfile.is_zipfile(filename):
-            zip = zipfile.ZipFile(filename)
-            names = zip.namelist()
-            return '{} files\n'.format(len(names)) + '\n'.join(names[:5]) + ('\n...' if len(names) > 5 else '')
-        elif tarfile.is_tarfile(filename):
-            with tarfile.open(filename, 'r:*') as tar:
-                # only extract files
-                names = [x.name for x in tar.getmembers() if x.isfile()]
-            return '{} files\n'.format(len(names)) + '\n'.join(names[:5]) + ('\n...' if len(names) > 5 else '')
-        elif filename.endswith('.gz'):
-            content = b''
-            with gzip.open(filename, 'rb') as fin:
-                for line in range(5):
-                    content += fin.readline()
-            try:
-                return content.decode()
-            except:
-                return 'binary data'
-        else:
-            content = b''
-            with open(filename, 'rb') as fin:
-                for line in range(5):
-                    content += fin.readline()
-            try:
-                return content.decode()
-            except:
-                pass
-        return 'binary data'
-
-class BioPreviewer(SoS_FilePreviewer):
-    def  __init__(self):
-        SoS_FilePreviewer.__init__(self)
-
-    def previewBam(self, filename):
-        try:
-            import pysam
-        except ImportError:
-            return 'pysam is needed to preview bam format'
-        try:
-            res = ''
-            with pysam.AlignmentFile(filename, 'rb') as bam:
-                headers = bam.header
-                for record_type in ('RG', 'PG', 'SQ'):
-                    if record_type not in headers:
-                        continue
-                    else:
-                        records = headers[record_type]
-                    res += record_type + ':\n'
-                    for i, record in enumerate(records):
-                        if type(record) == str:
-                            res += '  ' + short_repr(record) + '\n'
-                        elif type(record) == dict:
-                            res += '  '
-                            for idx, (k, v) in enumerate(record.items()):
-                                if idx < 4:
-                                    res += '{}: {}    '.format(k, short_repr(v))
-                                elif idx == 4:
-                                    res += '...'
-                                    break
-                        if i > 4:
-                            res += '\n  ...\n'
-                            break
-                        else:
-                            res += '\n'
-            return res
-        except Exception as e:
-            return 'failed to preview {}'.format(e)
-
-    def preview(self, filename):
-        if filename.lower().endswith('.bam'):
-            return self.previewBam(filename)
-        else:
-            return SoS_FilePreviewer.preview(filename)
+            result[entrypoint.name] = plugin
 
 def homogeneous_type(seq):
     iseq = iter(seq)
@@ -495,7 +383,7 @@ class SoS_Kernel(Kernel):
         self.shell.display_pub.pub_socket = self.iopub_socket
 
         self.shell.enable_gui = lambda x: False
-        self.previewer = {'*': SoS_FilePreviewer().preview, '*.bam': BioPreviewer().preview }
+        self.previewers = get_previewers()
 
         self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
         if os.path.isfile(self.report_file):
@@ -1012,16 +900,17 @@ class SoS_Kernel(Kernel):
                  'text/html': HTML('<pre><font color="green">> {} ({}):</font></pre>'.format(filename, pretty_size(os.path.getsize(filename)))).data,
                 }
              })
-        previewer = [x for x in self.previewer.keys() if fnmatch.fnmatch(os.path.basename(filename), x)]
-        if not previewer:
-            return
-        # choose the longest matching pattern (e.g. '*' and '*.pdf', choose '*.pdf')
-        previewer_name = max(previewer, key=len)
-        previewer_func = self.previewer[previewer_name]
-        if not previewer_func:
-            return
-        if not callable(previewer_func):
-            raise RuntimeError('Previewer {} is not callable'.format(previewer_name))
+        previewer_func = None
+        for x,y in self.previewers:
+            if isinstance(x, str):
+                if fnmatch.fnmatch(os.path.basename(filename), x):
+                    previewer_func = y
+                    break
+            else:
+                # it should be a function
+                if x(filename):
+                    previewer_func = y
+                    break
         try:
             result = previewer_func(filename)
             if not result:
