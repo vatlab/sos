@@ -19,23 +19,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
+import base64
+from IPython.core.display import HTML
+from .utils import env, dehtml
 
 def preview_img(filename):
     with open(filename, 'rb') as f:
         image = f.read()
 
+    import imghdr
     image_type = imghdr.what(None, image)
     image_data = base64.b64encode(image).decode('ascii')
     if image_type != 'png':
         try:
             from wand.image import Image
             img = Image(filename=filename)
-            return 'display_data', { 'image/' + image_type: image_data,
+            return { 'image/' + image_type: image_data,
                 'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
         except Exception:
-            return 'display_data', { 'image/' + image_type: image_data }
+            return { 'image/' + image_type: image_data }
     else:
-        return 'display_data', { 'image/' + image_type: image_data }
+        return { 'image/' + image_type: image_data }
 
 def preview_pdf(filename):
     try:
@@ -43,56 +47,81 @@ def preview_pdf(filename):
         # if imagemagick is not installed properly.
         from wand.image import Image
         img = Image(filename=filename)
-        return 'display_data', {
+        return {
             'text/html': HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data,
             'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
     except Exception as e:
         env.logger.error(e)
-        return 'display_data', { 'text/html':
+        return { 'text/html':
             HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}
 
 def preview_html(filename):
     with open(filename) as html:
         content = html.read()
-    return 'display_data', { 'text/html': content,
+    return { 'text/html': content,
         'text/plain': dehtml(content) }
+
+def preview_txt(filename):
+    try:
+        content = ''
+        with open(filename, 'r') as fin:
+            for line in range(5):
+                content += fin.readline()
+        return content
+    except:
+        return ''
 
 def preview_csv(filename):
     try:
         import pandas
         data = pandas.read_csv(filename)
         html = data._repr_html_()
-        return 'display_data', { 'text/html': HTML(html).data}
-    except Exception:
-        pass
+        return { 'text/html': HTML(html).data}
+    except Exception as e:
+        env.logger.warning(e)
+        return ''
 
 def preview_xls(filename):
     try:
         import pandas
         data = pandas.read_excel(filename)
         html = data._repr_html_()
-        return 'display_data', { 'text/html': HTML(html).data}
-    except Exception:
-        pass
+        return { 'text/html': HTML(html).data}
+    except Exception as e:
+        env.logger.warning(e)
+        return ''
 
 def preview_zip(filename):
+    import zipfile
     zip = zipfile.ZipFile(filename)
     names = zip.namelist()
     return '{} files\n'.format(len(names)) + '\n'.join(names[:5]) + ('\n...' if len(names) > 5 else '')
 
 def preview_tar(filename):
+    import tarfile
     with tarfile.open(filename, 'r:*') as tar:
         # only extract files
         names = [x.name for x in tar.getmembers() if x.isfile()]
     return '{} files\n'.format(len(names)) + '\n'.join(names[:5]) + ('\n...' if len(names) > 5 else '')
 
 def preview_gz(filename):
+    import gzip
     content = b''
     with gzip.open(filename, 'rb') as fin:
         for line in range(5):
             content += fin.readline()
     try:
-        return content.decode()
+        return content.decode()[:2000]
     except:
         return 'binary data'
 
+def preview_md(filename):
+    import markdown
+    try:
+        with open(filename) as fin:
+            text = fin.read()
+        html = markdown.markdown(text)
+        return {'text/html': HTML(html).data, 'text/plain': text}
+    except:
+        return ''
+    

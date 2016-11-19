@@ -112,23 +112,34 @@ def clipboard_get():
 def get_previewers():
     # Note: data is zest.releaser specific: we want to pass
     # something to the plugin
-    group = 'sos.previewers'
+    group = 'sos_previewers'
     result = []
     for entrypoint in pkg_resources.iter_entry_points(group=group):
         # Grab the function that is the actual plugin.
         plugin = entrypoint.load()
         # if ':' in entry point name, it should be a function
-        # in a module. Let us try to import the module
-        if ':' in entrypoint.name:
+        try:
+            name, priority = entrypoint.name.split(',', 1)
+            priority = int(priority)
+        except Exception as e:
+            env.logger.warning('Ignore incorrect previewer entry point {}: {}'.format(entrypoint, e))
+            continue
+        # If name points to a function in a module. Let us try to import the module
+        if ':' in name:
             import importlib
-            mod, func = entrypoint.name.split(':')
             try:
-                importlib.import_module(mod)
-                result[getattr(mod, func)] = plugin
+                mod, func = name.split(':')
+                imported = importlib.import_module(mod)
+                result.append((getattr(imported, func), plugin, priority))
             except ImportError:
                 env.logger.warning('Failed to load function {}:{}'.format(mod, func))
         else:
-            result[entrypoint.name] = plugin
+            result.append((name, plugin, priority))
+    #
+    result.sort(key=lambda x: -x[2])
+    with open('a.txt', 'w') as ss:
+        ss.write(repr(result))
+    return result
 
 def homogeneous_type(seq):
     iseq = iter(seq)
@@ -383,7 +394,7 @@ class SoS_Kernel(Kernel):
         self.shell.display_pub.pub_socket = self.iopub_socket
 
         self.shell.enable_gui = lambda x: False
-        self.previewers = get_previewers()
+        self.previewers = None
 
         self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
         if os.path.isfile(self.report_file):
@@ -448,6 +459,10 @@ class SoS_Kernel(Kernel):
         #
         return {'status': 'incomplete', 'indent': ''}
 
+    def warn(self, message):
+        self.send_response(self.iopub_socket, 'stream',
+            {'name': 'stderr', 'text': message})
+
     def get_magic_and_code(self, code, warn_remaining=False):
         lines = code.split('\n')
         pieces = lines[0].strip().split(None, 1)
@@ -457,9 +472,7 @@ class SoS_Kernel(Kernel):
             command_line = ''
         remaining_code = '\n'.join(lines[1:])
         if warn_remaining and remaining_code.strip():
-            self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stderr', 'text':
-                'Statement {} ignored'.format(short_repr(remaining_code))})
+            self.warn('Statement {} ignored'.format(short_repr(remaining_code)))
         return command_line, remaining_code
 
     def run_cell(self, code, store_history):
@@ -518,8 +531,7 @@ class SoS_Kernel(Kernel):
                         if self.kernel in kernel_init_command:
                             self.run_cell(kernel_init_command[self.kernel], False)
                     except Exception as e:
-                        self.send_response(self.iopub_socket, 'stream',
-                            {'name': 'stderr', 'text': 'Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e)})
+                        self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e))
         else:
             # kernel == '' or kernel == 'sos'
             if not kernel:
@@ -535,14 +547,13 @@ class SoS_Kernel(Kernel):
     def restart_kernel(self, kernel):
         if kernel == 'sos':
             # cannot restart myself ...
-            self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stderr', 'text': 'Cannot restart sos kernel from within sos.'})
+            self.warn('Cannot restart sos kernel from within sos.')
         elif kernel:
             if kernel in self.kernels:
                 try:
                     self.kernels[kernel][0].shutdown_kernel(restart=False)
                 except Exception as e:
-                    env.logger.warning('Failed to shutdown kernel {}: {}\n'.format(kernel, e))
+                    self.warn('Failed to shutdown kernel {}: {}\n'.format(kernel, e))
             #
             try:
                 self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)
@@ -567,8 +578,7 @@ class SoS_Kernel(Kernel):
         keys = [x for x in actions if not x.startswith('-')]
         for x in keys:
             if not x in env.sos_dict:
-                self.send_response(self.iopub_socket, 'stream',
-                      {'name': 'stderr', 'text': 'Unrecognized sosdict option or variable name {}'.format(x)})
+                self.warn('Unrecognized sosdict option or variable name {}'.format(x))
                 return
         for x in [x for x in actions if x.startswith('-')]:
             if not x in ['-r', '--reset', '-k', '--keys', '-a', '--all']:
@@ -607,8 +617,7 @@ class SoS_Kernel(Kernel):
     def handle_magic_get(self, items):
         for item in items:
             if item not in env.sos_dict:
-                self.send_response(self.iopub_socket, 'stream',
-                     {'name': 'stderr', 'text': 'Variable {} does not exist'.format(item)})
+                self.warn('Variable {} does not exist'.format(item))
                 return
         if self.kernel == 'python':
             # if it is a python kernel, passing specified SoS variables to it
@@ -619,18 +628,15 @@ class SoS_Kernel(Kernel):
         elif self.kernel == 'ir':
             for item in items:
                 if item.startswith('_'):
-                    self.send_response(self.iopub_socket, 'stream',
-                        {'name': 'stderr', 'text': 'Variable {} is imported as {}\n'.format(item, '.' + item[1:])})
+                    self.warn('Variable {} is imported as {}\n'.format(item, '.' + item[1:]))
             try:
                 sos_data = '\n'.join(python2R(x) for x in items)
             except Exception as e:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stderr', 'text': 'Failed to get variable: {}\n'.format(e)})
+                self.warn('Failed to get variable: {}\n'.format(e))
                 return
             self.KC.execute(sos_data, silent=True, store_history=False)
         else:
-            self.send_response(self.iopub_socket, 'stream',
-                 {'name': 'stderr', 'text': 'Can not pass variables to kernel {}'.format(self.kernel)})
+            self.warn('Can not pass variables to kernel {}'.format(self.kernel))
             return
         # first thing is wait for any side effects (output, stdin, etc.)
         _execution_state = "busy"
@@ -663,15 +669,13 @@ class SoS_Kernel(Kernel):
                         _execution_state = sub_msg["content"]["execution_state"]
                     else:
                         if msg_type == 'execute_result':
-                            #self.send_response(self.iopub_socket, 'stream',
-                            #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
+                            #self.warn(repr(sub_msg['content']['data']))
                             try:
                                 env.sos_dict.update(
                                     pickle.loads(eval(sub_msg['content']['data']['text/plain']))
                                     )
                             except Exception as e:
-                                self.send_response(self.iopub_socket, 'stream',
-                                    {'name': 'stderr', 'text': 'Failed to put variable {}: {}\n'.format(', '.join(items), e)})
+                                self.warn('Failed to put variable {}: {}\n'.format(', '.join(items), e))
                             break
                         else:
                             self.send_response(self.iopub_socket, msg_type,
@@ -679,13 +683,11 @@ class SoS_Kernel(Kernel):
             # verify
             for item in items:
                 if not item in env.sos_dict:
-                    self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stderr', 'text': 'Failed to put variable {} to SoS namespace\n'.format(item)})
+                    self.warn('Failed to put variable {} to SoS namespace\n'.format(item))
         elif self.kernel == 'ir':
             for item in items:
                 if '.' in item:
-                    self.send_response(self.iopub_socket, 'stream',
-                        {'name': 'stderr', 'text': 'Variable {} is exported as {}\n'.format(item, item.replace('.', '_'))})
+                    self.warn('Variable {} is exported as {}\n'.format(item, item.replace('.', '_')))
             # if it is a python kernel, passing specified SoS variables to it
             self.KC.execute('..py.repr(list({}))'.format(
                 ','.join('{0}={0}'.format(x) for x in items)),
@@ -703,15 +705,12 @@ class SoS_Kernel(Kernel):
                         # irkernel (since the new version) does not produce execute_result, only
                         # display_data
                         if msg_type in ('display_data', 'execute_result'):
-                            #self.send_response(self.iopub_socket, 'stream',
-                            #    {'name': 'stderr', 'text': repr(sub_msg['content']['data'])})
                             try:
                                 env.sos_dict.update(
                                     from_R_repr(sub_msg['content']['data']['text/plain'])
                                     )
                             except Exception as e:
-                                 self.send_response(self.iopub_socket, 'stream',
-                                    {'name': 'stderr', 'text': str(e)})
+                                 self.warn(str(e))
                             break
                         else:
                             self.send_response(self.iopub_socket, msg_type,
@@ -719,11 +718,9 @@ class SoS_Kernel(Kernel):
             # verify
             for item in items:
                 if not item.replace('.', '_') in env.sos_dict:
-                    self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stderr', 'text': 'Failed to put variable {} to SoS namespace\n'.format(item)})
+                    self.warn('Failed to put variable {} to SoS namespace\n'.format(item))
         else:
-            self.send_response(self.iopub_socket, 'stream',
-                                {'name': 'stderr', 'text': 'Can only pass variables to python kernel'})
+            self.warn('Can only pass variables to python kernel')
 
     def _interpolate_option(self, option, quiet=False):
         # interpolate command
@@ -735,8 +732,7 @@ class SoS_Kernel(Kernel):
                     new_option.strip() + '\n## -- End interpolated command --\n'})
             return new_option
         except Exception as e:
-            self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stderr', 'text': 'Failed to interpolate {}: {}\n'.format(short_repr(option), e)})
+            self.warn('Failed to interpolate {}: {}\n'.format(short_repr(option), e))
             return None
 
     def handle_magic_preview(self, options):
@@ -760,6 +756,10 @@ class SoS_Kernel(Kernel):
                 if os.path.isfile(item):
                     self.preview(item)
                     continue
+            except Exception as e:
+                self.warn('\n> Failed to preview file {}: {}'.format(item, e))
+                continue
+            try:
                 self.send_response(self.iopub_socket, 'display_data',
                     {'metadata': {},
                     'data': {'text/plain': '>>> ' + item + ':\n',
@@ -776,8 +776,7 @@ class SoS_Kernel(Kernel):
                     {'execution_count': self.execution_count, 'data': format_dict,
                     'metadata': md_dict})
             except Exception as e:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stderr', 'text': '\n> Failed to find file or evaluate expression {}: {}'.format(item, e)})
+                self.warn('\n> Failed to preview expression {}: {}'.format(item, e))
 
     def handle_magic_cd(self, option):
         # interpolate command
@@ -790,9 +789,7 @@ class SoS_Kernel(Kernel):
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': os.getcwd()})
         except Exception as e:
-            self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stderr',
-                'text': 'Failed to change dir to {}: {}'.format(os.path.expanduser(to_dir), e)})
+            self.warn('Failed to change dir to {}: {}'.format(os.path.expanduser(to_dir), e))
 
     def handle_shell_command(self, cmd):
         # interpolate command
@@ -834,8 +831,7 @@ class SoS_Kernel(Kernel):
                     })
                 raise
             except KeyboardInterrupt:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stderr', 'text': 'Keyboard Interrupt\n'})
+                self.warn('Keyboard Interrupt\n')
                 return {'status': 'abort', 'execution_count': self.execution_count}
             finally:
                 sys.stderr.flush()
@@ -890,8 +886,7 @@ class SoS_Kernel(Kernel):
 
     def preview(self, filename):
         if not os.path.isfile(filename):
-            self.send_response(self.iopub_socket, 'stream',
-                 {'name': 'stderr', 'text': '\n> ' + filename + ' does not exist'})
+            self.warn('\n> ' + filename + ' does not exist')
             return
         self.send_response(self.iopub_socket, 'display_data',
              {'metadata': {},
@@ -901,30 +896,42 @@ class SoS_Kernel(Kernel):
                 }
              })
         previewer_func = None
-        for x,y in self.previewers:
+        # lazy import of previewers
+        if self.previewers is None:
+            self.previewers = get_previewers()
+        for x,y,_ in self.previewers:
             if isinstance(x, str):
                 if fnmatch.fnmatch(os.path.basename(filename), x):
                     previewer_func = y
                     break
             else:
                 # it should be a function
-                if x(filename):
-                    previewer_func = y
-                    break
+                try:
+                    if x(filename):
+                        previewer_func = y
+                        break
+                except Exception as e:
+                    self.warn(e)
+                    continue
+        #
+        # if no previewer can be found
+        if previewer_func is None:
+            return
         try:
             result = previewer_func(filename)
             if not result:
                 return
             if isinstance(result, str):
                 self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': '\n'+result})
+                    {'name': 'stdout', 'text': result})
+            elif isinstance(result, dict):
+                self.send_response(self.iopub_socket, 'display_data',
+                    {'source': filename, 'data': result, 'metadata': {}})
             else:
-                msg_type, msg_data = result
-                self.send_response(self.iopub_socket, msg_type,
-                    {'source': filename, 'data': msg_data, 'metadata': {}})
+                self.warn('Unrecognized preview content: {}'.format(result))
+                return
         except Exception as e:
-            self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stderr', 'text': 'Failed to preview {}: {}'.format(filename, e) })
+            self.warn('Failed to preview {}: {}'.format(filename, e))
 
     def send_result(self, res, silent=False):
         # this is Ok, send result back
@@ -1006,8 +1013,7 @@ class SoS_Kernel(Kernel):
             try:
                 args = self.parse_in_out_vars(options.split())
             except Exception as e:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stderr', 'text': 'Invalid option "{}": {}\n'.format(options, e)})
+                self.warn('Invalid option "{}": {}\n'.format(options, e))
                 return {'status': 'error',
                     'ename': e.__class__.__name__,
                     'evalue': str(e),
@@ -1029,8 +1035,7 @@ class SoS_Kernel(Kernel):
             try:
                 args = self.parse_in_out_vars(options.split())
             except Exception as e:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stderr', 'text': 'Invalid option "{}": {}\n'.format(options, e)})
+                self.warn('Invalid option "{}": {}\n'.format(options, e))
                 return {'status': 'abort',
                     'ename': e.__class__.__name__,
                     'evalue': str(e),
@@ -1095,8 +1100,7 @@ class SoS_Kernel(Kernel):
             try:
                 return self.run_cell(code, store_history)
             except KeyboardInterrupt:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stderr', 'text': 'Keyboard Interrupt\n'})
+                self.warn('Keyboard Interrupt\n')
                 return {'status': 'abort', 'execution_count': self.execution_count}
         else:
             # run sos
@@ -1104,8 +1108,7 @@ class SoS_Kernel(Kernel):
                 self.run_sos_code(code, silent)
                 return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
             except Exception as e:
-                stream_content = {'name': 'stderr', 'text': str(e)}
-                self.send_response(self.iopub_socket, 'stream', stream_content)
+                self.warn(str(e))
                 return {'status': 'error',
                     'ename': e.__class__.__name__,
                     'evalue': str(e),
@@ -1124,7 +1127,7 @@ class SoS_Kernel(Kernel):
             try:
                 km.shutdown_kernel(restart=restart)
             except Exception as e:
-                env.logger.warning('Failed to shutdown kernel {}: {}'.format(name, e))
+                self.warn('Failed to shutdown kernel {}: {}'.format(name, e))
 
 
 
