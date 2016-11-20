@@ -44,7 +44,6 @@ import multiprocessing as mp
 from .utils import env, ProgressBar, natural_keys, transcribe, AbortExecution, short_repr, get_traceback
 from .sos_eval import Undetermined
 from .target import FileTarget, fileMD5
-from .sos_executor import Base_Executor, MP_Executor, RQ_Executor, Celery_Executor
 from .monitor import ProcessMonitor, summarizeExecution
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
@@ -484,6 +483,7 @@ def sos_run(workflow, **kwargs):
     extra sos files can be specified from paramter source. The workflow
     will be execute in the current step namespace with _input as workflow
     input. '''
+    from .sos_executor import Base_Executor, MP_Executor
     script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
     wf = script.workflow(workflow)
     # if wf contains the current step or one of the previous one, this constitute
@@ -503,20 +503,29 @@ def sos_run(workflow, **kwargs):
     elif env.run_mode == 'run':
         env.logger.info('Executing workflow ``{}`` with input ``{}``'
             .format(workflow, short_repr(env.sos_dict['_input'], True)))
-        #
-        # NOTE: Because at run mode we do not really have the DAG (which might have
-        # been changed and need to be re-prepared) so it is necessary to prepare
-        # the workflow at run mode.
-        #
-        if env.__task_engine__ is None:
+
+        if env.__task_engine__:
+            import pkg_resources
+            # import all executors
+            executor_class = None
+            for entrypoint in pkg_resources.iter_entry_points(group='sos_executors'):
+                # Grab the function that is the actual plugin.
+                name = entrypoint.name
+                if name == env.__task_engine__:
+                    try:
+                        executor_class = entrypoint.load()
+                    except Exception as e:
+                        print('Failed to load queue executor {}: {}'.format(entrypoint.name, e))
+
+            if not executor_class:
+                sys.exit('Could not locate specified queue executor {}'.format(env.__task_engine__))
+        else:
             if env.max_jobs == 1:
-                return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).run()
+                executor_class = Base_Executor
             else:
-                return MP_Executor(wf, args=env.sos_dict['__args__'], nested=True).run()
-        elif env.__task_engine__ == 'rq':
-            return RQ_Executor(wf, args=env.sos_dict['__args__'], nested=True).run()
-        elif env.__task_engine__ == 'celery':
-            return Celery_Executor(wf, args=env.sos_dict['__args__'], nested=True).run()
+                executor_class = MP_Executor
+
+        return executor_class(wf, args=env.sos_dict['__args__'], nested=True).run()
     elif env.run_mode == 'interactive':
         raise RuntimeError('Action sos_run is not supported in interactive mode')
 

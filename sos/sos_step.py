@@ -22,7 +22,6 @@
 import os
 import sys
 import copy
-import time
 import glob
 import fnmatch
 

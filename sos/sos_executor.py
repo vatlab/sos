@@ -33,8 +33,8 @@ from queue import Empty
 
 from io import StringIO
 from ._version import __version__
-from .sos_step import Dryrun_Step_Executor, Prepare_Step_Executor, SP_Step_Executor, MP_Step_Executor, RQ_Step_Executor, \
-    Celery_Step_Executor, Interactive_Step_Executor, analyze_section
+from .sos_step import Dryrun_Step_Executor, Prepare_Step_Executor, SP_Step_Executor, MP_Step_Executor, \
+    Interactive_Step_Executor, analyze_section
 from .utils import env, Error, WorkflowDict, get_traceback, ProgressBar, frozendict, dict_merge, short_repr
 from .sos_eval import SoS_exec
 from .sos_script import SoS_Script

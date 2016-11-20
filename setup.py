@@ -135,8 +135,8 @@ setup(name = "sos",
       ],
     entry_points= '''
 [console_scripts]
-sos = sos.main:main
-sos-runner = sos.main:sosrun
+sos = sos.__main__:main
+sos-runner = sos.__main__:sosrun
 
 [pygments.lexers]
 sos = sos.converter:SoS_Lexer

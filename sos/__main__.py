@@ -226,7 +226,7 @@ def cmd_run(args, workflow_args, batch_mode=True):
                 except Exception as e:
                     print('Failed to load queue executor {}: {}'.format(entrypoint.name, e))
 
-        if not executor:
+        if not executor_class:
             sys.exit('Could not locate specified queue executor {}'.format(args.__queue__))
     else:
         from .sos_executor import Base_Executor, MP_Executor
@@ -324,6 +324,7 @@ def cmd_dryrun(args, workflow_args):
     args.__max_jobs__ = 1
     args.__dryrun__ = True
     args.__prepare__ = True
+    args.__bin_dirs__ = []
     cmd_run(args, workflow_args)
 
 #
