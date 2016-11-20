@@ -22,7 +22,7 @@
 
 import sys, os
 import shutil
-from setuptools import setup
+from setuptools import find_packages, setup
 from distutils import log
 from setuptools.command.install import install
 
@@ -103,6 +103,7 @@ setup(name = "sos",
     maintainer = 'Bo Peng',
     maintainer_email = 'bpeng@mdanderson.org',
     license = 'GPL3',
+    include_package_data = True,
     classifiers = [
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
@@ -114,7 +115,7 @@ setup(name = "sos",
         'Intended Audience :: Science/Research',
         'Programming Language :: Python :: 3 :: Only',
         ],
-    packages = ['pysos'],
+    packages = find_packages(),
     cmdclass={'install': InstallWithConfigurations},
     install_requires=[
           'psutil',
@@ -122,7 +123,6 @@ setup(name = "sos",
           'fasteners',
           'pyyaml',
           'docker-py',
-          'blessings',
           'pygments',
           # for jupyter notebook format conversion
           'nbformat',
@@ -132,72 +132,50 @@ setup(name = "sos",
           # for DAG
           'networkx',
           'pydotplus',
-          # for RQ task-execution engine
-          'rq-dashboard',
-          'rq',
-          # for celery task-execution engine
-          'celery',
-          'flower',
       ],
-    entry_points={
-		'console_scripts': [
-			'sos = pysos.main:main',
-			'sos-runner = pysos.main:sosrun',
-		],
-		'pygments.lexers': [
-			'sos = pysos.converter:SoS_Lexer'
-		],
-        'sos_previewers': [
-            # A previewer should be specified as
-            #
-            #   pattern,priority = preview_module:func
-            #
-            # or
-            #
-            #   module:func,priority = preview_module:func
-            #
-            # where
-            #
-            # 1. pattern is a pattern that matches incoming filename (see
-            #    module fnmatch.fnmatch for details)
-            #
-            # 2. module:func specifies a function in module that detects the
-            #    type of input file.
-            #
-            # 3. priority is an integer number that indicates the priority of
-            #    previewer in case multiple pattern or function matches the
-            #    same file. Developers of third-party previewer can override
-            #    an existing previewer by specifying a higher priority number.
-            #
-            # 4. preview_module:func points to a function in a module. The
-            #    function should accept a filename as the only parameter, and
-            #    returns either
-            #
-            #    a) A string that will be displayed as plain text to standard
-            #       output.
-            #
-            #    b) A dictionary that will be returned as "data" field of
-            #      "display_data" (see http://jupyter-client.readthedocs.io/en/latest/messaging.html
-            #      for details). The dictionary typically has "text/html" for
-            #      HTML output, "text/plain" for plain text, and "text/png" for
-            #      image presentation of the file.
-            #
-            '*.pdf,1 = pysos.preview:preview_pdf',
-            '*.html,1 = pysos.preview:preview_html',
-            '*.csv,1 = pysos.preview:preview_csv',
-            '*.xls,1 = pysos.preview:preview_xls',
-            '*.xlsx,1 = pysos.preview:preview_xls',
-            '*.gz,1 = pysos.preview:preview_gz',
-            '*.txt,1 = pysos.preview:preview_txt',
-            '*.md,1 = pysos.preview:preview_md [md]',
-            'imghdr:what,1 = pysos.preview:preview_img [image]',
-            'zipfile:is_zipfile,1 = pysos.preview:preview_zip',
-            'tarfile:is_tarfile,1 = pysos.preview:preview_tar',
-            '*,0 = pysos.preview:preview_txt',
-        ],
-    },
+    entry_points= '''
+[console_scripts]
+sos = pysos.main:main
+sos-runner = pysos.main:sosrun
+
+[pygments.lexers]
+sos = pysos.converter:SoS_Lexer
+
+[sos_previewers]
+*.pdf,1 = pysos.preview:preview_pdf
+*.html,1 = pysos.preview:preview_html
+*.csv,1 = pysos.preview:preview_csv
+*.xls,1 = pysos.preview:preview_xls
+*.xlsx,1 = pysos.preview:preview_xls
+*.gz,1 = pysos.preview:preview_gz
+*.txt,1 = pysos.preview:preview_txt
+*.md,1 = pysos.preview:preview_md [md]
+imghdr:what,1 = pysos.preview:preview_img [image]
+zipfile:is_zipfile,1 = pysos.preview:preview_zip
+tarfile:is_tarfile,1 = pysos.preview:preview_tar
+*,0 = pysos.preview:preview_txt
+
+[sos_languages]
+R = sos.R.kernel:sos_R [R]
+
+[sos_targets]
+R_library = sos.R.target:R_library
+
+[sos_actions]
+R = sos.R.actions:R
+Rmarkdown = sos.R.actions:Rmarkdown
+
+[sos_executors]
+rq_executor = sos.rq.executor:RQ_Executor [rq]
+celery_executor = sos.celery.executor:Celery_Executor [celery]
+''',
     extras_require = {
-            'image': 'wand',
-            'md': 'markdown',
+        ':sys_platform=="win32"': ['colorama'],
+        ':sys_platform!="win32"': ['blessings'],
+        'image':    ['wand'],
+        'md':       ['markdown'],
+        'R':        ['feather', 'pandas', 'numpy']
+        'rq':       ['rq', 'rq-dashboard'],
+        'celery':   ['celery', 'flower'],
     }
 )
