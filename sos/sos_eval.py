@@ -465,7 +465,7 @@ class sos_namespace_(object):
     and use the results as attributes of the object.'''
     def __init__(self, stmts, sigil):
         # we need to define functions defined by sos ...
-        exec('from pysos.runtime import *', self.__dict__)
+        exec('from sos.runtime import *', self.__dict__)
         # the results of the statments will be saved as
         # attribute of this object.
         SoS_exec(stmts, _dict=self.__dict__, sigil=sigil)

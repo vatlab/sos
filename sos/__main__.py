@@ -1083,7 +1083,7 @@ def sosrun():
 		runfile(sys.argv[1], args=sys.argv[2:])
 
 def main():
-    from pysos._version import SOS_FULL_VERSION
+    from ._version import SOS_FULL_VERSION
     import argparse
     master_parser = argparse.ArgumentParser(description='''A workflow system
             for the execution of commands and scripts in different languages.''',

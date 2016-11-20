@@ -31,7 +31,7 @@ with open('sos/_version.py') as version:
     exec(version.read())
 
 kernel_json = {
-    "argv":         ["python", "-m", "pysos.kernel", "-f", "{connection_file}"],
+    "argv":         ["python", "-m", "sos.kernel", "-f", "{connection_file}"],
     "display_name": "SoS",
     "language":     "sos",
 }
@@ -203,7 +203,7 @@ celery = sos.celery.sos_executor:Celery_Executor [celery]
         ':sys_platform!="win32"': ['blessings'],
         'image':    ['wand'],
         'md':       ['markdown'],
-        'R':        ['feather', 'pandas', 'numpy'],
+        'R':        ['feather-format', 'pandas', 'numpy'],
         'rq':       ['rq', 'rq-dashboard'],
         'celery':   ['celery', 'flower'],
         'bam':      ['pysam'],

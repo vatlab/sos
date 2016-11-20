@@ -387,7 +387,7 @@ depends: 'some.txt', executable('ls')
 import time
 import random
 
-r = random.randint(5)
+r = random.randint(1, 5)
 time.sleep(r)
 
 [A_3]

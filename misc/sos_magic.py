@@ -43,9 +43,9 @@
 #
 
 import copy
-from pysos.utils import env, WorkflowDict
-from pysos.sos_eval import SoS_exec, SoS_eval
-from pysos.sos_executor import Interactive_Executor
+from sos.utils import env, WorkflowDict
+from sos.sos_eval import SoS_exec, SoS_eval
+from sos.sos_executor import Interactive_Executor
 
 from IPython.core.error import UsageError
 from IPython.lib.clipboard import ClipboardEmpty
@@ -61,7 +61,7 @@ class SoS_Magics(Magics):
 
     def _reset(self):
         env.sos_dict = WorkflowDict()
-        SoS_exec('from pysos.runtime import *', None)
+        SoS_exec('from sos.runtime import *', None)
         env.sos_dict.set('__interactive__', True)
         self.executor = Interactive_Executor()
         self.original_keys = set(env.sos_dict._dict.keys())

@@ -53,15 +53,15 @@ def _R_repr(obj):
         # otherwise use list()
         # this can be confusion but list can be difficult to handle
         if homogeneous_type(obj):
-            return 'c(' + ','.join(R_repr(x) for x in obj) + ')'
+            return 'c(' + ','.join(_R_repr(x) for x in obj) + ')'
         else:
-            return 'list(' + ','.join(R_repr(x) for x in obj) + ')'
+            return 'list(' + ','.join(_R_repr(x) for x in obj) + ')'
     elif obj is None:
         return 'NULL'
     elif isinstance(obj, dict):
-        return 'list(' + ','.join('{}={}'.format(x, R_repr(y)) for x,y in obj.items()) + ')'
+        return 'list(' + ','.join('{}={}'.format(x, _R_repr(y)) for x,y in obj.items()) + ')'
     elif isinstance(obj, set):
-        return 'list(' + ','.join(R_repr(x) for x in obj) + ')'
+        return 'list(' + ','.join(_R_repr(x) for x in obj) + ')'
     else:
         import numpy
         import pandas
@@ -79,7 +79,7 @@ def _R_repr(obj):
             feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
             return 'data.matrix(read_feather("{}"))'.format(feather_tmp_)
         elif isinstance(obj, numpy.ndarray):
-            return 'c(' + ','.join(R_repr(x) for x in obj) + ')'
+            return 'c(' + ','.join(_R_repr(x) for x in obj) + ')'
         elif isinstance(obj, pandas.DataFrame):
             try:
                 import feather
@@ -101,7 +101,7 @@ def _R_repr(obj):
         else:
             return repr('Unsupported datatype {}'.format(short_repr(obj)))
 
-def R_repr(name, obj):
+def R_repr_of_py_obj(name, obj):
     new_name = '.' + name[1:] if name.startswith('_') else name
     r_repr = _R_repr(obj)
     #
@@ -215,12 +215,11 @@ R_init_statements = r'''
 '''
 
 
-
 def py_repr_of_R_obj(items):
-    return '..py.repr(list({}))'.format(
-                ','.join('{0}={0}'.format(x) for x in items))
+    return [x.replace('.', '_') for x in items], \
+        '..py.repr(list({}))'.format(','.join('{0}={0}'.format(x) for x in items))
 
-def from_R_repr(expr):
+def py_from_R_repr(expr):
     '''
     Convert expression returned from R to python
     '''
@@ -233,11 +232,10 @@ def from_R_repr(expr):
     except Exception as e:
         raise UsageError('Failed to convert {} to Python object: {}'.format(expr, e))
 
-
 class sos_R:
     def __init__(self):
         self.kernel_name = 'ir'
         self.init_statements = R_init_statements
-        self.repr_obj = R_repr
+        self.repr_of_py_obj = R_repr_of_py_obj
         self.py_repr_of_obj = py_repr_of_R_obj
-        self.py_from_repr_of_obj = from_R_repr
+        self.py_from_repr_of_obj = py_from_R_repr

@@ -84,7 +84,7 @@ def execute_task(params):
 
         env.sos_dict.quick_update(sos_dict)
         SoS_exec('import os, sys, glob', None)
-        SoS_exec('from pysos.runtime import *', None)
+        SoS_exec('from sos.runtime import *', None)
         # re-execute global definition because some of the definitions in the
         # global section might not be pickaleable (e.g. functions) and cannot
         # be passed to this separate process.
@@ -143,7 +143,7 @@ def analyze_section(section, default_input=None):
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
         SoS_exec('import os, sys, glob', None)
-        SoS_exec('from pysos.runtime import *', None)
+        SoS_exec('from sos.runtime import *', None)
 
     #
     # Here we need to get "contant" values from the global section
@@ -969,6 +969,7 @@ class Queued_Step_Executor(Base_Step_Executor):
             notifier.stop()
 
 def _expand_file_list(ignore_unknown, *args):
+    env.logger.warning(repr(args))
     ifiles = []
     for arg in args:
         if arg is None:
@@ -986,6 +987,7 @@ def _expand_file_list(ignore_unknown, *args):
         else:
             raise RuntimeError('Unrecognized file: {}'.format(arg))
 
+    env.logger.warning(ifiles)
     # expand files with wildcard characters and check if files exist
     tmp = []
     for ifile in ifiles:
@@ -1052,6 +1054,9 @@ class Dryrun_Step_Executor(Queued_Step_Executor):
     def expand_depends_files(self, *args):
         '''handle directive depends'''
         if any(isinstance(x, dynamic) for x in args):
+            for k in args:
+                if isinstance(k, dynamic):
+                    env.logger.warning('Dependent target {} is dynamic'.format(k))
             return Undetermined()
         else:
             return _expand_file_list(True, *args)

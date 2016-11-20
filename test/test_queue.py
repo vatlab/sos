@@ -21,10 +21,10 @@
 #
 
 import os
-from pysos.sos_script import SoS_Script
-from pysos.utils import env
-from pysos.target import FileTarget
-from pysos.sos_executor import RQ_Executor
+from sos.sos_script import SoS_Script
+from sos.utils import env
+from sos.target import FileTarget
+from sos.rq.sos_executor import RQ_Executor
 
 import unittest
 import subprocess
@@ -76,7 +76,7 @@ run:
 sos_run("work:1+work:2")
 ''')
         self.touch(['1.txt', '2.txt'])
-        subprocess.call('sos clean . -t -y', shell=True)
+        subprocess.call('sos remove . -t -y', shell=True)
         wf = script.workflow()
         RQ_Executor(wf).run()
         for f in ['1.out', '1.out2', '2.out', '2.out2']:

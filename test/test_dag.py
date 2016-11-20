@@ -26,10 +26,10 @@ import time
 import unittest
 from io import StringIO
 
-from pysos.sos_script import SoS_Script
-from pysos.utils import env
-from pysos.sos_executor import Base_Executor, MP_Executor
-from pysos.target import FileTarget
+from sos.sos_script import SoS_Script
+from sos.utils import env
+from sos.sos_executor import Base_Executor, MP_Executor
+from sos.target import FileTarget
 
 
 class TestDAG(unittest.TestCase):

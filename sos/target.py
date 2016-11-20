@@ -244,9 +244,9 @@ class executable(BaseTarget):
     def __init__(self, cmd, version=[], check_command=None):
         self._cmd = cmd
         if isinstance(version, str):
-            self._version = [version]
+            self._version = (version,)
         else:
-            self._version = version
+            self._version = tuple(version)
         self._check_command = check_command
         if self._version and not self._check_command:
             self._check_command = cmd

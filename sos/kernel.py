@@ -110,13 +110,13 @@ def get_supported_languages():
         # Grab the function that is the actual plugin.
         name = entrypoint.name
         try:
-            plugin = entrypoint.load()
-            result[name] = plugin()
+            plugin = entrypoint.load()()
+            result[name] = plugin
             # for convenience, we create two entries for, e.g. R and ir
             if name != plugin.kernel_name:
-                result[plugin.kernel_name] = plugin()
+                result[plugin.kernel_name] = plugin
         except Exception as e:
-            env.logger.warning('Failed to load language {}: {}'.format(entrypoint.name, e))
+            raise RuntimeError('Failed to load language {}: {}'.format(entrypoint.name, e))
     return result
 
 def get_previewers():
@@ -232,7 +232,7 @@ class SoS_Kernel(Kernel):
         'file_extension': '.sos',
         'pygments_lexer': 'sos',
         'codemirror_mode': 'sos',
-        'nbconvert_exporter': 'pysos.kernel.SoS_Exporter',
+        'nbconvert_exporter': 'sos.kernel.SoS_Exporter',
     }
     banner = "SoS kernel - script of scripts"
     shell = InteractiveShell.instance()
@@ -258,7 +258,7 @@ class SoS_Kernel(Kernel):
         self.banner = self.banner + '\nConnection file {}'.format(os.path.basename(find_connection_file()))
         # FIXME: this should in theory be a MultiKernelManager...
         self.kernels = {}
-        self.supported_languages = {}
+        self.supported_languages = None
         self.format_obj = self.shell.display_formatter.format
 
         # InteractiveShell uses a default publisher that only displays text/plain
@@ -281,7 +281,7 @@ class SoS_Kernel(Kernel):
     def _reset_dict(self):
         env.sos_dict = WorkflowDict()
         SoS_exec('import os, sys, glob', None)
-        SoS_exec('from pysos.runtime import *', None)
+        SoS_exec('from sos.runtime import *', None)
         SoS_exec("run_mode = 'interactive'", None)
         self.executor = Interactive_Executor()
         self.original_keys = set(env.sos_dict._dict.keys())
@@ -400,7 +400,8 @@ class SoS_Kernel(Kernel):
                 else:
                     try:
                         # start a new kernel
-                        self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)
+                        self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, 
+                            kernel_name=self.supported_languages[kernel].kernel_name if kernel in self.supported_languages else kernel)
                         self.KM, self.KC = self.kernels[kernel]
                         self.RET_VARS = ret_vars
                         self.kernel = kernel
@@ -508,7 +509,7 @@ class SoS_Kernel(Kernel):
             try:
                 statements = []
                 for item in items:
-                    new_name, py_repr = lan.repr_obj(item)
+                    new_name, py_repr = lan.repr_of_py_obj(item, env.sos_dict[item])
                     if new_name != item:
                         self.warn('Variable {} is passed from SoS to kernel {} as {}'
                             .format(item, self.kernel, new_name))
@@ -571,7 +572,11 @@ class SoS_Kernel(Kernel):
                     self.warn('Failed to put variable {} to SoS namespace\n'.format(item))
         elif self.kernel in self.supported_languages:
             lan = self.supported_languages[self.kernel]
-            self.KC.execute(lan.py_repr_of_obj(items), silent=False, store_history=False)
+            new_names, py_repr = lan.py_repr_of_obj(items)
+            for n, nn in zip(items, new_names):
+                if n != nn:
+                    self.warn('Variable {} is put to SoS as {}'.format(n, nn))
+            self.KC.execute(py_repr, silent=False, store_history=False)
             # first thing is wait for any side effects (output, stdin, etc.)
             _execution_state = "busy"
             while _execution_state != 'idle':
@@ -596,9 +601,9 @@ class SoS_Kernel(Kernel):
                             self.send_response(self.iopub_socket, msg_type,
                                 sub_msg['content'])
             # verify
-            for item in items:
-                if not item.replace('.', '_') in env.sos_dict:
-                    self.warn('Failed to put variable {} to SoS namespace\n'.format(item))
+            for n, nn in zip(items, new_names):
+                if not nn in env.sos_dict:
+                    self.warn('Failed to put variable {} to SoS namespace\n'.format(n))
         elif self.kernel == 'sos':
             self.warn('Magic %put can only be executed by subkernels')
         else:

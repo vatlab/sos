@@ -24,10 +24,10 @@ import os
 import unittest
 import subprocess
 
-from pysos.utils import env, ArgumentError
-from pysos.sos_script import SoS_Script, ParsingError
-from pysos.sos_executor import Base_Executor, ExecuteError
-from pysos.target import FileTarget
+from sos.utils import env, ArgumentError
+from sos.sos_script import SoS_Script, ParsingError
+from sos.sos_executor import Base_Executor, ExecuteError
+from sos.target import FileTarget
 
 class TestParser(unittest.TestCase):
     def setUp(self):
@@ -509,7 +509,7 @@ save.put()
         script = SoS_Script('''
 [0]
 python3:
-    from pysos.runtime import logger
+    from sos.runtime import logger
     logger.warning('I am from a dented text')
     if 1:
         logger.warning('Another warning')

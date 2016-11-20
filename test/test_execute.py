@@ -26,13 +26,13 @@ import glob
 import unittest
 import shutil
 
-from pysos.sos_script import SoS_Script
-from pysos._version import __version__
-from pysos.utils import env, WorkflowDict
-from pysos.sos_eval import Undetermined, SoS_exec
-from pysos.sos_executor import Base_Executor, MP_Executor, Interactive_Executor, ExecuteError
-from pysos.sos_script import ParsingError
-from pysos.target import FileTarget
+from sos.sos_script import SoS_Script
+from sos._version import __version__
+from sos.utils import env, WorkflowDict
+from sos.sos_eval import Undetermined, SoS_exec
+from sos.sos_executor import Base_Executor, MP_Executor, Interactive_Executor, ExecuteError
+from sos.sos_script import ParsingError
+from sos.target import FileTarget
 import subprocess
 
 class TestExecute(unittest.TestCase):
@@ -535,7 +535,7 @@ sh:
     def testRunmode(self):
         '''Test the runmode decoration'''
         script = SoS_Script(r"""
-from pysos.actions import SoS_Action
+from sos.actions import SoS_Action
 
 @SoS_Action(run_mode='run')
 def fail():

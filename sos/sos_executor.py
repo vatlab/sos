@@ -116,7 +116,7 @@ class Base_Executor:
         # and functions
         if self.nested:
             SoS_exec('import os, sys, glob', None)
-            SoS_exec('from pysos.runtime import *', None)
+            SoS_exec('from sos.runtime import *', None)
             self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
             self._base_symbols -= {'dynamic'}
             return
@@ -162,7 +162,7 @@ class Base_Executor:
         env.sos_dict.set('CONFIG', frozendict(cfg))
 
         SoS_exec('import os, sys, glob', None)
-        SoS_exec('from pysos.runtime import *', None)
+        SoS_exec('from sos.runtime import *', None)
         self._base_symbols = set(dir(builtins)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
         self._base_symbols -= {'dynamic'}
 
@@ -395,7 +395,7 @@ class Base_Executor:
                 if not FileTarget(t).exists('target'):
                     FileTarget(t).remove('signature')
         #
-        SoS_exec('from pysos.runtime import sos_handle_parameter_', None)
+        SoS_exec('from sos.runtime import sos_handle_parameter_', None)
         #
         prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
         self.reset_dict()
@@ -546,7 +546,7 @@ class MP_Executor(Base_Executor):
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
         #
-        SoS_exec('from pysos.runtime import sos_handle_parameter_', None)
+        SoS_exec('from sos.runtime import sos_handle_parameter_', None)
 
         # process step of the pipelinp
         #

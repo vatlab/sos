@@ -24,9 +24,9 @@ import os
 import unittest
 import shutil
 
-from pysos.utils import env
-from pysos.sos_script import SoS_Script
-from pysos.converter import script_to_html, script_to_markdown, script_to_notebook, notebook_to_script
+from sos.utils import env
+from sos.sos_script import SoS_Script
+from sos.converter import script_to_html, script_to_markdown, script_to_notebook, notebook_to_script
 
 class TestConvert(unittest.TestCase):
     def setUp(self):

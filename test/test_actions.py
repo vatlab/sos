@@ -33,13 +33,13 @@ except:
     import _dummy_thread as _thread
 from contextlib import contextmanager
 
-from pysos.sos_script import SoS_Script
-from pysos.utils import env
-from pysos.sos_eval import  Undetermined
-from pysos.actions import DockerClient
+from sos.sos_script import SoS_Script
+from sos.utils import env
+from sos.sos_eval import  Undetermined
+from sos.actions import DockerClient
 from docker.errors import DockerException
-from pysos.sos_executor import Base_Executor, ExecuteError
-from pysos.target import FileTarget
+from sos.sos_executor import Base_Executor, ExecuteError
+from sos.target import FileTarget
 
 import socket
 def internet_on(host='8.8.8.8', port=80, timeout=3):
@@ -121,7 +121,7 @@ class TestActions(unittest.TestCase):
     def testSoSAction(self):
         '''Test sos_action decorator'''
         script = SoS_Script(r"""
-from pysos.actions import SoS_Action
+from sos.actions import SoS_Action
 
 @SoS_Action(run_mode='run')
 def func_run():
