@@ -162,8 +162,8 @@ R = sos.R.kernel:sos_R [R]
 
 [sos_targets]
 dynamic = sos.target:dynamic
-executable = sos.target:dynamic
-sos_variable = sos.target:dynamic
+executable = sos.target:executable
+sos_variable = sos.target:sos_variable
 env_variable = sos.target:env_variable
 R_library = sos.R.target:R_library
 

@@ -969,7 +969,6 @@ class Queued_Step_Executor(Base_Step_Executor):
             notifier.stop()
 
 def _expand_file_list(ignore_unknown, *args):
-    env.logger.warning(repr(args))
     ifiles = []
     for arg in args:
         if arg is None:
@@ -987,7 +986,6 @@ def _expand_file_list(ignore_unknown, *args):
         else:
             raise RuntimeError('Unrecognized file: {}'.format(arg))
 
-    env.logger.warning(ifiles)
     # expand files with wildcard characters and check if files exist
     tmp = []
     for ifile in ifiles:

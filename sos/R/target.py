@@ -39,8 +39,8 @@ class R_library(BaseTarget):
         Therefore if the input name is {repo}/{pkg} the package will be
         installed from github if not available, else from cran or bioc
         '''
-        from .pattern import glob_wildcards
-        from .sos_eval import interpolate
+        from sos.pattern import glob_wildcards
+        from sos.sos_eval import interpolate
         import tempfile
         import shlex
         import subprocess

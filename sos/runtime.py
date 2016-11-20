@@ -32,20 +32,16 @@ interpolate, sos_namespace_
 expand_pattern
 runfile
 
-# import all targets and actions from entry_points
-for entrypoint in pkg_resources.iter_entry_points(group='sos_targets'):
-    # Grab the function that is the actual plugin.
-    name = entrypoint.name
-    try:
-        plugin = entrypoint.load()
-        globals()[name] = plugin
-    except Exception as e:
-        print('Failed to load target {}: {}'.format(entrypoint.name, e))
+def _load_group(group):
+    for _entrypoint in pkg_resources.iter_entry_points(group=group):
+        # import all targets and actions from entry_points
+        # Grab the function that is the actual plugin.
+        _name = _entrypoint.name
+        try:
+            _plugin = _entrypoint.load()
+            globals()[_name] = _plugin
+        except Exception as e:
+            print('Failed to load target {}: {}'.format(_entrypoint.name, e))
 
-for entrypoint in pkg_resources.iter_entry_points(group='sos_actions'):
-    name = entrypoint.name
-    try:
-        plugin = entrypoint.load()
-        globals()[name] = plugin
-    except Exception as e:
-        print('Failed to load action {}: {}'.format(entrypoint.name, e))
+_load_group('sos_targets')
+_load_group('sos_actions')
