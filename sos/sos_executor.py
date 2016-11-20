@@ -684,46 +684,6 @@ class MP_Executor(Base_Executor):
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
 
-class RQ_Executor(MP_Executor):
-    def __init__(self, workflow, args=[], config_file=None, nested=False):
-        MP_Executor.__init__(self, workflow, args, config_file, nested=nested)
-        env.__task_engine__ = 'rq'
-
-        from rq import Queue as rqQueue
-        from redis import Redis
-        import yaml
-
-        connection_file = os.path.join(env.exec_dir, '.sos', 'redis_connection.yaml')
-        if os.path.isfile(connection_file):
-            try:
-                with open(connection_file) as conn:
-                    cfg = yaml.safe_load(conn)
-                if cfg is None:
-                    cfg = {}
-            except Exception as e:
-                env.logger.error('Failed to parse redis connection file {}. ({}}'.format(connection_file, e))
-                sys.exit(1)
-            try:
-                redis_conn = Redis(host=cfg['host'], port=cfg.get('port', 6379))
-            except Exception as e:
-                env.logger.error('Failed to connect to redis server: {}'.format(e))
-                sys.exit(1)
-        else:
-            redis_conn = Redis()
-        self.redis_queue = rqQueue(connection=redis_conn)
-
-    def step_executor(self, section, queue):
-        return RQ_Step_Executor(section, queue, self.redis_queue)
-
-class Celery_Executor(MP_Executor):
-    def __init__(self, workflow, args=[], config_file=None, nested=False):
-        MP_Executor.__init__(self, workflow, args, config_file, nested=nested)
-        env.__task_engine__ = 'Celery'
-
-    def step_executor(self, section, queue):
-        # pass celery_app if needed
-        return Celery_Step_Executor(section, queue)
-
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
     def __init__(self):

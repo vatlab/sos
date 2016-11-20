@@ -61,7 +61,7 @@ class InstallWithConfigurations(install):
         except ImportError:
             from ipykernel.kernelspec import KernelSpecManager as KS
         from IPython.utils.tempdir import TemporaryDirectory
-        from IPython.paths import get_ipython_dir, locate_profile
+        from IPython.paths import get_ipython_dir
         #
         # copy ipython magic to ~/.ipython/extensions
         ext_dir = os.path.join(get_ipython_dir(), 'extensions')
@@ -195,8 +195,8 @@ R = sos.R.actions:R
 Rmarkdown = sos.R.actions:Rmarkdown
 
 [sos_executors]
-rq_executor = sos.rq.executor:RQ_Executor [rq]
-celery_executor = sos.celery.executor:Celery_Executor [celery]
+rq_executor = sos.rq.sos_executor:RQ_Executor [rq]
+celery_executor = sos.celery.sos_executor:Celery_Executor [celery]
 ''',
     extras_require = {
         ':sys_platform=="win32"': ['colorama'],
