@@ -195,8 +195,8 @@ R = sos.R.actions:R
 Rmarkdown = sos.R.actions:Rmarkdown
 
 [sos_executors]
-rq_executor = sos.rq.sos_executor:RQ_Executor [rq]
-celery_executor = sos.celery.sos_executor:Celery_Executor [celery]
+rq = sos.rq.sos_executor:RQ_Executor [rq]
+celery = sos.celery.sos_executor:Celery_Executor [celery]
 ''',
     extras_require = {
         ':sys_platform=="win32"': ['colorama'],

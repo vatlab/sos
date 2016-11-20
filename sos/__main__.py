@@ -209,9 +209,32 @@ def cmd_run(args, workflow_args, batch_mode=True):
     import atexit
     from .utils import env, get_traceback
     from .sos_script import SoS_Script
-    from .sos_executor import Base_Executor, MP_Executor, RQ_Executor, Celery_Executor
+    
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
+
+    if args.__queue__:
+        import pkg_resources
+        # import all executors
+        executor_class = None
+        for entrypoint in pkg_resources.iter_entry_points(group='sos_executors'):
+            # Grab the function that is the actual plugin.
+            name = entrypoint.name
+            if name == args.__queue:
+                try:
+                    executor_class = entrypoint.load()
+                except Exception as e:
+                    print('Failed to load queue executor {}: {}'.format(entrypoint.name, e))
+
+        if not executor:
+            sys.exit('Could not locate specified queue executor {}'.format(args.__queue__))
+    else:
+        from .sos_executor import Base_Executor, MP_Executor
+        if args.__max_jobs__ == 1:
+            executor_class = Base_Executor
+        else:
+            executor_class = MP_Executor
+
     # kill all remainging processes when the master process is killed.
     if batch_mode:
         atexit.register(env.cleanup)
@@ -236,18 +259,7 @@ def cmd_run(args, workflow_args, batch_mode=True):
     try:
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow)
-        if args.__queue__ is None:
-            if args.__max_jobs__ == 1:
-                # single process executor
-                executor = Base_Executor(workflow, args=workflow_args, config_file=args.__config__)
-            else:
-                executor = MP_Executor(workflow, args=workflow_args, config_file=args.__config__)
-        elif args.__queue__ == 'rq':
-            executor = RQ_Executor(workflow, args=workflow_args, config_file=args.__config__)
-        elif args.__queue__ == 'celery':
-            executor = Celery_Executor(workflow, args=workflow_args, config_file=args.__config__)
-        else:
-            raise ValueError('Only the default multiprocessing and a rq engine is allowed')
+        executor = executor_class(workflow, args=workflow_args, config_file=args.__config__)
         #
         if args.__dryrun__:
             executor.dryrun(args.__targets__)
