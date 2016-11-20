@@ -27,7 +27,7 @@ from distutils import log
 from setuptools.command.install import install
 
 # obtain version of SoS
-with open('pysos/_version.py') as version:
+with open('sos/_version.py') as version:
     exec(version.read())
 
 kernel_json = {
@@ -135,33 +135,62 @@ setup(name = "sos",
       ],
     entry_points= '''
 [console_scripts]
-sos = pysos.main:main
-sos-runner = pysos.main:sosrun
+sos = sos.main:main
+sos-runner = sos.main:sosrun
 
 [pygments.lexers]
-sos = pysos.converter:SoS_Lexer
+sos = sos.converter:SoS_Lexer
 
 [sos_previewers]
-*.pdf,1 = pysos.preview:preview_pdf
-*.html,1 = pysos.preview:preview_html
-*.csv,1 = pysos.preview:preview_csv
-*.xls,1 = pysos.preview:preview_xls
-*.xlsx,1 = pysos.preview:preview_xls
-*.gz,1 = pysos.preview:preview_gz
-*.txt,1 = pysos.preview:preview_txt
-*.md,1 = pysos.preview:preview_md [md]
-imghdr:what,1 = pysos.preview:preview_img [image]
-zipfile:is_zipfile,1 = pysos.preview:preview_zip
-tarfile:is_tarfile,1 = pysos.preview:preview_tar
-*,0 = pysos.preview:preview_txt
+*.pdf,1 = sos.preview:preview_pdf
+*.html,1 = sos.preview:preview_html
+*.csv,1 = sos.preview:preview_csv
+*.xls,1 = sos.preview:preview_xls
+*.xlsx,1 = sos.preview:preview_xls
+*.gz,1 = sos.preview:preview_gz
+*.txt,1 = sos.preview:preview_txt
+*.md,1 = sos.preview:preview_md [md]
+imghdr:what,1 = sos.preview:preview_img [image]
+zipfile:is_zipfile,1 = sos.preview:preview_zip
+tarfile:is_tarfile,1 = sos.preview:preview_tar
+*,0 = sos.preview:preview_txt
+
+*.bam,1 = sos.bioinfo.preview:preview_bam [bam]
 
 [sos_languages]
 R = sos.R.kernel:sos_R [R]
 
 [sos_targets]
+dynamic = sos.target:dynamic
+executable = sos.target:dynamic
+sos_variable = sos.target:dynamic
+env_variable = sos.target:env_variable
 R_library = sos.R.target:R_library
 
 [sos_actions]
+execute_script = sos.actions:execute_script
+sos_run = sos.actions:sos_run
+fail_if = sos.actions:fail_if
+warn_if = sos.actions:warn_if
+stop_if = sos.actions:stop_if
+download = sos.actions:download
+run = sos.actions:run
+bash = sos.actions:bash
+csh = sos.actions:csh
+tcsh = sos.actions:tcsh
+zsh = sos.actions:zsh
+sh = sos.actions:sh
+python = sos.actions:python
+python3 = sos.actions:python3
+perl = sos.actions:perl
+ruby = sos.actions:ruby
+node = sos.actions:node
+JavaScript = sos.actions:JavaScript
+docker_build = sos.actions:docker_build
+docker_commit = sos.actions:docker_commit
+report = sos.actions:report
+pandoc = sos.actions:pandoc
+
 R = sos.R.actions:R
 Rmarkdown = sos.R.actions:Rmarkdown
 
@@ -174,8 +203,9 @@ celery_executor = sos.celery.executor:Celery_Executor [celery]
         ':sys_platform!="win32"': ['blessings'],
         'image':    ['wand'],
         'md':       ['markdown'],
-        'R':        ['feather', 'pandas', 'numpy']
+        'R':        ['feather', 'pandas', 'numpy'],
         'rq':       ['rq', 'rq-dashboard'],
         'celery':   ['celery', 'flower'],
+        'bam':      ['pysam'],
     }
 )

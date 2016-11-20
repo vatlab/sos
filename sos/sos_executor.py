@@ -681,7 +681,7 @@ class MP_Executor(Base_Executor):
                         's' if len(sections) > 1 else '', ', '.join(sections))))
             raise exec_error
         else:
-            sig = self.save_workflow_signature(dag)
+            self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
 
 class RQ_Executor(MP_Executor):

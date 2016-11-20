@@ -951,7 +951,6 @@ def cmd_unpack(args, unknown_args):
     import tarfile
     from .utils import env, ProgressBar, pretty_size, ProgressFileObj
     from .target import fileMD5
-    import tempfile
     import fnmatch
     import time
 

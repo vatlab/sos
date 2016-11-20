@@ -21,30 +21,18 @@
 #
 
 import pkg_resources
-from .sos_script import SoS_Script
 from .utils import logger, get_output, sos_handle_parameter_
-from .actions import SoS_Action, execute_script, sos_run, \
-    fail_if, warn_if, stop_if, download, run, bash, csh, tcsh, zsh, sh, \
-    python, python3, perl, ruby, node, JavaScript, \
-    docker_build, docker_commit, report, pandoc
 from .sos_eval import interpolate, sos_namespace_
 from .pattern import expand_pattern
-from .target import dynamic, executable, sos_variable, env_variable
-from .main import runfile
+from .__main__ import runfile
 
 # silent pyflakes
-SoS_Script
 logger, get_output, sos_handle_parameter_
-SoS_Action, execute_script, sos_run
-fail_if, warn_if, stop_if, download, run, bash, csh, tcsh, zsh, sh
-python, python3, perl, ruby, node, JavaScript
-docker_build, docker_commit, report, pandoc
 interpolate, sos_namespace_
 expand_pattern
-dynamic, executable, sos_variable, env_variable
 runfile
 
-
+# import all targets and actions from entry_points
 for entrypoint in pkg_resources.iter_entry_points(group='sos_targets'):
     # Grab the function that is the actual plugin.
     name = entrypoint.name

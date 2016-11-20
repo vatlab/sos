@@ -28,14 +28,14 @@ import textwrap
 
 # these functions are normally not available but can be imported 
 # using their names for testing purposes
-from pysos.utils import env, logger, WorkflowDict, ProgressBar, text_repr
-from pysos.pattern import extract_pattern, expand_pattern
-from pysos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_vars, \
+from sos.utils import env, logger, WorkflowDict, ProgressBar, text_repr
+from sos.pattern import extract_pattern, expand_pattern
+from sos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_vars, \
     Undetermined, on_demand_options
-from pysos.actions import downloadURL
-from pysos.sos_script import SoS_Script
-from pysos.sos_executor import Base_Executor, analyze_section
-from pysos.target import executable
+from sos.actions import downloadURL
+from sos.sos_script import SoS_Script
+from sos.sos_executor import Base_Executor, analyze_section
+from sos.target import executable
 
 import socket
 def internet_on(host='8.8.8.8', port=80, timeout=3):
@@ -338,8 +338,8 @@ k = """b"""'''.format(text, '${a}')
         '''Testing the performance of string interpolation. This test
         will not be executed automatically.'''
         setup_stmt = textwrap.dedent('''
-        from pysos.utils import env, WorkflowDict
-        from pysos.sos_eval import interpolate
+        from sos.utils import env, WorkflowDict
+        from sos.sos_eval import interpolate
         env.sos_dict = WorkflowDict({
             'interpolate': interpolate,
             'a': 100,

@@ -22,9 +22,6 @@
 
 import os
 import sys
-import base64
-import imghdr
-import copy
 import re
 import fnmatch
 import contextlib
@@ -33,13 +30,10 @@ import tempfile
 import argparse
 import pkg_resources
 
-import zipfile
-import tarfile
-import gzip
 import pickle
 from collections.abc import Sequence
 
-from .utils import env, WorkflowDict, short_repr, pretty_size, dehtml, _parse_error
+from .utils import env, WorkflowDict, short_repr, pretty_size, _parse_error
 from ._version import __sos_version__, __version__
 from .sos_eval import SoS_exec, SoS_eval, interpolate
 from .sos_executor import Interactive_Executor
@@ -120,7 +114,7 @@ def get_supported_languages():
             result[name] = plugin()
             # for convenience, we create two entries for, e.g. R and ir
             if name != plugin.kernel_name:
-                result[kernel_name] = plugin()
+                result[plugin.kernel_name] = plugin()
         except Exception as e:
             env.logger.warning('Failed to load language {}: {}'.format(entrypoint.name, e))
     return result
@@ -225,142 +219,6 @@ def R_repr(obj):
             return 'read_feather("{}")'.format(feather_tmp_)
         else:
             return repr('Unsupported datatype {}'.format(short_repr(obj)))
-
-# R    length (n)    Python
-# NULL        None
-# logical    1    boolean
-# integer    1    integer
-# numeric    1    double
-# character    1    unicode
-# logical    n > 1    array
-# integer    n > 1    array
-# numeric    n > 1    list
-# character    n > 1    list
-# list without names    n > 0    list
-# list with names    n > 0    dict
-# matrix    n > 0    array
-# data.frame    n > 0    DataFrame
-
-kernel_init_command = {
-    'ir': r'''
-..py.repr.logical.1 <- function(obj) {
-    if(obj)
-        'True'
-    else
-        'False'
-}
-..py.repr.integer.1 <- function(obj) {
-    as.character(obj)
-}
-..py.repr.double.1 <- function(obj) {
-    as.character(obj)
-}
-..py.repr.character.1 <- function(obj) {
-    options(useFancyQuotes=FALSE)
-    dQuote(obj)
-}
-..py.repr.dataframe <- function(obj) {
-    if (!require("feather")) {
-        install.packages('feather', repos='http://cran.stat.ucla.edu/')
-        }
-    library(feather)
-    tf = tempfile('feather')
-    write_feather(obj, tf)
-    paste0("read_dataframe('", tf, "')")
-}
-..py.repr.matrix <- function(obj) {
-    if (!require("feather")) {
-        install.packages('feather', repos='http://cran.stat.ucla.edu/')
-        }
-    library(feather)
-    tf = tempfile('feather')
-    write_feather(as.data.frame(obj), tf)
-    paste0("read_dataframe('", tf, "').as_matrix()")
-}
-..py.repr.n <- function(obj) {
-    paste("[",
-        paste(sapply(obj, ..py.repr), collapse=','),
-        "]")
-}
-..py.repr <- function(obj) {
-    if (is.matrix(obj)) {
-        ..py.repr.matrix(obj)
-    } else if (is.data.frame(obj)) {
-        ..py.repr.dataframe(obj)
-    } else if (is.null(obj)) {
-        'None'
-    } else if (is.integer(obj)) {
-        if (length(obj) == 1)
-            ..py.repr.integer.1(obj)
-        else
-            ..py.repr.n(obj)
-    } else if (is.double(obj)){
-        if (length(obj) == 1)
-            ..py.repr.double.1(obj)
-        else
-            ..py.repr.n(obj)
-    } else if (is.character(obj)) {
-        if (length(obj) == 1)
-            ..py.repr.character.1(obj)
-        else
-            ..py.repr.n(obj)
-    } else if (is.logical(obj)) {
-        if (length(obj) == 1)
-            ..py.repr.logical.1(obj)
-        else
-            ..py.repr.n(obj)
-    } else if (is.list(obj)) {
-        # if the list has no name
-        if (is.null(names(obj)))
-            ..py.repr.n(obj)
-        else {
-            options(useFancyQuotes=FALSE)
-            paste("{",
-                  paste(sapply(names(obj), function (x)
-                      paste(dQuote(gsub("\\.", "_", as.character(x))), ":", ..py.repr(obj[[x]]))),
-                      collapse=','),
-                  "}")
-        }
-    } else {
-        "'Untransferrable variable'"
-    }
-}
-'''}
-
-def from_R_repr(expr):
-    '''
-    Convert expression returned from R to python
-    '''
-    try:
-        if 'read_dataframe' in expr:
-            from feather import read_dataframe
-        # the result is something like
-        # [1] "{'a': 1}"
-        return eval(eval(expr.split(' ', 1)[-1]))
-    except Exception as e:
-        raise UsageError('Failed to convert {} to Python object: {}'.format(expr, e))
-
-def python2R(name):
-    #
-    # return equivalent R representation for python object.
-    # This is limited to select python objects but we will obtain
-    # native R object using this method.
-    if name not in env.sos_dict:
-        raise UsageError('{} not exist'.format(name))
-    try:
-        r_repr = R_repr(env.sos_dict[name])
-        # there can be some more general solution but right now let us just
-        # do this.
-        if 'read_feather' in r_repr:
-            return '''if (!require("feather")) {{
-                install.packages('feather', repos='http://cran.stat.ucla.edu/')
-                }}
-                library(feather)
-                {} <- {}'''.format('.' + name[1:] if name.startswith('_') else name, r_repr)
-        else:
-            return '{} <- {}'.format('.' + name[1:] if name.startswith('_') else name, r_repr)
-    except Exception as e:
-        raise UsageError('Failed to convert variable {} to R: {}'.format(name, e))
 
 
 class SoS_Kernel(Kernel):
@@ -658,7 +516,6 @@ class SoS_Kernel(Kernel):
             except Exception as e:
                 self.warn('Failed to get variable: {}\n'.format(e))
                 return
-                    self.warn('Variable {} is imported as {}\n'.format(item, '.' + item[1:]))
             self.KC.execute('\n'.join(statements), silent=True, store_history=False)
         elif self.kernel == 'sos':
             self.warn('Magic %get can only be executed by subkernels')
@@ -714,8 +571,7 @@ class SoS_Kernel(Kernel):
                     self.warn('Failed to put variable {} to SoS namespace\n'.format(item))
         elif self.kernel in self.supported_languages:
             lan = self.supported_languages[self.kernel]
-            self.KC.execute(lan.py_repr_of_obj(items)) ,
-                silent=False, store_history=False)
+            self.KC.execute(lan.py_repr_of_obj(items), silent=False, store_history=False)
             # first thing is wait for any side effects (output, stdin, etc.)
             _execution_state = "busy"
             while _execution_state != 'idle':
@@ -1235,286 +1091,6 @@ def get_ipython():
 ''', None)
         self.original_keys.add('__ipython__')
         self.original_keys.add('get_ipython')
-
-    #
-    # The following is copied from spyder_kernel.py, which are needed for
-    # spyder to work. I cannot however derive this class also from
-    # SpyderKernel because that kernel assumes a ipkernel kernel.
-    #
-    @property
-    def _pdb_frame(self):
-        """Return current Pdb frame if there is any"""
-        if self._pdb_obj is not None and self._pdb_obj.curframe is not None:
-            return self._pdb_obj.curframe
-
-    @property
-    def _pdb_locals(self):
-        """
-        Return current Pdb frame locals if available. Otherwise
-        return an empty dictionary
-        """
-        if self._pdb_frame:
-            return self._pdb_obj.curframe_locals
-        else:
-            return {}
-
-    # -- Public API ---------------------------------------------------
-    # For the Variable Explorer
-    def get_namespace_view(self):
-        """
-        Return the namespace view
-
-        This is a dictionary with the following structure
-
-        {'a': {'color': '#800000', 'size': 1, 'type': 'str', 'view': '1'}}
-
-        Here:
-        * 'a' is the variable name
-        * 'color' is the color used to show it
-        * 'size' and 'type' are self-evident
-        * and'view' is its value or the text shown in the last column
-        """
-        settings = self.namespace_view_settings
-        if settings:
-            ns = self._get_current_namespace()
-            more_excluded_names = ['In', 'Out']
-            view = make_remote_view(ns, settings, more_excluded_names)
-            return view
-
-    def get_var_properties(self):
-        """
-        Get some properties of the variables in the current
-        namespace
-        """
-        settings = self.namespace_view_settings
-        if settings:
-            ns = self._get_current_namespace()
-            data = get_remote_data(ns, settings, mode='editable',
-                                   more_excluded_names=['In', 'Out'])
-
-            properties = {}
-            for name, value in list(data.items()):
-                properties[name] = {
-                    'is_list':  isinstance(value, (tuple, list)),
-                    'is_dict':  isinstance(value, dict),
-                    'len': self._get_len(value),
-                    'is_array': self._is_array(value),
-                    'is_image': self._is_image(value),
-                    'is_data_frame': self._is_data_frame(value),
-                    'is_series': self._is_series(value),
-                    'array_shape': self._get_array_shape(value),
-                    'array_ndim': self._get_array_ndim(value)
-                }
-
-            return properties
-        else:
-            return {}
-
-    def get_value(self, name):
-        """Get the value of a variable"""
-        ns = self._get_current_namespace()
-        value = ns[name]
-        publish_data({'__spy_data__': value})
-
-    def set_value(self, name, value):
-        """Set the value of a variable"""
-        ns = self._get_reference_namespace(name)
-        value = deserialize_object(value)[0]
-        if isinstance(value, CannedObject):
-            value = value.get_object()
-        ns[name] = value
-
-    def remove_value(self, name):
-        """Remove a variable"""
-        ns = self._get_reference_namespace(name)
-        ns.pop(name)
-
-    def copy_value(self, orig_name, new_name):
-        """Copy a variable"""
-        ns = self._get_reference_namespace(orig_name)
-        ns[new_name] = ns[orig_name]
-
-    def load_data(self, filename, ext):
-        """Load data from filename"""
-        glbs = self._mglobals()
-
-        load_func = iofunctions.load_funcs[ext]
-        data, error_message = load_func(filename)
-
-        if error_message:
-            return error_message
-
-        for key in list(data.keys()):
-            new_key = fix_reference_name(key, blacklist=list(glbs.keys()))
-            if new_key != key:
-                data[new_key] = data.pop(key)
-
-        try:
-            glbs.update(data)
-        except Exception as error:
-            return str(error)
-
-        return None
-
-    def save_namespace(self, filename):
-        """Save namespace into filename"""
-        ns = self._get_current_namespace()
-        settings = self.namespace_view_settings
-        data = get_remote_data(ns, settings, mode='picklable',
-                               more_excluded_names=['In', 'Out']).copy()
-        return iofunctions.save(data, filename)
-
-    # --- For Pdb
-    def get_pdb_step(self):
-        """Return info about pdb current frame"""
-        return self._pdb_step
-
-    # --- For the Help plugin
-    def is_defined(self, obj, force_import=False):
-        """Return True if object is defined in current namespace"""
-        ns = self._get_current_namespace(with_magics=True)
-        return isdefined(obj, force_import=force_import, namespace=ns)
-
-    def get_doc(self, objtxt):
-        """Get object documentation dictionary"""
-        obj, valid = self._eval(objtxt)
-        if valid:
-            return getdoc(obj)
-
-    def get_source(self, objtxt):
-        """Get object source"""
-        obj, valid = self._eval(objtxt)
-        if valid:
-            return getsource(obj)
-
-    # -- Private API ---------------------------------------------------
-    # --- For the Variable Explorer
-    def _get_current_namespace(self, with_magics=False):
-        """
-        Return current namespace
-
-        This is globals() if not debugging, or a dictionary containing
-        both locals() and globals() for current frame when debugging
-        """
-        ns = {}
-        glbs = self._mglobals()
-
-        if self._pdb_frame is None:
-            ns.update(glbs)
-        else:
-            ns.update(glbs)
-            ns.update(self._pdb_locals)
-
-        # Add magics to ns so we can show help about them on the Help
-        # plugin
-        if with_magics:
-            line_magics = self.shell.magics_manager.magics['line']
-            cell_magics = self.shell.magics_manager.magics['cell']
-            ns.update(line_magics)
-            ns.update(cell_magics)
-
-        return ns
-
-    def _get_reference_namespace(self, name):
-        """
-        Return namespace where reference name is defined
-
-        It returns the globals() if reference has not yet been defined
-        """
-        glbs = self._mglobals()
-        if self._pdb_frame is None:
-            return glbs
-        else:
-            lcls = self._pdb_locals
-            if name in lcls:
-                return lcls
-            else:
-                return glbs
-
-    def _mglobals(self):
-        """Return current globals -- handles Pdb frames"""
-        if self._pdb_frame is not None:
-            return self._pdb_frame.f_globals
-        else:
-            return self.shell.user_ns
-
-    def _get_len(self, var):
-        """Return sequence length"""
-        try:
-            return len(var)
-        except TypeError:
-            return None
-
-    def _is_array(self, var):
-        """Return True if variable is a NumPy array"""
-        try:
-            import numpy
-            return isinstance(var, numpy.ndarray)
-        except ImportError:
-            return False
-
-    def _is_image(self, var):
-        """Return True if variable is a PIL.Image image"""
-        try:
-            from PIL import Image
-            return isinstance(var, Image.Image)
-        except ImportError:
-            return False
-
-    def _is_data_frame(self, var):
-        """Return True if variable is a DataFrame"""
-        try:
-            from pandas import DataFrame
-            return isinstance(var, DataFrame)
-        except:
-            return False
-
-    def _is_series(self, var):
-        """Return True if variable is a Series"""
-        try:
-            from pandas import Series
-            return isinstance(var, Series)
-        except:
-            return False
-
-    def _get_array_shape(self, var):
-        """Return array's shape"""
-        try:
-            if self._is_array(var):
-                return var.shape
-            else:
-                return None
-        except AttributeError:
-            return None
-
-    def _get_array_ndim(self, var):
-        """Return array's ndim"""
-        try:
-            if self._is_array(var):
-                return var.ndim
-            else:
-                return None
-        except AttributeError:
-            return None
-
-    # --- For Pdb
-    def _register_pdb_session(self, pdb_obj):
-        """Register Pdb session to use it later"""
-        self._pdb_obj = pdb_obj
-
-    # --- For the Help plugin
-    def _eval(self, text):
-        """
-        Evaluate text and return (obj, valid)
-        where *obj* is the object represented by *text*
-        and *valid* is True if object evaluation did not raise any exception
-        """
-        assert is_text_string(text)
-        ns = self._get_current_namespace(with_magics=True)
-        try:
-            return eval(text, ns), True
-        except:
-            return None, False
 
 if __name__ == '__main__':
     from ipykernel.kernelapp import IPKernelApp

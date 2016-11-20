@@ -42,8 +42,7 @@ from collections.abc import Sequence
 from docker.utils import kwargs_from_env
 import multiprocessing as mp
 from .utils import env, ProgressBar, natural_keys, transcribe, AbortExecution, short_repr, get_traceback
-from .pattern import glob_wildcards
-from .sos_eval import interpolate, Undetermined
+from .sos_eval import Undetermined
 from .target import FileTarget, fileMD5
 from .sos_executor import Base_Executor, MP_Executor, RQ_Executor, Celery_Executor
 from .monitor import ProcessMonitor, summarizeExecution

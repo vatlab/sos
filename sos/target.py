@@ -417,7 +417,6 @@ class RuntimeInfo:
             if rel_path.startswith('../'):
                 info_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep))
         # path to file
-        sig_path = os.path.split(info_file)[0]
         self.proc_info = '{}.exe_info'.format(info_file)
 
         # we will need to lock on a file that we do not really write to

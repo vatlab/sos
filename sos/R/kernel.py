@@ -21,6 +21,10 @@
 #
 
 from collections.abc import Sequence
+import tempfile
+from sos.utils import short_repr
+from IPython.core.error import UsageError
+
 
 def homogeneous_type(seq):
     iseq = iter(seq)
@@ -234,6 +238,6 @@ class sos_R:
     def __init__(self):
         self.kernel_name = 'ir'
         self.init_statements = R_init_statements
-        self.repr_obj = R_expr
+        self.repr_obj = R_repr
         self.py_repr_of_obj = py_repr_of_R_obj
         self.py_from_repr_of_obj = from_R_repr
