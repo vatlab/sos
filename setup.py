@@ -122,7 +122,6 @@ setup(name = "sos",
           # for file lock
           'fasteners',
           'pyyaml',
-          'docker-py',
           'pygments',
           # for jupyter notebook format conversion
           'nbformat',
@@ -186,8 +185,8 @@ perl = sos.actions:perl
 ruby = sos.actions:ruby
 node = sos.actions:node
 JavaScript = sos.actions:JavaScript
-docker_build = sos.actions:docker_build
-docker_commit = sos.actions:docker_commit
+docker_build = sos.docker.actions:docker_build [docker]
+docker_commit = sos.docker.actions:docker_commit [docker]
 report = sos.actions:report
 pandoc = sos.actions:pandoc
 
@@ -202,6 +201,7 @@ celery = sos.celery.sos_executor:Celery_Executor [celery]
         ':sys_platform=="win32"': ['colorama'],
         ':sys_platform!="win32"': ['blessings'],
         'image':    ['wand'],
+        'docker':   ['docker-py'],
         'md':       ['markdown'],
         'R':        ['feather-format', 'pandas', 'numpy'],
         'rq':       ['rq', 'rq-dashboard'],
