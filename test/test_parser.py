@@ -1313,6 +1313,32 @@ a = 2
         Base_Executor(wf).prepare()
         self.assertEqual(env.sos_dict['a'], 2)
 
+    def testOverwriteKeyword(self):
+        '''Test overwrite sos keyword with user defined one.'''
+        FileTarget('a.txt').remove('both')
+        #
+        script = SoS_Script('''
+def run(script):
+    pass
+
+[1]
+run:
+    touch a.txt
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertFalse(os.path.isfile('a.txt'))
+        #
+        script = SoS_Script('''
+parameter: run = 5
+
+[1]
+run:
+    touch a.txt
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run(args=['a=10'])
+        self.assertFalse(os.path.isfile('a.txt'))
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
