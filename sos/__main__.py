@@ -57,92 +57,68 @@ bindir_help = '''Extra directories in which SoS will look for executables before
 # subcommand convert
 #
 def add_convert_arguments(parser):
-    parser.add_argument('from_file', metavar='FILENAME',
-        help='''File to be converted, can be a SoS script or a Jupyter
-            notebook.''')
-    parser.add_argument('--html', nargs='?', metavar='FILENAME', const='__BROWSER__',
-        help='''Generate a syntax-highlighted HTML file, write it to a
-            specified file, or view in a browser if no filename is specified.
-            Additional argument --raw can be used to specify a URL to raw file,
-            arguments --linenos and --style can be used to customize style of
-            html output. You can pass an arbitrary name to option --style get a
-            list of available styles.''')
-    parser.add_argument('--markdown', nargs='?', metavar='FILENAME', const='__STDOUT__',
-        help='''Convert script or workflow to markdown format and write it to
-            specified file, or standard output if not filename is specified.''')
-    parser.add_argument('--term', action='store_true',
-        help='''Output syntax-highlighted script or workflow to the terminal.
-            Additional arguments --bg=light|dark --lineno can be used to
-            customized output.''')
-    parser.add_argument('--notebook', nargs='?', metavar='FILENAME', const='__STDOUT__',
-        help='''Convert script or workflow to jupyter notebook format and write
-            it to specified file, or standard output if no filename is specified.
-            If the input file is a notebook, it will be converted to .sos (see
-            option --sos) then to notebook, resetting indexes and removing all
-            output cells.''')
-    parser.add_argument('--sos', nargs='?', metavar='SCRIPT', const='__STDOUT__',
-        help='''Convert specified Jupyter notebook to SoS format. The output
-            is the same as you use File -> Download as -> SoS (.sos) from
-            Jupyter with nbconvert version 4.2.0 or higher although you can
-            customize output using options --reorder (rearrange notebook cells
-            with execution order), --reset-index (reset indexes to 1, 2, 3, ..),
-            --add-header (add section header [index] if the cell does not start
-            with a header), --no-index (does not save cell index), --remove-magic
-            (remove cell magic), and --md-to-report (convert markdown cell to
-            code cell with report.)''')
+    parser.add_argument('from_file', metavar='FROM', nargs='?',
+        help='''File to be converted.''')
+    parser.add_argument('to_file', metavar='TO', nargs='?',
+        help='''File to convert to, default to standard output if no file
+            name is given.''')
+    parser.add_argument('-t', '--to', dest='__to_format__', metavar='TO_FORMAT',
+        help='''Destination file format, which is usually determined from
+            extension of `to_file` filename, but is needed if `to_file` is
+            unspecified.''')
+    parser.add_argument('-l', '--list', action='store_true',
+        help='''List available converters and their options.''')
     addCommonArgs(parser)
     parser.set_defaults(func=cmd_convert)
 
-def cmd_convert(args, style_args):
+def get_converter(from_format, to_format):
+    import pkg_resources
+    for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
+        try:
+            name = entrypoint.name
+            f_format, t_format = name.split('_')
+            if f_format == from_format and t_format == to_format:
+                return entrypoint.load()
+        except Exception as e:
+            raise RuntimeError('Failed to load converter {}: {}'.format(entrypoint.name, e))
+    raise RuntimeError('No converter from {} to {} is located'.format(from_format, to_format))
+
+def list_converter():
+    import pkg_resources
+    import textwrap
+    for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
+        try:
+            name = entrypoint.name
+            f_format, t_format = name.split('_')
+            func = entrypoint.load()
+            print('{} -> {}\n{}\n'.format(f_format, t_format,
+                textwrap.fill(func.__doc__.strip(), initial_indent=' '*4, subsequent_indent=' '*4)))
+        except Exception as e:
+            print('Failed to load converter {}: {}'.format(entrypoint.name, e))
+
+def cmd_convert(args, converter_args):
     import tempfile
     from .utils import env, get_traceback
-    from .sos_script import SoS_Script
-    from .converter import script_to_html, script_to_markdown, \
-        script_to_notebook, script_to_term, notebook_to_script
-    env.verbosity = args.verbosity
-    # convert from ...
+
+    if args.list:
+        list_converter()
+        sys.exit(0)
     try:
-        if args.sos:
-            if not args.from_file.endswith('ipynb'):
-                raise RuntimeError('Can only convert from a .ipynb file to SoS script: {} specified.'.format(args.from_file))
-            notebook_to_script(args.from_file, args.sos, style_args)
-        elif args.notebook and args.from_file.lower().endswith('.ipynb'):
-            try:
-                sos_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.sos', delete=False).name
-                notebook_to_script(args.from_file, sos_file, style_args)
-                transcript_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.transcript', delete=False).name
-                script_to_notebook(sos_file, args.notebook)
-                sys.exit(0)
-            finally:
-                os.remove(sos_file)
-                os.remove(transcript_file)
+        from_format = os.path.splitext(args.from_file)[-1][1:]
+        if args.__to_format__:
+            to_format = args.__to_format__
+        elif args.to_file:
+            to_format = os.path.splitext(args.to_file)[-1][1:]
         else:
-            transcript_file = os.path.join('.sos', '{}.transcript'.format(os.path.basename(args.from_file)))
-            with open(transcript_file, 'w') as transcript:
-                try:
-                    script = SoS_Script(filename=args.from_file, transcript=transcript)
-                except Exception as e:
-                    script = None
-                    env.logger.warning(e)
-            if args.html is not None:
-                script_to_html(transcript_file, args.from_file, args.html, style_args)
-            elif args.markdown is not None:
-                script_to_markdown(transcript_file, args.from_file, args.markdown)
-            elif args.notebook is not None:
-                script_to_notebook(args.from_file, args.notebook)
-            elif args.term:
-                script_to_term(transcript_file, args.from_file, style_args)
-            elif script:
-                script.show()
-            else:
-                env.logger.error('No action to perform')
+            raise ValueError('Please specify either desination file or format')
+        #
+        converter = get_converter(from_format, to_format)
+        converter(args.from_file, args.to_file, converter_args)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error(e)
         sys.exit(1)
-
-
 
 #
 # subcommand run

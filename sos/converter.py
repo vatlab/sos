@@ -35,16 +35,11 @@ from pygments.formatters import HtmlFormatter, TerminalFormatter
 from pygments.styles import get_all_styles
 from pygments.util import shebang_matches
 
-import nbformat
-from nbformat.v4 import new_code_cell, new_markdown_cell, new_notebook
-from nbconvert.exporters import Exporter
-
 from .utils import env, pretty_size
 from .actions import get_actions
+from .sos_script import SoS_Script
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_DEPENDS_OPTIONS, \
-    SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS, SOS_SECTION_HEADER, SOS_CELL_LINE
-
-__all__ = ['SoS_Lexer', 'SoS_Exporter']
+    SOS_RUNTIME_OPTIONS, SOS_SECTION_OPTIONS
 
 #
 # subcommmand show
@@ -627,6 +622,19 @@ def write_html_content(content_type, content, formatter, html):
     formatter.cssclass = old_class
 
 #
+# utility function
+#
+def transcribe_script(script_file):
+    import tempfile
+    transcript_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.trans', delete=False).name
+    with open(transcript_file, 'w') as transcript:
+        try:
+            script = SoS_Script(filename=script_file, transcript=transcript)
+        except Exception as e:
+            raise ValueError('Failed to parse {}: {}'.format(script_file, e))
+    return transcript_file
+
+#
 # Converter to HTML
 #
 #
@@ -642,12 +650,21 @@ def parse_html_args(style_args):
             .format(' '.join(style_args), e))
     return vars(args)
 
-def script_to_html(transcript, script_file, html_file, style_args):
+def script_to_html(script_file, html_file, style_args):
     '''
-    Write a HTML file with the transcript of a SOS file.
+    Convert sos file to html format with syntax highlighting, and
+    either save the output either to a HTML file or view it in a broaser.
+    This converter accepts additional parameters --style or pygments
+    styles, --linenos for displaying linenumbers, and a parameter --raw
+    to embed a URL to the raw sos file.
     '''
-    if html_file == '__BROWSER__':
-        html_file = os.path.join('.sos', '{}.html'.format(os.path.basename(script_file)))
+    import tempfile
+    transcript_file = transcribe_script(script_file)
+
+    view_in_browser = not html_file
+    if not html_file:
+        html_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name
+    #
     sargs = parse_html_args(style_args)
     formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
         **{x:y for x,y in sargs.items() if x != 'raw'})
@@ -664,7 +681,7 @@ def script_to_html(transcript, script_file, html_file, style_args):
             pretty_size(os.path.getsize(script_file))))
         #
         html.write('<table class="highlight tab-size js-file-line-container">')
-        with open(transcript) as script:
+        with open(transcript_file) as script:
             content = []
             content_type = None
             content_number = None
@@ -701,8 +718,13 @@ def script_to_html(transcript, script_file, html_file, style_args):
         html.write('</table>')
         html.write(template_post_table)
     #
-    if html_file.startswith('.sos'):
-        url = 'file://{}'.format(os.path.abspath(html_file))
+    try:
+        os.remove(transcript_file)
+    except:
+        pass
+    #
+    if view_in_browser:
+        url = 'file://{}'.format(html_file)
         env.logger.info('Viewing {} in a browser'.format(url))
         webbrowser.open(url, new=2)
     else:
@@ -742,16 +764,18 @@ def markdown_content(content_type, content, fh):
             content_type == ''
         fh.write('```{}\n{}```\n'.format(content_type, ''.join(content)))
 
-def script_to_markdown(transcript, script_file, markdown_file):
+def script_to_markdown(script_file, markdown_file, *args):
     '''
-    Write a markdown file with the transcript of a SOS file.
+    Convert SOS scriot to a markdown file with syntax highlighting.
     '''
-    if markdown_file == '__STDOUT__':
+    transcript_file = transcribe_script(script_file)
+
+    if not markdown_file:
         markdown = sys.stdout
     else:
         markdown = open(markdown_file, 'w')
     # remove background definition so that we can use our own
-    with open(transcript) as script:
+    with open(transcript_file) as script:
         content = []
         content_type = None
         # content_number = None
@@ -783,193 +807,12 @@ def script_to_markdown(transcript, script_file, markdown_file):
     if content:
         markdown_content(content_type, content, markdown)
     if markdown != sys.stdout:
+        markdown.close()
         env.logger.info('SoS script saved to {}'.format(markdown_file))
-
-#
-# Converter from Notebook
-#
-
-def parse_convert_args(convert_args):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--reorder', action='store_true')
-    parser.add_argument('--reset-index', action='store_true')
-    parser.add_argument('--add-header', action='store_true')
-    parser.add_argument('--no-index', action='store_true')
-    parser.add_argument('--remove-magic', action='store_true')
-    parser.add_argument('--md-to-report', action='store_true')
     try:
-        args = parser.parse_args(convert_args)
-    except Exception as e:
-        raise RuntimeError('Unrecognized style argument {}: {}'
-            .format(' '.join(convert_args), e))
-    return args
-
-
-# This class cannot be defined in .kernel because it would cause some
-# weird problem with unittesting not able to resolve __main__
-class SoS_Exporter(Exporter):
-    def __init__(self, config=None, reorder=False, reset_index=False, add_header=False,
-            no_index=False, remove_magic=False, md_to_report=False,
-            **kwargs):
-        self.reorder = reorder
-        self.reset_index = reset_index
-        self.add_header = add_header
-        self.no_index = no_index
-        self.remove_magic = remove_magic
-        self.md_to_report = md_to_report
-        self.output_extension = '.sos'
-        self.output_mimetype = 'text/x-sos'
-        Exporter.__init__(self, config, **kwargs)
-
-    def from_notebook_cell(self, cell, fh, idx = 0):
-        if not hasattr(cell, 'execution_count') or cell.execution_count is None or self.no_index:
-            fh.write('\n%cell {}\n'.format(cell.cell_type))
-        else:
-            idx += 1
-            fh.write('\n%cell {} {}\n'.format(cell.cell_type,
-                                              idx if self.reset_index else cell.execution_count))
-        if cell.cell_type == 'code':
-            if any(cell.source.startswith(x) for x in ('%run', '%restart', '%dict', '%use', '%with', '%set', '%paste')):
-                if self.remove_magic:
-                    cell.source = '\n'.join(cell.source.split('\n')[1:])
-            if self.add_header and not any([SOS_SECTION_HEADER.match(x) for x in cell.source.split('\n')]):
-                cell.source = '[{}]\n'.format(idx if self.reset_index else cell.execution_count) + cell.source
-            fh.write(cell.source.strip() + '\n')
-        elif cell.cell_type == "markdown":
-            fh.write('\n'.join('#! ' + x for x in cell.source.split('\n') if x.strip()) + '\n')
-        return idx
-
-    def from_notebook_node(self, nb, resources, **kwargs):
-        #
-        if self.reorder:
-            unnumbered_cells = {x: y for x, y in enumerate(nb.cells)
-                              if not hasattr(y, 'execution_count') or y.execution_count is None}
-            numbered_cells = [y for y in nb.cells
-                              if hasattr(y, 'execution_count') and y.execution_count is not None]
-            numbered_cells = sorted(numbered_cells, key = lambda x: x.execution_count)
-            cells = []
-            for idx in range(len(nb.cells)):
-                if idx in unnumbered_cells:
-                    cells.append(unnumbered_cells[idx])
-                else:
-                    cells.append(numbered_cells.pop(0))
-        else:
-            cells = nb.cells
-        with StringIO() as fh:
-            fh.write('#!/usr/bin/env sos-runner\n')
-            fh.write('#fileformat=SOSNB1.0\n')
-            idx = 0
-            for cell in cells:
-                idx = self.from_notebook_cell(cell, fh, idx)
-            content = fh.getvalue()
-        resources['output_extension'] = '.sos'
-        return content, resources
-
-
-def notebook_to_script(notebook_file, sos_file, convert_args=[]):
-    '''
-    convert a ipython notebook.
-    '''
-    sargs = parse_convert_args(convert_args)
-    exporter = SoS_Exporter(reorder=sargs.reorder, reset_index=sargs.reset_index,
-                            add_header=sargs.add_header, no_index=sargs.no_index,
-                            remove_magic=sargs.remove_magic, md_to_report=sargs.md_to_report)
-    notebook = nbformat.read(notebook_file, nbformat.NO_CONVERT)
-    output, resource = exporter.from_notebook_node(notebook, {})
-    if sos_file == '__STDOUT__':
-        sys.stdout.write(output)
-    else:
-        with open(sos_file, 'w') as sos:
-            sos.write(output)
-        env.logger.info('SoS script saved to {}'.format(sos_file))
-
-#
-# Converter to Notebook
-#
-def add_cell(cells, content, cell_type, cell_count):
-    # if a section consist of all report, report it as a markdown cell
-    if not content:
-        return
-    if cell_type not in ('code', 'markdown'):
-        env.logger.warning('Unrecognized cell type {}, code assumed.'.format(cell_type))
-    if cell_type == 'markdown' and any(x.strip() and not x.startswith('#! ') for x in content):
-        env.logger.warning('Markdown lines not starting with #!, code cell assumed.')
-        cell_type = 'code'
-    #
-    if cell_type == 'markdown':
-        cells.append(new_markdown_cell(source=''.join([x[3:] for x in content]),
-            execution_count=cell_count))
-    else:
-        cells.append(
-             new_code_cell(
-                 source=''.join(content),
-                 execution_count=cell_count)
-        )
-
-def script_to_notebook(script_file, notebook_file):
-    '''
-    Write a notebook file with the transcript of a SOS file.
-    '''
-    cells = []
-    cell_count = 1
-    cell_type = 'code'
-    content = []
-
-    with open(script_file) as script:
-        first_block = True
-        for line in script:
-            if line.startswith('#') and first_block:
-                if line.startswith('#!'):
-                    continue
-                if line.startswith('#fileformat='):
-                    if not line[12:].startswith('SOS'):
-                        raise RuntimeError('{} is not a SoS script according to #fileformat line.'.format(script_file))
-                    continue
-
-            first_block = False
-
-            mo = SOS_CELL_LINE.match(line)
-            if mo:
-                # eat a new line before the CELL_LINE
-                if content and content[-1] == '\n':
-                    content = content[:-1]
-                # get ride of empty content
-                if not any(x.strip() for x in content):
-                    continue
-                add_cell(cells, content, cell_type, cell_count)
-                cell_count += 1
-
-                cell_type = mo.group(1)
-                content = []
-                continue
-            else:
-                content.append(line)
-    #
-    if content and any(x.strip() for x in content):
-        add_cell(cells, content, cell_type, cell_count)
-    #
-    nb = new_notebook(cells = cells,
-        metadata = {
-            'kernelspec' : {
-                "display_name": "SoS",
-                "language": "sos",
-                "name": "sos"
-            },
-            "language_info": {
-                "file_extension": ".sos",
-                "mimetype": "text/x-sos",
-                "name": "sos",
-                "pygments_lexer": "python"
-            }
-        }
-    )
-    if notebook_file == '__STDOUT__':
-        nbformat.write(nb, sys.stdout, 4)
-    else:
-        with open(notebook_file, 'w') as notebook:
-            nbformat.write(nb, notebook, 4)
-        env.logger.info('SoS script saved to {}'.format(notebook_file))
-
+        os.remove(transcript_file)
+    except:
+        pass
 
 #
 # Output to terminal
@@ -1023,15 +866,19 @@ def parse_term_args(style_args):
             .format(' '.join(style_args), e))
     return vars(args)
 
-def script_to_term(transcript, script_file, style_args):
+def script_to_term(script_file, output_file, style_args):
     '''
-    Write script to terminal
+    Write script to terminal. This converter accepts additional parameters
+    --bg [light|dark] for light or dark theme, and --linenos for output
+    lineno.
     '''
+    transcript_file = transcribe_script(script_file)
+
     sargs = parse_term_args(style_args)
     env.logger.trace('Using style argument {}'.format(sargs))
     formatter = TerminalFormatter(**sargs)
     # remove background definition so that we can use our own
-    with open(transcript) as script:
+    with open(transcript_file) as script:
         content = []
         content_type = None
         # content_number = None
@@ -1062,4 +909,9 @@ def script_to_term(transcript, script_file, style_args):
                 content = [script_line]
     if content:
         write_content(content_type, content, formatter)
+    #
+    try:
+        os.remove(transcript_file)
+    except:
+        pass
 

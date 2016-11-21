@@ -20,10 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import os
 import unittest
-import time
-import shutil
 import signal
 import sys
 import threading
@@ -35,7 +32,6 @@ from contextlib import contextmanager
 
 from sos.sos_script import SoS_Script
 from sos.utils import env
-from sos.sos_eval import  Undetermined
 from sos.docker.client import DockerClient
 from docker.errors import DockerException
 from sos.sos_executor import Base_Executor, ExecuteError

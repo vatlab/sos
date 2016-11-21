@@ -20,7 +20,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import os
 from sos.sos_script import SoS_Script
 from sos.utils import env
 from sos.target import FileTarget

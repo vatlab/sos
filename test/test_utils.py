@@ -28,7 +28,7 @@ import textwrap
 
 # these functions are normally not available but can be imported 
 # using their names for testing purposes
-from sos.utils import env, logger, WorkflowDict, ProgressBar, text_repr
+from sos.utils import env, logger, WorkflowDict, ProgressBar
 from sos.pattern import extract_pattern, expand_pattern
 from sos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_vars, \
     Undetermined, on_demand_options

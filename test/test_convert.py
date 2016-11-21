@@ -25,8 +25,7 @@ import unittest
 import shutil
 
 from sos.utils import env
-from sos.sos_script import SoS_Script
-from sos.converter import script_to_html, script_to_markdown, script_to_notebook, notebook_to_script
+from sos.converter import script_to_html, script_to_markdown
 
 class TestConvert(unittest.TestCase):
     def setUp(self):
@@ -62,22 +61,13 @@ report('this is action report')
     def testScriptToHtml(self):
         '''Test sos show script --html'''
         for script_file in self.scripts:
-            with open('temp/test.transcript', 'w') as transcript:
-                SoS_Script(filename=script_file, transcript=transcript)
-            script_to_html('temp/test.transcript', script_file, script_file + '.html', [])
+            script_to_html(script_file, script_file + '.html', [])
     
     def testScriptToMarkdown(self):
         '''Test sos show script --markdown'''
         for script_file in self.scripts:
-            with open('temp/test.transcript', 'w') as transcript:
-                SoS_Script(filename=script_file, transcript=transcript)
-            script_to_markdown('temp/test.transcript', script_file, script_file + '.md')
+            script_to_markdown(script_file, script_file + '.md', [])
 
-    def testScriptToAndFromNotebook(self):
-        '''Test sos show script --notebook'''
-        for script_file in self.scripts:
-            script_to_notebook(script_file, script_file + '.ipynb')
-            notebook_to_script(script_file + '.ipynb', script_file) 
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestConvert)

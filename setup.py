@@ -140,25 +140,6 @@ sos-runner = sos.__main__:sosrun
 [pygments.lexers]
 sos = sos.converter:SoS_Lexer
 
-[sos_previewers]
-*.pdf,1 = sos.preview:preview_pdf
-*.html,1 = sos.preview:preview_html
-*.csv,1 = sos.preview:preview_csv
-*.xls,1 = sos.preview:preview_xls
-*.xlsx,1 = sos.preview:preview_xls
-*.gz,1 = sos.preview:preview_gz
-*.txt,1 = sos.preview:preview_txt
-*.md,1 = sos.preview:preview_md [md]
-imghdr:what,1 = sos.preview:preview_img [image]
-zipfile:is_zipfile,1 = sos.preview:preview_zip
-tarfile:is_tarfile,1 = sos.preview:preview_tar
-*,0 = sos.preview:preview_txt
-
-*.bam,1 = sos.bioinfo.preview:preview_bam [bam]
-
-[sos_languages]
-R = sos.R.kernel:sos_R [R]
-
 [sos_targets]
 dynamic = sos.target:dynamic
 executable = sos.target:executable
@@ -196,6 +177,34 @@ Rmarkdown = sos.R.actions:Rmarkdown
 [sos_executors]
 rq = sos.rq.sos_executor:RQ_Executor [rq]
 celery = sos.celery.sos_executor:Celery_Executor [celery]
+
+
+[sos_previewers]
+*.pdf,1 = sos.preview:preview_pdf
+*.html,1 = sos.preview:preview_html
+*.csv,1 = sos.preview:preview_csv
+*.xls,1 = sos.preview:preview_xls
+*.xlsx,1 = sos.preview:preview_xls
+*.gz,1 = sos.preview:preview_gz
+*.txt,1 = sos.preview:preview_txt
+*.md,1 = sos.preview:preview_md [md]
+imghdr:what,1 = sos.preview:preview_img [image]
+zipfile:is_zipfile,1 = sos.preview:preview_zip
+tarfile:is_tarfile,1 = sos.preview:preview_tar
+*,0 = sos.preview:preview_txt
+
+*.bam,1 = sos.bioinfo.preview:preview_bam [bam]
+
+[sos_languages]
+R = sos.R.kernel:sos_R [R]
+
+[sos_converters]
+sos_html = sos.converter:script_to_html
+sos_term = sos.converter:script_to_term
+sos_md = sos.converter:script_to_markdown
+sos_ipynb = sos.jupyter.converter:script_to_notebook
+ipynb_sos = sos.jupyter.converter:notebook_to_script
+
 ''',
     extras_require = {
         ':sys_platform=="win32"': ['colorama'],

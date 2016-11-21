@@ -29,14 +29,9 @@
 #
 import unittest
 from contextlib import contextmanager
-from sos.jupyter.kernel import SoS_Kernel
-from jupyter_client import manager
 from ipykernel.tests.utils import assemble_output, start_new_kernel,\
-    flush_channels, stop_global_kernel, execute, wait_for_idle
-from sos.utils import frozendict
+    flush_channels, execute, wait_for_idle
 
-from numpy import array
-import os
 import atexit
 
 KM = None
@@ -44,6 +39,7 @@ KC = None
 
 try:
     import feather
+    feather
     with_feather = True
 except ImportError:
     with_feather = False
@@ -97,6 +93,9 @@ def get_result(iopub):
     # text/plain can have fronzen dict, this is ok,
     from sos.utils import frozendict
     from numpy import array
+    # suppress pyflakes warning
+    frozendict
+    array
     # it can also have dict_keys, we will have to redefine it
     def dict_keys(args):
         return args

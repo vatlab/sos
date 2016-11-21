@@ -24,14 +24,6 @@ import os
 import unittest
 import time
 import shutil
-import signal
-import sys
-import threading
-try:
-    import _thread
-except:
-    import _dummy_thread as _thread
-from contextlib import contextmanager
 
 from sos.sos_script import SoS_Script
 from sos.utils import env
