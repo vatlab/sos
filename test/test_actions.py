@@ -36,7 +36,6 @@ from contextlib import contextmanager
 from sos.sos_script import SoS_Script
 from sos.utils import env
 from sos.sos_eval import  Undetermined
-from sos.actions import DockerClient
 from sos.sos_executor import Base_Executor, ExecuteError
 from sos.target import FileTarget
 

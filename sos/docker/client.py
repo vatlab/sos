@@ -32,7 +32,7 @@ import shutil
 from io import BytesIO
 from docker import Client
 from docker.utils import kwargs_from_env
-from .utils import env
+from sos.utils import env
 
 #
 # docker support

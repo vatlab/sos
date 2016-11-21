@@ -1337,7 +1337,7 @@ run:
     touch a.txt
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run(args=['a=10'])
+        Base_Executor(wf).run()
         self.assertFalse(os.path.isfile('a.txt'))
 
 if __name__ == '__main__':
