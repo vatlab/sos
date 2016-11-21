@@ -1,0 +1,25 @@
+#!/usr/bin/env sos-runner
+#fileformat=SOS1.0
+
+parameter: version = str
+
+[10 (update version)]
+sh:
+	perl -pi.bak -e "s/^__version__ = .*/__version__ = '${version}'/" ../sos/_version.py
+
+
+[20 (pip)]
+cur_ver = get_output("pip list --format=legacy | grep sos | cut -d' ' -f2")[1:-2]
+
+# do not upload if the version on pip is the current one
+print(cur_ver == version)
+stop_if(cur_ver == version)
+
+sh:	workdir='..'
+	python setup.py sdist upload
+
+[30 (test install)]
+sh:
+	pip install sos --upgrade
+
+
