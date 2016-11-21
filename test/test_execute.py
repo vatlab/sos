@@ -30,7 +30,7 @@ from sos.sos_script import SoS_Script
 from sos._version import __version__
 from sos.utils import env, WorkflowDict
 from sos.sos_eval import Undetermined, SoS_exec
-from sos.sos_executor import Base_Executor, MP_Executor, Interactive_Executor, ExecuteError
+from sos.sos_executor import Base_Executor, MP_Executor, ExecuteError
 from sos.sos_script import ParsingError
 from sos.target import FileTarget
 import subprocess

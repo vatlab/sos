@@ -21,18 +21,22 @@
 #
 
 import os
+import sys
 import re
 import unittest
 
 def importTests():
     tests = unittest.TestSuite()
-    for file in os.listdir('.'):
-        match = re.match("^(test_(.*))\\.py$", file)
-        if match:
+    for root, dirs, files in os.walk('..'):
+        files[:] = [x for x in files if re.match("^(test_(.*))\\.py$", x)]
+        for file in files:
+            match = re.match("^(test_(.*))\\.py$", file)
             m = match.group(1)
-            print("Adding test cases in %s" % m)
+            print("Adding test cases in {}/{}".format(root, file))
+            sys.path.insert(0, root)
             module = __import__(m)
             tests.addTest(unittest.defaultTestLoader.loadTestsFromModule( module ))
+        dirs[:] = [x for x in dirs if not x.startswith('.') and x not in ('dist', 'build', 'development')]
     return tests
 
 if __name__ == '__main__':

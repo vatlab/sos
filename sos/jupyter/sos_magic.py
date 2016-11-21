@@ -45,11 +45,14 @@
 import copy
 from sos.utils import env, WorkflowDict
 from sos.sos_eval import SoS_exec, SoS_eval
-from sos.sos_executor import Interactive_Executor
 
 from IPython.core.error import UsageError
 from IPython.lib.clipboard import ClipboardEmpty
 from IPython.core.magic import Magics, magics_class, line_magic, line_cell_magic
+
+# cannot use relative import because the module will be copied to 
+# ~/.ipython/extensions
+from sos.jupyter.sos_executor import Interactive_Executor
 
 # The class MUST call this class decorator at creation time
 @magics_class

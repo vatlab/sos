@@ -29,7 +29,7 @@
 #
 import unittest
 from contextlib import contextmanager
-from sos.kernel import SoS_Kernel
+from sos.jupyter.kernel import SoS_Kernel
 from jupyter_client import manager
 from ipykernel.tests.utils import assemble_output, start_new_kernel,\
     flush_channels, stop_global_kernel, execute, wait_for_idle
