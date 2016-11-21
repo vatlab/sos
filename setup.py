@@ -31,7 +31,7 @@ with open('sos/_version.py') as version:
     exec(version.read())
 
 kernel_json = {
-    "argv":         ["python", "-m", "sos.kernel", "-f", "{connection_file}"],
+    "argv":         ["python", "-m", "sos.jupyter.kernel", "-f", "{connection_file}"],
     "display_name": "SoS",
     "language":     "sos",
 }
@@ -73,8 +73,8 @@ class InstallWithConfigurations(install):
         if not os.path.isdir(prof_dir):
             os.makedirs(prof_dir)
         #
-        shutil.copy('misc/sos_magic.py', ext_file)
-        shutil.copy('misc/sos_ipython_profile.py', prof_file)
+        shutil.copy('sos/jupyter/sos_magic.py', ext_file)
+        shutil.copy('sos/jupyter/sos_ipython_profile.py', prof_file)
         #
         log.info('\nSoS is installed and configured to use with vim, ipython, and Jupyter.')
         log.info('Use "set syntax=sos" to enable syntax highlighting.')
@@ -83,7 +83,7 @@ class InstallWithConfigurations(install):
         # Now write the kernelspec
         with TemporaryDirectory() as td:
             os.chmod(td, 0o755)  # Starts off as 700, not user readable
-            shutil.copy('misc/sos_codemirror.js', os.path.join(td, 'kernel.js'))
+            shutil.copy('sos/jupyter/sos_codemirror.js', os.path.join(td, 'kernel.js'))
             with open(os.path.join(td, 'kernel.json'), 'w') as f:
                 json.dump(kernel_json, f, sort_keys=True)
             try:

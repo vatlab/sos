@@ -1249,29 +1249,3 @@ class MP_Step_Executor(SP_Step_Executor):
         elif stage == 'output':
             if env.sos_dict['output'] is not None:
                 env.logger.info('{} output:   ``{}``'.format(self.step.step_name(), short_repr(env.sos_dict['output'])))
-
-class Interactive_Step_Executor(Base_Step_Executor):
-    def __init__(self, step):
-        env.run_mode = 'interactive'
-        Base_Step_Executor.__init__(self, step)
-
-    def expand_input_files(self, value, *args):
-        # We ignore 'dynamic' option in run mode
-        # if unspecified, use __step_output__ as input (default)
-        if not args:
-            return env.sos_dict['input']
-        else:
-            return _expand_file_list(False, *args)
-
-    def expand_depends_files(self, *args):
-        '''handle directive depends'''
-        return _expand_file_list(False, *args)
-
-    def expand_output_files(self, value, *args):
-        return _expand_file_list(True, *args)
-
-    def log(self, stage=None, msg=None):
-        return
-
-    def collect_result(self):
-        return self.last_res

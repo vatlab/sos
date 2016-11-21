@@ -81,7 +81,7 @@ def patch_spyder2():
             if has_cfg and not os.path.isfile(cfg_file + '.sos_bak'):
                 os.rename(cfg_file, cfg_file + '.sos_bak')
             with open(cfg_file, 'w') as cfg:
-                cfg.write("c.IPKernelApp.kernel_class =  'sos.kernel.SoS_Kernel'\n")
+                cfg.write("c.IPKernelApp.kernel_class =  'sos.jupyter.kernel.SoS_Kernel'\n")
         app.exec_()
     finally:
         if options.kernel == 'sos':
@@ -158,7 +158,7 @@ def patch_spyder3():
             if has_cfg and not os.path.isfile(cfg_file + '.sos_bak'):
                 os.rename(cfg_file, cfg_file + '.sos_bak')
             with open(cfg_file, 'w') as cfg:
-                cfg.write("c.IPKernelApp.kernel_class =  'sos.kernel.SoS_SpyderKernel'\n")
+                cfg.write("c.IPKernelApp.kernel_class =  'sos.jupyter.kernel.SoS_SpyderKernel'\n")
         app.exec_()
     finally:
         if options.kernel == 'sos':
