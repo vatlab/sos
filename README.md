@@ -17,7 +17,7 @@ single [Jupyter notebook](http://jupyter.org/), with seamless integration
 of multiple Jupyter kernels (e.g. python, and
 [R](https://github.com/IRkernel/IRkernel)). You can check out 
 example notebooks and create new ones from [our public Jupyter
-server](http://34.192.184.206:8000/).
+server](http://ec2-34-192-184-206.compute-1.amazonaws.com:8000/).
 
 As a **workflow engine**, SoS helps you oraganize your commands and scripts in different languages into readable workflows that can be easily understood and modified by others. The workflows can be specified in both forward (step by step), makefile (dependency rules) and even a mixture of both styles. Beacuse of a great emphasis on readability, SoS is an easy-to-use alternative to specialized workflow systems such as [CWL](http://common-workflow-language.github.io/draft-3/) which makes it an ideal tool for the creation and maintainance of workflows that need to be frequently updated and shared with others.
 
@@ -88,7 +88,7 @@ your local directory available to the Jupyter server using command
 
 This command mounts your home directory (`$HOME`) to the docker machine but
 you can specify any local directory. This container is hosted at [our public Jupyter
-server](http://34.192.184.206:8000/) from which you can open our sample
+server](http://ec2-34-192-184-206.compute-1.amazonaws.com:8000/) from which you can open our sample
 notebooks and create your own notebooks without installing anything.
 
 ## Documentation
