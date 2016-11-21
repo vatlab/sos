@@ -270,12 +270,12 @@ class SoS_Kernel(Kernel):
         self.shell.enable_gui = lambda x: False
         self.previewers = None
 
-        self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
-        if os.path.isfile(self.report_file):
-            os.remove(self.report_file)
+        #self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
+        #if os.path.isfile(self.report_file):
+        #    os.remove(self.report_file)
         # touch the file
-        with open(self.report_file, 'w'):
-            pass
+        #with open(self.report_file, 'w'):
+        #    pass
         self.original_keys = None
 
     def _reset_dict(self):
@@ -286,7 +286,7 @@ class SoS_Kernel(Kernel):
         self.executor = Interactive_Executor()
         self.original_keys = set(env.sos_dict._dict.keys())
         self.original_keys.add('__builtins__')
-        env.sos_dict.set('__summary_report__', self.report_file)
+        #env.sos_dict.set('__summary_report__', self.report_file)
 
     @contextlib.contextmanager
     def redirect_sos_io(self):
@@ -726,18 +726,18 @@ class SoS_Kernel(Kernel):
         #
         if not silent:
             # Send standard output
-            if os.path.isfile('.sos/report.md'):
-                with open('.sos/report.md') as sr:
-                    sos_report = sr.read()
-                with open(self.report_file, 'a') as summary_report:
-                    summary_report.write(sos_report + '\n\n')
-                if sos_report.strip():
-                    self.send_response(self.iopub_socket, 'display_data',
-                        {
-                            'source': 'SoS',
-                            'metadata': {},
-                            'data': {'text/markdown': sos_report}
-                        })
+            #if os.path.isfile('.sos/report.md'):
+            #    with open('.sos/report.md') as sr:
+            #        sos_report = sr.read()
+                #with open(self.report_file, 'a') as summary_report:
+                #    summary_report.write(sos_report + '\n\n')
+            #    if sos_report.strip():
+            #        self.send_response(self.iopub_socket, 'display_data',
+            #            {
+            #                'source': 'SoS',
+            #                'metadata': {},
+            #                'data': {'text/markdown': sos_report}
+            #            })
             #
             if 'input' in env.sos_dict:
                 input_files = env.sos_dict['input']
