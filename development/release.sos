@@ -43,10 +43,10 @@ with open('docker-notebook/Dockerfile', 'a') as dockerfile:
 	for example in examples:
 		dockerfile.write('COPY ${example.replace("docker-notebook", ".")} /home/jovyan/work\n')
 sh:
-	docker build -t mdabioinfo/sos docker-base
+	docker build --no-cache -t mdabioinfo/sos docker-base
 	docker push mdabioinfo/sos
 
-	docker build -t mdabioinfo/sos-notebook docker-notebook
+	docker build --no-cache -t mdabioinfo/sos-notebook docker-notebook
 	docker push mdabioinfo/sos-notebook
 
 [40 (update public jupyter server)]
