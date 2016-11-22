@@ -9,17 +9,10 @@ sh:
 
 
 [20 (upload to pip)]
-# first install the latest version...
-# upload source package if needed
-# then install from pip for testing
-sh:
-	pip install sos --upgrade
-
 # check the version of the latest version
-cur_ver = get_output("pip list --format=legacy | grep sos | cut -d' ' -f2")[1:-2]
+cur_ver = get_output("pip show sos | grep Version | cut -d' ' -f2").strip()
 
 # do not upload if the version on pip is the current one
-print(cur_ver == version)
 stop_if(cur_ver == version)
 
 sh:	workdir='..'
