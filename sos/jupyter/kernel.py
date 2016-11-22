@@ -37,7 +37,6 @@ from sos.utils import env, WorkflowDict, short_repr, pretty_size, _parse_error
 from sos._version import __sos_version__, __version__
 from sos.sos_eval import SoS_exec, SoS_eval, interpolate
 from sos.sos_syntax import SOS_SECTION_HEADER
-from sos.converter import SoS_Exporter
 
 from IPython.core.interactiveshell import InteractiveShell
 from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_clipboard_get
@@ -51,6 +50,7 @@ from textwrap import dedent
 from io import StringIO
 
 from .sos_executor import Interactive_Executor
+from .converter import SoS_Exporter
 
 class FlushableStringIO(StringIO):
     '''This is a string buffer for output, but it will only
