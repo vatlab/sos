@@ -8,7 +8,14 @@ sh:
 	perl -pi.bak -e "s/^__version__ = .*/__version__ = '${version}'/" ../sos/_version.py
 
 
-[20 (pip)]
+[20 (upload to pip)]
+# first install the latest version...
+# upload source package if needed
+# then install from pip for testing
+sh:
+	pip install sos --upgrade
+
+# check the version of the latest version
 cur_ver = get_output("pip list --format=legacy | grep sos | cut -d' ' -f2")[1:-2]
 
 # do not upload if the version on pip is the current one
@@ -17,9 +24,29 @@ stop_if(cur_ver == version)
 
 sh:	workdir='..'
 	python setup.py sdist upload
-
-[30 (test install)]
-sh:
 	pip install sos --upgrade
 
+[30 (update docker image)]
+# add lines such as
+#     COPY ./examples/NotebookTutorial.ipynb /home/jovyan/work
+# to docker file
+#
+# and rebuild two docker images
+#
+depends: executable('docker')
 
+import glob
+import shutil
+examples = glob.glob('docker-notebook/examples/*.ipynb')
+shutil.copy('docker-notebook/Dockerfile.in', 'docker-notebook/Dockerfile')
+with open('docker-notebook/Dockerfile', 'a') as dockerfile:
+	for example in examples:
+		dockerfile.write('COPY ${example.replace("docker-notebook", ".")} /home/jovyan/work\n')
+sh:
+	docker build -t mdabioinfo/sos docker-base
+	docker push mdabioinfo/sos
+
+	docker build -t mdabioinfo/sos-notebook docker-notebook
+	docker push mdabioinfo/sos-notebook
+
+[40 (update public jupyter server)]
