@@ -1052,6 +1052,29 @@ def sos_handle_parameter_(key, defvalue):
     '''Parse command line arguments and set values to parameters section.
     NOTE: parmeters will not be handled if it is already defined in
     the environment. This makes the parameters variable.
+
+    #291: There is a problem of having parameter coincide with name of sos
+    actions. For example,
+
+    parameter: perl='perl'
+
+    allows users to set a full path to perl executable, which is a valid request.
+    However, before sos has the name "perl", the parameter will take the value
+    of system perl because the name aleady exists.
+
+    We can disallow parameter that share names with sos keyword but because sos
+    is expected to grow, a working script might not work with updated sos.
+
+    So a more natural way is to allow users to override SoS keyword. This
+    involves two things:
+
+    1. keyword should be processed as usual in case that a symbol with the
+    same name is in sos_dict.
+
+    2. keyword will not be replaced when sos-dict is reloaded. That is to say
+
+      a. we should not avoid re-loading sos symbols.
+      b. if this has to be done, we should not override existing variables.
     '''
     if key in env.sos_dict:
         #env.logger.debug('Parameter {} takes default value because it already exists.'.format(key))
