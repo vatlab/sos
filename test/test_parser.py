@@ -366,15 +366,16 @@ parameter: b = False
         Base_Executor(wf, args=['--no-b']).prepare()
         self.assertEqual(env.sos_dict['b'], False)
         #
-        # parameters are masked by previous definition
+        # parameters cannot coincide with a readonly global variable
+        # are masked by previous definition
         script = SoS_Script('''
 a = 4
 parameter: a = 5
 [0]
 ''')
         wf = script.workflow()
-        Base_Executor(wf, args=['--a', 7]).prepare()
-        self.assertEqual(env.sos_dict['a'], 4)
+        self.assertRaises(Exception, Base_Executor(wf, args=['--a', 7]).prepare)
+        #self.assertEqual(env.sos_dict['a'], 4)
         #
         # test parameters with dash
         script = SoS_Script('''
@@ -1337,8 +1338,7 @@ run:
     touch a.txt
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
-        self.assertFalse(os.path.isfile('a.txt'))
+        self.assertRaises(Exception, Base_Executor(wf).run)
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestParser)
