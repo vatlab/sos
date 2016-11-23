@@ -126,8 +126,6 @@ def get_previewers():
     group = 'sos_previewers'
     result = []
     for entrypoint in pkg_resources.iter_entry_points(group=group):
-        # Grab the function that is the actual plugin.
-        plugin = entrypoint.load()
         # if ':' in entry point name, it should be a function
         try:
             name, priority = entrypoint.name.split(',', 1)
@@ -141,11 +139,11 @@ def get_previewers():
             try:
                 mod, func = name.split(':')
                 imported = importlib.import_module(mod)
-                result.append((getattr(imported, func), plugin, priority))
+                result.append((getattr(imported, func), entrypoint, priority))
             except ImportError:
                 env.logger.warning('Failed to load function {}:{}'.format(mod, func))
         else:
-            result.append((name, plugin, priority))
+            result.append((name, entrypoint, priority))
     #
     result.sort(key=lambda x: -x[2])
     with open('a.txt', 'w') as ss:
@@ -791,13 +789,17 @@ class SoS_Kernel(Kernel):
         for x,y,_ in self.previewers:
             if isinstance(x, str):
                 if fnmatch.fnmatch(os.path.basename(filename), x):
-                    previewer_func = y
+                    # we load entrypoint only before it is used. This is to avoid
+                    # loading previewers that require additional external modules
+                    # we can cache the loaded function but there does not seem to be
+                    # a strong performance need for this.
+                    previewer_func = y.load()
                     break
             else:
                 # it should be a function
                 try:
                     if x(filename):
-                        previewer_func = y
+                        previewer_func = y.load()
                         break
                 except Exception as e:
                     self.warn(e)
