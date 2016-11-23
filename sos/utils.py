@@ -158,9 +158,7 @@ def short_repr(obj, noneAsNA=False):
 # SoS Workflow dictionary
 #
 class WorkflowDict(object):
-    """A dictionary object that
-    1. Generate logging message for debugging purposes.
-    2. Generate warning message if ALLCAP variables are changed.
+    """A dictionary object that keeps all SoS workflow objects.
 
     IMPORTANT:
 

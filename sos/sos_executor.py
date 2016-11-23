@@ -100,6 +100,7 @@ class Base_Executor:
                 sig.write('# runtime signatures\n')
         else:
             self.md5 = None
+        #
 
     def create_signature(self):
         with StringIO() as sig:
@@ -115,9 +116,10 @@ class Base_Executor:
         # if creating a new dictionary, set it up with some basic varibles
         # and functions
         if self.nested:
-            SoS_exec('import os, sys, glob', None)
-            SoS_exec('from sos.runtime import *', None)
-            self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
+            #
+            # if this is a nested workflow, we do not clear sos_dict because it contains all
+            # the symbols from the main workflow. _base_symbols need to be defined though.
+            self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
             self._base_symbols -= {'dynamic'}
             return
 
@@ -163,7 +165,7 @@ class Base_Executor:
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
-        self._base_symbols = set(dir(builtins)) | set(env.sos_dict.keys()) | set(SOS_KEYWORDS) | set(keyword.kwlist)
+        self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
         self._base_symbols -= {'dynamic'}
 
     def skip(self, section):
@@ -279,7 +281,6 @@ class Base_Executor:
 
     def initialize_dag(self, targets=None):
         '''Create a DAG by analyzing sections statically.'''
-        '''Run the script in prepare mode to prepare resources.'''
         # this is for testing only and allows tester to call initialize_dag
         # directly to get a DAG
         if not hasattr(self, '_base_symbols'):
