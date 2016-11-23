@@ -83,8 +83,9 @@ class FlushableStringIO(StringIO):
             content = '\n'.join(lines[:180]) + \
                 '\n-- {} lines --\n'.format(self.nlines - 190) + \
                 '\n'.join(lines[-10:])
-        self.kernel.send_response(self.kernel.iopub_socket, 'stream',
-            {'name': self.name, 'text': content})
+        if content.strip():
+            self.kernel.send_response(self.kernel.iopub_socket, 'stream',
+                {'name': self.name, 'text': content})
         self.truncate(0)
         self.seek(0)
         self.nlines = 0
@@ -334,8 +335,9 @@ class SoS_Kernel(Kernel):
         return {'status': 'incomplete', 'indent': ''}
 
     def warn(self, message):
-        self.send_response(self.iopub_socket, 'stream',
-            {'name': 'stderr', 'text': message})
+        if message.strip():
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stderr', 'text': message})
 
     def get_magic_and_code(self, code, warn_remaining=False):
         lines = code.split('\n')
