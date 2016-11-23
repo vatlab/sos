@@ -153,15 +153,15 @@ def analyze_section(section, default_input=None):
     #
     if section.global_def:
         try:
-            SoS_exec('''
-if 'sos_handle_parameter_' in globals():
-    del sos_handle_parameter_
-''' + section.global_def, section.global_sigil)
+            SoS_exec('del sos_handle_parameter_\n' + section.global_def, section.global_sigil)
         except RuntimeError as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
                 section.global_def, e))
+        finally:
+            SoS_exec('from sos.runtime import sos_handle_parameter_', None)
+
     #
     # 2. look for input statement
     if 'shared' in section.options:

@@ -361,7 +361,7 @@ class Base_Executor:
         if targets:
             dag = dag.subgraph_from(targets)
         # write DAG for debugging purposes
-        dag.write_dot(os.path.join(env.exec_dir, '.sos', '{}.dot'.format(self.workflow.name)))
+        #dag.write_dot(os.path.join(env.exec_dir, '.sos', '{}.dot'.format(self.workflow.name)))
         # check error
         cycle = dag.circular_dependencies()
         if cycle:
@@ -395,8 +395,6 @@ class Base_Executor:
             for t in targets:
                 if not FileTarget(t).exists('target'):
                     FileTarget(t).remove('signature')
-        #
-        SoS_exec('from sos.runtime import sos_handle_parameter_', None)
         #
         prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
         self.reset_dict()
@@ -546,8 +544,6 @@ class MP_Executor(Base_Executor):
         env.sos_dict.set('run_mode', env.run_mode)
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
-        #
-        SoS_exec('from sos.runtime import sos_handle_parameter_', None)
 
         # process step of the pipelinp
         #
