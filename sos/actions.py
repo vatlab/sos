@@ -69,78 +69,60 @@ def SoS_Action(run_mode=['run', 'interactive']):
     run_mode = [run_mode] if isinstance(run_mode, str) else run_mode
     def runtime_decorator(func):
         def action_wrapper(*args, **kwargs):
-            try:
-                old_mode = env.run_mode
-                if 'run_mode' in kwargs:
-                    if not isinstance(kwargs['run_mode'], str):
-                        raise ValueError('A string is required for option run_mode, {} provided.'
-                            .format(kwargs['run_mode']))
-                    if kwargs['run_mode'] not in ['interactive']:
-                        raise ValueError('Parameter run_mode can only be prepare, or interactive')
-                    top_mode = 'run' if 'run' in run_mode else 'prepare'
-                    if env.run_mode == top_mode and top_mode != kwargs['run_mode']:
-                        # if run has been moved away, do nothing
+            # docker files will be downloaded in run or prepare mode
+            if 'docker_file' in kwargs and env.run_mode in ['run', 'interactive']:
+                docker = DockerClient()
+                docker.import_image(kwargs['docker_file'])
+            # handle image
+            if 'docker_image' in kwargs:
+                docker = DockerClient()
+                docker.pull(kwargs['docker_image'])
+                if env.run_mode in ['interactive']:
+                    mem = docker.total_memory(kwargs['docker_image'])
+                    if mem is not None:
+                        if mem < 4000000: # < 4G
+                            env.logger.warning('Docker machine has {:.1f} GB of total memory and might not be enough for your operation. Please refer to https://github.com/bpeng2000/SOS/wiki/SoS-Docker-guide to adjust the docker machine if needed.'
+                                .format(mem/1024/1024))
+                        else:
+                            env.logger.debug('Docker machine has {:.1f} GB of total memory ram'.format(mem/1024/1024))
+            if env.run_mode not in run_mode:
+                # return dynamic expression when not in run mode, that is to say
+                # the script logic cannot rely on the result of the action
+                return Undetermined(func.__name__)
+            if env.run_mode == 'interactive':
+                for k,v in kwargs.items():
+                    if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
+                        env.logger.warning('Passing runtime option "{0}" to action is deprecated. Please use "task: {0}={1}" before action instead.'.format(k, v))
+            if 'active' in kwargs:
+                if isinstance(kwargs['active'], int):
+                    if kwargs['active'] >= 0 and env.sos_dict['_index'] != kwargs['active']:
                         return None
-                    elif env.run_mode == kwargs['run_mode']:
-                        env.run_mode = top_mode
-
-                # docker files will be downloaded in run or prepare mode
-                if 'docker_file' in kwargs and env.run_mode in ['run', 'interactive']:
-                    docker = DockerClient()
-                    docker.import_image(kwargs['docker_file'])
-                # handle image
-                if 'docker_image' in kwargs:
-                    docker = DockerClient()
-                    docker.pull(kwargs['docker_image'])
-                    if env.run_mode in ['interactive']:
-                        mem = docker.total_memory(kwargs['docker_image'])
-                        if mem is not None:
-                            if mem < 4000000: # < 4G
-                                env.logger.warning('Docker machine has {:.1f} GB of total memory and might not be enough for your operation. Please refer to https://github.com/bpeng2000/SOS/wiki/SoS-Docker-guide to adjust the docker machine if needed.'
-                                    .format(mem/1024/1024))
-                            else:
-                                env.logger.debug('Docker machine has {:.1f} GB of total memory ram'.format(mem/1024/1024))
-                if env.run_mode not in run_mode:
-                    # return dynamic expression when not in run mode, that is to say
-                    # the script logic cannot rely on the result of the action
-                    return Undetermined(func.__name__)
-                if env.run_mode == 'interactive':
-                    for k,v in kwargs.items():
-                        if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
-                            env.logger.warning('Passing runtime option "{0}" to action is deprecated. Please use "task: {0}={1}" before action instead.'.format(k, v))
-                if 'active' in kwargs:
-                    if isinstance(kwargs['active'], int):
-                        if kwargs['active'] >= 0 and env.sos_dict['_index'] != kwargs['active']:
-                            return None
-                        if kwargs['active'] < 0 and env.sos_dict['_index'] != kwargs['active'] + env.sos_dict['__num_groups__']:
-                            return None
-                    elif isinstance(kwargs['active'], Sequence):
-                        allowed_index = list([x if x >= 0 else env.sos_dict['__num_groups__'] + x for x in kwargs['active']])
-                        if env.sos_dict['_index'] not in allowed_index:
-                            return None
-                    elif isinstance(kwargs['active'], slice):
-                        allowed_index = list(range(env.sos_dict['__num_groups__']))[kwargs['active']]
-                        if env.sos_dict['_index'] not in allowed_index:
-                            return None
-                    else:
-                        raise RuntimeError('Unacceptable value for option active: {}'.format(kwargs['active']))
-                if 'workdir' in kwargs:
-                    if not kwargs['workdir'] or not isinstance(kwargs['workdir'], str):
-                        raise RuntimeError('workdir option should be a path, {} provided'.format(kwargs['workdir']))
-                    if not os.path.isdir(os.path.expanduser(kwargs['workdir'])):
-                        os.makedirs(os.path.expanduser(kwargs['workdir']))
-                    try:
-                        olddir = os.getcwd()
-                        os.chdir(os.path.expanduser(kwargs['workdir']))
-                        res = func(*args, **kwargs)
-                    finally:
-                        os.chdir(olddir)
+                    if kwargs['active'] < 0 and env.sos_dict['_index'] != kwargs['active'] + env.sos_dict['__num_groups__']:
+                        return None
+                elif isinstance(kwargs['active'], Sequence):
+                    allowed_index = list([x if x >= 0 else env.sos_dict['__num_groups__'] + x for x in kwargs['active']])
+                    if env.sos_dict['_index'] not in allowed_index:
+                        return None
+                elif isinstance(kwargs['active'], slice):
+                    allowed_index = list(range(env.sos_dict['__num_groups__']))[kwargs['active']]
+                    if env.sos_dict['_index'] not in allowed_index:
+                        return None
                 else:
+                    raise RuntimeError('Unacceptable value for option active: {}'.format(kwargs['active']))
+            if 'workdir' in kwargs:
+                if not kwargs['workdir'] or not isinstance(kwargs['workdir'], str):
+                    raise RuntimeError('workdir option should be a path, {} provided'.format(kwargs['workdir']))
+                if not os.path.isdir(os.path.expanduser(kwargs['workdir'])):
+                    os.makedirs(os.path.expanduser(kwargs['workdir']))
+                try:
+                    olddir = os.getcwd()
+                    os.chdir(os.path.expanduser(kwargs['workdir']))
                     res = func(*args, **kwargs)
-                return res
-            finally:
-                # restore run_mode is the run mode is changed by parameter run_mode
-                env.run_mode = old_mode
+                finally:
+                    os.chdir(olddir)
+            else:
+                res = func(*args, **kwargs)
+            return res
         action_wrapper.run_mode = run_mode
         return action_wrapper
     return runtime_decorator
