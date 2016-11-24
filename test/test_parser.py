@@ -23,6 +23,7 @@
 import os
 import unittest
 import subprocess
+import shutil
 
 from sos.utils import env, ArgumentError
 from sos.sos_script import SoS_Script, ParsingError
@@ -1049,6 +1050,8 @@ sos_run(wf)
         # nested subworkflow with step option and others
         self.touch(['a.txt', 'b.txt'])
         #
+        shutil.rmtree('.sos')
+        os.makedirs('.sos/.runtime')
         with open('inc.sos', 'w') as sos:
             sos.write('''
 # test sos script
@@ -1086,6 +1089,8 @@ sos_run('A')
         self.assertEqual(env.sos_dict['parB'], 10)
         self.assertEqual(env.sos_dict['executed'], ['b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
         #
+        shutil.rmtree('.sos')
+        os.makedirs('.sos/.runtime')
         script = SoS_Script('''
 %include inc as k
 
