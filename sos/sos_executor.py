@@ -33,7 +33,7 @@ from queue import Empty
 
 from io import StringIO
 from ._version import __version__
-from .sos_step import Dryrun_Step_Executor, Prepare_Step_Executor, SP_Step_Executor, MP_Step_Executor, \
+from .sos_step import Dryrun_Step_Executor, SP_Step_Executor, MP_Step_Executor, \
     analyze_section
 from .utils import env, Error, WorkflowDict, get_traceback, ProgressBar, frozendict, dict_merge, short_repr
 from .sos_eval import SoS_exec
@@ -47,7 +47,7 @@ __all__ = []
 
 
 class ExecuteError(Error):
-    """Raised when there are errors in prepare mode. Such errors are not raised
+    """Raised when there are errors in dryrun mode. Such errors are not raised
     immediately, but will be collected and raised at the end """
 
     def __init__(self, workflow):
@@ -436,8 +436,6 @@ class Base_Executor:
             q = mp.Queue()
             if mode == 'run':
                 executor = SP_Step_Executor(section, q)
-            elif mode == 'prepare':
-                executor = Prepare_Step_Executor(section, q)
             else:
                 executor = Dryrun_Step_Executor(section, q)
             p = mp.Process(target=executor.run)
@@ -514,13 +512,6 @@ class Base_Executor:
         except RuntimeError as e:
             env.logger.warning('Workflow cannot be completed in dryrun mode: {}'.format(e))
 
-    def prepare(self, targets=None):
-        '''Execute the script in prepare mode.'''
-        try:
-            self.run(targets=targets, mode='prepare')
-        # only runtime errors are ignored
-        except RuntimeError as e:
-            env.logger.warning('Workflow cannot be completed in prepare mode: {}'.format(e))
 
 class MP_Executor(Base_Executor):
     #

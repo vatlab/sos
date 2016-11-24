@@ -1059,23 +1059,6 @@ class Dryrun_Step_Executor(Queued_Step_Executor):
         else:
             return _expand_file_list(True, *args)
 
-class Prepare_Step_Executor(Dryrun_Step_Executor):
-    '''Run script in prepare mode'''
-    def __init__(self, step, queue):
-        env.run_mode = 'dryrun'
-        Dryrun_Step_Executor.__init__(self, step, queue)
-
-    def log(self, stage=0, msg=None):
-        if stage == 'start':
-            env.logger.info('Preparing ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
-        elif stage == 'input':
-            if env.sos_dict['input'] is not None:
-                env.logger.info('input:    ``{}``'.format(short_repr(env.sos_dict['input'])))
-        elif stage == 'output':
-            if env.sos_dict['output'] is not None:
-                env.logger.info('output:   ``{}``'.format(short_repr(env.sos_dict['output'])))
-
-
 class SP_Step_Executor(Queued_Step_Executor):
     '''Single process step executor'''
     def __init__(self, step, queue):
@@ -1095,7 +1078,6 @@ class SP_Step_Executor(Queued_Step_Executor):
                     # remove the signature and regenerate the file
                     FileTarget(target).remove('signature')
                     raise RemovedTarget(target)
-
 
     def log(self, stage=None, msg=None):
         if stage == 'start':
