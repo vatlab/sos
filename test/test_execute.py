@@ -1672,8 +1672,9 @@ with open('b.txt', 'w') as txt:
         ret2 = subprocess.Popen('sos run lock -j1', shell=True)
         ret1.wait()
         ret2.wait()
-        # two processes execute A_1 and A_2 separately
-        self.assertLess(time.time() - st, 5)
+        # two processes execute A_1 and A_2 separately, usually
+        # takes less than 5 seconds
+        self.assertLess(time.time() - st, 7)
 
 
     def testOutputFromSignature(self):

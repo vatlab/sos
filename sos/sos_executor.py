@@ -124,6 +124,7 @@ class Base_Executor:
             return
 
         env.sos_dict = WorkflowDict()
+        env.parameter_vars.clear()
 
         # inject a few things
         env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
