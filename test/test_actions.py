@@ -73,7 +73,7 @@ from sos.actions import SoS_Action
 def func_run():
     return 1
 
-@SoS_Action(run_mode=['run', 'prepare'])
+@SoS_Action(run_mode=['run', 'dryrun'])
 def func_both():
     return 1
 
@@ -82,9 +82,9 @@ b=func_run()
 c=func_both()
 """)
         wf = script.workflow()
-        Base_Executor(wf).prepare()
+        Base_Executor(wf).dryrun()
         self.assertTrue(isinstance(env.sos_dict['b'], Undetermined))
-        self.assertEqual(env.sos_dict['c'], 1)
+        self.assertTrue(isinstance(env.sos_dict['c'], Undetermined))
         #
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], 1)
@@ -124,7 +124,7 @@ ret = get_output('echo blah', show_command=True, prompt='% ')
 get_output('catmouse')
 """)
         wf = script.workflow()
-        # should fail in prepare mode
+        # should fail in dryrun mode
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
         #
         #
@@ -145,7 +145,7 @@ input: 'a.txt'
 fail_if(len(input) == 1)
 """)
         wf = script.workflow()
-        # should fail in prepare mode
+        # should fail in dryrun mode
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
         script = SoS_Script(r"""
 [0]
@@ -162,7 +162,7 @@ warn_if(input is None, 'Expect to see a warning message')
 """)
         wf = script.workflow()
         # should see a warning message.
-        Base_Executor(wf).prepare()
+        Base_Executor(wf).dryrun()
         #self.assertRaises(ExecuteError, Base_Executor(wf).run)
         script = SoS_Script(r"""
 [0]
@@ -183,7 +183,7 @@ stop_if(_rep > 10)
 result.append(_rep)
 ''')
         wf = script.workflow()
-        Base_Executor(wf).prepare()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['result'], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
     def testRun(self):
@@ -403,7 +403,7 @@ download(['http://bioinformatics.mdanderson.org/Software/VariantTools/repository
     dest_dir='tmp', decompress=True)
 ''')
         wf = script.workflow()
-        Base_Executor(wf).prepare()
+        Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('tmp/snapshot.proj'))
         self.assertTrue(os.path.isfile('tmp/snapshot_genotype.DB'))
         #
@@ -415,7 +415,7 @@ download: dest_file='tmp/test.ann'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
 ''')
         wf = script.workflow()
-        Base_Executor(wf).prepare()
+        Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('tmp/test.ann'))
         # test option dest_dir
         script = SoS_Script(r'''
@@ -424,7 +424,7 @@ download: dest_dir='tmp'
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
 ''')
         wf = script.workflow()
-        Base_Executor(wf).prepare()
+        Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq.ann'))
         #
    
@@ -439,13 +439,13 @@ download: dest_dir='tmp', decompress=True
 ''')
         start = time.time()
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq-hg18_20100817.DB'))
         self.assertGreater(time.time() - start, 3)
         # this will be fast
         start = time.time()
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).prepare)
+        self.assertRaises(ExecuteError, Base_Executor(wf).run)
         self.assertLess(time.time() - start, 3)
         # 
         # test decompress tar.gz file
@@ -457,7 +457,7 @@ download: dest_dir='tmp', decompress=True
     ${GATK_URL}/1000G_omni2.5.hg19.sites.vcf.idx.gz.md5
 ''')
         wf = script.workflow()
-        Base_Executor(wf).prepare()
+        Base_Executor(wf).run()
         #
         shutil.rmtree('tmp')
 
@@ -485,32 +485,6 @@ pandoc(output=_output[0], to='html')
         #
         FileTarget('myreport.html').remove('both')
 
-
-    def testOptionRunMode(self):
-        '''Testing run mode option for action'''
-        FileTarget('a.txt').remove('both')
-        #
-        script = SoS_Script(r'''
-[10]
-run: run_mode='prepare'
-    touch a.txt
-
-''')
-        wf = script.workflow()
-        Base_Executor(wf).prepare()
-        self.assertTrue(os.path.isfile('a.txt'))
-        os.remove('a.txt')
-        #
-        script = SoS_Script(r'''
-[10]
-run: run_mode='prepare'
-    touch a.txt
-
-''')
-        wf = script.workflow()
-        Base_Executor(wf).prepare()
-        self.assertTrue(os.path.isfile('a.txt'))
-        FileTarget('a.txt').remove('both')
 
     def testSoSRun(self):
         '''Test action sos_run with keyword parameters'''
