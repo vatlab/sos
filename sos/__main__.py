@@ -160,17 +160,10 @@ def add_run_arguments(parser):
     #parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
-        description='''SoS scripts are by default executed in run mode where all
-            the script is run in dryrun mode to check syntax error, prepare mode
-            to prepare resources, and run mode to execute the pipelines. Run mode
-            options allow you to execute these steps selectively.''')
+        description='''Control how sos scirpt is executed.''')
     runmode.add_argument('-n', action='store_true', dest='__dryrun__',
         help='''Execute a workflow without executing any actions. This can be
             used to check the syntax of a SoS file.''')
-    runmode.add_argument('-p', action='store_true', dest='__prepare__',
-        help='''Execute the workflow in preparation mode in which SoS prepare
-            the execution of workflow by, for example, download required
-            resources and docker images.''')
     runmode.add_argument('-f', action='store_true', dest='__rerun__',
         help='''Execute the workflow in a special run mode that ignores saved
             runtime signatures and re-execute all the steps.''')
@@ -239,8 +232,6 @@ def cmd_run(args, workflow_args, batch_mode=True):
         #
         if args.__dryrun__:
             executor.dryrun(args.__targets__)
-        elif args.__prepare__:
-            executor.prepare(args.__targets__)
         else:
             # if dag is None, the script will be run sequentially and cannot handle
             # make-style steps.
@@ -299,38 +290,7 @@ def cmd_dryrun(args, workflow_args):
     args.__queue__ = None
     args.__max_jobs__ = 1
     args.__dryrun__ = True
-    args.__prepare__ = True
     args.__bin_dirs__ = []
-    cmd_run(args, workflow_args)
-
-#
-# subcommand prepare
-#
-def add_prepare_arguments(parser):
-    parser.add_argument('script', metavar='SCRIPT', help=script_help)
-    parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
-        help=workflow_spec)
-    parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE',
-        help='''A configuration file in the format of YAML/JSON. The content
-            of the configuration file will be available as a dictionary
-            CONF in the SoS script being executed.''')
-    parser.add_argument('-t', dest='__targets__', metavar='FILES', default=[],
-        nargs='+', help='''One of more files or alias of other targets that
-            will be the target of execution. If specified, SoS will execute
-            only part of a workflow or multiple workflows or auxiliary steps
-            to generate specified targets. ''')
-    parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIRS',
-        default=['~/.sos/bin'], help=bindir_help)
-    addCommonArgs(parser)
-    parser.set_defaults(func=cmd_prepare)
-
-def cmd_prepare(args, workflow_args):
-    args.__rerun__ = False
-    args.__construct__ = False
-    args.__queue__ = None
-    args.__max_jobs__ = 1
-    args.__dryrun__ = False
-    args.__prepare__ = True
     cmd_run(args, workflow_args)
 
 #
@@ -1085,15 +1045,6 @@ def main():
         epilog=workflow_options,
         help='Execute a SoS script in dryrun mode')
     add_dryrun_arguments(parser)
-    #
-    # command prepare
-    parser = subparsers.add_parser('prepare',
-        description='''Execute a workflow in prepare mode in which SoS
-            prepares the exeuction of workflow by, for example, download
-            required resources and docker images.''',
-        epilog=workflow_options,
-        help='Execute a SoS script in prepare mode')
-    add_prepare_arguments(parser)
     #
     # command convert
     parser = subparsers.add_parser('convert',
