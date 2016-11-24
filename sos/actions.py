@@ -264,21 +264,21 @@ def sos_run(workflow, **kwargs):
 def execute_script(script, interpreter, suffix, args='', **kwargs):
     return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'])
 def fail_if(expr, msg=''):
     '''Raise an exception with `msg` if condition `expr` is False'''
     if expr:
         raise RuntimeError(msg)
     return 0
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'])
 def warn_if(expr, msg=''):
     '''Yield an warning message `msg` if `expr` is False '''
     if expr:
         env.logger.warning(msg)
     return 0
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'])
 def stop_if(expr, msg=''):
     '''Abort the execution of the current step or loop and yield
     an warning message `msg` if `expr` is False '''
