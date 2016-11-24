@@ -75,7 +75,7 @@ def SoS_Action(run_mode=['run', 'interactive']):
                     if not isinstance(kwargs['run_mode'], str):
                         raise ValueError('A string is required for option run_mode, {} provided.'
                             .format(kwargs['run_mode']))
-                    if kwargs['run_mode'] not in ['prepare', 'interactive']:
+                    if kwargs['run_mode'] not in ['interactive']:
                         raise ValueError('Parameter run_mode can only be prepare, or interactive')
                     top_mode = 'run' if 'run' in run_mode else 'prepare'
                     if env.run_mode == top_mode and top_mode != kwargs['run_mode']:
@@ -85,14 +85,14 @@ def SoS_Action(run_mode=['run', 'interactive']):
                         env.run_mode = top_mode
 
                 # docker files will be downloaded in run or prepare mode
-                if 'docker_file' in kwargs and env.run_mode in ['prepare', 'run', 'interactive']:
+                if 'docker_file' in kwargs and env.run_mode in ['run', 'interactive']:
                     docker = DockerClient()
                     docker.import_image(kwargs['docker_file'])
                 # handle image
                 if 'docker_image' in kwargs:
                     docker = DockerClient()
                     docker.pull(kwargs['docker_image'])
-                    if env.run_mode in ['prepare', 'interactive']:
+                    if env.run_mode in ['interactive']:
                         mem = docker.total_memory(kwargs['docker_image'])
                         if mem is not None:
                             if mem < 4000000: # < 4G
@@ -210,7 +210,7 @@ class SoS_ExecuteScript:
                 os.remove(script_file)
 
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def sos_run(workflow, **kwargs):
     '''Execute a workflow from specified source, input, and output
     By default the workflow is defined in the existing SoS script, but
@@ -231,9 +231,6 @@ def sos_run(workflow, **kwargs):
     if env.run_mode == 'dryrun':
         env.logger.info('Checking nested workflow {}'.format(workflow))
         return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).dryrun()
-    elif env.run_mode == 'prepare':
-        env.logger.info('Preparing nested workflow {}'.format(workflow))
-        return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).prepare()
     elif env.run_mode == 'run':
         env.logger.info('Executing workflow ``{}`` with input ``{}``'
             .format(workflow, short_repr(env.sos_dict['_input'], True)))
@@ -267,21 +264,21 @@ def sos_run(workflow, **kwargs):
 def execute_script(script, interpreter, suffix, args='', **kwargs):
     return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def fail_if(expr, msg=''):
     '''Raise an exception with `msg` if condition `expr` is False'''
     if expr:
         raise RuntimeError(msg)
     return 0
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def warn_if(expr, msg=''):
     '''Yield an warning message `msg` if `expr` is False '''
     if expr:
         env.logger.warning(msg)
     return 0
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def stop_if(expr, msg=''):
     '''Abort the execution of the current step or loop and yield
     an warning message `msg` if `expr` is False '''
@@ -446,7 +443,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
     return os.path.isfile(dest)
 
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'])
 def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified
