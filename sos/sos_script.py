@@ -743,13 +743,13 @@ for __n, __v in {}.items():
                     for opt in options:
                         if opt.startswith('sigil='):
                             self.global_sigil = opt[6:].strip()
-                            set_default_global_sigil(opt[6:].strip())
                             env.logger.debug('Global sigil is set to {}'.format(self.global_sigil))
                             if self.global_sigil in ('None', ''):
                                 self.global_sigil = None
                             elif ' ' not in self.global_sigil or self.global_sigil.count(' ') > 1:
                                 parsing_errors.append(lineno, line,
                                     'A sigil should be a string string with exactly one space. "{}" specified.'.format(self.global_sigil))
+                            set_default_global_sigil(self.global_sigil)
                         elif opt.startswith('single_quote_interpolation='):
                             if opt[27:].strip() == 'False':
                                 set_single_quote_interpolation(False)

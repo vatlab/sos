@@ -280,8 +280,8 @@ default_global_sigil = '${ }'
 
 def set_default_global_sigil(val):
     global default_global_sigil
-    if val.count(' ') != 1:
-        raise ValueError('A sigil should be specified as two strings separated by a space')
+    if val is not None and val.count(' ') != 1:
+        raise ValueError('A sigil should be specified as None or two strings separated by a space')
     default_global_sigil = val
 
 def get_default_global_sigil():
