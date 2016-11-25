@@ -61,7 +61,7 @@ define(function(){
 
 						'group_by', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic',
 						'pattern', 'workdir', 'concurrent', 'docker_image', 'docker_file',
-						'alias', 'skip', 'sigil', 'target'
+						'shared', 'skip', 'sigil', 'provides'
 					];
   CodeMirror.registerHelper("hintWords", "sos", commonKeywords.concat(commonBuiltins));
 
@@ -128,7 +128,7 @@ define(function(){
         return "comment";
       }
 	 // BO PENG
-	 // handle report
+	 // handle shell command
 	  if (state.beginningOfLine && ch == "!") {
 	    stream.skipToEnd();
 		return "meta";
