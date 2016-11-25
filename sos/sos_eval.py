@@ -270,12 +270,24 @@ def interpolate(text, sigil, local_dict={}):
     return SoS_String(sigil, local_dict).interpolate(text)
 
 
-interpolate_single_quote = True
+interpolate_single_quote = False
 
-def disable_single_quote_interpolation():
+def set_single_quote_interpolation(val):
     global interpolate_single_quote
-    interpolate_single_quote = False
+    interpolate_single_quote = val
 
+default_global_sigil = '${ }'
+
+def set_default_global_sigil(val):
+    global default_global_sigil
+    if val.count(' ') != 1:
+        raise ValueError('A sigil should be specified as two strings separated by a space')
+    default_global_sigil = val
+
+def get_default_global_sigil():
+    global default_global_sigil
+    return default_global_sigil
+    
 def ConvertString(s, sigil):
     '''Convert a unicode string to a raw string and interpolate expressions
     within it by parsing the python expression and statement BEFORE they are

@@ -24,6 +24,7 @@ import yaml
 import shlex
 import argparse
 from sos.utils import env, frozendict, dict_merge
+from sos.sos_eval import get_default_global_sigil
 from sos._version import __version__
 from sos.sos_script import SoS_Script
 from sos.sos_executor import Base_Executor, __null_func__
@@ -58,7 +59,7 @@ class Interactive_Executor(Base_Executor):
 
     def parse_script(self, code):
         '''Used by the kernel to judge if the code is complete'''
-        return SoS_Script(content=code)
+        return SoS_Script(content=code, global_sigl=get_default_global_sigil())
 
     def set_dict(self, args):
         env.sos_dict.set('__null_func__', __null_func__)
@@ -111,7 +112,7 @@ class Interactive_Executor(Base_Executor):
         if not any([SOS_SECTION_HEADER.match(line) for line in block.split()]):
             block = '[interactive_0]\n' + block
 
-        script = SoS_Script(content=block)
+        script = SoS_Script(content=block, global_sigil=get_default_global_sigil())
         env.run_mode = 'interactive'
         try:
             args, workflow_args = self.parse_command_line(command_line)

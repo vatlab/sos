@@ -32,7 +32,8 @@ from collections import defaultdict
 from uuid import uuid4
 
 from .utils import env, Error, dehtml, locate_script, text_repr
-from .sos_eval import on_demand_options, sos_compile, disable_single_quote_interpolation
+from .sos_eval import on_demand_options, sos_compile, set_single_quote_interpolation,\
+    default_global_sigil, set_default_global_sigil
 from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
@@ -486,7 +487,7 @@ class SoS_ScriptContent:
 
 
 class SoS_Script:
-    def __init__(self, content='', filename=None, transcript=None):
+    def __init__(self, content='', filename=None, transcript=None, global_sigil='${ }'):
         '''Parse a sectioned SoS script file. Please refer to the SoS manual
         for detailed specification of this format.
 
@@ -503,6 +504,7 @@ class SoS_Script:
             A list of SoS_Step objects that present all sections read.
             Among other things, section.names
         '''
+        self.global_sigil = global_sigil
         if filename:
             try:
                 content, self.sos_script = locate_script(filename, start='.')
@@ -628,7 +630,6 @@ for __n, __v in {}.items():
         self.format_version = '1.0'
         self.descriptions = []
         self.gloal_def = ''
-        self.global_sigil = '${ }'
         #
         comment_block = 1
         # cursect always point to the last section
@@ -742,6 +743,7 @@ for __n, __v in {}.items():
                     for opt in options:
                         if opt.startswith('sigil='):
                             self.global_sigil = opt[6:].strip()
+                            set_default_global_sigil(opt[6:].strip())
                             env.logger.debug('Global sigil is set to {}'.format(self.global_sigil))
                             if self.global_sigil in ('None', ''):
                                 self.global_sigil = None
@@ -750,8 +752,10 @@ for __n, __v in {}.items():
                                     'A sigil should be a string string with exactly one space. "{}" specified.'.format(self.global_sigil))
                         elif opt.startswith('single_quote_interpolation='):
                             if opt[27:].strip() == 'False':
-                                disable_single_quote_interpolation()
-                            elif opt[27:].strip() != 'True':
+                                set_single_quote_interpolation(False)
+                            elif opt[27:].strip() == 'True':
+                                set_single_quote_interpolation(True)
+                            else:
                                 parsing_errors.append(lineno, line, 'Unrecognized value for option single_quote_interpolation. True or False is expected, {} specified'
                                     .format(opt[27:].strip()))
                         else:
