@@ -239,8 +239,6 @@ def sos_run(workflow, **kwargs):
                 executor_class = MP_Executor
 
         return executor_class(wf, args=env.sos_dict['__args__'], nested=True).run()
-    elif env.run_mode == 'interactive':
-        raise RuntimeError('Action sos_run is not supported in interactive mode')
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def execute_script(script, interpreter, suffix, args='', **kwargs):

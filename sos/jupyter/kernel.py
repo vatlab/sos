@@ -49,7 +49,7 @@ from ipykernel.zmqshell import ZMQDisplayPublisher
 from textwrap import dedent
 from io import StringIO
 
-from .sos_executor import Interactive_Executor
+from .sos_executor import execute_cell
 from .converter import SoS_Exporter
 
 class FlushableStringIO(StringIO):
@@ -282,7 +282,6 @@ class SoS_Kernel(Kernel):
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
         SoS_exec("run_mode = 'interactive'", None)
-        self.executor = Interactive_Executor()
         self.original_keys = set(env.sos_dict._dict.keys())
         self.original_keys.add('__builtins__')
         #env.sos_dict.set('__summary_report__', self.report_file)
@@ -710,7 +709,7 @@ class SoS_Kernel(Kernel):
         with self.redirect_sos_io():
             try:
                 # record input and output
-                res = self.executor.run(code, self.options)
+                res = execute_cell(code, self.options)
                 self.send_result(res, silent)
             except Exception:
                 sys.stderr.flush()

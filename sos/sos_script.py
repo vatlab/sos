@@ -71,6 +71,7 @@ class SoS_Step:
         # it initially hold multiple names with/without wildcard characters
         self.names = names
         self.comment = ''
+        self.comment_ended = False
         # comment at the end of a section that could be a workflow description
         self.back_comment = ''
         # everything before step process
@@ -207,10 +208,13 @@ class SoS_Step:
 
     def add_comment(self, line):
         '''Add comment line'''
-        if self.empty():
-            self.comment += line.lstrip('#').lstrip()
+        if self.empty() and not self.comment_ended:
+            self.comment += (' ' if self.comment else '') + line.lstrip('#').strip()
         else:
-            self.back_comment += line.lstrip('#').lstrip()
+            self.back_comment += (' ' if self.back_comment else '') + line.lstrip('#').strip()
+
+    def end_comment(self):
+        self.comment_ended = True
 
     def add_assignment(self, key, value, lineno=None):
         '''Assignments are items with '=' type '''
@@ -844,7 +848,7 @@ for __n, __v in {}.items():
                     if cursect.category() in ('statements', 'script'):
                         cursect.extend(line)
                     elif cursect.comment:
-                        comment_block += 1
+                        cursect.end_comment()
                 if self.transcript:
                     self.transcript.write('FOLLOW\t{}\t{}'.format(lineno, line))
                 continue

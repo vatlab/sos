@@ -34,10 +34,11 @@ from .sos_step import Interactive_Step_Executor
 
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
-    def __init__(self):
+    def __init__(self, workflow=None, args=[], config_file=None, **kwargs):
         # we actually do not have our own workflow, everything is passed from ipython
         # by nested = True we actually mean no new dictionary
-        Base_Executor.__init__(self, nested=True)
+        Base_Executor.__init__(self, workflow=workflow, args=args, nested=True)
+        env.__task_engine__ = 'interactive'
 
     def parse_command_line(self, command_line):
         parser = argparse.ArgumentParser()
@@ -95,7 +96,7 @@ class Interactive_Executor(Base_Executor):
         # set config to CONFIG
         env.sos_dict.set('CONFIG', frozendict(cfg))
 
-    def run(self, block, command_line=''):
+    def run(self):
         '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer
         The code can be simple SoS/Python statements, one SoS step, or more
         or more SoS workflows with multiple steps. This executor,
@@ -106,61 +107,79 @@ class Interactive_Executor(Base_Executor):
         3. Optionally execute the workflow in preparation mode for debugging purposes.
         '''
         # if there is no valid code do nothing
-        if not block.strip():
-            return
-        # if there is no section header, add a header so that the block
-        # appears to be a SoS script with one section
-        if not any([SOS_SECTION_HEADER.match(line) for line in block.split()]):
-            block = '[interactive_0]\n' + block
+        env.sos_dict.set('__args__', workflow_args)
+        env.sos_dict.set('__unknown_args__', workflow_args)
+        self.set_dict(args)
 
-        script = SoS_Script(content=block, global_sigil=get_default_global_sigil())
-        env.run_mode = 'interactive'
-        try:
-            args, workflow_args = self.parse_command_line(command_line)
-            env.sos_dict.set('__args__', workflow_args)
-            env.sos_dict.set('__unknown_args__', workflow_args)
-            self.set_dict(args)
-            self.workflow = script.workflow(args.workflow)
+        env.verbosity = args.verbosity
 
-            env.verbosity = args.verbosity
-
-            if args.__rerun__:
-                env.sig_mode = 'ignore'
-            elif args.__construct__:
-                env.sig_mode = 'construct'
-            else:
-                env.sig_mode = 'default'
-
-            #if os.path.isfile(args.__report__):
-            #    os.remove(args.__report__)
-
-            # this is the result returned by the workflow, if the
-            # last stement is an expression.
-            last_res = None
-            #
-            # clear __step_input__, __step_output__ etc because there is
-            # no concept of passing input/outputs across cells.
-            env.sos_dict.set('__step_output__', [])
-            for k in ['__step_input__', '__default_output__', 'input', 'output', \
-                'depends', '_input', '_output', '_depends']:
-                env.sos_dict.pop(k, None)
-
-            for idx, section in enumerate(self.workflow.sections):
-                if 'skip' in section.options:
-                    val_skip = section.options['skip']
-                    if val_skip is None or val_skip is True:
-                        continue
-                    elif val_skip is not False:
-                        raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
-                #
-                last_res = Interactive_Step_Executor(section).run()
-                # if the step is failed
-                if isinstance(last_res, Exception):
-                    raise RuntimeError(last_res)
-            return last_res
-        finally:
-            env.verbosity = 1
+        if args.__rerun__:
+            env.sig_mode = 'ignore'
+        elif args.__construct__:
+            env.sig_mode = 'construct'
+        else:
             env.sig_mode = 'default'
+
+        #if os.path.isfile(args.__report__):
+        #    os.remove(args.__report__)
+
+        # this is the result returned by the workflow, if the
+        # last stement is an expression.
+        last_res = None
+        #
+        # clear __step_input__, __step_output__ etc because there is
+        # no concept of passing input/outputs across cells.
+        env.sos_dict.set('__step_output__', [])
+        for k in ['__step_input__', '__default_output__', 'input', 'output', \
+            'depends', '_input', '_output', '_depends']:
+            env.sos_dict.pop(k, None)
+
+        for idx, section in enumerate(self.workflow.sections):
+            if 'skip' in section.options:
+                val_skip = section.options['skip']
+                if val_skip is None or val_skip is True:
+                    continue
+                elif val_skip is not False:
+                    raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
+            #
+            last_res = Interactive_Step_Executor(section).run()
+            # if the step is failed
+            if isinstance(last_res, Exception):
+                raise RuntimeError(last_res)
+        return last_res
+
+
+
+def execute_cell(block, command_line):
+    '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer
+    The code can be simple SoS/Python statements, one SoS step, or more
+    or more SoS workflows with multiple steps. This executor,
+    1. adds a section header to the script if there is no section head
+    2. execute the workflow in interactive mode, which is different from
+       batch mode in a number of ways, which most notably without support
+       for nested workflow.
+    3. Optionally execute the workflow in preparation mode for debugging purposes.
+    '''
+    # if there is no valid code do nothing
+    if not block.strip():
+        return
+    # if there is no section header, add a header so that the block
+    # appears to be a SoS script with one section
+    if not any([SOS_SECTION_HEADER.match(line) for line in block.split()]):
+        block = '[interactive_0]\n' + block
+
+    script = SoS_Script(content=block, global_sigil=get_default_global_sigil())
+    env.run_mode = 'interactive'
+
+    try:
+        args, workflow_args = self.parse_command_line(command_line)
+        wf = script.workflow(args.workflow)
+        executor = Interactive_Executor(wf)
+        return executor.run()
+    finally:
+        env.verbosity = 1
+        env.sig_mode = 'default'
+
 
 
 

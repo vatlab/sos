@@ -177,6 +177,7 @@ Rmarkdown = sos.R.actions:Rmarkdown
 [sos_executors]
 rq = sos.rq.sos_executor:RQ_Executor [rq]
 celery = sos.celery.sos_executor:Celery_Executor [celery]
+interactive = sos.jupyter.sos_executor:Interactive_Executor
 
 
 [sos_previewers]
