@@ -483,7 +483,12 @@ class SoS_Kernel(Kernel):
         if options.strip():
             #self.send_response(self.iopub_socket, 'stream',
             #    {'name': 'stdout', 'text': 'sos options set to "{}"\n'.format(options)})
-            self.options = options.strip()
+            if not options.strip().startswith('-'):
+                self.warn('Magic %set cannot set positional argument, {} provided.'.format(options))
+            else:
+                self.options = options.strip()
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': 'sos options is set to "{}"\n'.format(self.options)})
         else:
             if self.options:
                 self.send_response(self.iopub_socket, 'stream',
@@ -491,7 +496,7 @@ class SoS_Kernel(Kernel):
                 self.options = ''
             else:
                 self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': 'Usage: set persistent sos options such as -v 3 (debug output) -p (prepare) and -t (transcribe)\n'})
+                    {'name': 'stdout', 'text': 'Usage: set persistent sos options such as workflow name and -v 3 (debug output)\n'})
 
     def handle_magic_get(self, items):
         for item in items:
@@ -943,22 +948,26 @@ class SoS_Kernel(Kernel):
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_PASTE.match(code):
             options, remaining_code = self.get_magic_and_code(code, True)
-            self.options += ' ' + options.strip()
             try:
-                code = clipboard_get()
-            except ClipboardEmpty:
-                raise UsageError("The clipboard appears to be empty")
-            except Exception as e:
-                env.logger.error('Could not get text from the clipboard: {}'.format(e))
-                return
-            #
-            self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': code.strip() + '\n## -- End pasted text --\n'})
-            return self._do_execute(code, silent, store_history, user_expressions, allow_stdin)
+                old_options = self.options
+                self.options = options + ' ' + self.options
+                try:
+                    code = clipboard_get()
+                except ClipboardEmpty:
+                    raise UsageError("The clipboard appears to be empty")
+                except Exception as e:
+                    env.logger.error('Could not get text from the clipboard: {}'.format(e))
+                    return
+                #
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': code.strip() + '\n## -- End pasted text --\n'})
+                return self._do_execute(code, silent, store_history, user_expressions, allow_stdin)
+            finally:
+                self.options = old_options
         elif self.MAGIC_RUN.match(code):
-            options, remaining_code = self.get_magic_and_code(code, True)
+            options, remaining_code = self.get_magic_and_code(code, False)
             old_options = self.options
-            self.options += ' ' + options
+            self.options = options + ' ' + self.options
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:

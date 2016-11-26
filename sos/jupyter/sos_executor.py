@@ -44,6 +44,7 @@ class Interactive_Executor(Base_Executor):
         # no default workflow so it will execute any workflow if the code piece
         # defines only one workflow
         # 
+        parser.add_argument('workflow', metavar='WORKFLOW', nargs='?')
         # parser.add_argument('-j', type=int, metavar='JOBS', default=1, dest='__max_jobs__')
         parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
         #parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
@@ -119,7 +120,9 @@ class Interactive_Executor(Base_Executor):
             env.sos_dict.set('__args__', workflow_args)
             env.sos_dict.set('__unknown_args__', workflow_args)
             self.set_dict(args)
-            self.workflow = script.workflow()
+            self.workflow = script.workflow(args.workflow)
+
+            env.verbosity = args.verbosity
 
             if args.__rerun__:
                 env.sig_mode = 'ignore'

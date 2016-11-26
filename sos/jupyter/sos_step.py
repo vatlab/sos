@@ -45,7 +45,8 @@ class Interactive_Step_Executor(Base_Step_Executor):
         return _expand_file_list(True, *args)
 
     def log(self, stage=None, msg=None):
-        return
+        if stage == 'start':
+            env.logger.info('Running ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
 
     def collect_result(self):
         return self.last_res
