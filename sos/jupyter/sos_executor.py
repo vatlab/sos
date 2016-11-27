@@ -19,17 +19,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
+import sys
 import os
 import yaml
 import shlex
 import argparse
-from sos.utils import env, frozendict, dict_merge
-from sos.sos_eval import get_default_global_sigil
+from sos.utils import env, frozendict, dict_merge, _parse_error, get_traceback
+from sos.sos_eval import get_default_global_sigil, SoS_exec
 from sos._version import __version__
+from sos.__main__ import add_run_arguments
 from sos.sos_script import SoS_Script
 from sos.sos_executor import Base_Executor, __null_func__
 from sos.sos_syntax import SOS_SECTION_HEADER
-
+from sos.target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5
 from .sos_step import Interactive_Step_Executor
 
 class Interactive_Executor(Base_Executor):
@@ -38,32 +40,10 @@ class Interactive_Executor(Base_Executor):
         # we actually do not have our own workflow, everything is passed from ipython
         # by nested = True we actually mean no new dictionary
         Base_Executor.__init__(self, workflow=workflow, args=args, nested=True)
+        self.__config__ = config_file
         env.__task_engine__ = 'interactive'
 
-    def parse_command_line(self, command_line):
-        parser = argparse.ArgumentParser()
-        # no default workflow so it will execute any workflow if the code piece
-        # defines only one workflow
-        # 
-        parser.add_argument('workflow', metavar='WORKFLOW', nargs='?')
-        # parser.add_argument('-j', type=int, metavar='JOBS', default=1, dest='__max_jobs__')
-        parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE')
-        #parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
-        #    default=os.path.join('.sos', '__step_report.md'))
-        runmode = parser.add_argument_group(title='Run mode options')
-        runmode.add_argument('-f', action='store_true', dest='__rerun__')
-        runmode.add_argument('-F', action='store_true', dest='__construct__')
-        # default to 1 to avoid output env.logger.info to notebook
-        parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=1)
-        #
-        args, workflow_args = parser.parse_known_args(shlex.split(command_line))
-        return args, workflow_args
-
-    def parse_script(self, code):
-        '''Used by the kernel to judge if the code is complete'''
-        return SoS_Script(content=code, global_sigl=get_default_global_sigil())
-
-    def set_dict(self, args):
+    def set_dict(self):
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('SOS_VERSION', __version__)
 
@@ -84,19 +64,19 @@ class Interactive_Executor(Base_Executor):
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-        if args.__config__ is not None:
+        if self.__config__ is not None:
             # user-specified configuration file.
-            if not os.path.isfile(args.__config__):
-                raise RuntimeError('Config file {} not found'.format(args.__config__))
+            if not os.path.isfile(self.__config__):
+                raise RuntimeError('Config file {} not found'.format(self.__config__))
             try:
-                with open(args.__config__) as config:
+                with open(self.__config__) as config:
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config_file, e))
         # set config to CONFIG
         env.sos_dict.set('CONFIG', frozendict(cfg))
 
-    def run(self):
+    def run(self, targets=None):
         '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer
         The code can be simple SoS/Python statements, one SoS step, or more
         or more SoS workflows with multiple steps. This executor,
@@ -107,79 +87,162 @@ class Interactive_Executor(Base_Executor):
         3. Optionally execute the workflow in preparation mode for debugging purposes.
         '''
         # if there is no valid code do nothing
-        env.sos_dict.set('__args__', workflow_args)
-        env.sos_dict.set('__unknown_args__', workflow_args)
-        self.set_dict(args)
-
-        env.verbosity = args.verbosity
-
-        if args.__rerun__:
-            env.sig_mode = 'ignore'
-        elif args.__construct__:
-            env.sig_mode = 'construct'
-        else:
-            env.sig_mode = 'default'
-
-        #if os.path.isfile(args.__report__):
-        #    os.remove(args.__report__)
+        self.set_dict()
 
         # this is the result returned by the workflow, if the
         # last stement is an expression.
         last_res = None
-        #
-        # clear __step_input__, __step_output__ etc because there is
-        # no concept of passing input/outputs across cells.
-        env.sos_dict.set('__step_output__', [])
-        for k in ['__step_input__', '__default_output__', 'input', 'output', \
-            'depends', '_input', '_output', '_depends']:
-            env.sos_dict.pop(k, None)
 
-        for idx, section in enumerate(self.workflow.sections):
-            if 'skip' in section.options:
-                val_skip = section.options['skip']
-                if val_skip is None or val_skip is True:
-                    continue
-                elif val_skip is not False:
-                    raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
+        # process step of the pipelinp
+        dag = self.initialize_dag(targets=targets)
+        #
+        # if targets are specified and there are only signatures for them, we need
+        # to remove the signature and really generate them
+        if targets:
+            for t in targets:
+                if not FileTarget(t).exists('target'):
+                    FileTarget(t).remove('signature')
+        #
+        self.set_dict()
+        while True:
+            # find any step that can be executed and run it, and update the DAT
+            # with status.
+            runnable = dag.find_executable()
+            if runnable is None:
+                # no runnable
+                #dag.show_nodes()
+                break
+            # find the section from runnable
+            section = self.workflow.section_by_id(runnable._step_uuid)
             #
-            last_res = Interactive_Step_Executor(section).run()
-            # if the step is failed
-            if isinstance(last_res, Exception):
-                raise RuntimeError(last_res)
+            # this is to keep compatibility of dag run with sequential run because
+            # in sequential run, we evaluate global section of each step in
+            # order to determine values of options such as skip.
+            # The consequence is that global definitions are available in
+            # SoS namespace.
+            try:
+                SoS_exec(section.global_def, section.global_sigil)
+            except Exception as e:
+                if env.verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
+                    section.global_def, e))
+
+            # clear existing keys, otherwise the results from some random result
+            # might mess with the execution of another step that does not define input
+            for k in ['__step_input__', '__default_output__', '__step_output__']:
+                if k in env.sos_dict:
+                    env.sos_dict.pop(k)
+            # if the step has its own context
+            env.sos_dict.quick_update(runnable._context)
+            # execute section with specified input
+            runnable._status = 'running'
+            try:
+                executor = Interactive_Step_Executor(section)
+                last_res = executor.run()
+                # set context to the next logic step.
+                for edge in dag.out_edges(runnable):
+                    node = edge[1]
+                    # if node is the logical next step...
+                    if node._node_index is not None and runnable._node_index is not None:
+                        #and node._node_index == runnable._node_index + 1:
+                        node._context.update(env.sos_dict.clone_selected_vars(
+                            node._context['__signature_vars__'] | node._context['__environ_vars__'] \
+                            | {'_input', '__step_output__', '__default_output__', '__args__'}))
+                runnable._status = 'completed'
+            except UnknownTarget as e:
+                runnable._status = None
+                target = e.target
+                if self.resolve_dangling_targets(dag, [target]) == 0:
+                    raise RuntimeError('Failed to resolve {}{}.'
+                        .format(target, dag.steps_depending_on(target, self.workflow)))
+                # now, there should be no dangling targets, let us connect nodes
+                # this can be done more efficiently
+                dag.build(self.workflow.auxiliary_sections)
+                cycle = dag.circular_dependencies()
+                if cycle:
+                    raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
+            except RemovedTarget as e:
+                runnable._status = None
+                dag.regenerate_target(e.target)
+            except UnavailableLock:
+                runnable._status = 'pending'
+                runnable._signature = (e.output, e.sig_file)
+                env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
+            # if the job is failed
+            except Exception as e:
+                runnable._status = 'failed'
+                raise
+
         return last_res
 
-
-
-def execute_cell(block, command_line):
-    '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer
-    The code can be simple SoS/Python statements, one SoS step, or more
-    or more SoS workflows with multiple steps. This executor,
-    1. adds a section header to the script if there is no section head
-    2. execute the workflow in interactive mode, which is different from
-       batch mode in a number of ways, which most notably without support
-       for nested workflow.
-    3. Optionally execute the workflow in preparation mode for debugging purposes.
-    '''
-    # if there is no valid code do nothing
-    if not block.strip():
+#
+# function runfile that is used by spyder to execute complete script
+#
+def runfile(script=None, args='', wdir='.', code=None, **kwargs):
+    parser = argparse.ArgumentParser(description='''Execute a sos script''')
+    add_run_arguments(parser, interactive=True)
+    parser.error = _parse_error
+    env.sos_dict.set('__args__', args)
+    if isinstance(args, str):
+        args = shlex.split(args)
+    if (script is None and code is None) or '-h' in args:
+        parser.print_help()
         return
-    # if there is no section header, add a header so that the block
-    # appears to be a SoS script with one section
-    if not any([SOS_SECTION_HEADER.match(line) for line in block.split()]):
-        block = '[interactive_0]\n' + block
+    args, workflow_args = parser.parse_known_args(args)
+    # calling the associated functions
+    
+    env.max_jobs = args.__max_jobs__
+    env.verbosity = args.verbosity
+    env.__task_engine__ = 'interactive'
 
-    script = SoS_Script(content=block, global_sigil=get_default_global_sigil())
-    env.run_mode = 'interactive'
-
-    try:
-        args, workflow_args = self.parse_command_line(command_line)
-        wf = script.workflow(args.workflow)
-        executor = Interactive_Executor(wf)
-        return executor.run()
-    finally:
-        env.verbosity = 1
+    #
+    if args.__rerun__:
+        env.sig_mode = 'ignore'
+    elif args.__construct__:
+        env.sig_mode = 'construct'
+    else:
         env.sig_mode = 'default'
 
+    if args.__bin_dirs__:
+        import fasteners
+        for d in args.__bin_dirs__:
+            if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
+                with fasteners.InterProcessLock('/tmp/sos_lock_bin'):
+                    os.makedirs(os.path.expanduser(d))
+            elif not os.path.isdir(os.path.expanduser(d)):
+                raise ValueError('directory does not exist: {}'.format(d))
+        os.environ['PATH'] = os.pathsep.join([os.path.expanduser(x) for x in args.__bin_dirs__]) + os.pathsep + os.environ['PATH']
 
+    # clear __step_input__, __step_output__ etc because there is
+    # no concept of passing input/outputs across cells.
+    env.sos_dict.set('__step_output__', [])
+    for k in ['__step_input__', '__default_output__', 'input', 'output', \
+        'depends', '_input', '_output', '_depends']:
+        env.sos_dict.pop(k, None)
 
+    try:
+        if script is None:
+            if not code.strip():
+                return
+            # if there is no section header, add a header so that the block
+            # appears to be a SoS script with one section
+            if not any([SOS_SECTION_HEADER.match(line) for line in code.splitlines()]):
+                code = '[interactive_0]\n' + code
+            script = SoS_Script(content=code)
+        else:
+            script = SoS_Script(filename=script)
+        workflow = script.workflow(args.workflow)
+        executor = Interactive_Executor(workflow, args=workflow_args, config_file=args.__config__)
+        #
+        # if dag is None, the script will be run sequentially and cannot handle
+        # make-style steps.
+        return executor.run(args.__targets__)
+    except Exception as e:
+        if args.verbosity and args.verbosity > 2:
+            sys.stderr.write(get_traceback())
+        raise
+    finally:
+        env.sig_mode = 'default'
+        env.verbosity = 1
 

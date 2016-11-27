@@ -24,13 +24,11 @@ import pkg_resources
 from .utils import logger, get_output, sos_handle_parameter_
 from .sos_eval import interpolate, sos_namespace_
 from .pattern import expand_pattern
-from .__main__ import runfile
 
 # silent pyflakes
 logger, get_output, sos_handle_parameter_
 interpolate, sos_namespace_
 expand_pattern
-runfile
 
 
 sos_symbols_ = {
@@ -54,4 +52,5 @@ def _load_group(group):
 
 _load_group('sos_targets')
 _load_group('sos_actions')
+_load_group('sos_functions')
 

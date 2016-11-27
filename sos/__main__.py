@@ -68,7 +68,9 @@ def add_convert_arguments(parser):
             unspecified.''')
     parser.add_argument('-l', '--list', action='store_true',
         help='''List available converters and their options.''')
-    addCommonArgs(parser)
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).'''),
     parser.set_defaults(func=cmd_convert)
 
 def get_converter(from_format, to_format):
@@ -123,8 +125,9 @@ def cmd_convert(args, converter_args):
 #
 # subcommand run
 #
-def add_run_arguments(parser):
-    parser.add_argument('script', metavar='SCRIPT', help=script_help)
+def add_run_arguments(parser, interactive=False):
+    if not interactive:
+        parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
     parser.add_argument('-j', type=int, metavar='JOBS', default=4, dest='__max_jobs__',
@@ -145,7 +148,8 @@ def add_run_arguments(parser):
             to generate specified targets.''')
     parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIR',
         default=['~/.sos/bin'], help=bindir_help)
-    parser.add_argument('-q', dest='__queue__', metavar='QUEUE',
+    if not interactive:
+        parser.add_argument('-q', dest='__queue__', metavar='QUEUE',
         help='''Task-processing queue. SoS by default uses a local multiprocessing
             queue where tasks are executed by different processes. Supported task
             queues include a 'rq' engine where tasks will be distributed to one or
@@ -161,8 +165,9 @@ def add_run_arguments(parser):
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
         description='''Control how sos scirpt is executed.''')
-    runmode.add_argument('-n', action='store_true', dest='__dryrun__',
-        help='''Execute a workflow without executing any actions. This can be
+    if not interactive:
+        runmode.add_argument('-n', action='store_true', dest='__dryrun__',
+            help='''Execute a workflow without executing any actions. This can be
             used to check the syntax of a SoS file.''')
     runmode.add_argument('-f', action='store_true', dest='__rerun__',
         help='''Execute the workflow in a special run mode that ignores saved
@@ -171,10 +176,12 @@ def add_run_arguments(parser):
         help='''Execute the workflow in a special run mode that re-use existing
             output files and recontruct runtime signatures if output files
             exist.''')
-    addCommonArgs(parser)
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=1 if interactive else 2,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).'''),
     parser.set_defaults(func=cmd_run)
 
-def cmd_run(args, workflow_args, batch_mode=True):
+def cmd_run(args, workflow_args):
     import atexit
     from .utils import env, get_traceback
     from .sos_script import SoS_Script
@@ -205,8 +212,7 @@ def cmd_run(args, workflow_args, batch_mode=True):
             executor_class = MP_Executor
 
     # kill all remainging processes when the master process is killed.
-    if batch_mode:
-        atexit.register(env.cleanup)
+    atexit.register(env.cleanup)
     #
     if args.__rerun__:
         env.sig_mode = 'ignore'
@@ -231,39 +237,16 @@ def cmd_run(args, workflow_args, batch_mode=True):
         executor = executor_class(workflow, args=workflow_args, config_file=args.__config__)
         #
         if args.__dryrun__:
-            executor.dryrun(args.__targets__)
+            return executor.dryrun(args.__targets__)
         else:
             # if dag is None, the script will be run sequentially and cannot handle
             # make-style steps.
-            executor.run(args.__targets__)
+            return executor.run(args.__targets__)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error(e)
-        if batch_mode:
-            sys.exit(1)
-        else:
-            raise
-
-#
-# function runfile that is used by spyder to execute complete script
-#
-def runfile(script=None, args='', wdir='.', **kwargs):
-    import argparse
-    import shlex
-    import sys
-    from .utils import _parse_error
-    parser = argparse.ArgumentParser(description='''Execute a sos script''')
-    add_run_arguments(parser)
-    parser.error = _parse_error
-    if isinstance(args, str):
-        args = shlex.split(args)
-    if script is None or '-h' in args:
-        parser.print_help()
-        sys.exit(0)
-    args, workflow_args = parser.parse_known_args([script] + args)
-    # calling the associated functions
-    cmd_run(args, workflow_args, batch_mode=False)
+        sys.exit(1)
 
 #
 # subcommand dryrun
@@ -281,7 +264,9 @@ def add_dryrun_arguments(parser):
             will be the target of execution. If specified, SoS will execute
             only part of a workflow or multiple workflows or auxiliary steps
             to generate specified targets. ''')
-    addCommonArgs(parser)
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).'''),
     parser.set_defaults(func=cmd_dryrun)
 
 def cmd_dryrun(args, workflow_args):
@@ -315,7 +300,9 @@ def add_remove_arguments(parser):
     parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
         help='''Remove files without confirmation, suitable for batch removal
             of files.''')
-    addCommonArgs(parser)
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).'''),
     parser.set_defaults(func=cmd_remove)
 
 def get_tracked_files(sig_file):
@@ -552,7 +539,9 @@ def add_config_arguments(parser):
         with invalid expression (e.g. val without quote) considered as string. Syntax
         'A.B=v' can be used to add {'B': v} to dictionary 'A', and --set KEY VALUE1 VALUE2 ...
         will create a list with multiple values.''')
-    addCommonArgs(parser)
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).'''),
     parser.set_defaults(func=cmd_config)
 
 def cmd_config(args, workflow_args):
@@ -707,7 +696,9 @@ def add_pack_arguments(parser):
         archiving them''')
     parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
         help='''Overwrite output file if it already exists''')
-    addCommonArgs(parser)
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).'''),
     parser.set_defaults(func=cmd_pack)
 
 def locate_files(session, include, exclude, all_files):
@@ -893,7 +884,9 @@ def add_unpack_arguments(parser):
         help='''Overwrite existing files without promoting users. This option
         can be dangerous to use. Note that SoS checks file signature and
         ignores existing files that are identical to those in the archive.''')
-    addCommonArgs(parser)
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).'''),
     parser.set_defaults(func=cmd_unpack)
 
 def cmd_unpack(args, unknown_args):
@@ -1005,10 +998,6 @@ def cmd_unpack(args, unknown_args):
     prog.done()
 
 
-def addCommonArgs(parser):
-    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
-            help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
-            information to standard output (default to 2).'''),
 
 
 def sosrun():

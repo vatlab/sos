@@ -213,7 +213,7 @@ def sos_run(workflow, **kwargs):
     if env.run_mode == 'dryrun':
         env.logger.info('Checking nested workflow {}'.format(workflow))
         return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).dryrun()
-    elif env.run_mode == 'run':
+    elif env.run_mode in ('run', 'interactive'):
         env.logger.info('Executing workflow ``{}`` with input ``{}``'
             .format(workflow, short_repr(env.sos_dict['_input'], True)))
 

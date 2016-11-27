@@ -49,7 +49,7 @@ from ipykernel.zmqshell import ZMQDisplayPublisher
 from textwrap import dedent
 from io import StringIO
 
-from .sos_executor import execute_cell
+from .sos_executor import runfile
 from .converter import SoS_Exporter
 
 class FlushableStringIO(StringIO):
@@ -449,32 +449,52 @@ class SoS_Kernel(Kernel):
                 {'name': 'stdout', 'text': 'Specify one of the kernels to restart: sos{}\n'
                     .format(''.join(', {}'.format(x) for x in self.kernels))})
 
+    def _parse_error(self, msg):
+        self.warn(msg)
+
+    def parse_dict_args(self, args):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('vars', nargs='*')
+        parser.add_argument('-k', '--keys', action='store_true')
+        parser.add_argument('-r', '--reset', action='store_true')
+        parser.add_argument('-a', '--all', action='store_true')
+        parser.add_argument('-d', '--del', nargs='+', dest='__del__')
+        parser.error = self._parse_error
+        return parser.parse_args(args)
+
     def handle_magic_dict(self, line):
         'Magic that displays content of the dictionary'
         # do not return __builtins__ beacuse it is too long...
-        actions = line.strip().split()
-        keys = [x for x in actions if not x.startswith('-')]
-        for x in keys:
+        import shlex
+        args = self.parse_dict_args(shlex.split(line))
+
+        for x in args.vars:
             if not x in env.sos_dict:
                 self.warn('Unrecognized sosdict option or variable name {}'.format(x))
                 return
-        for x in [x for x in actions if x.startswith('-')]:
-            if not x in ['-r', '--reset', '-k', '--keys', '-a', '--all']:
-                raise RuntimeError('Unrecognized option {} for magic %dict'.format(x))
-        if '--reset' in actions or '-r' in actions:
+
+        if args.reset:
             self.send_result(self._reset_dict())
-        if '--keys' in actions or '-k' in actions:
-            if '--all' in actions or '-a' in actions:
+            return
+
+        if args.__del__:
+            for x in args.__del__:
+                if x in env.sos_dict:
+                    env.sos_dict.pop(x)
+            return
+
+        if args.keys:
+            if args.all:
                 self.send_result(env.sos_dict._dict.keys())
-            elif keys:
-                self.send_result(set(keys))
+            elif args.vars:
+                self.send_result(set(args.vars))
             else:
                 self.send_result({x for x in env.sos_dict._dict.keys() if not x.startswith('__')} - self.original_keys)
         else:
-            if '--all' in actions or '-a' in actions:
+            if args.all:
                 self.send_result(env.sos_dict._dict)
-            elif keys:
-                self.send_result({x:y for x,y in env.sos_dict._dict.items() if x in keys})
+            elif args.vars:
+                self.send_result({x:y for x,y in env.sos_dict._dict.items() if x in args.vars})
             else:
                 self.send_result({x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys and not x.startswith('__')})
 
@@ -709,17 +729,17 @@ class SoS_Kernel(Kernel):
         with self.redirect_sos_io():
             try:
                 # record input and output
-                res = execute_cell(code, self.options)
+                res = runfile(code=code, args=self.options)
                 self.send_result(res, silent)
             except Exception:
                 sys.stderr.flush()
                 sys.stdout.flush()
-                self.send_response(self.iopub_socket, 'display_data',
-                    {
-                        'source': 'SoS',
-                        'metadata': {},
-                        'data': { 'text/html': HTML('<hr color="black" width="60%">').data}
-                    })
+                #self.send_response(self.iopub_socket, 'display_data',
+                #    {
+                #        'source': 'SoS',
+                #        'metadata': {},
+                #        'data': { 'text/html': HTML('<hr color="black" width="60%">').data}
+                #    })
                 raise
             except KeyboardInterrupt:
                 self.warn('Keyboard Interrupt\n')
@@ -841,7 +861,7 @@ class SoS_Kernel(Kernel):
         parser.add_argument('kernel', nargs='?', default='')
         parser.add_argument('-i', '--in', nargs='*', dest='in_vars')
         parser.add_argument('-o', '--out', nargs='*', dest='out_vars')
-        parser.error = _parse_error
+        parser.error = self._parse_error
         return parser.parse_args(args)
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
@@ -876,9 +896,9 @@ class SoS_Kernel(Kernel):
             return
         if self.MAGIC_DICT.match(code):
             # %dict should be the last magic
-            options, remaining_code = self.get_magic_and_code(code, True)
+            options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_dict(options)
-            return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_CONNECT_INFO.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             cfile = find_connection_file()
@@ -898,9 +918,9 @@ class SoS_Kernel(Kernel):
             # self.options will be set to inflence the execution of remaing_code
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_RESTART.match(code):
-            options, remaining_code = self.get_magic_and_code(code, True)
+            options, remaining_code = self.get_magic_and_code(code, False)
             self.restart_kernel(options)
-            return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_WITH.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
@@ -1060,7 +1080,7 @@ class SoS_SpyderKernel(SoS_Kernel):
         parser = argparse.ArgumentParser()
         parser.add_argument('filenames', nargs='+')
         parser.add_argument('--cd', action='store_true', dest='__switch_dir__')
-        parser.error = _parse_error
+        parser.error = self._parse_error
         return parser.parse_args(shlex.split(args))
 
     def handle_magic_edit(self, options):
