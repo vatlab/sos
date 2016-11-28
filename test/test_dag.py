@@ -23,6 +23,7 @@
 
 import os
 import time
+import shutil
 import unittest
 from io import StringIO
 
@@ -33,6 +34,25 @@ from sos.target import FileTarget
 
 
 class TestDAG(unittest.TestCase):
+    def setUp(self):
+        env.reset()
+        self.temp_files = []
+
+    def tearDown(self):
+        for f in self.temp_files:
+            FileTarget(f).remove('both')
+
+    def touch(self, files):
+        '''create temporary files'''
+        if isinstance(files, str):
+            files = [files]
+        #
+        for f in files:
+            with open(f, 'w') as tmp:
+                tmp.write('test')
+        #
+        self.temp_files.extend(files)
+
     def assertDAG(self, dag, content):
         out = StringIO()
         dag.write_dot(out)
@@ -912,6 +932,30 @@ print(b)
         wf = script.workflow('B')
         Base_Executor(wf).run()
         self.assertTrue(env.sos_dict['b'], 1)
+
+    def testChainedDepends(self):
+        '''Test chain dependent'''
+        shutil.rmtree('.sos')
+        os.makedirs('.sos/.runtime')
+        script = SoS_Script(r'''
+# this step provides variable `var`
+[index: provides='{filename}.bam.bai']
+input: "${filename}.bam"
+sh:
+   echo "Generating ${output}"
+   touch ${output}
+
+[call: provides='{filename}.vcf']
+input:   "${filename}.bam"
+depends: "${input}.bai"
+sh:
+   echo "Calling variants from ${input} with ${depends} to ${output}"
+   touch ${output}
+''')
+        FileTarget('a.bam.bai').remove('both')
+        FileTarget('a.vcf').remove('both')
+        self.touch('a.bam')
+        Base_Executor(script.workflow()).run(targets=['a.vcf'])
 
 if __name__ == '__main__':
     unittest.main()

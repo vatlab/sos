@@ -358,6 +358,7 @@ class Base_Executor:
         self.resolve_dangling_targets(dag, targets)
         # now, there should be no dangling targets, let us connect nodes
         dag.build(self.workflow.auxiliary_sections)
+        #dag.show_nodes()
         # trim the DAG if targets are specified
         if targets:
             dag = dag.subgraph_from(targets)
@@ -455,7 +456,10 @@ class Base_Executor:
                         .format(target, dag.steps_depending_on(target, self.workflow)))
                 # now, there should be no dangling targets, let us connect nodes
                 # this can be done more efficiently
+                runnable._depends_targets.append(target)
+                dag._all_dependent_files[target].append(runnable)
                 dag.build(self.workflow.auxiliary_sections)
+                #
                 cycle = dag.circular_dependencies()
                 if cycle:
                     raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
@@ -566,7 +570,10 @@ class MP_Executor(Base_Executor):
                             .format(target, dag.steps_depending_on(target, self.workflow)))
                     # now, there should be no dangling targets, let us connect nodes
                     # this can be done more efficiently
+                    runnable._depends_targets.append(target)
+                    dag._all_dependent_files[target].append(runnable)
                     dag.build(self.workflow.auxiliary_sections)
+                    #
                     cycle = dag.circular_dependencies()
                     if cycle:
                         raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))

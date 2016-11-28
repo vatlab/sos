@@ -189,6 +189,8 @@ class SoS_DAG(nx.DiGraph):
     def show_nodes(self):
         for node in self.nodes():
             node.show()
+        for edge in self.edges():
+            print(edge)
 
     def circular_dependencies(self):
         try:

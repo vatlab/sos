@@ -158,7 +158,11 @@ class Interactive_Executor(Base_Executor):
                         .format(target, dag.steps_depending_on(target, self.workflow)))
                 # now, there should be no dangling targets, let us connect nodes
                 # this can be done more efficiently
+                runnable._depends_targets.append(target)
+                dag._all_dependent_files[target].append(runnable)
+                #
                 dag.build(self.workflow.auxiliary_sections)
+                #dag.show_nodes()
                 cycle = dag.circular_dependencies()
                 if cycle:
                     raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
