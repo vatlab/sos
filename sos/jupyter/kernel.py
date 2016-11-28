@@ -774,7 +774,7 @@ class SoS_Kernel(Kernel):
             else:
                 output_files = []
             # use a table to list input and/or output file if exist
-            if input_files or output_files:
+            if output_files:
                 self.send_response(self.iopub_socket, 'display_data',
                         {
                             'source': 'SoS',

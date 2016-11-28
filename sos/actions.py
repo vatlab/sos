@@ -210,35 +210,40 @@ def sos_run(workflow, **kwargs):
     for k,v in kwargs.items():
         env.sos_dict.set(k, v)
     env.sos_dict.set('__step_output__', copy.deepcopy(env.sos_dict['_input']))
-    if env.run_mode == 'dryrun':
-        env.logger.info('Checking nested workflow {}'.format(workflow))
-        return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).dryrun()
-    elif env.run_mode in ('run', 'interactive'):
-        env.logger.info('Executing workflow ``{}`` with input ``{}``'
-            .format(workflow, short_repr(env.sos_dict['_input'], True)))
+    try:
+        my_name = env.sos_dict['step_name']
+        if env.run_mode == 'dryrun':
+            env.logger.info('Checking nested workflow {}'.format(workflow))
+            return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).dryrun()
+        elif env.run_mode in ('run', 'interactive'):
+            env.logger.info('Executing workflow ``{}`` with input ``{}``'
+                .format(workflow, short_repr(env.sos_dict['_input'], True)))
 
-        if env.__task_engine__:
-            import pkg_resources
-            # import all executors
-            executor_class = None
-            for entrypoint in pkg_resources.iter_entry_points(group='sos_executors'):
-                # Grab the function that is the actual plugin.
-                name = entrypoint.name
-                if name == env.__task_engine__:
-                    try:
-                        executor_class = entrypoint.load()
-                    except Exception as e:
-                        print('Failed to load queue executor {}: {}'.format(entrypoint.name, e))
+            if env.__task_engine__:
+                import pkg_resources
+                # import all executors
+                executor_class = None
+                for entrypoint in pkg_resources.iter_entry_points(group='sos_executors'):
+                    # Grab the function that is the actual plugin.
+                    name = entrypoint.name
+                    if name == env.__task_engine__:
+                        try:
+                            executor_class = entrypoint.load()
+                        except Exception as e:
+                            print('Failed to load queue executor {}: {}'.format(entrypoint.name, e))
 
-            if not executor_class:
-                sys.exit('Could not locate specified queue executor {}'.format(env.__task_engine__))
-        else:
-            if env.max_jobs == 1:
-                executor_class = Base_Executor
+                if not executor_class:
+                    sys.exit('Could not locate specified queue executor {}'.format(env.__task_engine__))
             else:
-                executor_class = MP_Executor
+                if env.max_jobs == 1:
+                    executor_class = Base_Executor
+                else:
+                    executor_class = MP_Executor
 
-        return executor_class(wf, args=env.sos_dict['__args__'], nested=True).run()
+            return executor_class(wf, args=env.sos_dict['__args__'], nested=True).run()
+    finally:
+        # restore step_name in case the subworkflow re-defines it
+        env.sos_dict.set('step_name', my_name)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def execute_script(script, interpreter, suffix, args='', **kwargs):
