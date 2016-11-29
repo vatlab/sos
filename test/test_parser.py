@@ -723,32 +723,6 @@ string''', with_option=1
 func(
 ''')
 
-    def testDescriptions(self):
-        '''Test script and workflow descriptions'''
-        script = SoS_Script('''# first block
-
-# global
-# description
-
-# human
-# description of human
-
-# description of human continued
-
-[human_1]
-
-a = '1'
-
-# mouse
-# mouse description
-#
-
-[mouse_1]
-''')
-        self.assertEqual(script.description, 'global\ndescription\n\n')
-        self.assertEqual(script.workflow('human').description, 'description of human\ndescription of human continued\n')
-        self.assertEqual(script.workflow('mouse').description, 'mouse description\n')
-
     def testLongerCode(self):
         '''Test definition of classes (with intermediate newlines) in step.'''
         script = SoS_Script('''# first block
@@ -1197,7 +1171,7 @@ CONFIG.a = 'b'
 [0]
 seq = range(3)
 input: for_each='seq'
-output: 'test${_seq}.txt'
+output: "test${_seq}.txt"
 print(output)
 ''')
         wf = script.workflow()
@@ -1208,7 +1182,7 @@ print(output)
 [0]
 seq = range(3)
 input: for_each='seq'
-output: 'test${_seq}.txt'
+output: "test${_seq}.txt"
 assert(len(output), _index + 1)
 task:
 assert(len(output), 3)

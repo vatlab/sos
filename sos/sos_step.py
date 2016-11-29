@@ -255,7 +255,7 @@ def analyze_section(section, default_input=None):
         if statement[0] == '=':
             signature_vars |= accessed_vars('='.join(statement[1:3]), section.sigil)
         elif statement[0] == ':':
-            key, value, _ = statement[1:]
+            key, value = statement[1:]
             # output, depends, and process can be processed multiple times
             try:
                 args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
@@ -786,7 +786,7 @@ class Base_Step_Executor:
                     if statement[0] == '=':
                         self.assign(statement[1], statement[2])
                     elif statement[0] == ':':
-                        key, value, _ = statement[1:]
+                        key, value = statement[1:]
                         # output, depends, and process can be processed multiple times
                         try:
                             args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)

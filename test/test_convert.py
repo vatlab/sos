@@ -37,7 +37,7 @@ class TestConvert(unittest.TestCase):
 [0]
 seq = range(3)
 input: for_each='seq'
-output: 'test${_seq}.txt'
+output: "test${_seq}.txt"
 print(output)
 ''')
         with open('temp/script2.sos', 'w') as script:
@@ -46,7 +46,7 @@ print(output)
 [0]
 seq = range(3)
 input: for_each='seq'
-output: 'test${_seq}.txt'
+output: "test${_seq}.txt"
 run:			concurrent=True
     echo 'this is test script'
 

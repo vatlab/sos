@@ -72,8 +72,6 @@ class SoS_Step:
         self.names = names
         self.comment = ''
         self.comment_ended = False
-        # comment at the end of a section that could be a workflow description
-        self.back_comment = ''
         # everything before step process
         self.statements = []
         # step processes
@@ -204,14 +202,11 @@ class SoS_Step:
             self._script += line
         else:
             self.add_statement(line)
-        self.back_comment = ''
 
     def add_comment(self, line):
         '''Add comment line'''
         if self.empty() and not self.comment_ended:
             self.comment += (' ' if self.comment else '') + line.lstrip('#').strip()
-        else:
-            self.back_comment += (' ' if self.back_comment else '') + line.lstrip('#').strip()
 
     def end_comment(self):
         self.comment_ended = True
@@ -226,7 +221,6 @@ class SoS_Step:
             # new assignment
             self.statements.append(['=', key, value])
             self.values = [value]
-        self.back_comment = ''
         if lineno:
             self.lineno = lineno
 
@@ -240,9 +234,8 @@ class SoS_Step:
                 self._action_options += value
         else:
             # new directive, the comment before it are used
-            self.statements.append([':', key, value, self.back_comment])
+            self.statements.append([':', key, value])
             self.values = [value]
-        self.back_comment = ''
         if lineno:
             self.lineno = lineno
 
@@ -254,7 +247,6 @@ class SoS_Step:
         self.values = [value]
         self._action = key
         self._action_options = value
-        self.back_comment = ''
         if lineno:
             self.lineno = lineno
 
@@ -269,7 +261,6 @@ class SoS_Step:
             self.statements[-1][-1] += line
         else:
             self.statements.append(['!', line])
-        self.back_comment = ''
         if lineno:
             self.lineno = lineno
 
@@ -365,11 +356,10 @@ class SoS_Step:
 class SoS_Workflow:
     '''A SoS workflow with multiple steps. It is created from multiple sections of a SoS script
     and consists of multiple SoS_Step.'''
-    def __init__(self, content, workflow_name, allowed_steps, sections, description):
+    def __init__(self, content, workflow_name, allowed_steps, sections):
         '''create a workflow from its name and a list of SoS_Sections (using name matching)'''
         self.content = content
         self.name = workflow_name
-        self.description = description
         self.sections = []
         self.auxiliary_sections = []
         #
@@ -443,22 +433,6 @@ class SoS_Workflow:
         '''Append another workflow to existing one to created a combined workflow'''
         # all sections are simply appended ...
         self.sections.extend(workflow.sections)
-
-    def show(self):
-        textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
-        paragraphs = dehtml(self.description).split('\n\n')
-        print('\n'.join(
-            textwrap.wrap('{} {}:  {}'.format(
-                'Workflow',
-                self.name, paragraphs[0]),
-                width=textWidth)
-            ))
-        for paragraph in paragraphs[1:]:
-            print('\n'.join(
-            textwrap.wrap(paragraph, width=textWidth)
-            ))
-        for section in self.sections:
-            section.show()
 
 class SoS_ScriptContent:
     '''A small class to record the script information to be used by nested
@@ -553,28 +527,6 @@ class SoS_Script:
         for section in self.sections:
             if section.is_global:
                 section.names = self.workflows
-        #
-        # get script descriptions
-        cur_description = None
-        self.description = ''
-        self.workflow_descriptions = defaultdict(str)
-        for block in self.descriptions:
-            lines = [x for x in block.split('\n') if x.strip()]
-            if not lines:
-                continue
-            for name in self.workflows:
-                if lines[0].strip() == name:
-                    cur_description = name
-                    break
-            if cur_description:
-                self.workflow_descriptions[cur_description] += '\n'.join(lines[1:] if lines[0].strip() == cur_description else lines) + '\n'
-            else:
-                self.description += block + '\n'
-        for section in self.sections:
-            lines = [x for x in section.back_comment.split('\n') if x.strip()]
-            for name in self.workflows:
-                if lines and lines[0].strip() == name:
-                    self.workflow_descriptions[name] += '\n'.join(lines[1:]) + '\n'
 
     def _include_namespace(self, sos_file, alias):
         try:
@@ -632,7 +584,6 @@ for __n, __v in {}.items():
     def _read(self, fp):
         self.sections = []
         self.format_version = '1.0'
-        self.descriptions = []
         self.gloal_def = ''
         #
         comment_block = 1
@@ -797,7 +748,7 @@ for __n, __v in {}.items():
                     elif comment_block > 1:
                         # anything before the first section can be pipeline
                         # description.
-                        self.descriptions[-1] += line.lstrip('#').lstrip()
+                        pass
                     if self.transcript:
                         self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
                 else:
@@ -840,10 +791,6 @@ for __n, __v in {}.items():
                 # in the front of the script
                 if cursect is None:
                     comment_block += 1
-                    # if the first line of the script is empty
-                    if not self.descriptions:
-                        self.descriptions.append('')
-                    self.descriptions.append('')
                 else:
                     if cursect.category() in ('statements', 'script'):
                         cursect.extend(line)
@@ -1195,19 +1142,4 @@ for __n, __v in {}.items():
                 if fnmatch.fnmatch(wf_name, name):
                     sections.append(section)
                     break
-        return SoS_Workflow(self.content, wf_name, allowed_steps, sections, self.workflow_descriptions.get(wf_name, ''))
-
-    def show(self):
-        textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
-        if self.description:
-            # separate \n\n
-            for paragraph in dehtml(self.description).split('\n\n'):
-                print('\n'.join(textwrap.wrap(paragraph, width=textWidth)))
-        #
-        text = 'Available workflows: {}'.format(', '.join(sorted(self.workflows)))
-        print('\n' + '\n'.join(textwrap.wrap(text, width=textWidth, subsequent_indent=' '*8)))
-        for idx, workflow in enumerate(sorted(self.workflows)):
-            wf = self.workflow(workflow)
-            wf.show()
-            print('')
-
+        return SoS_Workflow(self.content, wf_name, allowed_steps, sections)
