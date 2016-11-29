@@ -39,7 +39,7 @@ from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER,
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
     SOS_ASSIGNMENT, SOS_SUBWORKFLOW, SOS_INCLUDE, SOS_FROM_INCLUDE, SOS_AS, \
     SOS_STRU, SOS_IF, SOS_ELIF, SOS_ELSE, SOS_OPTIONS, SOS_ENDIF, SOS_CELL, SOS_MAGIC, \
-    INDENTED
+    INDENTED, SOS_KEYWORDS
 
 __all__ = ['SoS_Script']
 
@@ -313,6 +313,11 @@ class SoS_Step:
                 if '=' not in statement[2]:
                     raise ValueError('{}:  Invalid parameter definition: {}'.format(self.step_name(), statement[2]))
                 name, value = statement[2].split('=', 1)
+                name = name.strip()
+                if name.startswith('_'):
+                    raise ValueError('Invalid parameter name {}: names with leading underscore is not allowed.'.format(name))
+                if name in SOS_KEYWORDS:
+                    raise ValueError('Invalid parameter name {0}: {0} is a SoS keyword'.format(name))
                 if not value.strip():
                     raise ValueError('{}: Invalid parameter definition: {}'.format(self.step_name(), statement[2]))
                 self.statements[idx] = ['!', 'if "sos_handle_parameter_" in globals():\n    {} = sos_handle_parameter_({!r}, {})\n'.format(name, name.strip(), value)]

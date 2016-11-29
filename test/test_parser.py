@@ -399,6 +399,14 @@ parameter: a_b = int
         self.assertEqual(env.sos_dict['a_b'], 10)
         Base_Executor(wf, args=['--a-b', '10']).dryrun()
         self.assertEqual(env.sos_dict['a_b'], 10)
+        #
+        # parameter cannot be any keyword
+        for key in ['input', 'output', '_input', 'with']:
+            self.assertRaises(Exception, SoS_Script, '''
+
+parameter: {} = int
+[0]
+'''.format(key))
 
 
     def testSectionVariables(self):
