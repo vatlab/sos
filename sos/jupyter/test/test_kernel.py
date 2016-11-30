@@ -404,5 +404,18 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             res = get_result(iopub)
             self.assertEqual(res['m'], 2.5)
 
+    def testSetSigil(self):
+        '''Test set_options of sigil'''
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            # create a data frame
+            msg_id, content = execute(kc=kc, code='%set_options sigil=None')
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code='a="${}".format(100)')
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%dict a")
+            res = get_result(iopub)
+            self.assertEqual(res['a'], "$100")
+
 if __name__ == '__main__':
     unittest.main()

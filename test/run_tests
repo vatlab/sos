@@ -1,0 +1,3 @@
+#!/bin/bash
+
+nosetests `find .. -name 'test' | grep -v build` --stop
