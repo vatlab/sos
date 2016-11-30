@@ -45,6 +45,6 @@ if __name__ == '__main__':
         import nose
         # we use nose for testing because the ipython tests have some namespace
         # conflict with unittest.
-        nose.core.run(importTests())
+        sys.exit(0 if nose.core.run(importTests()) else 1)
     except ImportError:
-        test_runner.run(importTests())
+        sys.exit(0 if test_runner.run(importTests()) else 1)
