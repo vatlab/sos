@@ -308,6 +308,7 @@ sos_run('sub')
         downloadURL('https://github.com/bpeng2000/SOS/wiki/SoS_March2016.pdf', 'tmp/SoS_March2016.pdf', index=0)
         self.assertTrue(os.path.isfile('tmp/SoS_March2016.pdf'))
         os.remove('tmp/SoS_March2016.pdf')
+        os.rmdir('tmp')
 
     def testTextRepr(self):
         # the " as the last character can lead to problems...

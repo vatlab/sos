@@ -28,6 +28,9 @@ import shlex
 import glob
 import copy
 import urllib
+import urllib.request
+import urllib.error
+import urllib.parse
 import shutil
 import zipfile
 import gzip

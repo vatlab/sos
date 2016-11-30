@@ -878,6 +878,8 @@ sos_run('a')
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['c_0', 'a_1', 'a_2', 'a_1', 'a_2'])
         #self.assertEqual(env.sos_dict['inputs'], [['a.txt'], ['a.txt'], ['a.txt.a1'], ['b.txt'], ['b.txt'], ['b.txt.a1']])
+        for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
+            FileTarget(file).remove('both')
         #
         # allow specifying a single step
         # step will be looped
@@ -995,6 +997,9 @@ input: 'a.txt', 'b.txt', group_by='single'
         wf = script.workflow('e2')
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['executed'], ['e2_2'])
+        #
+        # clean up
+        FileTarget('a.done').remove('both')
 
     def testDynamicNestedWorkflow(self):
         '''Test nested workflow controlled by command line option'''
@@ -1044,13 +1049,13 @@ parameter: parB = 10
 
 [A_1: shared='executed']
 executed.append('t.' + step_name)
-output: _input[0] + 'a1'
+output: _input[0] + '.a1'
 sh:
     touch ${output}
 
 [A_2: shared='executed']
 executed.append('t.' + step_name)
-output: _input[0] + 'a2'
+output: _input[0] + '.a2'
 sh:
     touch ${output}
 ''')
@@ -1073,6 +1078,8 @@ sos_run('A')
         #
         shutil.rmtree('.sos')
         os.makedirs('.sos/.runtime')
+        for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
+            FileTarget(file).remove('both')
         script = SoS_Script('''
 %include inc as k
 

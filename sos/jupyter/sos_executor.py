@@ -169,7 +169,7 @@ class Interactive_Executor(Base_Executor):
             except RemovedTarget as e:
                 runnable._status = None
                 dag.regenerate_target(e.target)
-            except UnavailableLock:
+            except UnavailableLock as e:
                 runnable._status = 'pending'
                 runnable._signature = (e.output, e.sig_file)
                 env.logger.info('Waiting on another process for step {}'.format(section.step_name()))

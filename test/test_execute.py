@@ -1704,7 +1704,7 @@ run:
         Base_Executor(wf).run()
         # for the second run, output should be correctly constructed
         Base_Executor(wf).run()
-        for file in ['1.txt', '2.txt']:
+        for file in ['1.out', '2.out', '1.2.out', '2.3.out']:
             FileTarget(file).remove('both')
 
 
@@ -1773,6 +1773,8 @@ run:
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
+        for file in ('1.out2', '2.out2'):
+            FileTarget(file).remove('both')
 
     def testSharedVarInForEach(self):
         self.touch(['1.txt', '2.txt'])
