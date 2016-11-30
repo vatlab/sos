@@ -22,10 +22,7 @@
 import os
 import sys
 import yaml
-import shlex
-import argparse
 import time
-import builtins
 import keyword
 from collections.abc import Sequence
 import multiprocessing as mp
@@ -37,8 +34,7 @@ from .sos_step import Dryrun_Step_Executor, SP_Step_Executor, MP_Step_Executor, 
     analyze_section
 from .utils import env, Error, WorkflowDict, get_traceback, ProgressBar, frozendict, dict_merge, short_repr
 from .sos_eval import SoS_exec
-from .sos_script import SoS_Script
-from .sos_syntax import SOS_SECTION_HEADER, SOS_KEYWORDS
+from .sos_syntax import SOS_KEYWORDS
 from .dag import SoS_DAG
 from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5
 from .pattern import extract_pattern

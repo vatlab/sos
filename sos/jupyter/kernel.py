@@ -33,7 +33,7 @@ import pkg_resources
 import pickle
 from collections.abc import Sequence
 
-from sos.utils import env, WorkflowDict, short_repr, pretty_size, _parse_error
+from sos.utils import env, WorkflowDict, short_repr, pretty_size
 from sos._version import __sos_version__, __version__
 from sos.sos_eval import SoS_exec, SoS_eval, interpolate
 from sos.sos_syntax import SOS_SECTION_HEADER
@@ -879,7 +879,7 @@ class SoS_Kernel(Kernel):
         try:
             idx = [x.startswith('#') or not x.strip() for x in lines].index(False)
             return os.linesep.join(lines[idx:])
-        except Exception as e:
+        except Exception:
             # if all line is empty
             return ''
 

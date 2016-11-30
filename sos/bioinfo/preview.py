@@ -21,6 +21,8 @@
 #
 
 
+from sos.utils import short_repr
+
 def preview_bam(filename):
     import pysam
     res = ''

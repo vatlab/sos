@@ -99,7 +99,6 @@ def list_converter():
             print('Failed to load converter {}: {}'.format(entrypoint.name, e))
 
 def cmd_convert(args, converter_args):
-    import tempfile
     from .utils import env, get_traceback
 
     if args.list:
@@ -998,14 +997,15 @@ def cmd_unpack(args, unknown_args):
     prog.done()
 
 
-
-
+#
+# this is the sos-runner command
+#
 def sosrun():
-	if len(sys.argv) == 1:
-		# print error message
-		runfile(None)
-	else:
-		runfile(sys.argv[1], args=sys.argv[2:])
+    import argparse
+    parser = argparse.ArgumentParser(description='''Execute a sos script''')
+    add_run_arguments(parser)
+    args, workflow_args = parser.parse_known_args()
+    cmd_run(args, workflow_args)
 
 def main():
     from ._version import SOS_FULL_VERSION

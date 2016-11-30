@@ -22,21 +22,17 @@
 
 import os
 import sys
-import re
 import subprocess
 import tempfile
 import shlex
-import json
 import glob
 import copy
-import platform
 import urllib
 import shutil
 import zipfile
 import gzip
 import tarfile
 
-from io import BytesIO
 from collections.abc import Sequence
 import multiprocessing as mp
 from .utils import env, ProgressBar, natural_keys, transcribe, AbortExecution, short_repr, get_traceback
@@ -71,10 +67,12 @@ def SoS_Action(run_mode=['run', 'interactive']):
         def action_wrapper(*args, **kwargs):
             # docker files will be downloaded in run or prepare mode
             if 'docker_file' in kwargs and env.run_mode in ['run', 'interactive']:
+                from .docker.client import DockerClient
                 docker = DockerClient()
                 docker.import_image(kwargs['docker_file'])
             # handle image
             if 'docker_image' in kwargs:
+                from .docker.client import DockerClient
                 docker = DockerClient()
                 docker.pull(kwargs['docker_image'])
                 if env.run_mode in ['interactive']:
@@ -146,6 +144,7 @@ class SoS_ExecuteScript:
         with open(debug_script_file, 'w') as sfile:
             sfile.write(self.script)
         if 'docker_image' in kwargs:
+            from .docker.client import DockerClient
             docker = DockerClient()
             docker.run(kwargs['docker_image'], self.script, self.interpreter, self.suffix,
                 **kwargs)

@@ -225,7 +225,10 @@ def py_from_R_repr(expr):
     '''
     try:
         if 'read_dataframe' in expr:
+            # imported to be used by eval
             from feather import read_dataframe
+            # suppress flakes warning
+            read_dataframe
         # the result is something like
         # [1] "{'a': 1}"
         return eval(eval(expr.split(' ', 1)[-1]))

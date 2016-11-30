@@ -28,12 +28,11 @@ import shutil
 
 from io import StringIO
 from tokenize import generate_tokens
-from collections import defaultdict
 from uuid import uuid4
 
-from .utils import env, Error, dehtml, locate_script, text_repr
+from .utils import env, Error, locate_script, text_repr
 from .sos_eval import on_demand_options, sos_compile, set_single_quote_interpolation,\
-    default_global_sigil, set_default_global_sigil
+    set_default_global_sigil
 from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \

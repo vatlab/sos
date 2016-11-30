@@ -25,13 +25,13 @@ import yaml
 import shlex
 import argparse
 from sos.utils import env, frozendict, dict_merge, _parse_error, get_traceback
-from sos.sos_eval import get_default_global_sigil, SoS_exec
+from sos.sos_eval import SoS_exec
 from sos._version import __version__
 from sos.__main__ import add_run_arguments
 from sos.sos_script import SoS_Script
 from sos.sos_executor import Base_Executor, __null_func__
 from sos.sos_syntax import SOS_SECTION_HEADER
-from sos.target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5
+from sos.target import FileTarget, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_step import Interactive_Step_Executor
 
 class Interactive_Executor(Base_Executor):
@@ -242,7 +242,7 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
         # if dag is None, the script will be run sequentially and cannot handle
         # make-style steps.
         return executor.run(args.__targets__)
-    except Exception as e:
+    except Exception:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
         raise

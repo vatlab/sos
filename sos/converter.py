@@ -629,7 +629,7 @@ def transcribe_script(script_file):
     transcript_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.trans', delete=False).name
     with open(transcript_file, 'w') as transcript:
         try:
-            script = SoS_Script(filename=script_file, transcript=transcript)
+            SoS_Script(filename=script_file, transcript=transcript)
         except Exception as e:
             raise ValueError('Failed to parse {}: {}'.format(script_file, e))
     return transcript_file
