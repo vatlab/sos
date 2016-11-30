@@ -32,6 +32,8 @@ import shutil
 import zipfile
 import gzip
 import tarfile
+if sys.platform != 'win32':
+    import blessings
 
 from collections.abc import Sequence
 import multiprocessing as mp
@@ -473,7 +475,6 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
             succ = [x.get() if isinstance(x, mp.pool.AsyncResult) else x for x in succ]
         #
         if sys.platform != 'win32':
-            import blessings
             t = blessings.Terminal(stream=sys.stderr)
             sys.stderr.write(t.move( t.height, 0)) # + '\n')
     else:
