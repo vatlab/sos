@@ -35,6 +35,8 @@ import threading
 import pickle
 import yaml
 import urllib
+import urllib.parse
+import urllib.request
 import argparse
 from collections.abc import Sequence
 from io import StringIO, FileIO

@@ -753,10 +753,6 @@ print(0)
     def testSearchPath(self):
         '''Test if any action should exit in five seconds in dryrun mode'''
         sos_config_file = 'config.yaml'
-        move_back = False
-        if os.path.isfile(sos_config_file):
-            move_back = True
-            os.rename(sos_config_file, sos_config_file + '.bak')
         #
         with open(sos_config_file, 'w') as sos_config:
             sos_config.write('''
@@ -787,10 +783,7 @@ print('hay, I am crazy')
         script.workflow()
         #
         shutil.rmtree('crazy_path')
-        if move_back:
-            os.rename(sos_config_file + '.bak', sos_config_file)
-        else:
-            os.remove(sos_config_file)
+        os.remove(sos_config_file)
 
     def testDynamicOutput(self):
         '''Testing dynamic output'''
@@ -894,6 +887,7 @@ if run_mode == 'run':
         # we should have 9 files
         files = glob.glob('temp/*.txt')
         self.assertEqual(len(files), 3)
+        shutil.rmtree('temp')
 
     def testActiveActionOption(self):
         '''Test the active option of actions'''
@@ -1775,7 +1769,7 @@ run:
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        for file in ('1.out2', '2.out2'):
+        for file in ('1.out', '2.out', '1.out2', '2.out2'):
             FileTarget(file).remove('both')
 
     def testSharedVarInForEach(self):
