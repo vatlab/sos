@@ -75,6 +75,7 @@ class Interactive_Executor(Base_Executor):
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config_file, e))
         # set config to CONFIG
         env.sos_dict.set('CONFIG', frozendict(cfg))
+        FileTarget('config.yaml').remove('both')
 
     def run(self, targets=None):
         '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer

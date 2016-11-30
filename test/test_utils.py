@@ -24,6 +24,7 @@ import os
 import unittest
 import cProfile
 import timeit
+import shutil
 import textwrap
 
 # these functions are normally not available but can be imported 
@@ -307,8 +308,7 @@ sos_run('sub')
         '''Test download file'''
         downloadURL('https://github.com/bpeng2000/SOS/wiki/SoS_March2016.pdf', 'tmp/SoS_March2016.pdf', index=0)
         self.assertTrue(os.path.isfile('tmp/SoS_March2016.pdf'))
-        os.remove('tmp/SoS_March2016.pdf')
-        os.rmdir('tmp')
+        shutil.rmtree('tmp')
 
     def testTextRepr(self):
         # the " as the last character can lead to problems...

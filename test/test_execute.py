@@ -1544,6 +1544,7 @@ python:
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
         self.assertLess(time.time() - st, 2.5)
+        FileTarget('myfile.txt').remove('both')
 
     def testPassingVarToTask(self):
         '''Test passing used variable to tasks'''
@@ -1679,6 +1680,7 @@ with open('b.txt', 'w') as txt:
         # two processes execute A_1 and A_2 separately, usually
         # takes less than 5 seconds
         self.assertLess(time.time() - st, 7)
+        FileTarget('lock.sos').remove('both')
 
 
     def testOutputFromSignature(self):

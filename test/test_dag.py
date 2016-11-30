@@ -288,7 +288,7 @@ output: 'e.txt'
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
         dag.show_nodes()
-        dag.write_dot('a.dot')
+        #dag.write_dot('a.dot')
         self.assertDAG(dag,
 '''
 strict digraph "" {
@@ -956,6 +956,8 @@ sh:
         FileTarget('a.vcf').remove('both')
         self.touch('a.bam')
         Base_Executor(script.workflow()).run(targets=['a.vcf'])
+        for file in ('a.vcf', 'a.bam', 'a.bam.bai'):
+            FileTarget(file).remove('both')
 
 if __name__ == '__main__':
     unittest.main()
