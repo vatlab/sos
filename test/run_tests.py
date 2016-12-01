@@ -22,29 +22,24 @@
 
 import os
 import sys
-import re
-import unittest
 
-def importTests():
-    tests = unittest.TestSuite()
+def find_tests():
+    tests = []
     for root, dirs, files in os.walk('..'):
-        files[:] = [x for x in files if re.match("^(test_(.*))\\.py$", x)]
-        for file in files:
-            match = re.match("^(test_(.*))\\.py$", file)
-            m = match.group(1)
-            print("Adding test cases in {}/{}".format(root, file))
-            sys.path.insert(0, root)
-            module = __import__(m)
-            tests.addTest(unittest.defaultTestLoader.loadTestsFromModule( module ))
-        dirs[:] = [x for x in dirs if not x.startswith('.') and x not in ('dist', 'build', 'development')]
+        if any(x in root for x in ('dist', 'build', 'development')):
+            continue
+        if 'test' in dirs:
+            tests.append(os.path.join(root, 'test'))
     return tests
 
 if __name__ == '__main__':
-    test_runner = unittest.TextTestRunner(verbosity=2)
-    try:
-        import nose
-        # we use nose for testing because the ipython tests have some namespace
-        # conflict with unittest.
-        sys.exit(nose.run_exit(suite=importTests(), config=nose.config.Config(stopOnError=True)))
-    except ImportError:
-        sys.exit(0 if test_runner.run(importTests()) else 1)
+    import nose
+    if len(sys.argv) > 1:
+        print('Testing {}'.format(' '.join(sys.argv[1:])))
+        argv = [os.path.abspath(__file__), '--stop'] + sys.argv[1:]
+    else:
+        test_dirs = find_tests()
+        print('Testing {}'.format(' '.join(test_dirs)))
+        argv = [os.path.abspath(__file__), '--stop'] + test_dirs
+    ret = nose.run_exit(argv=argv)
+    sys.exit(ret)

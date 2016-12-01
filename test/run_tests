@@ -1,3 +1,49 @@
-#!/bin/bash
+#!/usr/bin/env python3
+#
+# This file is part of Script of Scripts (SoS), a workflow system
+# for the execution of commands and scripts in different languages.
+# Please visit https://github.com/bpeng2000/SOS for more information.
+#
+# Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 
-nosetests `find .. -name 'test' | grep -v build` --stop
+import os
+import sys
+
+def find_tests():
+    tests = []
+    for root, dirs, files in os.walk('..', topdown=False):
+        if any(x in root for x in ('dist', 'build', 'development')):
+            continue
+        if 'test' in dirs:
+            tests.append(os.path.join(root, 'test'))
+    return tests
+
+if __name__ == '__main__':
+    #
+    # The stop option makes the script stop with the first error
+    #
+    import nose
+    if len(sys.argv) > 1:
+        print('Testing {}'.format(' '.join(sys.argv[1:])))
+        argv = [os.path.abspath(__file__), '--stop'] + sys.argv[1:]
+    else:
+        test_dirs = find_tests()
+        print('Testing {}'.format(' '.join(test_dirs)))
+        argv = [os.path.abspath(__file__), '--stop'] + test_dirs
+    ret = nose.run_exit(argv=argv)
+    sys.exit(ret)
+
