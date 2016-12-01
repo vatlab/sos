@@ -709,6 +709,11 @@ for __n, __v in {}.items():
                                 parsing_errors.append(lineno, line,
                                     'A sigil should be a string string with exactly one space. "{}" specified.'.format(self.global_sigil))
                             set_default_global_sigil(self.global_sigil)
+                            if cursect:
+                                # this is only used for interactive mode where set_option is
+                                # also effective in the current cell
+                                cursect.global_sigil = self.global_sigil
+                                cursect.sigil = self.global_sigil
                         elif opt.startswith('single_quote_interpolation='):
                             if opt[27:].strip() == 'False':
                                 set_single_quote_interpolation(False)
