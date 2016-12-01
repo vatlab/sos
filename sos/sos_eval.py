@@ -146,6 +146,9 @@ class SoS_String:
         #
         # location of first ending sigil
         i = text.index(self.r)
+        if i == 0:
+            # if no expression is found
+            return self.interpolate(text[len(self.r):])
         #
         # substr contains ${
         if self.l in text[start_nested:]:
