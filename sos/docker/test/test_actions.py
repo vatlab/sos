@@ -23,6 +23,7 @@
 import unittest
 import signal
 import sys
+import os
 import threading
 try:
     import _thread
@@ -83,12 +84,20 @@ except (TimeoutException, DockerException) as e:
 
 class TestActions(unittest.TestCase):
     def setUp(self):
+        self.olddir = os.getcwd()
+        try:
+            # this only works with nose, but is also
+            # only needed by nose
+            os.chdir(os.path.dirname(__file__))
+        except:
+            pass
         env.reset()
         self.temp_files = []
 
     def tearDown(self):
         for f in self.temp_files:
             FileTarget(f).remove('both')
+        os.chdir(self.olddir)
 
     def touch(self, files):
         '''create temporary files'''
@@ -125,8 +134,7 @@ echo 'Echo
         wf = script.workflow()
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
         #
-        # this should give us a warning if RAM is less than 4G
-        Base_Executor(wf).prepare()
+        Base_Executor(wf).dryrun()
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
