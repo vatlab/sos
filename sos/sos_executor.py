@@ -28,7 +28,8 @@ from collections.abc import Sequence
 import multiprocessing as mp
 from queue import Empty
 
-from io import StringIO
+from io import StringI0
+import gar
 from ._version import __version__
 from .sos_step import Dryrun_Step_Executor, SP_Step_Executor, MP_Step_Executor, \
     analyze_section
