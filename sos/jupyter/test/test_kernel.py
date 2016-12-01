@@ -177,14 +177,14 @@ class TestKernel(unittest.TestCase):
             self.assertEqual(stdout, 'test_kernel.py\n')
             self.assertEqual(stderr, '')
 
-    def TestCD(self):
+    def testCD(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code="%cd ..")
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="print(os.getcwd())")
             stdout, stderr = assemble_output(iopub)
-            self.assertTrue(stdout.strip().upper().endswith('SOS'))
+            self.assertTrue(stdout.strip().endswith('jupyter'))
             self.assertEqual(stderr, '')
             msg_id, content = execute(kc=kc, code="%cd test")
         
@@ -202,7 +202,7 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
     
-    def TestMagicPut(self):
+    def testMagicPut(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code="%use R")
@@ -232,7 +232,7 @@ class TestKernel(unittest.TestCase):
             res = get_result(iopub)
             self.assertEqual(res, 22)
 
-    def TestMagicGet(self):
+    def testMagicGet(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code="a = 1025")
@@ -257,7 +257,7 @@ class TestKernel(unittest.TestCase):
             wait_for_idle(kc)
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
-    def TestGetPythonDataFrameFromR(self):
+    def testGetPythonDataFrameFromR(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
@@ -281,7 +281,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             wait_for_idle(kc)
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
-    def TestGetPythonDataFromR(self):
+    def testGetPythonDataFromR(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code="null_var = None")
@@ -332,7 +332,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             self.assertEqual(res['mat_var'].shape, (2,2))
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
-    def TestPutRDataFrameToPython(self):
+    def testPutRDataFrameToPython(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
@@ -351,7 +351,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             wait_for_idle(kc)
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
-    def TestPutRDataToPython(self):
+    def testPutRDataToPython(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
@@ -394,7 +394,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 
-    def TestWith(self):
+    def testWith(self):
         '''Test magic with'''
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
@@ -407,7 +407,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             res = get_result(iopub)
             self.assertEqual(res['m'], 2.5)
 
-    def TestSetSigil(self):
+    def testSetSigil(self):
         '''Test set_options of sigil'''
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
