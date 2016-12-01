@@ -114,11 +114,7 @@ class SoS_Magics(Magics):
             print('sos options set to "{}"'.format(line.strip()))
             self.options = line.strip() + ' '
         else:
-            if self.options:
-                print('sos options "{}" is reset to ""').format(self.options.strip())
-                self.options = ''
-            else:
-                print('Usage: set persistent sos options such as -v3 -i (inspect) -p (prepare) -t (transcribe)')
+            return runfile(script=None, code=None)
 
     @line_magic
     def sosget(self, line):
@@ -128,6 +124,12 @@ class SoS_Magics(Magics):
             if var not in env.sos_dict:
                 raise RuntimeError('{} not exist in sos dict.'.format(var))
             self.shell.user_ns[var] = copy.deepcopy(env.sos_dict[var])
+
+    @line_magic
+    def sos_options(self, line):
+        'Magic that change default sigil of SoS'
+        # do not return __builtins__ beacuse it is too long...
+        return runfile(code='%set_options ' + line)
 
     @line_magic
     def sosput(self, line):
@@ -156,14 +158,14 @@ class SoS_Magics(Magics):
             if '--all' in actions or '-a' in actions:
                 return env.sos_dict._dict.keys()
             elif keys:
-                self.send_result(set(keys))
+                return set(keys)
             else:
                 return {x for x in env.sos_dict._dict.keys() if not x.startswith('__')} - self.original_keys
         else:
             if '--all' in actions or '-a' in actions:
                 return env.sos_dict._dict
             elif keys:
-                self.send_result({x:y for x,y in env.sos_dict._dict.items() if x in keys})
+                return {x:y for x,y in env.sos_dict._dict.items() if x in keys}
             else:
                 return {x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys and not x.startswith('__')}
 

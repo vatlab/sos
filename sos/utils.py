@@ -1058,7 +1058,7 @@ def sos_handle_parameter_(key, defvalue):
             raise ValueError('Variable {} is readonly and cannot be defined as a parameter'.format(key))
         elif key in env.sos_dict['sos_symbols_']:
             env.logger.warning('Parameter {} overrides a SoS function.'.format(key))
-        else:
+        elif env.run_mode != 'interactive':
             # the variable should exist if it has been processed... otherwise it should be
             # a bug in sos (e.g. reset dictionary without resetting parameter_vars.
             return env.sos_dict[key]
