@@ -220,7 +220,10 @@ class SoS_String:
                     if self.error_count > 10:
                         raise
                     if self.r not in text[j+1:]:
-                        raise InterpolationError(text[:j], e)
+                        if hasattr(self, 'accessed_vars'):
+                            return self.interpolate(text[len(self.r):])
+                        else:
+                            raise InterpolationError(text[:j], e)
                     j = text.index(self.r, j+1)
                     #                           j
                     # something {} } ${ another }
