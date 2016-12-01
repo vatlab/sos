@@ -87,6 +87,8 @@ def get_result(iopub):
             break
         elif msg['msg_type'] == 'execute_result':
             result = content['data']
+        elif msg['msg_type'] == 'display_data':
+            result = content['data']
         else:
             # other output, ignored
             pass
@@ -160,9 +162,10 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code="%dict --keys")
             self.assertTrue('a' in get_result(iopub))
             msg_id, content = execute(kc=kc, code="%dict --reset")
-            self.assertTrue('a' not in get_result(iopub))
+            wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%dict --keys --all")
             res = get_result(iopub)
+            self.assertTrue('a' not in res)
             for key in ('run', 'sh', 'tcsh', 'expand_pattern'):
                 self.assertTrue(key in res)
 
@@ -174,7 +177,7 @@ class TestKernel(unittest.TestCase):
             self.assertEqual(stdout, 'test_kernel.py\n')
             self.assertEqual(stderr, '')
 
-    def testCD(self):
+    def TestCD(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code="%cd ..")
@@ -199,7 +202,7 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
     
-    def testMagicPut(self):
+    def TestMagicPut(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code="%use R")
@@ -229,7 +232,7 @@ class TestKernel(unittest.TestCase):
             res = get_result(iopub)
             self.assertEqual(res, 22)
 
-    def testMagicGet(self):
+    def TestMagicGet(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code="a = 1025")
@@ -254,7 +257,7 @@ class TestKernel(unittest.TestCase):
             wait_for_idle(kc)
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
-    def testGetPythonDataFrameFromR(self):
+    def TestGetPythonDataFrameFromR(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
@@ -278,7 +281,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             wait_for_idle(kc)
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
-    def testGetPythonDataFromR(self):
+    def TestGetPythonDataFromR(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code="null_var = None")
@@ -329,7 +332,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             self.assertEqual(res['mat_var'].shape, (2,2))
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
-    def testPutRDataFrameToPython(self):
+    def TestPutRDataFrameToPython(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
@@ -348,7 +351,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             wait_for_idle(kc)
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
-    def testPutRDataToPython(self):
+    def TestPutRDataToPython(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
@@ -391,7 +394,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 
-    def testWith(self):
+    def TestWith(self):
         '''Test magic with'''
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
@@ -404,7 +407,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             res = get_result(iopub)
             self.assertEqual(res['m'], 2.5)
 
-    def testSetSigil(self):
+    def TestSetSigil(self):
         '''Test set_options of sigil'''
         with sos_kernel() as kc:
             iopub = kc.iopub_channel

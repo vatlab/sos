@@ -388,7 +388,11 @@ class SoS_Kernel(Kernel):
 
     def switch_kernel(self, kernel, ret_vars=[]):
         if self.supported_languages is None:
-            self.supported_languages = get_supported_languages()
+            try:
+                self.supported_languages = get_supported_languages()
+            except Exception as e:
+                self.warn('Failed to load {}: {}'.format(kernel, e))
+                return
         if kernel and kernel != 'sos':
             if kernel != self.kernel:
                 if kernel in self.kernels:
@@ -474,7 +478,7 @@ class SoS_Kernel(Kernel):
                 return
 
         if args.reset:
-            self.send_result(self._reset_dict())
+            self._reset_dict()
             return
 
         if args.__del__:
