@@ -35,7 +35,7 @@ from collections.abc import Sequence
 
 from sos.utils import env, WorkflowDict, short_repr, pretty_size
 from sos._version import __sos_version__, __version__
-from sos.sos_eval import SoS_exec, SoS_eval, interpolate
+from sos.sos_eval import SoS_exec, SoS_eval, interpolate, get_default_global_sigil
 from sos.sos_syntax import SOS_SECTION_HEADER
 
 from IPython.core.interactiveshell import InteractiveShell
@@ -656,7 +656,7 @@ class SoS_Kernel(Kernel):
             return
         # find filenames and quoted expressions
         import shlex
-        items = shlex.split(options)
+        items = shlex.split(options, posix=False)
         if not items:
             return
         self.send_response(self.iopub_socket, 'display_data',
@@ -684,8 +684,7 @@ class SoS_Kernel(Kernel):
                 if item in env.sos_dict:
                     obj = env.sos_dict[item]
                 else:
-                    # we disallow other sigil
-                    obj = SoS_eval(item, sigil='${ }')
+                    obj = SoS_eval(item, sigil=get_default_global_sigil())
                 format_dict, md_dict = self.format_obj(obj)
                 self.send_response(self.iopub_socket, 'display_data',
                     {'execution_count': self.execution_count, 'data': format_dict,
@@ -814,7 +813,7 @@ class SoS_Kernel(Kernel):
         # lazy import of previewers
         if self.previewers is None:
             self.previewers = get_previewers()
-        for x,y,_ in self.previewers:
+        for x, y, _ in self.previewers:
             if isinstance(x, str):
                 if fnmatch.fnmatch(os.path.basename(filename), x):
                     # we load entrypoint only before it is used. This is to avoid
@@ -827,7 +826,11 @@ class SoS_Kernel(Kernel):
                 # it should be a function
                 try:
                     if x(filename):
-                        previewer_func = y.load()
+                        try:
+                            previewer_func = y.load()
+                        except Exception as e:
+                            self.warn('Failed to load previewer {}: {}'.format(y, e))
+                            continue
                         break
                 except Exception as e:
                     self.warn(e)

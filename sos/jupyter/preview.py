@@ -21,7 +21,7 @@
 #
 import base64
 from IPython.core.display import HTML
-from .utils import env, dehtml
+from sos.utils import env, dehtml
 
 def preview_img(filename):
     with open(filename, 'rb') as f:

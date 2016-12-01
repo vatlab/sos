@@ -184,18 +184,18 @@ runfile = sos.jupyter.sos_executor:runfile
 
 
 [sos_previewers]
-*.pdf,1 = sos.preview:preview_pdf
-*.html,1 = sos.preview:preview_html
-*.csv,1 = sos.preview:preview_csv
-*.xls,1 = sos.preview:preview_xls
-*.xlsx,1 = sos.preview:preview_xls
-*.gz,1 = sos.preview:preview_gz
-*.txt,1 = sos.preview:preview_txt
-*.md,1 = sos.preview:preview_md [md]
-imghdr:what,1 = sos.preview:preview_img [image]
-zipfile:is_zipfile,1 = sos.preview:preview_zip
-tarfile:is_tarfile,1 = sos.preview:preview_tar
-*,0 = sos.preview:preview_txt
+*.pdf,1 = sos.jupyter.preview:preview_pdf
+*.html,1 = sos.jupyter.preview:preview_html
+*.csv,1 = sos.jupyter.preview:preview_csv
+*.xls,1 = sos.jupyter.preview:preview_xls
+*.xlsx,1 = sos.jupyter.preview:preview_xls
+*.gz,1 = sos.jupyter.preview:preview_gz
+*.txt,1 = sos.jupyter.preview:preview_txt
+*.md,1 = sos.jupyter.preview:preview_md [md]
+imghdr:what,1 = sos.jupyter.preview:preview_img [image]
+zipfile:is_zipfile,1 = sos.jupyter.preview:preview_zip
+tarfile:is_tarfile,1 = sos.jupyter.preview:preview_tar
+*,0 = sos.jupyter.preview:preview_txt
 
 *.bam,1 = sos.bioinfo.preview:preview_bam [bam]
 
