@@ -27,6 +27,7 @@
 # % nosetests test_kernel.py
 #
 #
+import os
 import unittest
 from contextlib import contextmanager
 from ipykernel.tests.utils import assemble_output, start_new_kernel,\
@@ -143,6 +144,18 @@ def clear_channels(iopub):
             pass
 
 class TestKernel(unittest.TestCase):
+    #
+    # Beacuse these tests would be called from sos/test, we
+    # should switch to this directory so that some location
+    # dependent tests could run successfully
+    #
+    def setUp(self):
+        self.olddir = os.getcwd()
+        os.chdir(os.path.dirname(__file__))
+
+    def tearDown(self):
+        os.chdir(self.olddir)
+
     def testInterpolation(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
