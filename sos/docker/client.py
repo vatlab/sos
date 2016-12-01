@@ -83,7 +83,7 @@ class DockerClient:
         return self.tot_mem
 
     def _is_image_avail(self, image):
-        images = sum([x['RepoTags'] for x in self.client.images()], [])
+        images = sum([x['RepoTags'] for x in self.client.images() if x['RepoTags']], [])
         # some earlier version of docker-py returns docker.io/ for global repositories
         images = [x[10:] if x.startswith('docker.io/') else x for x in images]
         return (':' in image and image in images) or \
