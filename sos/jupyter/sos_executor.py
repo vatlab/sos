@@ -25,7 +25,7 @@ import yaml
 import shlex
 import argparse
 from sos.utils import env, frozendict, dict_merge, _parse_error, get_traceback
-from sos.sos_eval import SoS_exec
+from sos.sos_eval import SoS_exec, get_default_global_sigil
 from sos._version import __version__
 from sos.__main__ import add_run_arguments
 from sos.sos_script import SoS_Script
@@ -255,9 +255,9 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
             # appears to be a SoS script with one section
             if not any([SOS_SECTION_HEADER.match(line) for line in code.splitlines()]):
                 code = '[interactive_0]\n' + code
-            script = SoS_Script(content=code)
+            script = SoS_Script(content=code, global_sigil=get_default_global_sigil())
         else:
-            script = SoS_Script(filename=script)
+            script = SoS_Script(filename=script, global_sigil=get_default_global_sigil())
         workflow = script.workflow(args.workflow)
         executor = Interactive_Executor(workflow, args=workflow_args, config_file=args.__config__)
         #

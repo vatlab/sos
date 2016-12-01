@@ -349,13 +349,16 @@ def accessed_vars(statement, sigil):
     if statement in accessed_vars_cache:
         return accessed_vars_cache[statement]
 
-    left_sigil = sigil.split(' ')[0]
+    if sigil is None:
+        left_sigil = None
+    else:
+        left_sigil = sigil.split(' ')[0]
     result = set()
     prev_tok = None
     for toknum, tokval, _, _, _  in generate_tokens(StringIO(statement).readline):
         if toknum == NAME and prev_tok != '.':
             result.add(tokval)
-        if toknum == STRING and left_sigil in tokval:
+        if toknum == STRING and left_sigil is not None and left_sigil in tokval:
             # if it is a string, check if variables used during
             # string interpolation
             ss = SoS_String(sigil, {}, True)
