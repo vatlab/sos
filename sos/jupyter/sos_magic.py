@@ -52,7 +52,8 @@ from IPython.core.magic import Magics, magics_class, line_magic, line_cell_magic
 
 # cannot use relative import because the module will be copied to 
 # ~/.ipython/extensions
-from sos.jupyter.sos_executor import Interactive_Executor
+from sos.jupyter.sos_executor import runfile
+
 
 # The class MUST call this class decorator at creation time
 @magics_class
@@ -66,7 +67,6 @@ class SoS_Magics(Magics):
         env.sos_dict = WorkflowDict()
         SoS_exec('from sos.runtime import *', None)
         env.sos_dict.set('__interactive__', True)
-        self.executor = Interactive_Executor()
         self.original_keys = set(env.sos_dict._dict.keys())
         self.original_keys.add('__builtins__')
         self.options = ''
@@ -76,28 +76,12 @@ class SoS_Magics(Magics):
         'Magic execute sos expression and statements'
         # if in line mode, no command line
         if cell is None:
-            try:
-                # is it an expression?
-                compile(line, '<string>', 'eval')
-                return SoS_eval(line, '${ }')
-            except: # if it is satement
+            if not self.options:
                 return SoS_exec(line, '${ }')
+            else:
+                return runfile(code=line, args=self.options)
         else:
-            try:
-                # is it an expression?
-                compile(cell, '<string>', 'eval')
-                #if line.strip():
-                #    env.logger.warning('{} ignored for expression evaluation'.format(line))
-                return SoS_eval(cell, '${ }')
-            except:
-                # is it a list of statement?
-                try:
-                    compile(cell, '<string>', 'exec')
-                    #if line.strip():
-                    #    env.logger.warning('{} ignored for statement execution'.format(line))
-                    return SoS_exec(cell, '${ }')
-                except:
-                    return self.executor.run(cell, command_line=self.options + line.strip())
+            return runfile(code=cell, args=line.strip() + ' ' + self.options)
 
     @line_magic
     def sospaste(self, line):
@@ -120,7 +104,7 @@ class SoS_Magics(Magics):
                 compile(block, '<string>', 'exec')
                 return SoS_exec(block, '${ }')
             except:
-                return self.executor.run(block, command_line=self.options + line.strip())
+                return runfile(code=block, args=self.options + line.strip())
 
     @line_magic
     def sosset(self, line):

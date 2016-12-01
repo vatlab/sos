@@ -80,7 +80,7 @@ parameter: rep = 5
         self.assertDictValue('a', 12345)
         self.assertDictValue('b', "12345")
 
-    def testGet(self):
+    def testSoSGet(self):
         '''test %get'''
         self.ipshell.run_cell('%sos a = 12345')
         self.ipshell.run_cell('%sos b = "12345"')

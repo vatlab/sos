@@ -46,6 +46,7 @@ class Interactive_Executor(Base_Executor):
     def set_dict(self):
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('SOS_VERSION', __version__)
+        env.sos_dict.set('__args__', self.args)
 
         # load configuration files
         cfg = {}
@@ -185,18 +186,38 @@ class Interactive_Executor(Base_Executor):
 # function runfile that is used by spyder to execute complete script
 #
 def runfile(script=None, args='', wdir='.', code=None, **kwargs):
-    parser = argparse.ArgumentParser(description='''Execute a sos script''')
-    add_run_arguments(parser, interactive=True)
-    parser.error = _parse_error
-    env.sos_dict.set('__args__', args)
+    # this has something to do with Prefix matching rule of parse_known_args
+    #
+    # That is to say
+    #
+    #   --rep 3
+    #
+    # would be parsed as
+    #
+    #   args.workflow=3, unknown --rep
+    #
+    # instead of
+    #
+    #   args.workflow=None, unknown --rep 3
+    #
+    # we then have to change the parse to disable args.workflow when
+    # there is no workflow option.
     if isinstance(args, str):
         args = shlex.split(args)
+    parser = argparse.ArgumentParser(description='''Execute a sos script''')
+    parser.error = _parse_error
     if (script is None and code is None) or '-h' in args:
+        add_run_arguments(parser, interactive=True, with_workflow=True)
         parser.print_help()
         return
-    args, workflow_args = parser.parse_known_args(args)
-    # calling the associated functions
-    
+    if args and args[0].lstrip().startswith('-'):
+        add_run_arguments(parser, interactive=True, with_workflow=False)
+        args, workflow_args = parser.parse_known_args(args)
+        args.workflow = None
+    else:
+        add_run_arguments(parser, interactive=True, with_workflow=True)
+        args, workflow_args = parser.parse_known_args(args)
+
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
     env.__task_engine__ = 'interactive'
