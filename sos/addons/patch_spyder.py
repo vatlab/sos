@@ -205,4 +205,9 @@ def patch_spyder(args, unknown_args):
         patch_spyder3(args.verbose)
 
 if __name__ == '__main__':
-    patch_spyer()
+    import argparse
+    parser = argparse.ArgumentParser('patch_spyder',
+        description='''Patch spyder to work with SoS kernel''')
+    patch_spyder_parser(parser)
+    args, unknown_args = parser.parse_known_args()
+    patch_spyder(args, unknown_args)
