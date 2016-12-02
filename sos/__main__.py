@@ -999,6 +999,17 @@ def cmd_unpack(args, unknown_args):
 
 
 #
+# Handling addon commands
+#
+def handle_addon(args, unknown_args):
+    import pkg_resources
+    for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
+        name = entrypoint.name.strip()
+        if name.endswith(':func') and name.rsplit(':', 1)[0] == args.addon_name:
+            func = entrypoint.load()
+            func(args, unknown_args)
+
+#
 # this is the sos-runner command
 #
 def sosrun():
@@ -1011,6 +1022,7 @@ def sosrun():
 def main():
     from ._version import SOS_FULL_VERSION
     import argparse
+    import pkg_resources
     master_parser = argparse.ArgumentParser(description='''A workflow system
             for the execution of commands and scripts in different languages.''',
         prog='sos',
@@ -1085,6 +1097,19 @@ def main():
         reasons, files that were outside of the project directory would be
         extracted in this directory unless option -e is specified.''')
     add_unpack_arguments(parser)
+    #
+    # addon packages
+    for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
+        if entrypoint.name.strip().endswith(':args'):
+            name = entrypoint.name.rsplit(':', 1)[0]
+            parser = subparsers.add_parser(name,
+                help='''Addon command with its own parser''')
+            func = entrypoint.load()
+            func(parser)
+            parser.add_argument('--addon-name', help=argparse.SUPPRESS,
+                    default=name)
+            parser.set_defaults(func=handle_addon)
+    #
     #
     if len(sys.argv) == 1:
         master_parser.print_help()

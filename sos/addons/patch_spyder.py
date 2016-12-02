@@ -23,13 +23,15 @@
 import os
 import sys
 
-def patch_spyder2():
+def patch_spyder2(verbose=False):
     '''Patch spyder to make it work with sos files and sos kernel '''
     try:
         # patch spyderlib/config.py for file extension
         from spyderlib import config
         src_file = config.__file__
         spyderlib_dir = os.path.dirname(src_file)
+        if verbose:
+            print('Patching {}'.format(src_file))
         with open(src_file, encoding='utf-8') as src:
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
@@ -42,6 +44,8 @@ def patch_spyder2():
         #
         # patch spyderlib/cli_options.py to add command line option --kernel
         src_file = os.path.join(spyderlib_dir, 'cli_options.py')
+        if verbose:
+            print('Patching {}'.format(src_file))
         with open(src_file, encoding='utf-8') as src:
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
@@ -53,6 +57,8 @@ def patch_spyder2():
         #
         # patch spyderlib.utils.sourcecode.py,
         src_file = os.path.join(spyderlib_dir, 'utils', 'sourcecode.py')
+        if verbose:
+            print('Patching {}'.format(src_file))
         with open(src_file, encoding='utf-8') as src:
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
@@ -66,6 +72,8 @@ def patch_spyder2():
         #
         # patch spyderlib/spyder.py
         src_file = os.path.join(spyderlib_dir, 'spyder.py')
+        if verbose:
+            print('Patching {}'.format(src_file))
         with open(src_file, encoding='utf-8') as src:
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
@@ -100,12 +108,14 @@ def patch_spyder2():
         sys.exit('Failed to patch spyder: {}'.format(e))
 
 
-def patch_spyder3():
+def patch_spyder3(verbose=False):
     '''Patch spyder to make it work with sos files and sos kernel '''
     try:
         # patch spyder/config/utils.py for file extension
         from spyder.config import utils
         src_file = utils.__file__
+        if verbose:
+            print('Patching {}'.format(src_file))
         spyder_dir = os.path.dirname(os.path.dirname(src_file))
         with open(src_file, encoding='utf-8') as src:
             content = src.read()
@@ -119,6 +129,8 @@ def patch_spyder3():
         #
         # patch spyder/app/cli_options.py to add command line option --kernel
         src_file = os.path.join(spyder_dir, 'app', 'cli_options.py')
+        if verbose:
+            print('Patching {}'.format(src_file))
         with open(src_file, encoding='utf-8') as src:
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
@@ -130,6 +142,8 @@ def patch_spyder3():
         #
         # patch spyder/utils/sourcecode.py,
         src_file = os.path.join(spyder_dir, 'utils', 'sourcecode.py')
+        if verbose:
+            print('Patching {}'.format(src_file))
         with open(src_file, encoding='utf-8') as src:
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
@@ -143,6 +157,8 @@ def patch_spyder3():
         #
         # patch spyder/app/mainwindow.py
         src_file = os.path.join(spyder_dir, 'app', 'mainwindow.py')
+        if verbose:
+            print('Patching {}'.format(src_file))
         with open(src_file, encoding='utf-8') as src:
             content = src.read()
         with open(src_file, 'w', encoding='utf-8') as src:
@@ -177,9 +193,16 @@ def patch_spyder3():
         sys.exit('Failed to patch spyder: {}'.format(e))
 
 
-if __name__ == '__main__':
+def patch_spyder_parser(parser):
+    parser.add_argument('-v', '--verbose', action='store_true',
+            help='Display details of files to be patched')
+
+def patch_spyder(args, unknown_args):
     try:
         from spyderlib import config
-        patch_spyder2()
+        patch_spyder2(args.verbose)
     except ImportError:
-        patch_spyder3()
+        patch_spyder3(args.verbose)
+
+if __name__ == '__main__':
+    patch_spyer()
