@@ -85,10 +85,6 @@ class SoS_PathCompleter(Completer):
             else:
                 return text, matches
     
-def log(obj):
-    with open(os.path.expanduser('~/a.txt'), 'a') as a:
-        a.write('{}\n'.format(obj))
-
 class SoS_Completer(object):
     def __init__(self, kernel):
         self.completers = [
@@ -106,8 +102,6 @@ class SoS_Completer(object):
         for c in self.completers:
             try:
                 matched = c.get_completions(doc, CompleteEvent(completion_requested=True))
-                log(code)
-                log(matched)
                 if matched is None:
                     continue
                 elif isinstance(matched, tuple):
