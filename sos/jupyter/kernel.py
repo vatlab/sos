@@ -238,6 +238,8 @@ class SoS_Kernel(Kernel):
     banner = "SoS kernel - script of scripts"
     shell = InteractiveShell.instance()
 
+    ALL_MAGICS = ['dict', 'matplotlib', 'cd', 'set', 'restart', 'with', 'use',
+        'get', 'put', 'paste', 'run', 'preview']
     MAGIC_DICT = re.compile('^%dict(\s|$)')
     MAGIC_CONNECT_INFO = re.compile('^%connect_info(\s|$)')
     MAGIC_MATPLOTLIB = re.compile('^%matplotlib(\s|$)')
@@ -343,19 +345,28 @@ class SoS_Kernel(Kernel):
         line, offset = line_at_cursor(code, cursor_pos)
         line_cursor = cursor_pos - offset
         #
-        last_path = line[:cursor_pos]
+        text = line[:cursor_pos]
+        #
         for char in (' ', '\t', '"', "'", '='):
-            if last_path.endswith(char):
-                last_path = ''
-            elif char in last_path:
-                last_path = last_path.rsplit(char, 1)[-1]
-        if last_path.strip():
-            matches = glob.glob(os.path.expanduser(last_path) + '*')
-        else:
+            if text.endswith(char):
+                text = ''
+            elif char in text:
+                text = text.rsplit(char, 1)[-1]
+        if not text.strip():
             matches = glob.glob('*')
+        if text.startswith('%') and line.startswith(text):
+            matches = ['%' + x + ' ' for x in self.ALL_MAGICS if x.startswith(text[1:])]
+        else:
+            matches = glob.glob(os.path.expanduser(text) + '*')
+            if len(matches) == 1 and matches[0] == os.path.expanduser(text) \
+                and os.path.isdir(os.path.expanduser(text)):
+                matches = glob.glob(os.path.expanduser(text) + '/*')
+        with open(os.path.expanduser('~/a.txt'), 'w') as a:
+            a.write('{} \n'.format(text))
+            a.write('{} \n'.format(matches))
         return {'matches' : matches,
                 'cursor_end' : cursor_pos,
-                'cursor_start' : cursor_pos - len(last_path),
+                'cursor_start' : cursor_pos - len(text),
                 'metadata' : {},
                 'status' : 'ok'}
 
@@ -1096,6 +1107,7 @@ class SoS_SpyderKernel(SoS_Kernel):
 
     def __init__(self, *args, **kwargs):
         super(SoS_SpyderKernel, self).__init__(*args, **kwargs)
+        super(SoS_SpyderKernel, self).ALL_MAGICS.append('edit')
 
         self.namespace_view_settings = {}
         self._pdb_obj = None
