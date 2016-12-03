@@ -27,7 +27,7 @@ import argparse
 from sos.utils import env, frozendict, dict_merge, _parse_error, get_traceback
 from sos.sos_eval import SoS_exec, get_default_global_sigil
 from sos._version import __version__
-from sos.__main__ import add_run_arguments
+from sos.__main__ import get_run_parser
 from sos.sos_script import SoS_Script
 from sos.sos_executor import Base_Executor, __null_func__
 from sos.sos_syntax import SOS_SECTION_HEADER
@@ -204,18 +204,18 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
     # there is no workflow option.
     if isinstance(args, str):
         args = shlex.split(args)
-    parser = argparse.ArgumentParser(description='''Execute a sos script''')
-    parser.error = _parse_error
     if (script is None and code is None) or '-h' in args:
-        add_run_arguments(parser, interactive=True, with_workflow=True)
+        parser = get_run_parser(interactive=True, with_workflow=True)
         parser.print_help()
         return
     if args and args[0].lstrip().startswith('-'):
-        add_run_arguments(parser, interactive=True, with_workflow=False)
+        parser = get_run_parser(interactive=True, with_workflow=False)
+        parser.error = _parse_error
         args, workflow_args = parser.parse_known_args(args)
         args.workflow = None
     else:
-        add_run_arguments(parser, interactive=True, with_workflow=True)
+        parser = get_run_parser(interactive=True, with_workflow=True)
+        parser.error = _parse_error
         args, workflow_args = parser.parse_known_args(args)
 
     env.max_jobs = args.__max_jobs__

@@ -138,8 +138,8 @@ sos = sos.__main__:main
 sos-runner = sos.__main__:sosrun
 
 [sos_addons]
-patch-spyder:args = sos.addons.patch_spyder:patch_spyder_parser
-patch-spyder:func = sos.addons.patch_spyder:patch_spyder
+patch-spyder:parser = sos.addons.patch_spyder:get_patch_spyder_parser
+patch-spyder:func   = sos.addons.patch_spyder:patch_spyder
 
 [pygments.lexers]
 sos = sos.converter:SoS_Lexer

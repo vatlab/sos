@@ -193,9 +193,13 @@ def patch_spyder3(verbose=False):
         sys.exit('Failed to patch spyder: {}'.format(e))
 
 
-def patch_spyder_parser(parser):
+def get_patch_spyder_parser():
+    import argparse
+    parser = argparse.ArgumentParser('patch_spyder',
+        description='''Patch spyder to work with SoS kernel''')
     parser.add_argument('-v', '--verbose', action='store_true',
             help='Display details of files to be patched')
+    return parser
 
 def patch_spyder(args, unknown_args):
     try:
@@ -205,9 +209,6 @@ def patch_spyder(args, unknown_args):
         patch_spyder3(args.verbose)
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser('patch_spyder',
-        description='''Patch spyder to work with SoS kernel''')
-    patch_spyder_parser(parser)
+    parser = get_patch_spyder_parser()
     args, unknown_args = parser.parse_known_args()
     patch_spyder(args, unknown_args)
