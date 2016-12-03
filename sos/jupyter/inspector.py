@@ -22,36 +22,9 @@
 
 import os
 import glob
-import pydoc
-from types import ModuleType
-from sos.utils import env, short_repr
+from sos.utils import env, short_repr, pretty_size
 from sos.sos_eval import SoS_eval, get_default_global_sigil
-
-class SoS_FileInspector(object):
-    def __init__(self, kernel):
-        self.kernel = kernel
-
-    def inspect(self, name, line, pos):
-        l = 0
-        r = 10000000
-        #
-        for char in (' ', '\t', '"', "'", '=', '('):
-            try:
-                idx = line[pos:].index(char)
-                if idx < r:
-                    r = idx
-            except:
-                pass
-            try:
-                idx = line[:pos].rindex(char)
-                if idx > l:
-                    l = idx
-            except:
-                pass
-        filename = line[l+1:pos + r]
-        if os.path.isfile(os.path.expanduser(filename)):
-        else:
-            return {}
+from sos.sos_syntax import SOS_USAGES
 
 class SoS_VariableInspector(object):
     def __init__(self, kernel):
@@ -59,40 +32,59 @@ class SoS_VariableInspector(object):
 
     def inspect(self, name, line, pos):
         try:
-            if name in env.sos_dict:
-                obj = env.sos_dict[name]
-            else:
-                obj = SoS_eval(name, sigil=get_default_global_sigil())
-            if callable(obj) or isinstance(obj, ModuleType):
-                return {'text/plain': pydoc.getdoc(obj)}
-            else:
-                format_dict, md_dict = self.kernel.format_obj(obj)
-                return format_dict
+            format_dict, _ = self.kernel.preview_var(name)
+            return format_dict
         except Exception as e:
-            log(e)
             return {}
-    
+
 def log(obj):
     with open(os.path.expanduser('~/a.txt'), 'a') as a:
         a.write('{}\n'.format(obj))
 
+class SoS_SyntaxInspector(object):
+    def __init__(self, kernel):
+        self.kernel = kernel
+
+    def inspect(self, name, line, pos):
+        log(name)
+        log(line)
+        log(pos)
+        log(self.kernel.ALL_MAGICS)
+        if line.startswith('%') and name in self.kernel.ALL_MAGICS and pos <= len(name) + 1:
+            if hasattr(self.kernel, 'get_{}_parser'.format(name)):
+                log('had attr')
+                parser = getattr(self.kernel, 'get_{}_parser'.format(name))()
+                return {'text/plain': parser.format_help()}
+            else:
+                return {'text/plain': 'Magic %{}'.format(name) }
+        elif line.startswith(name + ':') and pos <= len(name):
+            # input: etc
+            if name in SOS_USAGES:
+                return {'text/plain': SOS_USAGES[name]}
+            elif name in env.sos_dict and hasattr(env.sos_dict[name], '__doc__'):
+                # action?
+                return {'text/plain': env.sos_dict[name].__doc__}
+            else:
+                return {}
+        else:
+            return {}
+
 class SoS_Inspector(object):
     def __init__(self, kernel):
         self.inspectors = [
+            SoS_SyntaxInspector(kernel),
             SoS_VariableInspector(kernel),
-            SoS_FileInspector(kernel),
         ]
 
     def inspect(self, name, line, pos):
         for c in self.inspectors:
             try:
                 data = c.inspect(name, line, pos)
-                log(name)
                 if data:
-                    log(data)
                     return data
             except Exception as e:
-                raise
+                log(e)
+                continue
         # No match
         return {}
 

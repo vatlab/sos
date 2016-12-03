@@ -226,8 +226,20 @@ class SoS_Kernel(Kernel):
     banner = "SoS kernel - script of scripts"
     shell = InteractiveShell.instance()
 
-    ALL_MAGICS = ['dict', 'matplotlib', 'cd', 'set', 'restart', 'with', 'use',
-        'get', 'put', 'paste', 'run', 'preview']
+    ALL_MAGICS = {
+        'dict',
+        'matplotlib',
+        'cd',
+        'set',
+        'restart',
+        'with',
+        'use',
+        'get',
+        'put',
+        'paste',
+        'run',
+        'preview'
+    }
     MAGIC_DICT = re.compile('^%dict(\s|$)')
     MAGIC_CONNECT_INFO = re.compile('^%connect_info(\s|$)')
     MAGIC_MATPLOTLIB = re.compile('^%matplotlib(\s|$)')
@@ -241,6 +253,68 @@ class SoS_Kernel(Kernel):
     MAGIC_PASTE = re.compile('^%paste(\s|$)')
     MAGIC_RUN = re.compile('^%run(\s|$)')
     MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
+
+    def get_use_parser(self):
+        parser = argparse.ArgumentParser(prog='%use',
+            description='''Switch to a specified subkernel.''')
+        parser.add_argument('kernel', nargs='?', default='',
+            help='Kernel to switch to.')
+        parser.add_argument('-i', '--in', nargs='*', dest='in_vars',
+            help='Input variables (variables to get from SoS kernel)')
+        parser.add_argument('-o', '--out', nargs='*', dest='out_vars',
+            help='''Output variables (variables to put back to SoS kernel
+            before switching back to the SoS kernel''')
+        parser.error = self._parse_error
+        return parser
+
+    def get_with_parser(self):
+        parser = argparse.ArgumentParser(prog='%with',
+            description='''Use specified the subkernel to evaluate current
+            cell''')
+        parser.add_argument('kernel', nargs='?', default='',
+            help='Kernel to switch to.')
+        parser.add_argument('-i', '--in', nargs='*', dest='in_vars',
+            help='Input variables (variables to get from SoS kernel)')
+        parser.add_argument('-o', '--out', nargs='*', dest='out_vars',
+            help='''Output variables (variables to put back to SoS kernel
+            before switching back to the SoS kernel''')
+        parser.error = self._parse_error
+        return parser
+
+    def get_preview_parser(self):
+        parser = argparse.ArgumentParser(prog='%preview',
+            description='''Preview files, sos variables, or expressions''')
+        parser.add_argument('items', nargs='?', 
+            help='''filename, variable name, or expression''')
+        return parser
+
+    def get_set_parser(self):
+        parser = argparse.ArgumentParser(prog='%set',
+            description='''Set persistent command line options for SoS runs.''')
+        return parser
+
+    def get_run_parser(self):
+        parser = argparse.ArgumentParser(prog='%run',
+            description='''Execute the current cell with specified command line
+            arguments. Arguments set by magic %set will be appended at the
+            end of command line''')
+        return parser
+
+    def get_get_parser(self):
+        parser = argparse.ArgumentParser(prog='%get',
+            description='''Get specified variables from the SoS kernel
+            to the existing subkernel.''')
+        parser.add_argument('vars', nargs='?',
+            help='''Names of SoS variables''')
+        return parser
+
+    def get_put_parser(self):
+        parser = argparse.ArgumentParser(prog='%put',
+            description='''Put specified variables in the subkernel to the
+            SoS kernel.''')
+        parser.add_argument('vars', nargs='?',
+            help='''Names of SoS variables''')
+        return parser
 
     def get_supported_languages(self):
         if self._supported_languages is not None:
@@ -275,6 +349,7 @@ class SoS_Kernel(Kernel):
         return self._inspector
 
     inspector = property(lambda self:self.get_inspector())
+
 
     def __init__(self, **kwargs):
         super(SoS_Kernel, self).__init__(**kwargs)
@@ -483,21 +558,27 @@ class SoS_Kernel(Kernel):
     def _parse_error(self, msg):
         self.warn(msg)
 
-    def parse_dict_args(self, args):
-        parser = argparse.ArgumentParser()
+    def get_dict_parser(self):
+        parser = argparse.ArgumentParser(prog='%dict',
+            description='Inspect or reset SoS dictionary')
         parser.add_argument('vars', nargs='*')
-        parser.add_argument('-k', '--keys', action='store_true')
-        parser.add_argument('-r', '--reset', action='store_true')
-        parser.add_argument('-a', '--all', action='store_true')
-        parser.add_argument('-d', '--del', nargs='+', dest='__del__')
+        parser.add_argument('-k', '--keys', action='store_true',
+            help='Return only keys')
+        parser.add_argument('-r', '--reset', action='store_true',
+            help='Rest SoS dictionary (clear all user variables)')
+        parser.add_argument('-a', '--all', action='store_true',
+            help='Return all variales, including system functions and variables')
+        parser.add_argument('-d', '--del', nargs='+', metavar='VAR', dest='__del__',
+            help='Remove specified variables from SoS dictionary')
         parser.error = self._parse_error
-        return parser.parse_args(args)
+        return parser
 
     def handle_magic_dict(self, line):
         'Magic that displays content of the dictionary'
         # do not return __builtins__ beacuse it is too long...
         import shlex
-        args = self.parse_dict_args(shlex.split(line))
+        parser = self.get_dict_parser()
+        args = parser.parse_args(shlex.split(line))
 
         for x in args.vars:
             if not x in env.sos_dict:
@@ -696,7 +777,7 @@ class SoS_Kernel(Kernel):
         for item in items:
             try:
                 if os.path.isfile(item):
-                    self.preview(item)
+                    self.preview_file(item)
                     continue
             except Exception as e:
                 self.warn('\n> Failed to preview file {}: {}'.format(item, e))
@@ -708,14 +789,7 @@ class SoS_Kernel(Kernel):
                         'text/html': HTML('<pre><font color="green">> {}:</font></pre>'.format(item)).data
                         }
                     })
-                if item in env.sos_dict:
-                    obj = env.sos_dict[item]
-                else:
-                    obj = SoS_eval(item, sigil=get_default_global_sigil())
-                if callable(obj) or isinstance(obj, ModuleType):
-                    format_dict['text/plain'] = pydoc.getdoc(obj)
-                else:
-                    format_dict, md_dict = self.format_obj(obj)
+                format_dict, md_dict = self.preview_var(item)
                 self.send_response(self.iopub_socket, 'display_data',
                     {'execution_count': self.execution_count, 'data': format_dict,
                     'metadata': md_dict})
@@ -828,7 +902,17 @@ class SoS_Kernel(Kernel):
             for filename in output_files:
                 self.preview(filename)
 
-    def preview(self, filename):
+    def preview_var(self, item):
+        if item in env.sos_dict:
+            obj = env.sos_dict[item]
+        else:
+            obj = SoS_eval(item, sigil=get_default_global_sigil())
+        if callable(obj) or isinstance(obj, ModuleType):
+            return {'text/plain': pydoc.getdoc(obj)}, {}
+        else:
+            return self.format_obj(obj)
+
+    def preview_file(self, filename):
         if not os.path.isfile(filename):
             self.warn('\n> ' + filename + ' does not exist')
             return
@@ -893,14 +977,6 @@ class SoS_Kernel(Kernel):
                 {'execution_count': self.execution_count, 'data': format_dict,
                 'metadata': md_dict})
 
-    def parse_in_out_vars(self, args):
-        parser = argparse.ArgumentParser()
-        parser.add_argument('kernel', nargs='?', default='')
-        parser.add_argument('-i', '--in', nargs='*', dest='in_vars')
-        parser.add_argument('-o', '--out', nargs='*', dest='out_vars')
-        parser.error = self._parse_error
-        return parser.parse_args(args)
-
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
         ret = self._do_execute(code=code, silent=silent, store_history=store_history,
@@ -961,7 +1037,8 @@ class SoS_Kernel(Kernel):
         elif self.MAGIC_WITH.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
-                args = self.parse_in_out_vars(options.split())
+                parser = self.get_with_parser()
+                args = parser.parse_args(options.split())
             except Exception as e:
                 self.warn('Invalid option "{}": {}\n'.format(options, e))
                 return {'status': 'error',
@@ -981,7 +1058,8 @@ class SoS_Kernel(Kernel):
         elif self.MAGIC_USE.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
-                args = self.parse_in_out_vars(options.split())
+                parser = self.get_use_parser()
+                args = parser.parse_args(options.split())
             except Exception as e:
                 self.warn('Invalid option "{}": {}\n'.format(options, e))
                 return {'status': 'abort',
@@ -1098,7 +1176,8 @@ class SoS_SpyderKernel(SoS_Kernel):
 
     def __init__(self, *args, **kwargs):
         super(SoS_SpyderKernel, self).__init__(*args, **kwargs)
-        super(SoS_SpyderKernel, self).ALL_MAGICS.append('edit')
+
+        super(SoS_SpyderKernel, self).ALL_MAGICS.add('edit')
 
         self.namespace_view_settings = {}
         self._pdb_obj = None
@@ -1113,20 +1192,22 @@ class SoS_SpyderKernel(SoS_Kernel):
         for msg_type in comm_msg_types:
             self.shell_handlers[msg_type] = getattr(self.comm_manager, msg_type)
 
-    def parse_edit_magic(self, args):
-        import shlex
-        parser = argparse.ArgumentParser()
+    def get_edit_parser(self):
+        parser = argparse.ArgumentParser(prog='%edit',
+            description='Edit an existing file in spyder')
         parser.add_argument('filenames', nargs='+')
         parser.add_argument('-c', '--cd', action='store_true', dest='__switch_dir__')
         parser.error = self._parse_error
-        return parser.parse_args(shlex.split(args))
+        return parser
 
     def handle_magic_edit(self, options):
         import subprocess
+        import shlex
         options = self._interpolate_option(options)
         if options is None:
             return
-        args = self.parse_edit_magic(options)
+        parser = self.get_edit_parser()
+        args = parser.parse_args(shlex.split(options))
         args.filenames = [os.path.expanduser(x) for x in args.filenames]
         for filename in args.filenames:
             if not os.path.isfile(filename):

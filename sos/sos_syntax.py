@@ -35,6 +35,30 @@ SOS_SECTION_OPTIONS = ['skip', 'sigil', 'provides', 'shared']
 SOS_KEYWORDS = SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS + SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS \
     + SOS_ACTION_OPTIONS + SOS_DIRECTIVES + SOS_SECTION_OPTIONS
 
+SOS_USAGES = {
+    'input': '''
+input: filename, filename, ... [group_by=GROUP] [filetype=FILETYPE] 
+          [paired_with=PAIRS] [for_each=VARS] [pattern=PATTEN]
+
+Specify input targets of a SoS step.
+
+See online documentation for details of variables.
+''',
+    'output': '''
+output: target, target, ...
+
+Specify output targets of a SoS step.
+
+See online documentation for details of variables.
+''',
+    'depends': '''
+depends: target, target, ...
+
+Specify dependent targets of a SoS step.
+
+See online documentation for details of variables.
+'''}
+
 #
 # This code is copied from Bazzar to compile regular expressions only when they
 # are needed, to avoid compiling all regular expressions up front even when they

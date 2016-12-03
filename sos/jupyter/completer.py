@@ -55,7 +55,7 @@ class SoS_MagicsCompleter(Completer):
             else:
                 return None
         elif text.startswith('%') and line.startswith(text):
-            return text, ['%' + x + ' ' for x in self.kernel.ALL_MAGICS if x.startswith(text[1:])]
+            return text, ['%' + x + ' ' for x in self.kernel.ALL_MAGICS.keys() if x.startswith(text[1:])]
         elif any(line.startswith(x) for x in ('%use', '%with', '%restart')):
             return text, [x for x in self.kernel.supported_languages.keys() if x.startswith(text)]
         elif line.startswith('%get'):
