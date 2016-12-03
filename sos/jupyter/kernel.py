@@ -23,6 +23,7 @@
 import os
 import sys
 import re
+import glob
 import fnmatch
 import contextlib
 import subprocess
@@ -42,6 +43,7 @@ from IPython.core.interactiveshell import InteractiveShell
 from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_clipboard_get
 from IPython.core.error import UsageError
 from IPython.core.display import HTML
+from IPython.utils.tokenutil import line_at_cursor
 from ipykernel.kernelbase import Kernel
 from jupyter_client import manager, find_connection_file
 from ipykernel.zmqshell import ZMQDisplayPublisher
@@ -330,6 +332,32 @@ class SoS_Kernel(Kernel):
             return {'status': 'incomplete', 'indent': ''}
         #
         return {'status': 'incomplete', 'indent': ''}
+
+
+    def do_complete(self, code, cursor_pos):
+        # FIXME: IPython completers currently assume single line,
+        # but completion messages give multi-line context
+        # For now, extract line from cell, based on cursor_pos:
+        if cursor_pos is None:
+            cursor_pos = len(code)
+        line, offset = line_at_cursor(code, cursor_pos)
+        line_cursor = cursor_pos - offset
+        #
+        last_path = line[:cursor_pos]
+        for char in (' ', '\t', '"', "'", '='):
+            if last_path.endswith(char):
+                last_path = ''
+            elif char in last_path:
+                last_path = last_path.rsplit(char, 1)[-1]
+        if last_path.strip():
+            matches = glob.glob(os.path.expanduser(last_path) + '*')
+        else:
+            matches = glob.glob('*')
+        return {'matches' : matches,
+                'cursor_end' : cursor_pos,
+                'cursor_start' : cursor_pos - len(last_path),
+                'metadata' : {},
+                'status' : 'ok'}
 
     def warn(self, message):
         if message.strip():
@@ -1086,7 +1114,7 @@ class SoS_SpyderKernel(SoS_Kernel):
         import shlex
         parser = argparse.ArgumentParser()
         parser.add_argument('filenames', nargs='+')
-        parser.add_argument('--cd', action='store_true', dest='__switch_dir__')
+        parser.add_argument('-c', '--cd', action='store_true', dest='__switch_dir__')
         parser.error = self._parse_error
         return parser.parse_args(shlex.split(args))
 
@@ -1096,6 +1124,11 @@ class SoS_SpyderKernel(SoS_Kernel):
         if options is None:
             return
         args = self.parse_edit_magic(options)
+        args.filenames = [os.path.expanduser(x) for x in args.filenames]
+        for filename in args.filenames:
+            if not os.path.isfile(filename):
+                self.warn('File does not exist: {}'.format(filename))
+                return
         import1 = "import sys"
         import2 = "from spyder.app.start import send_args_to_spyder"
         code = "send_args_to_spyder([{}])".format(','.join('"{}"'.format(x) for x in args.filenames))
