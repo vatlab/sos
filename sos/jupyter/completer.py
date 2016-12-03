@@ -27,10 +27,6 @@ from prompt_toolkit.document import Document
 from ptpython.completer import PythonCompleter
 from sos.utils import env
 
-def log(text):
-        with open(os.path.expanduser('~/a.txt'), 'a') as a:
-            a.write(repr(text) + '\n')
-
 def last_valid(line):
     text = line
     #
@@ -122,7 +118,7 @@ class SoS_Completer(object):
                 if matched:
                     return code[matched[0].start_position:], [x.text for x in matched]
             except Exception as e:
-                log('{} {}'.format(idx, e))
+                pass
 
         return '', []
 
