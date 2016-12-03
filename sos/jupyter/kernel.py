@@ -23,17 +23,17 @@
 import os
 import sys
 import re
-import glob
 import fnmatch
 import contextlib
 import subprocess
 import tempfile
 import argparse
 import pkg_resources
+import pydoc
 
 import pickle
 from collections.abc import Sequence
-
+from types import ModuleType
 from sos.utils import env, WorkflowDict, short_repr, pretty_size
 from sos._version import __sos_version__, __version__
 from sos.sos_eval import SoS_exec, SoS_eval, interpolate, get_default_global_sigil
@@ -43,7 +43,7 @@ from IPython.core.interactiveshell import InteractiveShell
 from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_clipboard_get
 from IPython.core.error import UsageError
 from IPython.core.display import HTML
-from IPython.utils.tokenutil import line_at_cursor
+from IPython.utils.tokenutil import line_at_cursor, token_at_cursor
 from ipykernel.kernelbase import Kernel
 from jupyter_client import manager, find_connection_file
 from ipykernel.zmqshell import ZMQDisplayPublisher
@@ -52,6 +52,7 @@ from textwrap import dedent
 from io import StringIO
 
 from .completer import SoS_Completer
+from .inspector import SoS_Inspector
 
 from .sos_executor import runfile
 from .converter import SoS_Exporter
@@ -268,6 +269,13 @@ class SoS_Kernel(Kernel):
 
     completer = property(lambda self:self.get_completer())
 
+    def get_inspector(self):
+        if self._inspector is None:
+            self._inspector = SoS_Inspector(self)
+        return self._inspector
+
+    inspector = property(lambda self:self.get_inspector())
+
     def __init__(self, **kwargs):
         super(SoS_Kernel, self).__init__(**kwargs)
         self.options = ''
@@ -295,6 +303,7 @@ class SoS_Kernel(Kernel):
         self.original_keys = None
         self._supported_languages = None
         self._completer = None
+        self._inspector = None
 
     def _reset_dict(self):
         env.sos_dict = WorkflowDict()
@@ -314,21 +323,6 @@ class SoS_Kernel(Kernel):
         yield
         sys.stdout = save_stdout
         sys.stderr = save_stderr
-
-    #
-    # Right now we are not sure what to return for do_inspect
-    # http://jupyter-client.readthedocs.io/en/latest/messaging.html
-    # returnning sos_dict is wasteful and is prone to error (unpickleable objects
-    # causing error messages)
-    #
-    #def do_inspect(self, code, cursor_pos, detail_level=0):
-    #    'Inspect code'
-    #    # x:y for x,y in env.sos_dict._dict.items() if x not in self.original_keys and not x.startswith('__')},
-    #    return {
-    #        'status': 'ok',
-    #        'found': 'true',
-    #        'data': {}, #
-    #        'metadata': {}}
 
     def do_is_complete(self, code):
         '''check if new line is in order'''
@@ -350,6 +344,17 @@ class SoS_Kernel(Kernel):
         #
         return {'status': 'incomplete', 'indent': ''}
 
+
+    def do_inspect(self, code, cursor_pos, detail_level=0):
+        line, offset = line_at_cursor(code, cursor_pos)
+        name = token_at_cursor(code, cursor_pos)
+        data = self.inspector.inspect(name, line, cursor_pos - offset)
+        
+        reply_content = {'status' : 'ok'}
+        reply_content['metadata'] = {}
+        reply_content['found'] = True if data else False
+        reply_content['data'] = data
+        return reply_content
 
     def do_complete(self, code, cursor_pos):
         text, matches = self.completer.complete_text(code, cursor_pos)
@@ -707,7 +712,10 @@ class SoS_Kernel(Kernel):
                     obj = env.sos_dict[item]
                 else:
                     obj = SoS_eval(item, sigil=get_default_global_sigil())
-                format_dict, md_dict = self.format_obj(obj)
+                if callable(obj) or isinstance(obj, ModuleType):
+                    format_dict['text/plain'] = pydoc.getdoc(obj)
+                else:
+                    format_dict, md_dict = self.format_obj(obj)
                 self.send_response(self.iopub_socket, 'display_data',
                     {'execution_count': self.execution_count, 'data': format_dict,
                     'metadata': md_dict})
