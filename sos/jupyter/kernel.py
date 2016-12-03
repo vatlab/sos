@@ -106,21 +106,6 @@ def clipboard_get():
     else:
         return tkinter_clipboard_get()
 
-def get_supported_languages():
-    group = 'sos_languages'
-    result = {}
-    for entrypoint in pkg_resources.iter_entry_points(group=group):
-        # Grab the function that is the actual plugin.
-        name = entrypoint.name
-        try:
-            plugin = entrypoint.load()()
-            result[name] = plugin
-            # for convenience, we create two entries for, e.g. R and ir
-            if name != plugin.kernel_name:
-                result[plugin.kernel_name] = plugin
-        except Exception as e:
-            raise RuntimeError('Failed to load language {}: {}'.format(entrypoint.name, e))
-    return result
 
 def get_previewers():
     # Note: data is zest.releaser specific: we want to pass
@@ -254,6 +239,26 @@ class SoS_Kernel(Kernel):
     MAGIC_RUN = re.compile('^%run(\s|$)')
     MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
 
+    def get_supported_languages(self):
+        if self._supported_languages is not None:
+            return self._supported_languages
+        group = 'sos_languages'
+        self._supported_languages = {}
+        for entrypoint in pkg_resources.iter_entry_points(group=group):
+            # Grab the function that is the actual plugin.
+            name = entrypoint.name
+            try:
+                plugin = entrypoint.load()()
+                self._supported_languages[name] = plugin
+                # for convenience, we create two entries for, e.g. R and ir
+                if name != plugin.kernel_name:
+                    self._supported_languages[plugin.kernel_name] = plugin
+            except Exception as e:
+                raise RuntimeError('Failed to load language {}: {}'.format(entrypoint.name, e))
+        return self._supported_languages
+
+    supported_languages = property(lambda self:self.get_supported_languages())
+
     def __init__(self, **kwargs):
         super(SoS_Kernel, self).__init__(**kwargs)
         self.options = ''
@@ -261,7 +266,6 @@ class SoS_Kernel(Kernel):
         self.banner = self.banner + '\nConnection file {}'.format(os.path.basename(find_connection_file()))
         # FIXME: this should in theory be a MultiKernelManager...
         self.kernels = {}
-        self.supported_languages = None
         self.format_obj = self.shell.display_formatter.format
 
         # InteractiveShell uses a default publisher that only displays text/plain
@@ -280,6 +284,7 @@ class SoS_Kernel(Kernel):
         #with open(self.report_file, 'w'):
         #    pass
         self.original_keys = None
+        self._supported_languages = None
 
     def _reset_dict(self):
         env.sos_dict = WorkflowDict()
@@ -353,9 +358,18 @@ class SoS_Kernel(Kernel):
             elif char in text:
                 text = text.rsplit(char, 1)[-1]
         if not text.strip():
-            matches = glob.glob('*')
-        if text.startswith('%') and line.startswith(text):
+            if line.startswith('%get'):
+                matches = [x for x in env.sos_dict.keys() if x not in self.original_keys and not x.startswith('_')]
+            elif any(line.startswith(x) for x in ('%use', '%with', '%restart')):
+                matches = list(self.supported_languages.keys())
+            else:
+                matches = glob.glob('*')
+        elif text.startswith('%') and line.startswith(text):
             matches = ['%' + x + ' ' for x in self.ALL_MAGICS if x.startswith(text[1:])]
+        elif line.startswith('%get'):
+            matches = [x for x in env.sos_dict.keys() if x.startswith(text) and x not in self.original_keys and not x.startswith('_')]
+        elif any(line.startswith(x) for x in ('%use', '%with', '%restart')):
+            matches = [x for x in self.supported_languages.keys() if x.startswith(text)]
         else:
             matches = glob.glob(os.path.expanduser(text) + '*')
             if len(matches) == 1 and matches[0] == os.path.expanduser(text) \
@@ -426,12 +440,6 @@ class SoS_Kernel(Kernel):
         return reply['content']
 
     def switch_kernel(self, kernel, ret_vars=[]):
-        if self.supported_languages is None:
-            try:
-                self.supported_languages = get_supported_languages()
-            except Exception as e:
-                self.warn('Failed to load {}: {}'.format(kernel, e))
-                return
         if kernel and kernel != 'sos':
             if kernel != self.kernel:
                 if kernel in self.kernels:
