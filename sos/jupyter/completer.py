@@ -22,7 +22,7 @@
 
 import os
 import glob
-from prompt_toolkit.completion import Completion, Completer, CompleteEvent
+from prompt_toolkit.completion import Completer, CompleteEvent
 from prompt_toolkit.document import Document
 from ptpython.completer import PythonCompleter
 from sos.utils import env

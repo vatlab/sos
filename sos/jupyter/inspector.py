@@ -22,8 +22,7 @@
 
 import os
 import glob
-from sos.utils import env, short_repr, pretty_size
-from sos.sos_eval import SoS_eval, get_default_global_sigil
+from sos.utils import env
 from sos.sos_syntax import SOS_USAGES
 
 class SoS_VariableInspector(object):
