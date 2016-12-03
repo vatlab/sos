@@ -51,6 +51,8 @@ from ipykernel.zmqshell import ZMQDisplayPublisher
 from textwrap import dedent
 from io import StringIO
 
+from .completer import SoS_Completer
+
 from .sos_executor import runfile
 from .converter import SoS_Exporter
 
@@ -259,6 +261,13 @@ class SoS_Kernel(Kernel):
 
     supported_languages = property(lambda self:self.get_supported_languages())
 
+    def get_completer(self):
+        if self._completer is None:
+            self._completer = SoS_Completer(self)
+        return self._completer
+
+    completer = property(lambda self:self.get_completer())
+
     def __init__(self, **kwargs):
         super(SoS_Kernel, self).__init__(**kwargs)
         self.options = ''
@@ -285,6 +294,7 @@ class SoS_Kernel(Kernel):
         #    pass
         self.original_keys = None
         self._supported_languages = None
+        self._completer = None
 
     def _reset_dict(self):
         env.sos_dict = WorkflowDict()
@@ -342,42 +352,7 @@ class SoS_Kernel(Kernel):
 
 
     def do_complete(self, code, cursor_pos):
-        # FIXME: IPython completers currently assume single line,
-        # but completion messages give multi-line context
-        # For now, extract line from cell, based on cursor_pos:
-        if cursor_pos is None:
-            cursor_pos = len(code)
-        line, offset = line_at_cursor(code, cursor_pos)
-        line_cursor = cursor_pos - offset
-        #
-        text = line[:cursor_pos]
-        #
-        for char in (' ', '\t', '"', "'", '='):
-            if text.endswith(char):
-                text = ''
-            elif char in text:
-                text = text.rsplit(char, 1)[-1]
-        if not text.strip():
-            if line.startswith('%get'):
-                matches = [x for x in env.sos_dict.keys() if x not in self.original_keys and not x.startswith('_')]
-            elif any(line.startswith(x) for x in ('%use', '%with', '%restart')):
-                matches = list(self.supported_languages.keys())
-            else:
-                matches = glob.glob('*')
-        elif text.startswith('%') and line.startswith(text):
-            matches = ['%' + x + ' ' for x in self.ALL_MAGICS if x.startswith(text[1:])]
-        elif line.startswith('%get'):
-            matches = [x for x in env.sos_dict.keys() if x.startswith(text) and x not in self.original_keys and not x.startswith('_')]
-        elif any(line.startswith(x) for x in ('%use', '%with', '%restart')):
-            matches = [x for x in self.supported_languages.keys() if x.startswith(text)]
-        else:
-            matches = glob.glob(os.path.expanduser(text) + '*')
-            if len(matches) == 1 and matches[0] == os.path.expanduser(text) \
-                and os.path.isdir(os.path.expanduser(text)):
-                matches = glob.glob(os.path.expanduser(text) + '/*')
-        with open(os.path.expanduser('~/a.txt'), 'w') as a:
-            a.write('{} \n'.format(text))
-            a.write('{} \n'.format(matches))
+        text, matches = self.completer.complete_text(code, cursor_pos)
         return {'matches' : matches,
                 'cursor_end' : cursor_pos,
                 'cursor_start' : cursor_pos - len(text),
