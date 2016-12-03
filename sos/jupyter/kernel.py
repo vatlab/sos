@@ -301,8 +301,8 @@ class SoS_Kernel(Kernel):
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
         SoS_exec("run_mode = 'interactive'", None)
-        self.original_keys = set(env.sos_dict._dict.keys())
-        self.original_keys.add('__builtins__')
+        self.original_keys = set(env.sos_dict._dict.keys()) | {'SOS_VERSION', 'CONFIG', \
+            'step_name', '__builtins__', 'input', 'output', 'depends'}
         #env.sos_dict.set('__summary_report__', self.report_file)
 
     @contextlib.contextmanager
