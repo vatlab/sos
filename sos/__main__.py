@@ -59,7 +59,7 @@ bindir_help = '''Extra directories in which SoS will look for executables before
 #
 def get_convert_parser():
     parser = argparse.ArgumentParser('convert',
-        description='''The convert command converts .sos to various formats including
+        description='''Converts .sos to various formats including
             .html for web display, to jupyter notebook (.ipynb), and to terminal
             for syntax highlighted viewing on terminal. It also allows converting
             from jupyter notebook (.ipynb) to sos script (.sos).''',
@@ -136,7 +136,7 @@ def cmd_convert(args, converter_args):
 #
 def get_run_parser(interactive=False, with_workflow=True):
     parser = argparse.ArgumentParser(prog='run',
-        description='Execute a workflow defined in script',
+        description='Execute default or specified workflow defined in script',
         epilog=workflow_options)
     if not interactive:
         parser.add_argument('script', metavar='SCRIPT', help=script_help)
@@ -517,31 +517,13 @@ def cmd_remove(args, unknown_args):
                             shutil.rmtree(target)
                     else:
                         os.unlink(target)
-#
-# command start
-#
-def get_start_parser(parser):
-    parser.add_argument('server_type', choices=('server', 'worker'), metavar='TYPE')
-    parser.set_defaults(func=cmd_start)
-
-def cmd_start(args, unknown_args):
-    import subprocess
-    if args.server_type == 'server':
-        # TODO: run it in background so that sos would quit
-        # TODO: write .sos/redis_connection.yaml
-        subprocess.call('redis-server')
-    elif args.server_type == 'worker':
-        # read .sos/redis_connection.yaml
-        # test redis connection???
-        # write .sos/rq_worker_settings.py
-        subprocess.call('rq worker -c .sos/rq_worker_settings')
 
 #
 # subcommand config
 #
 def get_config_parser():
     parser = argparse.ArgumentParser('config',
-        description='''The config command displays, set, and unset configuration
+        description='''Displays, set, and unset configuration
             variables defined in global or local configuration files.''')        
     parser.add_argument('-g', '--global', action='store_true', dest='__global_config__',
         help='''If set, change global (~/.sos/config.yaml) instead of local
@@ -1065,13 +1047,11 @@ def sosrun():
 # a subparser
 #
 def add_sub_parser(subparsers, parser):
-    subparser = subparsers.add_parser(parser.prog,
+    return subparsers.add_parser(parser.prog,
         description=parser.description,
         epilog=parser.epilog,
-        help=parser.description,
+        help=parser.description, parents=[parser],
         add_help=False)
-    subparser._add_container_actions(parser)
-    return subparser
 
 def main():
     from ._version import SOS_FULL_VERSION
