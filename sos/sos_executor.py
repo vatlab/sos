@@ -385,6 +385,8 @@ class Base_Executor:
         # python statements in different run modes.
         env.sos_dict.set('run_mode', env.run_mode)
         # process step of the pipelinp
+        if isinstance(targets, str):
+            targets = [targets]
         dag = self.initialize_dag(targets=targets)
         #
         # if targets are specified and there are only signatures for them, we need

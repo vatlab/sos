@@ -192,7 +192,7 @@ class SoS_ExecuteScript:
 
 
 @SoS_Action(run_mode=['run', 'interactive'])
-def sos_run(workflow, **kwargs):
+def sos_run(workflow=None, targets=None, **kwargs):
     '''Execute a workflow from specified source, input, and output
     By default the workflow is defined in the existing SoS script, but
     extra sos files can be specified from paramter source. The workflow
@@ -200,7 +200,7 @@ def sos_run(workflow, **kwargs):
     input. '''
     from .sos_executor import Base_Executor, MP_Executor
     script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
-    wf = script.workflow(workflow)
+    wf = script.workflow(workflow, use_default=targets is None)
     # if wf contains the current step or one of the previous one, this constitute
     # recusive nested workflow and should not be allowed
     if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections]:
@@ -213,7 +213,7 @@ def sos_run(workflow, **kwargs):
         my_name = env.sos_dict['step_name']
         if env.run_mode == 'dryrun':
             env.logger.info('Checking nested workflow {}'.format(workflow))
-            return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).dryrun()
+            return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True, **kwargs).dryrun(targets=targets)
         elif env.run_mode in ('run', 'interactive'):
             env.logger.info('Executing workflow ``{}`` with input ``{}``'
                 .format(workflow, short_repr(env.sos_dict['_input'], True)))
@@ -239,7 +239,7 @@ def sos_run(workflow, **kwargs):
                 else:
                     executor_class = MP_Executor
 
-            return executor_class(wf, args=env.sos_dict['__args__'], nested=True).run()
+            return executor_class(wf, args=env.sos_dict['__args__'], nested=True, **kwargs).run(targets=targets)
     finally:
         # restore step_name in case the subworkflow re-defines it
         env.sos_dict.set('step_name', my_name)

@@ -95,6 +95,8 @@ class Interactive_Executor(Base_Executor):
         last_res = None
 
         # process step of the pipelinp
+        if isinstance(targets, str):
+            targets = [targets]
         dag = self.initialize_dag(targets=targets)
         #
         # if targets are specified and there are only signatures for them, we need

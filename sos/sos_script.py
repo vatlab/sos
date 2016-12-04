@@ -414,10 +414,6 @@ class SoS_Workflow:
             # keep only selected steps (and the global section)
             self.sections = [x for x in self.sections if x.index < 0 or all_steps[x.index]]
         #
-        if len(self.sections) == 0:
-            env.logger.warning('Workflow {} has no forward step and {} auxiliary steps'
-                .format(workflow_name, len(self.auxiliary_sections)))
-
         env.logger.debug('Workflow {} created with {} sections: {}'
             .format(workflow_name, len(self.sections),
             ', '.join('{}_{}'.format(section.name,
@@ -1096,10 +1092,13 @@ for __n, __v in {}.items():
             section.tokens = section.get_tokens()
             section.md5 = textMD5(self.content.md5 + section.tokens)
 
-    def workflow(self, workflow_name=None):
+    def workflow(self, workflow_name=None, use_default=True):
         '''Return a workflow with name_step+name_step specified in wf_name
         This function might be called recursively because of nested
         workflow. '''
+        if workflow_name is None and not use_default:
+            return SoS_Workflow(self.content, '', '',
+                [section for section in self.sections if 'provides' in section.options or 'shared' in section.options])
         allowed_steps = None
         if not workflow_name:
             wf_name = ''
