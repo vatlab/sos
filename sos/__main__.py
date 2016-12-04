@@ -247,7 +247,7 @@ def cmd_run(args, workflow_args):
 
     try:
         script = SoS_Script(filename=args.script)
-        workflow = script.workflow(args.workflow, use_default=args.__targets__ is None)
+        workflow = script.workflow(args.workflow, use_default=not args.__targets__)
         executor = executor_class(workflow, args=workflow_args, config_file=args.__config__)
         #
         if args.__dryrun__:

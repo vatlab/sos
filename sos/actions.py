@@ -200,7 +200,7 @@ def sos_run(workflow=None, targets=None, **kwargs):
     input. '''
     from .sos_executor import Base_Executor, MP_Executor
     script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
-    wf = script.workflow(workflow, use_default=targets is None)
+    wf = script.workflow(workflow, use_default=not targets)
     # if wf contains the current step or one of the previous one, this constitute
     # recusive nested workflow and should not be allowed
     if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections]:
