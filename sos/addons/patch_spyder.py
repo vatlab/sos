@@ -204,6 +204,8 @@ def get_patch_spyder_parser():
 def patch_spyder(args, unknown_args):
     try:
         from spyderlib import config
+        # suppress pyflakes warning
+        config
         patch_spyder2(args.verbose)
     except ImportError:
         patch_spyder3(args.verbose)
