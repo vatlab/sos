@@ -20,7 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import pydoc
+import pydoc1
 from sos.utils import env
 from sos.sos_syntax import SOS_USAGES
 
