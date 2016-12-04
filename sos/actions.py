@@ -83,14 +83,6 @@ def SoS_Action(run_mode=['run', 'interactive']):
                 from .docker.client import DockerClient
                 docker = DockerClient()
                 docker.pull(kwargs['docker_image'])
-                if env.run_mode in ['interactive']:
-                    mem = docker.total_memory(kwargs['docker_image'])
-                    if mem is not None:
-                        if mem < 4000000: # < 4G
-                            env.logger.warning('Docker machine has {:.1f} GB of total memory and might not be enough for your operation. Please refer to https://github.com/bpeng2000/SOS/wiki/SoS-Docker-guide to adjust the docker machine if needed.'
-                                .format(mem/1024/1024))
-                        else:
-                            env.logger.debug('Docker machine has {:.1f} GB of total memory ram'.format(mem/1024/1024))
             if env.run_mode not in run_mode:
                 # return dynamic expression when not in run mode, that is to say
                 # the script logic cannot rely on the result of the action
