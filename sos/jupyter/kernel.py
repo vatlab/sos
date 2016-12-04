@@ -908,7 +908,7 @@ class SoS_Kernel(Kernel):
         else:
             obj = SoS_eval(item, sigil=get_default_global_sigil())
         if callable(obj) or isinstance(obj, ModuleType):
-            return {'text/plain': pydoc.getdoc(obj)}, {}
+            return {'text/plain': pydoc.render_doc(obj, title='SoS Documentation: %s')}, {}
         else:
             return self.format_obj(obj)
 

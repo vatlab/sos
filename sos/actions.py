@@ -35,6 +35,8 @@ import shutil
 import zipfile
 import gzip
 import tarfile
+from functools import wraps
+
 if sys.platform != 'win32':
     import blessings
 
@@ -69,6 +71,7 @@ def get_actions():
 def SoS_Action(run_mode=['run', 'interactive']):
     run_mode = [run_mode] if isinstance(run_mode, str) else run_mode
     def runtime_decorator(func):
+        @wraps(func)
         def action_wrapper(*args, **kwargs):
             # docker files will be downloaded in run or prepare mode
             if 'docker_file' in kwargs and env.run_mode in ['run', 'interactive']:
@@ -251,6 +254,7 @@ def sos_run(workflow, **kwargs):
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def execute_script(script, interpreter, suffix, args='', **kwargs):
+    '''Execute specified script using specified interpreter.'''
     return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'])
@@ -496,50 +500,62 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def run(script, args='', **kwargs):
+    '''Execute specified script using bash.'''
     return SoS_ExecuteScript(script, '/bin/bash', '.sh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def bash(script, args='', **kwargs):
+    '''Execute specified script using bash.'''
     return SoS_ExecuteScript(script, '/bin/bash', '.sh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def csh(script, args='', **kwargs):
+    '''Execute specified script using csh.'''
     return SoS_ExecuteScript(script, '/bin/csh', '.csh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def tcsh(script, args='', **kwargs):
+    '''Execute specified script using tcsh.'''
     return SoS_ExecuteScript(script, '/bin/tcsh', '.sh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def zsh(script, args='', **kwargs):
+    '''Execute specified script using zsh.'''
     return SoS_ExecuteScript(script, '/bin/zsh', '.zsh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def sh(script, args='', **kwargs):
+    '''Execute specified script using sh.'''
     return SoS_ExecuteScript(script, '/bin/sh', '.sh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def python(script, args='', **kwargs):
+    '''Execute specified script using python (which can be python 2 or 3 depending on system configuration.'''
     return SoS_ExecuteScript(script, 'python', '.py', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def python3(script, args='', **kwargs):
+    '''Execute specified script using python 3.'''
     return SoS_ExecuteScript(script, 'python3', '.py', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def perl(script, args='', **kwargs):
+    '''Execute specified script using perl.'''
     return SoS_ExecuteScript(script, 'perl', '.pl', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def ruby(script, args='', **kwargs):
+    '''Execute specified script using ruby.'''
     return SoS_ExecuteScript(script, 'ruby', '.rb', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def node(script, args='', **kwargs):
+    '''Execute specified script using node.'''
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def JavaScript(script, args='', **kwargs):
+    '''Execute specified script using node.'''
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])

@@ -21,7 +21,7 @@
 #
 
 import os
-import glob
+import pydoc
 from sos.utils import env
 from sos.sos_syntax import SOS_USAGES
 
@@ -36,22 +36,13 @@ class SoS_VariableInspector(object):
         except Exception as e:
             return {}
 
-def log(obj):
-    with open(os.path.expanduser('~/a.txt'), 'a') as a:
-        a.write('{}\n'.format(obj))
-
 class SoS_SyntaxInspector(object):
     def __init__(self, kernel):
         self.kernel = kernel
 
     def inspect(self, name, line, pos):
-        log(name)
-        log(line)
-        log(pos)
-        log(self.kernel.ALL_MAGICS)
         if line.startswith('%') and name in self.kernel.ALL_MAGICS and pos <= len(name) + 1:
             if hasattr(self.kernel, 'get_{}_parser'.format(name)):
-                log('had attr')
                 parser = getattr(self.kernel, 'get_{}_parser'.format(name))()
                 return {'text/plain': parser.format_help()}
             else:
@@ -60,9 +51,9 @@ class SoS_SyntaxInspector(object):
             # input: etc
             if name in SOS_USAGES:
                 return {'text/plain': SOS_USAGES[name]}
-            elif name in env.sos_dict and hasattr(env.sos_dict[name], '__doc__'):
+            elif name in env.sos_dict:
                 # action?
-                return {'text/plain': env.sos_dict[name].__doc__}
+                return {'text/plain': pydoc.render_doc(env.sos_dict[name], title='SoS Documentation: %s')}
             else:
                 return {}
         else:
@@ -81,8 +72,7 @@ class SoS_Inspector(object):
                 data = c.inspect(name, line, pos)
                 if data:
                     return data
-            except Exception as e:
-                log(e)
+            except:
                 continue
         # No match
         return {}

@@ -23,7 +23,6 @@ import sys
 import os
 import yaml
 import shlex
-import argparse
 from sos.utils import env, frozendict, dict_merge, _parse_error, get_traceback
 from sos.sos_eval import SoS_exec, get_default_global_sigil
 from sos._version import __version__
