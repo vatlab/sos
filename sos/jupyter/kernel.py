@@ -872,6 +872,8 @@ class SoS_Kernel(Kernel):
             #
             if 'input' in env.sos_dict:
                 input_files = env.sos_dict['input']
+                if input_files is None:
+                    input_files = []
             else:
                 input_files = []
             if 'output' in env.sos_dict:
@@ -898,9 +900,8 @@ class SoS_Kernel(Kernel):
                                 ', '.join('<a target="_blank" href="{0}">{0}</a>'.format(x) for x in output_files))).data
                             }
                         })
-            # Send images, if any
-            for filename in output_files:
-                self.preview(filename)
+                for filename in output_files:
+                    self.preview_file(filename)
 
     def preview_var(self, item):
         if item in env.sos_dict:
