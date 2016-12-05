@@ -135,13 +135,13 @@ define(function(){
 		}
     // handle magic: FIXME: also need to be at the beginning of text
 	  if (state.beginningOfLine && ch == "%") {
-	    stream.skipToEnd();
+	    stream.next();
 		return "meta";
 		}
 
 	  if (state.beginningOfLine && stream.match(/[a-zA-Z]+:/) ) {
 		// this is VERY premilinary, but better than nothing
-	    stream.skipToEnd();
+	    stream.next();
 		return "meta";
 	  }
       // Handle Number Literals
@@ -289,9 +289,9 @@ define(function(){
 
       if (/\S/.test(current)) state.beginningOfLine = false;
 
-      if ((style == "variable" || style == "builtin")
-          && state.lastToken == "meta")
-        style = "meta";
+      //if ((style == "variable" || style == "builtin")
+      //    && state.lastToken == "meta")
+      //  style = "meta";
 
       // Handle scope changes.
       if (current == "pass" || current == "return")
