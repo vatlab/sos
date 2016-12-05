@@ -26,7 +26,6 @@ import re
 import fnmatch
 import contextlib
 import subprocess
-import tempfile
 import argparse
 import pkg_resources
 import pydoc
@@ -173,6 +172,7 @@ def R_repr(obj):
     else:
         import numpy
         import pandas
+        import tempfile
         if isinstance(obj, (numpy.intc, numpy.intp, numpy.int8, numpy.int16, numpy.int32, numpy.int64,\
                 numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32, \
                 numpy.float64)):
@@ -238,7 +238,8 @@ class SoS_Kernel(Kernel):
         'put',
         'paste',
         'run',
-        'preview'
+        'preview',
+        'sandbox',
     }
     MAGIC_DICT = re.compile('^%dict(\s|$)')
     MAGIC_CONNECT_INFO = re.compile('^%connect_info(\s|$)')
@@ -253,6 +254,7 @@ class SoS_Kernel(Kernel):
     MAGIC_PASTE = re.compile('^%paste(\s|$)')
     MAGIC_RUN = re.compile('^%run(\s|$)')
     MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
+    MAGIC_SANDBOX = re.compile('^%sandbox(\s|$)')
 
     def get_use_parser(self):
         parser = argparse.ArgumentParser(prog='%use',
@@ -1107,6 +1109,18 @@ class SoS_Kernel(Kernel):
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.options = old_options
+        elif self.MAGIC_SANDBOX.match(code):
+            import tempfile
+            import shutil
+            options, remaining_code = self.get_magic_and_code(code, False)
+            try:
+                old_dir = os.getcwd()
+                new_dir = tempfile.mkdtemp()
+                os.chdir(new_dir)
+                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            finally:
+                shutil.rmtree(new_dir)
+                os.chdir(old_dir)
         elif self.MAGIC_PREVIEW.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
