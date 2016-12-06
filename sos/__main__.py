@@ -245,6 +245,9 @@ def cmd_run(args, workflow_args):
         os.environ['PATH'] = os.pathsep.join([os.path.expanduser(x) for x in args.__bin_dirs__]) + os.pathsep + os.environ['PATH']
 
     try:
+        # workflow args has to be in the format of --arg, not positional, not -a
+        if workflow_args and not workflow_args[0].startswith('--'):
+            raise ValueError("Unrecognized command line option {}".format(' '.join(workflow_args)))
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow, use_default=not args.__targets__)
         executor = executor_class(workflow, args=workflow_args, config_file=args.__config__)
