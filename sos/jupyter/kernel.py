@@ -575,6 +575,17 @@ class SoS_Kernel(Kernel):
         parser.error = self._parse_error
         return parser
 
+    def get_sandbox_parser(self):
+        parser = argparse.ArgumentParser(prog='%sandbox',
+            description='''Execute content of a cell in a temporary directory
+                with fresh dictionary (by default).''')
+        parser.add_argument('-k', '--keep', action='store_true',
+            help='''Keep current sos dictionary.''')
+        parser.add_argument('-e', '--expect-error', action='store_true',
+            help='''If set, expect error from the excution and report
+                success if an error occurs.''')
+        return parser
+
     def handle_magic_dict(self, line):
         'Magic that displays content of the dictionary'
         # do not return __builtins__ beacuse it is too long...
