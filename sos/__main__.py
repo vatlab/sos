@@ -178,9 +178,8 @@ def get_run_parser(interactive=False, with_workflow=True):
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
         description='''Control how sos scirpt is executed.''')
-    if not interactive:
-        runmode.add_argument('-n', action='store_true', dest='__dryrun__',
-            help='''Execute a workflow without executing any actions. This can be
+    runmode.add_argument('-n', action='store_true', dest='__dryrun__',
+        help='''Execute a workflow without executing any actions. This can be
             used to check the syntax of a SoS file.''')
     runmode.add_argument('-f', action='store_true', dest='__rerun__',
         help='''Execute the workflow in a special run mode that ignores saved
