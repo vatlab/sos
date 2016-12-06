@@ -42,7 +42,7 @@ $(document).ready(function(){
 
 
 
-	var dir = "../doc/documentation_html/";
+	var dir = "../../doc/documentation_html/";
 	var fileextension = ".html";
 	$("#documentation > .container").append('<div class="row">')
 	$.ajax({
@@ -68,7 +68,7 @@ $(document).ready(function(){
 	});
 	$("#documentation > .container").append('</div>');
 
-	var dir = "../doc/tutorial_html/";
+	var dir = "../../doc/tutorial_html/";
 	var fileextension = ".html";
 	$("#tutorial > .container").append('<div class="row">')
 	$.ajax({
