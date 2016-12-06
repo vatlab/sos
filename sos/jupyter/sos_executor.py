@@ -77,7 +77,7 @@ class Interactive_Executor(Base_Executor):
         env.sos_dict.set('CONFIG', frozendict(cfg))
         FileTarget('config.yaml').remove('both')
 
-    def run(self, targets=None):
+    def run(self, targets=None, mode='interactive'):
         '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer
         The code can be simple SoS/Python statements, one SoS step, or more
         or more SoS workflows with multiple steps. This executor,
@@ -93,6 +93,8 @@ class Interactive_Executor(Base_Executor):
         # this is the result returned by the workflow, if the
         # last stement is an expression.
         last_res = None
+
+        env.run_mode = mode
 
         # process step of the pipelinp
         if isinstance(targets, str):
@@ -261,10 +263,11 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
             script = SoS_Script(filename=script, global_sigil=get_default_global_sigil())
         workflow = script.workflow(args.workflow)
         executor = Interactive_Executor(workflow, args=workflow_args, config_file=args.__config__)
-        #
-        # if dag is None, the script will be run sequentially and cannot handle
-        # make-style steps.
-        return executor.run(args.__targets__)
+
+        if args.__dryrun__:
+            return executor.dryrun(args.__targets__)
+        else:
+            return executor.run(args.__targets__)
     except Exception:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())

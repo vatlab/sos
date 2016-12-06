@@ -26,7 +26,6 @@ from sos.sos_step import Base_Step_Executor, _expand_file_list
 
 class Interactive_Step_Executor(Base_Step_Executor):
     def __init__(self, step):
-        env.run_mode = 'interactive'
         Base_Step_Executor.__init__(self, step)
 
     def expand_input_files(self, value, *args):
