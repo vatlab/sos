@@ -33,12 +33,12 @@ run: workdir='..'
         --include "*.ipynb" --include "*.sos" --exclude "*" \
         doc/documentation doc/tutorials doc/examples development/docker-notebook
 
-# update docker file (we have removed Dockerfile.in and kept this version of Dockerfile)
-#run:
-#    cp docker-notebook/Dockerfile.in docker-notebook/Dockerfile
-#    echo "COPY tutorials /home/jovyan/work/tutorials" >> docker-notebook/Dockerfile
-#    echo "COPY examples  /home/jovyan/work/examples" >> docker-notebook/Dockerfile
-#    echo "COPY documentation /home/jovyan/work/documentation" >> docker-notebook/Dockerfile
+# update docker file
+run:
+    cp docker-notebook/Dockerfile.in docker-notebook/Dockerfile
+    echo "COPY tutorials /home/jovyan/work/tutorials" >> docker-notebook/Dockerfile
+    echo "COPY examples  /home/jovyan/work/examples" >> docker-notebook/Dockerfile
+    echo "COPY documentation /home/jovyan/work/documentation" >> docker-notebook/Dockerfile
 
 # update docker and push
 run:
