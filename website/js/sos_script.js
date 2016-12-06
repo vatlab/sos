@@ -1,8 +1,8 @@
 $(document).ready(function(){
 	$("#intro_content").load("https://raw.githubusercontent.com/BoPeng/SOS/onepage/doc/README.html"); 
 	
-	var tutorials=["A_Complete_Example","Generating_Report_using_SoS","Jupyter_Notebook","Quick_Start_Guide","SoS-QuickStart",
-					"SoS_Docker_Guide","Using_SoS_with_IPython","Using_SoS_with_Spyder","Using_SoS_with_VM"]
+	var tutorials=["Quick_Start_Guide","SoS-QuickStart",
+					"SoS_Docker_Guide","Using_SoS_with_IPython","Using_SoS_with_Spyder"]
 	$("#tutorial > .container").append('<div class="row">')
 	for (var a =0;a<tutorials.length;a++){
 		var name =tutorials[a];

@@ -11,3 +11,7 @@ for f in `ls ./doc/tutorials/*.ipynb`; do
 done
 
 mv ./doc/tutorials/*html ./website/doc/tutorial_html/
+
+git subtree split --prefix website -b gh-pages
+git push -f origin gh-pages:gh-pages
+git branch -D gh-pages
