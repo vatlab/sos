@@ -288,11 +288,13 @@ class SoS_Kernel(Kernel):
             description='''Preview files, sos variables, or expressions''')
         parser.add_argument('items', nargs='?', 
             help='''filename, variable name, or expression''')
+        parser.error = self._parse_error
         return parser
 
     def get_set_parser(self):
         parser = argparse.ArgumentParser(prog='%set',
             description='''Set persistent command line options for SoS runs.''')
+        parser.error = self._parse_error
         return parser
 
     def get_run_parser(self):
@@ -300,6 +302,7 @@ class SoS_Kernel(Kernel):
             description='''Execute the current cell with specified command line
             arguments. Arguments set by magic %set will be appended at the
             end of command line''')
+        parser.error = self._parse_error
         return parser
 
     def get_get_parser(self):
@@ -308,6 +311,7 @@ class SoS_Kernel(Kernel):
             to the existing subkernel.''')
         parser.add_argument('vars', nargs='?',
             help='''Names of SoS variables''')
+        parser.error = self._parse_error
         return parser
 
     def get_put_parser(self):
@@ -316,6 +320,7 @@ class SoS_Kernel(Kernel):
             SoS kernel.''')
         parser.add_argument('vars', nargs='?',
             help='''Names of SoS variables''')
+        parser.error = self._parse_error
         return parser
 
     def get_supported_languages(self):
@@ -579,11 +584,12 @@ class SoS_Kernel(Kernel):
         parser = argparse.ArgumentParser(prog='%sandbox',
             description='''Execute content of a cell in a temporary directory
                 with fresh dictionary (by default).''')
-        parser.add_argument('-k', '--keep', action='store_true',
+        parser.add_argument('-k', '--keep-dict', action='store_true',
             help='''Keep current sos dictionary.''')
         parser.add_argument('-e', '--expect-error', action='store_true',
             help='''If set, expect error from the excution and report
                 success if an error occurs.''')
+        parser.error = self._parse_error
         return parser
 
     def handle_magic_dict(self, line):
@@ -1126,13 +1132,19 @@ class SoS_Kernel(Kernel):
         elif self.MAGIC_SANDBOX.match(code):
             import tempfile
             import shutil
+            import shlex
             options, remaining_code = self.get_magic_and_code(code, False)
+            parser = self.get_sandbox_parser()
+            args = parser.parse_args(shlex.split(options))
             try:
                 old_dir = os.getcwd()
                 new_dir = tempfile.mkdtemp()
                 os.chdir(new_dir)
+                if not args.keep_dict:
+                    old_dict = env.sos_dict
+                    self._reset_dict()
                 ret = self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-                if ret['status'] == 'error':
+                if args.expect_error and ret['status'] == 'error':
                     self.warn('\nSandbox execution failed.')
                     return {'status': 'ok', 
                         'payload': [], 'user_expressions': {},
@@ -1140,6 +1152,8 @@ class SoS_Kernel(Kernel):
                 else:
                     return ret
             finally:
+                if not args.keep_dict:
+                    env.sos_dict = old_dict
                 shutil.rmtree(new_dir)
                 os.chdir(old_dir)
         elif self.MAGIC_PREVIEW.match(code):
