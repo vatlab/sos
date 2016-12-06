@@ -1,0 +1,123 @@
+<p><strong>Script of Scripts (SoS)</strong> is a lightweight workflow system that helps you organize your commands and scripts in different languages into readable workflows that can be easily understood and modified by others. It is an easy-to-use alternative to specialized workflow systems such as <a href="http://common-workflow-language.github.io/draft-3/">CWL</a> which makes it an ideal tool for the creation and maintenance of workflows that need to be frequently updated and shared with others.</p>
+<p>Compared to maintaining multiple scripts, or using more specialized workflow systems such as <a href="http://www.yawlfoundation.org/">YAWL</a>, <a href="http://common-workflow-language.github.io/">CWL</a>, and <a href="https://galaxyproject.org/">Galaxy</a>, or make-file style workflow system such as <a href="https://bitbucket.org/johanneskoester/snakemake">snakemake</a>, </p>
+<ul>
+<li><strong>SoS offers a way to organize your scripts in a single file</strong>, which makes it easy to execute and maintain. You can include small and frequently changed commands and scripts in SoS and keep large and stable scripts in separate files.</li>
+<li><strong>SoS scripts are human readable and writable</strong>. The workflow steps are logically arranged and the scripts and commands are kept mostly in their original form so it is easy for others to read a SoS workflow and modify it if needed. It follows <a href="http://www.python.org">Python</a> syntax which is easy to understand even for users who do not know Python. In comparison, it would take a lot of time and practice to learn a specialized language to write a <a href="http://common-workflow-language.github.io/">CWL</a> workflow (see <a href="https://github.com/common-workflow-language/workflows/wiki/Tutorial-DRAFT2">this CWL tutorial</a> for an example).</li>
+<li><strong>SoS allows for notebook-, forward- and make-style definitions of workflows</strong>. SoS does not limit you to particular way of defining a workflow. You can use SoS as a notebook to keep track of steps of analysis (notebook-style), transform the notes to a real workflow (forward-style), and add dependency rules if needed (make-style).</li>
+<li><strong>You can use SoS interactively with <a href="https://ipython.org/">iPython</a> or <a href="http://jupyter.org/">Jupyter</a>, write and debug SoS scripts in <a href="https://pythonhosted.org/spyder/">Spyder</a>, and execute scripts in batch mode</strong> with advanced workflow features. The workflow features of SoS are easy to use yet very powerful in helping you execute your pipelines efficiently not only locally, but also on cluster and cloud systems.</li>
+</ul>
+<h2>SoS as a file format</h2>
+<p>Please refer to this <strong><a href="https://github.com/BoPeng/SOS/wiki/1.-Quick-Start">tutorial</a></strong> for a quick start on SoS and the rest of the wiki for more details.</p>
+<h2>Using SoS interactively</h2>
+<p>There are a number of ways for you to use SoS interactively. Unless you are familiar with iPython, Jupyter, or Spyder and already have a preferred method of working, the differences between these working environments can be confusing. The following table tries to list the characteristics of these methods to make it easier for you to get started.</p>
+<p>Basically, you can use</p>
+<ol>
+<li><code>ipython + sos magic</code> if you are a diehard iPython user. However, this method is not practical for SoS user because of <a href="https://github.com/ipython/ipython/issues/10072">a bug in ipython</a>.</li>
+<li>An editor + <code>qtconsole</code> if you strongly prefer a certain editor (vim)</li>
+<li><code>qtconsole</code> if you just want to play with sos for a bit</li>
+<li>Jupyter if you like the notebook style or if you need to present code and results to others</li>
+<li>Spyder if you like an IDE with separate editor and console windows. This should be a good choice for most users.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left">ipython kernel + sos magic</th>
+<th align="left">qtconsole</th>
+<th align="left">editor + qtconsole</th>
+<th align="left">jupyter notebook</th>
+<th align="left">Spyder</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left"><strong>Description</strong></td>
+<td align="left">Native ipython environments with SoS magic</td>
+<td align="left">Console with sos kernel</td>
+<td align="left">External editor with help from a console window</td>
+<td align="left">Web interface with mixed scripts and results</td>
+<td align="left">IDE with separate editor and console</td>
+</tr>
+<tr>
+<td align="left"><strong>Good for</strong></td>
+<td align="left">ipython with separate sos environment</td>
+<td align="left">Test small pieces of code</td>
+<td align="left">Writing of serious SoS workflows with occasional need for testing</td>
+<td align="left">Interactive data analysis with mixed scripts and results (notebook style)</td>
+<td align="left">Interactive data analysis resulting in a complete script</td>
+</tr>
+<tr>
+<td align="left"><strong>Command line</strong></td>
+<td align="left"><code>ipython</code>, <code>jupyter qtconsole</code>, <code>jupyter notebook</code> with Python kernel, or <code>spyder</code></td>
+<td align="left"><code>jupyter qtconsole --kernel sos</code></td>
+<td align="left"><code>jupyter qtconsole --kernel sos</code></td>
+<td align="left"><code>jupyter notebook</code> with sos kernel</td>
+<td align="left"><code>spyder --kernel sos</code></td>
+</tr>
+<tr>
+<td align="left"><strong>kernel</strong></td>
+<td align="left">ipython with sos magic</td>
+<td align="left">sos</td>
+<td align="left">sos</td>
+<td align="left">sos</td>
+<td align="left">sos</td>
+</tr>
+<tr>
+<td align="left"><strong>Script editor</strong></td>
+<td align="left">Depends</td>
+<td align="left">None</td>
+<td align="left">Editor of your choice (e.g. vim)</td>
+<td align="left">jupyter (web)</td>
+<td align="left">Spyder (editor)</td>
+</tr>
+<tr>
+<td align="left"><strong>Enter commands via</strong></td>
+<td align="left">ipython command line</td>
+<td align="left">qtconsole (enter command)</td>
+<td align="left">qtconsole (copy/paste or <code>%paste</code> from editor)</td>
+<td align="left">jupyter (web)</td>
+<td align="left">Spyder (console)</td>
+</tr>
+<tr>
+<td align="left"><strong>Subkernel support</strong></td>
+<td align="left">No, but can use other iPython magic such as <code>%%R</code></td>
+<td align="left">Yes</td>
+<td align="left">Yes</td>
+<td align="left">Yes</td>
+<td align="left">Yes</td>
+</tr>
+<tr>
+<td align="left"><strong>Preview support</strong></td>
+<td align="left">No</td>
+<td align="left">Yes</td>
+<td align="left">Yes</td>
+<td align="left">Yes</td>
+<td align="left">Yes</td>
+</tr>
+<tr>
+<td align="left"><strong>Shell command</strong></td>
+<td align="left">Yes (through iPython)</td>
+<td align="left">Yes (through sos)</td>
+<td align="left">Yes</td>
+<td align="left">Yes</td>
+<td align="left">Yes</td>
+</tr>
+<tr>
+<td align="left"><strong>remote access</strong></td>
+<td align="left">If using Jupyter</td>
+<td align="left">No</td>
+<td align="left">No</td>
+<td align="left">Yes through remote Jupyter server</td>
+<td align="left">Yes if connects to remote Jupyter server</td>
+</tr>
+<tr>
+<td align="left"><strong>Magics</strong></td>
+<td align="left">Magics <code>%sos</code>, <code>%sosdict</code>, <code>%sospaste</code>, <code>%sosget</code>, <code>%sosput</code>, <code>%sosset</code> with ipython magics</td>
+<td align="left"><code>%with</code>, <code>%use</code>, <code>%paste</code>, <code>%set</code>, <code>%get</code>, <code>%preview</code>, <code>%run</code>, <code>%set</code>, <code>%restart</code>, <code>%dict</code>, <code>%cd</code>, ...</td>
+<td align="left">the same</td>
+<td align="left">the same</td>
+<td align="left">additional <code>%edit</code> magic</td>
+</tr>
+</tbody>
+</table>
+<h2>Writing and executing SoS workflow</h2>

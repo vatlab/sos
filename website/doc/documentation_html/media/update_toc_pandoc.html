@@ -1,0 +1,108 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; background-color: #f8f8f8; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+pre, code { background-color: #f8f8f8; }
+code > span.kw { color: #204a87; font-weight: bold; } /* Keyword */
+code > span.dt { color: #204a87; } /* DataType */
+code > span.dv { color: #0000cf; } /* DecVal */
+code > span.bn { color: #0000cf; } /* BaseN */
+code > span.fl { color: #0000cf; } /* Float */
+code > span.ch { color: #4e9a06; } /* Char */
+code > span.st { color: #4e9a06; } /* String */
+code > span.co { color: #8f5902; font-style: italic; } /* Comment */
+code > span.ot { color: #8f5902; } /* Other */
+code > span.al { color: #ef2929; } /* Alert */
+code > span.fu { color: #000000; } /* Function */
+code > span.er { color: #a40000; font-weight: bold; } /* Error */
+code > span.wa { color: #8f5902; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #000000; } /* Constant */
+code > span.sc { color: #000000; } /* SpecialChar */
+code > span.vs { color: #4e9a06; } /* VerbatimString */
+code > span.ss { color: #4e9a06; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #000000; } /* Variable */
+code > span.cf { color: #204a87; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #ce5c00; font-weight: bold; } /* Operator */
+code > span.pp { color: #8f5902; font-style: italic; } /* Preprocessor */
+code > span.ex { } /* Extension */
+code > span.at { color: #c4a000; } /* Attribute */
+code > span.do { color: #8f5902; font-weight: bold; font-style: italic; } /* Documentation */
+code > span.an { color: #8f5902; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #8f5902; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #8f5902; font-weight: bold; font-style: italic; } /* Information */
+  </style>
+</head>
+<body>
+<div id="TOC">
+<ul>
+<li><a href="#section">[1]</a></li>
+<li><a href="#section-1">[2]</a></li>
+<li><a href="#section-2">[3]</a></li>
+</ul>
+</div>
+<p>vim: set filetype=python: set expandtab : ts=4:<br />
+fileformat=SOS1.0</p>
+<p>Author: Gao Wang</p>
+<p>This script parses all .md files from the SoS wiki and generate directory<br />
+level and summary _Sidebar.md. It then commit and push the changes to the<br />
+SOS wiki.</p>
+<h2 id="section">[1]</h2>
+<p>Update contents</p>
+<p><strong>run:</strong></p>
+<div class="sourceCode"><pre class="sourceCode bash"><code class="sourceCode bash"></code></pre></div>
+<h2 id="section-1">[2]</h2>
+<p>Parse .md files and generate _Sidebar.md</p>
+<p><strong>python:</strong></p>
+<div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python"><span class="im">import</span> glob
+res <span class="op">=</span> {}
+<span class="cf">for</span> mdfile <span class="op">in</span> glob.glob(<span class="st">&#39;*/[!_]*.md&#39;</span>):
+    item <span class="op">=</span> os.path.split(mdfile)
+    <span class="co"># item[0] is subdir name</span>
+    <span class="co"># item[1] is the MD file name: file.md</span>
+    <span class="co"># Global navigator</span>
+    sidebar <span class="op">=</span> <span class="st">&#39;{}/_Sidebar.md&#39;</span>.<span class="bu">format</span>(item[<span class="dv">0</span>])
+    <span class="cf">if</span> item[<span class="dv">0</span>].capitalize() <span class="op">not</span> <span class="op">in</span> res:
+       res[item[<span class="dv">0</span>].capitalize()] <span class="op">=</span> []
+       <span class="cf">with</span> <span class="bu">open</span>(sidebar, <span class="st">&#39;w&#39;</span>) <span class="im">as</span> f:
+            f.write(<span class="st">&quot;**[Wiki Home](https://github.com/BoPeng/SOS/wiki)**</span><span class="ch">\n\n</span><span class="st">&quot;</span>)
+    title <span class="op">=</span> <span class="st">&#39; &#39;</span>.join([x.capitalize() <span class="cf">for</span> x <span class="op">in</span> item[<span class="dv">1</span>][:<span class="op">-</span><span class="dv">3</span>].split(<span class="st">&#39;-&#39;</span>)])
+    res[item[<span class="dv">0</span>].capitalize()].append(<span class="st">&#39;* [[{}|{}]]&#39;</span>.<span class="bu">format</span>(title, item[<span class="dv">1</span>][:<span class="op">-</span><span class="dv">3</span>]))
+    <span class="co"># Local navigator</span>
+    local_res <span class="op">=</span> []
+    cmd <span class="op">=</span> <span class="st">&#39;python markdown_toclify.py {} --github&#39;</span>.<span class="bu">format</span>(mdfile)
+    <span class="cf">for</span> line <span class="op">in</span> subprocess.check_output(cmd, shell <span class="op">=</span> <span class="va">True</span>).decode(<span class="st">&quot;utf8&quot;</span>).strip().split(<span class="st">&#39;</span><span class="ch">\n</span><span class="st">&#39;</span>):
+        line <span class="op">=</span> line.rstrip()
+        <span class="cf">if</span> <span class="op">not</span> line:
+           <span class="cf">break</span>
+        <span class="cf">if</span> line <span class="op">==</span> <span class="st">&#39;# Table of Contents&#39;</span>:
+           <span class="co"># line = &#39;**[{}]({})**&#39;.format(title, item[1][:-3])</span>
+           line <span class="op">=</span> <span class="st">&#39;**{}**&#39;</span>.<span class="bu">format</span>(title)
+        local_res.append(line.replace(<span class="st">&#39;#&#39;</span>, item[<span class="dv">1</span>][:<span class="op">-</span><span class="dv">3</span>] <span class="op">+</span> <span class="st">&#39;#&#39;</span>))
+    <span class="cf">if</span> <span class="bu">len</span>(local_res) <span class="op">&gt;</span> <span class="dv">1</span>:
+       <span class="cf">with</span> <span class="bu">open</span>(sidebar, <span class="st">&#39;a&#39;</span>) <span class="im">as</span> f:
+            <span class="cf">for</span> line <span class="op">in</span> local_res:
+                f.write(line <span class="op">+</span> <span class="st">&#39;</span><span class="ch">\n</span><span class="st">&#39;</span>)
+            f.write(<span class="st">&#39;</span><span class="ch">\n</span><span class="st">&#39;</span>)
+<span class="cf">with</span> <span class="bu">open</span>(<span class="st">&#39;_Sidebar.md&#39;</span>, <span class="st">&#39;w&#39;</span>) <span class="im">as</span> f:
+    <span class="cf">for</span> key <span class="op">in</span> <span class="bu">sorted</span>(res.keys()):
+        f.write(<span class="st">&#39;</span><span class="ch">\n</span><span class="st">**&#39;</span> <span class="op">+</span> key <span class="op">+</span> <span class="st">&#39;**</span><span class="ch">\n\n</span><span class="st">&#39;</span>)
+        <span class="cf">for</span> item <span class="op">in</span> res[key]:
+            f.write(item <span class="op">+</span> <span class="st">&#39;</span><span class="ch">\n</span><span class="st">&#39;</span>)</code></pre></div>
+<h2 id="section-2">[3]</h2>
+<p>Commit and push changes</p>
+<p><strong>run:</strong></p>
+<div class="sourceCode"><pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">git</span> push</code></pre></div>
+</body>
+</html>
