@@ -37,5 +37,6 @@ USER    $NB_USER
 EXPOSE	8888
 
 
-COPY ./examples/example.ipynb /home/jovyan/work
-COPY ./examples/NotebookTutorial.ipynb /home/jovyan/work
+COPY tutorials /home/jovyan/work/tutorials
+COPY examples  /home/jovyan/work/examples
+COPY documentation /home/jovyan/work/documentation
