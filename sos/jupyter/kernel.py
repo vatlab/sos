@@ -1120,7 +1120,14 @@ class SoS_Kernel(Kernel):
                 old_dir = os.getcwd()
                 new_dir = tempfile.mkdtemp()
                 os.chdir(new_dir)
-                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+                ret = self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+                if ret['status'] == 'error':
+                    self.warn('\nSandbox execution failed.')
+                    return {'status': 'ok', 
+                        'payload': [], 'user_expressions': {},
+                        'execution_count': self.execution_count}
+                else:
+                    return ret
             finally:
                 shutil.rmtree(new_dir)
                 os.chdir(old_dir)
