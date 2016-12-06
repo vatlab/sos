@@ -5,3 +5,5 @@ tmp*
 build
 dist
 *egg-info
+.DS_Store
+_site/
