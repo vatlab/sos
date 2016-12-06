@@ -52,6 +52,7 @@ run:
 [publish]
 
 run: workdir='../doc'
+	git checkout master
 	for f in `ls ./documentation/*.ipynb`; do
         	jupyter nbconvert --to html $f
 	done
