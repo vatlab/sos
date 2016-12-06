@@ -1,0 +1,62 @@
+#!/usr/bin/env sos-runner
+# fileformat=SOS1.0
+
+# Author: Gao Wang
+
+# This script parses all .md files from the SoS wiki and generate directory
+# level and summary _Sidebar.md. It then commit and push the changes to the
+# SOS wiki.
+
+[1]
+# Update contents
+run:
+    git pull
+
+[2]
+# Parse .md files and generate _Sidebar.md
+python:
+    import os, subprocess
+    import glob
+    import re
+    res = {}
+    mdfiles = glob.glob('*/[!_]*.md')
+    mdfiles = sorted(mdfiles, key=lambda x: int(os.path.basename(x).split('.')[0]) if os.path.basename(x)[0].isdigit() else x)
+    for mdfile in mdfiles:
+        item = os.path.split(mdfile)
+        # item[0] is subdir name
+        # item[1] is the MD file name: file.md
+        # Global navigator
+        sidebar = '{}/_Sidebar.md'.format(item[0])
+        if item[0] not in res:
+           res[item[0]] = []
+           with open(sidebar, 'w') as f:
+                f.write("**[Wiki Home](https://github.com/BoPeng/SOS/wiki)**\n\n")
+        title = ' '.join([x for x in item[1][:-3].split('-')])
+        res[item[0]].append('* [[{}|{}]]'.format(re.sub(r'^\d*\.', '', title), item[1][:-3]))
+        # Local navigator
+        local_res = []
+        cmd = 'python markdown_toclify.py {!r} --github'.format(mdfile)
+        for line in subprocess.check_output(cmd, shell = True).decode("utf8").strip().split('\n'):
+            line = line.rstrip()
+            if not line:
+               break
+            if line == '# Table of Contents':
+               # line = '**[{}]({})**'.format(title, item[1][:-3])
+               line = '**{}**'.format(re.sub(r'^\d*\s', '', title))
+            local_res.append(line.replace('#', item[1][:-3] + '#'))
+        if len(local_res) > 1:
+           with open(sidebar, 'a') as f:
+                for line in local_res:
+                    f.write(line + '\n')
+                f.write('\n')
+    with open('_Sidebar.md', 'w') as f:
+        for key in sorted(res.keys()):
+            f.write('\n**' + re.sub(r'^[\d\.]*[-\s]', '', key) + '**\n\n')
+            for item in res[key]:
+                f.write(item + '\n')
+
+[3]
+# Commit and push changes
+run:
+    git commit _Sidebar.md */_Sidebar.md -m 'Update _Sidebar.md of the SoS wiki'
+    git push
