@@ -22,6 +22,7 @@
 import os
 import sys
 import hashlib
+import shlex
 import shutil
 import fasteners
 from .utils import env, Error, short_repr
@@ -241,25 +242,22 @@ class executable(BaseTarget):
     '''A target for an executable command.'''
     _available_commands = set()
 
-    def __init__(self, cmd, version=[], check_command=None):
+    def __init__(self, cmd, version=[]):
         self._cmd = cmd
         if isinstance(version, str):
             self._version = (version,)
         else:
             self._version = tuple(version)
-        self._check_command = check_command
-        if self._version and not self._check_command:
-            self._check_command = cmd
         self.sig_file = os.path.join('.sos/.runtime/{}.sig'.format(self.md5()))
 
     def exists(self, mode='any'):
         if (self._cmd, self._version) in self._available_commands:
             return True
-        if mode in ('any', 'target') and shutil.which(self._cmd):
+        if mode in ('any', 'target') and shutil.which(shlex.split(self._cmd)[0]):
             if self._version:
                 import subprocess
                 try:
-                    output = subprocess.check_output(self._check_command,
+                    output = subprocess.check_output(self._cmd,
                         stderr=subprocess.STDOUT, shell=True, timeout=5).decode()
                 except subprocess.TimeoutExpired as e:
                     env.logger.warning(e)
