@@ -1031,7 +1031,7 @@ def handle_addon(args, unknown_args):
     import pkg_resources
     for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
         name = entrypoint.name.strip()
-        if name.endswith(':func') and name.rsplit(':', 1)[0] == args.addon_name:
+        if name.endswith('.func') and name.rsplit('.', 1)[0] == args.addon_name:
             func = entrypoint.load()
             func(args, unknown_args)
 
@@ -1093,7 +1093,7 @@ def main():
     # addon packages
     for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
         if entrypoint.name.strip().endswith(':parser'):
-            name = entrypoint.name.rsplit(':', 1)[0]
+            name = entrypoint.name.rsplit('.', 1)[0]
             func = entrypoint.load()
             parser = add_sub_parser(subparsers, func())
             parser.add_argument('--addon-name', help=argparse.SUPPRESS,
