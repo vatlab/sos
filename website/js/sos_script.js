@@ -24,7 +24,7 @@ $(document).ready(function(){
         "SoS_Kernel",
         "String_Interpolation",
         "Command_Line_Options",
-        "External_task.html		
+        "External_task",
         "SoS_Step",
         "User_Interface",
         "Configuration_Files",

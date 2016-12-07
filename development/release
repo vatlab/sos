@@ -87,7 +87,7 @@ sos_run('convert_examples')
 # push subtree to gh-pages
 run: workdir='..'
 	git add --all website/doc/documentation website/doc/tutorials website/doc/examples
-	git commit --no-verify -m 'Publish website'
+	git commit . --no-verify -m 'Publish website'
 	git push --no-verify
 	git subtree split --prefix website -b gh-pages
 	git push --no-verify -f origin gh-pages:gh-pages
