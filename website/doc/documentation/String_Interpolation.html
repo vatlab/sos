@@ -11764,12 +11764,12 @@ div#notebook {
 <script>
 $( document ).ready(function(){
 
-            var cfg={'threshold':3,     // depth of toc (number of levels)
-             'number_sections': false,  // sections numbering
+            var cfg={'threshold':4,     // depth of toc (number of levels)
+             'number_sections': true,  // sections numbering
              'toc_cell': false,          // useless here
              'toc_window_display': true, // display the toc window
              "toc_section_display": "block", // display toc contents in the window
-             'sideBar':false,             // sidebar or floating window
+             'sideBar':true,             // sidebar or floating window
              'navigate_menu':false       // navigation menu (only in liveNotebook -- do not change)
             }
 
@@ -12292,6 +12292,12 @@ $( document ).ready(function(){
 <td style="text-align:left"><code>/path/to/user/SoS/</code></td>
 </tr>
 <tr>
+<td style="text-align:left"><code>n</code></td>
+<td style="text-align:left"><code>splitext()[0]</code></td>
+<td style="text-align:left"><code>${file2!n}</code></td>
+<td style="text-align:left"><code>~/SoS/test</code></td>
+</tr>
+<tr>
 <td style="text-align:left"><code>,</code></td>
 <td style="text-align:left"><code>', '.join()</code></td>
 <td style="text-align:left"><code>${files!,}</code></td>
@@ -12414,10 +12420,111 @@ Failed to process statement run(r&#34;&#34;&#34;echo &#34;test&#34; &gt; ${filen
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Depending on how your scripts handle filenames, it can be handy to pass filenames to scripts in expanded format. For example, it would be perfectly OK to pass <code>~/a.txt</code> to a shell script, but a <code>e</code> convertor should be added if you are passing the filename to a script that does not understand <code>~</code> in filenames.</p>
+<p>Depending on how your scripts handle filenames, it can be handy to pass filenames to scripts in expanded format. For example, it would be perfectly OK to pass <code>~/a.txt</code> to a shell script, but a <code>e</code> convertor should be added if you are passing the filename to a script that does not understand <code>~</code> in filenames. SoS makes it easy for you to pass filenames in different forms to underlying scripts. For example,</p>
 
 </div>
 </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-sos"><pre><span></span><span class="o">%</span><span class="n">preview</span> <span class="n">name</span> <span class="n">filename</span> <span class="n">basefilename</span> <span class="n">expanded</span>
+<span class="nb">file</span> <span class="o">=</span> <span class="s1">&#39;~/examples/update_toc.sos&#39;</span>
+<span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;${file!n}&quot;</span>
+<span class="n">filename</span> <span class="o">=</span> <span class="s2">&quot;${file!b}&quot;</span>
+<span class="n">basefilename</span> <span class="o">=</span> <span class="s2">&quot;${file!bn}&quot;</span>
+<span class="n">expanded</span> <span class="o">=</span> <span class="s2">&quot;${file!e}&quot;</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt"></div>
+
+<div class="output_html rendered_html output_subarea ">
+<pre><font color="green">## %preview name filename basefilename expanded</font></pre>
+</div>
+
+</div>
+
+<div class="output_area"><div class="prompt"></div>
+
+<div class="output_html rendered_html output_subarea ">
+<pre><font color="green">> name:</font></pre>
+</div>
+
+</div>
+
+<div class="output_area"><div class="prompt"></div>
+
+
+<div class="output_text output_subarea ">
+<pre>&#39;~/examples/update_toc&#39;</pre>
+</div>
+
+</div>
+
+<div class="output_area"><div class="prompt"></div>
+
+<div class="output_html rendered_html output_subarea ">
+<pre><font color="green">> filename:</font></pre>
+</div>
+
+</div>
+
+<div class="output_area"><div class="prompt"></div>
+
+
+<div class="output_text output_subarea ">
+<pre>&#39;update_toc.sos&#39;</pre>
+</div>
+
+</div>
+
+<div class="output_area"><div class="prompt"></div>
+
+<div class="output_html rendered_html output_subarea ">
+<pre><font color="green">> basefilename:</font></pre>
+</div>
+
+</div>
+
+<div class="output_area"><div class="prompt"></div>
+
+
+<div class="output_text output_subarea ">
+<pre>&#39;update_toc&#39;</pre>
+</div>
+
+</div>
+
+<div class="output_area"><div class="prompt"></div>
+
+<div class="output_html rendered_html output_subarea ">
+<pre><font color="green">> expanded:</font></pre>
+</div>
+
+</div>
+
+<div class="output_area"><div class="prompt"></div>
+
+
+<div class="output_text output_subarea ">
+<pre>&#39;/Users/bpeng1/examples/update_toc.sos&#39;</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
 </div>
 <div class="cell border-box-sizing text_cell rendered">
 <div class="prompt input_prompt">

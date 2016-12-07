@@ -352,7 +352,7 @@ _FORMAT_SPECIFIER_TMPL = r'''
     ^                                   # start of expression
     (?P<expr>.*?)                       # any expression
     (?P<conversion>!\s*                 # conversion starting with !
-    [srqabde,]+                         # conversion, q, a, b, and , are added by SoS
+    [srqabden,]+                        # conversion, q, a, b, n, and , are added by SoS
     )?
     (?P<format_spec>:\s*                # format_spec starting with :
     (?P<fill>.?[<>=^])?                 # optional fill|align
