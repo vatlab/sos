@@ -133,7 +133,7 @@ class LazyRegex(object):
 _SECTION_HEADER_TMPL = r'''
     ^\[\s*                             # [
     (?P<section_name>
-    [a-zA-Z*0-9_]+                     # name,
+    [a-zA-Z*0-9_-]+                    # name,
     \s*(\([^)]*\))?                    # optional alias
     (\s*,\s*                           # ,
     [a-zA-Z*0-9_]+                     # another name
@@ -150,8 +150,8 @@ _SECTION_NAME_TMPL = '''
     ^\s*                               # start
     (?P<name>                          # optional name
     [a-zA-Z*]                          # alphabet or '*'
-    ([\w\d_*]*?                        # followed by alpha numeric or '*'
-    [a-zA-Z\d*])??                     # but last character cannot be _
+    ([-\w\d_*]*?                       # followed by alpha numeric, '-' or '*'
+    [-a-zA-Z\d*])??                    # but last character cannot be _
     )?                                 # name is optional
     (?(name)                           # if there is name
     (_(?P<index>\d+))?                 #   optional _index
@@ -167,7 +167,7 @@ _SUBWORKFLOW_TMPL = '''
     (?P<name>                          # name
     ([a-zA-Z]+\.)*                     # optional name
     [a-zA-Z*]                          # cannot start with _ etc
-    ([\w\d_]*?))                       # can have _ and digit
+    ([-\w\d_]*?))                      # can - have _ and digit
     (:(?P<steps>                       # index start from :
     [\d\s-]+))?                        # with - and digit
     \s*$                               # end

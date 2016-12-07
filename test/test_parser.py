@@ -105,6 +105,12 @@ if True:
         # unnamed
         script = SoS_Script('''[0]\n[*_1]\n[human_1]\n[mouse]\n[s*_2]''')
         self.assertEqual(sorted(script.workflows), ['default', 'human', 'mouse'])
+        #
+        # workflow name with -
+        script = SoS_Script('''[proc-1]\n[test-case_2]''')
+        self.assertEqual(sorted(script.workflows), ['proc-1', 'test-case'])
+        script.workflow('proc-1')
+        script.workflow('proc-1 + test-case:2')
 
     def testSkipStep(self):
         '''Test the skip option to skip certain steps'''
