@@ -373,11 +373,11 @@ b = [1, 2]</code></pre>
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>If you would like to add a complete subcommand as an addon to SoS, you will need to define two functions and add them to <code>setup.py</code> as two entry points, one with suffix <code>:args</code> and one with suffix <code>:func</code>.</p>
+<p>If you would like to add a complete subcommand as an addon to SoS, you will need to define two functions and add them to <code>setup.py</code> as two entry points, one with suffix <code>.args</code> and one with suffix <code>.func</code>.</p>
 
 <pre><code>[sos_addons]
-myaddon:args = yourpackage.module:addon_parser
-myaddon:func = yourpackage.module:addon_func</code></pre>
+myaddon.args = yourpackage.module:addon_parser
+myaddon.func = yourpackage.module:addon_func</code></pre>
 <p>The <code>addon_parser</code> function should use module <code>argparse</code> to return an <code>ArgumentParser</code> object. SoS would obtain this parser and add it as a subparse of the SoS main parser so that the options can be parsed as</p>
 
 <pre><code>sos myaddon options</code></pre>
