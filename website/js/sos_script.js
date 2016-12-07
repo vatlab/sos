@@ -8,7 +8,7 @@ $(document).ready(function(){
 		var name =tutorials[a];
 		var oneString='<div class="col-md-4 col-sm-6 portfolio-item">'
         				+'<div class="portfolio-caption">';
-		oneString+='<a href="./doc/tutorial_html/'+name+'.html" class="portfolio-link"><h4>'+name+'</h4></a>';
+		oneString+='<a href="./doc/tutorials/'+name+'.html" class="portfolio-link"><h4>'+name+'</h4></a>';
 		oneString+='</div></div>';       	
 		 $("#tutorial > .container").append(
 	       	oneString
