@@ -319,7 +319,8 @@ class SoS_Step:
                     raise ValueError('Invalid parameter name {0}: {0} is a SoS keyword'.format(name))
                 if not value.strip():
                     raise ValueError('{}: Invalid parameter definition: {}'.format(self.step_name(), statement[2]))
-                self.statements[idx] = ['!', 'if "sos_handle_parameter_" in globals():\n    {} = sos_handle_parameter_({!r}, {})\n'.format(name, name.strip(), value)]
+                self.statements[idx] = ['!', 'if "sos_handle_parameter_" in globals():\n    {} = sos_handle_parameter_({!r}, {})\n'
+                    .format(name, name.strip(), value), statement[2].strip()]
         #
         task_directive = [idx for idx, statement in enumerate(self.statements) if statement[0] == ':' and statement[1] == 'task']
         if not task_directive:
@@ -349,12 +350,15 @@ class SoS_Step:
     def show(self):
         '''Output for command sos show'''
         textWidth = max(60, shutil.get_terminal_size((80, 20)).columns)
-        text = '  {:<20}'.format('Step {}_{}:'.format(self.name, self.index)) + self.comment
+        text = '  {:<20} '.format(self.step_name() + ':') + self.comment
         print('\n'.join(
             textwrap.wrap(text,
                 width=textWidth,
                 initial_indent='',
                 subsequent_indent=' '*22)))
+        for statement in self.statements:
+            if statement[0] == '!' and statement[1].startswith('if "sos_handle_parameter_" '):
+                print('    Parameter: {}'.format(statement[2]))
 
 
 class SoS_Workflow:
@@ -499,6 +503,9 @@ class SoS_Script:
         # save a parsed version of the script for displaying purpose only
         self.transcript = transcript
         self.global_def = ''
+
+        self.description = []
+
         # open the file
         if content:
             with StringIO(content) as fp:
@@ -753,7 +760,8 @@ for __n, __v in {}.items():
                     elif comment_block > 1:
                         # anything before the first section can be pipeline
                         # description.
-                        pass
+                        if cursect is None:
+                            self.description.append(line)
                     if self.transcript:
                         self.transcript.write('COMMENT\t{}\t{}'.format(lineno, line))
                 else:
@@ -889,9 +897,9 @@ for __n, __v in {}.items():
                             if opt_name == 'sigil':
                                 try:
                                     value = eval(opt_value)
-                                    if value.count(' ') != 1 or value[0] in (' ', "'") or \
+                                    if value is not None and (value.count(' ') != 1 or value[0] in (' ', "'") or \
                                         value[-1] in (' ', "'") or \
-                                        value.split(' ')[0] == value.split(' ')[1]:
+                                        value.split(' ')[0] == value.split(' ')[1]):
                                         parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(value))
                                 except Exception as e:
                                     parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(opt_value))
@@ -1151,3 +1159,21 @@ for __n, __v in {}.items():
                     sections.append(section)
                     break
         return SoS_Workflow(self.content, wf_name, allowed_steps, sections)
+
+    def print_help(self):
+        '''print a help message from the script'''
+        description = [x.lstrip('# ').strip() for x in self.description]
+        try:
+            # this does not work, but hopefully the author of mdv can make
+            # the trivial change to make mdv compatible with python 3
+            from mdv import main
+            print(main(md=textwrap.dedent('\n'.join(description))))
+        except :
+            print(textwrap.dedent('\n'.join(description)))
+        #
+        print('\nAvailable workflows')
+        print('  ' + '\n  '.join(self.workflows))
+        #
+        print('\nSections')
+        for section in self.sections:
+            section.show()

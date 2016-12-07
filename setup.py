@@ -28,7 +28,10 @@ from setuptools.command.install import install
 
 # obtain version of SoS
 with open('sos/_version.py') as version:
-    exec(version.read())
+    for line in version:
+        if line.startswith('__version__'):
+            __version__ = eval(line.split('=')[1])
+            break
 
 kernel_json = {
     "argv":         ["python", "-m", "sos.jupyter.kernel", "-f", "{connection_file}"],
@@ -41,12 +44,18 @@ class InstallWithConfigurations(install):
         # Regular installation
         install.do_egg_install(self)
 
-        # copy sos.vim to .vim
+        # copy sos.vim and sos-detect.vim to .vim
         vim_syntax_dir = os.path.expanduser('~/.vim/syntax')
         vim_syntax_file = os.path.join(vim_syntax_dir, 'sos.vim')
         if not os.path.isdir(vim_syntax_dir):
             os.makedirs(vim_syntax_dir)
         shutil.copy('misc/sos.vim', vim_syntax_file)
+        #
+        vim_ftdetect_dir = os.path.expanduser('~/.vim/ftdetect')
+        vim_ftdetect_file = os.path.join(vim_ftdetect_dir, 'sos.vim')
+        if not os.path.isdir(vim_ftdetect_dir):
+            os.makedirs(vim_ftdetect_dir)
+        shutil.copy('misc/sos-detect.vim', vim_ftdetect_file)
         # copy vim-ipython to .vim/ftplugin
         vim_plugin_dir = os.path.expanduser('~/.vim/ftplugin/sos')
         if not os.path.isdir(vim_plugin_dir):

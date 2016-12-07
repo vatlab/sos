@@ -18,16 +18,25 @@ $(document).ready(function(){
 
 
 
-	var documentations=["Auxiliary_Steps","Command_Line_Options","Configuration_Files","Extending_SoS","File_Structure",
-					"Overview_of_SoS","SoS_Actions","SoS_Syntax","Step_Dependencies","Step_Input","Step_Options",
-					"Step_Output","Step_Process_and_External_Tasks","StringInterpolation","UnderstandingTargets",
-					"User_Interface","WorkflowSpecification"]
+	var documentations=[
+        "Auxiliary_Steps",
+        "Extending_SoS",
+        "SoS_Kernel",
+        "String_Interpolation",
+        "Command_Line_Options",
+        "External_task",
+        "SoS_Step",
+        "User_Interface",
+        "Configuration_Files",
+        "SoS_Functions",
+        "SoS_Syntax",
+        "Workflow_Specification" ]
 	$("#documentation > .container").append('<div class="row">')
 	for (var a =0;a<documentations.length;a++){
 		var name =documentations[a];
 		var oneString='<div class="col-md-4 col-sm-6 portfolio-item">'
         				+'<div class="portfolio-caption">';
-		oneString+='<a href="./doc/documentation_html/'+name+'.html" class="portfolio-link"><h4>'+name+'</h4></a>';
+		oneString+='<a href="./doc/documentation/'+name+'.html" class="portfolio-link"><h4>'+name+'</h4></a>';
 		oneString+='</div></div>';       	
 		 $("#documentation > .container").append(
 	       	oneString
@@ -42,7 +51,7 @@ $(document).ready(function(){
 
 
 
-	// var dir = "https://github.com/BoPeng/SOS/tree/onepage/doc/documentation_html/";
+	// var dir = "../../doc/documentation_html/";
 	// var fileextension = ".html";
 	// $("#documentation > .container").append('<div class="row">')
 	// $.ajax({
@@ -68,13 +77,12 @@ $(document).ready(function(){
 	// });
 	// $("#documentation > .container").append('</div>');
 
-	// var dir = "https://github.com/BoPeng/SOS/tree/onepage/doc/tutorial_html/";
+	// var dir = "../../doc/tutorial_html/";
 	// var fileextension = ".html";
 	// $("#tutorial > .container").append('<div class="row">')
 	// $.ajax({
 	//     //This will retrieve the contents of the folder if the folder is configured as 'browsable'
 	//     url: dir,
-	//     dataType: 'jsonp',
 	//     success: function (data) {
 	//         //List all .png file names in the page
 	//         $(data).find("a:contains(" + fileextension + ")").each(function () {

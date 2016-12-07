@@ -1,0 +1,27 @@
+#!/bin/env sos-runner
+#fileformat=SOS1.0
+
+# This script uses MISO to identify differentially spliced genes between
+# four RNA Seq samples.
+
+local_resource  = '~/Resource/'
+data_dir        = '~/Data/bams/'
+resource_dir    = '${local_resource}/resources/hg19/Ensembl/Genes'
+
+# samples to be processed
+parameter: samples = ['s312', 's315', 's312a', 's315a']
+
+[gff_0]
+# download gene models from the MISO website
+output:     '${resource_dir}/Homo_sapiens.GRCh37.65.gff.zip'
+download:   dest_dir=resource_dir, decompress=True
+    http://genes.mit.edu/burgelab/miso/annotations/gene-models/Homo_sapiens.GRCh37.65.gff.zip
+
+[gff_1]
+# Index gtf file using index_gff
+output:     '${resource_dir}/${hg19_gff_index}/genes.gff'
+task:       working_dir=resource_dir
+run:        docker_image='mdabioinfo/miso:latest', 
+    rm -rf ${hg19_gff_index}
+    index_gff --index ${hg19_gff_file} ${hg19_gff_index}
+

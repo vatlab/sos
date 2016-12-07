@@ -1,6 +1,11 @@
 #!/usr/bin/env sos-runner
 #fileformat=SOS1.0
 
+# This script releases SoS to different destinations, including
+#
+# 1. source distribution to pip
+# 2. docker images to docker hub
+# 3. website to github.io
 
 [patch]
 parameter: version = str
@@ -33,12 +38,12 @@ run: workdir='..'
         --include "*.ipynb" --include "*.sos" --exclude "*" \
         doc/documentation doc/tutorials doc/examples development/docker-notebook
 
-# update docker file
-run:
-    cp docker-notebook/Dockerfile.in docker-notebook/Dockerfile
-    echo "COPY tutorials /home/jovyan/work/tutorials" >> docker-notebook/Dockerfile
-    echo "COPY examples  /home/jovyan/work/examples" >> docker-notebook/Dockerfile
-    echo "COPY documentation /home/jovyan/work/documentation" >> docker-notebook/Dockerfile
+# update docker file (not needed as we have now fixed Dockerfile)
+#run:
+#    cp docker-notebook/Dockerfile.in docker-notebook/Dockerfile
+#    echo "COPY tutorials /home/jovyan/work/tutorials" >> docker-notebook/Dockerfile
+#    echo "COPY examples  /home/jovyan/work/examples" >> docker-notebook/Dockerfile
+#    echo "COPY documentation /home/jovyan/work/documentation" >> docker-notebook/Dockerfile
 
 # update docker and push
 run:
@@ -48,27 +53,51 @@ run:
 	docker build --no-cache -t mdabioinfo/sos-notebook docker-notebook
 	docker push mdabioinfo/sos-notebook
 
+[convert_documentation]
+input:  '../doc/documentation/*.ipynb', group_by=1
+output: _input[0].replace('..', '../website').replace('.ipynb', '.html')
+
+run:
+	jupyter nbconvert --to html --output ${_output} ${_input}
+
+[convert_tutorials]
+input:  '../doc/tutorials/*.ipynb', group_by=1
+output: _input[0].replace('..', '../website').replace('.ipynb', '.html')
+
+run:
+	jupyter nbconvert --to html --output ${_output} ${_input}
+
+[convert_examples]
+input:  '../doc/examples/*.sos', group_by=1
+output: _input[0].replace('..', '../website').replace('.sos', '.html')
+
+run:
+	sos convert ${_input} ${_output} --raw ${_input!b}
 
 [publish]
 
-run: workdir='../doc'
+# prepare
+run: workdir='..'
 	git checkout master
-	git branch -D gh-pages
-	for f in `ls ./documentation/*.ipynb`; do
-        	jupyter nbconvert --to html $f
-	done
+	# remove gh-pages branch if exists
+	if [ "`git branch --list gh-pages`" ]; then
+		git branch -D gh-pages
+	fi
 
-	mv ./documentation/*html ../website/doc/documentation_html/
+# convert ipynb to HTML
+sos_run('convert_documentation')
+sos_run('convert_tutorials')
+sos_run('convert_examples')
 
-	for f in `ls ./tutorials/*.ipynb`; do
-        	jupyter nbconvert --to html $f
-	done
-
-	mv ./tutorials/*html ../website/doc/tutorial_html/
-	cd ..
+# push subtree to gh-pages
+run: workdir='..'
+	rsync -av --delete doc/media website/doc
+	git add --all website/doc/documentation website/doc/tutorials website/doc/examples website/doc/media
+	git commit . --no-verify -m 'Publish website'
+	git push --no-verify
 	git subtree split --prefix website -b gh-pages
-	git push -f origin gh-pages:gh-pages
-	git branch -D gh-pages
+	git push --no-verify -f origin gh-pages:gh-pages
+	#git branch -D gh-pages
 
 [default]
 sos_run('patch + pip + update_docker + publish')

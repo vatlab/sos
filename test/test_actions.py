@@ -44,6 +44,17 @@ def internet_on(host='8.8.8.8', port=80, timeout=3):
 
 with_network = internet_on()
 
+def multi_attempts(fn):
+    def wrapper(*args, **kwargs):
+        for n in range(4):
+            try:
+                fn(*args, **kwargs)
+                break
+            except:
+                if n > 1:
+                    raise
+    return wrapper
+
 class TestActions(unittest.TestCase):
     def setUp(self):
         env.reset()
@@ -386,6 +397,7 @@ mean(nums)
         Base_Executor(wf).run()
 
 
+    @multi_attempts
     @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
     def testDownload(self):
         '''Test download of resources'''
