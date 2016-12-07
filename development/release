@@ -71,8 +71,11 @@ run:
 input:  '../doc/examples/*.sos', group_by=1
 output: _input[0].replace('..', '../website').replace('.sos', '.html')
 
-run:
-	sos convert ${_input} ${_output} --raw ${_input!b}
+# we have to go to the examples directory because otherwise the filename would
+# be displayed as something like '../doc/examples/...'
+run: workdir='../website/doc/examples'
+	cp ${_input!a} .
+	sos convert ${_input!b} ${_output!a} --raw ${_input!b} --linenos
 
 [publish]
 

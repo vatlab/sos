@@ -11764,12 +11764,12 @@ div#notebook {
 <script>
 $( document ).ready(function(){
 
-            var cfg={'threshold':3,     // depth of toc (number of levels)
-             'number_sections': false,  // sections numbering
+            var cfg={'threshold':4,     // depth of toc (number of levels)
+             'number_sections': true,  // sections numbering
              'toc_cell': false,          // useless here
              'toc_window_display': true, // display the toc window
              "toc_section_display": "block", // display toc contents in the window
-             'sideBar':false,             // sidebar or floating window
+             'sideBar':true,             // sidebar or floating window
              'navigate_menu':false       // navigation menu (only in liveNotebook -- do not change)
             }
 
@@ -11814,7 +11814,7 @@ $( document ).ready(function(){
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-sos"><pre><span></span><span class="c1"># set global logging level to INFO to display step executed. </span>
@@ -11944,6 +11944,43 @@ INFO: Running <span class="ansi-green-fg">mapping_100</span>:
 
 </div>
 </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>A workflow name can have alphabetical and numeric characters, <code>-</code>, <code>_</code>, but the first character must be an alphabet.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-sos"><pre><span></span><span class="p">[</span><span class="n">process</span><span class="o">-</span><span class="n">doc_20</span><span class="p">]</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>INFO: Running <span class="ansi-green-fg">process-doc_20</span>: 
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
 </div>
 <div class="cell border-box-sizing text_cell rendered">
 <div class="prompt input_prompt">
