@@ -245,6 +245,8 @@ class SoS_String:
                     obj = os.path.dirname(obj)
                 if 'b' in conversion:
                     obj = os.path.basename(obj)
+                if 'n' in conversion:
+                    obj = os.path.splitext(obj)[0]
                 if 'q' in conversion:
                     # special SoS conversion for shell quotation.
                     obj = quote(obj)
