@@ -1041,6 +1041,14 @@ def handle_addon(args, unknown_args):
 def sosrun():
     parser = get_run_parser()
     parser.prog = 'sos-runner'
+    if '-h' in sys.argv:
+        try:
+            from .sos_script import SoS_Script
+            script = SoS_Script(filename=sys.argv[1])
+            script.print_help()
+            sys.exit(0)
+        except Exception as e:
+            sys.exit('No help information is available for {}: {}'.format(sys.argv[1], e))
     args, workflow_args = parser.parse_known_args()
     cmd_run(args, workflow_args)
 
@@ -1103,6 +1111,14 @@ def main():
     if len(sys.argv) == 1:
         master_parser.print_help()
         sys.exit(0)
+    if len(sys.argv) > 3 and sys.argv[1] == 'run' and not sys.argv[2].startswith('-') and '-h' in sys.argv:
+        try:
+            from .sos_script import SoS_Script
+            script = SoS_Script(filename=sys.argv[2])
+            script.print_help()
+            sys.exit(0)
+        except Exception as e:
+            sys.exit('No help information is available for {}: {}'.format(sys.argv[1], e))
     args, workflow_args = master_parser.parse_known_args()
     # calling the associated functions
     args.func(args, workflow_args)

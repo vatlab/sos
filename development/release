@@ -1,6 +1,11 @@
 #!/usr/bin/env sos-runner
 #fileformat=SOS1.0
 
+# This script releases SoS to different destinations, including
+#
+# 1. source distribution to pip
+# 2. docker images to docker hub
+# 3. website to github.io
 
 [patch]
 parameter: version = str
