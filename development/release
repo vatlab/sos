@@ -58,14 +58,14 @@ input:  '../doc/documentation/*.ipynb', group_by=1
 output: _input[0].replace('..', '../website').replace('.ipynb', '.html')
 
 run:
-	jupyter nbconvert --to html --output ${_output} ${_input}
+	jupyter nbconvert --to html --output ${_output!a} ${_input!a} --template toc2
 
 [convert_tutorials]
 input:  '../doc/tutorials/*.ipynb', group_by=1
 output: _input[0].replace('..', '../website').replace('.ipynb', '.html')
 
 run:
-	jupyter nbconvert --to html --output ${_output} ${_input}
+	jupyter nbconvert --to html --output ${_output!a} ${_input!a} --template toc2
 
 [convert_examples]
 input:  '../doc/examples/*.sos', group_by=1
