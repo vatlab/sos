@@ -889,9 +889,9 @@ for __n, __v in {}.items():
                             if opt_name == 'sigil':
                                 try:
                                     value = eval(opt_value)
-                                    if value.count(' ') != 1 or value[0] in (' ', "'") or \
+                                    if value is not None and (value.count(' ') != 1 or value[0] in (' ', "'") or \
                                         value[-1] in (' ', "'") or \
-                                        value.split(' ')[0] == value.split(' ')[1]:
+                                        value.split(' ')[0] == value.split(' ')[1]):
                                         parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(value))
                                 except Exception as e:
                                     parsing_errors.append(lineno, line, 'Incorrect sigil "{}"'.format(opt_value))
