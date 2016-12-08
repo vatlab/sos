@@ -30,22 +30,21 @@ import argparse
 import pkg_resources
 import pydoc
 
+from ipykernel.ipkernel import IPythonKernel
+
+
 import pickle
-from collections.abc import Sequence
 from types import ModuleType
 from sos.utils import env, WorkflowDict, short_repr, pretty_size
 from sos._version import __sos_version__, __version__
 from sos.sos_eval import SoS_exec, SoS_eval, interpolate, get_default_global_sigil
 from sos.sos_syntax import SOS_SECTION_HEADER
 
-from IPython.core.interactiveshell import InteractiveShell
 from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_clipboard_get
 from IPython.core.error import UsageError
 from IPython.core.display import HTML
 from IPython.utils.tokenutil import line_at_cursor, token_at_cursor
-from ipykernel.kernelbase import Kernel
 from jupyter_client import manager, find_connection_file
-from ipykernel.zmqshell import ZMQDisplayPublisher
 
 from textwrap import dedent
 from io import StringIO
@@ -135,82 +134,10 @@ def get_previewers():
             result.append((name, entrypoint, priority))
     #
     result.sort(key=lambda x: -x[2])
-    with open('a.txt', 'w') as ss:
-        ss.write(repr(result))
     return result
 
-def homogeneous_type(seq):
-    iseq = iter(seq)
-    first_type = type(next(iseq))
-    if first_type in (int, float):
-        return True if all( (type(x) in (int, float)) for x in iseq ) else False
-    else:
-        return True if all( (type(x) is first_type) for x in iseq ) else False
 
-def R_repr(obj):
-    if isinstance(obj, bool):
-        return 'TRUE' if obj else 'FALSE'
-    elif isinstance(obj, (int, float, str)):
-        return repr(obj)
-    elif isinstance(obj, Sequence):
-        if len(obj) == 0:
-            return 'c()'
-
-        # if the data is of homogeneous type, let us use c()
-        # otherwise use list()
-        # this can be confusion but list can be difficult to handle
-        if homogeneous_type(obj):
-            return 'c(' + ','.join(R_repr(x) for x in obj) + ')'
-        else:
-            return 'list(' + ','.join(R_repr(x) for x in obj) + ')'
-    elif obj is None:
-        return 'NULL'
-    elif isinstance(obj, dict):
-        return 'list(' + ','.join('{}={}'.format(x, R_repr(y)) for x,y in obj.items()) + ')'
-    elif isinstance(obj, set):
-        return 'list(' + ','.join(R_repr(x) for x in obj) + ')'
-    else:
-        import numpy
-        import pandas
-        import tempfile
-        if isinstance(obj, (numpy.intc, numpy.intp, numpy.int8, numpy.int16, numpy.int32, numpy.int64,\
-                numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32, \
-                numpy.float64)):
-            return repr(obj)
-        elif isinstance(obj, numpy.matrixlib.defmatrix.matrix):
-            try:
-                import feather
-            except ImportError:
-                raise UsageError('The feather-format module is required to pass numpy matrix as R matrix'
-                    'See https://github.com/wesm/feather/tree/master/python for details.')
-            feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
-            feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
-            return 'data.matrix(read_feather("{}"))'.format(feather_tmp_)
-        elif isinstance(obj, numpy.ndarray):
-            return 'c(' + ','.join(R_repr(x) for x in obj) + ')'
-        elif isinstance(obj, pandas.DataFrame):
-            try:
-                import feather
-            except ImportError:
-                raise UsageError('The feather-format module is required to pass pandas DataFrame as R data.frame'
-                    'See https://github.com/wesm/feather/tree/master/python for details.')
-            feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
-            try:
-                data = obj.copy()
-                feather.write_dataframe(data, feather_tmp_)
-            except:
-                # if data cannot be written, we try to manipulate data
-                # frame to have consistent types and try again
-                for c in data.columns:
-                    if not homogeneous_type(data[c]):
-                        data[c] = [str(x) for x in data[c]]
-                feather.write_dataframe(data, feather_tmp_)
-            return 'read_feather("{}")'.format(feather_tmp_)
-        else:
-            return repr('Unsupported datatype {}'.format(short_repr(obj)))
-
-
-class SoS_Kernel(Kernel):
+class SoS_Kernel(IPythonKernel):
     implementation = 'SOS'
     implementation_version = __version__
     language = 'sos'
@@ -224,7 +151,6 @@ class SoS_Kernel(Kernel):
         'nbconvert_exporter': 'sos.kernel.SoS_Exporter',
     }
     banner = "SoS kernel - script of scripts"
-    shell = InteractiveShell.instance()
 
     ALL_MAGICS = {
         'dict',
@@ -357,7 +283,6 @@ class SoS_Kernel(Kernel):
 
     inspector = property(lambda self:self.get_inspector())
 
-
     def __init__(self, **kwargs):
         super(SoS_Kernel, self).__init__(**kwargs)
         self.options = ''
@@ -365,27 +290,15 @@ class SoS_Kernel(Kernel):
         self.banner = self.banner + '\nConnection file {}'.format(os.path.basename(find_connection_file()))
         # FIXME: this should in theory be a MultiKernelManager...
         self.kernels = {}
+        #self.shell = InteractiveShell.instance()
         self.format_obj = self.shell.display_formatter.format
 
-        # InteractiveShell uses a default publisher that only displays text/plain
-        # using the ZMQDisplayPublisher will display matplotlib inline figures
-        self.shell.display_pub = ZMQDisplayPublisher()
-        self.shell.display_pub.session = self.session
-        self.shell.display_pub.pub_socket = self.iopub_socket
-
-        self.shell.enable_gui = lambda x: False
         self.previewers = None
-
-        #self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
-        #if os.path.isfile(self.report_file):
-        #    os.remove(self.report_file)
-        # touch the file
-        #with open(self.report_file, 'w'):
-        #    pass
         self.original_keys = None
         self._supported_languages = None
         self._completer = None
         self._inspector = None
+        self._execution_count = 1
 
     def _reset_dict(self):
         env.sos_dict = WorkflowDict()
@@ -394,7 +307,6 @@ class SoS_Kernel(Kernel):
         SoS_exec("run_mode = 'interactive'", None)
         self.original_keys = set(env.sos_dict._dict.keys()) | {'SOS_VERSION', 'CONFIG', \
             'step_name', '__builtins__', 'input', 'output', 'depends'}
-        #env.sos_dict.set('__summary_report__', self.report_file)
 
     @contextlib.contextmanager
     def redirect_sos_io(self):
@@ -489,7 +401,7 @@ class SoS_Kernel(Kernel):
                     if msg_type in ('execute_input', 'execute_result'):
                         # override execution count with the master count,
                         # not sure if it is needed
-                        sub_msg['content']['execution_count'] = self.execution_count
+                        sub_msg['content']['execution_count'] = self._execution_count
                     #
                     # NOTE: we do not send status of sub kernel alone because
                     # these are generated automatically during the execution of
@@ -498,7 +410,7 @@ class SoS_Kernel(Kernel):
                     self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
         # now get the real result
         reply = self.KC.get_shell_msg(timeout=10)
-        reply['content']['execution_count'] = self.execution_count
+        reply['content']['execution_count'] = self._execution_count
         return reply['content']
 
     def switch_kernel(self, kernel, ret_vars=[]):
@@ -810,7 +722,7 @@ class SoS_Kernel(Kernel):
                     })
                 format_dict, md_dict = self.preview_var(item)
                 self.send_response(self.iopub_socket, 'display_data',
-                    {'execution_count': self.execution_count, 'data': format_dict,
+                    {'execution_count': self._execution_count, 'data': format_dict,
                     'metadata': md_dict})
             except Exception as e:
                 self.warn('\n> Failed to preview expression {}: {}'.format(item, e))
@@ -869,7 +781,7 @@ class SoS_Kernel(Kernel):
                 raise
             except KeyboardInterrupt:
                 self.warn('Keyboard Interrupt\n')
-                return {'status': 'abort', 'execution_count': self.execution_count}
+                return {'status': 'abort', 'execution_count': self._execution_count}
             finally:
                 sys.stderr.flush()
                 sys.stdout.flush()
@@ -994,13 +906,28 @@ class SoS_Kernel(Kernel):
         if not silent and res is not None:
             format_dict, md_dict = self.format_obj(res)
             self.send_response(self.iopub_socket, 'execute_result',
-                {'execution_count': self.execution_count, 'data': format_dict,
+                {'execution_count': self._execution_count, 'data': format_dict,
                 'metadata': md_dict})
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
+        # evaluate user expression
         ret = self._do_execute(code=code, silent=silent, store_history=store_history,
             user_expressions=user_expressions, allow_stdin=allow_stdin)
+
+        out = {}
+        for key, expr in (user_expressions or {}).items():
+            try:
+                #value = self.shell._format_user_obj(SoS_eval(expr, sigil=get_default_global_sigil()))
+                value = SoS_eval(expr, sigil=get_default_global_sigil())
+                value = self.shell._format_user_obj(value)
+            except Exception as e:
+                self.warn('Failed to evaluate user expression {}: {}'.format(expr, e))
+                value = self.shell._user_obj_error()
+            out[key] = value
+        ret['user_expressions'] = out
+        #
+        self._execution_count += 1
         # make sure post_executed is triggered after the completion of all cell content
         self.shell.user_ns.update(env.sos_dict._dict)
         # trigger post processing of object and display matplotlib figures
@@ -1068,7 +995,7 @@ class SoS_Kernel(Kernel):
                     'ename': e.__class__.__name__,
                     'evalue': str(e),
                     'traceback': [],
-                    'execution_count': self.execution_count,
+                    'execution_count': self._execution_count,
                    }
             original_kernel = self.kernel
             self.switch_kernel(args.kernel, args.out_vars)
@@ -1089,7 +1016,7 @@ class SoS_Kernel(Kernel):
                     'ename': e.__class__.__name__,
                     'evalue': str(e),
                     'traceback': [],
-                    'execution_count': self.execution_count,
+                    'execution_count': self._execution_count,
                    }
             self.switch_kernel(args.kernel, args.out_vars)
             if args.in_vars:
@@ -1148,7 +1075,7 @@ class SoS_Kernel(Kernel):
                     self.warn('\nSandbox execution failed.')
                     return {'status': 'ok', 
                         'payload': [], 'user_expressions': {},
-                        'execution_count': self.execution_count}
+                        'execution_count': self._execution_count}
                 else:
                     return ret
             finally:
@@ -1179,19 +1106,19 @@ class SoS_Kernel(Kernel):
                 return self.run_cell(code, store_history)
             except KeyboardInterrupt:
                 self.warn('Keyboard Interrupt\n')
-                return {'status': 'abort', 'execution_count': self.execution_count}
+                return {'status': 'abort', 'execution_count': self._execution_count}
         else:
             # run sos
             try:
                 self.run_sos_code(code, silent)
-                return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
+                return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
             except Exception as e:
                 self.warn(str(e))
                 return {'status': 'error',
                     'ename': e.__class__.__name__,
                     'evalue': str(e),
                     'traceback': [],
-                    'execution_count': self.execution_count,
+                    'execution_count': self._execution_count,
                    }
             finally:
                 # even if something goes wrong, we clear output so that the "preview"
@@ -1217,30 +1144,31 @@ class SoS_Kernel(Kernel):
 # Note that this kernel is only used by Spyder, not by jupyter notebook
 # and qtconsole.
 #
-from ipykernel.comm import CommManager
+from spyder.utils.ipython.spyder_kernel import SpyderKernel
 
-class SoS_SpyderKernel(SoS_Kernel):
+class SoS_SpyderKernel(SoS_Kernel, SpyderKernel):
     """Spyder kernel for Jupyter"""
 
     MAGIC_EDIT = re.compile('^%edit(\s|$)')
 
     def __init__(self, *args, **kwargs):
-        super(SoS_SpyderKernel, self).__init__(*args, **kwargs)
+        #super(SoS_SpyderKernel, self).__init__(*args, **kwargs)
+        SpyderKernel.__init__(self, *args, **kwargs)
+        SoS_Kernel.__init__(self, *args, **kwargs)
 
-        super(SoS_SpyderKernel, self).ALL_MAGICS.add('edit')
-
-        self.namespace_view_settings = {}
-        self._pdb_obj = None
-        self._pdb_step = None
-        # ???
-        self.shell.kernel = self
-
-        self.comm_manager = CommManager(parent=self, kernel=self)
-
-        self.shell.configurables.append(self.comm_manager)
-        comm_msg_types = [ 'comm_open', 'comm_msg', 'comm_close' ]
-        for msg_type in comm_msg_types:
-            self.shell_handlers[msg_type] = getattr(self.comm_manager, msg_type)
+        # supposedly this should be set by namespacebrowser.py when the browser
+        # window starts. no idea why this does not work.
+        self.namespace_view_settings = {'check_all': False,
+            'exclude_private': True, 'remote_editing': False, 'autorefresh': False,
+            'exclude_capitalized': False, 'exclude_uppercase': True, 
+            'excluded_names': ['nan', 'inf', 'infty', 'little_endian', \
+                'colorbar_doc', 'typecodes', '__builtins__', '__main__', '__doc__',\
+                'NaN', 'Inf', 'Infinity', 'sctypes', 'rcParams', 'rcParamsDefault', \
+                'sctypeNA', 'typeNA', 'False_', 'True_', 'run_mode', 'step_name'] + \
+                list(self.original_keys if self.original_keys else []),
+            'exclude_unsupported': True, 'minmax': False}
+        #
+        self.shell.user_ns = env.sos_dict._dict
 
     def get_edit_parser(self):
         parser = argparse.ArgumentParser(prog='%edit',

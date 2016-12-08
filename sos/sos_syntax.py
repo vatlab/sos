@@ -30,7 +30,7 @@ SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active', 'walltime', 'env', 'pr
 SOS_ACTION_OPTIONS = ['workdir', 'docker_image', 'docker_file', 'active']
 
 SOS_DIRECTIVES = ['input', 'output', 'depends', 'task', 'parameter']
-SOS_SECTION_OPTIONS = ['skip', 'sigil', 'provides', 'shared']
+SOS_SECTION_OPTIONS = ['skip', 'sigil', 'provides', 'shared', 'workdir']
 
 SOS_KEYWORDS = SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS + SOS_DEPENDS_OPTIONS + SOS_RUNTIME_OPTIONS \
     + SOS_ACTION_OPTIONS + SOS_DIRECTIVES + SOS_SECTION_OPTIONS

@@ -195,7 +195,7 @@ def patch_spyder3(verbose=False):
 
 def get_patch_spyder_parser():
     import argparse
-    parser = argparse.ArgumentParser('patch_spyder',
+    parser = argparse.ArgumentParser('patch-spyder',
         description='''Patch spyder to work with SoS kernel''')
     parser.add_argument('-v', '--verbose', action='store_true',
             help='Display details of files to be patched')

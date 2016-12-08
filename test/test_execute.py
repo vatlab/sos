@@ -380,6 +380,19 @@ a = 5
         self.assertEqual(env.sos_dict['res'], 3)
         self.assertEqual(env.sos_dict['c'], 5)
 
+    def testSectionOptionWorkdir(self):
+        '''Test section option workdir'''
+        script = SoS_Script(r"""
+
+[1: workdir='tmp']
+run:
+    touch 'a.txt'
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertTrue(os.path.isfile('tmp/a.txt'))
+        shutil.rmtree('tmp')
+
     def testFileType(self):
         '''Test input option filetype'''
         self.touch(['a.txt', 'b.txt', 'a.pdf', 'b.html'])
