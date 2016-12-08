@@ -30,6 +30,9 @@ import argparse
 import pkg_resources
 import pydoc
 
+from ipykernel.ipkernel import IPythonKernel
+
+
 import pickle
 from types import ModuleType
 from sos.utils import env, WorkflowDict, short_repr, pretty_size
@@ -37,14 +40,11 @@ from sos._version import __sos_version__, __version__
 from sos.sos_eval import SoS_exec, SoS_eval, interpolate, get_default_global_sigil
 from sos.sos_syntax import SOS_SECTION_HEADER
 
-from IPython.core.interactiveshell import InteractiveShell
 from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_clipboard_get
 from IPython.core.error import UsageError
 from IPython.core.display import HTML
 from IPython.utils.tokenutil import line_at_cursor, token_at_cursor
-from ipykernel.kernelbase import Kernel
 from jupyter_client import manager, find_connection_file
-from ipykernel.zmqshell import ZMQDisplayPublisher
 
 from textwrap import dedent
 from io import StringIO
@@ -137,7 +137,7 @@ def get_previewers():
     return result
 
 
-class SoS_Kernel(Kernel):
+class SoS_Kernel(IPythonKernel):
     implementation = 'SOS'
     implementation_version = __version__
     language = 'sos'
@@ -283,7 +283,6 @@ class SoS_Kernel(Kernel):
 
     inspector = property(lambda self:self.get_inspector())
 
-
     def __init__(self, **kwargs):
         super(SoS_Kernel, self).__init__(**kwargs)
         self.options = ''
@@ -291,24 +290,10 @@ class SoS_Kernel(Kernel):
         self.banner = self.banner + '\nConnection file {}'.format(os.path.basename(find_connection_file()))
         # FIXME: this should in theory be a MultiKernelManager...
         self.kernels = {}
-        self.shell = InteractiveShell.instance()
+        #self.shell = InteractiveShell.instance()
         self.format_obj = self.shell.display_formatter.format
 
-        # InteractiveShell uses a default publisher that only displays text/plain
-        # using the ZMQDisplayPublisher will display matplotlib inline figures
-        self.shell.display_pub = ZMQDisplayPublisher()
-        self.shell.display_pub.session = self.session
-        self.shell.display_pub.pub_socket = self.iopub_socket
-
-        self.shell.enable_gui = lambda x: False
         self.previewers = None
-
-        #self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
-        #if os.path.isfile(self.report_file):
-        #    os.remove(self.report_file)
-        # touch the file
-        #with open(self.report_file, 'w'):
-        #    pass
         self.original_keys = None
         self._supported_languages = None
         self._completer = None
@@ -321,7 +306,6 @@ class SoS_Kernel(Kernel):
         SoS_exec("run_mode = 'interactive'", None)
         self.original_keys = set(env.sos_dict._dict.keys()) | {'SOS_VERSION', 'CONFIG', \
             'step_name', '__builtins__', 'input', 'output', 'depends'}
-        #env.sos_dict.set('__summary_report__', self.report_file)
 
     @contextlib.contextmanager
     def redirect_sos_io(self):
@@ -1167,35 +1151,7 @@ class SoS_SpyderKernel(SoS_Kernel, SpyderKernel):
     def __init__(self, *args, **kwargs):
         #super(SoS_SpyderKernel, self).__init__(*args, **kwargs)
         SpyderKernel.__init__(self, *args, **kwargs)
-
-        #super(SoS_Kernel, self).__init__(**kwargs)
-        self.options = ''
-        self.kernel = 'sos'
-        #self.banner = self.banner + '\nConnection file {}'.format(os.path.basename(find_connection_file()))
-        # FIXME: this should in theory be a MultiKernelManager...
-        self.kernels = {}
-        #self.shell = InteractiveShell.instance()
-        #self.format_obj = self.shell.display_formatter.format
-
-        # InteractiveShell uses a default publisher that only displays text/plain
-        # using the ZMQDisplayPublisher will display matplotlib inline figures
-        #self.shell.display_pub = ZMQDisplayPublisher()
-        #self.shell.display_pub.session = self.session
-        #self.shell.display_pub.pub_socket = self.iopub_socket
-
-        #self.shell.enable_gui = lambda x: False
-        self.previewers = None
-
-        #self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
-        #if os.path.isfile(self.report_file):
-        #    os.remove(self.report_file)
-        # touch the file
-        #with open(self.report_file, 'w'):
-        #    pass
-        self.original_keys = None
-        self._supported_languages = None
-        self._completer = None
-        self._inspector = None
+        SoS_Kernel.__init__(self, *args, **kwargs)
 
         # supposedly this should be set by namespacebrowser.py when the browser
         # window starts. no idea why this does not work.
@@ -1209,12 +1165,7 @@ class SoS_SpyderKernel(SoS_Kernel, SpyderKernel):
                 list(self.original_keys if self.original_keys else []),
             'exclude_unsupported': True, 'minmax': False}
         #
-        self.format_obj = self.shell.display_formatter.format
         self.shell.user_ns = env.sos_dict._dict
-
-#    def _mglobals(self):
-#        """Return current globals -- handles Pdb frames"""
-#        return env.sos_dict._dict
 
     def get_edit_parser(self):
         parser = argparse.ArgumentParser(prog='%edit',
