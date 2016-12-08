@@ -1056,8 +1056,8 @@ def sosrun():
 # add another ArgumentParser to an existing ArgumentParser as
 # a subparser
 #
-def add_sub_parser(subparsers, parser):
-    return subparsers.add_parser(parser.prog,
+def add_sub_parser(subparsers, parser, name=None):
+    return subparsers.add_parser(parser.prog if name is None else name,
         description=parser.description,
         epilog=parser.epilog,
         help=parser.description, parents=[parser],
@@ -1100,10 +1100,10 @@ def main():
     #
     # addon packages
     for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
-        if entrypoint.name.strip().endswith(':parser'):
+        if entrypoint.name.strip().endswith('.parser'):
             name = entrypoint.name.rsplit('.', 1)[0]
             func = entrypoint.load()
-            parser = add_sub_parser(subparsers, func())
+            parser = add_sub_parser(subparsers, func(), name=name)
             parser.add_argument('--addon-name', help=argparse.SUPPRESS,
                     default=name)
             parser.set_defaults(func=handle_addon)
