@@ -159,7 +159,7 @@ def add_cell(cells, content, cell_type, cell_count):
                  execution_count=cell_count)
         )
 
-def script_to_notebook(script_file, notebook_file, convert_args):
+def script_to_notebook(script_file, notebook_file, convert_args=[]):
     '''
     Convert a sos script to iPython notebook (.ipynb) so that it can be opened
     by Jupyter notebook.
