@@ -53,60 +53,39 @@ run:
 	docker build --no-cache -t mdabioinfo/sos-notebook docker-notebook
 	docker push mdabioinfo/sos-notebook
 
-# update docker on ec2
-
-#run:
-#   ssh -i PATH-TO-PEM-FILE ubuntu@ec2-34-192-184-206.compute-1.amazonaws.com 'bash -s '< update_ec2_docker.sh
-
 [convert_documentation]
-input:  '../doc/documentation/*.ipynb', group_by=1
-output: _input[0].replace('..', '../website').replace('.ipynb', '.html')
+input:  '../docs/src/documentation/*.ipynb', group_by=1
+output: _input[0].replace('/src/', '/doc/').replace('.ipynb', '.html')
 
 run:
 	jupyter nbconvert --to html --output ${_output!a} ${_input!a} --template toc2
 
 [convert_tutorials]
-input:  '../doc/tutorials/*.ipynb', group_by=1
-output: _input[0].replace('..', '../website').replace('.ipynb', '.html')
+input:  '../docs/src/tutorials/*.ipynb', group_by=1
+output: _input[0].replace('/src/', '/doc/').replace('.ipynb', '.html')
 
 run:
 	jupyter nbconvert --to html --output ${_output!a} ${_input!a} --template toc2
 
 [convert_examples]
-input:  '../doc/examples/*.sos', group_by=1
-output: _input[0].replace('..', '../website').replace('.sos', '.html')
+input:  '../docs/src/examples/*.sos', group_by=1
+output: _input[0].replace('/src/', '/doc/').replace('.sos', '.html')
 
-# we have to go to the examples directory because otherwise the filename would
-# be displayed as something like '../doc/examples/...'
-run: workdir='../website/doc/examples'
-	cp ${_input!a} .
-	sos convert ${_input!b} ${_output!a} --raw ${_input!b} --linenos
+run:
+	sos convert ${_input} ${_output} --raw ${_input!b}
 
 [publish]
-
-# prepare
-run: workdir='..'
-	git checkout master
-	# remove gh-pages branch if exists
-	if [ "`git branch --list gh-pages`" ]; then
-		git branch -D gh-pages
-	fi
 
 # convert ipynb to HTML
 sos_run('convert_documentation')
 sos_run('convert_tutorials')
 sos_run('convert_examples')
 
-# push subtree to gh-pages
-parameter: message = 'Publish website'
+# push changes to website
 run: workdir='..'
-	rsync -av --delete doc/media website/doc
 	git add --all website/doc/documentation website/doc/tutorials website/doc/examples website/doc/media
-	git commit . --no-verify -m ${message!r}
+	git commit docs/doc/* --no-verify -m 'Publish website'
 	git push --no-verify
-	git subtree split --prefix website -b gh-pages
-	git push --no-verify -f origin gh-pages:gh-pages
-	#git branch -D gh-pages
 
 [default]
 sos_run('patch + pip + update_docker + publish')
