@@ -1,13 +1,13 @@
 #!/bin/sh
 
 for f in `ls ./doc/documentation/*.ipynb`; do
-	jupyter nbconvert --to html $f 
+	jupyter nbconvert --to html $f --template toc_doc 
 done
 
 mv ./doc/documentation/*html ./website/doc/documentation/
 
 for f in `ls ./doc/tutorials/*.ipynb`; do
-	jupyter nbconvert --to html $f 
+	jupyter nbconvert --to html $f --template toc_tut
 done
 
 mv ./doc/tutorials/*html ./website/doc/tutorials/
