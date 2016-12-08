@@ -53,7 +53,6 @@ from .completer import SoS_Completer
 from .inspector import SoS_Inspector
 
 from .sos_executor import runfile
-from .converter import SoS_Exporter
 
 class FlushableStringIO(StringIO):
     '''This is a string buffer for output, but it will only
@@ -94,7 +93,7 @@ class FlushableStringIO(StringIO):
         self.nlines = 0
         return len(content.strip())
 
-__all__ = ['SoS_Exporter', 'SoS_Kernel']
+__all__ = ['SoS_Kernel']
 
 def clipboard_get():
     """ Get text from the clipboard.
@@ -148,7 +147,7 @@ class SoS_Kernel(IPythonKernel):
         'file_extension': '.sos',
         'pygments_lexer': 'sos',
         'codemirror_mode': 'sos',
-        'nbconvert_exporter': 'sos.kernel.SoS_Exporter',
+        'nbconvert_exporter': 'sos.jupyter.converter.SoS_Exporter',
     }
     banner = "SoS kernel - script of scripts"
 

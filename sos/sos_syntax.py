@@ -331,9 +331,11 @@ _SOS_AS_TMPL = r'''
 
 _SOS_CELL_LINE_TMPL = r'''
     ^
-    %cell\s+                            # %cell
-    (markdown|code)                     % markdown or code
-    (\s+\d+\s+)?                        % arbitrary stuff
+    %cell(\s+                           # %cell
+    (?P<cell_type>
+    (markdown|code)                     # markdown or code
+    )
+    (\s+\d+\s+)?)?                      # arbitrary stuff
     $
     '''
 
