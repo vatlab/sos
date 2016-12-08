@@ -7,7 +7,7 @@
 # 2. docker images to docker hub
 # 3. website to github.io
 
-[patch]
+[patch: shared='version']
 parameter: version = str
 sh:
 	perl -pi.bak -e "s/^__version__ = .*/__version__ = '${version}'/" ../sos/_version.py
@@ -24,19 +24,18 @@ sh:	workdir='..'
 	python setup.py sdist upload
 	pip install sos --upgrade
 
-[update_docker]
+[update-docker]
 # add documentation to Docker container
 depends: executable('docker')
 
 # copy doc over
 run: workdir='..'
-    rm -rf development/docker-notebook/documentation \
-        development/docker-notebook/tutorials \
-        development/docker-notebook/examples
+    rm -rf development/docker-notebook/doc
     # copy only ipynb and .sos files to docker
     rsync -av --prune-empty-dirs --include "*/" --exclude ".ipynb_checkpoints" \
         --include "*.ipynb" --include "*.sos" --exclude "*" \
-        doc/documentation doc/tutorials doc/examples development/docker-notebook
+        docs/src/documentation docs/src/tutorials docs/src/examples \
+		development/docker-notebook/doc
 
 # update docker file (not needed as we have now fixed Dockerfile)
 #run:
