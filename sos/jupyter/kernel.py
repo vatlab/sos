@@ -31,7 +31,6 @@ import pkg_resources
 import pydoc
 
 import pickle
-from collections.abc import Sequence
 from types import ModuleType
 from sos.utils import env, WorkflowDict, short_repr, pretty_size
 from sos._version import __sos_version__, __version__
@@ -136,76 +135,6 @@ def get_previewers():
     #
     result.sort(key=lambda x: -x[2])
     return result
-
-def homogeneous_type(seq):
-    iseq = iter(seq)
-    first_type = type(next(iseq))
-    if first_type in (int, float):
-        return True if all( (type(x) in (int, float)) for x in iseq ) else False
-    else:
-        return True if all( (type(x) is first_type) for x in iseq ) else False
-
-def R_repr(obj):
-    if isinstance(obj, bool):
-        return 'TRUE' if obj else 'FALSE'
-    elif isinstance(obj, (int, float, str)):
-        return repr(obj)
-    elif isinstance(obj, Sequence):
-        if len(obj) == 0:
-            return 'c()'
-
-        # if the data is of homogeneous type, let us use c()
-        # otherwise use list()
-        # this can be confusion but list can be difficult to handle
-        if homogeneous_type(obj):
-            return 'c(' + ','.join(R_repr(x) for x in obj) + ')'
-        else:
-            return 'list(' + ','.join(R_repr(x) for x in obj) + ')'
-    elif obj is None:
-        return 'NULL'
-    elif isinstance(obj, dict):
-        return 'list(' + ','.join('{}={}'.format(x, R_repr(y)) for x,y in obj.items()) + ')'
-    elif isinstance(obj, set):
-        return 'list(' + ','.join(R_repr(x) for x in obj) + ')'
-    else:
-        import numpy
-        import pandas
-        import tempfile
-        if isinstance(obj, (numpy.intc, numpy.intp, numpy.int8, numpy.int16, numpy.int32, numpy.int64,\
-                numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64, numpy.float16, numpy.float32, \
-                numpy.float64)):
-            return repr(obj)
-        elif isinstance(obj, numpy.matrixlib.defmatrix.matrix):
-            try:
-                import feather
-            except ImportError:
-                raise UsageError('The feather-format module is required to pass numpy matrix as R matrix'
-                    'See https://github.com/wesm/feather/tree/master/python for details.')
-            feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
-            feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
-            return 'data.matrix(read_feather("{}"))'.format(feather_tmp_)
-        elif isinstance(obj, numpy.ndarray):
-            return 'c(' + ','.join(R_repr(x) for x in obj) + ')'
-        elif isinstance(obj, pandas.DataFrame):
-            try:
-                import feather
-            except ImportError:
-                raise UsageError('The feather-format module is required to pass pandas DataFrame as R data.frame'
-                    'See https://github.com/wesm/feather/tree/master/python for details.')
-            feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
-            try:
-                data = obj.copy()
-                feather.write_dataframe(data, feather_tmp_)
-            except:
-                # if data cannot be written, we try to manipulate data
-                # frame to have consistent types and try again
-                for c in data.columns:
-                    if not homogeneous_type(data[c]):
-                        data[c] = [str(x) for x in data[c]]
-                feather.write_dataframe(data, feather_tmp_)
-            return 'read_feather("{}")'.format(feather_tmp_)
-        else:
-            return repr('Unsupported datatype {}'.format(short_repr(obj)))
 
 
 class SoS_Kernel(Kernel):
