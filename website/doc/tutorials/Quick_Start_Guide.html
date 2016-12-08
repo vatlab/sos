@@ -13727,7 +13727,7 @@ $( document ).ready(function(){
                            "Using_SoS_with_Spyder"]
             for (var a =0;a<tutorials.length;a++){
                   var name =tutorials[a];
-                  $(".toc #toc-level0").append('<li><a href="'+path+'/doc/tutorials/'+name+'.html">'+name+'</a></li>');
+                  $(".toc #toc-level0").append('<li><a href="'+path+'/doc/tutorials/'+name+'.html">'+name.replace("_"," ")+'</a></li>');
             }
 
 

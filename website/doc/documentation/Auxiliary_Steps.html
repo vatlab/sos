@@ -13736,7 +13736,7 @@ $( document ).ready(function(){
                     "Workflow_Specification" ]
             for (var a =0;a<documentations.length;a++){
                   var name =documentations[a];
-                  $(".toc #toc-level0").append('<li><a href="'+path+'/doc/documentation/'+name+'.html">'+name+'</a></li>');
+                  $(".toc #toc-level0").append('<li><a href="'+path+'/doc/documentation/'+name+'.html">'+name.replace("_"," ")+'</a></li>');
             }
 
 
