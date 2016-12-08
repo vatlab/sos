@@ -54,6 +54,7 @@ run:
 	docker push mdabioinfo/sos-notebook
 
 # update docker on ec2
+
 #run:
 #   ssh -i PATH-TO-PEM-FILE ubuntu@ec2-34-192-184-206.compute-1.amazonaws.com 'bash -s '< update_ec2_docker.sh
 
