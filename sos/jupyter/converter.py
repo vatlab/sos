@@ -149,8 +149,7 @@ def add_cell(cells, content, cell_type, cell_count):
         cell_type = 'code'
     #
     if cell_type == 'markdown':
-        cells.append(new_markdown_cell(source=''.join([x[3:] for x in content]),
-            execution_count=cell_count))
+        cells.append(new_markdown_cell(source=''.join([x[3:] for x in content])))
     else:
         cells.append(
              new_code_cell(
@@ -192,7 +191,9 @@ def script_to_notebook(script_file, notebook_file, *args):
                 add_cell(cells, content, cell_type, cell_count)
                 cell_count += 1
 
-                cell_type = mo.group(1)
+                cell_type = mo.group('cell_type')
+                if not cell_type:
+                    cell_type = 'code'
                 content = []
                 continue
             else:
