@@ -298,6 +298,7 @@ class SoS_Kernel(IPythonKernel):
         self._supported_languages = None
         self._completer = None
         self._inspector = None
+        self._execution_count = 1
 
     def _reset_dict(self):
         env.sos_dict = WorkflowDict()
@@ -400,7 +401,7 @@ class SoS_Kernel(IPythonKernel):
                     if msg_type in ('execute_input', 'execute_result'):
                         # override execution count with the master count,
                         # not sure if it is needed
-                        sub_msg['content']['execution_count'] = self.execution_count
+                        sub_msg['content']['execution_count'] = self._execution_count
                     #
                     # NOTE: we do not send status of sub kernel alone because
                     # these are generated automatically during the execution of
@@ -409,7 +410,7 @@ class SoS_Kernel(IPythonKernel):
                     self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
         # now get the real result
         reply = self.KC.get_shell_msg(timeout=10)
-        reply['content']['execution_count'] = self.execution_count
+        reply['content']['execution_count'] = self._execution_count
         return reply['content']
 
     def switch_kernel(self, kernel, ret_vars=[]):
@@ -721,7 +722,7 @@ class SoS_Kernel(IPythonKernel):
                     })
                 format_dict, md_dict = self.preview_var(item)
                 self.send_response(self.iopub_socket, 'display_data',
-                    {'execution_count': self.execution_count, 'data': format_dict,
+                    {'execution_count': self._execution_count, 'data': format_dict,
                     'metadata': md_dict})
             except Exception as e:
                 self.warn('\n> Failed to preview expression {}: {}'.format(item, e))
@@ -780,7 +781,7 @@ class SoS_Kernel(IPythonKernel):
                 raise
             except KeyboardInterrupt:
                 self.warn('Keyboard Interrupt\n')
-                return {'status': 'abort', 'execution_count': self.execution_count}
+                return {'status': 'abort', 'execution_count': self._execution_count}
             finally:
                 sys.stderr.flush()
                 sys.stdout.flush()
@@ -905,7 +906,7 @@ class SoS_Kernel(IPythonKernel):
         if not silent and res is not None:
             format_dict, md_dict = self.format_obj(res)
             self.send_response(self.iopub_socket, 'execute_result',
-                {'execution_count': self.execution_count, 'data': format_dict,
+                {'execution_count': self._execution_count, 'data': format_dict,
                 'metadata': md_dict})
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
@@ -925,6 +926,8 @@ class SoS_Kernel(IPythonKernel):
                 value = self.shell._user_obj_error()
             out[key] = value
         ret['user_expressions'] = out
+        #
+        self._execution_count += 1
         # make sure post_executed is triggered after the completion of all cell content
         self.shell.user_ns.update(env.sos_dict._dict)
         # trigger post processing of object and display matplotlib figures
@@ -992,7 +995,7 @@ class SoS_Kernel(IPythonKernel):
                     'ename': e.__class__.__name__,
                     'evalue': str(e),
                     'traceback': [],
-                    'execution_count': self.execution_count,
+                    'execution_count': self._execution_count,
                    }
             original_kernel = self.kernel
             self.switch_kernel(args.kernel, args.out_vars)
@@ -1013,7 +1016,7 @@ class SoS_Kernel(IPythonKernel):
                     'ename': e.__class__.__name__,
                     'evalue': str(e),
                     'traceback': [],
-                    'execution_count': self.execution_count,
+                    'execution_count': self._execution_count,
                    }
             self.switch_kernel(args.kernel, args.out_vars)
             if args.in_vars:
@@ -1072,7 +1075,7 @@ class SoS_Kernel(IPythonKernel):
                     self.warn('\nSandbox execution failed.')
                     return {'status': 'ok', 
                         'payload': [], 'user_expressions': {},
-                        'execution_count': self.execution_count}
+                        'execution_count': self._execution_count}
                 else:
                     return ret
             finally:
@@ -1103,19 +1106,19 @@ class SoS_Kernel(IPythonKernel):
                 return self.run_cell(code, store_history)
             except KeyboardInterrupt:
                 self.warn('Keyboard Interrupt\n')
-                return {'status': 'abort', 'execution_count': self.execution_count}
+                return {'status': 'abort', 'execution_count': self._execution_count}
         else:
             # run sos
             try:
                 self.run_sos_code(code, silent)
-                return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self.execution_count}
+                return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
             except Exception as e:
                 self.warn(str(e))
                 return {'status': 'error',
                     'ename': e.__class__.__name__,
                     'evalue': str(e),
                     'traceback': [],
-                    'execution_count': self.execution_count,
+                    'execution_count': self._execution_count,
                    }
             finally:
                 # even if something goes wrong, we clear output so that the "preview"
