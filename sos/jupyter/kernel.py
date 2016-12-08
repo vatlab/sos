@@ -135,8 +135,6 @@ def get_previewers():
             result.append((name, entrypoint, priority))
     #
     result.sort(key=lambda x: -x[2])
-    with open('a.txt', 'w') as ss:
-        ss.write(repr(result))
     return result
 
 def homogeneous_type(seq):
@@ -224,7 +222,6 @@ class SoS_Kernel(Kernel):
         'nbconvert_exporter': 'sos.kernel.SoS_Exporter',
     }
     banner = "SoS kernel - script of scripts"
-    shell = InteractiveShell.instance()
 
     ALL_MAGICS = {
         'dict',
@@ -365,6 +362,7 @@ class SoS_Kernel(Kernel):
         self.banner = self.banner + '\nConnection file {}'.format(os.path.basename(find_connection_file()))
         # FIXME: this should in theory be a MultiKernelManager...
         self.kernels = {}
+        self.shell = InteractiveShell.instance()
         self.format_obj = self.shell.display_formatter.format
 
         # InteractiveShell uses a default publisher that only displays text/plain
@@ -999,8 +997,21 @@ class SoS_Kernel(Kernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
+        # evaluate user expression
         ret = self._do_execute(code=code, silent=silent, store_history=store_history,
             user_expressions=user_expressions, allow_stdin=allow_stdin)
+
+        out = {}
+        for key, expr in (user_expressions or {}).items():
+            try:
+                #value = self.shell._format_user_obj(SoS_eval(expr, sigil=get_default_global_sigil()))
+                value = SoS_eval(expr, sigil=get_default_global_sigil())
+                value = self.shell._format_user_obj(value)
+            except Exception as e:
+                self.warn('Failed to evaluate user expression {}: {}'.format(expr, e))
+                value = self.shell._user_obj_error()
+            out[key] = value
+        ret['user_expressions'] = out
         # make sure post_executed is triggered after the completion of all cell content
         self.shell.user_ns.update(env.sos_dict._dict)
         # trigger post processing of object and display matplotlib figures
@@ -1217,30 +1228,64 @@ class SoS_Kernel(Kernel):
 # Note that this kernel is only used by Spyder, not by jupyter notebook
 # and qtconsole.
 #
-from ipykernel.comm import CommManager
+from spyder.utils.ipython.spyder_kernel import SpyderKernel
 
-class SoS_SpyderKernel(SoS_Kernel):
+class SoS_SpyderKernel(SoS_Kernel, SpyderKernel):
     """Spyder kernel for Jupyter"""
 
     MAGIC_EDIT = re.compile('^%edit(\s|$)')
 
     def __init__(self, *args, **kwargs):
-        super(SoS_SpyderKernel, self).__init__(*args, **kwargs)
+        #super(SoS_SpyderKernel, self).__init__(*args, **kwargs)
+        SpyderKernel.__init__(self, *args, **kwargs)
 
-        super(SoS_SpyderKernel, self).ALL_MAGICS.add('edit')
+        #super(SoS_Kernel, self).__init__(**kwargs)
+        self.options = ''
+        self.kernel = 'sos'
+        #self.banner = self.banner + '\nConnection file {}'.format(os.path.basename(find_connection_file()))
+        # FIXME: this should in theory be a MultiKernelManager...
+        self.kernels = {}
+        #self.shell = InteractiveShell.instance()
+        #self.format_obj = self.shell.display_formatter.format
 
-        self.namespace_view_settings = {}
-        self._pdb_obj = None
-        self._pdb_step = None
-        # ???
-        self.shell.kernel = self
+        # InteractiveShell uses a default publisher that only displays text/plain
+        # using the ZMQDisplayPublisher will display matplotlib inline figures
+        #self.shell.display_pub = ZMQDisplayPublisher()
+        #self.shell.display_pub.session = self.session
+        #self.shell.display_pub.pub_socket = self.iopub_socket
 
-        self.comm_manager = CommManager(parent=self, kernel=self)
+        #self.shell.enable_gui = lambda x: False
+        self.previewers = None
 
-        self.shell.configurables.append(self.comm_manager)
-        comm_msg_types = [ 'comm_open', 'comm_msg', 'comm_close' ]
-        for msg_type in comm_msg_types:
-            self.shell_handlers[msg_type] = getattr(self.comm_manager, msg_type)
+        #self.report_file = os.path.join(env.exec_dir, 'summary_report.md')
+        #if os.path.isfile(self.report_file):
+        #    os.remove(self.report_file)
+        # touch the file
+        #with open(self.report_file, 'w'):
+        #    pass
+        self.original_keys = None
+        self._supported_languages = None
+        self._completer = None
+        self._inspector = None
+
+        # supposedly this should be set by namespacebrowser.py when the browser
+        # window starts. no idea why this does not work.
+        self.namespace_view_settings = {'check_all': False,
+            'exclude_private': True, 'remote_editing': False, 'autorefresh': False,
+            'exclude_capitalized': False, 'exclude_uppercase': True, 
+            'excluded_names': ['nan', 'inf', 'infty', 'little_endian', \
+                'colorbar_doc', 'typecodes', '__builtins__', '__main__', '__doc__',\
+                'NaN', 'Inf', 'Infinity', 'sctypes', 'rcParams', 'rcParamsDefault', \
+                'sctypeNA', 'typeNA', 'False_', 'True_', 'run_mode', 'step_name'] + \
+                list(self.original_keys if self.original_keys else []),
+            'exclude_unsupported': True, 'minmax': False}
+        #
+        self.format_obj = self.shell.display_formatter.format
+        self.shell.user_ns = env.sos_dict._dict
+
+#    def _mglobals(self):
+#        """Return current globals -- handles Pdb frames"""
+#        return env.sos_dict._dict
 
     def get_edit_parser(self):
         parser = argparse.ArgumentParser(prog='%edit',
