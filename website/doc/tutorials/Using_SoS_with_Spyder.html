@@ -13697,7 +13697,8 @@ $( document ).ready(function(){
              'toc_cell': false,          // useless here
              'toc_window_display': true, // display the toc window
              "toc_section_display": "block", // display toc contents in the window
-             'sideBar':false,             // sidebar or floating window
+             // 'sideBar':false,      
+             'sideBar':true,       // sidebar or floating window
              'navigate_menu':false       // navigation menu (only in liveNotebook -- do not change)
             }
 
@@ -13713,7 +13714,24 @@ $( document ).ready(function(){
             st.toc_index=0;
 
             // fire the main function with these parameters
+
+
             table_of_contents(cfg,st);
+            var path="http://bopeng.github.io"
+            // var path="file:///Users/jma7/Development/SOS/website"
+            $(".toc #toc-level0").append('<li><a href="'+path+'/index.html">Home</a></li>');
+            var tutorials=["Quick_Start_Guide",
+                          "SoS-QuickStart",
+                          "SoS_Docker_Guide",
+                           "Using_SoS_with_IPython",
+                           "Using_SoS_with_Spyder"]
+            for (var a =0;a<tutorials.length;a++){
+                  var name =tutorials[a];
+                  $(".toc #toc-level0").append('<li><a href="'+path+'/doc/tutorials/'+name+'.html">'+name+'</a></li>');
+            }
+
+
+
     });
 </script>
 <body>
