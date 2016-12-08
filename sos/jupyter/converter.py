@@ -37,7 +37,7 @@ from sos.sos_syntax import SOS_SECTION_HEADER, SOS_CELL_LINE
 # Converter from Notebook
 #
 
-def parse_convert_args(convert_args):
+def get_notebook_to_script_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--reorder', action='store_true')
     parser.add_argument('--reset-index', action='store_true')
@@ -45,12 +45,7 @@ def parse_convert_args(convert_args):
     parser.add_argument('--no-index', action='store_true')
     parser.add_argument('--remove-magic', action='store_true')
     parser.add_argument('--md-to-report', action='store_true')
-    try:
-        args = parser.parse_args(convert_args)
-    except Exception as e:
-        raise RuntimeError('Unrecognized style argument {}: {}'
-            .format(' '.join(convert_args), e))
-    return args
+    return parser
 
 
 # This class cannot be defined in .kernel because it would cause some
@@ -105,7 +100,7 @@ class SoS_Exporter(Exporter):
             cells = nb.cells
         with StringIO() as fh:
             fh.write('#!/usr/bin/env sos-runner\n')
-            fh.write('#fileformat=SOSNB1.0\n')
+            fh.write('#fileformat=SOS1.0\n')
             idx = 0
             for cell in cells:
                 idx = self.from_notebook_cell(cell, fh, idx)
@@ -122,7 +117,8 @@ def notebook_to_script(notebook_file, sos_file, convert_args=[]):
     to ignore indexes, --remove-magic to remove ipynb-only magics, and 
     --md-to-report to convert markdown cells to sos report actions.
     '''
-    sargs = parse_convert_args(convert_args)
+    parser = get_notebook_to_script_parser()
+    sargs = parser.parse_args(convert_args)
     exporter = SoS_Exporter(reorder=sargs.reorder, reset_index=sargs.reset_index,
                             add_header=sargs.add_header, no_index=sargs.no_index,
                             remove_magic=sargs.remove_magic, md_to_report=sargs.md_to_report)
@@ -138,6 +134,11 @@ def notebook_to_script(notebook_file, sos_file, convert_args=[]):
 #
 # Converter to Notebook
 #
+def get_script_to_notebook_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-e', '--execute', action='store_true')
+    return parser
+
 def add_cell(cells, content, cell_type, cell_count):
     # if a section consist of all report, report it as a markdown cell
     if not content:
@@ -153,15 +154,19 @@ def add_cell(cells, content, cell_type, cell_count):
     else:
         cells.append(
              new_code_cell(
-                 source=''.join(content),
+                 # remove any trailing blank lines...
+                 source=''.join(content).strip(),
                  execution_count=cell_count)
         )
 
-def script_to_notebook(script_file, notebook_file, *args):
+def script_to_notebook(script_file, notebook_file, convert_args):
     '''
     Convert a sos script to iPython notebook (.ipynb) so that it can be opened
     by Jupyter notebook.
     '''
+    parser = get_script_to_notebook_parser()
+    args = parser.parse_args(convert_args)
+
     cells = []
     cell_count = 1
     cell_type = 'code'
@@ -182,18 +187,17 @@ def script_to_notebook(script_file, notebook_file, *args):
 
             mo = SOS_CELL_LINE.match(line)
             if mo:
-                # eat a new line before the CELL_LINE
-                if content and content[-1] == '\n':
-                    content = content[:-1]
                 # get ride of empty content
                 if not any(x.strip() for x in content):
-                    continue
-                add_cell(cells, content, cell_type, cell_count)
-                cell_count += 1
+                    content = []
+
+                if content:
+                    add_cell(cells, content, cell_type, cell_count)
 
                 cell_type = mo.group('cell_type')
                 if not cell_type:
                     cell_type = 'code'
+                cell_count += 1
                 content = []
                 continue
             else:
@@ -217,11 +221,22 @@ def script_to_notebook(script_file, notebook_file, *args):
             }
         }
     )
+    err = None
+    if args.execute:
+        from nbconvert.preprocessors import ExecutePreprocessor, CellExecutionError
+        ep = ExecutePreprocessor(timeout=600, kernel_name='sos')
+        try:
+            ep.preprocess(nb, {'metadata': {'path': '.'}})
+        except CellExecutionError as e:
+            err = e
+    #
     if not notebook_file:
         nbformat.write(nb, sys.stdout, 4)
     else:
         with open(notebook_file, 'w') as notebook:
             nbformat.write(nb, notebook, 4)
-        env.logger.info('SoS script saved to {}'.format(notebook_file))
+        env.logger.info('Jupyter notebook saved to {}'.format(notebook_file))
+    if err:
+        raise err
 
 
