@@ -3,3 +3,5 @@ include README.md
 include setup.py
 recursive-include sos *.py *.js
 recursive-include misc *.vim *.py *.js
+recursive-include test *.vim *.py *.js
+recursive-include docs/src *.ipynb *.png *.jpg *.sos
