@@ -639,10 +639,9 @@ def transcribe_script(script_file):
 #
 #
 def get_script_to_html_parser():
-    parser = argparse.ArgumentParser('sos_html', 
+    parser = argparse.ArgumentParser('sos convert FILE.sos FILE.html (or --to html)', 
         description='''Convert sos file to html format with syntax highlighting,
-        and save the output either to a HTML file or view it in a broaser.''',
-        add_help=False)
+        and save the output either to a HTML file or view it in a broaser.''')
     parser.add_argument('--raw', help='''URL to the raw sos file, which will be linked
         to filenames in the HTML output''')
     parser.add_argument('--style', choices=list(get_all_styles()), 
@@ -652,7 +651,7 @@ def get_script_to_html_parser():
         help='''Display lineno to the left of the source code''')
     return parser
 
-def script_to_html(script_file, html_file, style_args):
+def script_to_html(script_file, html_file, style_args=None, unknown_args=[]):
     '''
     Convert sos file to html format with syntax highlighting, and
     either save the output either to a HTML file or view it in a broaser.
@@ -667,8 +666,9 @@ def script_to_html(script_file, html_file, style_args):
     if not html_file:
         html_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name
     #
-    parser = get_script_to_html_parser()
-    sargs = vars(parser.parse_args(style_args))
+    sargs = vars(style_args) if style_args else {}
+    if unknown_args:
+        raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
     formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
         **{x:y for x,y in sargs.items() if x != 'raw'})
     with open(html_file, 'w') as html:
@@ -770,16 +770,18 @@ def markdown_content(content_type, content, fh):
         fh.write('```{}\n{}```\n'.format(content_type, ''.join(content)))
 
 def get_script_to_markdown_parser():
-    parser = argparse.ArgumentParser('sos_md',
+    parser = argparse.ArgumentParser('sos convert FILE.sos FILE.md (or --to md)',
         description='''Convert SOS scriot to a markdown format with scripts 
-            quoted in markdown syntax.''',
-        add_help=False)
+            quoted in markdown syntax.''')
     return parser
 
-def script_to_markdown(script_file, markdown_file, style_args):
+def script_to_markdown(script_file, markdown_file, style_args=None, unknown_args=[]):
     '''
     Convert SOS scriot to a markdown file with syntax highlighting.
     '''
+    if unknown_args:
+        raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
+
     transcript_file = transcribe_script(script_file)
 
     if not markdown_file:
@@ -868,9 +870,8 @@ def write_content(content_type, content, formatter, fh=sys.stdout):
         fh.write(highlight((''.join(content)), lexer, formatter))
 
 def get_script_to_term_parser():
-    parser = argparse.ArgumentParser('sos_term', 
-        description='Write script to terminal with syntax highlighting.',
-        add_help=False)
+    parser = argparse.ArgumentParser('sos convert FILE.sos --to term', 
+        description='Write script to terminal with syntax highlighting.')
     parser.add_argument('--bg', choices=['light', 'dark'],
         help='Color theme of the output',
         default='light')
@@ -878,7 +879,7 @@ def get_script_to_term_parser():
         help='Display lineno to the left of the script')
     return parser
 
-def script_to_term(script_file, output_file, style_args):
+def script_to_term(script_file, output_file, style_args=None, unknown_args=[]):
     '''
     Write script to terminal. This converter accepts additional parameters
     --bg [light|dark] for light or dark theme, and --linenos for output
@@ -886,8 +887,10 @@ def script_to_term(script_file, output_file, style_args):
     '''
     transcript_file = transcribe_script(script_file)
 
-    sargs = vars(get_script_to_term_parser.parse_args(style_args))
-    env.logger.trace('Using style argument {}'.format(sargs))
+    sargs = vars(style_args) if style_args else {}
+    if unknown_args:
+        raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
+
     formatter = TerminalFormatter(**sargs)
     # remove background definition so that we can use our own
     with open(transcript_file) as script:
