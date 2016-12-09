@@ -31,8 +31,7 @@ from tokenize import generate_tokens
 from uuid import uuid4
 
 from .utils import env, Error, locate_script, text_repr
-from .sos_eval import on_demand_options, sos_compile, set_single_quote_interpolation,\
-    set_default_global_sigil
+from .sos_eval import on_demand_options, sos_compile, set_default_global_sigil
 from .target import textMD5
 from .sos_syntax import SOS_FORMAT_LINE, SOS_FORMAT_VERSION, SOS_SECTION_HEADER, \
     SOS_SECTION_NAME, SOS_SECTION_OPTION, SOS_DIRECTIVE, SOS_DIRECTIVES, \
@@ -717,14 +716,6 @@ for __n, __v in {}.items():
                                 # also effective in the current cell
                                 cursect.global_sigil = self.global_sigil
                                 cursect.sigil = self.global_sigil
-                        elif opt.startswith('single_quote_interpolation='):
-                            if opt[27:].strip() == 'False':
-                                set_single_quote_interpolation(False)
-                            elif opt[27:].strip() == 'True':
-                                set_single_quote_interpolation(True)
-                            else:
-                                parsing_errors.append(lineno, line, 'Unrecognized value for option single_quote_interpolation. True or False is expected, {} specified'
-                                    .format(opt[27:].strip()))
                         else:
                             parsing_errors.append(lineno, line, 'Unrecognized sos option {}'.format(opt))
                     continue
