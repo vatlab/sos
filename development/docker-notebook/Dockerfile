@@ -37,6 +37,7 @@ USER    $NB_USER
 EXPOSE	8888
 
 
-COPY ./doc/tutorials /home/jovyan/work/tutorials
-COPY ./doc/examples  /home/jovyan/work/examples
-COPY ./doc/documentation /home/jovyan/work/documentation
+COPY ./doc/tutorials /home/jovyan/work/doc/tutorials
+COPY ./doc/examples  /home/jovyan/work/doc/examples
+COPY ./doc/documentation /home/jovyan/work/doc/documentation
+COPY ./doc/media /home/jovyan/work/doc/media

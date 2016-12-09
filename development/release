@@ -7,7 +7,7 @@
 # 2. docker images to docker hub
 # 3. website to github.io
 
-[patch]
+[patch: shared='version']
 parameter: version = str
 sh:
 	perl -pi.bak -e "s/^__version__ = .*/__version__ = '${version}'/" ../sos/_version.py
@@ -24,26 +24,18 @@ sh:	workdir='..'
 	python setup.py sdist upload
 	pip install sos --upgrade
 
-[update_docker]
+[update-docker]
 # add documentation to Docker container
 depends: executable('docker')
 
 # copy doc over
 run: workdir='..'
-    rm -rf development/docker-notebook/documentation \
-        development/docker-notebook/tutorials \
-        development/docker-notebook/examples
+    rm -rf development/docker-notebook/doc
     # copy only ipynb and .sos files to docker
     rsync -av --prune-empty-dirs --include "*/" --exclude ".ipynb_checkpoints" \
         --include "*.ipynb" --include "*.sos" --exclude "*" \
-        doc/documentation doc/tutorials doc/examples development/docker-notebook
-
-# update docker file (not needed as we have now fixed Dockerfile)
-#run:
-#    cp docker-notebook/Dockerfile.in docker-notebook/Dockerfile
-#    echo "COPY tutorials /home/jovyan/work/tutorials" >> docker-notebook/Dockerfile
-#    echo "COPY examples  /home/jovyan/work/examples" >> docker-notebook/Dockerfile
-#    echo "COPY documentation /home/jovyan/work/documentation" >> docker-notebook/Dockerfile
+        docs/src/documentation docs/src/tutorials docs/src/examples docs/src/media \
+		development/docker-notebook/doc
 
 # update docker and push
 run:
@@ -52,40 +44,49 @@ run:
 
 	docker build --no-cache -t mdabioinfo/sos-notebook docker-notebook
 	docker push mdabioinfo/sos-notebook
+# update docker on ec2
 
-[convert_documentation]
+[update-ec2]
+parameter: pem=glob.glob('*.pem')
+run:
+   ssh -i ${pem} ubuntu@ec2-34-192-184-206.compute-1.amazonaws.com 'bash -s '< update_ec2_docker.sh
+
+[convert-documentation]
 input:  '../docs/src/documentation/*.ipynb', group_by=1
 output: _input[0].replace('/src/', '/doc/').replace('.ipynb', '.html')
 
 run:
 	jupyter nbconvert --to html --output ${_output!a} ${_input!a} --template toc2
 
-[convert_tutorials]
+[convert-tutorials]
 input:  '../docs/src/tutorials/*.ipynb', group_by=1
 output: _input[0].replace('/src/', '/doc/').replace('.ipynb', '.html')
 
 run:
 	jupyter nbconvert --to html --output ${_output!a} ${_input!a} --template toc2
 
-[convert_examples]
+[convert-examples]
 input:  '../docs/src/examples/*.sos', group_by=1
 output: _input[0].replace('/src/', '/doc/').replace('.sos', '.html')
 
-run:
-	sos convert ${_input} ${_output} --raw ${_input!b}
+run: wokdir='../docs/doc/examples'
+	cp ${_input!a} .
+	sos convert ${_input!a} ${_output!b} --raw ${_input!b}
 
-[publish]
+[update-website]
 
 # convert ipynb to HTML
-sos_run('convert_documentation')
-sos_run('convert_tutorials')
-sos_run('convert_examples')
+sos_run('convert-documentation')
+sos_run('convert-tutorials')
+sos_run('convert-examples')
 
 # push changes to website
+parameter: msg = "Update website"
+
 run: workdir='..'
 	git add --all docs/doc/documentation docs/doc/tutorials docs/doc/examples docs/doc/media
-	git commit docs/doc/* --no-verify -m 'Publish website'
+	git commit docs/doc/* --no-verify -m '${msg}'
 	git push --no-verify
 
 [default]
-sos_run('patch + pip + update_docker + publish')
+sos_run('patch + pip + update-docker + update-ec2 + update-website')

@@ -13697,8 +13697,7 @@ $( document ).ready(function(){
              'toc_cell': false,          // useless here
              'toc_window_display': true, // display the toc window
              "toc_section_display": "block", // display toc contents in the window
-             // 'sideBar':true,      
-             'sideBar':true,       // sidebar or floating window
+             'sideBar':true,             // sidebar or floating window
              'navigate_menu':false       // navigation menu (only in liveNotebook -- do not change)
             }
 
@@ -13714,33 +13713,7 @@ $( document ).ready(function(){
             st.toc_index=0;
 
             // fire the main function with these parameters
-
-
             table_of_contents(cfg,st);
-            // $(".toc #toc-level0").append('<li><a href="file:///Users/jma7/Development/SOS/website/index.html">home</a></li>');
-            var path="http://bopeng.github.io/SOS"
-            // var path="file:///Users/jma7/Development/SOS/website"
-            $(".toc #toc-level0").append('<li><a href="'+path+'/index.html">Home</a></li>');
-            var documentations=[
-                    "Auxiliary_Steps",
-                    "Extending_SoS",
-                    "SoS_Kernel",
-                    "String_Interpolation",
-                    "Command_Line_Options",
-                    "External_task",
-                    "SoS_Step",
-                    "User_Interface",
-                    "Configuration_Files",
-                    "SoS_Functions",
-                    "SoS_Syntax",
-                    "Workflow_Specification" ]
-            for (var a =0;a<documentations.length;a++){
-                  var name =documentations[a];
-                  $(".toc #toc-level0").append('<li><a href="'+path+'/doc/documentation/'+name+'.html">'+name.replace("_"," ")+'</a></li>');
-            }
-
-
-
     });
 </script>
 <body>
