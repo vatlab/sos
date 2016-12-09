@@ -33,6 +33,7 @@ from io import BytesIO
 from docker import Client
 from docker.utils import kwargs_from_env
 from sos.utils import env
+from sos.sos_eval import interpolate
 
 #
 # docker support
@@ -146,7 +147,7 @@ class DockerClient:
             self.stream(line.decode())
         return 0
 
-    def run(self, image, script='', interpreter='', suffix='.sh', **kwargs):
+    def run(self, image, script='', interpreter='', args='', suffix='.sh', **kwargs):
         if self.client is None:
             raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         #
@@ -161,6 +162,16 @@ class DockerClient:
                 tempscript = 'docker_run_{}{}'.format(os.getpid(), suffix)
                 with open(os.path.join(tempdir, tempscript), 'w') as script_file:
                     script_file.write(script)
+            #
+            # if there is an interpreter and with args
+            if not args:
+                args = '${filename!q}'
+            if not interpreter:
+                interpreter = '/bin/bash'
+                # if there is a shebang line, we ...
+                if script.startswith('#!'):
+                    # make the script executable
+                    env.logger.warning('Shebang line in a docker-run script is ignored')
             #
             binds = []
             if 'volumes' in kwargs:
@@ -203,7 +214,8 @@ class DockerClient:
             cmd_opt = ''
             if script and interpreter:
                 volumes_opt += ' -v {}:{}'.format(os.path.join(tempdir, tempscript), '/var/lib/sos/{}'.format(tempscript))
-                cmd_opt = interpreter.replace('{}', '/var/lib/sos/{}'.format(tempscript))
+                cmd_opt = interpolate('{} {}'.format(interpreter, args), '${ }',
+                            {'filename': '/var/lib/sos/{}'.format(tempscript)})
             #
             working_dir_opt = '-w={}'.format(os.path.abspath(os.getcwd()))
             if 'working_dir' in kwargs:

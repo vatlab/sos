@@ -276,12 +276,6 @@ def interpolate(text, sigil, local_dict={}):
     return SoS_String(sigil, local_dict).interpolate(text)
 
 
-interpolate_single_quote = False
-
-def set_single_quote_interpolation(val):
-    global interpolate_single_quote
-    interpolate_single_quote = val
-
 default_global_sigil = '${ }'
 
 def set_default_global_sigil(val):
@@ -332,8 +326,7 @@ def ConvertString(s, sigil):
                 #     # we convert it to a raw string
                 #     tokval = u'r' + tokval
                 # we then perform interpolation on the string and put it back to expression
-                global interpolate_single_quote
-                if (interpolate_single_quote or tokval.startswith('"') or tokval.startswith('r"') or tokval.startswith('u"')) and left_sigil in tokval:
+                if (tokval.startswith('"') or tokval.startswith('r"') or tokval.startswith('u"')) and left_sigil in tokval:
                     tokval = 'interpolate(' + tokval + ", \'" + sigil + "', locals())"
             if toknum == INDENT:
                 if '\t' in tokval:
