@@ -275,11 +275,11 @@ def cmd_run(args, workflow_args):
         executor = executor_class(workflow, args=workflow_args, config_file=args.__config__)
         #
         if args.__dryrun__:
-            return executor.dryrun(args.__targets__)
+            executor.dryrun(args.__targets__)
         else:
             # if dag is None, the script will be run sequentially and cannot handle
             # make-style steps.
-            return executor.run(args.__targets__)
+            executor.run(args.__targets__)
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -1059,7 +1059,7 @@ def handle_addon(args, unknown_args):
 #
 # this is the sos-runner command
 #
-def sosrun():
+def sosrunner():
     parser = get_run_parser()
     parser.prog = 'sos-runner'
     if len(sys.argv) > 2 and '-h' in sys.argv:

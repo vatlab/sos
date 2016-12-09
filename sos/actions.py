@@ -172,7 +172,7 @@ class SoS_ExecuteScript:
                             if not self.args:
                                 self.args = '${filename!q}'
                 #
-                cmd = interpolate('{} {}'.format(self.interpreter, self.args), '${ }', {'filename': script_file})
+                cmd = interpolate('{} {}'.format(self.interpreter, self.args), '${ }', {'filename': script_file, 'script': self.script})
                 #
                 if env.run_mode == 'interactive':
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
@@ -199,9 +199,11 @@ class SoS_ExecuteScript:
                 if ret != 0:
                     with open(debug_script_file, 'w') as sfile:
                         sfile.write(self.script)
-                    cmd = self.interpreter.replace('{}', shlex.quote(debug_script_file))
-                    raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" under {} to test it.'
-                        .format(debug_script_file, cmd, os.getcwd()))
+                    cmd = interpolate('{} {}'.format(self.interpreter, self.args), '${ }', {'filename': debug_script_file, 'script': self.script})
+                    raise RuntimeError('Failed to execute script (ret={}). \nPlease use command\n    {}\nunder {} to test it.'
+                        .format(ret, debug_script_file, cmd, os.getcwd()))
+            except RuntimeError:
+                raise
             except Exception as e:
                 env.logger.error('Failed to execute script: {}'.format(e))
                 raise

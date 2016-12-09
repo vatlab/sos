@@ -145,7 +145,7 @@ setup(name = "sos",
     entry_points= '''
 [console_scripts]
 sos = sos.__main__:main
-sos-runner = sos.__main__:sosrun
+sos-runner = sos.__main__:sosrunner
 
 [sos_addons]
 patch-spyder.parser = sos.addons.patch_spyder:get_patch_spyder_parser

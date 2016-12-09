@@ -352,7 +352,6 @@ class RuntimeEnvironments(object):
                 parent = psutil.Process(pid)
                 for child in parent.children(recursive=True):
                     child.kill()
-                parent.kill()
             except Exception as e:
                 env.logger.debug('Failed to clean up running process: {}'.format(e))
             os.remove(p)
