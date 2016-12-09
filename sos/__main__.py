@@ -223,7 +223,7 @@ def get_run_parser(interactive=False, with_workflow=True):
     output.add_argument('-v', dest='verbosity', type=int, choices=range(5),
         default=1 if interactive else 2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
-            information to standard output (default to 2).'''),
+            information to standard output (default to 2).''')
     parser.set_defaults(func=cmd_run)
     return parser
 
@@ -320,9 +320,19 @@ def get_dryrun_parser():
             will be the target of execution. If specified, SoS will execute
             only part of a workflow or multiple workflows or auxiliary steps
             to generate specified targets. ''')
-    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+    output = parser.add_argument_group(title='Output options',
+        description='''Output of workflow''')
+    output.add_argument('-d', nargs='?', default='', metavar='DAG', dest='__dag__', 
+        help='''Output Direct Acyclic Graph (DAGs) in graphiviz .dot format. An
+            exntesion of ".dot" would be added automatically. Because DAG could
+            change during the execution of workflow, multiple DAGs could be
+            outputed with names $FILE_1.dot, $FILE_2.dot. If this option is
+            specified without a name, the DAG would be wrritten to the standard
+            output.''')
+    output.add_argument('-v', dest='verbosity', type=int, choices=range(5),
+        default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
-            information to standard output (default to 2).'''),
+            information to standard output (default to 2).''')
     parser.set_defaults(func=cmd_dryrun)
     return parser
 
