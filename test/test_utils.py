@@ -163,6 +163,8 @@ class TestUtils(unittest.TestCase):
                 ('{0}"test_utils.py"!a{1}', os.path.abspath('test_utils.py'), False, []),
                 ('{0}"a/b/c/test_utils.py"!b{1}', 'test_utils.py', False, []),
                 ('{0}"a/b/c/test_utils.py"!d{1}', 'a/b/c', False, []),
+                ('{0}"a/b/c/test_utils.py"!dd{1}', 'a/b', False, []),
+                ('{0}"a/b/c/test_utils.py"!ddb{1}', 'b', False, []),
                 ('{0}"a/b/c/test_utils.py"!n{1}', 'a/b/c/test_utils', False, []),
                 ('{0}"a/b/c/test_utils.py"!bn{1}', 'test_utils', False, []),
                 ('{0}"~/test_utils.py"!a{1}', os.path.expanduser('~/test_utils.py'), False, []),
