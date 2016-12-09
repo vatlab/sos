@@ -263,7 +263,7 @@ echo 'Echo
         FileTarget('a.txt').remove('both')
         script = SoS_Script(r'''
 [0]
-sh: args='-n'
+sh: args='-n ${filename!q}'
     touch a.txt
 ''')
         wf = script.workflow()
