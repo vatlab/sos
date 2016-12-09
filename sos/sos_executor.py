@@ -110,9 +110,9 @@ class Base_Executor:
             dag_name = sys.stdout
         else:
             if self.dag_count == 1:
-                dag_name = self.output_dag + '.dot'
+                dag_name = self.output_dag if self.output_dag.endswith('.dot') else self.output_dag + '.dot'
             else:
-                dag_name = '{}_{}.dot'.format(self.output_dag, self.dag_count)
+                dag_name = '{}_{}.dot'.format(self.output_dag[:-4] if self.output_dag.endswith('.dot') else self.output_dag, self.dag_count)
         #
         dag.write_dot(dag_name)
 

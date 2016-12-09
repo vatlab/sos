@@ -232,7 +232,6 @@ def cmd_run(args, workflow_args):
     from .utils import env, get_traceback
     from .sos_script import SoS_Script
     
-    env.logger.error('{}'.format(args.__dag__))
     # '' means no -d
     if args.__dag__ is None:
         args.__dag__ = '-'

@@ -262,7 +262,8 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
         else:
             script = SoS_Script(filename=script, global_sigil=get_default_global_sigil())
         workflow = script.workflow(args.workflow)
-        executor = Interactive_Executor(workflow, args=workflow_args, config_file=args.__config__)
+        executor = Interactive_Executor(workflow, args=workflow_args, config_file=args.__config__,
+            output_dag=args.__dag__)
 
         if args.__dryrun__:
             return executor.dryrun(args.__targets__)
