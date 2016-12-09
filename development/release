@@ -88,5 +88,19 @@ run: workdir='..'
 	git commit docs/doc/* --no-verify -m '${msg}'
 	git push --no-verify
 
+[check-link]
+input: '../docs/doc/*/*.html', group_by=1
+
+# https://www.npmjs.com/package/broken-link-checker
+# use command
+#
+#     npm install broken-link-checker -g
+#
+# to install
+depends: executable('blc')
+run:
+	blc http://bopeng.github.io/SOS/doc/${_input!db}/${_input!b}
+
+
 [default]
 sos_run('patch + pip + update-docker + update-ec2 + update-website')
