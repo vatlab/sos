@@ -638,17 +638,19 @@ def transcribe_script(script_file):
 # Converter to HTML
 #
 #
-def parse_html_args(style_args):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--raw')
-    parser.add_argument('--style', choices=list(get_all_styles()), default='default')
-    parser.add_argument('--linenos', action='store_true')
-    try:
-        args = parser.parse_args(style_args)
-    except Exception as e:
-        raise RuntimeError('Unrecognized style argument {}: {}'
-            .format(' '.join(style_args), e))
-    return vars(args)
+def get_script_to_html_parser():
+    parser = argparse.ArgumentParser('sos_html', 
+        description='''Convert sos file to html format with syntax highlighting,
+        and save the output either to a HTML file or view it in a broaser.''',
+        add_help=False)
+    parser.add_argument('--raw', help='''URL to the raw sos file, which will be linked
+        to filenames in the HTML output''')
+    parser.add_argument('--style', choices=list(get_all_styles()), 
+        help='''Pygments style for the HTML output.''',
+        default='default')
+    parser.add_argument('--linenos', action='store_true',
+        help='''Display lineno to the left of the source code''')
+    return parser
 
 def script_to_html(script_file, html_file, style_args):
     '''
@@ -665,7 +667,8 @@ def script_to_html(script_file, html_file, style_args):
     if not html_file:
         html_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name
     #
-    sargs = parse_html_args(style_args)
+    parser = vars(get_script_to_html_parser())
+    sargs = parser.parse_args(style_args)
     formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
         **{x:y for x,y in sargs.items() if x != 'raw'})
     with open(html_file, 'w') as html:
@@ -766,7 +769,14 @@ def markdown_content(content_type, content, fh):
             content_type == ''
         fh.write('```{}\n{}```\n'.format(content_type, ''.join(content)))
 
-def script_to_markdown(script_file, markdown_file, *args):
+def get_script_to_markdown_parser():
+    parser = argparse.ArgumentParser('sos_md',
+        description='''Convert SOS scriot to a markdown format with scripts 
+            quoted in markdown syntax.''',
+        add_help=False)
+    return parser
+
+def script_to_markdown(script_file, markdown_file, style_args):
     '''
     Convert SOS scriot to a markdown file with syntax highlighting.
     '''
@@ -857,16 +867,16 @@ def write_content(content_type, content, formatter, fh=sys.stdout):
                 lexer = TextLexer()
         fh.write(highlight((''.join(content)), lexer, formatter))
 
-def parse_term_args(style_args):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--bg', choices=['light', 'dark'], default='light')
-    parser.add_argument('--linenos', action='store_true')
-    try:
-        args = parser.parse_args(style_args)
-    except Exception as e:
-        raise RuntimeError('Unrecognized style argument {}: {}'
-            .format(' '.join(style_args), e))
-    return vars(args)
+def get_script_to_term_parser():
+    parser = argparse.ArgumentParser('sos_term', 
+        description='Write script to terminal with syntax highlighting.',
+        add_help=False)
+    parser.add_argument('--bg', choices=['light', 'dark'],
+        help='Color theme of the output',
+        default='light')
+    parser.add_argument('--linenos', action='store_true',
+        help='Display lineno to the left of the script')
+    return parser
 
 def script_to_term(script_file, output_file, style_args):
     '''
@@ -876,7 +886,7 @@ def script_to_term(script_file, output_file, style_args):
     '''
     transcript_file = transcribe_script(script_file)
 
-    sargs = parse_term_args(style_args)
+    sargs = vars(get_script_to_term_parser.parse_args(style_args))
     env.logger.trace('Using style argument {}'.format(sargs))
     formatter = TerminalFormatter(**sargs)
     # remove background definition so that we can use our own

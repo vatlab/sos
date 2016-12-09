@@ -23,6 +23,7 @@
 import os
 import sys
 import argparse
+import pkg_resources
 
 script_help = '''A SoS script that defines one or more workflows. The
     script can be a filename or a URL from which the content of a SoS will
@@ -84,11 +85,12 @@ def get_convert_parser():
     return parser
 
 def get_converter(from_format, to_format):
-    import pkg_resources
     for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
         try:
             name = entrypoint.name
-            f_format, t_format = name.split('_')
+            if not name.endswith('.func'):
+                continue
+            f_format, t_format = name.rsplit('.', 1)[0].split('_')
             if f_format == from_format and t_format == to_format:
                 return entrypoint.load()
         except Exception as e:
@@ -96,21 +98,23 @@ def get_converter(from_format, to_format):
     raise RuntimeError('No converter from {} to {} is located'.format(from_format, to_format))
 
 def list_converter():
-    import pkg_resources
-    import textwrap
     for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
         try:
             name = entrypoint.name
-            f_format, t_format = name.split('_')
-            func = entrypoint.load()
-            print('{} -> {}\n{}\n'.format(f_format, t_format,
-                textwrap.fill(func.__doc__.strip(), initial_indent=' '*4, subsequent_indent=' '*4)))
+            if not name.endswith('.parser'):
+                continue
+            f_format, t_format = name.rsplit('.',1)[0].split('_')
+            parser = entrypoint.load()()
+            print('===================================')
+            print('====== {:>8} --> {:<8} ======'.format(f_format, t_format))
+            print('===================================')
+            parser.print_help()
+            print('\n')
         except Exception as e:
             print('Failed to load converter {}: {}'.format(entrypoint.name, e))
 
 def cmd_convert(args, converter_args):
     from .utils import env, get_traceback
-
     if args.list:
         list_converter()
         sys.exit(0)
@@ -203,7 +207,6 @@ def cmd_run(args, workflow_args):
     env.verbosity = args.verbosity
 
     if args.__queue__:
-        import pkg_resources
         # import all executors
         executor_class = None
         for entrypoint in pkg_resources.iter_entry_points(group='sos_executors'):
@@ -1028,7 +1031,6 @@ def cmd_unpack(args, unknown_args):
 # Handling addon commands
 #
 def handle_addon(args, unknown_args):
-    import pkg_resources
     for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
         name = entrypoint.name.strip()
         if name.endswith('.func') and name.rsplit('.', 1)[0] == args.addon_name:
@@ -1063,9 +1065,9 @@ def add_sub_parser(subparsers, parser, name=None):
         help=parser.description, parents=[parser],
         add_help=False)
 
+
 def main():
     from ._version import SOS_FULL_VERSION
-    import pkg_resources
     master_parser = argparse.ArgumentParser(description='''A workflow system
             for the execution of commands and scripts in different languages.''',
         prog='sos',

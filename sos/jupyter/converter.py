@@ -38,13 +38,25 @@ from sos.sos_syntax import SOS_SECTION_HEADER, SOS_CELL_LINE
 #
 
 def get_notebook_to_script_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--reorder', action='store_true')
-    parser.add_argument('--reset-index', action='store_true')
-    parser.add_argument('--add-header', action='store_true')
-    parser.add_argument('--no-index', action='store_true')
-    parser.add_argument('--remove-magic', action='store_true')
-    parser.add_argument('--md-to-report', action='store_true')
+    parser = argparse.ArgumentParser('ipynb_sos',
+        description='''Export Jupyter notebook with a SoS kernel to a 
+        .sos file. The cells are presented in the .sos file as
+        %cell structure lines, which will be ignored if executed
+        in batch mode ''',
+        add_help=False)
+    parser.add_argument('--reorder', action='store_true',
+        help='''Reorder cells according to execution count''')
+    parser.add_argument('--reset-index', action='store_true',
+        help='''Reset index to 1, 2, 3, ... regardless of existing
+            execution counts''')
+    parser.add_argument('--add-header', action='store_true',
+        help='''Add default section headers to cells without
+            headers, which would help running the converted
+            script in batch mode''')
+    parser.add_argument('--no-index', action='store_true',
+        help='''Do not output any index''')
+    parser.add_argument('--remove-magic', action='store_true',
+        help='''Remove magic lines from the output''')
     return parser
 
 
@@ -52,14 +64,13 @@ def get_notebook_to_script_parser():
 # weird problem with unittesting not able to resolve __main__
 class SoS_Exporter(Exporter):
     def __init__(self, config=None, reorder=False, reset_index=False, add_header=False,
-            no_index=False, remove_magic=False, md_to_report=False,
+            no_index=False, remove_magic=False, 
             **kwargs):
         self.reorder = reorder
         self.reset_index = reset_index
         self.add_header = add_header
         self.no_index = no_index
         self.remove_magic = remove_magic
-        self.md_to_report = md_to_report
         self.output_extension = '.sos'
         self.output_mimetype = 'text/x-sos'
         Exporter.__init__(self, config, **kwargs)
@@ -72,7 +83,7 @@ class SoS_Exporter(Exporter):
             fh.write('\n%cell {} {}\n'.format(cell.cell_type,
                                               idx if self.reset_index else cell.execution_count))
         if cell.cell_type == 'code':
-            if any(cell.source.startswith(x) for x in ('%run', '%restart', '%dict', '%use', '%with', '%set', '%paste')):
+            if any(cell.source.startswith(x) for x in ('%run', '%restart', '%dict', '%get', '%use', '%with', '%set', '%paste', '%matplotlib', '%edit')):
                 if self.remove_magic:
                     cell.source = '\n'.join(cell.source.split('\n')[1:])
             if self.add_header and not any([SOS_SECTION_HEADER.match(x) for x in cell.source.split('\n')]):
@@ -121,7 +132,7 @@ def notebook_to_script(notebook_file, sos_file, convert_args=[]):
     sargs = parser.parse_args(convert_args)
     exporter = SoS_Exporter(reorder=sargs.reorder, reset_index=sargs.reset_index,
                             add_header=sargs.add_header, no_index=sargs.no_index,
-                            remove_magic=sargs.remove_magic, md_to_report=sargs.md_to_report)
+                            remove_magic=sargs.remove_magic)
     notebook = nbformat.read(notebook_file, nbformat.NO_CONVERT)
     output, resource = exporter.from_notebook_node(notebook, {})
     if sos_file == '__STDOUT__':
@@ -135,8 +146,13 @@ def notebook_to_script(notebook_file, sos_file, convert_args=[]):
 # Converter to Notebook
 #
 def get_script_to_notebook_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--execute', action='store_true')
+    parser = argparse.ArgumentParser('sos_ipynb',
+        description='''Convert a sos script to Jupyter notebook (.ipynb)
+            so that it can be opened by Jupyter notebook.''',
+        add_help=False)
+    parser.add_argument('-e', '--execute', action='store_true',
+        help='''Execute the notebook as if running "Cell -> Run all" from the
+            Jupyter notebook interface''')
     return parser
 
 def add_cell(cells, content, cell_type, cell_count):
