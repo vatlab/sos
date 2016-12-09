@@ -38,12 +38,11 @@ from sos.sos_syntax import SOS_SECTION_HEADER, SOS_CELL_LINE
 #
 
 def get_notebook_to_script_parser():
-    parser = argparse.ArgumentParser('ipynb_sos',
+    parser = argparse.ArgumentParser('sos convert FILE.ipynb FILE.sos (or --to sos)',
         description='''Export Jupyter notebook with a SoS kernel to a 
         .sos file. The cells are presented in the .sos file as
         %cell structure lines, which will be ignored if executed
-        in batch mode ''',
-        add_help=False)
+        in batch mode ''')
     parser.add_argument('--reorder', action='store_true',
         help='''Reorder cells according to execution count''')
     parser.add_argument('--reset-index', action='store_true',
@@ -120,7 +119,7 @@ class SoS_Exporter(Exporter):
         return content, resources
 
 
-def notebook_to_script(notebook_file, sos_file, convert_args=[]):
+def notebook_to_script(notebook_file, sos_file, sargs=None, unknown_args=[]):
     '''
     Convert a ipython notebook to sos format. This converter accepts options
     --reorder to reorder cells according to executing order, --reset-index
@@ -128,11 +127,14 @@ def notebook_to_script(notebook_file, sos_file, convert_args=[]):
     to ignore indexes, --remove-magic to remove ipynb-only magics, and 
     --md-to-report to convert markdown cells to sos report actions.
     '''
-    parser = get_notebook_to_script_parser()
-    sargs = parser.parse_args(convert_args)
-    exporter = SoS_Exporter(reorder=sargs.reorder, reset_index=sargs.reset_index,
+    if unknown_args:
+        raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
+    if sargs:
+        exporter = SoS_Exporter(reorder=sargs.reorder, reset_index=sargs.reset_index,
                             add_header=sargs.add_header, no_index=sargs.no_index,
                             remove_magic=sargs.remove_magic)
+    else:
+        exporter = SoS_Exporter()
     notebook = nbformat.read(notebook_file, nbformat.NO_CONVERT)
     output, resource = exporter.from_notebook_node(notebook, {})
     if sos_file == '__STDOUT__':
@@ -146,10 +148,9 @@ def notebook_to_script(notebook_file, sos_file, convert_args=[]):
 # Converter to Notebook
 #
 def get_script_to_notebook_parser():
-    parser = argparse.ArgumentParser('sos_ipynb',
+    parser = argparse.ArgumentParser('sos convert FILE.sos FILE._ipynb (or --to ipynb)',
         description='''Convert a sos script to Jupyter notebook (.ipynb)
-            so that it can be opened by Jupyter notebook.''',
-        add_help=False)
+            so that it can be opened by Jupyter notebook.''')
     parser.add_argument('-e', '--execute', action='store_true',
         help='''Execute the notebook as if running "Cell -> Run all" from the
             Jupyter notebook interface''')
@@ -175,14 +176,13 @@ def add_cell(cells, content, cell_type, cell_count):
                  execution_count=cell_count)
         )
 
-def script_to_notebook(script_file, notebook_file, convert_args=[]):
+def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
     '''
     Convert a sos script to iPython notebook (.ipynb) so that it can be opened
     by Jupyter notebook.
     '''
-    parser = get_script_to_notebook_parser()
-    args = parser.parse_args(convert_args)
-
+    if unknown_args:
+        raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
     cells = []
     cell_count = 1
     cell_type = 'code'
@@ -238,7 +238,7 @@ def script_to_notebook(script_file, notebook_file, convert_args=[]):
         }
     )
     err = None
-    if args.execute:
+    if args and args.execute:
         from nbconvert.preprocessors import ExecutePreprocessor, CellExecutionError
         ep = ExecutePreprocessor(timeout=600, kernel_name='sos')
         try:
