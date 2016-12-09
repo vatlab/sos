@@ -77,7 +77,8 @@ def get_convert_parser():
             extension of `to_file` filename, but is needed if `to_file` is
             unspecified.''')
     parser.add_argument('-l', '--list', action='store_true',
-        help='''List available converters and their options.''')
+        help='''List all available converters or converters matching input parameters 
+            and their options.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).'''),
@@ -97,13 +98,17 @@ def get_converter(from_format, to_format):
             raise RuntimeError('Failed to load converter {}: {}'.format(entrypoint.name, e))
     raise RuntimeError('No converter from {} to {} is located'.format(from_format, to_format))
 
-def list_converter():
+def list_converter(from_format=None, to_format=None):
     for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
         try:
             name = entrypoint.name
             if not name.endswith('.parser'):
                 continue
             f_format, t_format = name.rsplit('.',1)[0].split('_')
+            if from_format is not None and from_format != f_format:
+                continue
+            if to_format is not None and to_format != t_format:
+                continue
             parser = entrypoint.load()()
             print('===================================')
             print('====== {:>8} --> {:<8} ======'.format(f_format, t_format))
@@ -115,9 +120,6 @@ def list_converter():
 
 def cmd_convert(args, converter_args):
     from .utils import env, get_traceback
-    if args.list:
-        list_converter()
-        sys.exit(0)
     try:
         from_format = os.path.splitext(args.from_file)[-1][1:]
         if args.__to_format__:
@@ -127,9 +129,17 @@ def cmd_convert(args, converter_args):
         else:
             raise ValueError('Please specify either desination file or format')
         #
-        converter = get_converter(from_format, to_format)
-        converter(args.from_file, args.to_file, converter_args)
+        if args.list:
+            list_converter(from_format, to_format)
+            sys.exit(0)
+        else:
+            converter = get_converter(from_format, to_format)
+            converter(args.from_file, args.to_file, converter_args)
     except Exception as e:
+        # if no other parameter, with option list all
+        if args.list:
+            list_converter()
+            sys.exit(0)
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error(e)
