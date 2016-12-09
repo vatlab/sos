@@ -667,8 +667,8 @@ def script_to_html(script_file, html_file, style_args):
     if not html_file:
         html_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name
     #
-    parser = vars(get_script_to_html_parser())
-    sargs = parser.parse_args(style_args)
+    parser = get_script_to_html_parser()
+    sargs = vars(parser.parse_args(style_args))
     formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
         **{x:y for x,y in sargs.items() if x != 'raw'})
     with open(html_file, 'w') as html:
