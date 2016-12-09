@@ -19,7 +19,7 @@ of multiple Jupyter kernels (e.g. python, and
 example notebooks and create new ones from [our public Jupyter
 server](http://ec2-34-192-184-206.compute-1.amazonaws.com:8000/).
 
-As a **workflow engine**, SoS helps you oraganize your commands and scripts in different languages into readable workflows that can be easily understood and modified by others. The workflows can be specified in both forward (step by step), makefile (dependency rules) and even a mixture of both styles. Beacuse of a great emphasis on readability, SoS is an easy-to-use alternative to specialized workflow systems such as [CWL](http://common-workflow-language.github.io/draft-3/) which makes it an ideal tool for the creation and maintainance of workflows that need to be frequently updated and shared with others.
+As a **workflow engine**, SoS helps you oraganize your commands and scripts in different languages into readable workflows that can be easily understood and modified by others. The workflows can be specified in both forward (step by step), makefile (dependency rules) and even a mixture of both styles. Beacuse of a great emphasis on readability, SoS is an easy-to-use alternative to specialized workflow systems such as [CWL](http://www.commonwl.org/) which makes it an ideal tool for the creation and maintainance of workflows that need to be frequently updated and shared with others.
 
 ## Installation
 
