@@ -51,19 +51,23 @@ parameter: pem=glob.glob('*.pem')
 run:
    ssh -i ${pem} ubuntu@ec2-34-192-184-206.compute-1.amazonaws.com 'bash -s '< update_ec2_docker.sh
 
+[getFileNames]
+run:
+	python ../docs/js/findnames.py
+
 [convert-documentation]
 input:  '../docs/src/documentation/*.ipynb', group_by=1
 output: _input[0].replace('/src/', '/doc/').replace('.ipynb', '.html')
 
 run:
-	jupyter nbconvert --to html --output ${_output!a} ${_input!a} --template toc2
+	jupyter nbconvert --to html --output ${_output!a} ${_input!a} --template ../docs/src/documentation/toc_doc
 
 [convert-tutorials]
 input:  '../docs/src/tutorials/*.ipynb', group_by=1
 output: _input[0].replace('/src/', '/doc/').replace('.ipynb', '.html')
 
 run:
-	jupyter nbconvert --to html --output ${_output!a} ${_input!a} --template toc2
+	jupyter nbconvert --to html --output ${_output!a} ${_input!a} --template ../docs/src/tutorials/toc_tut
 
 [convert-examples]
 input:  '../docs/src/examples/*.sos', group_by=1
@@ -76,6 +80,7 @@ run: wokdir='../docs/doc/examples'
 [update-website]
 
 # convert ipynb to HTML
+sos_run('getFileNames')
 sos_run('convert-documentation')
 sos_run('convert-tutorials')
 sos_run('convert-examples')
