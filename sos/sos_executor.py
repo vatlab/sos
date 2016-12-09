@@ -76,12 +76,13 @@ def __null_func__(*args, **kwargs):
 class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
-    def __init__(self, workflow=None, args=[], config_file=None, nested=False):
+    def __init__(self, workflow=None, args=[], config_file=None, nested=False, output_dag=None):
         env.__task_engine__ = None
         self.workflow = workflow
         self.args = args
         self.nested = nested
         self.config_file = config_file
+        self.output_dag = output_dag
         # interactive mode does not pass workflow
         if self.workflow and not nested:
             self.md5 = self.create_signature()
@@ -96,7 +97,24 @@ class Base_Executor:
                 sig.write('# runtime signatures\n')
         else:
             self.md5 = None
+
+    def save_dag(self, dag):
+        if self.output_dag is None:
+            return
+        if not hasattr(self, 'dag_count'):
+            self.dag_count = 0
+        self.dag_count += 1
         #
+        # output file name
+        if self.output_dag == '-':
+            dag_name = sys.stdout
+        else:
+            if self.dag_count == 1:
+                dag_name = self.output_dag + '.dot'
+            else:
+                dag_name = '{}_{}.dot'.format(self.output_dag, self.dag_count)
+        #
+        dag.write_dot(dag_name)
 
     def create_signature(self):
         with StringIO() as sig:
@@ -357,6 +375,7 @@ class Base_Executor:
         #dag.show_nodes()
         # trim the DAG if targets are specified
         if targets:
+            self.save_dag(dag)
             dag = dag.subgraph_from(targets)
         # write DAG for debugging purposes
         #dag.write_dot(os.path.join(env.exec_dir, '.sos', '{}.dot'.format(self.workflow.name)))
@@ -365,6 +384,7 @@ class Base_Executor:
         if cycle:
             raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
 
+        self.save_dag(dag)
         return dag
 
     def save_workflow_signature(self, dag):
@@ -461,9 +481,11 @@ class Base_Executor:
                 cycle = dag.circular_dependencies()
                 if cycle:
                     raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
+                self.save_dag(dag)
             elif isinstance(res, RemovedTarget):
                 runnable._status = None
                 dag.regenerate_target(res.target)
+                self.save_dag(dag)
             elif isinstance(res, UnavailableLock):
                 runnable._status = 'pending'
                 runnable._signature = (res.output, res.sig_file)
@@ -519,8 +541,8 @@ class Base_Executor:
 class MP_Executor(Base_Executor):
     #
     # Execute a workflow sequentially in batch mode
-    def __init__(self, workflow, args=[], config_file=None, nested=False):
-        Base_Executor.__init__(self, workflow, args, config_file, nested=nested)
+    def __init__(self, workflow, args=[], config_file=None, nested=False, output_dag=None):
+        Base_Executor.__init__(self, workflow, args, config_file, nested=nested, output_dag=output_dag)
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
 
@@ -571,6 +593,7 @@ class MP_Executor(Base_Executor):
                     runnable._depends_targets.append(target)
                     dag._all_dependent_files[target].append(runnable)
                     dag.build(self.workflow.auxiliary_sections)
+                    self.save_dag(dag)
                     #
                     cycle = dag.circular_dependencies()
                     if cycle:
@@ -578,6 +601,7 @@ class MP_Executor(Base_Executor):
                 elif isinstance(res, RemovedTarget):
                     runnable._status = None
                     dag.regenerate_target(res.target)
+                    self.save_dag(dag)
                 elif isinstance(res, UnavailableLock):
                     runnable._status = 'pending'
                     runnable._signature = (res.output, res.sig_file)

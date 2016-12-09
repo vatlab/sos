@@ -54,9 +54,13 @@ class TestDAG(unittest.TestCase):
         self.temp_files.extend(files)
 
     def assertDAG(self, dag, content):
-        out = StringIO()
-        dag.write_dot(out)
-        dot = out.getvalue()
+        if isinstance(dag, str):
+            with open(dag) as d:
+                dot = d.read()
+        else:
+            out = StringIO()
+            dag.write_dot(out)
+            dot = out.getvalue()
         self.assertEqual(sorted([x.strip() for x in dot.split('\n') if x.strip()]),
             sorted([x.strip() for x in content.split('\n') if x.strip()]))
 
@@ -958,6 +962,126 @@ sh:
         Base_Executor(script.workflow()).run(targets=['a.vcf'])
         for file in ('a.vcf', 'a.bam', 'a.bam.bai'):
             FileTarget(file).remove('both')
+
+    def testOutputOfDAG(self):
+        '''Test output of dag'''
+        #
+        for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
+            FileTarget(f).remove('both')
+        #
+        #  A1 <- B1 <- B2 <- B3
+        #   |
+        #   |
+        #  \/
+        #  A2 <- B2 <- C1 <- C2 <- C4
+        #                    C3
+        #
+        script = SoS_Script('''
+[A_1]
+input: 'B1.txt'
+output: 'A1.txt'
+sh:
+    touch A1.txt
+
+[A_2]
+depends:  'B2.txt'
+sh:
+    touch A2.txt
+
+[B1: provides='B1.txt']
+depends: 'B2.txt'
+sh:
+    touch B1.txt
+
+[B2: provides='B2.txt']
+depends: 'B3.txt', 'C1.txt'
+sh:
+    touch B2.txt
+
+[B3: provides='B3.txt']
+sh:
+    touch B3.txt
+
+[C1: provides='C1.txt']
+depends: 'C2.txt', 'C3.txt'
+sh:
+    touch C1.txt
+
+[C2: provides='C2.txt']
+depends: 'C4.txt'
+sh:
+    touch C2.txt
+
+[C3: provides='C3.txt']
+depends: 'C4.txt'
+sh:
+    touch C3.txt
+
+[C4: provides='C4.txt']
+sh:
+    touch C4.txt
+
+        ''')
+        # the workflow should call step K for step C_2, but not C_3
+        wf = script.workflow()
+        #
+        # test 1, we only need to generate target 'B1.txt'
+        Base_Executor(wf, output_dag='test').initialize_dag(targets=['B1.txt'])
+        # note that A2 is no longer mentioned
+        self.assertDAG('test_2.dot',
+'''
+strict digraph "" {
+"B3 ['B3.txt']";
+"C4 ['C4.txt']";
+"C2 ['C2.txt']";
+"C1 ['C1.txt']";
+"B1 ['B1.txt']";
+"B2 ['B2.txt']";
+"C3 ['C3.txt']";
+"B3 ['B3.txt']" -> "B2 ['B2.txt']";
+"C4 ['C4.txt']" -> "C3 ['C3.txt']";
+"C4 ['C4.txt']" -> "C2 ['C2.txt']";
+"C2 ['C2.txt']" -> "C1 ['C1.txt']";
+"C1 ['C1.txt']" -> "B2 ['B2.txt']";
+"B2 ['B2.txt']" -> "B1 ['B1.txt']";
+"C3 ['C3.txt']" -> "C1 ['C1.txt']";
+}
+''')
+        # test 2, we would like to generate two files
+        Base_Executor(wf, output_dag='test').initialize_dag(targets=['B2.txt', 'C2.txt'])
+        # note that A2 is no longer mentioned
+        self.assertDAG('test_2.dot',
+'''
+strict digraph "" {
+"C4 ['C4.txt']";
+"B2 ['B2.txt']";
+"C3 ['C3.txt']";
+"B3 ['B3.txt']";
+"C2 ['C2.txt']";
+"C1 ['C1.txt']";
+"C4 ['C4.txt']" -> "C2 ['C2.txt']";
+"C4 ['C4.txt']" -> "C3 ['C3.txt']";
+"C3 ['C3.txt']" -> "C1 ['C1.txt']";
+"B3 ['B3.txt']" -> "B2 ['B2.txt']";
+"C2 ['C2.txt']" -> "C1 ['C1.txt']";
+"C1 ['C1.txt']" -> "B2 ['B2.txt']";
+}
+''')
+        # test 3, generate two separate trees
+        #
+        Base_Executor(wf, output_dag='test').initialize_dag(targets=['B3.txt', 'C2.txt'])
+        # note that A2 is no longer mentioned
+        self.assertDAG('test_2.dot',
+'''
+strict digraph "" {
+"B3 ['B3.txt']";
+"C2 ['C2.txt']";
+"C4 ['C4.txt']";
+"C4 ['C4.txt']" -> "C2 ['C2.txt']";
+}
+''')
+        for f in ['C2.txt', 'B3.txt', 'C4.txt', 'test.dot', 'test_2.dot']:
+            FileTarget(f).remove('both')
 
 if __name__ == '__main__':
     unittest.main()

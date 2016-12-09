@@ -35,10 +35,10 @@ from .sos_step import Interactive_Step_Executor
 
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
-    def __init__(self, workflow=None, args=[], config_file=None, **kwargs):
+    def __init__(self, workflow=None, args=[], config_file=None, output_dag=None, **kwargs):
         # we actually do not have our own workflow, everything is passed from ipython
         # by nested = True we actually mean no new dictionary
-        Base_Executor.__init__(self, workflow=workflow, args=args, nested=True)
+        Base_Executor.__init__(self, workflow=workflow, args=args, nested=True, output_dag=output_dag)
         self.__config__ = config_file
         env.__task_engine__ = 'interactive'
 

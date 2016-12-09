@@ -211,7 +211,17 @@ def get_run_parser(interactive=False, with_workflow=True):
         help='''Execute the workflow in a special run mode that re-use existing
             output files and recontruct runtime signatures if output files
             exist.''')
-    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=1 if interactive else 2,
+    output = parser.add_argument_group(title='Output options',
+        description='''Output of workflow''')
+    output.add_argument('-d', nargs='?', default='', metavar='DAG', dest='__dag__', 
+        help='''Output Direct Acyclic Graph (DAGs) in graphiviz .dot format. An
+            exntesion of ".dot" would be added automatically. Because DAG could
+            change during the execution of workflow, multiple DAGs could be
+            outputed with names $FILE_1.dot, $FILE_2.dot. If this option is
+            specified without a name, the DAG would be wrritten to the standard
+            output.''')
+    output.add_argument('-v', dest='verbosity', type=int, choices=range(5),
+        default=1 if interactive else 2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).'''),
     parser.set_defaults(func=cmd_run)
@@ -222,6 +232,12 @@ def cmd_run(args, workflow_args):
     from .utils import env, get_traceback
     from .sos_script import SoS_Script
     
+    env.logger.error('{}'.format(args.__dag__))
+    # '' means no -d
+    if args.__dag__ is None:
+        args.__dag__ = '-'
+    elif args.__dag__ == '':
+        args.__dag__ = None
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
 
@@ -272,7 +288,7 @@ def cmd_run(args, workflow_args):
             raise ValueError("Unrecognized command line option {}".format(' '.join(workflow_args)))
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow, use_default=not args.__targets__)
-        executor = executor_class(workflow, args=workflow_args, config_file=args.__config__)
+        executor = executor_class(workflow, args=workflow_args, config_file=args.__config__, output_dag=args.__dag__)
         #
         if args.__dryrun__:
             executor.dryrun(args.__targets__)
@@ -733,7 +749,7 @@ def get_pack_parser():
         help='''A short message to be included into the archive. Because the
         message would be lost during unpacking, it is highly recommended that
         you create a README file and include it with option --include.''')
-    parser.add_argument('-d', '--dryrun', action='store_true',
+    parser.add_argument('-n', '--dryrun', action='store_true',
         help='''List files to be included and total file size without actually
         archiving them''')
     parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
