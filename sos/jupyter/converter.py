@@ -90,7 +90,7 @@ class SoS_Exporter(Exporter):
                 cell.source = '[{}]\n'.format(idx if self.reset_index else cell.execution_count) + cell.source
             fh.write(cell.source.strip() + '\n')
         elif cell.cell_type == "markdown":
-            fh.write('\n'.join('#! ' + x for x in cell.source.split('\n') if x.strip()) + '\n')
+            fh.write('\n'.join('#! ' + x for x in cell.source.split('\n')) + '\n')
         return idx
 
     def from_notebook_node(self, nb, resources, **kwargs):
@@ -166,7 +166,7 @@ def add_cell(cells, content, cell_type, cell_count):
         cell_type = 'code'
     #
     if cell_type == 'markdown':
-        cells.append(new_markdown_cell(source=''.join([x[3:] for x in content])))
+        cells.append(new_markdown_cell(source=''.join([x[3:] for x in content]).strip()))
     else:
         cells.append(
              new_code_cell(
