@@ -77,6 +77,20 @@ class SoS_String:
         '${': re.compile(r'(?<!\\)\$\{')
         }
 
+    CONVERTERS = {
+        'e': os.path.expanduser,
+        'a': lambda x: os.path.abspath(os.path.expanduser(x)),
+        'd': os.path.dirname,
+        'b': os.path.basename,
+        'n': lambda x: os.path.splitext(x)[0],
+        'q': quote,
+        'r': repr,
+        's': str,
+        # these are handled elsewhere
+        ',': lambda x: x,
+        '!': lambda x: x,
+        }
+
     def __init__(self, sigil, local_dict={}, trace_vars=False):
         # do not check sigil here because the function will be called quite frequently
         # the sigil will be checked when it is entered in SoS script.
@@ -236,24 +250,8 @@ class SoS_String:
         '''
         # handling special !q conversion flag
         if conversion:
-            if isinstance(obj, str):
-                if 'e' in conversion:
-                    obj = os.path.expanduser(obj)
-                if 'a' in conversion:
-                    obj = os.path.abspath(os.path.expanduser(obj))
-                if 'd' in conversion:
-                    obj = os.path.dirname(obj)
-                if 'b' in conversion:
-                    obj = os.path.basename(obj)
-                if 'n' in conversion:
-                    obj = os.path.splitext(obj)[0]
-                if 'q' in conversion:
-                    # special SoS conversion for shell quotation.
-                    obj = quote(obj)
-            if 'r' in conversion:
-                obj = repr(obj)
-            if 's' in conversion:
-                obj = str(obj)
+            for c in conversion:
+                obj = self.CONVERTERS[c](obj)
         return ('{' + (fmt if fmt else '') + '}').format(obj)
 
     def _repr(self, obj, fmt=None, conversion=None):
