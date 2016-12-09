@@ -33,11 +33,10 @@ USER    root
 RUN     conda install -y feather-format -c conda-forge
 RUN     pip install sos
 
+COPY    doc /home/$NB_USER/work/doc
+RUN     chown -R $NB_USER /home/jovyan/work
+
 USER    $NB_USER
 EXPOSE	8888
 
 
-COPY ./doc/tutorials /home/jovyan/work/doc/tutorials
-COPY ./doc/examples  /home/jovyan/work/doc/examples
-COPY ./doc/documentation /home/jovyan/work/doc/documentation
-COPY ./doc/media /home/jovyan/work/doc/media
