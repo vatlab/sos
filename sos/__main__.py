@@ -86,17 +86,25 @@ def get_convert_parser():
     return parser
 
 def get_converter(from_format, to_format):
+    parser = func = None
     for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
         try:
             name = entrypoint.name
-            if not name.endswith('.func'):
-                continue
             f_format, t_format = name.rsplit('.', 1)[0].split('_')
             if f_format == from_format and t_format == to_format:
-                return entrypoint.load()
+                if name.endswith('.func'):
+                    func = entrypoint.load()
+                elif name.endswith('.parser'):
+                    parser = entrypoint.load()
         except Exception as e:
             raise RuntimeError('Failed to load converter {}: {}'.format(entrypoint.name, e))
-    raise RuntimeError('No converter from {} to {} is located'.format(from_format, to_format))
+    if parser is None and func is None:
+        raise RuntimeError('No converter from {} to {} is located'.format(from_format, to_format))
+    elif parser is None:
+        raise RuntimeError('No parser for converter from {} to {} is located'.format(from_format, to_format))
+    elif func is None:
+        raise RuntimeError('No converter function from {} to {} is located'.format(from_format, to_format))
+    return parser(), func
 
 def list_converter(from_format=None, to_format=None):
     for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
@@ -133,8 +141,9 @@ def cmd_convert(args, converter_args):
             list_converter(from_format, to_format)
             sys.exit(0)
         else:
-            converter = get_converter(from_format, to_format)
-            converter(args.from_file, args.to_file, converter_args)
+            parser, converter = get_converter(from_format, to_format)
+            converter_args, unknown_args = parser.parse_known_args(converter_args)
+            converter(args.from_file, args.to_file, converter_args, unknown_args)
     except Exception as e:
         # if no other parameter, with option list all
         if args.list:
