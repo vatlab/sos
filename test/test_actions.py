@@ -214,6 +214,16 @@ echo 'Echo
         wf = script.workflow()
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
 
+    def testRunWithShebang(self):
+        script = SoS_Script(r'''
+[0]
+run:
+    #!/usr/bin/env python
+    print('Echo')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
     def testBash(self):
         '''Test action bash'''
         script = SoS_Script(r'''

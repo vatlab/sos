@@ -43,7 +43,7 @@ if sys.platform != 'win32':
 from collections.abc import Sequence
 import multiprocessing as mp
 from .utils import env, ProgressBar, natural_keys, transcribe, AbortExecution, short_repr, get_traceback
-from .sos_eval import Undetermined
+from .sos_eval import Undetermined, interpolate
 from .target import FileTarget, fileMD5
 from .monitor import ProcessMonitor, summarizeExecution
 
@@ -130,14 +130,11 @@ class SoS_ExecuteScript:
     def __init__(self, script, interpreter, suffix, args=''):
         self.script = script
         self.interpreter = interpreter
-        if args:
-            self.interpreter += ' ' + args
+        self.args = args
         self.suffix = suffix
 
     def run(self, **kwargs):
         transcribe(self.script, action=self.interpreter)
-        if '{}' not in self.interpreter:
-            self.interpreter += ' {}'
         debug_script_file = os.path.join(env.exec_dir, '.sos', '{}_{}{}'.format(env.sos_dict['step_name'],
             env.sos_dict['_index'], self.suffix))
         env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
@@ -146,14 +143,36 @@ class SoS_ExecuteScript:
         if 'docker_image' in kwargs:
             from .docker.client import DockerClient
             docker = DockerClient()
-            docker.run(kwargs['docker_image'], self.script, self.interpreter, self.suffix,
+            docker.run(kwargs['docker_image'], self.script, self.interpreter + ' ' + self.args, self.suffix,
                 **kwargs)
         else:
             try:
                 script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=self.suffix, delete=False).name
                 with open(script_file, 'w') as sfile:
                     sfile.write(self.script)
-                cmd = self.interpreter.replace('{}', shlex.quote(script_file))
+                if self.interpreter:
+                    # if there is an interpreter and with args
+                    if not self.args:
+                        self.args = '${filename!q}'
+                else:
+                    if sys.platform == 'win32':
+                        # in the case there is no interpreter, we put the script
+                        # at first (this is the case for windows)
+                        #
+                        # and we donot add default args.
+                        self.interpreter = '${filename!q}'
+                    else:
+                        # if there is a shebang line, we ...
+                        if self.script.startswith('#!'):
+                            # make the script executable
+                            os.chmod(script_file, 0o775)
+                            self.interpreter = '${filename!q}'
+                        else:
+                            self.interpreter = '/bin/bash'
+                            if not self.args:
+                                self.args = '${filename!q}'
+                #
+                cmd = interpolate('{} {}'.format(self.interpreter, self.args), '${ }', {'filename': script_file})
                 #
                 if env.run_mode == 'interactive':
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
@@ -493,7 +512,7 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
 @SoS_Action(run_mode=['run', 'interactive'])
 def run(script, args='', **kwargs):
     '''Execute specified script using bash.'''
-    return SoS_ExecuteScript(script, '/bin/bash', '.sh', args).run(**kwargs)
+    return SoS_ExecuteScript(script, '', '', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def bash(script, args='', **kwargs):

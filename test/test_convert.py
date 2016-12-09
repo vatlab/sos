@@ -61,7 +61,7 @@ report('this is action report')
     def testScriptToHtml(self):
         '''Test sos show script --html'''
         for script_file in self.scripts:
-            script_to_html(script_file, script_file + '.html', [])
+            script_to_html(script_file, script_file + '.html')
     
     def testScriptToMarkdown(self):
         '''Test sos show script --markdown'''
