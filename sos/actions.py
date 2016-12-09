@@ -143,7 +143,7 @@ class SoS_ExecuteScript:
         if 'docker_image' in kwargs:
             from .docker.client import DockerClient
             docker = DockerClient()
-            docker.run(kwargs['docker_image'], self.script, self.interpreter + ' ' + self.args, self.suffix,
+            docker.run(kwargs['docker_image'], self.script, self.interpreter, self.args, self.suffix,
                 **kwargs)
         else:
             try:
