@@ -759,11 +759,7 @@ class Base_Step_Executor:
                 # Files will be expanded differently with different running modes
                 input_files = self.expand_input_files(stmt, *args)
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
-            except UnknownTarget:
-                raise
-            except RemovedTarget:
-                raise
-            except UnavailableLock:
+            except (UnknownTarget, RemovedTarget, UnavailableLock):
                 raise
             except Exception as e:
                 raise ValueError('Failed to process input statement {}: {}'.format(stmt, e))
