@@ -288,6 +288,7 @@ class RuntimeEnvironments(object):
     def __init__(self):
         self.reset()
 
+    _exec_dir = None
     def reset(self):
         # logger
         self._logger = None
@@ -305,7 +306,7 @@ class RuntimeEnvironments(object):
         # ignore               (ignore existing signature but still saves signature)
         # assert               (verify existing signature and fail if signature mismatch)
         # construct            (reconstruct signature from existing output files)
-        self.sig_mode = 'default'
+        self.sig_mode = None
         #
         # global dictionaries used by SoS during the
         # execution of SoS workflows
@@ -320,11 +321,6 @@ class RuntimeEnvironments(object):
         self.running_jobs = 0
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
-        if not os.path.isdir('.sos/.runtime'):
-            with fasteners.InterProcessLock('/tmp/sos_runtime_lock'):
-                # the directory might haver been created during waiting
-                if not os.path.isdir('.sos/.runtime'):
-                    os.makedirs('.sos/.runtime')
 
     def register_process(self, pid, msg=''):
         '''Register a process used by this SoS instance. It will also be
@@ -394,7 +390,31 @@ class RuntimeEnvironments(object):
             ch.setFormatter(logging.Formatter('%(asctime)s: %(levelname)s: %(message)s'))
             self._logger.addHandler(ch)
     #
-    # atribute logger
+    #
+    # attribute exec_dir
+    def _assure_runtime_dir(self, dir):
+        if not os.path.isdir(os.path.join(dir, '.sos', '.runtime')):
+            with fasteners.InterProcessLock('/tmp/sos_runtime_lock'):
+                # the directory might haver been created during waiting
+                if not os.path.isdir(os.path.join(dir, '.sos', '.runtime')):
+                    os.makedirs(os.path.join(dir, '.sos', '.runtime'))
+
+    def _set_exec_dir(self, dir):
+        if not os.path.isdir(dir):
+            raise RuntimeError('Not a valid exec dir: {}'.format(dir))
+        self._assure_runtime_dir(dir)
+        self._exec_dir = dir
+
+    def _get_exec_dir(self):
+        if self._exec_dir is None:
+            raise RuntimeError('Exec dir is not set')
+        self._assure_runtime_dir(self._exec_dir)
+        return self._exec_dir
+   
+    exec_dir = property(_get_exec_dir, _set_exec_dir)
+        
+    #
+    # attribute logger
     #
     @property
     def logger(self):
