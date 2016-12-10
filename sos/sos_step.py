@@ -841,14 +841,14 @@ class Base_Step_Executor:
                                         if not signatures[idx].validate():
                                             env.logger.info('Step ``{}`` (index={}) is ``rerun`` due to signature mismatch'.format(env.sos_dict['step_name'], idx))
                                             raise RuntimeError('Signature mismatch.')
-                                    elif env.sig_mode == 'construct':
+                                    elif env.sig_mode == 'build':
                                         if signatures[idx].write():
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
+                                    else:
+                                        raise RuntimeError('Unrecognized signature mode {}'.format(env.sig_mode))
                                 if skip_index:
                                     break
-                                else:
-                                    self.verify_input()
                             elif key == 'depends':
                                 dfiles = self.expand_depends_files(*args)
                                 # dfiles can be Undetermined
@@ -867,6 +867,7 @@ class Base_Step_Executor:
                             raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                     else:
                         try:
+                            self.verify_input()
                             self.execute(statement[1], signatures[idx])
                         except AbortExecution as e:
                             if e.message:
@@ -1088,14 +1089,18 @@ class SP_Step_Executor(Queued_Step_Executor):
     def verify_input(self):
         # now, if we are actually going to run the script, we
         # need to check the input files actually exists, not just the signatures
-        if isinstance(env.sos_dict['_input'], list):
-            for target in env.sos_dict['_input']:
-                # if the file does not exist (although the signature exists)
-                # request generation of files
-                if isinstance(target, str) and not FileTarget(target).exists('target'):
+        for target in (env.sos_dict['_input'] if isinstance(env.sos_dict['_input'], list) else []) + \
+            (env.sos_dict['_depends'] if isinstance(env.sos_dict['_depends'], list) else []):
+            # if the file does not exist (although the signature exists)
+            # request generation of files
+            if isinstance(target, str):
+                if not FileTarget(target).exists('target'):
                     # remove the signature and regenerate the file
-                    FileTarget(target).remove('signature')
+                    FileTarget(target).remove_sig()
                     raise RemovedTarget(target)
+            elif not target.exists('target'):
+                target.remove_sig()
+                raise RemovedTarget(target)
 
     def log(self, stage=None, msg=None):
         if stage == 'start':

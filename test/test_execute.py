@@ -1228,13 +1228,13 @@ cp ${_input} ${_dest}
         #
         wf = script.workflow()
         start = time.time()
-        env.sig_mode = 'rebuild'
+        env.sig_mode = 'build'
         if env.max_jobs == 1:
             Base_Executor(wf).run()
         else:
             MP_Executor(wf).run()
 
-        self.assertGreater(time.time() - start, 1)
+        self.assertLess(time.time() - start, 1.5)
         #
         self.assertTrue(os.path.isfile('temp/c.txt'))
         self.assertTrue(os.path.isfile('temp/d.txt'))

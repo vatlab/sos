@@ -204,13 +204,18 @@ def get_run_parser(interactive=False, with_workflow=True):
     runmode.add_argument('-n', action='store_true', dest='__dryrun__',
         help='''Execute a workflow without executing any actions. This can be
             used to check the syntax of a SoS file.''')
-    runmode.add_argument('-f', action='store_true', dest='__rerun__',
-        help='''Execute the workflow in a special run mode that ignores saved
-            runtime signatures and re-execute all the steps.''')
-    runmode.add_argument('-F', action='store_true', dest='__construct__',
-        help='''Execute the workflow in a special run mode that re-use existing
-            output files and recontruct runtime signatures if output files
-            exist.''')
+    runmode.add_argument('-s', choices=['default', 'ignore', 'force', 'build', 'assert'],
+        default='ignore' if interactive else 'default', metavar='SIGMODE',
+        dest='__sigmode__',
+        help='''How runtime signature would be handled, which can be "default"
+            (save and use signature, default mode in batch mode), "ignore"
+            (ignore runtime signature, default mode in interactive mode),
+            "force" (ignore existing signature and overwrite them while
+            executing the workflow), "build" (build new or overwrite
+            existing signature from existing environment and output files), and
+            "assert" for validating existing files against their signatures.
+            Please refer to online documentation for details about the
+            use of runtime signatures.''')
     output = parser.add_argument_group(title='Output options',
         description='''Output of workflow''')
     output.add_argument('-d', nargs='?', default='', metavar='DAG', dest='__dag__', 
@@ -264,12 +269,7 @@ def cmd_run(args, workflow_args):
     # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)
     #
-    if args.__rerun__:
-        env.sig_mode = 'ignore'
-    elif args.__construct__:
-        env.sig_mode = 'construct'
-    else:
-        env.sig_mode = 'default'
+    env.sig_mode = args.__sigmode__
 
     if args.__bin_dirs__:
         import fasteners
@@ -337,8 +337,7 @@ def get_dryrun_parser():
     return parser
 
 def cmd_dryrun(args, workflow_args):
-    args.__rerun__ = False
-    args.__construct__ = False
+    args.__sigmode__ = 'ignore'
     args.__queue__ = None
     args.__max_jobs__ = 1
     args.__dryrun__ = True

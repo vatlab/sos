@@ -83,6 +83,9 @@ class Base_Executor:
         self.nested = nested
         self.config_file = config_file
         self.output_dag = output_dag
+        # if the executor is not called from command line, without sigmode setting
+        if env.sig_mode is None:
+            env.sig_mode = 'default'
         # interactive mode does not pass workflow
         if self.workflow and not nested:
             self.md5 = self.create_signature()
