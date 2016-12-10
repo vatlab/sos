@@ -182,7 +182,7 @@ class FileTarget(BaseTarget):
                 name_md5 + '.file_info')
         else:
             # if this file is relative to cache, use local directory
-            self._sig_file = os.path.join(env.exec_dir, '.sos', '.runtime', name_md5 + '.file_info')
+            self._sig_file = os.path.join('.sos', '.runtime', name_md5 + '.file_info')
         return self._sig_file
 
     def __eq__(self, other):
@@ -257,7 +257,7 @@ class executable(BaseTarget):
             self._version = (version,)
         else:
             self._version = tuple(version)
-        self._sig_file = os.path.join(env.exec_dir, '.sos', '.runtime', '{}.sig'.format(self.md5()))
+        self._sig_file = os.path.join('.sos', '.runtime', '{}.sig'.format(self.md5()))
 
     def sig_file(self):
         return self._sig_file
@@ -419,7 +419,7 @@ class RuntimeInfo:
         self.signature_vars = signature_vars
 
         sig_name = textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))
-        info_file = os.path.join(env.exec_dir, '.sos', '.runtime', sig_name)
+        info_file = os.path.join('.sos', '.runtime', sig_name)
         if not isinstance(self.output_files, Undetermined) and self.output_files:
             # If the output path is outside of the current working directory
             rel_path = os.path.relpath(os.path.realpath(self.output_files[0].fullname()), env.exec_dir)
