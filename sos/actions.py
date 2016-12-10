@@ -201,7 +201,7 @@ class SoS_ExecuteScript:
                         sfile.write(self.script)
                     cmd = interpolate('{} {}'.format(self.interpreter, self.args), '${ }', {'filename': debug_script_file, 'script': self.script})
                     raise RuntimeError('Failed to execute script (ret={}). \nPlease use command\n    {}\nunder {} to test it.'
-                        .format(ret, debug_script_file, cmd, os.getcwd()))
+                        .format(ret, cmd, os.getcwd()))
             except RuntimeError:
                 raise
             except Exception as e:

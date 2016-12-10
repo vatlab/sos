@@ -26,6 +26,12 @@ import fnmatch
 import textwrap
 import shutil
 
+# used by structural directive
+import sys
+assert sys
+import glob
+assert glob
+
 from io import StringIO
 from tokenize import generate_tokens
 from uuid import uuid4
