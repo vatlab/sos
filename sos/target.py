@@ -103,10 +103,16 @@ class BaseTarget:
         pass
 
     def exists(self, mode='any'):
+        #
+        # mode should be 'any', 'target', or 'signature'
         raise RuntimeError('Undefined base function')
 
     def sig_file(self):
         raise RuntimeError('Undefined base function')
+
+    def remove_sig(self):
+        if self.sig_file() and os.path.isfile(self.sig_file()):
+            os.remove(self.sig_file())
 
 class FileTarget(BaseTarget):
     '''A regular target for files.
@@ -124,6 +130,9 @@ class FileTarget(BaseTarget):
             return True
         return False
 
+    #
+    # FileTarget - specific functions. Not required by other targets
+    #
     def add(self, filename):
         '''add related files to the same signature'''
         self._attachments.append(os.path.abspath(os.path.expanduser(filename)))
@@ -173,7 +182,7 @@ class FileTarget(BaseTarget):
                 name_md5 + '.file_info')
         else:
             # if this file is relative to cache, use local directory
-            self._sig_file = os.path.join('.sos', '.runtime', name_md5 + '.file_info')
+            self._sig_file = os.path.join(env.exec_dir, '.sos', '.runtime', name_md5 + '.file_info')
         return self._sig_file
 
     def __eq__(self, other):
@@ -248,10 +257,13 @@ class executable(BaseTarget):
             self._version = (version,)
         else:
             self._version = tuple(version)
-        self.sig_file = os.path.join('.sos/.runtime/{}.sig'.format(self.md5()))
+        self._sig_file = os.path.join(env.exec_dir, '.sos', '.runtime', '{}.sig'.format(self.md5()))
+
+    def sig_file(self):
+        return self._sig_file
 
     def exists(self, mode='any'):
-        if (self._cmd, self._version) in self._available_commands:
+        if mode in ('any', 'signature') and (self._cmd, self._version) in self._available_commands:
             return True
         if mode in ('any', 'target') and shutil.which(shlex.split(self._cmd)[0]):
             if self._version:
@@ -273,7 +285,7 @@ class executable(BaseTarget):
             else:
                 self._available_commands.add((self._cmd, self._version))
                 return True
-        if mode in ('any', 'signature') and os.path.isfile(self.sig_file):
+        if mode in ('any', 'signature') and os.path.isfile(self.sig_file()):
             return True
         return False
 
@@ -298,7 +310,7 @@ class executable(BaseTarget):
     def write_sig(self):
         '''Write .sig file with signature'''
         # path to file
-        with open(self.sig_file, 'w') as md5:
+        with open(self.sig_file(), 'w') as md5:
             md5.write('{}\t{}\n'.format(self.fullname(), self.md5()))
 
     def __hash__(self):
@@ -407,7 +419,7 @@ class RuntimeInfo:
         self.signature_vars = signature_vars
 
         sig_name = textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))
-        info_file = os.path.join('.sos', '.runtime', sig_name)
+        info_file = os.path.join(env.exec_dir, '.sos', '.runtime', sig_name)
         if not isinstance(self.output_files, Undetermined) and self.output_files:
             # If the output path is outside of the current working directory
             rel_path = os.path.relpath(os.path.realpath(self.output_files[0].fullname()), env.exec_dir)
