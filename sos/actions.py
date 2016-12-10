@@ -315,7 +315,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
         prog = ProgressBar(message, disp=env.verbosity > 1)
         sig = FileTarget(dest)
         if os.path.isfile(dest):
-            if env.sig_mode == 'construct':
+            if env.sig_mode == 'build':
                 prog.done(message + ': \033[32m writing signature\033[0m')
                 sig.write_sig()
                 prog.done(message + ': \033[32m signature calculated\033[0m')
