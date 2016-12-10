@@ -226,12 +226,7 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
     env.__task_engine__ = 'interactive'
 
     #
-    if args.__rerun__:
-        env.sig_mode = 'ignore'
-    elif args.__construct__:
-        env.sig_mode = 'construct'
-    else:
-        env.sig_mode = 'default'
+    env.sig_mode = args.__sigmode__
 
     if args.__bin_dirs__:
         import fasteners
