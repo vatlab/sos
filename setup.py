@@ -138,6 +138,10 @@ setup(name = "sos",
           'ipython',
           'notebook',
           'ptpython',
+          # spyder is not strictly required by the jupyter kernel
+          # but install spyder would save the trouble of installing
+          # spyder separately when using sos with spyder
+          'spyder',
           # for DAG
           'networkx',
           'pydotplus',
