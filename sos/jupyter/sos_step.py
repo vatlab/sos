@@ -26,7 +26,10 @@ from sos.sos_step import SP_Step_Executor, Base_Step_Executor
 
 class Interactive_Step_Executor(SP_Step_Executor):
     def __init__(self, step):
-        # we do not use queuq
+        # This is the only interesting part of this executor. Basically
+        # it derives everything from SP_Step_Executor but does not
+        # use the Queue mechanism, so the __init__ and the run
+        # functions are copied from Base_Step_Executor
         Base_Step_Executor.__init__(self, step)
 
     def run(self):
@@ -35,7 +38,4 @@ class Interactive_Step_Executor(SP_Step_Executor):
     def log(self, stage=None, msg=None):
         if stage == 'start':
             env.logger.info('Running ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
-
-    def collect_result(self):
-        return self.last_res
 

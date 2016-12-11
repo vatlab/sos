@@ -35,17 +35,19 @@ from .sos_step import Interactive_Step_Executor
 
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
-    def __init__(self, workflow=None, args=[], config_file=None, output_dag=None, **kwargs):
+    def __init__(self, workflow=None, args=[], config_file=None, nested=False, output_dag=None):
         # we actually do not have our own workflow, everything is passed from ipython
         # by nested = True we actually mean no new dictionary
+        if env.sig_mode is None:
+            env.sig_mode = 'ignore'
         Base_Executor.__init__(self, workflow=workflow, args=args, nested=True, output_dag=output_dag)
-        self.__config__ = config_file
         env.__task_engine__ = 'interactive'
 
     def set_dict(self):
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__args__', self.args)
+        env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
 
         # load configuration files
         cfg = {}
@@ -64,12 +66,12 @@ class Interactive_Executor(Base_Executor):
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-        if self.__config__ is not None:
+        if self.config_file is not None:
             # user-specified configuration file.
-            if not os.path.isfile(self.__config__):
-                raise RuntimeError('Config file {} not found'.format(self.__config__))
+            if not os.path.isfile(self.config_file):
+                raise RuntimeError('Config file {} not found'.format(self.config_file))
             try:
-                with open(self.__config__) as config:
+                with open(self.config_file) as config:
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config_file, e))
@@ -144,7 +146,10 @@ class Interactive_Executor(Base_Executor):
             runnable._status = 'running'
             try:
                 executor = Interactive_Step_Executor(section)
-                last_res = executor.run()
+                res = executor.run()
+                for k, v in res.items():
+                    env.sos_dict.set(k, v)
+                last_res = res['__last_res__']
                 # set context to the next logic step.
                 for edge in dag.out_edges(runnable):
                     node = edge[1]

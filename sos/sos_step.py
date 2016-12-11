@@ -635,6 +635,7 @@ class Base_Step_Executor:
             '__step_depends__': env.sos_dict['depends'],
             '__step_name__': env.sos_dict['step_name'],
         }
+        result['__last_res__'] = self.last_res
         result['__changed_vars__'] = set()
         if 'shared' in self.step.options:
             vars = self.step.options['shared']

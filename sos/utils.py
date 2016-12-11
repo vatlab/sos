@@ -260,7 +260,7 @@ class WorkflowDict(object):
             env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
     def clone_selected_vars(self, selected):
-        return {x:copy.deepcopy(y) for x,y in self._dict.items() if x in selected and pickleable(y)}
+        return {x:copy.deepcopy(y) for x,y in self._dict.items() if x in selected and pickleable(y, x)}
 
 #
 # Runtime environment
@@ -558,7 +558,7 @@ def get_traceback():
     #print "*** tb_lineno:", exc_traceback.tb_lineno
 
 
-def pickleable(obj):
+def pickleable(obj, name):
     if isinstance(obj, (str, bool, int, float, complex, bytes)):
         return True
     if isinstance(obj, (types.ModuleType, WorkflowDict)):
@@ -567,7 +567,7 @@ def pickleable(obj):
         pickle.dumps(obj)
         return True
     except:
-        env.logger.warning('Object {} is not passed because it is not pickleable'.format(short_repr(obj)))
+        env.logger.debug('Object {} with value {} is not passed because it is not pickleable'.format(name, short_repr(obj)))
         return False
 
 class ProgressBar:
