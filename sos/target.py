@@ -249,7 +249,6 @@ class dynamic(BaseTarget):
 
 class executable(BaseTarget):
     '''A target for an executable command.'''
-    _available_commands = set()
 
     def __init__(self, cmd, version=[]):
         self._cmd = cmd
@@ -263,8 +262,6 @@ class executable(BaseTarget):
         return self._sig_file
 
     def exists(self, mode='any'):
-        if mode in ('any', 'signature') and (self._cmd, self._version) in self._available_commands:
-            return True
         if mode in ('any', 'target') and shutil.which(shlex.split(self._cmd)[0]):
             if self._version:
                 import subprocess
@@ -279,11 +276,9 @@ class executable(BaseTarget):
                     return False
                 for ver in self._version:
                     if ver in output:
-                        self._available_commands.add((self._cmd, self._version))
                         return True
                 return False
             else:
-                self._available_commands.add((self._cmd, self._version))
                 return True
         if mode in ('any', 'signature') and os.path.isfile(self.sig_file()):
             return True

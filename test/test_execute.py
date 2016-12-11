@@ -1804,5 +1804,27 @@ run:
         wf = script.workflow()
         Base_Executor(wf).run()
 
+    def testRemovedDepends(self):
+        '''Test a case where a dependent file has signature, but
+        gets removed before the next run.'''
+        script = SoS_Script('''
+[tet: provides='a.txt']
+run:
+    echo "something" > a.txt
+
+[20]
+depends: 'a.txt'
+output: 'b.txt'
+run:
+    cat b.txt > b.txt
+''')
+        wf = script.workflow()
+        # this should be ok.
+        Base_Executor(wf).run()
+        # now let us remove a.txt (but the signature is still there)
+        os.remove('a.txt')
+        os.remove('b.txt')
+        Base_Executor(wf).run()
+
 if __name__ == '__main__':
     unittest.main()

@@ -173,7 +173,19 @@ class Interactive_Executor(Base_Executor):
                     raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
             except RemovedTarget as e:
                 runnable._status = None
-                dag.regenerate_target(e.target)
+                target = e.target
+                if not dag.regenerate_target(target):
+                    if self.resolve_dangling_targets(dag, [target]) == 0:
+                        raise RuntimeError('Failed to regenerate or resolve {}{}.'
+                            .format(target, dag.steps_depending_on(target, self.workflow)))
+                    runnable._depends_targets.append(target)
+                    dag._all_dependent_files[target].append(runnable)
+                    dag.build(self.workflow.auxiliary_sections)
+                    #
+                    cycle = dag.circular_dependencies()
+                    if cycle:
+                        raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
+                self.save_dag(dag)
             except UnavailableLock as e:
                 runnable._status = 'pending'
                 runnable._signature = (e.output, e.sig_file)

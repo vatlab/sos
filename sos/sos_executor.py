@@ -487,7 +487,18 @@ class Base_Executor:
                 self.save_dag(dag)
             elif isinstance(res, RemovedTarget):
                 runnable._status = None
-                dag.regenerate_target(res.target)
+                target = res.target
+                if not dag.regenerate_target(target):
+                    if self.resolve_dangling_targets(dag, [target]) == 0:
+                        raise RuntimeError('Failed to regenerate or resolve {}{}.'
+                            .format(target, dag.steps_depending_on(target, self.workflow)))
+                    runnable._depends_targets.append(target)
+                    dag._all_dependent_files[target].append(runnable)
+                    dag.build(self.workflow.auxiliary_sections)
+                    #
+                    cycle = dag.circular_dependencies()
+                    if cycle:
+                        raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
                 self.save_dag(dag)
             elif isinstance(res, UnavailableLock):
                 runnable._status = 'pending'
@@ -603,7 +614,18 @@ class MP_Executor(Base_Executor):
                         raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
                 elif isinstance(res, RemovedTarget):
                     runnable._status = None
-                    dag.regenerate_target(res.target)
+                    target = res.target
+                    if not dag.regenerate_target(target):
+                        if self.resolve_dangling_targets(dag, [target]) == 0:
+                            raise RuntimeError('Failed to regenerate or resolve {}{}.'
+                                .format(target, dag.steps_depending_on(target, self.workflow)))
+                        runnable._depends_targets.append(target)
+                        dag._all_dependent_files[target].append(runnable)
+                        dag.build(self.workflow.auxiliary_sections)
+                        #
+                        cycle = dag.circular_dependencies()
+                        if cycle:
+                            raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
                     self.save_dag(dag)
                 elif isinstance(res, UnavailableLock):
                     runnable._status = 'pending'
