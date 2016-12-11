@@ -254,6 +254,9 @@ class FileTarget(BaseTarget):
 
     # redefine sig_file because of special request to store sig files
     # in different folders
+    def __repr__(self):
+        return self.name()
+
     def sig_file(self):
         if self._sigfile is not None:
             return self._sigfile
