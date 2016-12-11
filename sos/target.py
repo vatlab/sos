@@ -503,19 +503,20 @@ class RuntimeInfo:
             md5.write('# step process\n')
             md5.write(self.script)
         # successfully write signature, write in workflow runtime info
-        workflow_sig = env.sos_dict['__workflow_sig__']
-        with fasteners.InterProcessLock(workflow_sig + '_'):
-            with open(workflow_sig, 'a') as wf:
-                wf.write('EXE_SIG\tstep={}\tsession={}\n'.format(self.step_md5, os.path.basename(self.proc_info).split('.')[0]))
-                for f in self.input_files:
-                    if isinstance(f, FileTarget):
-                        wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
-                for f in self.dependent_files:
-                    if isinstance(f, FileTarget):
-                        wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
-                for f in self.output_files:
-                    if isinstance(f, FileTarget):
-                        wf.write('OUT_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
+        if '__workflow_sig__' in env.sos_dict:
+            workflow_sig = env.sos_dict['__workflow_sig__']
+            with fasteners.InterProcessLock(workflow_sig + '_'):
+                with open(workflow_sig, 'a') as wf:
+                    wf.write('EXE_SIG\tstep={}\tsession={}\n'.format(self.step_md5, os.path.basename(self.proc_info).split('.')[0]))
+                    for f in self.input_files:
+                        if isinstance(f, FileTarget):
+                            wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
+                    for f in self.dependent_files:
+                        if isinstance(f, FileTarget):
+                            wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
+                    for f in self.output_files:
+                        if isinstance(f, FileTarget):
+                            wf.write('OUT_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
         return True
 
     def validate(self):
@@ -592,9 +593,10 @@ class RuntimeInfo:
             return 'No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y))
         env.logger.trace('Signature matches and returns {}'.format(res))
         # validation success, record signature used
-        workflow_sig = env.sos_dict['__workflow_sig__']
-        with fasteners.InterProcessLock(workflow_sig + '_'):
-            with open(workflow_sig, 'a') as wf:
-                wf.write(self.proc_info + '\n')
+        if '__workflow_sig__' in env.sos_dict:
+            workflow_sig = env.sos_dict['__workflow_sig__']
+            with fasteners.InterProcessLock(workflow_sig + '_'):
+                with open(workflow_sig, 'a') as wf:
+                    wf.write(self.proc_info + '\n')
         return res
 

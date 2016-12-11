@@ -397,7 +397,7 @@ def get_tracked_files(sig_file):
                 script_files.append(line.split(':', 1)[1].strip())
             elif line.startswith('# included:'):
                 script_files.extend(line.split(':', 1)[-1].strip().split(','))
-    return script_files, set(tracked_files), set(runtime_files)
+    return set(script_files), set(tracked_files), set(runtime_files)
 
 def cmd_remove(args, unknown_args):
     import glob
@@ -444,19 +444,15 @@ def cmd_remove(args, unknown_args):
     #
     for target in args.targets:
         target = os.path.expanduser(target)
-        if not os.path.exists(target):
-            sys.exit('Invalid file or directory to be removed: {}'.format(target))
         relpath = os.path.relpath(target, '.')
         if relpath.startswith('..'):
             # we do not care about tracked files outside of current directory
             sys.exit('Only subdirectories of the current directory can be removed. {} specified.'.format(target))
         # file
-        if os.path.isfile(target):
-            if os.path.abspath(target) in tracked_files:
-                specified_tracked_files.append(target)
-            else:
-                specified_untracked_files.append(target)
-            continue
+        if os.path.abspath(target) in tracked_files:
+            specified_tracked_files.append(target)
+        elif os.path.isfile(target):
+            specified_untracked_files.append(target)
         # we will not remove . itself
         elif os.path.isdir(target) and os.path.abspath(target) != os.path.abspath('.'):
             if os.path.abspath(target) in tracked_dirs:
@@ -556,7 +552,7 @@ def cmd_remove(args, unknown_args):
             target = os.path.expanduser(target)
             if args.__dryrun__:
                 print('Would remove {}'.format(target))
-            elif os.path.exists(target):
+            elif os.path.exists(target) and target != '.':
                 if get_response('Remove {}'.format(target)):
                     if os.path.isfile(target):
                         os.remove(target)
@@ -870,15 +866,26 @@ def cmd_pack(args, unknown_args):
         manifest.write('# {!r}\n'.format(args.message if args.message else ''))
         # add .archive.info file
         for f in script_files:
+            if f == 'None':
+                continue
             ft = FileTarget(f)
-            manifest.write('{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.signature()))
+            if not ft.exists():
+                env.logger.warning('Missing script file {}'.format(ft.name()))
+            else:
+                manifest.write('{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.signature()))
         for f in tracked_files:
             env.logger.info('Checking {}'.format(f))
             ft = FileTarget(f)
-            manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.signature()))
+            if not ft.exists():
+                env.logger.warning('Missing tracked file {}'.format(ft.name()))
+            else:
+                manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.signature()))
         for f in runtime_files:
             ft = FileTarget(f)
-            manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.signature()))
+            if not ft.exists():
+                env.logger.warning('Missing runtime file {}'.format(ft.name()))
+            else:
+                manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.signature()))
     prog.done()
     #
     if args.dryrun:
@@ -894,9 +901,13 @@ def cmd_pack(args, unknown_args):
         archive.add(manifest_file, arcname='MANIFEST.txt')
         # add .archive.info file
         for f in script_files:
+            if not os.path.isfile(f):
+                continue
             env.logger.info('Adding {}'.format(os.path.basename(f)))
             archive.add(f, arcname='scripts/' + os.path.basename(f))
         for f in tracked_files:
+            if not os.path.isfile(f):
+                continue
             env.logger.info('Adding {}'.format(f))
             relpath = os.path.relpath(f, '.')
             if relpath.startswith('..'):
@@ -914,6 +925,8 @@ def cmd_pack(args, unknown_args):
                     archive.add(f, arcname='tracked/' + f)
         env.logger.info('Adding runtime files')
         for f in runtime_files:
+            if not os.path.isfile(f):
+                continue
             env.logger.trace('Adding {}'.format(f))
             archive.add(f, arcname='runtime/' + f[5:])
     prog.done()

@@ -212,8 +212,10 @@ class SoS_Kernel(IPythonKernel):
     def get_preview_parser(self):
         parser = argparse.ArgumentParser(prog='%preview',
             description='''Preview files, sos variables, or expressions''')
-        parser.add_argument('items', nargs='?', 
+        parser.add_argument('items', nargs='*', 
             help='''filename, variable name, or expression''')
+        parser.add_argument('--off', action='store_true',
+            help='''Turn off file preview''')
         parser.error = self._parse_error
         return parser
 
@@ -503,10 +505,12 @@ class SoS_Kernel(IPythonKernel):
         parser = argparse.ArgumentParser(prog='%sandbox',
             description='''Execute content of a cell in a temporary directory
                 with fresh dictionary (by default).''')
+        parser.add_argument('-d', '--dir',
+            help='''Execute workflow in specified directory. The directory
+                will be created if does not exist, and will not be removed
+                after the completion. ''')
         parser.add_argument('-k', '--keep-dict', action='store_true',
             help='''Keep current sos dictionary.''')
-        parser.add_argument('-n', '--no-change-dir', action='store_true',
-            help='''Stay at the current directory.''')
         parser.add_argument('-e', '--expect-error', action='store_true',
             help='''If set, expect error from the excution and report
                 success if an error occurs.''')
@@ -704,8 +708,13 @@ class SoS_Kernel(IPythonKernel):
             return
         # find filenames and quoted expressions
         import shlex
-        items = shlex.split(options, posix=False)
-        if not items:
+        parser = self.get_preview_parser()
+        args = parser.parse_args(shlex.split(options, posix=False))
+        if args.off:
+            self.preview_output = False
+        else:
+            self.preview_output = True
+        if not args.items or args.off:
             return
         self.send_response(self.iopub_socket, 'display_data',
             {
@@ -714,7 +723,7 @@ class SoS_Kernel(IPythonKernel):
               'data': { 'text/html': HTML('<pre><font color="green">## %preview {}</font></pre>'.format(options)).data}
             })
         # expand items
-        for item in items:
+        for item in args.items:
             try:
                 if os.path.isfile(item):
                     self.preview_file(item)
@@ -795,7 +804,7 @@ class SoS_Kernel(IPythonKernel):
                 sys.stderr.flush()
                 sys.stdout.flush()
         #
-        if not silent:
+        if not silent and (not hasattr(self, 'preview_output') or self.preview_output):
             # Send standard output
             #if os.path.isfile('.sos/report.md'):
             #    with open('.sos/report.md') as sr:
@@ -1085,8 +1094,14 @@ class SoS_Kernel(IPythonKernel):
             args = parser.parse_args(shlex.split(options))
             try:
                 old_dir = os.getcwd()
-                if not args.no_change_dir:
+                if args.dir:
+                    if not os.path.isdir(args.dir):
+                        os.makedirs(args.dir)
+                    env.exec_dir = os.path.abspath(args.dir)
+                    os.chdir(args.dir)
+                else:
                     new_dir = tempfile.mkdtemp()
+                    env.exec_dir = os.path.abspath(new_dir)
                     os.chdir(new_dir)
                 if not args.keep_dict:
                     old_dict = env.sos_dict
@@ -1102,9 +1117,10 @@ class SoS_Kernel(IPythonKernel):
             finally:
                 if not args.keep_dict:
                     env.sos_dict = old_dict
-                if not args.no_change_dir:
+                if not args.dir:
                     shutil.rmtree(new_dir)
                 os.chdir(old_dir)
+                env.exec_dir = old_dir
         elif self.MAGIC_PREVIEW.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:

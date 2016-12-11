@@ -401,7 +401,7 @@ class RuntimeEnvironments(object):
 
     def _set_exec_dir(self, dir):
         if not os.path.isdir(dir):
-            raise RuntimeError('Not a valid exec dir: {}'.format(dir))
+            raise RuntimeError('Exec dir {} does not exist.'.format(dir))
         self._assure_runtime_dir(dir)
         self._exec_dir = dir
 

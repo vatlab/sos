@@ -104,7 +104,7 @@ def summarizeExecution(pid):
                 peak_mem = float(m) + float(cm)
             if int(nch) > peak_nch:
                 peak_nch = int(nch)
-    if start_time is not None and end_time is not None:
+    if start_time is not None and end_time is not None and '__workflow_sig__' in env.sos_dict:
         # successfully write signature, write in workflow runtime info
         workflow_sig = env.sos_dict['__workflow_sig__']
         with fasteners.InterProcessLock(workflow_sig + '_'):

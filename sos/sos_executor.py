@@ -90,7 +90,7 @@ class Base_Executor:
         if env.sig_mode != 'ignore' and self.workflow and not nested:
             self.md5 = self.create_signature()
             # remove old workflow file.
-            with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'w') as sig:
+            with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'a') as sig:
                 sig.write('# workflow: {}\n'.format(self.workflow.name))
                 sig.write('# script: {}\n'.format(self.workflow.content.filename))
                 sig.write('# included: {}\n'.format(','.join(self.workflow.content.included)))
@@ -144,7 +144,8 @@ class Base_Executor:
         env.parameter_vars.clear()
 
         # inject a few things
-        env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
+        if self.md5:
+            env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
         env.sos_dict.set('__unknown_args__', self.args)
@@ -394,9 +395,10 @@ class Base_Executor:
         '''Save tracked files in .sos so that untracked files can be cleaned by command
         sos clean.
         '''
-        with open(env.sos_dict['__workflow_sig__'], 'a') as sigfile:
-            sigfile.write('# end time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
-            sigfile.write('# input and dependent files\n')
+        if '__workflow_sig__' in env.sos_dict:
+            with open(env.sos_dict['__workflow_sig__'], 'a') as sigfile:
+                sigfile.write('# end time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
+                sigfile.write('# input and dependent files\n')
         
     def run(self, targets=None, mode='run'):
         '''Execute a workflow with specified command line args. If sub is True, this

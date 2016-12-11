@@ -23,6 +23,7 @@ import sys
 import os
 import yaml
 import shlex
+import time
 from sos.utils import env, frozendict, dict_merge, _parse_error, get_traceback
 from sos.sos_eval import SoS_exec, get_default_global_sigil
 from sos._version import __version__
@@ -42,12 +43,28 @@ class Interactive_Executor(Base_Executor):
             env.sig_mode = 'ignore'
         Base_Executor.__init__(self, workflow=workflow, args=args, nested=True, output_dag=output_dag)
         env.__task_engine__ = 'interactive'
+        if env.sig_mode != 'ignore':
+            self.md5 = self.create_signature()
+            # We append to existing workflow files because some files are ignored and we
+            # still wants their information.
+            with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'a') as sig:
+                sig.write('# workflow: {}\n'.format(self.workflow.name))
+                # script is None because it is entered from notebook
+                with open('__interactive__.sos', 'w') as script:
+                    script.write(self.workflow.content.content)
+                sig.write('# script: {}\n'.format('__interactive__.sos'))
+                sig.write('# included: {}\n'.format(','.join(self.workflow.content.included)))
+                sig.write('# configuration: {}\n'.format(config_file))
+                sig.write('# start time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
+                sig.write(self.sig_content)
+                sig.write('# runtime signatures\n')
 
     def set_dict(self):
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__args__', self.args)
-        env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
+        if self.md5:
+            env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
 
         # load configuration files
         cfg = {}
@@ -199,7 +216,9 @@ class Interactive_Executor(Base_Executor):
             except Exception as e:
                 runnable._status = 'failed'
                 raise
-
+        if self.md5:
+            self.save_workflow_signature(dag)
+            env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
         return last_res
 
 #
