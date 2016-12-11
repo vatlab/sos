@@ -100,166 +100,103 @@ def fileMD5(filename, partial=True):
 class BaseTarget:
     '''A base class for all targets (e.g. a file)'''
     def __init__(self):
-        pass
+        self._sigfile = None
 
     def exists(self, mode='any'):
-        #
         # mode should be 'any', 'target', or 'signature'
         raise RuntimeError('Undefined base function')
 
-    def sig_file(self):
+    def name(self):
+        # name of the target, which should be able to differentiate
+        # this object with other targets of the same type.
         raise RuntimeError('Undefined base function')
+
+    def signature(self):
+        # signature of the content of the target, which should be
+        # able to detect changes of the content of target
+        raise RuntimeError('Undefined base function')
+
+    # -----------------------------------------------------
+    # derived functions that do not need to be redefined
+    #
+    def sig_file(self):
+        if self._sigfile is None:
+            self._sigfile = os.path.join('.sos', '.runtime', '{}_{}.sig'.format(self.__class__.__name__,
+                textMD5(self.name())))
+        return self._sigfile
 
     def remove_sig(self):
         if self.sig_file() and os.path.isfile(self.sig_file()):
             os.remove(self.sig_file())
 
-class FileTarget(BaseTarget):
-    '''A regular target for files.
-    '''
-    def __init__(self, filename):
-        self._filename = filename
-        self._sig_file = None
-        self._md5 = None
-        self._attachments = []
-
-    def exists(self, mode='any'):
-        if mode in ('any', 'target') and os.path.isfile(self.fullname()):
-            return True
-        if mode in ('any', 'signature') and os.path.isfile(self.sig_file()):
-            return True
-        return False
-
-    #
-    # FileTarget - specific functions. Not required by other targets
-    #
-    def add(self, filename):
-        '''add related files to the same signature'''
-        self._attachments.append(os.path.abspath(os.path.expanduser(filename)))
-
-    def remove(self, mode='both'):
-        if mode in ('both', 'target') and os.path.isfile(self.fullname()):
-            os.remove(self.fullname())
-        if mode in ('both', 'signature') and os.path.isfile(self.sig_file()):
-            os.remove(self.sig_file())
-
-    def fullname(self):
-        return os.path.expanduser(self._filename)
-
-    def size(self):
-        if os.path.isfile(self._filename):
-            return os.path.getsize(self.fullname())
-        elif os.path.isfile(self.sig_file()):
-            with open(self.sig_file()) as md5:
-                line = md5.readline()
-                _, _, s, _ = line.rsplit('\t', 3)
-                return s.strip()
-        else:
-            raise RuntimeError('{} or its signature does not exist.'.format(self._filename))
-
-    def mtime(self):
-        if os.path.isfile(self._filename):
-            return os.path.getmtime(self.fullname())
-        elif os.path.isfile(self.sig_file()):
-            with open(self.sig_file()) as md5:
-                line = md5.readline()
-                _, t, _, _ = line.rsplit('\t', 3)
-                return t.strip()
-        else:
-            raise RuntimeError('{} or its signature does not exist.'.format(self._filename))
-
-    def sig_file(self):
-        if self._sig_file is not None:
-            return self._sig_file
-        # If the output path is outside of the current working directory
-        fullname = os.path.abspath(self.fullname())
-        name_md5 = textMD5(fullname)
-        rel_path = os.path.relpath(fullname, env.exec_dir)
-
-        # if this file is not relative to cache, use global signature file
-        if rel_path.startswith('../'):
-            self._sig_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime',
-                name_md5 + '.file_info')
-        else:
-            # if this file is relative to cache, use local directory
-            self._sig_file = os.path.join('.sos', '.runtime', name_md5 + '.file_info')
-        return self._sig_file
-
-    def __eq__(self, other):
-        return os.path.abspath(self.fullname()) == os.path.abspath(other.fullname())
-
     def write_sig(self):
-        '''Write .file_info file with signature'''
+        '''Write .sig file with signature'''
         # path to file
-        with open(self.sig_file(), 'w') as md5:
-            self.calc_md5()
-            md5.write('{}\t{}\t{}\t{}\n'.format(self.fullname(), os.path.getmtime(self.fullname()),
-                os.path.getsize(self.fullname()), self.md5()))
-            for f in self._attachments:
-                md5.write('{}\t{}\n'.format(f, fileMD5(f)))
-
-    def calc_md5(self):
-        if self._md5 is None:
-            self._md5 = fileMD5(self.fullname())
-        return self._md5
-
-    def md5(self):
-        '''Return md5'''
-        if self._md5 is not None:
-            return self._md5
-        if not os.path.isfile(self.sig_file()):
-            return self.calc_md5()
-        else:
-            with open(self.sig_file()) as md5:
-                line = md5.readline()
-                _, _, _, m = line.rsplit('\t', 3)
-                return m.strip()
-
-    def validate(self):
-        '''Check if file matches its signature'''
-        if not os.path.isfile(self.sig_file()):
-            return False
-        with open(self.sig_file()) as md5:
-            for line in md5:
-                f, _, _, m = line.rsplit('\t', 3)
-                if not os.path.isfile(f):
-                    return False
-                if fileMD5(f) != m.strip():
-                    env.logger.debug('MD5 mismatch {}'.format(f))
-                    return False
-        return True
+        with open(self.sig_file(), 'w') as sig:
+            sig.write('{}\t{}\n'.format(self.name(), self.signature()))
 
     def __repr__(self):
-        return self._filename
+        return '{}("{}")'.format(self.__class__.__name__, self.name())
+
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __eq__(self, obj):
+        return isinstance(obj, self.__class__) and self.signature() == obj.signature()
+
+class sos_variable(BaseTarget):
+    '''A target for a SoS variable.'''
+    def __init__(self, var):
+        super(sos_variable, self).__init__()
+        self._var = var
+
+    def exists(self, mode='any'):
+        return self._var in env.sos_dict
+
+    def name(self):
+        return self._var
+
+    def signature(self):
+        return textMD5(self._var)
+
+class env_variable(BaseTarget):
+    '''A target for an environmental variable.'''
+    def __init__(self, var):
+        super(env_variable, self).__init__()
+        self._var = var
+
+    def exists(self, mode='any'):
+        return self._var in os.environ
+
+    def name(self):
+        return self._var
+
+    def signature(self):
+        return textMD5(repr(os.environ[self._var]))
 
 class dynamic(BaseTarget):
     '''A dynamic executable that only handles input files when
-    it is available.'''
+    it is available. This target is handled directly with its `resolve`
+    function called by the executor. '''
     def __init__(self, target):
         self._target = target
 
-    def exists(self, mode='any'):
-        return True
+    def name(self):
+        return self._target
 
     def resolve(self):
         return self._target
-
-    def __repr__(self):
-        return 'dynamic({})'.format(self._target)
 
 class executable(BaseTarget):
     '''A target for an executable command.'''
 
     def __init__(self, cmd, version=[]):
+        super(executable, self).__init__()
         self._cmd = cmd
         if isinstance(version, str):
             self._version = (version,)
         else:
             self._version = tuple(version)
-        self._sig_file = os.path.join('.sos', '.runtime', '{}.sig'.format(self.md5()))
-
-    def sig_file(self):
-        return self._sig_file
 
     def exists(self, mode='any'):
         if mode in ('any', 'target') and shutil.which(shlex.split(self._cmd)[0]):
@@ -284,94 +221,134 @@ class executable(BaseTarget):
             return True
         return False
 
+    def name(self):
+        if self._version:
+            return '{} (version={})'.format(self._cmd, self._version)
+        else:
+            return self._cmd
+
+    def signature(self):
+        exe_file = shutil.which(shlex.split(self._cmd)[0])
+        if exe_file is None or not os.path.isfile(exe_file):
+            return None
+        return fileMD5(exe_file)
+
+class FileTarget(BaseTarget):
+    '''A regular target for files.
+    '''
+    def __init__(self, filename):
+        super(FileTarget, self).__init__()
+        self._filename = os.path.expanduser(filename)
+        self._md5 = None
+        self._attachments = []
+
+    def exists(self, mode='any'):
+        if mode in ('any', 'target') and os.path.isfile(self.fullname()):
+            return True
+        if mode in ('any', 'signature') and os.path.isfile(self.sig_file()):
+            return True
+        return False
+
+    def name(self):
+        return self._filename
+
+    # redefine sig_file because of special request to store sig files
+    # in different folders
+    def sig_file(self):
+        if self._sigfile is not None:
+            return self._sigfile
+        # If the output path is outside of the current working directory
+        fullname = os.path.abspath(self.name())
+        name_md5 = textMD5(fullname)
+        rel_path = os.path.relpath(fullname, env.exec_dir)
+
+        # if this file is not relative to cache, use global signature file
+        if rel_path.startswith('../'):
+            self._sigfile = os.path.join(os.path.expanduser('~'), '.sos', '.runtime',
+                name_md5 + '.file_info')
+        else:
+            # if this file is relative to cache, use local directory
+            self._sigfile = os.path.join('.sos', '.runtime', name_md5 + '.file_info')
+        return self._sigfile
+
+    def signature(self):
+        '''Return file signature'''
+        if self._md5 is not None:
+            return self._md5
+        if os.path.isfile(self.sig_file()):
+            with open(self.sig_file()) as md5:
+                try:
+                    line = md5.readline()
+                    _, _, _, m = line.rsplit('\t', 3)
+                    return m.strip()
+                except:
+                    pass
+        self._md5 = fileMD5(self.fullname())
+        return self._md5
+    #
+    # FileTarget - specific functions. Not required by other targets
+    #
+    def add(self, filename):
+        '''add related files to the same signature'''
+        self._attachments.append(os.path.abspath(os.path.expanduser(filename)))
+
+    def remove(self, mode='both'):
+        if mode in ('both', 'target') and os.path.isfile(self.fullname()):
+            os.remove(self.fullname())
+        if mode in ('both', 'signature') and os.path.isfile(self.sig_file()):
+            os.remove(self.sig_file())
+
     def fullname(self):
-        if self._version:
-            return 'command {} (version={})'.format(self._cmd, self._version)
+        return os.path.abspath(self.name())
+
+    def size(self):
+        if os.path.isfile(self._filename):
+            return os.path.getsize(self.fullname())
+        elif os.path.isfile(self.sig_file()):
+            with open(self.sig_file()) as md5:
+                line = md5.readline()
+                _, _, s, _ = line.rsplit('\t', 3)
+                return s.strip()
         else:
-            return 'command {}'.format(self._cmd)
+            raise RuntimeError('{} or its signature does not exist.'.format(self._filename))
 
-    def __repr__(self):
-        if self._version:
-            return 'executable("{}", version={!r})'.format(self._cmd, self._version)
+    def mtime(self):
+        if os.path.isfile(self._filename):
+            return os.path.getmtime(self.fullname())
+        elif os.path.isfile(self.sig_file()):
+            with open(self.sig_file()) as md5:
+                line = md5.readline()
+                _, t, _, _ = line.rsplit('\t', 3)
+                return t.strip()
         else:
-            return 'executable("{}")'.format(self._cmd)
+            raise RuntimeError('{} or its signature does not exist.'.format(self._filename))
 
-    def calc_md5(self):
-        return textMD5(self._cmd)
-
-    def md5(self):
-        return textMD5(self._cmd)
+    def __eq__(self, other):
+        return os.path.abspath(self.fullname()) == os.path.abspath(other.fullname())
 
     def write_sig(self):
-        '''Write .sig file with signature'''
+        '''Write .file_info file with signature'''
         # path to file
         with open(self.sig_file(), 'w') as md5:
-            md5.write('{}\t{}\n'.format(self.fullname(), self.md5()))
+            md5.write('{}\t{}\t{}\t{}\n'.format(self.fullname(), os.path.getmtime(self.fullname()),
+                os.path.getsize(self.fullname()), self.signature()))
+            for f in self._attachments:
+                md5.write('{}\t{}\n'.format(f, fileMD5(f)))
 
-    def __hash__(self):
-        return hash(repr(self))
+    def validate(self):
+        '''Check if file matches its signature'''
+        if not os.path.isfile(self.sig_file()):
+            return False
+        with open(self.sig_file()) as md5:
+            for line in md5:
+                f, _, _, m = line.rsplit('\t', 3)
+                if not os.path.isfile(f):
+                    return False
+                if fileMD5(f) != m.strip():
+                    env.logger.debug('MD5 mismatch {}'.format(f))
+                    return False
+        return True
 
-    def __eq__(self, obj):
-        return isinstance(obj, executable) and self._cmd == obj._cmd and self._version == obj._version
-
-class sos_variable(BaseTarget):
-    '''A target for a SoS variable.'''
-    def __init__(self, var):
-        self._var = var
-
-    def exists(self, mode='any'):
-        return self._var in env.sos_dict
-
-    def fullname(self):
-        return 'sos_variable {}'.format(self._var)
-
-    def __repr__(self):
-        return 'sos_variable("{}")'.format(self._var)
-
-    def calc_md5(self):
-        return textMD5(self._var)
-
-    def md5(self):
-        return textMD5(self._var)
-
-    def write_sig(self):
-        pass
-
-    def __hash__(self):
-        return hash(repr(self))
-
-    def __eq__(self, obj):
-        return isinstance(obj, sos_variable) and self._var == obj._var
-
-
-class env_variable(BaseTarget):
-    '''A target for an environmental variable.'''
-    def __init__(self, var):
-        self._var = var
-
-    def exists(self, mode='any'):
-        return self._var in os.environ
-
-    def fullname(self):
-        return 'env_variable {}'.format(self._var)
-
-    def __repr__(self):
-        return 'env_variable("{}")'.format(self._var)
-
-    def calc_md5(self):
-        return textMD5(repr(os.environ[self._var]))
-
-    def md5(self):
-        return textMD5(repr(os.environ[self._var]))
-
-    def write_sig(self):
-        pass
-
-    def __hash__(self):
-        return hash(repr(self))
-
-    def __eq__(self, obj):
-        return isinstance(obj, sos_variable) and self._var == obj._var
 
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
@@ -417,7 +394,7 @@ class RuntimeInfo:
         info_file = os.path.join('.sos', '.runtime', sig_name)
         if not isinstance(self.output_files, Undetermined) and self.output_files:
             # If the output path is outside of the current working directory
-            rel_path = os.path.relpath(os.path.realpath(self.output_files[0].fullname()), env.exec_dir)
+            rel_path = os.path.relpath(os.path.realpath(self.output_files[0].name()), env.exec_dir)
             # if this file is not relative to cache, use global signature file
             if rel_path.startswith('../'):
                 info_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep))
@@ -477,9 +454,9 @@ class RuntimeInfo:
                 if f.exists('target'):
                     # this calculates file MD5
                     f.write_sig()
-                    md5.write('{}\t{}\n'.format(f, f.md5()))
+                    md5.write('{}\t{}\n'.format(f, f.signature()))
                 elif f.exists('signature'):
-                    md5.write('{}\t{}\n'.format(f, f.md5()))
+                    md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
                     return False
             md5.write('# output\n')
@@ -487,9 +464,9 @@ class RuntimeInfo:
                 if f.exists('target'):
                     # this calculates file MD5
                     f.write_sig()
-                    md5.write('{}\t{}\n'.format(f, f.md5()))
+                    md5.write('{}\t{}\n'.format(f, f.signature()))
                 elif f.exists('signature'):
-                    md5.write('{}\t{}\n'.format(f, f.md5()))
+                    md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
                     return False
             md5.write('# dependent\n')
@@ -497,9 +474,9 @@ class RuntimeInfo:
                 if f.exists('target'):
                     # this calculates file MD5
                     f.write_sig()
-                    md5.write('{}\t{}\n'.format(f, f.md5()))
+                    md5.write('{}\t{}\n'.format(f, f.signature()))
                 elif f.exists('signature'):
-                    md5.write('{}\t{}\n'.format(f, f.md5()))
+                    md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
                     return False
             md5.write('# context\n')
@@ -520,13 +497,13 @@ class RuntimeInfo:
                 wf.write('EXE_SIG\tstep={}\tsession={}\n'.format(self.step_md5, os.path.basename(self.proc_info).split('.')[0]))
                 for f in self.input_files:
                     if isinstance(f, FileTarget):
-                        wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.md5()))
+                        wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
                 for f in self.dependent_files:
                     if isinstance(f, FileTarget):
-                        wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.md5()))
+                        wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
                 for f in self.output_files:
                     if isinstance(f, FileTarget):
-                        wf.write('OUT_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.md5()))
+                        wf.write('OUT_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
         return True
 
     def validate(self):
@@ -552,7 +529,7 @@ class RuntimeInfo:
                     env.logger.trace('Missing real target {}'.format(x))
                     return False
         #
-        files_checked = {x.fullname():False for x in sig_files if not isinstance(x, Undetermined)}
+        files_checked = {x.name():False for x in sig_files if not isinstance(x, Undetermined)}
         res = {'input': [], 'output': [], 'depends': [], 'vars': {}}
         cur_type = 'input'
         with open(self.proc_info) as md5:
@@ -591,18 +568,18 @@ class RuntimeInfo:
                     else:
                         freal = FileTarget(f)
                     if freal.exists('target'):
-                        fmd5 = freal.calc_md5()
+                        fmd5 = freal.signature()
                     elif freal.exists('signature'):
                         env.logger.info('Validate with signature of non-existing target {}'.format(freal))
-                        fmd5 = freal.md5()
+                        fmd5 = freal.signature()
                     else:
                         env.logger.trace('File {} not exist'.format(f))
                         return False
-                    res[cur_type].append(freal.fullname() if isinstance(freal, FileTarget) else freal)
+                    res[cur_type].append(freal.name() if isinstance(freal, FileTarget) else freal)
                     if fmd5 != m.strip():
                         env.logger.trace('MD5 mismatch {}: {} / {}'.format(f, fmd5, m.strip()))
                         return False
-                    files_checked[freal.fullname()] = True
+                    files_checked[freal.name()] = True
                 except Exception as e:
                     env.logger.trace('Wrong md5 line {} in {}: {}'.format(line, self.proc_info, e))
                     continue

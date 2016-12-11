@@ -871,14 +871,14 @@ def cmd_pack(args, unknown_args):
         # add .archive.info file
         for f in script_files:
             ft = FileTarget(f)
-            manifest.write('{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.md5()))
+            manifest.write('{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.signature()))
         for f in tracked_files:
             env.logger.info('Checking {}'.format(f))
             ft = FileTarget(f)
-            manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.md5()))
+            manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.signature()))
         for f in runtime_files:
             ft = FileTarget(f)
-            manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.md5()))
+            manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.signature()))
     prog.done()
     #
     if args.dryrun:

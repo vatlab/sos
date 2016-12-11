@@ -29,6 +29,7 @@ class R_library(BaseTarget):
     LIB_STATUS_CACHE = {}
 
     def __init__(self, library, version = None, repos = 'http://cran.us.r-project.org'):
+        super(R_library, self).__init__()
         self._library = library
         self._version = version
         self._repos = repos
@@ -165,24 +166,9 @@ class R_library(BaseTarget):
             self.LIB_STATUS_CACHE[(self._library, self._version)] = ret
             return ret
 
-    def fullname(self):
-        return 'R_library {}'.format(self._library)
-
-    def __repr__(self):
-        return 'R_library("{}")'.format(self._library)
-
-    def calc_md5(self):
-        return textMD5(repr(self._library))
+    def name(self):
+        return self._library
 
     def md5(self):
+        # we are supposed to get signature of the library, but we cannot
         return textMD5(repr(self._library))
-
-    def write_sig(self):
-        pass
-
-    def __hash__(self):
-        return hash(repr(self))
-
-    def __eq__(self, obj):
-        return isinstance(obj, R_library) and self._library == obj._library
-
