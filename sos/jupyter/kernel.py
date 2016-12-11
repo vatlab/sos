@@ -505,6 +505,8 @@ class SoS_Kernel(IPythonKernel):
                 with fresh dictionary (by default).''')
         parser.add_argument('-k', '--keep-dict', action='store_true',
             help='''Keep current sos dictionary.''')
+        parser.add_argument('-n', '--no-change-dir', action='store_true',
+            help='''Stay at the current directory.''')
         parser.add_argument('-e', '--expect-error', action='store_true',
             help='''If set, expect error from the excution and report
                 success if an error occurs.''')
@@ -1083,8 +1085,9 @@ class SoS_Kernel(IPythonKernel):
             args = parser.parse_args(shlex.split(options))
             try:
                 old_dir = os.getcwd()
-                new_dir = tempfile.mkdtemp()
-                os.chdir(new_dir)
+                if not args.no_change_dir:
+                    new_dir = tempfile.mkdtemp()
+                    os.chdir(new_dir)
                 if not args.keep_dict:
                     old_dict = env.sos_dict
                     self._reset_dict()
@@ -1099,7 +1102,8 @@ class SoS_Kernel(IPythonKernel):
             finally:
                 if not args.keep_dict:
                     env.sos_dict = old_dict
-                shutil.rmtree(new_dir)
+                if not args.no_change_dir:
+                    shutil.rmtree(new_dir)
                 os.chdir(old_dir)
         elif self.MAGIC_PREVIEW.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)

@@ -111,9 +111,12 @@ class BaseTarget:
         # this object with other targets of the same type.
         raise RuntimeError('Undefined base function')
 
-    def signature(self):
+    def signature(self, mode='any'):
         # signature of the content of the target, which should be
         # able to detect changes of the content of target
+        # 
+        # if mode == 'target', the target has to exist and the signature
+        # has to be calculated. Otherwise you can return cached signature
         raise RuntimeError('Undefined base function')
 
     # -----------------------------------------------------
@@ -156,7 +159,7 @@ class sos_variable(BaseTarget):
     def name(self):
         return self._var
 
-    def signature(self):
+    def signature(self, mode='any'):
         return textMD5(self._var)
 
 class env_variable(BaseTarget):
@@ -171,7 +174,7 @@ class env_variable(BaseTarget):
     def name(self):
         return self._var
 
-    def signature(self):
+    def signature(self, mode='any'):
         return textMD5(repr(os.environ[self._var]))
 
 class dynamic(BaseTarget):
@@ -227,11 +230,15 @@ class executable(BaseTarget):
         else:
             return self._cmd
 
-    def signature(self):
+    def signature(self, mode='any'):
+        if mode != 'target' and hasattr(self, '_md5'):
+            return self._md5
         exe_file = shutil.which(shlex.split(self._cmd)[0])
         if exe_file is None or not os.path.isfile(exe_file):
-            return None
-        return fileMD5(exe_file)
+            self._md5 = None
+        else:
+            self._md5 = fileMD5(exe_file)
+        return self._md5
 
 class FileTarget(BaseTarget):
     '''A regular target for files.
@@ -274,8 +281,10 @@ class FileTarget(BaseTarget):
             self._sigfile = os.path.join('.sos', '.runtime', name_md5 + '.file_info')
         return self._sigfile
 
-    def signature(self):
+    def signature(self, mode='any'):
         '''Return file signature'''
+        if mode == 'target':
+            self._md5 = fileMD5(self.fullname())
         if self._md5 is not None:
             return self._md5
         if os.path.isfile(self.sig_file()):
@@ -512,25 +521,21 @@ class RuntimeInfo:
     def validate(self):
         '''Check if ofiles and ifiles match signatures recorded in md5file'''
         if not self.proc_info or not os.path.isfile(self.proc_info):
-            env.logger.trace('Fail because of no signature file {}'.format(self.proc_info))
-            return False
+            return 'Missing signature file {}'.format(self.proc_info)
         env.logger.trace('Validating {}'.format(self.proc_info))
         #
         # file not exist?
         if isinstance(self.output_files, Undetermined):
-            env.logger.trace('Fail because of undetermined output files.')
-            return False
+            return "Undetermined output files"
         sig_files = self.input_files + self.output_files + self.dependent_files
         for x in sig_files:
             if not x.exists('any'):
-                env.logger.trace('Missing target {}'.format(x))
-                return False
+                return 'Missing target {}'.format(x)
         #
         if '__hard_target__' in env.sos_dict:
             for x in self.output_files:
                 if not x.exists('target'):
-                    env.logger.trace('Missing real target {}'.format(x))
-                    return False
+                    return 'Missing target {}'.format(x)
         #
         files_checked = {x.name():False for x in sig_files if not isinstance(x, Undetermined)}
         res = {'input': [], 'output': [], 'depends': [], 'vars': {}}
@@ -538,8 +543,7 @@ class RuntimeInfo:
         with open(self.proc_info) as md5:
             cmdMD5 = md5.readline().strip()   # command
             if textMD5(self.script) != cmdMD5:
-                env.logger.trace('Fail because of command change')
-                return False
+                return "Changed command"
             for line in md5:
                 if not line.strip():
                     continue
@@ -571,25 +575,21 @@ class RuntimeInfo:
                     else:
                         freal = FileTarget(f)
                     if freal.exists('target'):
-                        fmd5 = freal.signature()
+                        fmd5 = freal.signature('target')
                     elif freal.exists('signature'):
-                        env.logger.info('Validate with signature of non-existing target {}'.format(freal))
                         fmd5 = freal.signature()
                     else:
-                        env.logger.trace('File {} not exist'.format(f))
-                        return False
+                        return 'File {} not exist'.format(f)
                     res[cur_type].append(freal.name() if isinstance(freal, FileTarget) else freal)
                     if fmd5 != m.strip():
-                        env.logger.trace('MD5 mismatch {}: {} / {}'.format(f, fmd5, m.strip()))
-                        return False
+                        return 'File has changed {}'.format(f)
                     files_checked[freal.name()] = True
                 except Exception as e:
-                    env.logger.trace('Wrong md5 line {} in {}: {}'.format(line, self.proc_info, e))
+                    env.logger.debug('Wrong md5 line {} in {}: {}'.format(line, self.proc_info, e))
                     continue
         #
         if not all(files_checked.values()):
-            env.logger.trace('No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y)))
-            return False
+            return 'No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y))
         env.logger.trace('Signature matches and returns {}'.format(res))
         # validation success, record signature used
         workflow_sig = env.sos_dict['__workflow_sig__']

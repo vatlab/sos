@@ -824,24 +824,33 @@ class Base_Step_Executor:
                                     signatures[idx] = RuntimeInfo(self.step.md5, sg, env.sos_dict['_input'],
                                         env.sos_dict['_output'], env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
                                     if env.sig_mode == 'default':
-                                        res = signatures[idx].validate()
-                                        if res:
+                                        matched = signatures[idx].validate()
+                                        if isinstance(matched, dict):
                                             # in this case, an Undetermined output can get real output files
                                             # from a signature
-                                            env.sos_dict.set('_input', res['input'])
-                                            env.sos_dict.set('_depends', res['depends'])
-                                            env.sos_dict.set('_output', res['output'])
-                                            env.sos_dict.update(res['vars'])
+                                            env.sos_dict.set('_input', matched['input'])
+                                            env.sos_dict.set('_depends', matched['depends'])
+                                            env.sos_dict.set('_output', matched['output'])
+                                            env.sos_dict.update(matched['vars'])
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
                                     elif env.sig_mode == 'assert':
-                                        if not signatures[idx].validate():
-                                            env.logger.info('Step ``{}`` (index={}) is ``rerun`` due to signature mismatch'.format(env.sos_dict['step_name'], idx))
-                                            raise RuntimeError('Signature mismatch.')
+                                        matched = signatures[idx].validate()
+                                        if isinstance(matched, str):
+                                            raise RuntimeError('Signature mismatch: {}'.format(matched))
+                                        else:
+                                            env.sos_dict.set('_input', matched['input'])
+                                            env.sos_dict.set('_depends', matched['depends'])
+                                            env.sos_dict.set('_output', matched['output'])
+                                            env.sos_dict.update(matched['vars'])
+                                            env.logger.info('Step ``{}`` (index={}) is ``ignored`` with matching signature'.format(env.sos_dict['step_name'], idx))
+                                            skip_index = True
                                     elif env.sig_mode == 'build':
                                         if signatures[idx].write():
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
+                                    elif env.sig_mode == 'force':
+                                        skip_index = False
                                     else:
                                         raise RuntimeError('Unrecognized signature mode {}'.format(env.sig_mode))
                                 if skip_index:
@@ -1139,6 +1148,7 @@ class SP_Step_Executor(Queued_Step_Executor):
             if var in env.sos_dict and isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
                 env_vars.append('{} = {!r}\n'.format(var, env.sos_dict[var]))
 
+        # env.logger.warning(''.join(env_vars) + '\n' + self.step.tokens)
         return ''.join(env_vars) + '\n' + self.step.tokens
 
     def expand_depends_files(self, *args, **kwargs):
