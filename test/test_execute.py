@@ -1410,21 +1410,21 @@ sh:
         os.environ['PATH'] += os.pathsep + '.'
         FileTarget('lls').remove('both')
         script = SoS_Script('''
-[lls: provides=executable('lls')]
+[lls: provides=executable('lkls')]
 sh:
-    touch lls
+    touch lkls
     sleep 3
-    chmod +x lls
+    chmod +x lkls
 
 [c]
-depends: executable('lls')
+depends: executable('lkls')
 
 ''')
         wf = script.workflow('c')
         st = time.time()
         Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 2)
-        FileTarget('lls').remove('both')
+        FileTarget('lkls').remove('both')
 
 
     def testSignatureAfterRemovalOfFiles(self):
