@@ -151,7 +151,8 @@ class TestKernel(unittest.TestCase):
     #
     def setUp(self):
         self.olddir = os.getcwd()
-        os.chdir(os.path.dirname(__file__))
+        if os.path.dirname(__file__):
+            os.chdir(os.path.dirname(__file__))
 
     def tearDown(self):
         os.chdir(self.olddir)
