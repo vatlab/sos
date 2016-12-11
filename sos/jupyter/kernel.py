@@ -178,6 +178,7 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_PUT = re.compile('^%put(\s|$)')
     MAGIC_PASTE = re.compile('^%paste(\s|$)')
     MAGIC_RUN = re.compile('^%run(\s|$)')
+    MAGIC_RERUN = re.compile('^%rerun(\s|$)')
     MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
     MAGIC_SANDBOX = re.compile('^%sandbox(\s|$)')
 
@@ -227,6 +228,13 @@ class SoS_Kernel(IPythonKernel):
             description='''Execute the current cell with specified command line
             arguments. Arguments set by magic %set will be appended at the
             end of command line''')
+        parser.error = self._parse_error
+        return parser
+
+    def get_rerun_parser(self):
+        parser = argparse.ArgumentParser(prog='%rerun',
+            description='''Re-execute the last executed code, most likely with
+            different command line options''')
         parser.error = self._parse_error
         return parser
 
@@ -1055,6 +1063,17 @@ class SoS_Kernel(IPythonKernel):
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.options = old_options
+        elif self.MAGIC_RERUN.match(code):
+            options, remaining_code = self.get_magic_and_code(code, True)
+            old_options = self.options
+            self.options = options + ' ' + self.options
+            try:
+                if not hasattr(self, 'last_executed_code'):
+                    self.warn('No saved script')
+                    self.last_executed_code = ''
+                return self._do_execute(self.last_executed_code, silent, store_history, user_expressions, allow_stdin)
+            finally:
+                self.options = old_options
         elif self.MAGIC_SANDBOX.match(code):
             import tempfile
             import shutil
@@ -1098,6 +1117,8 @@ class SoS_Kernel(IPythonKernel):
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.kernel != 'sos':
             # handle string interpolation before sending to the underlying kernel
+            if code:
+                self.last_executed_code = code
             code = self._interpolate_option(code, quiet=False)
             if code is None:
                 return
@@ -1107,6 +1128,8 @@ class SoS_Kernel(IPythonKernel):
                 self.warn('Keyboard Interrupt\n')
                 return {'status': 'abort', 'execution_count': self._execution_count}
         else:
+            if code:
+                self.last_executed_code = code
             # run sos
             try:
                 self.run_sos_code(code, silent)
