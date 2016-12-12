@@ -589,7 +589,7 @@ class SoS_Kernel(IPythonKernel):
             try:
                 statements = []
                 for item in items:
-                    new_name, py_repr = lan.repr_of_py_obj(item, env.sos_dict[item])
+                    new_name, py_repr = lan.py_to_lan(item, env.sos_dict[item])
                     if new_name != item:
                         self.warn('Variable {} is passed from SoS to kernel {} as {}'
                             .format(item, self.kernel, new_name))
@@ -652,7 +652,7 @@ class SoS_Kernel(IPythonKernel):
                     self.warn('Failed to put variable {} to SoS namespace\n'.format(item))
         elif self.kernel in self.supported_languages:
             lan = self.supported_languages[self.kernel]
-            new_names, py_repr = lan.py_repr_of_obj(items)
+            new_names, py_repr = lan.lan_to_py(items)
             for n, nn in zip(items, new_names):
                 if n != nn:
                     self.warn('Variable {} is put to SoS as {}'.format(n, nn))
@@ -672,7 +672,7 @@ class SoS_Kernel(IPythonKernel):
                         if msg_type in ('display_data', 'execute_result'):
                             try:
                                 env.sos_dict.update(
-                                    lan.py_from_repr_of_obj(sub_msg['content']['data']['text/plain'])
+                                    lan.py_to_dict(sub_msg['content']['data']['text/plain'])
                                     )
                             except Exception as e:
                                  self.warn(str(e))

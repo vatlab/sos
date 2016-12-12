@@ -239,6 +239,6 @@ class sos_R:
     def __init__(self):
         self.kernel_name = 'ir'
         self.init_statements = R_init_statements
-        self.repr_of_py_obj = R_repr_of_py_obj
-        self.py_repr_of_obj = py_repr_of_R_obj
-        self.py_from_repr_of_obj = py_from_R_repr
+        self.py_to_lan = R_repr_of_py_obj
+        self.lan_to_py = py_repr_of_R_obj
+        self.py_to_dict = py_from_R_repr
