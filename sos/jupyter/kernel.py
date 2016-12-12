@@ -703,6 +703,8 @@ class SoS_Kernel(IPythonKernel):
             return None
 
     def handle_magic_preview(self, options):
+        # we do string interpolation here because the execution of 
+        # statements before it can change the meanings of them.
         options = self._interpolate_option(options, quiet=True)
         if options is None:
             return
@@ -710,10 +712,6 @@ class SoS_Kernel(IPythonKernel):
         import shlex
         parser = self.get_preview_parser()
         args = parser.parse_args(shlex.split(options, posix=False))
-        if args.off:
-            self.preview_output = False
-        else:
-            self.preview_output = True
         if not args.items or args.off:
             return
         self.send_response(self.iopub_socket, 'display_data',
@@ -1120,13 +1118,21 @@ class SoS_Kernel(IPythonKernel):
                 if not args.dir:
                     shutil.rmtree(new_dir)
                 os.chdir(old_dir)
-                env.exec_dir = old_dir
+                #env.exec_dir = old_dir
         elif self.MAGIC_PREVIEW.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
+            import shlex
+            parser = self.get_preview_parser()
+            args = parser.parse_args(shlex.split(options, posix=False))
+            if args.off:
+                self.preview_output = False
+            else:
+                self.preview_output = True
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
-                self.handle_magic_preview(options)
+                if not args.off:
+                    self.handle_magic_preview(options)
         elif self.MAGIC_CD.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_cd(options)
