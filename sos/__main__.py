@@ -67,88 +67,81 @@ def get_convert_parser():
         epilog='''Extra command line argument could be specified to customize
             the style of html, markdown, and terminal output. ''',
         )
-    parser.add_argument('from_file', metavar='FROM', nargs='?',
-        help='''File to be converted.''')
-    parser.add_argument('to_file', metavar='TO', nargs='?',
-        help='''File to convert to, default to standard output if no file
-            name is given.''')
-    parser.add_argument('-t', '--to', dest='__to_format__', metavar='TO_FORMAT',
-        help='''Destination file format, which is usually determined from
-            extension of `to_file` filename, but is needed if `to_file` is
-            unspecified.''')
-    parser.add_argument('-l', '--list', action='store_true',
-        help='''List all available converters or converters matching input parameters 
-            and their options.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).'''),
     parser.set_defaults(func=cmd_convert)
-    return parser
-
-def get_converter(from_format, to_format):
-    parser = func = None
-    for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
-        try:
-            name = entrypoint.name
-            f_format, t_format = name.rsplit('.', 1)[0].split('_')
-            if f_format == from_format and t_format == to_format:
-                if name.endswith('.func'):
-                    func = entrypoint.load()
-                elif name.endswith('.parser'):
-                    parser = entrypoint.load()
-        except Exception as e:
-            raise RuntimeError('Failed to load converter {}: {}'.format(entrypoint.name, e))
-    if parser is None and func is None:
-        raise RuntimeError('No converter from {} to {} is located'.format(from_format, to_format))
-    elif parser is None:
-        raise RuntimeError('No parser for converter from {} to {} is located'.format(from_format, to_format))
-    elif func is None:
-        raise RuntimeError('No converter function from {} to {} is located'.format(from_format, to_format))
-    return parser(), func
-
-def list_converter(from_format=None, to_format=None):
+    subparsers = parser.add_subparsers(title='converters (name of converter is not needed from command line)',
+        dest='converter_name')
     for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
         try:
             name = entrypoint.name
             if not name.endswith('.parser'):
                 continue
-            f_format, t_format = name.rsplit('.',1)[0].split('_')
-            if from_format is not None and from_format != f_format:
-                continue
-            if to_format is not None and to_format != t_format:
-                continue
-            parser = entrypoint.load()()
-            print('===================================')
-            print('====== {:>8} --> {:<8} ======'.format(f_format, t_format))
-            print('===================================')
-            parser.print_help()
-            print('\n')
+            f_format, t_format = name.rsplit('.',1)[0].split('-')
+            subparser = add_sub_parser(subparsers, entrypoint.load()(), name='{}-{}'.format(f_format, t_format))
+            subparser.add_argument('from_file', metavar='FROM', nargs='?',
+                help='''File to be converted.''')
+            subparser.add_argument('to_file', metavar='TO', nargs='?',
+                help='''File to convert to, default to standard output if no file
+                    name is given.''')
+            subparser.add_argument('-t', '--to', dest='__to_format__', metavar='TO_FORMAT',
+                help='''Destination file format, which is usually determined from
+                    extension of `to_file` filename, but is needed if `to_file` is
+                    unspecified.''')
         except Exception as e:
             print('Failed to load converter {}: {}'.format(entrypoint.name, e))
+    return parser
 
-def cmd_convert(args, converter_args):
+
+def get_converter_formats(argv):
+    parser = argparse.ArgumentParser('convert')
+    parser.add_argument('from_file', nargs='?')
+    parser.add_argument('to_file', nargs='?')
+    parser.add_argument('-t', '--to', dest='__to_format__')
+    args, unknown_args = parser.parse_known_args(argv)
+    from_format = args.from_file[1:] if args.from_file.startswith('.') and args.from_file.count('.') == 1 \
+        else os.path.splitext(args.from_file)[-1][1:]
+    if args.__to_format__:
+        to_format = args.__to_format__
+    elif args.to_file:
+        to_format = args.to_file[1:] if args.to_file.startswith('.') and args.to_file.count('.') == 1 \
+            else os.path.splitext(args.to_file)[-1][1:]
+    else:
+        return None, None
+    return from_format, to_format
+
+
+def print_converter_help():
+    from_format, to_format = get_converter_formats([x for x in sys.argv[2:] if x != '-h'])
+    if from_format is None or to_format is None:
+        return
+    for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
+        try:
+            name = entrypoint.name
+            if not name.endswith('.parser'):
+                continue
+            f_format, t_format = name.rsplit('.',1)[0].split('-')
+            if from_format != f_format or to_format != t_format:
+                continue
+            parser = entrypoint.load()()
+            sys.exit(parser.print_help())
+        except Exception as e:
+            sys.exit('Failed to load converter {}: {}'.format(entrypoint.name, e))
+
+
+def cmd_convert(args, unknown_args):
     from .utils import env, get_traceback
     try:
-        from_format = os.path.splitext(args.from_file)[-1][1:]
-        if args.__to_format__:
-            to_format = args.__to_format__
-        elif args.to_file:
-            to_format = os.path.splitext(args.to_file)[-1][1:]
-        else:
-            raise ValueError('Please specify either desination file or format')
-        #
-        if args.list:
-            list_converter(from_format, to_format)
-            sys.exit(0)
-        else:
-            parser, converter = get_converter(from_format, to_format)
-            converter_args, unknown_args = parser.parse_known_args(converter_args)
-            converter(args.from_file, args.to_file, converter_args, unknown_args)
+        for entrypoint in pkg_resources.iter_entry_points(group='sos_converters'):
+            try:
+                if entrypoint.name == args.converter_name + '.func':
+                    func = entrypoint.load()
+                    func(args.from_file, args.to_file, args, unknown_args)
+            except Exception as e:
+                raise RuntimeError('Failed to load converter {}: {}'.format(entrypoint.name, e))
     except Exception as e:
         # if no other parameter, with option list all
-        if args.list:
-            list_converter()
-            sys.exit(0)
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error(e)
@@ -1169,14 +1162,24 @@ def main():
     if len(sys.argv) == 1:
         master_parser.print_help()
         sys.exit(0)
-    if len(sys.argv) > 3 and sys.argv[1] == 'run' and not sys.argv[2].startswith('-') and '-h' in sys.argv:
-        try:
-            from .sos_script import SoS_Script
-            script = SoS_Script(filename=sys.argv[2])
-            script.print_help()
-            sys.exit(0)
-        except Exception as e:
-            sys.exit('No help information is available for script {}: {}'.format(sys.argv[1], e))
+    if '-h' in sys.argv:
+        if len(sys.argv) > 3 and sys.argv[1] == 'run' and not sys.argv[2].startswith('-'):
+            try:
+                from .sos_script import SoS_Script
+                script = SoS_Script(filename=sys.argv[2])
+                script.print_help()
+                sys.exit(0)
+            except Exception as e:
+                sys.exit('No help information is available for script {}: {}'.format(sys.argv[1], e))
+        if len(sys.argv) > 4 and sys.argv[1] == 'convert':
+            print_converter_help()
+    elif sys.argv[1] == 'convert':
+        # this command has to be processed separately because I hat to use
+        # sos convert sos-html FROM TO etc
+        from_format, to_format = get_converter_formats(sys.argv[2:])
+        if from_format is None or to_format is None:
+            sys.exit('Cannot determine from or to format')
+        sys.argv.insert(2, '{}-{}'.format(from_format, to_format))
     args, workflow_args = master_parser.parse_known_args()
     # calling the associated functions
     args.func(args, workflow_args)

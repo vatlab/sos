@@ -221,20 +221,20 @@ tarfile:is_tarfile,1 = sos.jupyter.preview:preview_tar
 R = sos.R.kernel:sos_R [R]
 
 [sos_converters]
-sos_html.parser = sos.converter:get_script_to_html_parser
-sos_html.func = sos.converter:script_to_html
+sos-html.parser = sos.converter:get_script_to_html_parser
+sos-html.func = sos.converter:script_to_html
 
-sos_term.parser = sos.converter:get_script_to_term_parser
-sos_term.func = sos.converter:script_to_term
+sos-term.parser = sos.converter:get_script_to_term_parser
+sos-term.func = sos.converter:script_to_term
 
-sos_md.parser = sos.converter:get_script_to_markdown_parser
-sos_md.func = sos.converter:script_to_markdown
+sos-md.parser = sos.converter:get_script_to_markdown_parser
+sos-md.func = sos.converter:script_to_markdown
 
-sos_ipynb.parser = sos.jupyter.converter:get_script_to_notebook_parser
-sos_ipynb.func = sos.jupyter.converter:script_to_notebook
+sos-ipynb.parser = sos.jupyter.converter:get_script_to_notebook_parser
+sos-ipynb.func = sos.jupyter.converter:script_to_notebook
 
-ipynb_sos.parser = sos.jupyter.converter:get_notebook_to_script_parser
-ipynb_sos.func = sos.jupyter.converter:notebook_to_script
+ipynb-sos.parser = sos.jupyter.converter:get_notebook_to_script_parser
+ipynb-sos.func = sos.jupyter.converter:notebook_to_script
 
 ''',
     extras_require = {

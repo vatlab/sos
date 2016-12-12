@@ -41,7 +41,7 @@ def get_notebook_to_script_parser():
     parser = argparse.ArgumentParser('sos convert FILE.ipynb FILE.sos (or --to sos)',
         description='''Export Jupyter notebook with a SoS kernel to a 
         .sos file. The cells are presented in the .sos file as
-        %cell structure lines, which will be ignored if executed
+        cell structure lines, which will be ignored if executed
         in batch mode ''')
     parser.add_argument('--reorder', action='store_true',
         help='''Reorder cells according to execution count''')

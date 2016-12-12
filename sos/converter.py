@@ -649,9 +649,13 @@ def get_script_to_html_parser():
         default='default')
     parser.add_argument('--linenos', action='store_true',
         help='''Display lineno to the left of the source code''')
+    parser.add_argument('-v', '--view', action='store_true',
+        help='''Open the output file in a broswer. In case no html file is specified,
+        this option will display the HTML file in a browser, instead of writing its
+        content to standard output.''')
     return parser
 
-def script_to_html(script_file, html_file, style_args=None, unknown_args=[]):
+def script_to_html(script_file, html_file, args, unknown_args=[]):
     '''
     Convert sos file to html format with syntax highlighting, and
     either save the output either to a HTML file or view it in a broaser.
@@ -662,23 +666,22 @@ def script_to_html(script_file, html_file, style_args=None, unknown_args=[]):
     import tempfile
     transcript_file = transcribe_script(script_file)
 
-    view_in_browser = not html_file
+    no_output_file = not html_file
     if not html_file:
         html_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name
     #
-    sargs = vars(style_args) if style_args else {}
     if unknown_args:
         raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
     formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
-        **{x:y for x,y in sargs.items() if x != 'raw'})
+        **{x:y for x,y in vars(args).items() if x != ('raw', 'view')})
     with open(html_file, 'w') as html:
         html.write(template_pre_style % os.path.basename(script_file))
         html.write(inline_css)
         # remove background definition so that we can use our own
         html.write('\n'.join(x for x in formatter.get_style_defs().split('\n') if 'background' not in x))
-        if 'raw' in sargs and sargs['raw']:
-            raw_link = '<a href="{}" class="commit-tease-sha">{}</a>'.format(sargs['raw'], script_file)
-            script_link = '<a href="{}">{}</a>'.format(sargs['raw'], os.path.basename(script_file))
+        if args.raw:
+            raw_link = '<a href="{}" class="commit-tease-sha">{}</a>'.format(args.raw, script_file)
+            script_link = '<a href="{}">{}</a>'.format(args.raw, os.path.basename(script_file))
         else:
             raw_link = script_file
             script_link = os.path.basename(script_file)
@@ -728,13 +731,17 @@ def script_to_html(script_file, html_file, style_args=None, unknown_args=[]):
     except:
         pass
     #
-    if view_in_browser:
+    if no_output_file:
+        if not args.view:
+            with open(html_file) as html:
+                sys.stdout.write(html.read())
+    else:
+        env.logger.info('SoS script saved to {}'.format(html_file))
+    #
+    if args.view:
         url = 'file://{}'.format(html_file)
         env.logger.info('Viewing {} in a browser'.format(url))
         webbrowser.open(url, new=2)
-    else:
-        env.logger.info('SoS script saved to {}'.format(html_file))
-
 
 #
 # Converter to Markdown
@@ -879,7 +886,7 @@ def get_script_to_term_parser():
         help='Display lineno to the left of the script')
     return parser
 
-def script_to_term(script_file, output_file, style_args=None, unknown_args=[]):
+def script_to_term(script_file, output_file, args, unknown_args=[]):
     '''
     Write script to terminal. This converter accepts additional parameters
     --bg [light|dark] for light or dark theme, and --linenos for output
@@ -887,11 +894,10 @@ def script_to_term(script_file, output_file, style_args=None, unknown_args=[]):
     '''
     transcript_file = transcribe_script(script_file)
 
-    sargs = vars(style_args) if style_args else {}
     if unknown_args:
         raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
 
-    formatter = TerminalFormatter(**sargs)
+    formatter = TerminalFormatter(**vars(args))
     # remove background definition so that we can use our own
     with open(transcript_file) as script:
         content = []
