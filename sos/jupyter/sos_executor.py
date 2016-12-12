@@ -41,7 +41,8 @@ class Interactive_Executor(Base_Executor):
         # by nested = True we actually mean no new dictionary
         if env.sig_mode is None:
             env.sig_mode = 'ignore'
-        Base_Executor.__init__(self, workflow=workflow, args=args, nested=True, output_dag=output_dag)
+        Base_Executor.__init__(self, workflow=workflow, args=args, config_file=config_file, 
+            nested=True, output_dag=output_dag)
         env.__task_engine__ = 'interactive'
         if env.sig_mode != 'ignore':
             self.md5 = self.create_signature()

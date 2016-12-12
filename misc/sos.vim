@@ -52,8 +52,8 @@ highlight link pythonBuiltin	Function
 " parenthetical part of def and class
 syn match sos_section_head "^\[\s*\w\+.*\]\s*$"
 syn match sos_directive "^\(input\|output\|depends\|parameter\|task\)\s*:"
-syn match sos_preprocessor "^%\(if\|elif\|else\|endif\|cell\|include\|from\).*$"
-syn match sos_magic "^%\(with\|use\|set\|paste\|reset\|dict\|preview\|run\).*$"
+syn match sos_preprocessor "^%\(if\|elif\|else\|endif\|cell\|include\|from\|set_options\).*$"
+syn match sos_magic "^%\(with\|use\|set\|get\|put\|sandbox\|paste\|\|dict\|restart\|dict\|preview\|run\|rerun\).*$"
 
 " match a line with non input/output/depends/task, and ends before a section
 " or another directive
