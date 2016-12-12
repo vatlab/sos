@@ -69,7 +69,7 @@ class Interactive_Executor(Base_Executor):
 
         # load configuration files
         cfg = {}
-        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yaml')
+        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
         if os.path.isfile(sos_config_file):
             try:
                 with open(sos_config_file) as config:
@@ -77,7 +77,7 @@ class Interactive_Executor(Base_Executor):
             except Exception as e:
                 raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
         # local config file
-        sos_config_file = 'config.yaml'
+        sos_config_file = 'config.yml'
         if os.path.isfile(sos_config_file):
             try:
                 with open(sos_config_file) as config:
@@ -95,7 +95,7 @@ class Interactive_Executor(Base_Executor):
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config_file, e))
         # set config to CONFIG
         env.sos_dict.set('CONFIG', frozendict(cfg))
-        FileTarget('config.yaml').remove('both')
+        FileTarget('config.yml').remove('both')
 
     def run(self, targets=None, mode='interactive'):
         '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer

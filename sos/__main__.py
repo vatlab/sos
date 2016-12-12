@@ -29,7 +29,7 @@ script_help = '''A SoS script that defines one or more workflows. The
     script can be a filename or a URL from which the content of a SoS will
     be read. If a valid file cannot be located or downloaded, SoS will
     search for the script in a search path specified by variable `sos_path`
-    defined in the global SoS configuration file (~/.sos/config.yaml).'''
+    defined in the global SoS configuration file (~/.sos/config.yml).'''
 workflow_spec =  '''Name of the workflow to execute. This option can be
     ignored if the script defines a default workflow (with no name or with
     name `default`) or defines only a single workflow. A subworkflow or a
@@ -570,8 +570,8 @@ def get_config_parser():
         description='''Displays, set, and unset configuration
             variables defined in global or local configuration files.''')        
     parser.add_argument('-g', '--global', action='store_true', dest='__global_config__',
-        help='''If set, change global (~/.sos/config.yaml) instead of local
-        (.sos/config.yaml) configuration''')
+        help='''If set, change global (~/.sos/config.yml) instead of local
+        (.sos/config.yml) configuration''')
     parser.add_argument('-c', '--config', dest='__config_file__', metavar='CONFIG_FILE',
         help='''User specified configuration file in YAML format. This file will not be
         automatically loaded by SoS but can be specified using option `-c`''')
@@ -608,11 +608,11 @@ def cmd_config(args, workflow_args):
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
     #
     if args.__global_config__:
-        config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yaml')
+        config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
     elif args.__config_file__:
         config_file = os.path.expanduser(args.__config_file__)
     else:
-        config_file = 'config.yaml'
+        config_file = 'config.yml'
     if args.__get_config__ is not None:
         if os.path.isfile(config_file):
             try:

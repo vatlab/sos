@@ -765,7 +765,7 @@ print(0)
 
     def testSearchPath(self):
         '''Test if any action should exit in five seconds in dryrun mode'''
-        sos_config_file = 'config.yaml'
+        sos_config_file = 'config.yml'
         #
         with open(sos_config_file, 'w') as sos_config:
             sos_config.write('''

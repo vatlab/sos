@@ -867,7 +867,7 @@ def locate_script(filename, start=''):
     #
     # a search path
     pathes = [start]
-    sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yaml')
+    sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
     if os.path.isfile(sos_config_file):
         try:
             with open(sos_config_file) as config:
@@ -877,7 +877,7 @@ def locate_script(filename, start=''):
         #
         pathes.extend(cfg.get('sos_path', []))
     #
-    sos_config_file = 'config.yaml'
+    sos_config_file = 'config.yml'
     if os.path.isfile(sos_config_file):
         try:
             with open(sos_config_file) as config:
