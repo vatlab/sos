@@ -9,3 +9,4 @@ dist
 _site/
 .ipynb_checkpoints
 process.sh
+*.pem
