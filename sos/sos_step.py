@@ -1201,7 +1201,7 @@ class MP_Step_Executor(SP_Step_Executor):
                     # __signature_vars__
                     env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
                         | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_index',
-                        '_runtime', '__workflow_sig__'}),
+                        '_runtime', '__workflow_sig__', '__report_output__'}),
                     signature,
                     self.step.sigil
                 ))

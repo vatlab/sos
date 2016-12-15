@@ -572,30 +572,38 @@ def JavaScript(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
-def report(script=None, from_file=None, to_file=None, mode='a', **kwargs):
-    if to_file is not None:
-        if not to_file:
-            raise RuntimeError('Invalid parameter to_file "{}"'.format(to_file))
-        report_file = to_file
+def report(script, output=None, **kwargs):
+    '''Write script to an output file specified by `output`, which can be
+    a filename to which the content of the script will be written,
+    a filename prefixed with '>>' (e.g. ">>a.txt") to which the content will be
+    appended to the specified file, any object with a "write" attribute (e.g.
+    a file handle) for which the "write" function will be called with the
+    content. If output is unspecified, the content will be written to standard
+    output or appended to a file specified with command line option `-r`. 
+    '''
+    env.logger.error('HAD {}'.format('__report_output__' in env.sos_dict))
+    file_handle = None
+    if isinstance(output, str):
+        if output.startswith('>>'):
+            file_handle = open(output[2:], 'a')
+            writer = file_handle.write
+        else:
+            file_handle = open(output[2:], 'w')
+            writer = file_handle.write
+    elif hasattr(output, 'write'):
+        writer = output.write
+    elif '__report_output__' in env.sos_dict:
+        filename = env.sos_dict['__report_output__'].lstrip('>')
+        file_handle = open(filename, 'a')
+        writer = file_handle.write
+    elif output is None or output == '':
+        writer = sys.stdout.write
     else:
-        report_file = '.sos/report.md'
+        raise ValueError('Invalid output {}.'.format(output))
     #
-    content = ''
-    if script is not None:
-        content = script
-    if from_file is not None:
-        try:
-            with open(from_file) as rep:
-                content += rep.read().decode()
-        except Exception as e:
-            raise RuntimeError('Failed to import report from {}: {}'.format(from_file, e))
-    #
-    # write report file (the ${} expressions must have been interpolated.
-    if report_file == '__STDERR__':
-        sys.stderr.write(content)
-    else:
-        with open(report_file, mode)as md:
-            md.write(content)
+    writer(script)
+    if file_handle:
+        file_handle.close()
 
 
 @SoS_Action(run_mode=['run', 'interactive'])

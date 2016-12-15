@@ -527,5 +527,27 @@ for k in range(2):
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')
 
+    def testReport(self):
+        '''Test action report'''
+        script = SoS_Script(r'''
+[A]
+parameter: num=5
+report:
+    touch ${num}.txt
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # output to a file
+        FileTarget('report.txt').remove('both')
+        wf = script.workflow()
+        # run twice
+        env.sos_dict.set('__report_output__', 'report.txt')
+        Base_Executor(wf, args=['--num', '7']).run()
+        Base_Executor(wf, args=['--num', '5']).run()
+        with open('report.txt') as report:
+            self.assertEqual(report.read(), 'touch 7.txt\ntouch 5.txt\n')
+
+
 if __name__ == '__main__':
     unittest.main()

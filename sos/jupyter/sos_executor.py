@@ -262,6 +262,10 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
     env.verbosity = args.verbosity
     env.__task_engine__ = 'interactive'
 
+    if args.__report__:
+        env.sos_dict.set('__report_output__', args.__report__ if args.__report__.startswith('>>') else '>>' + args.__report__)
+    elif '__report_output__' in env.sos_dict:
+        env.sos_dict.pop('__report_output__')
     #
     env.sig_mode = args.__sigmode__
 
