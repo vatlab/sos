@@ -36,13 +36,12 @@ from .sos_step import Interactive_Step_Executor
 
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
-    def __init__(self, workflow=None, args=[], config_file=None, nested=False, output_dag=None):
+    def __init__(self, workflow=None, args=[], nested=False, config={}):
         # we actually do not have our own workflow, everything is passed from ipython
         # by nested = True we actually mean no new dictionary
         if env.sig_mode is None:
             env.sig_mode = 'ignore'
-        Base_Executor.__init__(self, workflow=workflow, args=args, config_file=config_file, 
-            nested=True, output_dag=output_dag)
+        Base_Executor.__init__(self, workflow=workflow, args=args, nested=True, config=config)
         env.__task_engine__ = 'interactive'
         if env.sig_mode != 'ignore':
             self.md5 = self.create_signature()
@@ -55,7 +54,7 @@ class Interactive_Executor(Base_Executor):
                     script.write(self.workflow.content.content)
                 sig.write('# script: {}\n'.format('__interactive__.sos'))
                 sig.write('# included: {}\n'.format(','.join(self.workflow.content.included)))
-                sig.write('# configuration: {}\n'.format(config_file))
+                sig.write('# configuration: {}\n'.format(config.get('config_file', '')))
                 sig.write('# start time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
                 sig.write(self.sig_content)
                 sig.write('# runtime signatures\n')
@@ -66,7 +65,11 @@ class Interactive_Executor(Base_Executor):
         env.sos_dict.set('__args__', self.args)
         if self.md5:
             env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
-
+        if self.config['report_output']:
+            env.sos_dict.set('__report_output__', self.config['report_output'])
+        elif'__report_output__' in env.sos_dict:
+            env.sos_dict.pop('__report_output_')
+        
         # load configuration files
         cfg = {}
         sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
@@ -84,15 +87,15 @@ class Interactive_Executor(Base_Executor):
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-        if self.config_file is not None:
+        if self.config['config_file'] is not None:
             # user-specified configuration file.
-            if not os.path.isfile(self.config_file):
-                raise RuntimeError('Config file {} not found'.format(self.config_file))
+            if not os.path.isfile(self.config['config_file']):
+                raise RuntimeError('Config file {} not found'.format(self.config['config_file']))
             try:
-                with open(self.config_file) as config:
+                with open(self.config['config_file']) as config:
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
-                raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config_file, e))
+                raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config['config_file'], e))
         # set config to CONFIG
         env.sos_dict.set('CONFIG', frozendict(cfg))
         FileTarget('config.yml').remove('both')
@@ -294,8 +297,10 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
         else:
             script = SoS_Script(filename=script, global_sigil=get_default_global_sigil())
         workflow = script.workflow(args.workflow)
-        executor = Interactive_Executor(workflow, args=workflow_args, config_file=args.__config__,
-            output_dag=args.__dag__)
+        executor = Interactive_Executor(workflow, args=workflow_args, config={
+            'config_file': args.__config__,
+            'output_dag': args.__dag__,
+            'report_output': args.__report__})
 
         if args.__dryrun__:
             return executor.dryrun(args.__targets__)

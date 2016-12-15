@@ -76,13 +76,15 @@ def __null_func__(*args, **kwargs):
 class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
-    def __init__(self, workflow=None, args=[], config_file=None, nested=False, output_dag=None):
+    def __init__(self, workflow=None, args=[], nested=False, config={}):
         env.__task_engine__ = None
         self.workflow = workflow
         self.args = args
         self.nested = nested
-        self.config_file = config_file
-        self.output_dag = output_dag
+        self.config = config
+        for key in ('config_file', 'output_dag', 'report_output'):
+            if key not in self.config:
+                self.config[key] = None
         # if the executor is not called from command line, without sigmode setting
         if env.sig_mode is None:
             env.sig_mode = 'default'
@@ -94,7 +96,7 @@ class Base_Executor:
                 sig.write('# workflow: {}\n'.format(self.workflow.name))
                 sig.write('# script: {}\n'.format(self.workflow.content.filename))
                 sig.write('# included: {}\n'.format(','.join(self.workflow.content.included)))
-                sig.write('# configuration: {}\n'.format(config_file))
+                sig.write('# configuration: {}\n'.format(config.get('config_file', '')))
                 sig.write('# start time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
                 sig.write(self.sig_content)
                 sig.write('# runtime signatures\n')
@@ -102,20 +104,20 @@ class Base_Executor:
             self.md5 = None
 
     def save_dag(self, dag):
-        if self.output_dag is None:
+        if self.config['output_dag'] is None:
             return
         if not hasattr(self, 'dag_count'):
             self.dag_count = 0
         self.dag_count += 1
         #
         # output file name
-        if self.output_dag == '-':
+        if self.config['output_dag'] == '-':
             dag_name = sys.stdout
         else:
             if self.dag_count == 1:
-                dag_name = self.output_dag if self.output_dag.endswith('.dot') else self.output_dag + '.dot'
+                dag_name = self.config['output_dag'] if self.config['output_dag'].endswith('.dot') else self.config['output_dag'] + '.dot'
             else:
-                dag_name = '{}_{}.dot'.format(self.output_dag[:-4] if self.output_dag.endswith('.dot') else self.output_dag, self.dag_count)
+                dag_name = '{}_{}.dot'.format(self.config['output_dag'][:-4] if self.config['output_dag'].endswith('.dot') else self.config['output_dag'], self.dag_count)
         #
         dag.write_dot(dag_name)
 
@@ -146,6 +148,8 @@ class Base_Executor:
         # inject a few things
         if self.md5:
             env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
+        if self.config['report_output']:
+            env.sos_dict.set('__report_output__', self.config['report_output'])
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
         env.sos_dict.set('__unknown_args__', self.args)
@@ -171,14 +175,14 @@ class Base_Executor:
             except Exception as e:
                 raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
         # user-specified configuration file.
-        if self.config_file is not None:
-            if not os.path.isfile(self.config_file):
-                raise RuntimeError('Config file {} not found'.format(self.config_file))
+        if self.config['config_file'] is not None:
+            if not os.path.isfile(self.config['config_file']):
+                raise RuntimeError('Config file {} not found'.format(self.config['config_file']))
             try:
-                with open(self.config_file) as config:
+                with open(self.config['config_file']) as config:
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
-                raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config_file, e))
+                raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config['config_file'], e))
         # set config to CONFIG
         env.sos_dict.set('CONFIG', frozendict(cfg))
 
@@ -557,8 +561,8 @@ class Base_Executor:
 class MP_Executor(Base_Executor):
     #
     # Execute a workflow sequentially in batch mode
-    def __init__(self, workflow, args=[], config_file=None, nested=False, output_dag=None):
-        Base_Executor.__init__(self, workflow, args, config_file, nested=nested, output_dag=output_dag)
+    def __init__(self, workflow, args=[], nested=False, config={}):
+        Base_Executor.__init__(self, workflow, args, nested=nested, config=config)
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
 

@@ -527,5 +527,59 @@ for k in range(2):
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')
 
+    def testReport(self):
+        '''Test action report'''
+        script = SoS_Script(r'''
+[A]
+parameter: num=5
+report:
+    touch ${num}.txt
+
+''')
+        # output to a file
+        FileTarget('report.txt').remove('both')
+        wf = script.workflow()
+        # run twice
+        Base_Executor(wf, args=['--num', '7'], config={'report_output': 'report.txt'}).run()
+        Base_Executor(wf, args=['--num', '5'], config={'report_output': 'report.txt'}).run()
+        with open('report.txt') as report:
+            self.assertEqual(report.read(), 'touch 7.txt\n\ntouch 5.txt\n\n')
+        # test overwrite
+        FileTarget('report.txt').remove('both')
+        script = SoS_Script(r'''
+[A]
+report: output='report.txt'
+    ${step_name}
+
+[A_10]
+report: output='report.txt'
+    ${step_name}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # output to a file
+        # run twice
+        Base_Executor(wf).run()
+        with open('report.txt') as report:
+            self.assertEqual(report.read(), 'A_10\n')
+        # test append mode
+        FileTarget('report.txt').remove('both')
+        script = SoS_Script(r'''
+[A]
+report: output='report.txt'
+    ${step_name}
+
+[A_10]
+report: output='>>report.txt'
+    ${step_name}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # output to a file
+        # run twice
+        Base_Executor(wf).run()
+        with open('report.txt') as report:
+            self.assertEqual(report.read(), 'A_0\n\nA_10\n')
+
 if __name__ == '__main__':
     unittest.main()

@@ -184,12 +184,11 @@ def get_run_parser(interactive=False, with_workflow=True):
             queues include a 'rq' engine where tasks will be distributed to one or
             more rq-workers with assistance from a redis server, and a 'celery'
             quque where tasks will be distributed to celery workers.''')
-    #parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE',
-    #    const='__STDOUT__', nargs='?',
-    #    help='''Name of a file that records output from report lines
-    #        (lines starts with !) and report action of the script. Report
-    #        will be written to standard output if the option is specified
-    #        without any value.''')
+    parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', nargs='?',
+         help='''Default output of action report, which is by default the
+            standard output but you can redirect it to another file with this
+            option. Note that files specified by this option would be opened
+            in append mode so no ">>" specifier is needed.''')
     #parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
@@ -280,7 +279,10 @@ def cmd_run(args, workflow_args):
             raise ValueError("Unrecognized command line option {}".format(' '.join(workflow_args)))
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow, use_default=not args.__targets__)
-        executor = executor_class(workflow, args=workflow_args, config_file=args.__config__, output_dag=args.__dag__)
+        executor = executor_class(workflow, args=workflow_args, config={
+                'config_file': args.__config__,
+                'output_dag': args.__dag__,
+                'report_output': args.__report__})
         #
         if args.__dryrun__:
             executor.dryrun(args.__targets__)
