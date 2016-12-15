@@ -236,9 +236,6 @@ def cmd_run(args, workflow_args):
         args.__dag__ = None
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
-    if args.__report__:
-        env.sos_dict.set('__report_output__', args.__report__ if args.__report__.startswith('>>') else '>>' + args.__report__)
-        env.logger.error(env.sos_dict['__report_output__'])
 
     if args.__queue__:
         # import all executors
@@ -282,7 +279,10 @@ def cmd_run(args, workflow_args):
             raise ValueError("Unrecognized command line option {}".format(' '.join(workflow_args)))
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow, use_default=not args.__targets__)
-        executor = executor_class(workflow, args=workflow_args, config_file=args.__config__, output_dag=args.__dag__)
+        executor = executor_class(workflow, args=workflow_args, config={
+                'config_file': args.__config__,
+                'output_dag': args.__dag__,
+                'report_output': args.__report__})
         #
         if args.__dryrun__:
             executor.dryrun(args.__targets__)
