@@ -24,8 +24,6 @@ import os
 import sys
 import subprocess
 import tempfile
-import shlex
-import glob
 import copy
 import urllib
 import urllib.request
@@ -42,7 +40,7 @@ if sys.platform != 'win32':
 
 from collections.abc import Sequence
 import multiprocessing as mp
-from .utils import env, ProgressBar, natural_keys, transcribe, AbortExecution, short_repr, get_traceback
+from .utils import env, ProgressBar, transcribe, AbortExecution, short_repr, get_traceback
 from .sos_eval import Undetermined, interpolate
 from .target import FileTarget, fileMD5
 from .monitor import ProcessMonitor, summarizeExecution
@@ -606,42 +604,30 @@ def report(script, output=None, **kwargs):
 
 
 @SoS_Action(run_mode=['run', 'interactive'])
-def pandoc(script=None, output=None, **kwargs):
-    '''This action can be used in three ways
+def pandoc(script=None, input=None, output=None, args='${input!q} --output ${output!q}', **kwargs):
+    '''Convert input file to output using pandoc
 
-    pandoc:   outputfile='report.html'
+    The input can be specified in three ways:
+    
+    1. instant script, which is assumed to be in md format
+
+    pandoc:   output='report.html'
       script
 
-    pandoc(filename='report.sos', outputfile='report.html')
+    2. a input file. The format is determined by extension of input file
 
-    pandoc(outputfile='report.html')
+    pandoc(input, output='report.html')
 
+    3. input file specified by command line option `-r` .
+    pandoc(output='report.html')
+
+    If no output is specified, it is assumed to be in html format
+    and is written to standard output.
+    
+    You can specify more options such as "from" and "to" by customizing
+    the args parameter of the action. The default value of args is
+    `${input!q} --output ${output!q}'
     '''
-    # in run mode, collect report and call pandoc
-    sos_script = env.sos_dict['__step_context__'].filename
-    # this is the case for stirng input (test only)
-    if sos_script is None:
-        sos_script = 'string_input'
-    if script is not None:
-        # get a temporary file with the content
-        script_file = '{}.md'.format(os.path.basename(sos_script))
-        with open(script_file, 'w') as report:
-            report.write(script)
-    elif 'filename' in kwargs:
-        script_file = kwargs['filename']
-    elif env.run_mode == 'interactive' and '__summary_report__' in env.sos_dict:
-        script_file = env.sos_dict['__summary_report__']
-    else:
-        step_reports = glob.glob(os.path.join('.sos', 'report', '*'))
-        step_reports.sort(key=natural_keys)
-        # merge the files
-        script_file = '{}.md'.format(os.path.basename(sos_script))
-        env.logger.trace('Gathering reports {} to {}'.format(', '.join(step_reports), script_file))
-        with open(script_file, 'w') as combined:
-            for step_report in step_reports:
-                with open(step_report, 'r') as md:
-                    combined.write(md.read())
-# $ pandoc -h
 #
 #     # this is output format
 #     pandoc [OPTIONS] [FILES]
@@ -667,32 +653,36 @@ def pandoc(script=None, output=None, **kwargs):
 #
 # IGNORED
 #
-    arg_from = '--from={}'.format(kwargs['from']) if 'from' in kwargs else ''
-    arg_to = '--to={}'.format(kwargs['to']) if 'to' in kwargs else ''
+    if input is not None:
+        input_file = input
+    elif isinstance(script, str) and script.strip():
+        input_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.md', delete=False).name
+        with open(input_file, 'w') as tmp:
+            tmp.write(script)
+    elif '__report_output__' in env.sos_dict:
+        input_file = env.sos_dict['__report_output__']
+    else:
+        raise ValueError('Unknown input file for acion pandoc')
+        
+    write_to_stdout = False
     if output is None:
-        raise RuntimeError('Parameter output is required for action pandoc')
-    elif not isinstance(output, str):
+        write_to_stdout = True
+        output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name
+    elif isinstance(output, str):
+        output_file = output
+    else:
         raise RuntimeError('A filename is expected, {} provided'.format(output))
-    arg_output = '--output={}'.format(shlex.quote(output))
-    extra_args = ''
-    if 'extra_args' in kwargs:
-        ea = kwargs['extra_args']
-        if isinstance(ea, str):
-            extra_args = ea
-        elif isinstance(ea, Sequence):
-            extra_args = ' '.join(list(ea))
-        elif isinstance(ea, dict):
-            extra_args = ' '.join('--{}={}'.format(k,v) for k,v in ea.items())
+    
     #
-    command = 'pandoc {} {} {} {} {{}}'.format(arg_from, arg_to, arg_output, extra_args)
+    ret = 1
     try:
-        cmd = command.replace('{}', shlex.quote(script_file))
+        cmd = interpolate('pandoc {}'.format(args), '${ }', {'input': input_file, 'output': output_file})
         env.logger.trace('Running command "{}"'.format(cmd))
         if env.run_mode == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             pid = p.pid
-            env.register_process(p.pid, 'Runing {}'.format(script_file))
+            env.register_process(p.pid, 'Runing {}'.format(input_file))
             out, err = p.communicate()
             sys.stdout.write(out.decode())
             sys.stderr.write(err.decode())
@@ -700,7 +690,7 @@ def pandoc(script=None, output=None, **kwargs):
         else:
             p = subprocess.Popen(cmd, shell=True)
             pid = p.pid
-            env.register_process(pid, 'Runing {}'.format(script_file))
+            env.register_process(pid, 'Runing {}'.format(input_file))
             ret = p.wait()
     except Exception as e:
         env.logger.error(e)
@@ -708,9 +698,13 @@ def pandoc(script=None, output=None, **kwargs):
         env.deregister_process(p.pid)
     if ret != 0:
         temp_file = os.path.join('.sos', '{}_{}.md'.format('pandoc', os.getpid()))
-        shutil.copyfile(script_file, temp_file)
-        cmd = command.replace('{}', shlex.quote(temp_file))
+        shutil.copyfile(input_file, temp_file)
+        cmd = interpolate('pandoc {}'.format(args), '${ }', {'input': temp_file, 'output': output_file})
         raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" to test it.'
             .format(temp_file, cmd))
-    env.logger.info('Report saved to {}'.format(output))
+    if write_to_stdout:
+        with open(output_file) as out:
+            sys.stdout.write(out.read())
+    else:
+        env.logger.info('Report saved to {}'.format(output))
 

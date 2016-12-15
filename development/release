@@ -33,7 +33,7 @@ run: workdir='..'
     rm -rf development/docker-notebook/doc
     # copy only ipynb and .sos files to docker
     rsync -av --prune-empty-dirs --include "*/" --exclude ".ipynb_checkpoints" \
-        --include "*.ipynb" --include "*.sos" --include "*.jpg" --include "*.png" --exclude "*" \
+        --include "*.ipynb" --include "*.jpg" --include "*.png" --exclude "*" \
         docs/src/documentation docs/src/tutorials docs/src/examples docs/doc/media \
 		development/docker-notebook/doc
 
