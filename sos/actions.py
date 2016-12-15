@@ -581,14 +581,13 @@ def report(script, output=None, **kwargs):
     content. If output is unspecified, the content will be written to standard
     output or appended to a file specified with command line option `-r`. 
     '''
-    env.logger.error('HAD {}'.format('__report_output__' in env.sos_dict))
     file_handle = None
     if isinstance(output, str):
         if output.startswith('>>'):
             file_handle = open(output[2:], 'a')
             writer = file_handle.write
         else:
-            file_handle = open(output[2:], 'w')
+            file_handle = open(output, 'w')
             writer = file_handle.write
     elif hasattr(output, 'write'):
         writer = output.write

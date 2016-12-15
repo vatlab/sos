@@ -536,18 +536,50 @@ report:
     touch ${num}.txt
 
 ''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
         # output to a file
         FileTarget('report.txt').remove('both')
         wf = script.workflow()
         # run twice
-        env.sos_dict.set('__report_output__', 'report.txt')
-        Base_Executor(wf, args=['--num', '7']).run()
-        Base_Executor(wf, args=['--num', '5']).run()
+        Base_Executor(wf, args=['--num', '7'], config={'report_output': 'report.txt'}).run()
+        Base_Executor(wf, args=['--num', '5'], config={'report_output': 'report.txt'}).run()
         with open('report.txt') as report:
-            self.assertEqual(report.read(), 'touch 7.txt\ntouch 5.txt\n')
+            self.assertEqual(report.read(), 'touch 7.txt\n\ntouch 5.txt\n\n')
+        # test overwrite
+        FileTarget('report.txt').remove('both')
+        script = SoS_Script(r'''
+[A]
+report: output='report.txt'
+    ${step_name}
 
+[A_10]
+report: output='report.txt'
+    ${step_name}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # output to a file
+        # run twice
+        Base_Executor(wf).run()
+        with open('report.txt') as report:
+            self.assertEqual(report.read(), 'A_10\n')
+        # test append mode
+        FileTarget('report.txt').remove('both')
+        script = SoS_Script(r'''
+[A]
+report: output='report.txt'
+    ${step_name}
+
+[A_10]
+report: output='>>report.txt'
+    ${step_name}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # output to a file
+        # run twice
+        Base_Executor(wf).run()
+        with open('report.txt') as report:
+            self.assertEqual(report.read(), 'A_0\n\nA_10\n')
 
 if __name__ == '__main__':
     unittest.main()

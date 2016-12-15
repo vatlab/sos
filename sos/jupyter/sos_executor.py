@@ -65,7 +65,11 @@ class Interactive_Executor(Base_Executor):
         env.sos_dict.set('__args__', self.args)
         if self.md5:
             env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
-
+        if self.config['report_output']:
+            env.sos_dict.set('__report_output__', self.config['report_output'])
+        elif'__report_output__' in env.sos_dict:
+            env.sos_dict.pop('__report_output_')
+        
         # load configuration files
         cfg = {}
         sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
@@ -261,10 +265,6 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
     env.verbosity = args.verbosity
     env.__task_engine__ = 'interactive'
 
-    if args.__report__:
-        env.sos_dict.set('__report_output__', args.__report__ if args.__report__.startswith('>>') else '>>' + args.__report__)
-    elif '__report_output__' in env.sos_dict:
-        env.sos_dict.pop('__report_output__')
     #
     env.sig_mode = args.__sigmode__
 

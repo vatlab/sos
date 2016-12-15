@@ -85,8 +85,6 @@ class Base_Executor:
         for key in ('config_file', 'output_dag', 'report_output'):
             if key not in self.config:
                 self.config[key] = None
-        if self.config['report_output']:
-            env.sos_dict.set('__report_output__', self.config['report_output'])
         # if the executor is not called from command line, without sigmode setting
         if env.sig_mode is None:
             env.sig_mode = 'default'
@@ -150,6 +148,8 @@ class Base_Executor:
         # inject a few things
         if self.md5:
             env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
+        if self.config['report_output']:
+            env.sos_dict.set('__report_output__', self.config['report_output'])
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
         env.sos_dict.set('__unknown_args__', self.args)
