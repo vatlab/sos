@@ -30,7 +30,8 @@ from collections.abc import Sequence
 from sos.actions import SoS_Action, SoS_ExecuteScript
 from sos.utils import env
 from sos.sos_eval import interpolate
-
+from sos.target import UnknownTarget
+from .target import R_library
 
 @SoS_Action(run_mode=['prepare', 'run', 'interactive'])
 def R(script, args='', **kwargs):
@@ -63,6 +64,8 @@ def Rmarkdown(script=None, input=None, output=None, args='${input!r}, output_fil
     You can specify more options using the args parameter of the action. The default value
     of args is `${input!r} --output ${output!ar}'
     '''
+    if not R_library('rmarkdown').exists():
+        raise UnknownTarget(R_library('rmarkdown'))
     if input is not None:
         if isinstance(input, str):
             input_file = input
@@ -128,8 +131,8 @@ def Rmarkdown(script=None, input=None, output=None, args='${input!r}, output_fil
         shutil.copyfile(input_file, temp_file)
         cmd = interpolate('Rscript -e "rmarkdown::render({})"'.format(args), '${ }',
             {'input': input_file, 'output': output_file})
-        raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" to test it.'
-            .format(temp_file, cmd))
+        raise RuntimeError('Failed to execute script. Please use command \n"{}"\nunder {} to test it.'
+            .format(cmd, os.getcwd()))
     if write_to_stdout:
         with open(output_file) as out:
             sys.stdout.write(out.read())

@@ -43,7 +43,7 @@ from collections.abc import Sequence
 import multiprocessing as mp
 from .utils import env, ProgressBar, transcribe, AbortExecution, short_repr, get_traceback
 from .sos_eval import Undetermined, interpolate
-from .target import FileTarget, fileMD5
+from .target import FileTarget, fileMD5, executable, UnknownTarget
 from .monitor import ProcessMonitor, summarizeExecution
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
@@ -678,6 +678,8 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
 #
 # IGNORED
 #
+    if not executable('pandoc').exists():
+        raise UnknownTarget(executable('pandoc'))
     if input is not None:
         if isinstance(input, str):
             input_file = input
