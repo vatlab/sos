@@ -261,7 +261,8 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
         parser.error = _parse_error
         args, workflow_args = parser.parse_known_args(args)
 
-    env.max_jobs = args.__max_jobs__
+    # no multi-processing in interactive mode
+    env.max_jobs = 1
     env.verbosity = args.verbosity
     env.__task_engine__ = 'interactive'
 
