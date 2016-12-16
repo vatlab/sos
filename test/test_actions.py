@@ -539,6 +539,26 @@ pandoc(input='a.md')
         wf = script.workflow()
         Base_Executor(wf).run()
 
+        # test acceptance of a list of input filenames
+        #
+        script = SoS_Script(r'''
+[10]
+report:
+A_10
+
+[20]
+report:
+A_20
+
+[100]
+# generate report
+pandoc(input=['default_10.md', 'default_20.md'], output='output.html')
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={'report_output': '${step_name}.md'}).run()
+        for f in ['default_10.md', 'default_20.md', 'output.html']:
+            self.assertTrue(FileTarget(f).exists())
+            FileTarget(f).remove()
 
 
     def testSoSRun(self):
