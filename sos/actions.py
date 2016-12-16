@@ -33,6 +33,7 @@ import shutil
 import zipfile
 import gzip
 import tarfile
+import fasteners
 from functools import wraps
 
 if sys.platform != 'win32':
@@ -600,21 +601,23 @@ def report(script=None, input=None, output=None, **kwargs):
     else:
         raise ValueError('Invalid output {}.'.format(output))
 
-    if input is not None:
-        if isinstance(input, str):
-            with open(input) as ifile:
-                writer(ifile.read())
-        elif isinstance(input, Sequence):
-            for ifile in input:
-                try:
-                    with open(ifile) as itmp:
-                        writer(itmp.read())
-                except Exception as e:
-                    raise ValueError('Failed to read input file {}: {}'.format(ifile, e))
-    elif isinstance(script, str) and script.strip():
-        writer(script)
-    else:
-        raise ValueError('Unknown input file for action report')
+    # file lock to prevent race condition
+    with fasteners.InterProcessLock('/tmp/report_lock'):
+        if input is not None:
+            if isinstance(input, str):
+                with open(input) as ifile:
+                    writer(ifile.read())
+            elif isinstance(input, Sequence):
+                for ifile in input:
+                    try:
+                        with open(ifile) as itmp:
+                            writer(itmp.read())
+                    except Exception as e:
+                        raise ValueError('Failed to read input file {}: {}'.format(ifile, e))
+        elif isinstance(script, str) and script.strip():
+            writer(script)
+        else:
+            raise ValueError('Unknown input file for action report')
     #
     if file_handle:
         file_handle.close()
