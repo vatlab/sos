@@ -659,8 +659,39 @@ report:
             with open(name) as report:
                 self.assertEqual(report.read(), name + '\n\n')
             FileTarget(name).remove()
+        #
+        # test input from another file
+        FileTarget('report.txt').remove()
+        script = SoS_Script(r'''
+[A_1]
+sh:
+    echo 'something' > a.txt
+report(input='a.txt', output='out.txt')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for name in ('a.txt', 'out.txt'):
+            with open(name) as report:
+                self.assertEqual(report.read(), 'something\n')
+            FileTarget(name).remove()
+        #
+        script = SoS_Script(r'''
+[A_1]
+sh:
+    echo 'something' > a.txt
 
+[A_2]
+sh:
+    echo 'something else' > b.txt
 
+[A_3]
+report(input=['a.txt', 'b.txt'], output='out.txt')
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for name in ('a.txt', 'b.txt', 'out.txt'):
+            self.assertTrue(FileTarget(name).exists())
+            FileTarget(name).remove()
 
 if __name__ == '__main__':
     unittest.main()

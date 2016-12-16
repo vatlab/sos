@@ -570,7 +570,7 @@ def JavaScript(script, args='', **kwargs):
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
-def report(script, output=None, **kwargs):
+def report(script=None, input=None, output=None, **kwargs):
     '''Write script to an output file specified by `output`, which can be
     a filename to which the content of the script will be written,
     a filename prefixed with '>>' (e.g. ">>a.txt") to which the content will be
@@ -581,6 +581,8 @@ def report(script, output=None, **kwargs):
     '''
     file_handle = None
     if isinstance(output, str):
+        if script is not None and script.strip():
+            raise ValueError('Please specify only one of parameter script and input')
         if output.startswith('>>'):
             file_handle = open(output[2:], 'a')
             writer = file_handle.write
@@ -597,8 +599,23 @@ def report(script, output=None, **kwargs):
         writer = sys.stdout.write
     else:
         raise ValueError('Invalid output {}.'.format(output))
+
+    if input is not None:
+        if isinstance(input, str):
+            with open(input) as ifile:
+                writer(ifile.read())
+        elif isinstance(input, Sequence):
+            for ifile in input:
+                try:
+                    with open(ifile) as itmp:
+                        writer(itmp.read())
+                except Exception as e:
+                    raise ValueError('Failed to read input file {}: {}'.format(ifile, e))
+    elif isinstance(script, str) and script.strip():
+        writer(script)
+    else:
+        raise ValueError('Unknown input file for action report')
     #
-    writer(script)
     if file_handle:
         file_handle.close()
 
@@ -674,7 +691,7 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
     elif '__report_output__' in env.sos_dict:
         input_file = interpolate(env.sos_dict['__report_output__'], '${ }')
     else:
-        raise ValueError('Unknown input file for acion pandoc')
+        raise ValueError('Unknown input file for action pandoc')
         
     write_to_stdout = False
     if output is None:
