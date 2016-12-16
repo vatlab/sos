@@ -741,7 +741,7 @@ class SoS_Kernel(IPythonKernel):
                     {'execution_count': self._execution_count, 'data': format_dict,
                     'metadata': md_dict})
             except Exception as e:
-                self.warn('\n> Failed to preview expression {}: {}'.format(item, e))
+                self.warn('\n> Failed to preview file or expression {}'.format(item))
 
     def handle_magic_cd(self, option):
         # interpolate command
