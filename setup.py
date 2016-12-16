@@ -210,6 +210,7 @@ runfile = sos.jupyter.sos_executor:runfile
 *.gz,1 = sos.jupyter.preview:preview_gz
 *.txt,1 = sos.jupyter.preview:preview_txt
 *.md,1 = sos.jupyter.preview:preview_md [md]
+*.dot,1 = sos.jupyter.preview:preview_dot [dot]
 imghdr:what,1 = sos.jupyter.preview:preview_img [image]
 zipfile:is_zipfile,1 = sos.jupyter.preview:preview_zip
 tarfile:is_tarfile,1 = sos.jupyter.preview:preview_tar
@@ -247,5 +248,6 @@ ipynb-sos.func = sos.jupyter.converter:notebook_to_script
         'rq':       ['rq', 'rq-dashboard'],
         'celery':   ['celery', 'flower'],
         'bam':      ['pysam'],
+        'dot':      ['graphviz'],
     }
 )
