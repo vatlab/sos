@@ -655,7 +655,7 @@ def get_script_to_html_parser():
         content to standard output.''')
     return parser
 
-def script_to_html(script_file, html_file, args=argparse.Namespace(), unknown_args=[]):
+def script_to_html(script_file, html_file, args=None, unknown_args=[]):
     '''
     Convert sos file to html format with syntax highlighting, and
     either save the output either to a HTML file or view it in a broaser.
@@ -679,7 +679,7 @@ def script_to_html(script_file, html_file, args=argparse.Namespace(), unknown_ar
         html.write(inline_css)
         # remove background definition so that we can use our own
         html.write('\n'.join(x for x in formatter.get_style_defs().split('\n') if 'background' not in x))
-        if args.raw:
+        if args and args.raw:
             raw_link = '<a href="{}" class="commit-tease-sha">{}</a>'.format(args.raw, script_file)
             script_link = '<a href="{}">{}</a>'.format(args.raw, os.path.basename(script_file))
         else:
@@ -732,13 +732,13 @@ def script_to_html(script_file, html_file, args=argparse.Namespace(), unknown_ar
         pass
     #
     if no_output_file:
-        if not args.view:
+        if args and not args.view:
             with open(html_file) as html:
                 sys.stdout.write(html.read())
     else:
         env.logger.info('SoS script saved to {}'.format(html_file))
     #
-    if args.view:
+    if args and args.view:
         url = 'file://{}'.format(html_file)
         env.logger.info('Viewing {} in a browser'.format(url))
         webbrowser.open(url, new=2)
@@ -782,7 +782,7 @@ def get_script_to_markdown_parser():
             quoted in markdown syntax.''')
     return parser
 
-def script_to_markdown(script_file, markdown_file, style_args=argparse.Namespace(), unknown_args=[]):
+def script_to_markdown(script_file, markdown_file, style_args=None, unknown_args=[]):
     '''
     Convert SOS scriot to a markdown file with syntax highlighting.
     '''
@@ -886,7 +886,7 @@ def get_script_to_term_parser():
         help='Display lineno to the left of the script')
     return parser
 
-def script_to_term(script_file, output_file, args=argparse.Namespace(), unknown_args=[]):
+def script_to_term(script_file, output_file, args, unknown_args=[]):
     '''
     Write script to terminal. This converter accepts additional parameters
     --bg [light|dark] for light or dark theme, and --linenos for output
