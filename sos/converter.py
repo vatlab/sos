@@ -672,8 +672,11 @@ def script_to_html(script_file, html_file, args=None, unknown_args=[]):
     #
     if unknown_args:
         raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
-    formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
-        **{x:y for x,y in vars(args).items() if x != ('raw', 'view')})
+    if args:
+        formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
+            **{x:y for x,y in vars(args).items() if x != ('raw', 'view')})
+    else:
+        formatter = ContinuousHtmlFormatter(cssclass="source", full=False)
     with open(html_file, 'w') as html:
         html.write(template_pre_style % os.path.basename(script_file))
         html.write(inline_css)
