@@ -582,16 +582,16 @@ def report(script, output=None, **kwargs):
     file_handle = None
     if isinstance(output, str):
         if output.startswith('>>'):
-            file_handle = open(output[2:], 'a')
+            file_handle = open(interpolate(output[2:], '${ }'), 'a')
             writer = file_handle.write
         else:
-            file_handle = open(output, 'w')
+            file_handle = open(interpolate(output, '${ }'), 'w')
             writer = file_handle.write
     elif hasattr(output, 'write'):
         writer = output.write
     elif '__report_output__' in env.sos_dict:
         filename = env.sos_dict['__report_output__'].lstrip('>')
-        file_handle = open(filename, 'a')
+        file_handle = open(interpolate(filename, '${ }'), 'a')
         writer = file_handle.write
     elif output is None or output == '':
         writer = sys.stdout.write
@@ -660,7 +660,7 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
         with open(input_file, 'w') as tmp:
             tmp.write(script)
     elif '__report_output__' in env.sos_dict:
-        input_file = env.sos_dict['__report_output__']
+        input_file = interpolate(env.sos_dict['__report_output__'], '${ }')
     else:
         raise ValueError('Unknown input file for acion pandoc')
         
@@ -669,7 +669,7 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
         write_to_stdout = True
         output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name
     elif isinstance(output, str):
-        output_file = output
+        output_file = interpolate(output, '${ }')
     else:
         raise RuntimeError('A filename is expected, {} provided'.format(output))
     
