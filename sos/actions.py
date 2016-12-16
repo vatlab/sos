@@ -737,8 +737,8 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
         temp_file = os.path.join('.sos', '{}_{}.md'.format('pandoc', os.getpid()))
         shutil.copyfile(input_file, temp_file)
         cmd = interpolate('pandoc {}'.format(args), '${ }', {'input': temp_file, 'output': output_file})
-        raise RuntimeError('Failed to execute script. The script is saved to {}. Please use command "{}" to test it.'
-            .format(temp_file, cmd))
+        raise RuntimeError('Failed to execute script. Please use command \n{}\nunder {} to test it.'
+            .format(cmd, os.getcwd()))
     if write_to_stdout:
         with open(output_file) as out:
             sys.stdout.write(out.read())
