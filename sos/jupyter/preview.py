@@ -125,3 +125,12 @@ def preview_md(filename):
     except:
         return ''
     
+def preview_dot(filename):
+    from graphviz import Source
+    with open(filename) as dot:
+        src = Source(dot.read())
+    src.format='png'
+    outfile = src.render()
+    with open(outfile, 'rb') as content:
+        data = content.read()
+    return {'image/png': base64.b64encode(data).decode('ascii') }
