@@ -1115,9 +1115,9 @@ class SoS_Kernel(IPythonKernel):
             finally:
                 if not args.keep_dict:
                     env.sos_dict = old_dict
+                os.chdir(old_dir)
                 if not args.dir:
                     shutil.rmtree(new_dir)
-                os.chdir(old_dir)
                 #env.exec_dir = old_dir
         elif self.MAGIC_PREVIEW.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
