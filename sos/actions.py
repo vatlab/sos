@@ -582,10 +582,10 @@ def report(script, output=None, **kwargs):
     file_handle = None
     if isinstance(output, str):
         if output.startswith('>>'):
-            file_handle = open(interpolate(output[2:], '${ }'), 'a')
+            file_handle = open(output[2:], 'a')
             writer = file_handle.write
         else:
-            file_handle = open(interpolate(output, '${ }'), 'w')
+            file_handle = open(output, 'w')
             writer = file_handle.write
     elif hasattr(output, 'write'):
         writer = output.write
@@ -614,7 +614,7 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
     pandoc:   output='report.html'
       script
 
-    2. a input file. The format is determined by extension of input file
+    2. one or more input files. The format is determined by extension of input file
 
     pandoc(input, output='report.html')
 
@@ -654,7 +654,19 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
 # IGNORED
 #
     if input is not None:
-        input_file = input
+        if isinstance(input, str):
+            input_file = input
+        elif isinstance(input, Sequence):
+            if len(input) == 0:
+                return
+            input_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=os.path.splitext(input[0])[-1], delete=False).name
+            with open(input_file, 'w') as tmp:
+                for ifile in input:
+                    try:
+                        with open(ifile) as itmp:
+                            tmp.write(itmp.read())
+                    except Exception as e:
+                        raise ValueError('Failed to read input file {}: {}'.format(ifile, e))
     elif isinstance(script, str) and script.strip():
         input_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.md', delete=False).name
         with open(input_file, 'w') as tmp:
@@ -669,7 +681,7 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
         write_to_stdout = True
         output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name
     elif isinstance(output, str):
-        output_file = interpolate(output, '${ }')
+        output_file = output
     else:
         raise RuntimeError('A filename is expected, {} provided'.format(output))
     
