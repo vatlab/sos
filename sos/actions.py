@@ -582,9 +582,9 @@ def report(script=None, input=None, output=None, **kwargs):
     '''
     file_handle = None
     if isinstance(output, str):
-        if script is not None and script.strip():
-            raise ValueError('Please specify only one of parameter script and input')
-        if output.startswith('>>'):
+        if not output or output == '-':
+            writer = sys.stdout.write
+        elif output.startswith('>>'):
             file_handle = open(output[2:], 'a')
             writer = file_handle.write
         else:
@@ -593,8 +593,9 @@ def report(script=None, input=None, output=None, **kwargs):
     elif hasattr(output, 'write'):
         writer = output.write
     elif '__report_output__' in env.sos_dict:
-        filename = env.sos_dict['__report_output__'].lstrip('>')
-        file_handle = open(interpolate(filename, '${ }'), 'a')
+        filename = interpolate(env.sos_dict['__report_output__'].lstrip('>'), '${ }')
+        env.logger.debug('Writing report to {}'.format(filename))
+        file_handle = open(filename, 'a')
         writer = file_handle.write
     elif output is None or output == '':
         writer = sys.stdout.write
@@ -604,12 +605,16 @@ def report(script=None, input=None, output=None, **kwargs):
     # file lock to prevent race condition
     with fasteners.InterProcessLock('/tmp/report_lock'):
         if input is not None:
+            if script is not None and script.strip():
+                raise ValueError('Please specify only one of parameter script and input: script={}, input={}'.format(script, input))
             if isinstance(input, str):
+                env.logger.debug('Loading report from {}'.format(input))
                 with open(input) as ifile:
                     writer(ifile.read())
             elif isinstance(input, Sequence):
                 for ifile in input:
                     try:
+                        env.logger.debug('Loading report from {}'.format(ifile))
                         with open(ifile) as itmp:
                             writer(itmp.read())
                     except Exception as e:
