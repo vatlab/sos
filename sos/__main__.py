@@ -187,8 +187,9 @@ def get_run_parser(interactive=False, with_workflow=True):
     parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', nargs='?',
          help='''Default output of action report, which is by default the
             standard output but you can redirect it to another file with this
-            option. Note that files specified by this option would be opened
-            in append mode so no ">>" specifier is needed.''')
+            option. Files specified by this option will be interpolated so you
+            can use names such as 'out_${step_name}.md' to out to step-depedent
+            files. Filenames prefixed with '>>' will be opened in append mode.''')
     #parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',

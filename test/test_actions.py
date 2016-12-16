@@ -616,5 +616,31 @@ report: output='>>report.txt'
         with open('report.txt') as report:
             self.assertEqual(report.read(), 'A_0\n\nA_10\n')
 
+        # test filenames interpolation
+        #
+        FileTarget('report_1.txt').remove('both')
+        FileTarget('report_2.txt').remove('both')
+        script = SoS_Script(r'''
+[A_1]
+report:
+    report_${step_name.split('_')[-1]}.txt
+
+[A_2]
+report:
+    report_${step_name.split('_')[-1]}.txt
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf,  config={'report_output': 'report_${step_name.split("_")[-1]}.txt'}).run()
+        # output to a file
+        # run twice
+        Base_Executor(wf).run()
+        for name in ('report_1.txt', 'report_2.txt'):
+            with open(name) as report:
+                self.assertEqual(report.read(), name + '\n\n')
+            FileTarget(name).remove()
+
+
+
 if __name__ == '__main__':
     unittest.main()
