@@ -159,7 +159,8 @@ def get_run_parser(interactive=False, with_workflow=True):
     if with_workflow:
         parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
             help=workflow_spec)
-    parser.add_argument('-j', type=int, metavar='JOBS', default=4, dest='__max_jobs__',
+    if not interactive:
+        parser.add_argument('-j', type=int, metavar='JOBS', default=4, dest='__max_jobs__',
         help='''Number of concurrent process allowed. A workflow is by default
             executed sequentially (-j 1). If a greater than 1 number is specified
             SoS will execute the workflow in parallel mode and execute up to
