@@ -655,7 +655,7 @@ def get_script_to_html_parser():
         content to standard output.''')
     return parser
 
-def script_to_html(script_file, html_file, args, unknown_args=[]):
+def script_to_html(script_file, html_file, args=argparse.Namespace(), unknown_args=[]):
     '''
     Convert sos file to html format with syntax highlighting, and
     either save the output either to a HTML file or view it in a broaser.
@@ -782,7 +782,7 @@ def get_script_to_markdown_parser():
             quoted in markdown syntax.''')
     return parser
 
-def script_to_markdown(script_file, markdown_file, style_args=None, unknown_args=[]):
+def script_to_markdown(script_file, markdown_file, style_args=argparse.Namespace(), unknown_args=[]):
     '''
     Convert SOS scriot to a markdown file with syntax highlighting.
     '''
@@ -886,7 +886,7 @@ def get_script_to_term_parser():
         help='Display lineno to the left of the script')
     return parser
 
-def script_to_term(script_file, output_file, args, unknown_args=[]):
+def script_to_term(script_file, output_file, args=argparse.Namespace(), unknown_args=[]):
     '''
     Write script to terminal. This converter accepts additional parameters
     --bg [light|dark] for light or dark theme, and --linenos for output
