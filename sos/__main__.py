@@ -337,6 +337,7 @@ def cmd_dryrun(args, workflow_args):
     args.__sigmode__ = 'ignore'
     args.__queue__ = None
     args.__max_jobs__ = 1
+    args.__report__ = None
     args.__dryrun__ = True
     args.__bin_dirs__ = []
     cmd_run(args, workflow_args)
