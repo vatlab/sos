@@ -27,8 +27,8 @@ from sos.sos_executor import MP_Executor
 from .sos_step import RQ_Step_Executor
 
 class RQ_Executor(MP_Executor):
-    def __init__(self, workflow, args=[], config_file=None, nested=False):
-        MP_Executor.__init__(self, workflow, args, config_file, nested=nested)
+    def __init__(self, workflow, args=[], nested=False, config={}):
+        MP_Executor.__init__(self, workflow, args, nested=nested, config=config)
         env.__task_engine__ = 'rq'
 
         from rq import Queue as rqQueue

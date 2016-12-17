@@ -26,8 +26,8 @@ from sos.sos_executor import MP_Executor
 from .sos_step import Celery_Step_Executor
 
 class Celery_Executor(MP_Executor):
-    def __init__(self, workflow, args=[], config_file=None, nested=False):
-        MP_Executor.__init__(self, workflow, args, config_file, nested=nested)
+    def __init__(self, workflow, args=[], nested=False, config={}):
+        MP_Executor.__init__(self, workflow, args, nested=nested, config=config)
         env.__task_engine__ = 'Celery'
 
     def step_executor(self, section, queue):

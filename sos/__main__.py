@@ -190,7 +190,7 @@ def get_run_parser(interactive=False, with_workflow=True):
             standard output but you can redirect it to another file with this
             option. Files specified by this option will be interpolated so you
             can use names such as 'out_${step_name}.md' to out to step-depedent
-            files. Filenames prefixed with '>>' will be opened in append mode.''')
+            files.''')
     #parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',

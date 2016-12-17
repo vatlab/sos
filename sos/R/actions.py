@@ -25,9 +25,8 @@ import sys
 import subprocess
 import shutil
 import tempfile
-from collections.abc import Sequence
 
-from sos.actions import SoS_Action, SoS_ExecuteScript
+from sos.actions import SoS_Action, SoS_ExecuteScript, collect_input
 from sos.utils import env
 from sos.sos_eval import interpolate
 from sos.target import UnknownTarget
@@ -66,29 +65,9 @@ def Rmarkdown(script=None, input=None, output=None, args='${input!r}, output_fil
     '''
     if not R_library('rmarkdown').exists():
         raise UnknownTarget(R_library('rmarkdown'))
-    if input is not None:
-        if isinstance(input, str):
-            input_file = input
-        elif isinstance(input, Sequence):
-            if len(input) == 0:
-                return
-            input_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=os.path.splitext(input[0])[-1], delete=False).name
-            with open(input_file, 'w') as tmp:
-                for ifile in input:
-                    try:
-                        with open(ifile) as itmp:
-                            tmp.write(itmp.read())
-                    except Exception as e:
-                        raise ValueError('Failed to read input file {}: {}'.format(ifile, e))
-    elif isinstance(script, str) and script.strip():
-        input_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.md', delete=False).name
-        with open(input_file, 'w') as tmp:
-            tmp.write(script)
-    elif '__report_output__' in env.sos_dict:
-        input_file = interpolate(env.sos_dict['__report_output__'], '${ }')
-    else:
-        raise ValueError('Unknown input file for acion Rmarkdown')
-        
+             
+    input_file = collect_input(script, input)
+
     write_to_stdout = False
     if output is None:
         write_to_stdout = True

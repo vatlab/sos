@@ -570,16 +570,47 @@ def JavaScript(script, args='', **kwargs):
     '''Execute specified script using node.'''
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
+
+def collect_input(script, input):
+    # determine file extension
+    if input is not None:
+        if isinstance(input, str):
+            ext = os.path.splitext(input)[-1]
+        elif isinstance(input, Sequence) and len(input) > 0:
+            ext = os.path.splitext(input[0])[-1]
+        else:
+            raise ValueError('Unknown input file for action pandoc')
+    else:
+        ext = '.md'
+
+    input_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=ext, delete=False).name
+    with open(input_file, 'w') as tmp:
+        if script is not None and script.strip():
+            tmp.write(script.rstrip() + '\n\n')
+        if isinstance(input, str):
+            try:
+                with open(input) as ifile:
+                    tmp.write(ifile.read() + '\n\n')
+            except  Exception as e:
+                    raise ValueError('Failed to read input file {}: {}'.format(input, e))
+        elif isinstance(input, Sequence):
+            for ifile in input:
+                try:
+                    with open(ifile) as itmp:
+                        tmp.write(itmp.read().rstrip() + '\n\n')
+                except  Exception as e:
+                        raise ValueError('Failed to read input file {}: {}'.format(ifile, e))
+    return input_file
+
+
 @SoS_Action(run_mode=['run', 'interactive'])
 def report(script=None, input=None, output=None, **kwargs):
     '''Write script to an output file specified by `output`, which can be
     a filename to which the content of the script will be written,
-    a filename prefixed with '>>' (e.g. ">>a.txt") to which the content will be
-    appended to the specified file, any object with a "write" attribute (e.g.
-    a file handle) for which the "write" function will be called with the
-    content. If output is unspecified, the content will be written to standard
-    output or appended to a file specified with command line option `-r`. 
-    '''
+    any object with a "write" attribute (e.g. a file handle) for which the "write"
+    function will be called with the content. If output is unspecified, the content
+    will be written to standard output or appended to a file specified with command
+    line option `-r`. '''
     file_handle = None
     if isinstance(output, str):
         if not output or output == '-':
@@ -604,25 +635,23 @@ def report(script=None, input=None, output=None, **kwargs):
 
     # file lock to prevent race condition
     with fasteners.InterProcessLock('/tmp/report_lock'):
+        if isinstance(script, str) and script.strip():
+            writer(script.rstrip() + '\n\n')
         if input is not None:
-            if script is not None and script.strip():
-                raise ValueError('Please specify only one of parameter script and input: script={}, input={}'.format(script, input))
             if isinstance(input, str):
                 env.logger.debug('Loading report from {}'.format(input))
                 with open(input) as ifile:
-                    writer(ifile.read())
+                    writer(ifile.read().rstrip() + '\n\n')
             elif isinstance(input, Sequence):
                 for ifile in input:
                     try:
                         env.logger.debug('Loading report from {}'.format(ifile))
                         with open(ifile) as itmp:
-                            writer(itmp.read())
+                            writer(itmp.read().rstrip() + '\n\n')
                     except Exception as e:
                         raise ValueError('Failed to read input file {}: {}'.format(ifile, e))
-        elif isinstance(script, str) and script.strip():
-            writer(script)
-        else:
-            raise ValueError('Unknown input file for action report')
+            else:
+                raise ValueError('Unknown input file for action report')
     #
     if file_handle:
         file_handle.close()
@@ -680,28 +709,8 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
 #
     if not executable('pandoc').exists():
         raise UnknownTarget(executable('pandoc'))
-    if input is not None:
-        if isinstance(input, str):
-            input_file = input
-        elif isinstance(input, Sequence):
-            if len(input) == 0:
-                return
-            input_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=os.path.splitext(input[0])[-1], delete=False).name
-            with open(input_file, 'w') as tmp:
-                for ifile in input:
-                    try:
-                        with open(ifile) as itmp:
-                            tmp.write(itmp.read())
-                    except Exception as e:
-                        raise ValueError('Failed to read input file {}: {}'.format(ifile, e))
-    elif isinstance(script, str) and script.strip():
-        input_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.md', delete=False).name
-        with open(input_file, 'w') as tmp:
-            tmp.write(script)
-    elif '__report_output__' in env.sos_dict:
-        input_file = interpolate(env.sos_dict['__report_output__'], '${ }')
-    else:
-        raise ValueError('Unknown input file for action pandoc')
+        
+    input_file = collect_input(script, input)
         
     write_to_stdout = False
     if output is None:
@@ -711,7 +720,6 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
         output_file = output
     else:
         raise RuntimeError('A filename is expected, {} provided'.format(output))
-    
     #
     ret = 1
     try:
@@ -746,4 +754,8 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
             sys.stdout.write(out.read())
     else:
         env.logger.info('Report saved to {}'.format(output))
+    try:
+        os.remove(input_file)
+    except:
+        pass
 
