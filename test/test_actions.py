@@ -616,7 +616,7 @@ report: output='report.txt'
         # run twice
         Base_Executor(wf).run()
         with open('report.txt') as report:
-            self.assertEqual(report.read(), 'A_10\n')
+            self.assertEqual(report.read(), 'A_10\n\n')
         # test append mode
         FileTarget('report.txt').remove('both')
         script = SoS_Script(r'''
@@ -634,7 +634,7 @@ report: output='>>report.txt'
         # run twice
         Base_Executor(wf).run()
         with open('report.txt') as report:
-            self.assertEqual(report.read(), 'A_0\n\nA_10\n')
+            self.assertEqual(report.read(), 'A_0\n\nA_10\n\n')
 
         # test filenames interpolation
         #
@@ -672,7 +672,7 @@ report(input='a.txt', output='out.txt')
         Base_Executor(wf).run()
         for name in ('a.txt', 'out.txt'):
             with open(name) as report:
-                self.assertEqual(report.read(), 'something\n')
+                self.assertEqual(report.read().strip(), 'something')
             FileTarget(name).remove()
         #
         script = SoS_Script(r'''

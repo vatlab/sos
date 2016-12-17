@@ -1156,7 +1156,7 @@ print(CONFIG.StoreOwner)
         # now test the value
         script = SoS_Script(filename='config.sos')
         wf = script.workflow()
-        Base_Executor(wf, config_file='myconfig.yml').run()
+        Base_Executor(wf, config={'config_file': 'myconfig.yml'}).run()
         self.assertEqual(env.sos_dict['CONFIG']['Price'], 1.05)
         self.assertEqual(env.sos_dict['CONFIG']['StoreOwner'], 'John Doe')
         self.assertEqual(env.sos_dict['CONFIG']['Fruits'], ['apple', 'banana', 'pear'])
