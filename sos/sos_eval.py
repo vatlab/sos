@@ -366,6 +366,25 @@ def accessed_vars(statement, sigil):
         prev_tok = tokval
     return result
 
+def param_of(name, text):
+    '''return parameters of parameter of name
+    for example:
+        name='input'
+        text='func(input=1, output=2)'
+    returns 1 as the parameter of input. '''
+    params = re.split(r'({}\s*=\s*)'.format(name), text)
+    exprs = []
+    for param in params[2::2]:
+        pieces = param.split(',')
+        for i in range(len(pieces)):
+            try:
+                compile(','.join(pieces[:i+1]), '<string>', 'eval')
+                exprs.append(','.join(pieces[:i+1]))
+                break
+            except:
+                continue
+    return exprs
+
 def SoS_eval(expr, sigil):
     '''Evaluate an expression after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''

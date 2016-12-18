@@ -693,5 +693,41 @@ report(input=['a.txt', 'b.txt'], output='out.txt')
             self.assertTrue(FileTarget(name).exists())
             FileTarget(name).remove()
 
+    def testRegenerateReport(self):
+        '''Testing the regeneration of report once is needed. The problem
+        here is the 'input' parameter of report.'''
+        script = SoS_Script(r'''
+[A_1]
+output: 'a1.txt'
+run:
+    echo 'a1' >> a1.txt
+
+report: output='a1.md'
+    a1
+
+[A_2]
+output: 'a2.txt'
+run:
+    echo 'a2' >> a2.txt
+report: output='a2.md'
+    a2
+
+[A_3]
+report:     input=['a1.md', 'a2.md'], output='out.md'
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        with open('a1.md') as a:
+            self.assertEqual(a.read(), 'a1\n\n')
+        with open('a2.md') as a:
+            self.assertEqual(a.read(), 'a2\n\n')
+        with open('out.md') as a:
+            self.assertEqual(a.read(), 'a1\n\na2\n\n')
+        for name in ('a1.md', 'a2.md', 'out.md'):
+            FileTarget(name).remove('target')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+
 if __name__ == '__main__':
     unittest.main()
