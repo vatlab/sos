@@ -273,7 +273,7 @@ def analyze_section(section, default_input=None):
         else: # statement
             signature_vars |= accessed_vars(statement[1], section.sigil)
             # we also need to check the specification of input and output
-            input_param = param_of(statement[1])
+            input_param = param_of('input', statement[1])
             for param in input_param:
                 try:
                     value = SoS_eval(param, section.sigil)
@@ -287,7 +287,7 @@ def analyze_section(section, default_input=None):
                     env.logger.debug('Args {} of input cannot be determined: {}'.format(param, e))
                     step_side_input = Undetermined()
             #
-            output_param = param_of(statement[1])
+            output_param = param_of('output', statement[1])
             for param in output_param:
                 try:
                     value = SoS_eval(param, section.sigil)
