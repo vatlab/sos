@@ -543,11 +543,11 @@ pandoc(input='a.md')
         #
         script = SoS_Script(r'''
 [10]
-report:
+report: output='default_10.md'
 A_10
 
 [20]
-report:
+report: output='default_20.md'
 A_20
 
 [100]
@@ -617,24 +617,6 @@ report: output='report.txt'
         Base_Executor(wf).run()
         with open('report.txt') as report:
             self.assertEqual(report.read(), 'A_10\n\n')
-        # test append mode
-        FileTarget('report.txt').remove('both')
-        script = SoS_Script(r'''
-[A]
-report: output='report.txt'
-    ${step_name}
-
-[A_10]
-report: output='>>report.txt'
-    ${step_name}
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        # output to a file
-        # run twice
-        Base_Executor(wf).run()
-        with open('report.txt') as report:
-            self.assertEqual(report.read(), 'A_0\n\nA_10\n\n')
 
         # test filenames interpolation
         #
@@ -664,7 +646,7 @@ report:
         FileTarget('report.txt').remove()
         script = SoS_Script(r'''
 [A_1]
-sh:
+sh: output='a.txt'
     echo 'something' > a.txt
 report(input='a.txt', output='out.txt')
 ''')
@@ -677,11 +659,11 @@ report(input='a.txt', output='out.txt')
         #
         script = SoS_Script(r'''
 [A_1]
-sh:
+sh: output='a.txt'
     echo 'something' > a.txt
 
 [A_2]
-sh:
+sh: output='b.txt'
     echo 'something else' > b.txt
 
 [A_3]

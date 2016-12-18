@@ -366,7 +366,8 @@ class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.
     '''
-    def __init__(self, step_md5, script, input_files=[], output_files=[], dependent_files = [], signature_vars = []):
+    def __init__(self, step_md5, script, input_files=[], output_files=[], dependent_files = [],
+        signature_vars = []):
         '''Runtime information for specified output files
 
         output_files:
@@ -400,6 +401,9 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Output files must be a list of filenames or Undetermined for runtime signature.')
 
+        self.local_input_files = []
+        self.local_output_files = []
+
         self.signature_vars = signature_vars
 
         sig_name = textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))
@@ -427,6 +431,8 @@ class RuntimeInfo:
                 'input_files': self.input_files,
                 'output_files': self.output_files,
                 'dependent_files': self.dependent_files,
+                'local_input_files': self.local_input_files,
+                'local_output_files': self.local_output_files,
                 'signature_vars': self.signature_vars,
                 'script': self.script}
 
@@ -435,6 +441,8 @@ class RuntimeInfo:
         self.proc_info = dict['proc_info']
         self.input_files = dict['input_files']
         self.output_files = dict['output_files']
+        self.local_input_files = dict['local_input_files']
+        self.local_output_files = dict['local_output_files']
         self.dependent_files = dict['dependent_files']
         self.signature_vars = dict['signature_vars']
         self.script = dict['script']
@@ -453,8 +461,11 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Invalid signature file type {}'.format(file_type))
 
-    def write(self):
-        '''Write signature file with signature of script, input, output and dependent files.'''
+    def write(self, local_input_files, local_output_files):
+        '''Write signature file with signature of script, input, output and dependent files.
+        Because local input and output files can only be determined after the execution
+        of workflow. They are not part of the construction...        
+        '''
         if isinstance(self.output_files, Undetermined) or isinstance(self.dependent_files, Undetermined):
             env.logger.trace('Write signature failed due to undetermined files')
             return False
@@ -491,6 +502,26 @@ class RuntimeInfo:
                     md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
                     return False
+            md5.write('# local input\n')
+            for f in [FileTarget(x) if isinstance(x, str) else x for x in local_input_files]:
+                if f.exists('target'):
+                    # this calculates file MD5
+                    f.write_sig()
+                    md5.write('{}\t{}\n'.format(f, f.signature()))
+                elif f.exists('signature'):
+                    md5.write('{}\t{}\n'.format(f, f.signature()))
+                else:
+                    return False
+            md5.write('# local output\n')
+            for f in [FileTarget(x) if isinstance(x, str) else x for x in local_output_files]:
+                if f.exists('target'):
+                    # this calculates file MD5
+                    f.write_sig()
+                    md5.write('{}\t{}\n'.format(f, f.signature()))
+                elif f.exists('signature'):
+                    md5.write('{}\t{}\n'.format(f, f.signature()))
+                else:
+                    return False                    
             md5.write('# context\n')
             for var in sorted(self.signature_vars):
                 # var can be local and not passed as outside environment
@@ -517,6 +548,12 @@ class RuntimeInfo:
                     for f in self.output_files:
                         if isinstance(f, FileTarget):
                             wf.write('OUT_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
+                    for f in self.local_input_files:
+                        if isinstance(f, FileTarget):
+                            wf.write('IN_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
+                    for f in self.local_output_files:
+                        if isinstance(f, FileTarget):
+                            wf.write('OUT_FILE\tfilename={}\tsession={}\tsize={}\tmd5={}\n'.format(f, self.step_md5, f.size(), f.signature()))
         return True
 
     def validate(self):
@@ -539,7 +576,7 @@ class RuntimeInfo:
                     return 'Missing target {}'.format(x)
         #
         files_checked = {x.name():False for x in sig_files if not isinstance(x, Undetermined)}
-        res = {'input': [], 'output': [], 'depends': [], 'vars': {}}
+        res = {'input': [], 'output': [], 'depends': [], 'local_input': [], 'local_output': [], 'vars': {}}
         cur_type = 'input'
         with open(self.proc_info) as md5:
             cmdMD5 = md5.readline().strip()   # command
@@ -555,6 +592,10 @@ class RuntimeInfo:
                         cur_type = 'output'
                     elif line == '# dependent\n':
                         cur_type = 'depends'
+                    elif line == '# local input\n':
+                        cur_type = 'local_input'
+                    elif line == '# local output\n':
+                        cur_type = 'local_output'
                     elif line == '# context\n':
                         cur_type = 'context'
                     elif line == '# step process\n':

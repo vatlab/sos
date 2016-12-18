@@ -375,11 +375,12 @@ def param_of(name, text):
     params = re.split(r'({}\s*=\s*)'.format(name), text)
     exprs = []
     for param in params[2::2]:
-        pieces = param.split(',')
-        for i in range(len(pieces)):
+        expr = ''
+        for _, tokval, _, _, _ in generate_tokens(StringIO(param).readline):
             try:
-                compile(','.join(pieces[:i+1]), '<string>', 'eval')
-                exprs.append(','.join(pieces[:i+1]))
+                expr += tokval
+                compile(expr, '<string>', 'eval')
+                exprs.append(expr)
                 break
             except:
                 continue

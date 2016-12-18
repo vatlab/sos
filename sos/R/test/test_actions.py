@@ -99,11 +99,11 @@ Rmarkdown(input='a.md')
         #
         script = SoS_Script(r'''
 [10]
-report:
+report: output='default_10.md'
 A_10
 
 [20]
-report:
+report: output='default_20.md'
 A_20
 
 [100]
