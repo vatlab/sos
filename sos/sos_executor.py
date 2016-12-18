@@ -297,7 +297,8 @@ class Base_Executor:
                 # with identical names.
                 dag.add_step(section.uuid, '{} {}'.format(section.step_name(),
                     short_repr(env.sos_dict['__default_output__'])), None, res['step_input'],
-                    res['step_depends'], res['step_output'], context=context)
+                    res['step_depends'], res['step_output'], 
+                    res['step_local_input'], res['step_local_output'], context=context)
                 resolved += 1
         return resolved
 
@@ -354,6 +355,8 @@ class Base_Executor:
                 res['step_input'],
                 res['step_depends'],
                 res['step_output'],
+                res['step_local_input'],
+                res['step_local_output'],
                 context = context)
             default_input = res['step_output']
         #
@@ -475,26 +478,18 @@ class Base_Executor:
             p.join()
             # if the step says unknown target .... need to check if the target can
             # be build dynamically.
-            if isinstance(res, UnknownTarget):
+            if isinstance(res, (UnknownTarget, RemovedTarget)):
                 runnable._status = None
                 target = res.target
-                if self.resolve_dangling_targets(dag, [target]) == 0:
-                    raise RuntimeError('Failed to resolve {}{}.'
-                        .format(target, dag.steps_depending_on(target, self.workflow)))
-                # now, there should be no dangling targets, let us connect nodes
-                # this can be done more efficiently
-                runnable._depends_targets.append(target)
-                dag._all_dependent_files[target].append(runnable)
-                dag.build(self.workflow.auxiliary_sections)
-                #
-                cycle = dag.circular_dependencies()
-                if cycle:
-                    raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
-                self.save_dag(dag)
-            elif isinstance(res, RemovedTarget):
-                runnable._status = None
-                target = res.target
-                if not dag.regenerate_target(target):
+                if dag.regenerate_target(target):
+                    #runnable._depends_targets.append(target)
+                    #dag._all_dependent_files[target].append(runnable)
+                    dag.build(self.workflow.auxiliary_sections)
+                    #
+                    cycle = dag.circular_dependencies()
+                    if cycle:
+                        raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
+                else:
                     if self.resolve_dangling_targets(dag, [target]) == 0:
                         raise RuntimeError('Failed to regenerate or resolve {}{}.'
                             .format(target, dag.steps_depending_on(target, self.workflow)))
@@ -528,6 +523,12 @@ class Base_Executor:
                         node._context.update(env.sos_dict.clone_selected_vars(
                             node._context['__signature_vars__'] | node._context['__environ_vars__'] \
                             | {'_input', '__step_output__', '__default_output__', '__args__'}))
+                # update node itself
+                dag.update_step(runnable, env.sos_dict['__step_input__'],
+                    env.sos_dict['__step_output__'],
+                    env.sos_dict['__step_depends__'],
+                    env.sos_dict['__step_local_input__'],
+                    env.sos_dict['__step_local_output__'])
                 runnable._status = 'completed'
                 prog.progress(1)
             #env.logger.error('completed')
@@ -602,26 +603,19 @@ class MP_Executor(Base_Executor):
                 p.join()
 
                 runnable = dag.node_by_id(u)
-                if isinstance(res, UnknownTarget):
+                if isinstance(res, (UnknownTarget, RemovedTarget)):
                     runnable._status = None
                     target = res.target
-                    if self.resolve_dangling_targets(dag, [target]) == 0:
-                        raise RuntimeError('Failed to resolve {}{}.'
-                            .format(target, dag.steps_depending_on(target, self.workflow)))
-                    # now, there should be no dangling targets, let us connect nodes
-                    # this can be done more efficiently
-                    runnable._depends_targets.append(target)
-                    dag._all_dependent_files[target].append(runnable)
-                    dag.build(self.workflow.auxiliary_sections)
-                    self.save_dag(dag)
-                    #
-                    cycle = dag.circular_dependencies()
-                    if cycle:
-                        raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
-                elif isinstance(res, RemovedTarget):
-                    runnable._status = None
-                    target = res.target
-                    if not dag.regenerate_target(target):
+                    if dag.regenerate_target(target):
+                        #runnable._depends_targets.append(target)
+                        #dag._all_dependent_files[target].append(runnable)
+                        dag.build(self.workflow.auxiliary_sections)
+                        #
+                        cycle = dag.circular_dependencies()
+                        if cycle:
+                            raise RuntimeError('Circular dependency detected {} after regeneration. It is likely a later step produces input of a previous step.'.format(cycle))
+
+                    else:
                         if self.resolve_dangling_targets(dag, [target]) == 0:
                             raise RuntimeError('Failed to regenerate or resolve {}{}.'
                                 .format(target, dag.steps_depending_on(target, self.workflow)))
@@ -660,6 +654,11 @@ class MP_Executor(Base_Executor):
                             node._context.update(env.sos_dict.clone_selected_vars(
                                 node._context['__signature_vars__'] | node._context['__environ_vars__'] \
                                 | {'_input', '__step_output__', '__default_output__', '__args__'}))
+                    dag.update_step(runnable, env.sos_dict['__step_input__'],
+                        env.sos_dict['__step_output__'],
+                        env.sos_dict['__step_depends__'],
+                        env.sos_dict['__step_local_input__'],
+                        env.sos_dict['__step_local_output__'])
                     runnable._status = 'completed'
                     prog.progress(1)
                     procs[idx] = None
