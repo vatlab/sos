@@ -31,7 +31,7 @@ from itertools import tee, combinations
 from .utils import env, AbortExecution, short_repr, \
     get_traceback, transcribe, ActivityNotifier
 from .pattern import extract_pattern
-from .sos_eval import SoS_eval, SoS_exec, Undetermined
+from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
@@ -126,6 +126,8 @@ def analyze_section(section, default_input=None):
     step_input = Undetermined()
     step_output = Undetermined()
     step_depends = []
+    step_side_input = []
+    step_side_output = []
     environ_vars = set()
     signature_vars = set()
     changed_vars = set()
@@ -270,13 +272,43 @@ def analyze_section(section, default_input=None):
                 env.logger.debug("Args {} cannot be determined: {}".format(value, e))
         else: # statement
             signature_vars |= accessed_vars(statement[1], section.sigil)
+            # we also need to check the specification of input and output
+            input_param = param_of(statement[1])
+            for param in input_param:
+                try:
+                    value = SoS_eval(param, section.sigil)
+                    if isinstance(value, str):
+                        step_side_input.append(value)
+                    elif isinstance(value, Sequence):
+                        step_side_input.extend(value)
+                    else:
+                        step_side_input = Undetermined()
+                except Exception as e:
+                    env.logger.debug('Args {} of input cannot be determined: {}'.format(param, e))
+                    step_side_input = Undetermined()
+            #
+            output_param = param_of(statement[1])
+            for param in output_param:
+                try:
+                    value = SoS_eval(param, section.sigil)
+                    if isinstance(value, str):
+                        step_side_output.append(value)
+                    elif isinstance(value, Sequence):
+                        step_side_output.extend(value)
+                    else:
+                        step_side_output = Undetermined()
+                except Exception as e:
+                    env.logger.debug('Args {} of input cannot be determined: {}'.format(param, e))
+                    step_side_output = Undetermined()
     # finally, tasks..
     if section.task:
         signature_vars |= accessed_vars(section.task, section.sigil)
     return {
         'step_name': '{}_{}'.format(section.name, section.index) if isinstance(section.index, int) else section.name,
-        'step_input': step_input,
-        'step_output': step_output,
+        'step_input': step_input if isinstance(step_input, Undetermined) or isinstance(step_side_input,
+            Undetermined) else step_input + step_side_input,
+        'step_output': step_output if isinstance(step_output, Undetermined) \
+            or isinstance(step_side_output, Undetermined) else step_output + step_side_output,
         'step_depends': step_depends,
         'environ_vars': environ_vars - local_vars,
         'signature_vars': signature_vars,
