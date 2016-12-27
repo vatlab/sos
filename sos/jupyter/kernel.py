@@ -1122,7 +1122,7 @@ class SoS_Kernel(IPythonKernel):
                     self._reset_dict()
                 ret = self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
                 if args.expect_error and ret['status'] == 'error':
-                    self.warn('\nSandbox execution failed.')
+                    #self.warn('\nSandbox execution failed.')
                     return {'status': 'ok', 
                         'payload': [], 'user_expressions': {},
                         'execution_count': self._execution_count}
