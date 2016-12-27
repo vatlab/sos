@@ -837,7 +837,21 @@ class SoS_Kernel(IPythonKernel):
                             'metadata': {},
                             'data': { 'text/html': HTML('<pre><font color="green">## -- Preview output --</font></pre>').data}
                         })
-                self.send_response(self.iopub_socket, 'display_data',
+                if hasattr(self, 'in_sandbox') and self.in_sandbox:
+                    # if in sand box, do not link output to their files because these
+                    # files will be removed soon.
+                    self.send_response(self.iopub_socket, 'display_data',
+                        {
+                            'source': 'SoS',
+                            'metadata': {},
+                            'data': { 'text/html':
+                                HTML('''<pre> input: {}\noutput: {}\n</pre>'''.format(
+                                ', '.join(x for x in input_files),
+                                ', '.join(x for x in output_files))).data
+                            }
+                        })
+                else:
+                    self.send_response(self.iopub_socket, 'display_data',
                         {
                             'source': 'SoS',
                             'metadata': {},
@@ -1090,6 +1104,7 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_sandbox_parser()
             args = parser.parse_args(shlex.split(options))
+            self.in_sandbox = True
             try:
                 old_dir = os.getcwd()
                 if args.dir:
@@ -1118,6 +1133,7 @@ class SoS_Kernel(IPythonKernel):
                 os.chdir(old_dir)
                 if not args.dir:
                     shutil.rmtree(new_dir)
+                self.in_sandbox = False
                 #env.exec_dir = old_dir
         elif self.MAGIC_PREVIEW.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
