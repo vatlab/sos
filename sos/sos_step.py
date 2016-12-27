@@ -708,25 +708,25 @@ class Base_Step_Executor:
             result['__signature_vars__'] = env.accessed_vars
         return result
 
-    def run(self):
-        try:
-            if 'workdir' in self.step.options:
-                orig_dir = os.getcwd()
-                if os.path.exists(self.step.options['workdir']):
-                    if not os.path.isdir(self.step.options['workdir']):
-                        raise RuntimeError('Failed to change to workdir {}: not an directory'.format(self.step.options['workdir']))
-                else:
-                    try:
-                        os.makedirs(self.step.options['workdir'])
-                    except Exception as e:
-                        raise RuntimeError('Failed to create workdir {}: {}'.format(self.step.options['workdir'], e))
-                os.chdir(self.step.options['workdir'])
-            return self._run()
-        finally:
-            if 'workdir' in self.step.options:
-                os.chdir(orig_dir)
+#    def run(self):
+#        try:
+#            if 'workdir' in self.step.options:
+#                orig_dir = os.getcwd()
+#                if os.path.exists(self.step.options['workdir']):
+#                    if not os.path.isdir(self.step.options['workdir']):
+#                        raise RuntimeError('Failed to change to workdir {}: not an directory'.format(self.step.options['workdir']))
+#                else:
+#                    try:
+#                        os.makedirs(self.step.options['workdir'])
+#                    except Exception as e:
+#                        raise RuntimeError('Failed to create workdir {}: {}'.format(self.step.options['workdir'], e))
+#                os.chdir(self.step.options['workdir'])
+#            return self._run()
+#        finally:
+#            if 'workdir' in self.step.options:
+#                os.chdir(orig_dir)
 
-    def _run(self):
+    def run(self):
         '''Execute a single step and return results. The result for batch mode is the
         input, output etc returned as alias, and for interactive mode is the return value
         of the last expression. '''
