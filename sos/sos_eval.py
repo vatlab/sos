@@ -376,14 +376,17 @@ def param_of(name, text):
     exprs = []
     for param in params[2::2]:
         expr = ''
-        for _, tokval, _, _, _ in generate_tokens(StringIO(param).readline):
-            try:
-                expr += tokval
-                compile(expr, '<string>', 'eval')
-                exprs.append(expr)
-                break
-            except:
-                continue
+        try:
+            for _, tokval, _, _, _ in generate_tokens(StringIO(param).readline):
+                try:
+                    expr += tokval
+                    compile(expr, '<string>', 'eval')
+                    exprs.append(expr)
+                    break
+                except:
+                    continue
+        except:
+            continue
     return exprs
 
 def SoS_eval(expr, sigil):
