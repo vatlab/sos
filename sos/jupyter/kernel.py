@@ -1108,6 +1108,7 @@ class SoS_Kernel(IPythonKernel):
             try:
                 old_dir = os.getcwd()
                 if args.dir:
+                    args.dir = os.path.expanduser(args.dir)
                     if not os.path.isdir(args.dir):
                         os.makedirs(args.dir)
                     env.exec_dir = os.path.abspath(args.dir)

@@ -105,7 +105,6 @@ run: workdir='..'
 	git push --no-verify
 
 [check-link]
-input: '../docs/doc/*/*.html', group_by=1
 
 # https://www.npmjs.com/package/broken-link-checker
 # use command
@@ -114,6 +113,16 @@ input: '../docs/doc/*/*.html', group_by=1
 #
 # to install
 depends: executable('blc')
+
+# check homepage
+run:
+    blc http://bopeng.github.io/SOS
+
+input: '../docs/doc/*/*.html', group_by=1
+
+# homepage links are not referenced from SoS/doc
+stop_if('homepage' in _input[0])
+
 run:
 	blc http://bopeng.github.io/SOS/doc/${_input!db}/${_input!b}
 

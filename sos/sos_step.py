@@ -203,8 +203,8 @@ def analyze_section(section, default_input=None):
                 # we do not get LHS because it must be local to the step
                 local_vars |= accessed_vars(statement[1], section.sigil)
                 environ_vars |= accessed_vars(statement[2], section.sigil)
-            elif statement[0] == ':':
-                raise RuntimeError('Step input should be specified before others')
+            elif statement[0] == ':' and statement[1] != 'depends':
+                raise RuntimeError('Step input should be specified before {}'.format(statement[1]))
             else:
                 environ_vars |= accessed_vars(statement[1], section.sigil)
         #
@@ -791,7 +791,16 @@ class Base_Step_Executor:
                 if statement[0] == '=':
                     self.assign(statement[1], statement[2])
                 elif statement[0] == ':':
-                    raise ValueError('Step input should be specified before others')
+                    key, value = statement[1:]
+                    if key != 'depends':
+                        raise ValueError('Step input should be specified before {}'.format(key))
+                    try:
+                        args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
+                        dfiles = self.expand_depends_files(*args)
+                        # dfiles can be Undetermined
+                        self.process_depends_args(dfiles, **kwargs)
+                    except Exception as e:
+                        raise RuntimeError('Failed to process step {}: {} ({})'.format(key, value.strip(), e))
                 else:
                     try:
                         self.execute(statement[1])
@@ -1048,7 +1057,8 @@ class Queued_Step_Executor(Base_Step_Executor):
 
     def run(self):
         try:
-            notifier = ActivityNotifier('Running {}'.format(self.step.step_name()))
+            # update every 60 seconds
+            notifier = ActivityNotifier('Running {}'.format(self.step.step_name()), delay=60)
             res = Base_Step_Executor.run(self)
             self.queue.put(res)
         except Exception as e:
