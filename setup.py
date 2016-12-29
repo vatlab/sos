@@ -238,6 +238,15 @@ sos-ipynb.func = sos.jupyter.converter:script_to_notebook
 ipynb-sos.parser = sos.jupyter.converter:get_notebook_to_script_parser
 ipynb-sos.func = sos.jupyter.converter:notebook_to_script
 
+ipynb-html.parser = sos.jupyter.converter:get_notebook_to_html_parser
+ipynb-html.func = sos.jupyter.converter:notebook_to_html
+
+ipynb-pdf.parser = sos.jupyter.converter:get_notebook_to_pdf_parser
+ipynb-pdf.func = sos.jupyter.converter:notebook_to_pdf
+
+ipynb-md.parser = sos.jupyter.converter:get_notebook_to_md_parser
+ipynb-md.func = sos.jupyter.converter:notebook_to_md
+
 ''',
     extras_require = {
         ':sys_platform=="win32"': ['colorama'],

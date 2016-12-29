@@ -137,7 +137,7 @@ def notebook_to_script(notebook_file, sos_file, sargs=None, unknown_args=[]):
         exporter = SoS_Exporter()
     notebook = nbformat.read(notebook_file, nbformat.NO_CONVERT)
     output, resource = exporter.from_notebook_node(notebook, {})
-    if sos_file == '__STDOUT__':
+    if not sos_file:
         sys.stdout.write(output)
     else:
         with open(sos_file, 'w') as sos:
@@ -254,5 +254,76 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
         env.logger.info('Jupyter notebook saved to {}'.format(notebook_file))
     if err:
         raise err
+
+
+#
+# notebook to HTML
+#
+
+def export_notebook(exporter_class, notebook_file, output_file, unknown_args=[]):
+    d = {}
+    for arg in unknown_args:
+        if arg.startswith('--'):
+            opt = arg[2:]
+            d[opt] = []
+        elif arg.startswith('-'):
+            opt = arg[1:]
+            d[opt] = []
+        else:
+            d[opt].append(arg)
+    for k,v in d.items():
+        if not v:
+            d[k] = True
+        elif len(v) == 1:
+            d[k] = v[0]
+    #
+    exporter = exporter_class(d)
+    output, resource = exporter.from_filename(notebook_file, {})
+    if not output_file:
+        if isinstance(output, bytes):
+            sys.stdout.buffer.write(output)
+        else:
+            sys.stdout.write(output)
+    else:
+        with open(output_file, 'wb' if isinstance(output, bytes) else 'w') as out:
+            out.write(output)
+        env.logger.info('Output saved to {}'.format(output_file))
+
+  
+def get_notebook_to_html_parser():
+    parser = argparse.ArgumentParser('sos convert FILE.ipynb FILE.html (or --to html)',
+        description='''Export Jupyter notebook with a SoS kernel to a 
+        .html file. Additional command line arguments are passed directly to 
+        command "jupyter nbconvert --to html" so please refer to nbconvert manual for
+        available options.''')
+    return parser
+
+def notebook_to_html(notebook_file, output_file, sargs=None, unknown_args=[]):
+    from nbconvert.exporters.html import HTMLExporter
+    export_notebook(HTMLExporter, notebook_file, output_file, unknown_args)
+
+def get_notebook_to_pdf_parser():
+    parser = argparse.ArgumentParser('sos convert FILE.ipynb FILE.pdf (or --to pdf)',
+        description='''Export Jupyter notebook with a SoS kernel to a 
+        .pdf file. Additional command line arguments are passed directly to 
+        command "jupyter nbconvert --to pdf" so please refer to nbconvert manual for
+        available options.''')
+    return parser
+
+def notebook_to_pdf(notebook_file, output_file, sargs=None, unknown_args=[]):
+    from nbconvert.exporters.pdf import PDFExporter
+    export_notebook(PDFExporter, notebook_file, output_file, unknown_args)
+
+def get_notebook_to_md_parser():
+    parser = argparse.ArgumentParser('sos convert FILE.ipynb FILE.md (or --to md)',
+        description='''Export Jupyter notebook with a SoS kernel to a 
+        markdown file. Additional command line arguments are passed directly to 
+        command "jupyter nbconvert --to markdown" so please refer to nbconvert manual for
+        available options.''')
+    return parser
+
+def notebook_to_md(notebook_file, output_file, sargs=None, unknown_args=[]):
+    from nbconvert.exporters.markdown import MarkdownExporter
+    export_notebook(MarkdownExporter, notebook_file, output_file, unknown_args)
 
 
