@@ -57,6 +57,7 @@ run:
 
 [convert-documentation]
 input:  '../docs/src/documentation/*.ipynb', group_by=1
+depends: '../docs/src/documentation/toc_doc.tpl'
 output: _input[0].replace('/src/', '/doc/').replace('.ipynb', '.html')
 
 run:
@@ -65,6 +66,7 @@ run:
 
 [convert-tutorials]
 input:  '../docs/src/tutorials/*.ipynb', group_by=1
+depends: '../docs/src/tutorials/toc_tut.tpl'
 output: _input[0].replace('/src/', '/doc/').replace('.ipynb', '.html')
 
 run: 
