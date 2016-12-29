@@ -592,8 +592,9 @@ class ProgressBar:
         self.main = message
         self.main_start_time = time.time()
         self.message = self.main
-        # get terminal width
+        # get terminal width and height
         self.term_width = shutil.get_terminal_size((80, 20)).columns
+        self.term_height = shutil.get_terminal_size((80, 20)).lines
         #
         # total count
         self.count = 0
@@ -729,7 +730,7 @@ class ProgressBar:
             width = self.term_width - len(msg[0]) - len(msg[1]) - m3Len - len(msg[4])
             msg[6] = ' '*width
         # use stderr to avoid messing up process output
-        with self.term.location( 0, self.term.height - self.get_index() - 1):
+        with self.term.location( 0, self.term_height - self.get_index() - 1):
                 sys.stderr.write('\r' + ''.join(msg))
 
     def done(self, done_msg=''):
@@ -776,7 +777,7 @@ class ProgressBar:
             msg[3] = ''
             msg[4] = ''
             msg[5] = ''
-        with self.term.location(0, self.term.height - self.get_index() - 1):
+        with self.term.location(0, self.term_height - self.get_index() - 1):
                 sys.stderr.write('\r{}{}\n'.format(''.join(msg), self.term.clear_eol))
                 sys.stderr.flush()
 
@@ -1008,7 +1009,7 @@ class ActivityNotifier(threading.Thread):
                             prog_index.write('{}\n'.format(self.uuid))
                     registered = True
                 second_elapsed = time.time() - self.start_time
-                with self.term.location(0, self.term.height - self.get_index() - 1):
+                with self.term.location(0, self.term_height - self.get_index() - 1):
                     sys.stderr.write('\r' + self.msg + ' ({}{}){}'.format(
                         '' if second_elapsed < 86400 else '{} day{} '
                         .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
