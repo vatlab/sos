@@ -446,6 +446,11 @@ class RuntimeInfo:
         self.dependent_files = dict['dependent_files']
         self.signature_vars = dict['signature_vars']
         self.script = dict['script']
+        self.lock = fasteners.InterProcessLock(self.proc_info + '_')
+        if not self.lock.acquire(blocking=False):
+            raise UnavailableLock((self.output_files, self.proc_info))
+        else:
+            env.logger.trace('Lock acquired for output files {}'.format(short_repr(self.output_files)))
 
     def release(self):
         self.lock.release()
