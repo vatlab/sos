@@ -1284,9 +1284,8 @@ import time
 [0]
 output: 'a.txt'
 task:
-if run_mode == 'run':
-   time.sleep(3)
-   run("touch ${output}")
+time.sleep(3)
+run("touch ${output}")
 ''')
         wf = script.workflow()
         try:

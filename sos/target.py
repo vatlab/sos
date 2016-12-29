@@ -426,6 +426,7 @@ class RuntimeInfo:
             env.logger.trace('Lock acquired for output files {}'.format(short_repr(self.output_files)))
 
     def __getstate__(self):
+        self.release()
         return {'step_md5': self.step_md5,
                 'proc_info': self.proc_info,
                 'input_files': self.input_files,

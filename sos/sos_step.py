@@ -967,11 +967,6 @@ class Base_Step_Executor:
                         signatures[idx].release()
                         signatures[idx] = None
                     continue
-                # before sending task to an external executor, we need to
-                # release signature and let them handle signature lock
-                if signatures[idx] is not None:
-                    signatures[idx].release()
-                    signatures[idx] = None
 
                 # check if the task is active
                 if '_runtime' in env.sos_dict and 'active' in env.sos_dict['_runtime']:
@@ -996,6 +991,9 @@ class Base_Step_Executor:
                 try:
                     self.prepare_runtime()
                     self.submit_task(signatures[idx])
+                    # the signature is now handled by the external executor
+                    if signatures[idx] is not None:
+                        signatures[idx] = None
                 except Exception as e:
                     # FIXME: cannot catch exception from subprocesses
                     if env.verbosity > 2:
