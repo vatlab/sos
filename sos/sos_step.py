@@ -76,6 +76,7 @@ def execute_task(params):
         .format(sos_dict['_input'], sos_dict['_output']))
     try:
         # set current directory if specified
+        orig_dir = os.getcwd()
         if '_runtime' in sos_dict and 'workdir' in sos_dict['_runtime']:
             os.chdir(os.path.expanduser(sos_dict['_runtime']['workdir']))
         # set environ ...
@@ -96,7 +97,7 @@ def execute_task(params):
         else:
             env.sos_dict.set('__step_sig__', os.path.basename(signature.proc_info).split('.')[0])
         SoS_exec(task, sigil)
-        os.chdir(env.exec_dir)
+        os.chdir(orig_dir)
     except Exception as e:
         return {'succ': 1, 'exception': e, 'path': os.environ['PATH']}
     except KeyboardInterrupt:
@@ -595,8 +596,8 @@ class Base_Step_Executor:
     def prepare_runtime(self):
         if '_runtime' not in env.sos_dict:
             env.sos_dict.set('_runtime', {'workdir': env.exec_dir})
-        elif 'workdir' not in env.sos_dict['_runtime']:
-            env.sos_dict['_runtime']['workdir'] = env.exec_dir
+        #elif 'workdir' not in env.sos_dict['_runtime']:
+        #    env.sos_dict['_runtime']['workdir'] = env.exec_dir
         if 'env' in env.sos_dict['_runtime']:
             env.sos_dict['_runtime']['env'].update({x:y for x,y in os.environ.items() if x not in env.sos_dict['_runtime']['env'] and isinstance(y, str)})
         else:
@@ -1253,8 +1254,8 @@ class SP_Step_Executor(Queued_Step_Executor):
         for target in env.sos_dict['output']:
             if isinstance(target, str):
                 if not FileTarget(target).exists('target' if '__hard_target__' in env.sos_dict else 'any'):
-                    raise RuntimeError('Output target {} does not exist after the completion of step {}'
-                            .format(target, env.sos_dict['step_name']))
+                    raise RuntimeError('Output target {} does not exist after the completion of step {} (curdir={})'
+                            .format(target, env.sos_dict['step_name'], os.getcwd()))
             elif not target.exists('any'):
                 raise RuntimeError('Output target {} does not exist after the completion of step {}'
                             .format(target, env.sos_dict['step_name']))
