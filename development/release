@@ -75,7 +75,7 @@ run:
 
 [convert-homepage]
 input:  '../docs/src/homepage/*.ipynb', group_by=1
-output: _input[0].replace('/src/', '/doc/').replace('.ipynb', '.html')
+output: "../docs/${_input!bn}.html"
 
 run: 
 	cd ../docs/src/tutorials
@@ -102,7 +102,7 @@ sos_run('convert-examples')
 parameter: msg = "Update website"
 
 run: workdir='..'
-	git add --all docs/doc/documentation docs/doc/tutorials docs/doc/examples docs/doc/media docs/js/docs.js
+	git add --all docs/doc/documentation docs/doc/tutorials docs/doc/examples docs/doc/media docs/js/docs.js docs/*.html
 	git commit docs/doc/* --no-verify -m '${msg}'
 	git push --no-verify
 
@@ -118,15 +118,14 @@ depends: executable('blc')
 
 # check homepage
 run:
-    blc http://bopeng.github.io/SOS
+    blc http://vatlab.github.io/SOS
 
-input: '../docs/doc/*/*.html', group_by=1
+input: '../docs/src/*/*.ipynb', group_by=1
 
-# homepage links are not referenced from SoS/doc
-stop_if('homepage' in _input[0])
-
-run:
-	blc http://bopeng.github.io/SOS/doc/${_input!db}/${_input!b}
+if 'homepage' in _input[0]:
+    run("blc http://vatlab.github.io/SOS/${_input!bn}.html")
+else:
+    run("blc http://vatlab.github.io/SOS/doc/${_input!db}/${_input!bn}.html")
 
 
 [default]
