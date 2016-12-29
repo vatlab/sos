@@ -107,6 +107,7 @@ def execute_task(params):
     if signature is not None:
         signature.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
             env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
+        signature.release()
     env.deregister_process(os.getpid())
     return {'succ': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
 
@@ -953,6 +954,9 @@ class Base_Step_Executor:
                 # if this index is skipped, go directly to the next one
                 if skip_index:
                     skip_index = False
+                    if signatures[idx]:
+                        signatures[idx].release()
+                        signatures[idx] = None
                     continue
                 # finally, tasks..
                 if not self.step.task:
@@ -960,7 +964,14 @@ class Base_Step_Executor:
                         signatures[idx].write(
                             env.sos_dict['_local_input_{}'.format(idx)],
                             env.sos_dict['_local_output_{}'.format(idx)])
+                        signatures[idx].release()
+                        signatures[idx] = None
                     continue
+                # before sending task to an external executor, we need to
+                # release signature and let them handle signature lock
+                if signatures[idx] is not None:
+                    signatures[idx].release()
+                    signatures[idx] = None
 
                 # check if the task is active
                 if '_runtime' in env.sos_dict and 'active' in env.sos_dict['_runtime']:
