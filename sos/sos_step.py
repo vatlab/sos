@@ -267,8 +267,6 @@ def analyze_section(section, default_input=None):
                         step_output = _expand_file_list(True, *args)
                     elif key == 'depends':
                         step_depends = _expand_file_list(True, *args)
-                    else:
-                        raise ValueError('Unrecognized directive {}'.format(key))
             except Exception as e:
                 env.logger.debug("Args {} cannot be determined: {}".format(value, e))
         else: # statement
