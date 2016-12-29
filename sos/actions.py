@@ -31,6 +31,7 @@ import urllib.error
 import urllib.parse
 import shutil
 import zipfile
+import shlex
 import gzip
 import tarfile
 import fasteners
@@ -159,13 +160,13 @@ class SoS_ExecuteScript:
     def __init__(self, script, interpreter, suffix, args=''):
         self.script = script
         if isinstance(interpreter, str):
-            if interpreter and not shutil.which(interpreter):
+            if interpreter and not shutil.which(shlex.split(interpreter)[0]):
                 raise RuntimeError('Failed to locate interpreter {}'.format(interpreter))
             self.interpreter = interpreter
         elif isinstance(interpreter, Sequence):
             found = False
             for ip in interpreter:
-                if shutil.which(ip):
+                if shutil.which(shlex.split(ip)[0]):
                     self.interpreter = ip
                     found = True
                     break
