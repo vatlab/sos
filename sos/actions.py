@@ -50,7 +50,7 @@ __all__ = ['SoS_Action', 'execute_script', 'sos_run',
     'fail_if', 'warn_if', 'stop_if',
     'download',
     'run', 'bash', 'csh', 'tcsh', 'zsh', 'sh',
-    'python', 'python3',
+    'python', 'python2', 'python3',
     'perl', 'ruby', 'node', 'JavaScript',
     'report', 'pandoc'
     ]
@@ -158,7 +158,22 @@ def SoS_Action(run_mode=['run', 'interactive']):
 class SoS_ExecuteScript:
     def __init__(self, script, interpreter, suffix, args=''):
         self.script = script
-        self.interpreter = interpreter
+        if isinstance(interpreter, str):
+            if interpreter and not shutil.which(interpreter):
+                raise RuntimeError('Failed to locate interpreter {}'.format(interpreter))
+            self.interpreter = interpreter
+        elif isinstance(interpreter, Sequence):
+            found = False
+            for ip in interpreter:
+                if shutil.which(ip):
+                    self.interpreter = ip
+                    found = True
+                    break
+            if not found:
+                raise RuntimeError('Failed to locate any of the interpreters {}'
+                    .format(', '.join(interpreter)))
+        else:
+            raise RuntimeError('Unacceptable interpreter {}'.format(interpreter))
         self.args = args
         self.suffix = suffix
 
@@ -577,8 +592,15 @@ def python(script, args='', **kwargs):
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def python3(script, args='', **kwargs):
-    '''Execute specified script using python 3.'''
-    return SoS_ExecuteScript(script, 'python3', '.py', args).run(**kwargs)
+    '''Execute specified script using python3, and python if python3 does
+    not exist.'''
+    return SoS_ExecuteScript(script, ['python3', 'python'], '.py', args).run(**kwargs)
+
+@SoS_Action(run_mode=['run', 'interactive'])
+def python2(script, args='', **kwargs):
+    '''Execute specified script using python2, and python if python2 does
+    not exist.'''
+    return SoS_ExecuteScript(script, ['python2', 'python2.7', 'python'], '.py', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'])
 def perl(script, args='', **kwargs):
