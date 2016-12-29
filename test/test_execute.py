@@ -1825,5 +1825,25 @@ run:
         os.remove('b.txt')
         Base_Executor(wf).run()
 
+    def testNestedWorkdir(self):
+        '''Test nested runtime option for work directory'''
+        if os.path.isdir('tmp'):
+            shutil.rmtree('tmp')
+        script = SoS_Script('''
+[step]
+task: workdir='tmp'
+bash:
+    touch 'a.txt'
+
+[default]
+task: workdir='tmp'
+sos_run('step')
+''')
+        wf = script.workflow()
+        # this should be ok.
+        Base_Executor(wf).run()
+        os.path.isfile('tmp/tmp/a.txt')
+        shutil.rmtree('tmp')
+
 if __name__ == '__main__':
     unittest.main()
