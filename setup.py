@@ -179,6 +179,7 @@ tcsh = sos.actions:tcsh
 zsh = sos.actions:zsh
 sh = sos.actions:sh
 python = sos.actions:python
+python2 = sos.actions:python2
 python3 = sos.actions:python3
 perl = sos.actions:perl
 ruby = sos.actions:ruby
