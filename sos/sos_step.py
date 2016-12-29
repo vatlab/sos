@@ -78,6 +78,11 @@ def execute_task(params):
         # set current directory if specified
         orig_dir = os.getcwd()
         if '_runtime' in sos_dict and 'workdir' in sos_dict['_runtime']:
+            if not os.path.isdir(os.path.expanduser(sos_dict['_runtime']['workdir'])):
+                try:
+                    os.makedirs(os.path.expanduser(sos_dict['_runtime']['workdir']))
+                except Exception as e:
+                    raise RuntimeError('Failed to create workdir {}'.format(sos_dict['_runtime']['workdir']))
             os.chdir(os.path.expanduser(sos_dict['_runtime']['workdir']))
         # set environ ...
         if '_runtime' in sos_dict and 'env' in sos_dict['_runtime']:
@@ -595,9 +600,12 @@ class Base_Step_Executor:
 
     def prepare_runtime(self):
         if '_runtime' not in env.sos_dict:
-            env.sos_dict.set('_runtime', {'workdir': env.exec_dir})
-        #elif 'workdir' not in env.sos_dict['_runtime']:
-        #    env.sos_dict['_runtime']['workdir'] = env.exec_dir
+            env.sos_dict.set('_runtime', {})
+        if 'workdir' in env.sos_dict['_runtime'] and not os.path.isdir(os.path.expanduser(env.sos_dict['_runtime']['workdir'])):
+            try:
+                os.makedirs(os.path.expanduser(env.sos_dict['_runtime']['workdir']))
+            except Exception as e:
+                raise RuntimeError('Failed to create workdir {}'.format(env.sos_dict['_runtime']['workdir']))
         if 'env' in env.sos_dict['_runtime']:
             env.sos_dict['_runtime']['env'].update({x:y for x,y in os.environ.items() if x not in env.sos_dict['_runtime']['env'] and isinstance(y, str)})
         else:
