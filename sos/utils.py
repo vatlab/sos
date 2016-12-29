@@ -995,6 +995,7 @@ class ActivityNotifier(threading.Thread):
             import blessings
             registered = False
             self.term = blessings.Terminal(stream=sys.stderr)
+            self.term_height = shutil.get_terminal_size((80, 20)).lines
             while True:
                 self.event.wait(self.delay)
                 if self.event.is_set():
