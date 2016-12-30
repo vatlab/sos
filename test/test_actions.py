@@ -101,6 +101,15 @@ c=func_both()
         self.assertEqual(env.sos_dict['b'], 1)
         self.assertEqual(env.sos_dict['c'], 1)
 
+    def testAcceptableArgs(self):
+        '''test acceptable args of options'''
+        script = SoS_Script(r"""
+run: unrecog=1
+    echo 'a'
+""")
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
     def testGetOutput(self):
         '''Test utility function get_output'''
         script = SoS_Script(r"""

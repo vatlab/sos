@@ -32,14 +32,14 @@ from sos.sos_eval import interpolate
 from sos.target import UnknownTarget
 from .target import R_library
 
-@SoS_Action(run_mode=['prepare', 'run', 'interactive'])
+@SoS_Action(run_mode=['prepare', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def R(script, args='', **kwargs):
     # > getOption('defaultPackages')
     # [1] "datasets"  "utils"     "grDevices" "graphics"  "stats"     "methods"
     return SoS_ExecuteScript(
         script, 'Rscript --default-packages=datasets,methods,utils,stats,grDevices,graphics ', '.R', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def Rmarkdown(script=None, input=None, output=None, args='${input!r}, output_file=${output!ar}', **kwargs):
     '''Convert input file to output using Rmarkdown
 

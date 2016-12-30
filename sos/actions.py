@@ -68,11 +68,17 @@ def get_actions():
 # A decoration function that allows SoS to replace all SoS actions
 # with a null action.
 #
-def SoS_Action(run_mode=['run', 'interactive']):
+def SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['*']):
     run_mode = [run_mode] if isinstance(run_mode, str) else run_mode
     def runtime_decorator(func):
         @wraps(func)
         def action_wrapper(*args, **kwargs):
+            # if docker_image in args, a large number of docker-specific
+            # args would be allowed.
+            if '*' not in acceptable_args and 'docker_image' not in kwargs:
+                for key in kwargs.keys():
+                    if key not in acceptable_args and key not in SOS_ACTION_OPTIONS:
+                        raise ValueError('Unrecognized option "{}" for action {}'.format(key, func))
             # docker files will be downloaded in run or prepare mode
             if 'docker_file' in kwargs and env.run_mode in ['run', 'interactive']:
                 from .docker.client import DockerClient
@@ -310,26 +316,26 @@ def sos_run(workflow=None, targets=None, **kwargs):
         # restore step_name in case the subworkflow re-defines it
         env.sos_dict.set('step_name', my_name)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'interpreter', 'suffix', 'args'])
 def execute_script(script, interpreter, suffix, args='', **kwargs):
     '''Execute specified script using specified interpreter.'''
     return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
 
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['expr', 'msg'])
 def fail_if(expr, msg=''):
     '''Raise an exception with `msg` if condition `expr` is False'''
     if expr:
         raise RuntimeError(msg)
     return 0
 
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['expr', 'msg'])
 def warn_if(expr, msg=''):
     '''Yield an warning message `msg` if `expr` is False '''
     if expr:
         env.logger.warning(msg)
     return 0
 
-@SoS_Action(run_mode=['dryrun', 'run', 'interactive'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['expr', 'msg'])
 def stop_if(expr, msg=''):
     '''Abort the execution of the current step or loop and yield
     an warning message `msg` if `expr` is False '''
@@ -494,7 +500,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
     return os.path.isfile(dest)
 
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['URLs', 'dest_dir', 'dest_file', 'decompress'])
 def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified
@@ -556,69 +562,69 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
         raise RuntimeError('Not all files have been downloaded')
     return 0
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def run(script, args='', **kwargs):
     '''Execute specified script using bash.'''
     return SoS_ExecuteScript(script, '', '', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def bash(script, args='', **kwargs):
     '''Execute specified script using bash.'''
     return SoS_ExecuteScript(script, '/bin/bash', '.sh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def csh(script, args='', **kwargs):
     '''Execute specified script using csh.'''
     return SoS_ExecuteScript(script, '/bin/csh', '.csh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def tcsh(script, args='', **kwargs):
     '''Execute specified script using tcsh.'''
     return SoS_ExecuteScript(script, '/bin/tcsh', '.sh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def zsh(script, args='', **kwargs):
     '''Execute specified script using zsh.'''
     return SoS_ExecuteScript(script, '/bin/zsh', '.zsh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def sh(script, args='', **kwargs):
     '''Execute specified script using sh.'''
     return SoS_ExecuteScript(script, '/bin/sh', '.sh', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def python(script, args='', **kwargs):
     '''Execute specified script using python (which can be python 2 or 3 depending on system configuration.'''
     return SoS_ExecuteScript(script, 'python', '.py', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def python3(script, args='', **kwargs):
     '''Execute specified script using python3, and python if python3 does
     not exist.'''
     return SoS_ExecuteScript(script, ['python3', 'python'], '.py', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def python2(script, args='', **kwargs):
     '''Execute specified script using python2, and python if python2 does
     not exist.'''
     return SoS_ExecuteScript(script, ['python2', 'python2.7', 'python'], '.py', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def perl(script, args='', **kwargs):
     '''Execute specified script using perl.'''
     return SoS_ExecuteScript(script, 'perl', '.pl', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def ruby(script, args='', **kwargs):
     '''Execute specified script using ruby.'''
     return SoS_ExecuteScript(script, 'ruby', '.rb', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def node(script, args='', **kwargs):
     '''Execute specified script using node.'''
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def JavaScript(script, args='', **kwargs):
     '''Execute specified script using node.'''
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
@@ -656,7 +662,7 @@ def collect_input(script, input):
     return input_file
 
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script'])
 def report(script=None, input=None, output=None, **kwargs):
     '''Write script to an output file specified by `output`, which can be
     a filename to which the content of the script will be written,
@@ -710,7 +716,7 @@ def report(script=None, input=None, output=None, **kwargs):
         file_handle.close()
 
 
-@SoS_Action(run_mode=['run', 'interactive'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script'])
 def pandoc(script=None, input=None, output=None, args='${input!q} --output ${output!q}', **kwargs):
     '''Convert input file to output using pandoc
 
