@@ -71,7 +71,7 @@ output: _input[0].replace('/src/', '/doc/').replace('.ipynb', '.html')
 
 run: 
 	cd ../docs/src/tutorials
-	jupyter nbconvert --to html --output ${_output!a} ${_input!a} --template toc_tut
+	sos convert ${_input!a} ${_output!a}  --template toc_tut
 
 [convert-homepage]
 input:  '../docs/src/homepage/*.ipynb', group_by=1
@@ -79,13 +79,13 @@ output: "../docs/${_input!bn}.html"
 
 run: 
 	cd ../docs/src/tutorials
-	jupyter nbconvert --to html --output ${_output!a} ${_input!a} --template basic
+	sos convert ${_input!a} ${_output!a} --template basic
 
 [convert-examples]
-input:  '../docs/src/examples/*.sos', group_by=1
-output: _input[0].replace('/src/', '/doc/').replace('.sos', '.html')
+input:  '../docs/src/examples/*.sos', 'release', group_by=1
+output: "../docs/doc/examples/${_input!bn}.html"
 
-run: wokdir='../docs/doc/examples'
+run: workdir='../docs/doc/examples'
 	cp ${_input!a} .
 	sos convert ${_input!a} ${_output!b} --raw ${_input!b}
 
