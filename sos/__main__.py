@@ -139,7 +139,7 @@ def cmd_convert(args, unknown_args):
                     func = entrypoint.load()
                     func(args.from_file, args.to_file, args, unknown_args)
             except Exception as e:
-                raise RuntimeError('Failed to load converter {}: {}'.format(entrypoint.name, e))
+                raise RuntimeError('Failed to execute converter {}: {}'.format(entrypoint.name.rsplit('.', 1)[0], e))
     except Exception as e:
         # if no other parameter, with option list all
         if args.verbosity and args.verbosity > 2:
