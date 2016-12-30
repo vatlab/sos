@@ -260,24 +260,34 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
 # notebook to HTML
 #
 
-def export_notebook(exporter_class, notebook_file, output_file, unknown_args=[]):
-    d = {}
-    for arg in unknown_args:
-        if arg.startswith('--'):
-            opt = arg[2:]
-            d[opt] = []
-        elif arg.startswith('-'):
-            opt = arg[1:]
-            d[opt] = []
-        else:
-            d[opt].append(arg)
-    for k,v in d.items():
-        if not v:
-            d[k] = True
-        elif len(v) == 1:
-            d[k] = v[0]
-    #
-    exporter = exporter_class(d)
+def export_notebook(exporter_class, to_format, notebook_file, output_file, unknown_args=[]):
+
+    from traitlets.config.loader import KVArgParseConfigLoader
+    from copy import deepcopy
+    # figured out from traitlets/config/application.py when nbconvert is actually called.
+    loader = KVArgParseConfigLoader(argv=[notebook_file, '--to', to_format] + unknown_args, 
+        aliases={'post': 'NbConvertApp.postprocessor_class', 'writer': 'NbConvertApp.writer_class',
+            'template': 'TemplateExporter.template_file', 'to': 'NbConvertApp.export_format',
+            'reveal-prefix': 'SlidesExporter.reveal_url_prefix', 'output': 'NbConvertApp.output_base',
+            'log-level': 'NbConvertApp.log_level', 'nbformat': 'NotebookExporter.nbformat_version',
+            'config': 'NbConvertApp.config_file', 'output-dir': 'FilesWriter.build_directory'},
+        flags={'y': ({'NbConvertApp': {'answer_yes': True}}, 'Answer yes to any questions instead of prompting.'),
+            'execute': ({'ExecutePreprocessor': {'enabled': True}},
+            'Execute the notebook prior to export.'),
+            'generate-config': ({'NbConvertApp': {'generate_config': True}},
+            'generate default config file'),
+            'stdout': ({'NbConvertApp': {'writer_class': 'StdoutWriter'}},
+            'Write notebook output to stdout instead of files.'),
+            'debug': ({'NbConvertApp': {'log_level': 10}}, 'set log level to logging.DEBUG (maximize logging output)'),
+            'allow-errors': ({'ExecutePreprocessor': {'allow_errors': True}},
+            "Continue notebook execution even if one of the cells throws an error and include the error message in the cell output (the default behaviour is to abort conversion). This flag is only relevant if '--execute' was specified, too."),
+            'stdin': ({'NbConvertApp': {'from_stdin': True}}, "read a single notebook file from stdin. Write the resulting notebook with default basename 'notebook.*'"),
+            'inplace': ({'FilesWriter': {'build_directory': ''}, 'NbConvertApp': {'use_output_suffix': False, 'export_format': 'notebook'}},
+            'Run nbconvert in place, overwriting the existing notebook (only \n        relevant when converting to notebook format)')},
+        )
+    cli_config = deepcopy(loader.load_config())
+
+    exporter = exporter_class(cli_config)
     output, resource = exporter.from_filename(notebook_file, {})
     if not output_file:
         if isinstance(output, bytes):
@@ -300,7 +310,7 @@ def get_notebook_to_html_parser():
 
 def notebook_to_html(notebook_file, output_file, sargs=None, unknown_args=[]):
     from nbconvert.exporters.html import HTMLExporter
-    export_notebook(HTMLExporter, notebook_file, output_file, unknown_args)
+    export_notebook(HTMLExporter, 'html', notebook_file, output_file, unknown_args)
 
 def get_notebook_to_pdf_parser():
     parser = argparse.ArgumentParser('sos convert FILE.ipynb FILE.pdf (or --to pdf)',
@@ -312,7 +322,7 @@ def get_notebook_to_pdf_parser():
 
 def notebook_to_pdf(notebook_file, output_file, sargs=None, unknown_args=[]):
     from nbconvert.exporters.pdf import PDFExporter
-    export_notebook(PDFExporter, notebook_file, output_file, unknown_args)
+    export_notebook(PDFExporter, 'pdf', notebook_file, output_file, unknown_args)
 
 def get_notebook_to_md_parser():
     parser = argparse.ArgumentParser('sos convert FILE.ipynb FILE.md (or --to md)',
@@ -324,6 +334,6 @@ def get_notebook_to_md_parser():
 
 def notebook_to_md(notebook_file, output_file, sargs=None, unknown_args=[]):
     from nbconvert.exporters.markdown import MarkdownExporter
-    export_notebook(MarkdownExporter, notebook_file, output_file, unknown_args)
+    export_notebook(MarkdownExporter, 'markdown', notebook_file, output_file, unknown_args)
 
 
