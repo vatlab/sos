@@ -62,7 +62,7 @@ output: _input[0].replace('/src/', '/doc/').replace('.ipynb', '.html')
 
 run:
 	cd ../docs/src/documentation
-	jupyter nbconvert --to html --output ${_output!a} ${_input!a} --template toc_doc
+	sos convert ${_input!a} ${_output!a}  --template toc_doc
 
 [convert-tutorials]
 input:  '../docs/src/tutorials/*.ipynb', group_by=1
@@ -87,7 +87,7 @@ output: "../docs/doc/examples/${_input!bn}.html"
 
 run: workdir='../docs/doc/examples'
 	cp ${_input!a} .
-	sos convert ${_input!a} ${_output!b} --raw ${_input!b}
+	sos convert ${_input!b} ${_output!b} --raw ${_input!b}
 
 [update-website]
 
