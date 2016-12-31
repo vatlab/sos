@@ -101,18 +101,7 @@ def _R_repr(obj):
         else:
             return repr('Unsupported datatype {}'.format(short_repr(obj)))
 
-def R_repr_of_py_obj(name, obj):
-    new_name = '.' + name[1:] if name.startswith('_') else name
-    r_repr = _R_repr(obj)
-    #
-    if 'read_feather' in r_repr:
-        return new_name, '''if (!require("feather")) {{
-            install.packages('feather', repos='http://cran.stat.ucla.edu/')
-            }}
-            library(feather)
-            {} <- {}'''.format('.' + name[1:] if name.startswith('_') else name, r_repr)
-    else:
-        return new_name, '{} <- {}'.format(new_name, r_repr)
+
 
 # R    length (n)    Python
 # NULL        None
@@ -212,33 +201,52 @@ R_init_statements = r'''
         "'Untransferrable variable'"
     }
 }
+..vars.with.sos <- function() {
+
+}
 '''
 
 
-def py_repr_of_R_obj(items):
-    return [x.replace('.', '_') for x in items], \
-        '..py.repr(list({}))'.format(','.join('{0}={0}'.format(x) for x in items))
-
-def py_from_R_repr(expr):
-    '''
-    Convert expression returned from R to python
-    '''
-    try:
-        if 'read_dataframe' in expr:
-            # imported to be used by eval
-            from feather import read_dataframe
-            # suppress flakes warning
-            read_dataframe
-        # the result is something like
-        # [1] "{'a': 1}"
-        return eval(eval(expr.split(' ', 1)[-1]))
-    except Exception as e:
-        raise UsageError('Failed to convert {} to Python object: {}'.format(expr, e))
-
 class sos_R:
-    def __init__(self):
+    def __init__(self, sos_kernel):
+        self.sos_kernel = sos_kernel
         self.kernel_name = 'ir'
         self.init_statements = R_init_statements
-        self.py_to_lan = R_repr_of_py_obj
-        self.lan_to_py = py_repr_of_R_obj
-        self.py_to_dict = py_from_R_repr
+
+    def sos_to_lan(self, name, obj):
+        new_name = '.' + name[1:] if name.startswith('_') else name
+        r_repr = _R_repr(obj)
+        #
+        if 'read_feather' in r_repr:
+            return new_name, '''if (!require("feather")) {{
+                install.packages('feather', repos='http://cran.stat.ucla.edu/')
+                }}
+                library(feather)
+                {} <- {}'''.format('.' + name[1:] if name.startswith('_') else name, r_repr)
+        else:
+            return new_name, '{} <- {}'.format(new_name, r_repr)
+
+    def lan_to_sos(self, items):
+        for item in items:
+            if '.' in item:
+                self.sos_kernel.warn('Variable {} is put to SoS as {}'.format(item, item.replace('.', '_')))
+
+        py_repr = '..py.repr(list({}))'.format(','.join('{0}={0}'.format(x) for x in items))
+
+        # irkernel (since the new version) does not produce execute_result, only
+        # display_data
+        response = self.sos_kernel.get_response(py_repr, ('display_data', 'execute_result'))
+        expr = response['data']['text/plain']
+        try:
+            if 'read_dataframe' in expr:
+                # imported to be used by eval
+                from feather import read_dataframe
+                # suppress flakes warning
+                read_dataframe
+            # the result is something like
+            # [1] "{'a': 1}"
+            return eval(eval(expr.split(' ', 1)[-1]))
+        except Exception as e:
+            raise UsageError('Failed to convert {} to Python object: {}'.format(expr, e))
+
+
