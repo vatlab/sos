@@ -425,6 +425,10 @@ class SoS_Kernel(IPythonKernel):
     def switch_kernel(self, kernel, ret_vars=[]):
         if kernel and kernel != 'sos':
             if kernel != self.kernel:
+                # if we switch from a non-sos kernel, we will need to
+                # get variables
+                if self.kernel != 'sos':
+                    self.handle_magic_put(self.RET_VARS)
                 if kernel in self.kernels:
                     # switch to an active kernel
                     self.KM, self.KC = self.kernels[kernel]
@@ -581,7 +585,7 @@ class SoS_Kernel(IPythonKernel):
             if item not in env.sos_dict:
                 self.warn('Variable {} does not exist'.format(item))
                 return
-        if self.kernel == 'python3':
+        if self.kernel.startswith('python'):
             # if it is a python kernel, passing specified SoS variables to it
             sos_data = pickle.dumps({x:env.sos_dict[x] for x in items})
             # this can fail if the underlying python kernel is python 2
@@ -642,34 +646,21 @@ class SoS_Kernel(IPythonKernel):
         return response
 
     def handle_magic_put(self, items):
+        # items can be None if unspecified
         if not items:
-            return
-        if self.kernel == 'python':
+            # we do not simply return because we need to return default variables (with name startswith sos
+            items = []
+        if self.kernel.startswith('python'):
             # if it is a python kernel, passing specified SoS variables to it
-            self.KC.execute('import pickle\npickle.dumps({{ {} }})'.format(','.join('"{0}":{0}'.format(x) for x in items)),
-                silent=False, store_history=False)
-            # first thing is wait for any side effects (output, stdin, etc.)
-            _execution_state = "busy"
-            while _execution_state != 'idle':
-                # display intermediate print statements, etc.
-                while self.KC.iopub_channel.msg_ready():
-                    sub_msg = self.KC.iopub_channel.get_msg()
-                    msg_type = sub_msg['header']['msg_type']
-                    if msg_type == 'status':
-                        _execution_state = sub_msg["content"]["execution_state"]
-                    else:
-                        if msg_type == 'execute_result':
-                            #self.warn(repr(sub_msg['content']['data']))
-                            try:
-                                env.sos_dict.update(
-                                    pickle.loads(eval(sub_msg['content']['data']['text/plain']))
-                                    )
-                            except Exception as e:
-                                self.warn('Failed to put variable {}: {}\n'.format(', '.join(items), e))
-                            break
-                        else:
-                            self.send_response(self.iopub_socket, msg_type,
-                                sub_msg['content'])
+            default_items = [x for x in env.sos_dict.keys() if x.startswith('sos') and x not in self.original_keys]
+            response = self.get_response('import pickle\npickle.dumps({{ {} }})'.format(','.join('"{0}":{0}'.format(x) for x in items + default_items)),
+                ['execute_result'])
+            try:
+                env.sos_dict.update(
+                    pickle.loads(eval(response['data']['text/plain']))
+                    )
+            except Exception as e:
+                self.warn('Failed to put variable {}: {}\n'.format(', '.join(items), e))
             # verify
             for item in items:
                 if not item in env.sos_dict:
