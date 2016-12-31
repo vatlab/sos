@@ -422,43 +422,41 @@ class SoS_Kernel(IPythonKernel):
         reply['content']['execution_count'] = self._execution_count
         return reply['content']
 
-    def switch_kernel(self, kernel, ret_vars=[]):
-        if kernel and kernel != 'sos':
-            if kernel != self.kernel:
-                # if we switch from a non-sos kernel, we will need to
-                # get variables
-                if self.kernel != 'sos':
-                    self.handle_magic_put(self.RET_VARS)
-                if kernel in self.kernels:
-                    # switch to an active kernel
-                    self.KM, self.KC = self.kernels[kernel]
-                    self.RET_VARS = ret_vars
-                    self.kernel = kernel
-                else:
-                    try:
-                        # start a new kernel
-                        self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, 
-                            kernel_name=self.supported_languages[kernel].kernel_name if kernel in self.supported_languages else kernel)
-                        self.KM, self.KC = self.kernels[kernel]
-                        self.RET_VARS = ret_vars
-                        self.kernel = kernel
-                        if self.kernel in self.supported_languages:
-                            init_stmts = self.supported_languages[self.kernel].init_statements
-                            if init_stmts:
-                                self.run_cell(init_stmts, False)
-                    except Exception as e:
-                        self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e))
+    def switch_kernel(self, kernel, in_vars=[], ret_vars=[]):
+        # switching to a non-sos kernel
+        if not kernel:
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': 'Kernel "{}" is used.\n'.format(self.kernel)})
+        elif kernel == self.kernel:
+            # the same kernel, do nothing
+            return
+        elif kernel == 'sos':
+            # switch from non-sos to sos kernel
+            self.handle_magic_put(self.RET_VARS)
+            self.RET_VARS = []
+            self.kernel = 'sos'
+        elif self.kernel != 'sos':
+            self.switch_kernel('sos', in_vars, ret_vars)
+            self.switch_kernel(kernel, in_vars, ret_vars)
         else:
-            # kernel == '' or kernel == 'sos'
-            if not kernel:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': 'Kernel "{}" is used.\n'.format(self.kernel)})
-            elif kernel == 'sos':
-                # if we are switching back to sos, the return variables need to be
-                # returned
-                self.handle_magic_put(self.RET_VARS)
-                self.RET_VARS = []
-                self.kernel = 'sos'
+            # to a subkernel
+            if kernel not in self.kernels:
+                # start a new kernel
+                try:
+                    self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, 
+                        kernel_name=self.supported_languages[kernel].kernel_name if kernel in self.supported_languages else kernel)
+                except Exception as e:
+                    self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e))
+                    return
+            self.KM, self.KC = self.kernels[kernel]
+            self.RET_VARS = ret_vars
+            self.kernel = kernel
+            if self.kernel in self.supported_languages:
+                init_stmts = self.supported_languages[self.kernel].init_statements
+                if init_stmts:
+                    self.run_cell(init_stmts, False)
+            #
+            self.handle_magic_get(in_vars)
 
     def restart_kernel(self, kernel):
         if kernel == 'sos':
@@ -668,7 +666,14 @@ class SoS_Kernel(IPythonKernel):
         elif self.kernel in self.supported_languages:
             lan = self.supported_languages[self.kernel]
             objects = lan.lan_to_sos(items)
-            env.sos_dict.update(objects)
+            if not isinstance(objects, dict):
+                self.warn('Failed to execute %put {}: subkernel returns {}, which is not a dict.'
+                    .format(' '.join(items), short_repr(objects)))
+            else:
+                try:
+                    env.sos_dict.update(objects)
+                except Exception as e:
+                    self.warn('Failed to execute %put: {}'.format(e))
         elif self.kernel == 'sos':
             self.warn('Magic %put can only be executed by subkernels')
         else:
@@ -1013,9 +1018,7 @@ class SoS_Kernel(IPythonKernel):
                     'execution_count': self._execution_count,
                    }
             original_kernel = self.kernel
-            self.switch_kernel(args.kernel, args.out_vars)
-            if self.kernel != 'sos':
-                self.handle_magic_get(args.in_vars)
+            self.switch_kernel(args.kernel, args.in_vars, args.out_vars)
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
@@ -1033,9 +1036,7 @@ class SoS_Kernel(IPythonKernel):
                     'traceback': [],
                     'execution_count': self._execution_count,
                    }
-            self.switch_kernel(args.kernel, args.out_vars)
-            if self.kernel != 'sos':
-                self.handle_magic_get(args.in_vars)
+            self.switch_kernel(args.kernel, args.in_vars, args.out_vars)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_GET.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)

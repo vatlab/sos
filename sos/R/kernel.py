@@ -227,6 +227,7 @@ class sos_R:
         response = self.sos_kernel.get_response('..py.repr(ls())', ('display_data', 'execute_result'))
         expr = response['data']['text/plain']
         all_vars = eval(eval(expr.split(' ', 1)[-1]))
+        all_vars = [all_vars] if isinstance(all_vars, str) else all_vars
 
         for item in items:
             if item not in all_vars:
@@ -237,6 +238,9 @@ class sos_R:
         for item in items:
             if '.' in item:
                 self.sos_kernel.warn('Variable {} is put to SoS as {}'.format(item, item.replace('.', '_')))
+
+        if not items:
+            return {}
 
         py_repr = '..py.repr(list({}))'.format(','.join('{0}={0}'.format(x) for x in items))
 
