@@ -267,7 +267,7 @@ class SoS_Kernel(IPythonKernel):
             # Grab the function that is the actual plugin.
             name = entrypoint.name
             try:
-                plugin = entrypoint.load()()
+                plugin = entrypoint.load()(self)
                 self._supported_languages[name] = plugin
                 # for convenience, we create two entries for, e.g. R and ir
                 if name != plugin.kernel_name:
@@ -574,6 +574,9 @@ class SoS_Kernel(IPythonKernel):
                     {'name': 'stdout', 'text': 'Usage: set persistent sos options such as workflow name and -v 3 (debug output)\n'})
 
     def handle_magic_get(self, items):
+        # autmatically get all variables with names start with 'sos'
+        default_items = [x for x in env.sos_dict.keys() if x.startswith('sos') and x not in self.original_keys]
+        items = default_items if not items else items + default_items
         for item in items:
             if item not in env.sos_dict:
                 self.warn('Variable {} does not exist'.format(item))
@@ -589,7 +592,7 @@ class SoS_Kernel(IPythonKernel):
             try:
                 statements = []
                 for item in items:
-                    new_name, py_repr = lan.py_to_lan(item, env.sos_dict[item])
+                    new_name, py_repr = lan.sos_to_lan(item, env.sos_dict[item])
                     if new_name != item:
                         self.warn('Variable {} is passed from SoS to kernel {} as {}'
                             .format(item, self.kernel, new_name))
@@ -616,6 +619,27 @@ class SoS_Kernel(IPythonKernel):
                 else:
                     self.send_response(self.iopub_socket, msg_type,
                         sub_msg['content'])
+
+    def get_response(self, statement, msg_types):
+        # get response of statement of specific msg types.
+        response = {}
+        self.KC.execute(statement, silent=False, store_history=False)
+        # first thing is wait for any side effects (output, stdin, etc.)
+        _execution_state = "busy"
+        while _execution_state != 'idle':
+            # display intermediate print statements, etc.
+            while self.KC.iopub_channel.msg_ready():
+                sub_msg = self.KC.iopub_channel.get_msg()
+                msg_type = sub_msg['header']['msg_type']
+                if msg_type == 'status':
+                    _execution_state = sub_msg["content"]["execution_state"]
+                else:
+                    if msg_type in msg_types:
+                        response = sub_msg['content']
+                    else:
+                        self.send_response(self.iopub_socket, msg_type,
+                            sub_msg['content'])
+        return response
 
     def handle_magic_put(self, items):
         if not items:
@@ -652,38 +676,8 @@ class SoS_Kernel(IPythonKernel):
                     self.warn('Failed to put variable {} to SoS namespace\n'.format(item))
         elif self.kernel in self.supported_languages:
             lan = self.supported_languages[self.kernel]
-            new_names, py_repr = lan.lan_to_py(items)
-            for n, nn in zip(items, new_names):
-                if n != nn:
-                    self.warn('Variable {} is put to SoS as {}'.format(n, nn))
-            self.KC.execute(py_repr, silent=False, store_history=False)
-            # first thing is wait for any side effects (output, stdin, etc.)
-            _execution_state = "busy"
-            while _execution_state != 'idle':
-                # display intermediate print statements, etc.
-                while self.KC.iopub_channel.msg_ready():
-                    sub_msg = self.KC.iopub_channel.get_msg()
-                    msg_type = sub_msg['header']['msg_type']
-                    if msg_type == 'status':
-                        _execution_state = sub_msg["content"]["execution_state"]
-                    else:
-                        # irkernel (since the new version) does not produce execute_result, only
-                        # display_data
-                        if msg_type in ('display_data', 'execute_result'):
-                            try:
-                                env.sos_dict.update(
-                                    lan.py_to_dict(sub_msg['content']['data']['text/plain'])
-                                    )
-                            except Exception as e:
-                                 self.warn(str(e))
-                            break
-                        else:
-                            self.send_response(self.iopub_socket, msg_type,
-                                sub_msg['content'])
-            # verify
-            for n, nn in zip(items, new_names):
-                if not nn in env.sos_dict:
-                    self.warn('Failed to put variable {} to SoS namespace\n'.format(n))
+            objects = lan.lan_to_sos(items)
+            env.sos_dict.update(objects)
         elif self.kernel == 'sos':
             self.warn('Magic %put can only be executed by subkernels')
         else:
@@ -1029,7 +1023,7 @@ class SoS_Kernel(IPythonKernel):
                    }
             original_kernel = self.kernel
             self.switch_kernel(args.kernel, args.out_vars)
-            if args.in_vars:
+            if self.kernel != 'sos':
                 self.handle_magic_get(args.in_vars)
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
@@ -1049,7 +1043,7 @@ class SoS_Kernel(IPythonKernel):
                     'execution_count': self._execution_count,
                    }
             self.switch_kernel(args.kernel, args.out_vars)
-            if args.in_vars:
+            if self.kernel != 'sos':
                 self.handle_magic_get(args.in_vars)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_GET.match(code):
