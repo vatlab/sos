@@ -224,16 +224,12 @@ class sos_R:
 
     def lan_to_sos(self, items):
         # first let us get all variables with names starting with sos
-        response = self.sos_kernel.get_response('..py.repr(ls(all=TRUE))', ('display_data', 'execute_result'))
+        response = self.sos_kernel.get_response('..py.repr(ls())', ('display_data', 'execute_result'))
         expr = response['data']['text/plain']
         all_vars = eval(eval(expr.split(' ', 1)[-1]))
         all_vars = [all_vars] if isinstance(all_vars, str) else all_vars
 
-        for item in items:
-            if item not in all_vars:
-                self.sos_kernel.warn('{} is not defined.'.format(item))
-
-        items = [x for x in items if x in all_vars] + [x for x in all_vars if x.startswith('sos')]
+        items += [x for x in all_vars if x.startswith('sos')]
 
         for item in items:
             if '.' in item:
