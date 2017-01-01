@@ -294,6 +294,26 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 
+    def testAutoSharedVars(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            msg_id, content = execute(kc=kc, code="sos_null = None")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="sos_num = 123")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%use R")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="sos_num")
+            res = get_display_data(iopub)
+            self.assertEqual(res, '[1] 123')
+            msg_id, content = execute(kc=kc, code="sos_num = sos_num + 10")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="sos_num")
+            res = get_display_data(iopub)
+            self.assertEqual(res, '133')
+
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testGetPythonDataFromR(self):
         with sos_kernel() as kc:
