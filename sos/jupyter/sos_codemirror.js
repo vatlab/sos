@@ -61,7 +61,8 @@ define(function(){
 
 						'group_by', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic',
 						'pattern', 'workdir', 'concurrent', 'docker_image', 'docker_file',
-						'shared', 'skip', 'sigil', 'provides'
+						'shared', 'skip', 'sigil', 'provides', 'input',
+						'output'
 					];
   CodeMirror.registerHelper("hintWords", "sos", commonKeywords.concat(commonBuiltins));
 
@@ -86,7 +87,7 @@ define(function(){
     if (parserConf.extra_builtins != undefined)
       myBuiltins = myBuiltins.concat(parserConf.extra_builtins);
 
-    var singleOperators = parserConf.singleOperators || /^[\+\-\*\/%&|\^~<>!@]/;
+    var singleOperators = parserConf.singleOperators || /^[\+\-\*\/%\$&|\^~<>!@]/;
     var identifiers = parserConf.identifiers|| /^[_A-Za-z\u00A1-\uFFFF][_A-Za-z0-9\u00A1-\uFFFF]*/;
     myKeywords = myKeywords.concat(["nonlocal", "False", "True", "None", "async", "await"]);
     myBuiltins = myBuiltins.concat(["ascii", "bytes", "exec", "print"]);
@@ -129,19 +130,23 @@ define(function(){
       }
 	 // BO PENG
 	 // handle shell command
-	  if (state.beginningOfLine && ch == "!") {
-	    stream.skipToEnd();
+	  if (state.beginningOfLine && stream.match(/![a-zA-Z]/)) {
+	    stream.next();
 		return "meta";
 		}
-    // handle magic: FIXME: also need to be at the beginning of text
-	  if (state.beginningOfLine && ch == "%") {
+    // handle magic
+	  if (state.beginningOfLine && stream.match(/%[a-zA-Z]+/)) {
 	    stream.next();
 		return "meta";
 		}
 
 	  if (state.beginningOfLine && stream.match(/[a-zA-Z]+:/) ) {
-		// this is VERY premilinary, but better than nothing
 	    stream.next();
+		return "meta";
+	  }
+	  // handle section header
+	  if (state.beginningOfLine && stream.match(/\[.*\]\s*$/) ) {
+	    stream.skipToEnd();
 		return "meta";
 	  }
       // Handle Number Literals
