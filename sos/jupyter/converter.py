@@ -268,14 +268,25 @@ def export_notebook(exporter_class, to_format, notebook_file, output_file, unkno
         raise RuntimeError('{} does not exist'.format(notebook_file))
     if not output_file:
         import tempfile
-        tmp = tempfile.NamedTemporaryFile(mode='w+t', delete=False).name
-        ret = subprocess.call(['jupyter', 'nbconvert', notebook_file, '--to', to_format,
-            '--output', tmp] + unknown_args)
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.' + to_format).name
+        tmp_stderr = tempfile.NamedTemporaryFile(delete=False, suffix='.' + to_format).name
+        with open(tmp_stderr, 'w') as err:
+            ret = subprocess.call(['jupyter', 'nbconvert', notebook_file, '--to', to_format,
+                '--output', tmp] + unknown_args, stderr=err)
+        with open(tmp_stderr) as err:
+            err_msg = err.read()
         if ret != 0:
+            env.logger.error(err_msg) 
             env.logger.error('Failed to convert {} to {} format'.format(notebook_file, to_format))
         else:
-            with open(tmp, 'b') as tfile:
-                sys.stdout.buffer.write(tfile.read())
+            # identify output files
+            dest_file = err_msg.rsplit()[-1]
+            if not os.path.isfile(dest_file):
+                env.logger.error(err_msg)
+                env.logger.error('Failed to get converted file.')
+            else:
+                with open(dest_file, 'rb') as tfile:
+                    sys.stdout.buffer.write(tfile.read())
         try:
             os.remove(tmp)
         except:
