@@ -58,7 +58,7 @@ bindir_help = '''Extra directories in which SoS will look for executables before
 #
 # subcommand convert
 #
-def get_convert_parser():
+def get_convert_parser(load_parser = True):
     parser = argparse.ArgumentParser('convert',
         description='''Converts .sos to various formats including
             .html for web display, to jupyter notebook (.ipynb), and to terminal
@@ -67,6 +67,8 @@ def get_convert_parser():
         epilog='''Extra command line argument could be specified to customize
             the style of html, markdown, and terminal output. ''',
         )
+    if not load_parser:
+        return parser
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).'''),
@@ -152,10 +154,12 @@ def cmd_convert(args, unknown_args):
 #
 # subcommand run
 #
-def get_run_parser(interactive=False, with_workflow=True):
+def get_run_parser(interactive=False, with_workflow=True, load_parser = True):
     parser = argparse.ArgumentParser(prog='run',
         description='Execute default or specified workflow defined in script',
         epilog=workflow_options)
+    if not load_parser:
+        return parser
     if not interactive:
         parser.add_argument('script', metavar='SCRIPT', help=script_help)
     if with_workflow:
@@ -303,10 +307,12 @@ def cmd_run(args, workflow_args):
 #
 # subcommand dryrun
 #
-def get_dryrun_parser():
+def get_dryrun_parser(load_parser = True):
     parser = argparse.ArgumentParser('dryrun',
         description='''Inspect specified script for syntax errors''',
         epilog=workflow_options)
+    if not load_parser:
+        return parser
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
     parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
         help=workflow_spec)
@@ -347,13 +353,15 @@ def cmd_dryrun(args, workflow_args):
 #
 # command remove
 #
-def get_remove_parser():
+def get_remove_parser(load_parser = True):
     parser = argparse.ArgumentParser('remove',
         description='''Remove specified files and directories and their
             signatures (if available). Optionally, you can remove only
             tracked files (input, output and intermediate files of executed
             workflows) or untracked file from specified files and/or
             directories.''')
+    if not load_parser:
+        return parser
     parser.add_argument('targets', nargs='*', metavar='FILE_OR_DIR',
         help='''Files and directories to be removed, which should be under the
             current directory (default). All, tracked, or untracked files
@@ -565,10 +573,12 @@ def cmd_remove(args, unknown_args):
 #
 # subcommand config
 #
-def get_config_parser():
+def get_config_parser(load_parser = True):
     parser = argparse.ArgumentParser('config',
         description='''Displays, set, and unset configuration
             variables defined in global or local configuration files.''')        
+    if not load_parser:
+        return parser
     parser.add_argument('-g', '--global', action='store_true', dest='__global_config__',
         help='''If set, change global (~/.sos/config.yml) instead of local
         (.sos/config.yml) configuration''')
@@ -720,7 +730,7 @@ def cmd_config(args, workflow_args):
 #
 # command pack
 #
-def get_pack_parser():
+def get_pack_parser(load_parser = True):
     parser = argparse.ArgumentParser('pack',
         description='''Collect sos scripts, all input, output, and tracked intermediate
         files related to a workflow run and bundle them into a single archive.
@@ -728,6 +738,8 @@ def get_pack_parser():
         show" and be unpacked with command "sos unpack". This command does not
         include files outside of the current working directory unless they
         are specified by option --include, or --all.''')
+    if not load_parser:
+        return parser
     parser.add_argument('session', nargs='?',
         help='''ID of the session to be saved, which can be any number of
         digits as long as it can uniquely determine a workflow session. This
@@ -934,11 +946,13 @@ def cmd_pack(args, unknown_args):
 #
 # command unpack
 #
-def get_unpack_parser():
+def get_unpack_parser(load_parser = True):
     parser = argparse.ArgumentParser('unpack',
         description='''Unpack a sos archive to a specified directory. For security
         reasons, files that were outside of the project directory would be
         extracted in this directory unless option -e is specified.''')
+    if not load_parser:
+        return parser
     parser.add_argument('archive',
         help='''SoS archive saved by command sos pack''')
     parser.add_argument('files', nargs='*',
@@ -1124,6 +1138,13 @@ def add_sub_parser(subparsers, parser, name=None):
 
 def main():
     from ._version import SOS_FULL_VERSION
+
+    # only load specific subparser to save on start-up time
+    if len(sys.argv) == 1 or sys.argv[1] == '-h':
+        subcommand = None
+    else:
+        subcommand = sys.argv[1]
+
     master_parser = argparse.ArgumentParser(description='''A workflow system
             for the execution of commands and scripts in different languages.''',
         prog='sos',
@@ -1136,35 +1157,37 @@ def main():
     subparsers = master_parser.add_subparsers(title='subcommands')
     #
     # command run
-    add_sub_parser(subparsers, get_run_parser())
+    add_sub_parser(subparsers, get_run_parser(load_parser = 'run' == subcommand))
     #
     # command dryrun
-    add_sub_parser(subparsers, get_dryrun_parser())
+    add_sub_parser(subparsers, get_dryrun_parser(load_parser = 'dryrun' == subcommand))
     #
     # command convert
-    add_sub_parser(subparsers, get_convert_parser())
+    add_sub_parser(subparsers, get_convert_parser(load_parser = 'convert' == subcommand))
     #
     # command remove
-    add_sub_parser(subparsers, get_remove_parser())
+    add_sub_parser(subparsers, get_remove_parser(load_parser = 'remove' == subcommand))
     #
     # command config
-    add_sub_parser(subparsers, get_config_parser())
+    add_sub_parser(subparsers, get_config_parser(load_parser = 'config' == subcommand))
     #
     # command pack
-    add_sub_parser(subparsers, get_pack_parser())
+    add_sub_parser(subparsers, get_pack_parser(load_parser = 'pack' == subcommand))
     #
     # command unpack
-    add_sub_parser(subparsers, get_unpack_parser())
+    add_sub_parser(subparsers, get_unpack_parser(load_parser = 'unpack' == subcommand))
     #
     # addon packages
-    for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
-        if entrypoint.name.strip().endswith('.parser'):
-            name = entrypoint.name.rsplit('.', 1)[0]
-            func = entrypoint.load()
-            parser = add_sub_parser(subparsers, func(), name=name)
-            parser.add_argument('--addon-name', help=argparse.SUPPRESS,
-                    default=name)
-            parser.set_defaults(func=handle_addon)
+    if subcommand is None or subcommand not in ['run', 'dryrun', 'convert', 
+            'remove', 'config', 'pack', 'unpack']:
+        for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
+            if entrypoint.name.strip().endswith('.parser'):
+                name = entrypoint.name.rsplit('.', 1)[0]
+                func = entrypoint.load()
+                parser = add_sub_parser(subparsers, func(), name=name)
+                parser.add_argument('--addon-name', help=argparse.SUPPRESS,
+                        default=name)
+                parser.set_defaults(func=handle_addon)
     #
     if len(sys.argv) == 1:
         master_parser.print_help()
