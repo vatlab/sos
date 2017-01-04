@@ -29,7 +29,7 @@ import textwrap
 
 # these functions are normally not available but can be imported 
 # using their names for testing purposes
-from sos.utils import env, logger, WorkflowDict, ProgressBar
+from sos.utils import env, logger, WorkflowDict, ProgressBar, stable_repr
 from sos.pattern import extract_pattern, expand_pattern
 from sos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_vars, \
     Undetermined, on_demand_options
@@ -440,6 +440,10 @@ print(p1)
         env.sos_dict.set('c', 200)
         self.assertEqual(options['b'], 200)
 
+    def testStableRepr(self):
+        self.assertEqual(stable_repr({1, 2, '3', '1'}), "{'1', '3', 1, 2}")
+        self.assertEqual(stable_repr({1 : 2, 3:4}), "{1:2, 3:4}")
+        self.assertEqual(stable_repr([1, 3, 4]), "[1, 3, 4]")
 
 if __name__ == '__main__':
     unittest.main()
