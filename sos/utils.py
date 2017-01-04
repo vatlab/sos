@@ -798,10 +798,11 @@ def stable_repr(obj):
     if isinstance(obj, str):
         return repr(obj)
     elif isinstance(obj, collections.abc.Mapping):
-        return '{' + ', '.join(stable_repr(k) + ':' + stable_repr(obj[k])
-            for k in sorted(obj.keys())) + '}'
+        items = [stable_repr(k) + ':' + stable_repr(obj[k]) for k in obj.keys()]
+        return '{' + ', '.join(sorted(items)) + '}'
     elif isinstance(obj, collections.abc.Set):
-        return '{' + ', '.join(stable_repr(k) for k in sorted(obj)) + '}'
+        items = [stable_repr(x) for x in obj]
+        return '{' + ', '.join(sorted(items)) + '}'
     elif isinstance(obj, collections.abc.Sequence):
         return '[' + ', '.join(stable_repr(k) for k in obj) + ']'
     else:
