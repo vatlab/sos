@@ -31,6 +31,8 @@ class R_library(BaseTarget):
     def __init__(self, library, version = None, repos = 'http://cran.us.r-project.org'):
         super(R_library, self).__init__()
         self._library = library
+        if version is not None:
+            version = (version, ) if isinstance(version, str) else tuple(version)
         self._version = version
         self._repos = repos
 
@@ -50,7 +52,7 @@ class R_library(BaseTarget):
         script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.R', delete=False).name
         if len(glob_wildcards('{repo}/{pkg}', [name])['repo']):
             # package is from github
-            self._intall('devtools', version, repos)
+            self._install('devtools', None, repos)
             install_script = interpolate('''
             options(warn=-1)
             package_repo <- ${name!r}
@@ -96,7 +98,7 @@ class R_library(BaseTarget):
             ''', '${ }', locals())
         version_script = ''
         if version is not None:
-            version = [version] if isinstance(version, str) else version
+            version = list(version)
             operators = []
             for idx, value in enumerate(version):
                 value = str(value)
