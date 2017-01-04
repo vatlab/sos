@@ -28,7 +28,7 @@ import fnmatch
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
-from .utils import env, AbortExecution, short_repr, \
+from .utils import env, AbortExecution, short_repr, stable_repr,\
     get_traceback, transcribe, ActivityNotifier
 from .pattern import extract_pattern
 from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of
@@ -1237,7 +1237,7 @@ class SP_Step_Executor(Queued_Step_Executor):
         env_vars = []
         for var in sorted(env.sos_dict['__environ_vars__']):
             if var in env.sos_dict and isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
-                env_vars.append('{} = {!r}\n'.format(var, env.sos_dict[var]))
+                env_vars.append('{} = {}\n'.format(var, stable_repr(env.sos_dict[var])))
 
         # env.logger.warning(''.join(env_vars) + '\n' + self.step.tokens)
         return ''.join(env_vars) + '\n' + self.step.tokens
