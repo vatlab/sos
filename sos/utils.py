@@ -794,6 +794,19 @@ class ProgressFileObj(FileIO):
         self.prog.progressBy(n)
         return FileIO.read(self, n, *args)
 
+def stable_repr(obj):
+    if isinstance(obj, str):
+        return repr(obj)
+    elif isinstance(obj, collections.abc.Mapping):
+        return '{' + ', '.join(stable_repr(k) + ':' + stable_repr(obj[k])
+            for k in sorted(obj.keys())) + '}'
+    elif isinstance(obj, collections.abc.Set):
+        return '{' + ', '.join(stable_repr(k) for k in sorted(obj)) + '}'
+    elif isinstance(obj, collections.abc.Sequence):
+        return '[' + ', '.join(stable_repr(k) for k in obj) + ']'
+    else:
+        return repr(obj)
+
 class frozendict(dict):
     '''A fronzen dictionary that disallow changing of its elements
     Copied from http://code.activestate.com/recipes/414283/
@@ -827,7 +840,7 @@ class frozendict(dict):
         raise RuntimeError('Cannot modify a readonly dictionary')
 
     def __repr__(self):
-        return "frozendict(%s)" % dict.__repr__(self)
+        return stable_repr(self)
 
 #
 # A utility function that returns output of a command
