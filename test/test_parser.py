@@ -846,7 +846,7 @@ executed.append(step_name)
 input: 'a.txt'
 output: 'b.txt'
 inputs.append(input)
-sos_run('a+b')
+sos_run('a+b', shared=['executed', 'inputs'])
 ''')
         env.sig_mode = 'ignore'
         wf = script.workflow('c')
@@ -878,7 +878,7 @@ sh:
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
 inputs.append(_input)
-sos_run('a')
+sos_run('a', shared=['executed', 'inputs'])
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).run()
@@ -901,7 +901,7 @@ executed.append(step_name)
 [c_1:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
-sos_run('a:2')
+sos_run('a:2', shared='executed')
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).run()
@@ -920,7 +920,7 @@ executed.append(step_name)
 [c_1:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
-sos_run('a:2')
+sos_run('a:2', shared='executed')
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).run()
@@ -939,7 +939,7 @@ executed.append(step_name)
 [c_1:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
-sos_run('a_2+c')
+sos_run('a_2+c', shared='executed')
 ''')
         wf = script.workflow('c')
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
@@ -958,13 +958,13 @@ executed.append(step_name)
 executed.append(step_name)
 [b_2:shared='executed']
 executed.append(step_name)
-sos_run('a:1-2')
+sos_run('a:1-2', shared='executed')
 [c_0:shared='executed']
 executed.append(step_name)
 [c_1:shared='executed']
 executed.append(step_name)
 input: 'a.txt'
-sos_run('a+b')
+sos_run('a+b', shared='executed')
 ''')
         wf = script.workflow('c')
         Base_Executor(wf).run()
@@ -985,11 +985,11 @@ executed.append(step_name)
 [b:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
-sos_run('a:3+a:1')
+sos_run('a:3+a:1', shared='executed')
 [d:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
-sos_run('a:2')
+sos_run('a:2', shared='executed')
 [e2_2:shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
@@ -1029,7 +1029,7 @@ executed.append(step_name)
 
 [default:shared='executed']
 executed.append(step_name)
-sos_run(wf)
+sos_run(wf, shared='executed')
 ''')
         wf = script.workflow()
         Base_Executor(wf, args=['--wf', 'b']).run()
@@ -1074,7 +1074,7 @@ if 'executed' not in locals():
 [b_1: skip=False, shared='executed']
 executed.append(step_name)
 input: 'a.txt', 'b.txt', group_by='single'
-sos_run('A')
+sos_run('A', shared='executed')
 ''')
         wf = script.workflow('b')
         Base_Executor(wf).run()
@@ -1095,7 +1095,7 @@ if 'executed' not in locals():
 [b_1: skip=False, shared='executed']
 executed.append('g.' + step_name)
 input: 'a.txt', 'b.txt', group_by='single'
-sos_run('k.A')
+sos_run('k.A', shared='executed')
 ''')
         wf = script.workflow('b')
         Base_Executor(wf).run()
