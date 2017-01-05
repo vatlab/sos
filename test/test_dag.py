@@ -779,8 +779,8 @@ sh:
 
 [ALL]
 
-for num in range(3):
-    sos_run('A')
+for i in range(3):
+    sos_run('A', num=i)
 
 
 ''')

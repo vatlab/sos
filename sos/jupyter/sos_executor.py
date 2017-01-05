@@ -36,12 +36,12 @@ from .sos_step import Interactive_Step_Executor
 
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
-    def __init__(self, workflow=None, args=[], nested=False, config={}):
+    def __init__(self, workflow=None, args=[], shared=[], nested=False, config={}):
         # we actually do not have our own workflow, everything is passed from ipython
         # by nested = True we actually mean no new dictionary
         if env.sig_mode is None:
             env.sig_mode = 'ignore'
-        Base_Executor.__init__(self, workflow=workflow, args=args, nested=True, config=config)
+        Base_Executor.__init__(self, workflow=workflow, args=args, shared=shared, nested=True, config=config)
         env.__task_engine__ = 'interactive'
         if env.sig_mode != 'ignore':
             self.md5 = self.create_signature()
@@ -100,7 +100,7 @@ class Interactive_Executor(Base_Executor):
         env.sos_dict.set('CONFIG', frozendict(cfg))
         FileTarget('config.yml').remove('both')
 
-    def run(self, targets=None, mode='interactive'):
+    def run(self, targets=None, queue=None, mode='interactive'):
         '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer
         The code can be simple SoS/Python statements, one SoS step, or more
         or more SoS workflows with multiple steps. This executor,
