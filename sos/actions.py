@@ -316,18 +316,21 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                     executor_class = MP_Executor
 
             executor = executor_class(wf, args=args, shared=shared)
-            if shared:
-                q = mp.Queue()
+            if env.run_mode == 'run':
+                if shared:
+                    q = mp.Queue()
+                else:
+                    q = None
+                p = mp.Process(target=executor.run, kwargs={'targets': targets, 'queue': q})
+                p.start()
+                if shared:
+                    res = q.get()
+                    env.sos_dict.quick_update(res)
+                else:
+                    res = None
+                p.join()
             else:
-                q = None
-            p = mp.Process(target=executor.run, kwargs={'targets': targets, 'queue': q})
-            p.start()
-            if shared:
-                res = q.get()
-                env.sos_dict.quick_update(res)
-            else:
-                res = None
-            p.join()
+                res = executor.run(targets=targets)
             return res
     finally:
         # restore step_name in case the subworkflow re-defines it
