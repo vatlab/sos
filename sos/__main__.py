@@ -427,12 +427,11 @@ def cmd_remove(args, unknown_args):
     tracked_dirs = set()
     # need to get all directories along the path
     for x in tracked_files:
-        relpath = os.path.relpath(x, '.')
-        if relpath.startswith('..'):
+        if FileTarget(x).is_external():
             # we do not care about tracked files outside of current directory
             continue
         # add all path to tracked file as tracked directories
-        tmp = relpath
+        tmp = os.path.relpath(x, '.')
         while os.sep in tmp:
             tmp = os.path.dirname(tmp)
             tracked_dirs.add(os.path.abspath(tmp))
@@ -454,8 +453,7 @@ def cmd_remove(args, unknown_args):
     #
     for target in args.targets:
         target = os.path.expanduser(target)
-        relpath = os.path.relpath(target, '.')
-        if relpath.startswith('..'):
+        if FileTarget(target).is_external():
             # we do not care about tracked files outside of current directory
             sys.exit('Only subdirectories of the current directory can be removed. {} specified.'.format(target))
         # file
@@ -782,6 +780,7 @@ def locate_files(session, include, exclude, all_files):
     import fnmatch
     import glob
     from .utils import env
+    from .target import FileTarget
     sig_files = glob.glob('.sos/*.sig')
     if not sig_files:
         raise ValueError('No executed workflow is identified.')
@@ -812,8 +811,7 @@ def locate_files(session, include, exclude, all_files):
     if not all_files:
         external_files = []
         for x in tracked_files:
-            relpath = os.path.relpath(x, '.')
-            if relpath.startswith('..'):
+            if FileTarget(x).is_external():
                 env.logger.info('{} is excluded. Use option --all to include tracked files outside of current directory.'.format(x))
                 external_files.append(x)
         tracked_files -= set(external_files)
@@ -925,8 +923,7 @@ def cmd_pack(args, unknown_args):
             if not os.path.isfile(f):
                 continue
             env.logger.info('Adding {}'.format(f))
-            relpath = os.path.relpath(f, '.')
-            if relpath.startswith('..'):
+            if FileTarget(f).is_external():
                 # external files
                 if args.verbosity == 1:
                     tarinfo = archive.gettarinfo(f, arcname='external/' + f)
