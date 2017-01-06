@@ -393,11 +393,11 @@ class RuntimeEnvironments(object):
     #
     # attribute exec_dir
     def _assure_runtime_dir(self, dir):
-        if not os.path.isdir(os.path.join(dir, '.sos', '.runtime')):
+        if not os.path.isdir(os.path.join(dir, '.sos')):
             with fasteners.InterProcessLock('/tmp/sos_runtime_lock'):
                 # the directory might haver been created during waiting
-                if not os.path.isdir(os.path.join(dir, '.sos', '.runtime')):
-                    os.makedirs(os.path.join(dir, '.sos', '.runtime'))
+                if not os.path.isdir(os.path.join(dir, '.sos')):
+                    os.makedirs(os.path.join(dir, '.sos'))
 
     def _set_exec_dir(self, dir):
         if not os.path.isdir(dir):
