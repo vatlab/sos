@@ -376,3 +376,16 @@ define(function(){
 
     return {onload:onload}
 })
+
+
+Jupyter.notebook.kernel.comm_manager.register_target('sos_comm',
+    function(comm, msg) {
+        // comm is the frontend comm instance
+        // msg is the comm_open message, which can carry data
+console.log("Registering Jupyter comms for target {comms_id}"); 
+// Register handlers for later messages:
+window.comm_handle = comm;
+        comm.on_msg(function(msg) {   console.log(msg.content.data) });
+        //comm.on_close(function(msg) {   console.log(msg) });
+        // comm.send({'foo': 0});
+    });
