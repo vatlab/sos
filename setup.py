@@ -92,7 +92,7 @@ class InstallWithConfigurations(install):
         # Now write the kernelspec
         with TemporaryDirectory() as td:
             os.chmod(td, 0o755)  # Starts off as 700, not user readable
-            shutil.copy('sos/jupyter/sos_codemirror.js', os.path.join(td, 'kernel.js'))
+            shutil.copy('sos/jupyter/kernel.js', os.path.join(td, 'kernel.js'))
             with open(os.path.join(td, 'kernel.json'), 'w') as f:
                 json.dump(kernel_json, f, sort_keys=True)
             try:
