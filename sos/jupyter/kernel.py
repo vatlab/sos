@@ -311,11 +311,16 @@ class SoS_Kernel(IPythonKernel):
         self._execution_count = 1
 
         # special communication channel to sos frontend
-        self.frontend_comm = Comm(target_name='sos_comm', data = {})
-        self.frontend_comm.kernel = self
-        self.frontend_comm.on_msg(self.handle_sos_msg)
+        self.frontend_comm = None
+
+    def send_frontend_msg(self, msg):
+        if self.frontend_comm is None:
+            self.frontend_comm = Comm(target_name="sos_comm", data={})
+            self.frontend_comm.on_msg(self.handle_sos_msg)
+        self.frontend_comm.send(msg)
 
     def handle_sos_msg(self, msg):
+        # this function should receive message from frontend, not tested yet
         self.warn(msg['content']['data'])
 
     def _reset_dict(self):
@@ -427,8 +432,6 @@ class SoS_Kernel(IPythonKernel):
                     #
                     self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
         #
-        if self.frontend_comm:
-            self.frontend_comm.send({'kernel': self.kernel})
         # now get the real result
         reply = self.KC.get_shell_msg(timeout=10)
         reply['content']['execution_count'] = self._execution_count
@@ -1161,6 +1164,7 @@ class SoS_Kernel(IPythonKernel):
             if code:
                 self.last_executed_code = code
             code = self._interpolate_option(code, quiet=False)
+            self.send_frontend_msg(self.kernel)
             if code is None:
                 return
             try:
@@ -1174,8 +1178,7 @@ class SoS_Kernel(IPythonKernel):
             # run sos
             try:
                 self.run_sos_code(code, silent)
-                if self.frontend_comm:
-                    self.frontend_comm.send({'kernel': 'sos'})
+                self.send_frontend_msg('sos')
                 return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
             except Exception as e:
                 self.warn(str(e))
