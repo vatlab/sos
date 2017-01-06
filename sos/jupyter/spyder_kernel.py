@@ -59,8 +59,9 @@ class SoS_SpyderKernel(SoS_Kernel, SpyderKernel):
             'exclude_unsupported': True, 'minmax': False}
         #
         self.shell.user_ns = env.sos_dict._dict
-        # this is only used by jupyter kernel
-        self.frontend_comm = None
+
+    def send_sos_msg(self, msg):
+        pass
 
     def get_edit_parser(self):
         parser = argparse.ArgumentParser(prog='%edit',
