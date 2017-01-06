@@ -886,20 +886,22 @@ def cmd_pack(args, unknown_args):
             if not ft.exists():
                 env.logger.warning('Missing script file {}'.format(ft.name()))
             else:
-                manifest.write('{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.signature()))
+                manifest.write('SCRIPTS\t{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.signature()))
         for f in tracked_files:
             env.logger.info('Checking {}'.format(f))
             ft = FileTarget(f)
             if not ft.exists():
                 env.logger.warning('Missing tracked file {}'.format(ft.name()))
+            elif ft.is_external():
+                manifest.write('EXTERNAL\t{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.signature()))
             else:
-                manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.signature()))
+                manifest.write('TRACKED\t{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.signature()))
         for f in runtime_files:
             ft = FileTarget(f)
             if not ft.exists():
                 env.logger.warning('Missing runtime file {}'.format(ft.name()))
             else:
-                manifest.write('{}\t{}\t{}\t{}\n'.format(f, ft.mtime(), ft.size(), ft.signature()))
+                manifest.write('RUNTIME\t{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.signature()))
     prog.done()
     #
     if args.dryrun:
@@ -941,8 +943,8 @@ def cmd_pack(args, unknown_args):
         for f in runtime_files:
             if not os.path.isfile(f):
                 continue
-            env.logger.trace('Adding {}'.format(f))
-            archive.add(f, arcname='runtime/' + f[5:])
+            env.logger.trace('Adding {}'.format(os.path.basename(f)))
+            archive.add(f, arcname='runtime/' + os.path.basename(f))
     prog.done()
 
 #
@@ -1022,23 +1024,24 @@ def cmd_unpack(args, unknown_args):
             archive.extract(manifest_file)
             md5 = {}
             if args.__list__:
-                print('   Length    Date   Time   Name')
-                print('   ------    ----   ----   ----')
+                print('    Length  Date     Time  Type    Name')
+                print('    ------  ----     ----  ----    ----')
             with open(manifest_file.name) as manifest:
                 line = manifest.readline()
                 total_size = 0
                 total_files = 0
                 for line in manifest:
                     fields = line.split()
-                    # name, mtime, size, md5
+                    # type, name, mtime, size, md5
                     if args.__list__:
-                        if fields[0].startswith('.sos'):
+                        if fields[0] == 'RUNTIME':
                             continue
-                        print('{:>9s}  {:>12s}  {}'.format(pretty_size(int(fields[2])),
-                            time.strftime('%m-%d-%y %H:%M', time.gmtime(float(fields[1]))), fields[0]))
-                        total_size += int(fields[2])
+                        print(' {:>9s}  {:>12s} {:>6s} {}'.format(pretty_size(int(fields[3])),
+                            time.strftime('%m-%d-%y %H:%M', time.gmtime(float(fields[2]))), 
+                            fields[0], fields[1]))
+                        total_size += int(fields[3])
                         total_files += 1
-                    md5[fields[0]] = fields[3].strip()
+                    md5[fields[1]] = fields[4].strip()
             os.remove(manifest_file.name)
             if args.__list__:
                 print('   ------                  ----')
@@ -1062,6 +1065,8 @@ def cmd_unpack(args, unknown_args):
                     if not selected:
                         env.logger.debug('Ignore {}'.format(m_name))
                         continue
+                dest = args.dest
+                is_runtime = False
                 # hacking f.name to correct destination
                 if f.name.startswith('external/'):
                     if not get_response('Extract {} to outside of current directory'.format(f.name[9:])):
@@ -1070,7 +1075,14 @@ def cmd_unpack(args, unknown_args):
                 elif f.name.startswith('tracked/'):
                     f.name = f.name[8:]
                 elif f.name.startswith('runtime/'):
-                    f.name = os.path.join('.sos', f.name[8:])
+                    is_runtime = True
+                    if f.name.endswith('.sig'):
+                        # this goes to local directory
+                        dest = os.path.join(args.dest, '.sos')
+                    else:
+                        # this goes to global signature directory
+                        dest = os.path.expanduser('~/.sos/.runtime')
+                    f.name = f.name[8:]
                 elif f.name.startswith('scripts/'):
                     if not args.script:
                         env.logger.debug('Ignore {}'.format(f.name[8:]))
@@ -1079,12 +1091,12 @@ def cmd_unpack(args, unknown_args):
                 else:
                     raise RuntimeError('Unexpected file {} from SoS archive'.format(f.name))
 
-                dest_file = os.path.join(args.dest, f.name)
+                dest_file = os.path.join(dest, f.name)
                 # runtime file?
                 if os.path.isfile(dest_file):
                     # signature files should not have md5
                     if fileMD5(dest_file) == md5[f.name]:
-                        if not f.name.startswith('.sos'):
+                        if not is_runtime:
                             env.logger.info('Ignore identical {}'.format(f.name))
                         continue
                     if not get_response('Overwrite existing file {}'.format(f.name)):
@@ -1093,7 +1105,7 @@ def cmd_unpack(args, unknown_args):
                     env.logger.info('Extracting {}'.format(f.name))
                 else:
                     env.logger.debug('Extracting {}'.format(f.name))
-                archive.extract(f, path=args.dest)
+                archive.extract(f, path=dest)
     except Exception as e:
         raise ValueError('Failed to unpack SoS archive: {}'.format(e))
     prog.done()

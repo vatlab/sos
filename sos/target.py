@@ -303,6 +303,13 @@ class FileTarget(BaseTarget):
         if mode in ('both', 'signature') and os.path.isfile(self.sig_file()):
             os.remove(self.sig_file())
 
+    def is_external(self):
+        try:
+            return os.path.relpath(self.fullname(), '.').startswith('..') 
+        except:
+            # under windows the file might be on different volume
+            return True
+
     def fullname(self):
         return os.path.abspath(self.name())
 
