@@ -32,10 +32,12 @@ define(function() {
         var my_execute = function (code, callbacks, options) {
             "use strict"
             var cells = IPython.notebook.get_cells();
-            for (var i in cells) {
+            for (var i = cells.length - 1; i >= 0;  --i ) {
                 // this is the cell that is being executed...
                 // according to this.set_input_prompt('*') before execute is called.
-                if (cells[i].input_prompt_number == '*') {
+                // also, because a cell might be starting without a previous cell
+                // being finished, we should start from reverse and check actual code
+                if (cells[i].input_prompt_number == '*' && code == cells[i].get_text()) {
                    return this.orig_execute(
                         "%softwith " + cells[i].metadata.kernel + " --cell " + i.toString() + "\n" + code,
                         callbacks, options)
@@ -73,6 +75,7 @@ define(function() {
                     // 2. None: kernel
                     //     the kernel for the new cell
                     data = msg.content.data;
+                    // console.log(data)
                     if (data[0] == null) {
                         cell = IPython.notebook.get_selected_cell();
                         // if the kernel is undefined, use new one. Otherwise
