@@ -57,7 +57,8 @@ define(function() {
         // update the cells when the notebook is being opened.
         var cells = IPython.notebook.get_cells();
         for(var i in cells){
-            cells[i].element.css('background-color', BC[cells[i].metadata.kernel]);
+            if(cells[i].cell_type == 'code')
+                cells[i].element.css('background-color', BC[cells[i].metadata.kernel]);
         }
 
         // comm message sent from the kernel
@@ -74,7 +75,7 @@ define(function() {
                         cell = IPython.notebook.get_selected_cell();
                         // if the kernel is undefined, use new one. Otherwise
                         // do not override the default one.
-                        if (!cell.metadata.kernel) {
+                        if (cell.cell_type == 'code' && !cell.metadata.kernel) {
                             cell.metadata.kernel = data[1];
                             // this should be loaded from language css file
                             cell.element.css('background-color', BC[data[1]]);
