@@ -136,7 +136,6 @@ def get_previewers():
     result.sort(key=lambda x: -x[2])
     return result
 
-
 class SoS_Kernel(IPythonKernel):
     implementation = 'SOS'
     implementation_version = __version__
@@ -316,12 +315,12 @@ class SoS_Kernel(IPythonKernel):
     def send_frontend_msg(self, msg):
         if self.frontend_comm is None:
             self.frontend_comm = Comm(target_name="sos_comm", data={})
-            self.frontend_comm.on_msg(self.handle_sos_msg)
+            self.frontend_comm.on_msg(self.handle_frontend_msg)
         self.frontend_comm.send(msg)
 
-    def handle_sos_msg(self, msg):
+    def handle_frontend_msg(self, msg):
         # this function should receive message from frontend, not tested yet
-        self.warn(msg['content']['data'])
+        self.frontend_response = msg['content']['data']
 
     def _reset_dict(self):
         env.sos_dict = WorkflowDict()
@@ -967,6 +966,8 @@ class SoS_Kernel(IPythonKernel):
         self.shell.user_ns.update(env.sos_dict._dict)
         # trigger post processing of object and display matplotlib figures
         self.shell.events.trigger('post_execute')
+        # tell the frontend the kernel for the "next" cell
+        self.send_frontend_msg([None, self.kernel])
         return ret
 
     def remove_leading_comments(self, code):
@@ -1164,7 +1165,7 @@ class SoS_Kernel(IPythonKernel):
             if code:
                 self.last_executed_code = code
             code = self._interpolate_option(code, quiet=False)
-            self.send_frontend_msg(self.kernel)
+            self.send_frontend_msg([code, self.kernel])
             if code is None:
                 return
             try:
@@ -1178,7 +1179,7 @@ class SoS_Kernel(IPythonKernel):
             # run sos
             try:
                 self.run_sos_code(code, silent)
-                self.send_frontend_msg('sos')
+                self.send_frontend_msg([code, 'sos'])
                 return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
             except Exception as e:
                 self.warn(str(e))
