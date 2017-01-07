@@ -243,7 +243,7 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
                 content.append(line)
     #
     if content and any(x.strip() for x in content):
-        add_cell(cells, content, cell_type, cell_count)
+        add_cell(cells, content, cell_type, cell_count, metainfo)
     #
     nb = new_notebook(cells = cells,
         metadata = {
