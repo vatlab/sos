@@ -29,12 +29,41 @@ define(function() {
                 // comm is the frontend comm instance
                 // msg is the comm_open message, which can carry data
                 // Register handlers for later messages:
-                window.comm_handle = comm;
+                // window.comm_handle = comm;
                 comm.on_msg(function(msg) {
-                    // FIXME: the selected cell is not necessarily the 
-                    // just executed cell.
-                    cell = IPython.notebook.get_selected_cell();
-                    cell.metadata.kernel = msg.content.data;
+                    // there are two kinds of messages
+                    // 1. source: kernel  
+                    //     the kernel used for the cell with source
+                    // 2. None: kernel
+                    //     the kernel for the new cell
+                    data = msg.content.data;
+                    console.log(data);
+                    if (data[0] == null) {
+                        window.cur_kernel = data[1];
+                        cell = IPython.notebook.get_selected_cell();
+                        // if the kernel is undefined, use new one
+                        if (cell.metadata.kernel) {
+                            cell.metadata.kernel = data[1];
+                            if (data[1] == 'R')
+                                cell.element.css('background-color', '#FFE4C4');
+                        }
+                    } else {
+                        // find the cell with the execution number
+                        cell = IPython.notebook.get_selected_cell();
+                        // if the current cell does not matches. get the previous one
+                        if (cell.get_text().indexOf(data[0]) < 0) {
+                            cell = IPython.notebook.get_prev_cell(cell)
+                            // cannot find any??
+                            if (cell.get_text().indexOf(data[0]) < 0)
+                                cell = null;
+                        }
+                        if (cell != null) {
+                            cell.metadata.kernel = data[1];
+                            // this should be loaded from language css file
+                            if (data[1] == 'R')
+                                cell.element.css('background-color', '#FFE4C4');
+                        }
+                    }
                 });
                 //comm.on_close(function(msg) {   console.log(msg) });
                 // comm.send({'foo': 0});
