@@ -75,7 +75,7 @@ class SoS_Exporter(Exporter):
         Exporter.__init__(self, config, **kwargs)
 
     def from_notebook_cell(self, cell, fh, idx = 0):
-        meta = ' '.join('{}:{}'.format(x,y) for x,y in cell.metadata.items())
+        meta = ' '.join('{}={}'.format(x,y) for x,y in cell.metadata.items())
         if not hasattr(cell, 'execution_count') or cell.execution_count is None or self.no_index:
             fh.write('\n%cell {} {}\n'.format(cell.cell_type, meta))
         else:
@@ -224,7 +224,7 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
                     cell_count += 1
                 metainfo = mo.group('metainfo')
                 if metainfo:
-                    pieces = [piece.split(':',1) for piece in metainfo.split()]
+                    pieces = [piece.split('=',1) for piece in metainfo.split()]
                     for idx,piece in enumerate(pieces):
                         if len(piece) == 1:
                             env.logger.warning('Incorrect metadata {}'.format(piece))
