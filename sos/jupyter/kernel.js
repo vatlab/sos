@@ -56,9 +56,11 @@ define(function() {
 
         // update the cells when the notebook is being opened.
         var cells = IPython.notebook.get_cells();
-        for(var i in cells){
-            if(cells[i].cell_type == 'code')
+        for(var i in cells) {
+            if(cells[i].cell_type == 'code') {
                 cells[i].element.css('background-color', BC[cells[i].metadata.kernel]);
+                cells[i].element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[cells[i].metadata.kernel];
+            }
         }
 
         // comm message sent from the kernel
@@ -79,6 +81,7 @@ define(function() {
                             cell.metadata.kernel = data[1];
                             // this should be loaded from language css file
                             cell.element.css('background-color', BC[data[1]]);
+                            cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[data[1]];
                         }
                     } else {
                         // get cell from passed cell index, which was sent through the
@@ -88,6 +91,7 @@ define(function() {
                         cell.metadata.kernel = data[1];
                         // this should be loaded from language css file
                         cell.element.css('background-color', BC[data[1]]);
+                        cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[data[1]];
                     }
                 });
             });
