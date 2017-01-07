@@ -24,45 +24,72 @@ define(function() {
     var onload = function() {
         // define a customized channel for communication between frontend
         // and backend
+
+        // the new get_text function that adds metadata and cell index to
+        // the content of the cell.
+        var my_get_text = function () {
+            return "%softwith " + this.metadata.kernel + " --cell " + Jupyter.notebook.find_cell_index(this) + "\n" + this.code_mirror.getValue();
+        }
+
+        // this should be loaded somewhere. amd there would be something like
+        // BC.get_default ... to get a default color for kernel not listed.
+        BC = {
+            'sos': '#FFFFFF',
+            'R': '#FFE4C4',
+            'python': '#FFCCFF'
+        }
+
+        // we have to also redefine set_text to counter this...
+        var my_set_text = function (text) {
+            // need to replace all softwith line during set text
+            return this.code_mirror.setValue(text.replace(/%softwith .*\n/g, ''));
+        }
+        // This is be done when the notebook is loaded
+        var cells = IPython.notebook.get_cells();
+        for(var i in cells){
+            cells[i].get_text = my_get_text;
+            cells[i].set_text = my_set_text;
+            // remove %softwith lines saved in the notebook. This is unfortunate but
+            // I have not found a save-hook to remove them
+            cells[i].set_text(cells[i].get_text())
+            // this should be kernel dependent
+            cells[i].element.css('background-color', BC[cells[i].metadata.kernel]);
+        }
+
+        // comm message sent from the kernel
         Jupyter.notebook.kernel.comm_manager.register_target('sos_comm',
             function(comm, msg) {
-                // comm is the frontend comm instance
-                // msg is the comm_open message, which can carry data
                 // Register handlers for later messages:
                 // window.comm_handle = comm;
                 comm.on_msg(function(msg) {
                     // there are two kinds of messages
-                    // 1. source: kernel  
+                    // 1. cell_idx: kernel
                     //     the kernel used for the cell with source
                     // 2. None: kernel
                     //     the kernel for the new cell
                     data = msg.content.data;
                     console.log(data);
                     if (data[0] == null) {
-                        window.cur_kernel = data[1];
+                        // for future use
+                        // window.cur_kernel = data[1];
                         cell = IPython.notebook.get_selected_cell();
                         // if the kernel is undefined, use new one
-                        if (cell.metadata.kernel) {
+                        if (!cell.metadata.kernel) {
                             cell.metadata.kernel = data[1];
-                            if (data[1] == 'R')
-                                cell.element.css('background-color', '#FFE4C4');
+                            // new cell needing new get_text function?
+                            cell.get_text = my_get_text;
+                            cell.element.css('background-color', BC[data[1]]);
                         }
                     } else {
-                        // find the cell with the execution number
-                        cell = IPython.notebook.get_selected_cell();
-                        // if the current cell does not matches. get the previous one
-                        if (cell.get_text().indexOf(data[0]) < 0) {
-                            cell = IPython.notebook.get_prev_cell(cell)
-                            // cannot find any??
-                            if (cell.get_text().indexOf(data[0]) < 0)
-                                cell = null;
-                        }
-                        if (cell != null) {
-                            cell.metadata.kernel = data[1];
-                            // this should be loaded from language css file
-                            if (data[1] == 'R')
-                                cell.element.css('background-color', '#FFE4C4');
-                        }
+                        // get cell from cell index
+                        cell = IPython.notebook.get_cell(data[0]);
+                        // set meta information
+                        cell.metadata.kernel = data[1];
+                        // this is not needed?
+                        cell.get_text = my_get_text;
+                        cell.set_text = my_set_text;
+                        // this should be loaded from language css file
+                        cell.element.css('background-color', BC[data[1]]);
                     }
                 });
                 //comm.on_close(function(msg) {   console.log(msg) });
