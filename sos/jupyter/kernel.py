@@ -1053,8 +1053,6 @@ class SoS_Kernel(IPythonKernel):
                     'traceback': [],
                     'execution_count': self._execution_count,
                    }
-            if args.kernel in ('undefined', ''):
-                args.kernel = self.kernel
             original_kernel = self.kernel
             if args.kernel != self.kernel:
                 self.switch_kernel(args.kernel)

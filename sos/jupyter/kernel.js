@@ -29,17 +29,18 @@ define(function() {
         // be the one that is being executed. Then, get the metadata and send
         // the kernel and cell index through the %softwith magic.
         //
-        var my_execute = function (code, callbacks, options) {
+        var my_execute = function(code, callbacks, options) {
             "use strict"
             var cells = IPython.notebook.get_cells();
-            for (var i = cells.length - 1; i >= 0;  --i ) {
+            for (var i = cells.length - 1; i >= 0; --i) {
                 // this is the cell that is being executed...
                 // according to this.set_input_prompt('*') before execute is called.
                 // also, because a cell might be starting without a previous cell
                 // being finished, we should start from reverse and check actual code
                 if (cells[i].input_prompt_number == '*' && code == cells[i].get_text()) {
-                   return this.orig_execute(
-                        "%softwith " + cells[i].metadata.kernel + " --cell " + i.toString() + "\n" + code,
+                    // use cell kernel if meta exists, otherwise use window.default_kernel
+                    return this.orig_execute(
+                        "%softwith " + (cells[i].metadata.kernel ? cells[i].metadata.kernel : window.default_kernel) + " --cell " + i.toString() + "\n" + code,
                         callbacks, options)
                 }
             }
@@ -58,13 +59,13 @@ define(function() {
 
         // update the cells when the notebook is being opened.
         var cells = IPython.notebook.get_cells();
-        for(var i in cells) {
-            if(cells[i].cell_type == 'code') {
+        for (var i in cells) {
+            if (cells[i].cell_type == 'code') {
                 cells[i].element.css('background-color', BC[cells[i].metadata.kernel]);
                 cells[i].element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[cells[i].metadata.kernel];
             }
         }
-
+        window.default_kernel = 'sos'
         // comm message sent from the kernel
         Jupyter.notebook.kernel.comm_manager.register_target('sos_comm',
             function(comm, msg) {
@@ -86,6 +87,8 @@ define(function() {
                             cell.element.css('background-color', BC[data[1]]);
                             cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[data[1]];
                         }
+                        // we also set a global kernel to be used for new cells
+                        window.default_kernel = data[1];
                     } else {
                         // get cell from passed cell index, which was sent through the
                         // %softwith magic
