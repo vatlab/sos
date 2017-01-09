@@ -45,6 +45,7 @@ from IPython.core.error import UsageError
 from IPython.core.display import HTML
 from IPython.utils.tokenutil import line_at_cursor, token_at_cursor
 from jupyter_client import manager, find_connection_file
+from ipykernel.comm import Comm
 
 from textwrap import dedent
 from io import StringIO
@@ -135,7 +136,6 @@ def get_previewers():
     result.sort(key=lambda x: -x[2])
     return result
 
-
 class SoS_Kernel(IPythonKernel):
     implementation = 'SOS'
     implementation_version = __version__
@@ -173,6 +173,7 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_SET = re.compile('^%set(\s|$)')
     MAGIC_RESTART = re.compile('^%restart(\s|$)')
     MAGIC_WITH = re.compile('^%with(\s|$)')
+    MAGIC_SOFTWITH = re.compile('^%softwith(\s|$)')
     MAGIC_USE = re.compile('^%use(\s|$)')
     MAGIC_GET = re.compile('^%get(\s|$)')
     MAGIC_PUT = re.compile('^%put(\s|$)')
@@ -209,10 +210,25 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
+    def get_softwith_parser(self):
+        parser = argparse.ArgumentParser(prog='%with',
+            description='''Use specified the subkernel to evaluate current
+            cell. soft with tells the start kernel of the cell. If no other
+            switch happens the kernel will switch back. However, a %use inside
+            the cell will still switch the global kernel. In contrast, a hard
+            %with magic will absorb the effect of %use.''')
+        parser.add_argument('kernel', nargs='?', default='',
+            help='Kernel to switch to.')
+        # pass cell index from notebook so that we know which cell fired
+        # the command. Use to set metadata of cell through frontend message
+        parser.add_argument('--cell', dest='cell_idx', help=argparse.SUPPRESS)
+        parser.error = self._parse_error
+        return parser
+
     def get_preview_parser(self):
         parser = argparse.ArgumentParser(prog='%preview',
             description='''Preview files, sos variables, or expressions''')
-        parser.add_argument('items', nargs='*', 
+        parser.add_argument('items', nargs='*',
             help='''filename, variable name, or expression''')
         parser.add_argument('--off', action='store_true',
             help='''Turn off file preview''')
@@ -309,6 +325,20 @@ class SoS_Kernel(IPythonKernel):
         self._inspector = None
         self._execution_count = 1
 
+        # special communication channel to sos frontend
+        self.frontend_comm = None
+        self.cell_idx = None
+
+    def send_frontend_msg(self, msg):
+        if self.frontend_comm is None:
+            self.frontend_comm = Comm(target_name="sos_comm", data={})
+            self.frontend_comm.on_msg(self.handle_frontend_msg)
+        self.frontend_comm.send(msg)
+
+    def handle_frontend_msg(self, msg):
+        # this function should receive message from frontend, not tested yet
+        self.frontend_response = msg['content']['data']
+
     def _reset_dict(self):
         env.sos_dict = WorkflowDict()
         SoS_exec('import os, sys, glob', None)
@@ -352,7 +382,7 @@ class SoS_Kernel(IPythonKernel):
         line, offset = line_at_cursor(code, cursor_pos)
         name = token_at_cursor(code, cursor_pos)
         data = self.inspector.inspect(name, line, cursor_pos - offset)
-        
+
         reply_content = {'status' : 'ok'}
         reply_content['metadata'] = {}
         reply_content['found'] = True if data else False
@@ -417,6 +447,7 @@ class SoS_Kernel(IPythonKernel):
                     # "this cell" in SoS kernel
                     #
                     self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
+        #
         # now get the real result
         reply = self.KC.get_shell_msg(timeout=10)
         reply['content']['execution_count'] = self._execution_count
@@ -443,7 +474,7 @@ class SoS_Kernel(IPythonKernel):
             if kernel not in self.kernels:
                 # start a new kernel
                 try:
-                    self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, 
+                    self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60,
                         kernel_name=self.supported_languages[kernel].kernel_name if kernel in self.supported_languages else kernel)
                 except Exception as e:
                     self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e))
@@ -693,7 +724,7 @@ class SoS_Kernel(IPythonKernel):
             return None
 
     def handle_magic_preview(self, options):
-        # we do string interpolation here because the execution of 
+        # we do string interpolation here because the execution of
         # statements before it can change the meanings of them.
         options = self._interpolate_option(options, quiet=True)
         if options is None:
@@ -931,6 +962,8 @@ class SoS_Kernel(IPythonKernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
+        # a flag for if the kernel is hard switched (by %use)
+        self.hard_switch_kernel = False
         # evaluate user expression
         ret = self._do_execute(code=code, silent=silent, store_history=store_history,
             user_expressions=user_expressions, allow_stdin=allow_stdin)
@@ -952,6 +985,8 @@ class SoS_Kernel(IPythonKernel):
         self.shell.user_ns.update(env.sos_dict._dict)
         # trigger post processing of object and display matplotlib figures
         self.shell.events.trigger('post_execute')
+        # tell the frontend the kernel for the "next" cell
+        self.send_frontend_msg([None, self.kernel])
         return ret
 
     def remove_leading_comments(self, code):
@@ -1004,6 +1039,28 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.restart_kernel(options)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+        elif self.MAGIC_SOFTWITH.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            try:
+                parser = self.get_softwith_parser()
+                args = parser.parse_args(options.split())
+                self.cell_idx = args.cell_idx
+            except Exception as e:
+                self.warn('Invalid option "{}": {}\n'.format(options, e))
+                return {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self._execution_count,
+                   }
+            original_kernel = self.kernel
+            if args.kernel != self.kernel:
+                self.switch_kernel(args.kernel)
+            try:
+                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            finally:
+                if args.kernel != self.kernel and not self.hard_switch_kernel:
+                    self.switch_kernel(original_kernel)
         elif self.MAGIC_WITH.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
@@ -1037,6 +1094,7 @@ class SoS_Kernel(IPythonKernel):
                     'execution_count': self._execution_count,
                    }
             self.switch_kernel(args.kernel, args.in_vars, args.out_vars)
+            self.hard_switch_kernel = True
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_GET.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
@@ -1109,7 +1167,7 @@ class SoS_Kernel(IPythonKernel):
                 ret = self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
                 if args.expect_error and ret['status'] == 'error':
                     #self.warn('\nSandbox execution failed.')
-                    return {'status': 'ok', 
+                    return {'status': 'ok',
                         'payload': [], 'user_expressions': {},
                         'execution_count': self._execution_count}
                 else:
@@ -1149,6 +1207,9 @@ class SoS_Kernel(IPythonKernel):
             if code:
                 self.last_executed_code = code
             code = self._interpolate_option(code, quiet=False)
+            if self.cell_idx is not None:
+                self.send_frontend_msg([self.cell_idx, self.kernel])
+                self.cell_idx = None
             if code is None:
                 return
             try:
@@ -1162,6 +1223,9 @@ class SoS_Kernel(IPythonKernel):
             # run sos
             try:
                 self.run_sos_code(code, silent)
+                if self.cell_idx is not None:
+                    self.send_frontend_msg([self.cell_idx, 'sos'])
+                    self.cell_idx = None
                 return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
             except Exception as e:
                 self.warn(str(e))

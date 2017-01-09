@@ -76,10 +76,11 @@ def __null_func__(*args, **kwargs):
 class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
-    def __init__(self, workflow=None, args=[], nested=False, config={}):
+    def __init__(self, workflow=None, args=[], shared=[], nested=False, config={}):
         env.__task_engine__ = None
         self.workflow = workflow
         self.args = args
+        self.shared = shared
         self.nested = nested
         self.config = config
         for key in ('config_file', 'output_dag', 'report_output'):
@@ -142,6 +143,7 @@ class Base_Executor:
             self._base_symbols -= {'dynamic'}
             return
 
+        old_dict = env.sos_dict
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
 
@@ -157,6 +159,9 @@ class Base_Executor:
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__step_output__', [])
 
+        for key in self.shared:
+            if key in old_dict:
+                env.sos_dict.set(key, old_dict[key])
         # load configuration files
         cfg = {}
         sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
@@ -340,7 +345,7 @@ class Base_Executor:
                     '__changed_vars__': changed_vars }
 
             # for nested workflow, the input is specified by sos_run, not None.
-            if self.nested and idx == 0:
+            if idx == 0:
                 context['__step_output__'] = env.sos_dict['__step_output__']
             # for regular workflow, the output of the last step has
             # to exist (existence of signature does not count)
@@ -407,7 +412,7 @@ class Base_Executor:
                 sigfile.write('# end time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
                 sigfile.write('# input and dependent files\n')
         
-    def run(self, targets=None, mode='run'):
+    def run(self, targets=None, queue=None, mode='run'):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -549,11 +554,14 @@ class Base_Executor:
         else:
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
+        #
+        if queue:
+            queue.put({x: env.sos_dict[x] for x in self.shared if x in env.sos_dict})
 
-    def dryrun(self, targets=None):
+    def dryrun(self, queue=None, targets=None):
         '''Execute the script in dryrun mode.'''
         try:
-            self.run(targets=targets, mode='dryrun')
+            self.run(targets=targets, queue=queue, mode='dryrun')
         # only runtime errors are ignored
         except RuntimeError as e:
             env.logger.warning('Workflow cannot be completed in dryrun mode: {}'.format(e))
@@ -562,15 +570,15 @@ class Base_Executor:
 class MP_Executor(Base_Executor):
     #
     # Execute a workflow sequentially in batch mode
-    def __init__(self, workflow, args=[], nested=False, config={}):
-        Base_Executor.__init__(self, workflow, args, nested=nested, config=config)
+    def __init__(self, workflow, args=[], shared=[], nested=False, config={}):
+        Base_Executor.__init__(self, workflow, args, shared=shared, nested=nested, config=config)
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
 
     def step_executor(self, section, queue):
         return MP_Step_Executor(section, queue)
 
-    def run(self, targets=None, mode='run'):
+    def run(self, targets=None, queue=None, mode='run'):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
@@ -731,3 +739,5 @@ class MP_Executor(Base_Executor):
         else:
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
+        if queue:
+            queue.put({x: env.sos_dict[x] for x in self.shared if x in env.sos_dict})

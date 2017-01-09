@@ -124,7 +124,7 @@ class BaseTarget:
     #
     def sig_file(self):
         if self._sigfile is None:
-            self._sigfile = os.path.join('.sos', '.runtime', '{}_{}.sig'.format(self.__class__.__name__,
+            self._sigfile = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}_{}.sig'.format(self.__class__.__name__,
                 textMD5(self.name())))
         return self._sigfile
 
@@ -270,15 +270,8 @@ class FileTarget(BaseTarget):
         # If the output path is outside of the current working directory
         fullname = os.path.abspath(self.name())
         name_md5 = textMD5(fullname)
-        rel_path = os.path.relpath(fullname, env.exec_dir)
 
-        # if this file is not relative to cache, use global signature file
-        if rel_path.startswith('../'):
-            self._sigfile = os.path.join(os.path.expanduser('~'), '.sos', '.runtime',
-                name_md5 + '.file_info')
-        else:
-            # if this file is relative to cache, use local directory
-            self._sigfile = os.path.join('.sos', '.runtime', name_md5 + '.file_info')
+        self._sigfile = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', name_md5 + '.file_info')
         return self._sigfile
 
     def signature(self, mode='any'):
@@ -309,6 +302,13 @@ class FileTarget(BaseTarget):
             os.remove(self.fullname())
         if mode in ('both', 'signature') and os.path.isfile(self.sig_file()):
             os.remove(self.sig_file())
+
+    def is_external(self):
+        try:
+            return os.path.relpath(self.fullname(), '.').startswith('..') 
+        except:
+            # under windows the file might be on different volume
+            return True
 
     def fullname(self):
         return os.path.abspath(self.name())
@@ -407,13 +407,7 @@ class RuntimeInfo:
         self.signature_vars = signature_vars
 
         sig_name = textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))
-        info_file = os.path.join('.sos', '.runtime', sig_name)
-        if not isinstance(self.output_files, Undetermined) and self.output_files:
-            # If the output path is outside of the current working directory
-            rel_path = os.path.relpath(os.path.realpath(self.output_files[0].name()), env.exec_dir)
-            # if this file is not relative to cache, use global signature file
-            if rel_path.startswith('../'):
-                info_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name.lstrip(os.sep))
+        info_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name)
         # path to file
         self.proc_info = '{}.exe_info'.format(info_file)
 
@@ -467,7 +461,7 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Invalid signature file type {}'.format(file_type))
 
-    def write(self, local_input_files, local_output_files):
+    def write(self, local_input_files, local_output_files, rebuild=False):
         '''Write signature file with signature of script, input, output and dependent files.
         Because local input and output files can only be determined after the execution
         of workflow. They are not part of the construction...        
@@ -484,7 +478,7 @@ class RuntimeInfo:
                     # this calculates file MD5
                     f.write_sig()
                     md5.write('{}\t{}\n'.format(f, f.signature()))
-                elif f.exists('signature'):
+                elif not rebuild and f.exists('signature'):
                     md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
                     return False
@@ -494,7 +488,7 @@ class RuntimeInfo:
                     # this calculates file MD5
                     f.write_sig()
                     md5.write('{}\t{}\n'.format(f, f.signature()))
-                elif f.exists('signature'):
+                elif not rebuild and f.exists('signature'):
                     md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
                     return False
@@ -504,7 +498,7 @@ class RuntimeInfo:
                     # this calculates file MD5
                     f.write_sig()
                     md5.write('{}\t{}\n'.format(f, f.signature()))
-                elif f.exists('signature'):
+                elif not rebuild and f.exists('signature'):
                     md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
                     return False
@@ -514,7 +508,7 @@ class RuntimeInfo:
                     # this calculates file MD5
                     f.write_sig()
                     md5.write('{}\t{}\n'.format(f, f.signature()))
-                elif f.exists('signature'):
+                elif not rebuild and f.exists('signature'):
                     md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
                     return False
@@ -524,7 +518,7 @@ class RuntimeInfo:
                     # this calculates file MD5
                     f.write_sig()
                     md5.write('{}\t{}\n'.format(f, f.signature()))
-                elif f.exists('signature'):
+                elif not rebuild and f.exists('signature'):
                     md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
                     return False                    

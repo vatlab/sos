@@ -393,11 +393,11 @@ class RuntimeEnvironments(object):
     #
     # attribute exec_dir
     def _assure_runtime_dir(self, dir):
-        if not os.path.isdir(os.path.join(dir, '.sos', '.runtime')):
+        if not os.path.isdir(os.path.join(dir, '.sos')):
             with fasteners.InterProcessLock('/tmp/sos_runtime_lock'):
                 # the directory might haver been created during waiting
-                if not os.path.isdir(os.path.join(dir, '.sos', '.runtime')):
-                    os.makedirs(os.path.join(dir, '.sos', '.runtime'))
+                if not os.path.isdir(os.path.join(dir, '.sos')):
+                    os.makedirs(os.path.join(dir, '.sos'))
 
     def _set_exec_dir(self, dir):
         if not os.path.isdir(dir):
@@ -1088,21 +1088,24 @@ def sos_handle_parameter_(key, defvalue):
     NOTE: parmeters will not be handled if it is already defined in
     the environment. This makes the parameters variable.
     '''
-    if key in env.sos_dict:
-        if key in env.sos_dict._readonly_vars:
-            raise ValueError('Variable {} is readonly and cannot be defined as a parameter'.format(key))
-        elif key in env.sos_dict['sos_symbols_']:
-            env.logger.warning('Parameter {} overrides a SoS function.'.format(key))
-        elif env.run_mode != 'interactive':
-            # the variable should exist if it has been processed... otherwise it should be
-            # a bug in sos (e.g. reset dictionary without resetting parameter_vars.
-            return env.sos_dict[key]
+    if key in env.sos_dict._readonly_vars:
+        raise ValueError('Variable {} is readonly and cannot be defined as a parameter'.format(key))
+    elif key in env.sos_dict['sos_symbols_']:
+        env.logger.warning('Parameter {} overrides a SoS function.'.format(key))
 
     env.parameter_vars.add(key)
     if not env.sos_dict['__args__']:
         if isinstance(defvalue, type):
             raise ArgumentError('Argument {} of type {} is required'.format(key, defvalue))
         return defvalue
+    # if the parameter is passed from action sos_run
+    if isinstance(env.sos_dict['__args__'], dict):
+        if key in env.sos_dict['__args__']:
+            return env.sos_dict['__args__'][key]
+        elif isinstance(defvalue, type):
+            raise ArgumentError('Argument {} of type {} is required'.format(key, defvalue))
+        else:
+            return defvalue
     #
     parser = argparse.ArgumentParser()
     # thre is a possibility that users specify --cut-off instead of --cut_off for parameter
