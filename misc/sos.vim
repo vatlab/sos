@@ -52,8 +52,7 @@ highlight link pythonBuiltin	Function
 " parenthetical part of def and class
 syn match sos_section_head "^\[\s*\w\+.*\]\s*$"
 syn match sos_directive "^\(input\|output\|depends\|parameter\|task\)\s*:"
-syn match sos_preprocessor "^%\(if\|elif\|else\|endif\|cell\|include\|from\|set_options\).*$"
-syn match sos_magic "^%\(with\|use\|set\|get\|put\|sandbox\|paste\|\|dict\|restart\|dict\|preview\|run\|rerun\).*$"
+syn match sos_magic "^%\(with\|use\|set\|get\|put\|sandbox\|paste\|dict\|restart\|dict\|preview\|run\|rerun\|if\|elif\|else\|endif\|cell\|include\|from\|set_options\)\+"
 
 " match a line with non input/output/depends/task, and ends before a section
 " or another directive
@@ -74,7 +73,6 @@ endif
 
 highlight sos_section_head guibg='Purple' gui=none
 highlight sos_directive guifg='LightBlue' gui=bold
-highlight sos_preprocessor guifg='LightRed' gui=bold
 highlight sos_magic guifg='Orange' gui=bold
 highlight script guifg='Gray' gui=none
 

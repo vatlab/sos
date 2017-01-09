@@ -35,6 +35,7 @@ import shlex
 import gzip
 import tarfile
 import fasteners
+
 from functools import wraps
 
 if sys.platform != 'win32':
@@ -264,7 +265,7 @@ class SoS_ExecuteScript:
 
 
 @SoS_Action(run_mode=['run', 'interactive'])
-def sos_run(workflow=None, targets=None, **kwargs):
+def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
     '''Execute a workflow from specified source, input, and output
     By default the workflow is defined in the existing SoS script, but
     extra sos files can be specified from paramter source. The workflow
@@ -277,15 +278,18 @@ def sos_run(workflow=None, targets=None, **kwargs):
     # recusive nested workflow and should not be allowed
     if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections]:
         raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
+    # args can be specified both as a dictionary or keyword arguments
+    args.update(kwargs)
+    if isinstance(shared, str):
+        shared = [shared]
     # for nested workflow, _input would becomes the input of workflow.
-    for k,v in kwargs.items():
-        env.sos_dict.set(k, v)
     env.sos_dict.set('__step_output__', copy.deepcopy(env.sos_dict['_input']))
+    shared.append('__step_output__')
     try:
         my_name = env.sos_dict['step_name']
         if env.run_mode == 'dryrun':
             env.logger.info('Checking nested workflow {}'.format(workflow))
-            return Base_Executor(wf, args=env.sos_dict['__args__'], nested=True).dryrun(targets=targets)
+            return Base_Executor(wf, args=args, shared=shared).dryrun(targets=targets)
         elif env.run_mode in ('run', 'interactive'):
             env.logger.info('Executing workflow ``{}`` with input ``{}``'
                 .format(workflow, short_repr(env.sos_dict['_input'], True)))
@@ -311,7 +315,23 @@ def sos_run(workflow=None, targets=None, **kwargs):
                 else:
                     executor_class = MP_Executor
 
-            return executor_class(wf, args=env.sos_dict['__args__'], nested=True).run(targets=targets)
+            executor = executor_class(wf, args=args, shared=shared)
+            if env.run_mode == 'run':
+                if shared:
+                    q = mp.Queue()
+                else:
+                    q = None
+                p = mp.Process(target=executor.run, kwargs={'targets': targets, 'queue': q})
+                p.start()
+                if shared:
+                    res = q.get()
+                    env.sos_dict.quick_update(res)
+                else:
+                    res = None
+                p.join()
+            else:
+                res = executor.run(targets=targets)
+            return res
     finally:
         # restore step_name in case the subworkflow re-defines it
         env.sos_dict.set('step_name', my_name)

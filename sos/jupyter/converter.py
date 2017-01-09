@@ -54,6 +54,8 @@ def get_notebook_to_script_parser():
             script in batch mode''')
     parser.add_argument('--no-index', action='store_true',
         help='''Do not output any index''')
+    parser.add_argument('--metadata', action='store_true',
+        help='''Output metadata''')
     parser.add_argument('--remove-magic', action='store_true',
         help='''Remove magic lines from the output''')
     return parser
@@ -63,24 +65,29 @@ def get_notebook_to_script_parser():
 # weird problem with unittesting not able to resolve __main__
 class SoS_Exporter(Exporter):
     def __init__(self, config=None, reorder=False, reset_index=False, add_header=False,
-            no_index=False, remove_magic=False, 
+            no_index=False, no_metadata=False, remove_magic=False, 
             **kwargs):
         self.reorder = reorder
         self.reset_index = reset_index
         self.add_header = add_header
         self.no_index = no_index
+        self.no_metadata = no_metadata
         self.remove_magic = remove_magic
         self.output_extension = '.sos'
         self.output_mimetype = 'text/x-sos'
         Exporter.__init__(self, config, **kwargs)
 
     def from_notebook_cell(self, cell, fh, idx = 0):
+        if self.no_metadata:
+            meta = ''
+        else:
+            meta = ' '.join('{}={}'.format(x,y) for x,y in cell.metadata.items())
         if not hasattr(cell, 'execution_count') or cell.execution_count is None or self.no_index:
-            fh.write('\n%cell {}\n'.format(cell.cell_type))
+            fh.write('\n%cell {} {}\n'.format(cell.cell_type, meta))
         else:
             idx += 1
-            fh.write('\n%cell {} {}\n'.format(cell.cell_type,
-                                              idx if self.reset_index else cell.execution_count))
+            fh.write('\n%cell {} {} {}\n'.format(cell.cell_type,
+                                              idx if self.reset_index else cell.execution_count, meta))
         if cell.cell_type == 'code':
             if any(cell.source.startswith(x) for x in ('%run', '%restart', '%dict', '%get', '%use', '%with', '%set', '%paste', '%matplotlib', '%edit')):
                 if self.remove_magic:
@@ -119,7 +126,7 @@ class SoS_Exporter(Exporter):
         return content, resources
 
 
-def notebook_to_script(notebook_file, sos_file, sargs=None, unknown_args=[]):
+def notebook_to_script(notebook_file, sos_file, args=None, unknown_args=[]):
     '''
     Convert a ipython notebook to sos format. This converter accepts options
     --reorder to reorder cells according to executing order, --reset-index
@@ -129,10 +136,10 @@ def notebook_to_script(notebook_file, sos_file, sargs=None, unknown_args=[]):
     '''
     if unknown_args:
         raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
-    if sargs:
-        exporter = SoS_Exporter(reorder=sargs.reorder, reset_index=sargs.reset_index,
-                            add_header=sargs.add_header, no_index=sargs.no_index,
-                            remove_magic=sargs.remove_magic)
+    if args:
+        exporter = SoS_Exporter(reorder=args.reorder, reset_index=args.reset_index,
+                            add_header=args.add_header, no_index=args.no_index,
+                            no_metadata=args.no_metadata, remove_magic=args.remove_magic)
     else:
         exporter = SoS_Exporter()
     notebook = nbformat.read(notebook_file, nbformat.NO_CONVERT)
@@ -156,7 +163,7 @@ def get_script_to_notebook_parser():
             Jupyter notebook interface''')
     return parser
 
-def add_cell(cells, content, cell_type, cell_count):
+def add_cell(cells, content, cell_type, cell_count, metainfo):
     # if a section consist of all report, report it as a markdown cell
     if not content:
         return
@@ -167,13 +174,15 @@ def add_cell(cells, content, cell_type, cell_count):
         cell_type = 'code'
     #
     if cell_type == 'markdown':
-        cells.append(new_markdown_cell(source=''.join([x[3:] for x in content]).strip()))
+        cells.append(new_markdown_cell(source=''.join([x[3:] for x in content]).strip(),
+            metadata=metainfo))
     else:
         cells.append(
              new_code_cell(
                  # remove any trailing blank lines...
                  source=''.join(content).strip(),
-                 execution_count=cell_count)
+                 execution_count=cell_count,
+                 metadata=metainfo)
         )
 
 def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
@@ -186,6 +195,7 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
     cells = []
     cell_count = 1
     cell_type = 'code'
+    metainfo = {}
     content = []
 
     with open(script_file) as script:
@@ -208,19 +218,37 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
                     content = []
 
                 if content:
-                    add_cell(cells, content, cell_type, cell_count)
+                    add_cell(cells, content, cell_type, cell_count, metainfo)
 
                 cell_type = mo.group('cell_type')
                 if not cell_type:
                     cell_type = 'code'
-                cell_count += 1
+                cc = mo.group('cell_count')
+                if cc:
+                    cell_count = int(cc)
+                else:
+                    cell_count += 1
+                metainfo = mo.group('metainfo')
+                if metainfo:
+                    pieces = [piece.split('=',1) for piece in metainfo.split()]
+                    for idx,piece in enumerate(pieces):
+                        if len(piece) == 1:
+                            env.logger.warning('Incorrect metadata {}'.format(piece))
+                            pieces[idx].append('')
+                        if piece[1] == 'True':
+                            pieces[idx][1] = True
+                        elif piece[1] == 'False':
+                            pieces[idx][1] = False
+                    metainfo = {x:y for x,y in pieces}
+                else:
+                    metainfo = {}
                 content = []
                 continue
             else:
                 content.append(line)
     #
     if content and any(x.strip() for x in content):
-        add_cell(cells, content, cell_type, cell_count)
+        add_cell(cells, content, cell_type, cell_count, metainfo)
     #
     nb = new_notebook(cells = cells,
         metadata = {

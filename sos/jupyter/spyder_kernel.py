@@ -60,6 +60,9 @@ class SoS_SpyderKernel(SoS_Kernel, SpyderKernel):
         #
         self.shell.user_ns = env.sos_dict._dict
 
+    def send_sos_msg(self, msg):
+        pass
+
     def get_edit_parser(self):
         parser = argparse.ArgumentParser(prog='%edit',
             description='Edit an existing file in spyder')

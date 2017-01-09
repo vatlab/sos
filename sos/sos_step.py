@@ -924,9 +924,11 @@ class Base_Step_Executor:
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` with matching signature'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
                                     elif env.sig_mode == 'build':
+                                        # build signature require existence of files
                                         if signatures[idx].write(
                                             env.sos_dict['_local_input_{}'.format(idx)],
-                                            env.sos_dict['_local_output_{}'.format(idx)]):
+                                            env.sos_dict['_local_output_{}'.format(idx)],
+                                            rebuild=True):
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
                                     elif env.sig_mode == 'force':

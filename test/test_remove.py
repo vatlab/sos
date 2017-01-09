@@ -51,7 +51,7 @@ sh:
     touch t_d2/t_d3/t_f3
 
 ''')
-        subprocess.call('sos run test', shell=True)
+        subprocess.call('sos run test -s force', shell=True)
         # create some other files and directory
         for d in ('ut_d1', 'ut_d2', 'ut_d2/ut_d3'):
             os.mkdir(d)
@@ -88,7 +88,7 @@ sh:
         self.assertNonExists(['t_f1', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2'])
 
     def testRemoveAllUntracked(self):
-        '''test list files'''
+        '''test remove all untracked files'''
         subprocess.call('sos remove . -u -y', shell=True)
         self.assertNonExists(['ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_d1/ut_f2', 't_d1/ut_f4', 'ut_d2/ut_d3/ut_f3'])
         self.assertExists(['t_d1/t_f2', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2', 't_d1', 't_f1'])
@@ -103,6 +103,7 @@ sh:
         self.assertExists(['ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_d2/ut_d3/ut_f3'])
 
     def testRemoveAll(self):
+        '''Test remove all specified files'''
         subprocess.call('sos remove ut_d1 t_d1 ut_d2/ut_d3 -y', shell=True)
         self.assertNonExists(['ut_d1', 't_d1', 'ut_d2/ut_d3'])
         self.assertExists(['t_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2', 't_f1'])

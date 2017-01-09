@@ -1208,7 +1208,7 @@ cp ${_input} ${_dest}
         # only the first step
         wf = script.workflow('default:0')
         start = time.time()
-        env.sig_mode = 'default'
+        env.sig_mode = 'force'
         if env.max_jobs == 1:
             Base_Executor(wf).run()
         else:
@@ -1344,10 +1344,12 @@ sh:
 ''')
         wf = script.workflow()
         FileTarget('lls').remove('both')
+        env.sig_mode = 'force'
         st = time.time()
         Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 2)
         # test validation
+        env.sig_mode = 'default'
         st = time.time()
         Base_Executor(wf).run()
         self.assertLess(time.time() - st, 2)

@@ -334,8 +334,14 @@ _SOS_CELL_LINE_TMPL = r'''
     %cell(\s+                           # %cell
     (?P<cell_type>
     (markdown|code)                     # markdown or code
-    )
-    (\s+\d+\s+)?)?                      # arbitrary stuff
+    )?
+    (\s+
+    (?P<cell_count>
+    [0-9]+
+    ))?
+    (?P<metainfo>
+    .*                                  # arbitrary stuff
+    )?)?
     $
     '''
 

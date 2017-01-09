@@ -31,10 +31,10 @@ import os
 import unittest
 from contextlib import contextmanager
 from ipykernel.tests.utils import assemble_output, start_new_kernel,\
-    flush_channels, execute, wait_for_idle
+    execute, wait_for_idle
 
 import atexit
-
+from queue import Empty
 KM = None
 KC = None
 
@@ -55,6 +55,21 @@ def sos_kernel():
     """
     yield start_sos_kernel()
 
+
+def flush_channels(kc=None):
+    """flush any messages waiting on the queue"""
+
+    if kc is None:
+        kc = KC
+    for channel in (kc.shell_channel, kc.iopub_channel):
+        while True:
+            try:
+                channel.get_msg(block=True, timeout=0.1)
+            except Empty:
+                break
+            # do not validate message because SoS has special sos_comm
+            #else:
+            #    validate_message(msg)
 
 def start_sos_kernel():
     """start the global kernel (if it isn't running) and return its client"""
