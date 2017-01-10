@@ -369,12 +369,13 @@ class SoS_Step:
 class SoS_Workflow:
     '''A SoS workflow with multiple steps. It is created from multiple sections of a SoS script
     and consists of multiple SoS_Step.'''
-    def __init__(self, content, workflow_name, allowed_steps, sections):
+    def __init__(self, content, workflow_name, allowed_steps, sections, global_def):
         '''create a workflow from its name and a list of SoS_Sections (using name matching)'''
         self.content = content
         self.name = workflow_name
         self.sections = []
         self.auxiliary_sections = []
+        self.global_def = global_def
         #
         for section in sections:
             for name, index, alias in section.names:
@@ -1103,7 +1104,7 @@ for __n, __v in {}.items():
         workflow. '''
         if workflow_name is None and not use_default:
             return SoS_Workflow(self.content, '', '',
-                [section for section in self.sections if 'provides' in section.options or 'shared' in section.options])
+                [section for section in self.sections if 'provides' in section.options or 'shared' in section.options], self.global_def)
         allowed_steps = None
         if not workflow_name:
             wf_name = ''
@@ -1155,7 +1156,7 @@ for __n, __v in {}.items():
                 if fnmatch.fnmatch(wf_name, name):
                     sections.append(section)
                     break
-        return SoS_Workflow(self.content, wf_name, allowed_steps, sections)
+        return SoS_Workflow(self.content, wf_name, allowed_steps, sections, self.global_def)
 
     def print_help(self):
         '''print a help message from the script'''
