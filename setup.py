@@ -178,20 +178,22 @@ csh = sos.actions:csh
 tcsh = sos.actions:tcsh
 zsh = sos.actions:zsh
 sh = sos.actions:sh
-python = sos.actions:python
-python2 = sos.actions:python2
-python3 = sos.actions:python3
 perl = sos.actions:perl
 ruby = sos.actions:ruby
 node = sos.actions:node
 JavaScript = sos.actions:JavaScript
-docker_build = sos.docker.actions:docker_build [docker]
-docker_commit = sos.docker.actions:docker_commit [docker]
 report = sos.actions:report
 pandoc = sos.actions:pandoc
 
+python = sos.Python.actions:python
+python2 = sos.Python.actions:python2
+python3 = sos.Python.actions:python3
+
 R = sos.R.actions:R
 Rmarkdown = sos.R.actions:Rmarkdown
+
+docker_build = sos.docker.actions:docker_build [docker]
+docker_commit = sos.docker.actions:docker_commit [docker]
 
 [sos_executors]
 rq = sos.rq.sos_executor:RQ_Executor [rq]
