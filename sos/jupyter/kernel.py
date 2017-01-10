@@ -33,7 +33,6 @@ import pydoc
 from ipykernel.ipkernel import IPythonKernel
 
 
-import pickle
 from types import ModuleType
 from sos.utils import env, WorkflowDict, short_repr, pretty_size
 from sos._version import __sos_version__, __version__
@@ -474,8 +473,8 @@ class SoS_Kernel(IPythonKernel):
             if kernel not in self.kernels:
                 # start a new kernel
                 try:
-                    self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60,
-                        kernel_name=self.supported_languages[kernel].kernel_name if kernel in self.supported_languages else kernel)
+                    kernel_name=self.supported_languages[kernel].kernel_name if kernel in self.supported_languages else kernel
+                    self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel_name)
                 except Exception as e:
                     self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e))
                     return
@@ -614,13 +613,9 @@ class SoS_Kernel(IPythonKernel):
             if item not in env.sos_dict:
                 self.warn('Variable {} does not exist'.format(item))
                 return
-        if self.kernel.startswith('python'):
-            # if it is a python kernel, passing specified SoS variables to it
-            sos_data = pickle.dumps({x:env.sos_dict[x] for x in items})
-            # this can fail if the underlying python kernel is python 2
-            self.KC.execute("import pickle\nglobals().update(pickle.loads({!r}))".format(sos_data),
-                silent=True, store_history=False)
-        elif self.kernel in self.supported_languages:
+        if not items:
+            return
+        if self.kernel in self.supported_languages:
             lan = self.supported_languages[self.kernel]
             try:
                 statements = []
@@ -679,22 +674,7 @@ class SoS_Kernel(IPythonKernel):
         if not items:
             # we do not simply return because we need to return default variables (with name startswith sos
             items = []
-        if self.kernel.startswith('python'):
-            # if it is a python kernel, passing specified SoS variables to it
-            default_items = [x for x in env.sos_dict.keys() if x.startswith('sos') and x not in self.original_keys]
-            response = self.get_response('import pickle\npickle.dumps({{ {} }})'.format(','.join('"{0}":{0}'.format(x) for x in items + default_items)),
-                ['execute_result'])
-            try:
-                env.sos_dict.update(
-                    pickle.loads(eval(response['data']['text/plain']))
-                    )
-            except Exception as e:
-                self.warn('Failed to put variable {}: {}\n'.format(', '.join(items), e))
-            # verify
-            for item in items:
-                if not item in env.sos_dict:
-                    self.warn('Failed to put variable {} to SoS namespace\n'.format(item))
-        elif self.kernel in self.supported_languages:
+        if self.kernel in self.supported_languages:
             lan = self.supported_languages[self.kernel]
             objects = lan.lan_to_sos(items)
             if not isinstance(objects, dict):

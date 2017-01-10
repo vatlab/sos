@@ -221,6 +221,7 @@ tarfile:is_tarfile,1 = sos.jupyter.preview:preview_tar
 
 [sos_languages]
 R = sos.R.kernel:sos_R [R]
+Python = sos.Python.kernel:sos_Python
 
 [sos_converters]
 sos-html.parser = sos.converter:get_script_to_html_parser
