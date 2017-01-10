@@ -53,8 +53,11 @@ define(function() {
         // BC.get_default ... to get a default color for kernel not listed.
         BC = {
             'sos': '#FFFFFF',
-            'R': '#FFE4C4',
-            'python': '#FFCCFF'
+            'R': '#FDEDEC',
+            'ir': '#FDEDEC',
+            'python': '#EAFAF1',
+            'python3': '#EAFAF1',
+            'Python': '#EAFAF1'
         }
 
         // update the cells when the notebook is being opened.
