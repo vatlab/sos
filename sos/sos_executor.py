@@ -33,7 +33,7 @@ from ._version import __version__
 from .sos_step import Dryrun_Step_Executor, SP_Step_Executor, MP_Step_Executor, \
     analyze_section
 from .utils import env, Error, WorkflowDict, get_traceback, ProgressBar, frozendict, dict_merge, short_repr
-from .sos_eval import SoS_exec
+from .sos_eval import SoS_exec, get_default_global_sigil
 from .sos_syntax import SOS_KEYWORDS
 from .dag import SoS_DAG
 from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5
@@ -195,6 +195,15 @@ class Base_Executor:
         SoS_exec('from sos.runtime import *', None)
         self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
         self._base_symbols -= {'dynamic'}
+
+        # excute global definition to get some basic setup
+        try:
+            SoS_exec(self.workflow.global_def, get_default_global_sigil())
+        except Exception as e:
+            if env.verbosity > 2:
+                sys.stderr.write(get_traceback())
+            raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
+                self.workflow.global_def, e))
 
     def skip(self, section):
         if section.global_def:
@@ -430,8 +439,11 @@ class Base_Executor:
         # to remove the signature and really generate them
         if targets:
             for t in targets:
-                if not FileTarget(t).exists('target'):
+                if not FileTarget(t).exists('target') and FileTarget(t).exists('signature'):
+                    env.logger.info('Re-generating {}'.format(t))
                     FileTarget(t).remove('signature')
+                else:
+                    env.logger.info('Target {} already exists'.format(t))
         #
         prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
         self.reset_dict()
@@ -590,6 +602,16 @@ class MP_Executor(Base_Executor):
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
 
+        #
+        # if targets are specified and there are only signatures for them, we need
+        # to remove the signature and really generate them
+        if targets:
+            for t in targets:
+                if not FileTarget(t).exists('target') and FileTarget(t).exists('signature'):
+                    env.logger.info('Re-generating {}'.format(t))
+                    FileTarget(t).remove('signature')
+                else:
+                    env.logger.info('Target {} already exists'.format(t))
         # process step of the pipelinp
         #
         procs = [None for x in range(env.max_jobs)]
