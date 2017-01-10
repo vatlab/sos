@@ -164,6 +164,7 @@ executable = sos.target:executable
 sos_variable = sos.target:sos_variable
 env_variable = sos.target:env_variable
 R_library = sos.R.target:R_library
+Py_Module = sos.Python.target:Py_Module
 
 [sos_actions]
 execute_script = sos.actions:execute_script

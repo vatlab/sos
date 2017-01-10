@@ -19,158 +19,40 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-import os
-from sos.utils import env
 from sos.target import BaseTarget, textMD5
+import importlib
 
-class R_library(BaseTarget):
-    '''A target for a R library.'''
+class Py_Module(BaseTarget):
+    '''A target for a Python module.'''
 
     LIB_STATUS_CACHE = {}
 
-    def __init__(self, library, version = None, repos = 'http://cran.us.r-project.org'):
-        super(R_library, self).__init__()
-        self._library = library
-        if version is not None:
-            version = (version, ) if isinstance(version, str) else tuple(version)
-        self._version = version
-        self._repos = repos
+    def __init__(self, module):
+        super(Py_Module, self).__init__()
+        self._module = module
 
-    def _install(self, name, version, repos):
-        '''Check existence and version match of R library.
-        cran and bioc packages are unique yet might overlap with github.
-        Therefore if the input name is {repo}/{pkg} the package will be
-        installed from github if not available, else from cran or bioc
-        '''
-        from sos.pattern import glob_wildcards
-        from sos.sos_eval import interpolate
-        import tempfile
-        import shlex
+    def _install(self, name):
+        '''Check existence of Python module and install it using command
+        pip install if necessary.'''
+        spam_spec = importlib.util.find_spec(name)
+        if spam_spec is not None:
+            return True
+        # try to install it?
         import subprocess
-
-        output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name
-        script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.R', delete=False).name
-        if len(glob_wildcards('{repo}/{pkg}', [name])['repo']):
-            # package is from github
-            self._install('devtools', None, repos)
-            install_script = interpolate('''
-            options(warn=-1)
-            package_repo <- ${name!r}
-            package <- basename(package_repo)
-            if (require(package, character.only=TRUE, quietly=TRUE)) {
-                write(paste(package, packageVersion(package), "AVAILABLE"), file="${output_file}")
-            } else {
-                devtools::install_github(package_repo)
-                # if it still does not exist, write the package name to output
-                if (require(package, character.only=TRUE, quietly=TRUE)) {
-                    write(paste(package, packageVersion(package), "INSTALLED"), file="${output_file}")
-                } else {
-                    write(paste(package, "NA", "MISSING"), file="${output_file}")
-                    quit("no")
-                }
-            }
-            cur_version <- packageVersion(package)
-            ''', '${ }', locals())
-        else:
-            # package is from cran or bioc
-            install_script = interpolate('''
-            options(warn=-1)
-            package <- ${name!r}
-            if (require(package, character.only=TRUE, quietly=TRUE)) {
-                write(paste(package, packageVersion(package), "AVAILABLE"), file="${output_file}")
-            } else {
-                install.packages(package, repos="${repos}",
-                    quiet=FALSE)
-                # if the package still does not exist
-                if (!require(package, character.only=TRUE, quietly=TRUE)) {
-                    source("http://bioconductor.org/biocLite.R")
-                    biocLite(package, suppressUpdates=TRUE, suppressAutoUpdate=TRUE, ask=FALSE)
-                }
-                # if it still does not exist, write the package name to output
-                if (require(package, character.only=TRUE, quietly=TRUE)) {
-                    write(paste(package, packageVersion(package), "INSTALLED"), file="${output_file}")
-                } else {
-                    write(paste(package, "NA", "MISSING"), file="${output_file}")
-                    quit("no")
-                }
-            }
-            cur_version <- packageVersion(package)
-            ''', '${ }', locals())
-        version_script = ''
-        if version is not None:
-            version = list(version)
-            operators = []
-            for idx, value in enumerate(version):
-                value = str(value)
-                if value.endswith('+'):
-                    operators.append('>=')
-                    version[idx] = value[:-1]
-                elif value.endswith('-'):
-                    operators.append('<')
-                    version[idx] = value[:-1]
-                else:
-                    operators.append('==')
-            # check version and mark version mismatch
-            # if current version satisfies any of the
-            # requirement the check program quits
-            for x, y in zip(version, operators):
-                version_script += '''
-                if (cur_version {1} {0}) {{
-                  quit("no")
-                }}
-                '''.format(repr(x), y)
-            version_script += 'write(paste(package, cur_version, "VERSION_MISMATCH"), file = {})'.\
-              format(repr(output_file))
-        # temporarily change the run mode to run to execute script
-        try:
-            with open(script_file, 'w') as sfile:
-                sfile.write(install_script + version_script)
-            cmd = 'Rscript --default-packages=utils ' + shlex.quote(script_file)
-            #
-            p = subprocess.Popen(cmd, shell=True)
-            ret = p.wait()
-            if ret != 0:
-                env.logger.warning('Failed to detect or install R library')
-                return False
-        except Exception as e:
-            env.logger.error('Failed to execute script: {}'.format(e))
-            return False
-        finally:
-            os.remove(script_file)
-
-        ret_val = False
-        with open(output_file) as tmp:
-            for line in tmp:
-                lib, version, status = line.split()
-                if status.strip() == "MISSING":
-                    env.logger.warning('R Library {} is not available and cannot be installed.'.format(lib))
-                elif status.strip() == 'AVAILABLE':
-                    env.logger.debug('R library {} ({}) is available'.format(lib, version))
-                    ret_val = True
-                elif status.strip() == 'INSTALLED':
-                    env.logger.debug('R library {} ({}) has been installed'.format(lib, version))
-                    ret_val = True
-                elif status.strip() == 'VERSION_MISMATCH':
-                    env.logger.warning('R library {} ({}) does not satisfy version requirement!'.format(lib, version))
-                else:
-                    raise RuntimeError('This should not happen: {}'.format(line))
-        try:
-            os.remove(output_file)
-        except:
-            pass
-        return ret_val
+        ret = subprocess.call(['pip', 'install', self._module])
+        return ret == 0
 
     def exists(self, mode='any'):
-        if (self._library, self._version) in self.LIB_STATUS_CACHE:
-            return self.LIB_STATUS_CACHE[(self._library, self._version)]
+        if self._module in self.LIB_STATUS_CACHE:
+            return self.LIB_STATUS_CACHE[self._module]
         else:
-            ret = self._install(self._library, self._version, self._repos)
-            self.LIB_STATUS_CACHE[(self._library, self._version)] = ret
+            ret = self._install(self._module)
+            self.LIB_STATUS_CACHE[self._module] = ret
             return ret
 
     def name(self):
-        return self._library
+        return self._module
 
     def md5(self):
-        # we are supposed to get signature of the library, but we cannot
-        return textMD5(repr(self._library))
+        # we are supposed to get signature of the module, but we cannot
+        return textMD5('Python module ' + self._module)
