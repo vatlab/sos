@@ -57,15 +57,33 @@ define(function() {
             'python': '#FFCCFF'
         }
 
+        function changeStyleOnKernel(cell,type){          
+            // this should be loaded from language css file
+            cell.element.css('background-color', BC[type]);
+            cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[type];
+            var original_text=cell.element[0].getElementsByClassName("input_prompt")[0].textContent;
+            original_text=original_text.replace("In","");
+            cell.element[0].getElementsByClassName("input_prompt")[0].textContent=type+original_text;
+            console.log(type+original_text);
+            console.log(cell.element[0].getElementsByClassName("input_prompt")[0].textContent)
+        }
+
         // update the cells when the notebook is being opened.
         var cells = IPython.notebook.get_cells();
+        window.default_kernel = 'sos'
+        if (cells.length==1 && cells[0].cell_type=='code' && typeof cells[0].metadata.kernel==='undefined'){
+            cells[0].metadata.kernel=window.default_kernel;
+        }
+        console.log(cells);
+
         for (var i in cells) {
             if (cells[i].cell_type == 'code') {
-                cells[i].element.css('background-color', BC[cells[i].metadata.kernel]);
-                cells[i].element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[cells[i].metadata.kernel];
+                // cells[i].element.css('background-color', BC[cells[i].metadata.kernel]);
+                // cells[i].element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[cells[i].metadata.kernel];
+                changeStyleOnKernel(cells[i],cells[i].metadata.kernel);
             }
         }
-        window.default_kernel = 'sos'
+       
         // comm message sent from the kernel
         Jupyter.notebook.kernel.comm_manager.register_target('sos_comm',
             function(comm, msg) {
@@ -75,17 +93,18 @@ define(function() {
                     //     the kernel used for the cell with source
                     // 2. None: kernel
                     //     the kernel for the new cell
+
                     data = msg.content.data;
-                    // console.log(data)
+                    console.log(data)
+
                     if (data[0] == null) {
                         cell = IPython.notebook.get_selected_cell();
                         // if the kernel is undefined, use new one. Otherwise
                         // do not override the default one.
+                        
                         if (cell.cell_type == 'code' && !cell.metadata.kernel) {
                             cell.metadata.kernel = data[1];
-                            // this should be loaded from language css file
-                            cell.element.css('background-color', BC[data[1]]);
-                            cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[data[1]];
+                            changeStyleOnKernel(cell,data[1])                         
                         }
                         // we also set a global kernel to be used for new cells
                         window.default_kernel = data[1];
@@ -93,14 +112,13 @@ define(function() {
                         // get cell from passed cell index, which was sent through the
                         // %softwith magic
                         cell = IPython.notebook.get_cell(data[0]);
-                        // set meta information
                         cell.metadata.kernel = data[1];
-                        // this should be loaded from language css file
-                        cell.element.css('background-color', BC[data[1]]);
-                        cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[data[1]];
+                        // set meta information
+                        changeStyleOnKernel(cell,data[1])
                     }
                 });
             });
+
 
         // define SOS CodeMirror syntax highlighter
         (function(mod) {
