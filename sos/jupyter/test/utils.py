@@ -35,12 +35,6 @@ from queue import Empty
 KM = None
 KC = None
 
-try:
-    import feather
-    feather
-    with_feather = True
-except ImportError:
-    with_feather = False
 
 @contextmanager
 def sos_kernel():
