@@ -1847,5 +1847,45 @@ sos_run('step')
         os.path.isfile('tmp/tmp/a.txt')
         shutil.rmtree('tmp')
 
+    def testReexecutionOfAuxiliaryStep(self):
+        '''Test re-execution of auxiliary step if the step has been changed.'''
+        script = SoS_Script('''
+[process: provides='a.txt']
+sh:
+    echo 'a.txt' > a.txt
+
+[default]
+depends: 'a.txt'
+output: 'a.txt.bak'
+sh:
+    cp a.txt ${output}
+''')
+        wf = script.workflow()
+        #
+        Base_Executor(wf).run()
+        for f in ['a.txt', 'a.txt.bak']:
+            self.assertTrue(FileTarget(f).exists())
+            with open(f) as ifile:
+                self.assertEqual(ifile.read(), 'a.txt\n')
+        # now let us change how a.txt should be generated
+        script = SoS_Script('''
+[process: provides='a.txt']
+sh:
+    echo 'aa.txt' > a.txt
+
+[default]
+depends: 'a.txt'
+output: 'a.txt.bak'
+sh:
+    cp a.txt ${output}
+''')
+        wf = script.workflow()
+        #
+        Base_Executor(wf).run()
+        for f in ['a.txt', 'a.txt.bak']:
+            self.assertTrue(FileTarget(f).exists())
+            with open(f) as ifile:
+                self.assertEqual(ifile.read(), 'aa.txt\n')
+
 if __name__ == '__main__':
     unittest.main()
