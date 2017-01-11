@@ -466,7 +466,7 @@ class SoS_Kernel(IPythonKernel):
         elif kernel == self.kernel:
             # the same kernel, do nothing
             return
-        elif kernel == 'sos':
+        elif kernel in ('sos', 'SoS'):
             # switch from non-sos to sos kernel
             self.handle_magic_put(self.RET_VARS)
             self.RET_VARS = []
@@ -495,7 +495,7 @@ class SoS_Kernel(IPythonKernel):
             self.handle_magic_get(in_vars)
 
     def restart_kernel(self, kernel):
-        if kernel == 'sos':
+        if kernel in ('sos', 'SoS'):
             # cannot restart myself ...
             self.warn('Cannot restart sos kernel from within sos.')
         elif kernel:
@@ -946,8 +946,29 @@ class SoS_Kernel(IPythonKernel):
                 {'execution_count': self._execution_count, 'data': format_dict,
                 'metadata': md_dict})
 
+    def get_kernel_list(self):
+        from jupyter_client.kernelspec import KernelSpecManager
+        km = KernelSpecManager()
+        specs = km.find_kernel_specs()
+        # get supported languages
+        name_map = []
+        lan_map = {self.supported_languages[x].kernel_name:x for x in self.supported_languages.keys()
+                if x != self.supported_languages[x].kernel_name}
+        for spec, path in specs.items():
+            if spec == 'sos':
+                name_map.append(['sos', 'SoS', path])
+            elif spec in lan_map:
+                # e.g. ir ==> R
+                name_map.append([spec, lan_map[spec], path])
+            else:
+                name_map.append([spec, spec, path])
+        return name_map
+
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
+        if code.startswith('%listkernel'):
+            self.send_frontend_msg(self.get_kernel_list())
+            return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': -1}
         # a flag for if the kernel is hard switched (by %use)
         self.hard_switch_kernel = False
         # evaluate user expression
