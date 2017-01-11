@@ -202,8 +202,7 @@ class Base_Executor:
         except Exception as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
-            raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
-                self.workflow.global_def, e))
+            raise
 
     def skip(self, section):
         if section.global_def:
@@ -719,8 +718,7 @@ class MP_Executor(Base_Executor):
                 except RuntimeError as e:
                     if env.verbosity > 2:
                         sys.stderr.write(get_traceback())
-                    raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
-                        section.global_def, e))
+                    raise
 
                 # clear existing keys, otherwise the results from some random result
                 # might mess with the execution of another step that does not define input
