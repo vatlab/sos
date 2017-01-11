@@ -76,12 +76,11 @@ def __null_func__(*args, **kwargs):
 class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
-    def __init__(self, workflow=None, args=[], shared=[], nested=False, config={}):
+    def __init__(self, workflow=None, args=[], shared=[], config={}):
         env.__task_engine__ = None
         self.workflow = workflow
         self.args = args
         self.shared = shared
-        self.nested = nested
         self.config = config
         for key in ('config_file', 'output_dag', 'report_output'):
             if key not in self.config:
@@ -90,7 +89,7 @@ class Base_Executor:
         if env.sig_mode is None:
             env.sig_mode = 'default'
         # interactive mode does not pass workflow
-        if env.sig_mode != 'ignore' and self.workflow and not nested:
+        if env.sig_mode != 'ignore' and self.workflow and shared != '*':
             self.md5 = self.create_signature()
             # remove old workflow file.
             with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'a') as sig:
@@ -135,7 +134,7 @@ class Base_Executor:
     def reset_dict(self):
         # if creating a new dictionary, set it up with some basic varibles
         # and functions
-        if self.nested:
+        if self.shared == '*':
             #
             # if this is a nested workflow, we do not clear sos_dict because it contains all
             # the symbols from the main workflow. _base_symbols need to be defined though.
@@ -357,7 +356,7 @@ class Base_Executor:
                 context['__step_output__'] = env.sos_dict['__step_output__']
             # for regular workflow, the output of the last step has
             # to exist (existence of signature does not count)
-            if not self.nested and idx + 1 == len(self.workflow.sections):
+            if idx + 1 == len(self.workflow.sections):
                 context['__hard_target__'] = True
 
             # NOTE: if a section has option 'shared', the execution of this step would
@@ -581,8 +580,8 @@ class Base_Executor:
 class MP_Executor(Base_Executor):
     #
     # Execute a workflow sequentially in batch mode
-    def __init__(self, workflow, args=[], shared=[], nested=False, config={}):
-        Base_Executor.__init__(self, workflow, args, shared=shared, nested=nested, config=config)
+    def __init__(self, workflow, args=[], shared=[], config={}):
+        Base_Executor.__init__(self, workflow, args, shared=shared, config=config)
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
 
