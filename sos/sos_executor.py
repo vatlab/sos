@@ -249,16 +249,15 @@ class Base_Executor:
         optionally add other targets'''
         resolved = 0
         while True:
-            dangling_targets = dag.dangling(targets)
-            if not dangling_targets:
-                # if no dangling targets, means all objects COULD be produved by DAG
-                break
-            env.logger.info('Resolving {} objects from {} nodes'.format(len(dangling_targets), dag.number_of_nodes()))
+            added_node = 0
+            dangling_targets, existing_targets = dag.dangling(targets)
+            if dangling_targets:
+                env.logger.info('Resolving {} objects from {} nodes'.format(len(dangling_targets), dag.number_of_nodes()))
             # find matching steps
             # check auxiliary steps and see if any steps provides it
             for target in dangling_targets:
                 # target might no longer be dangling after a section is added.
-                if target not in dag.dangling(targets):
+                if target not in dag.dangling(targets)[0]:
                     continue
                 mo = [(x, self.match(target, x.options['provides'])) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
@@ -311,9 +310,67 @@ class Base_Executor:
                     short_repr(env.sos_dict['__default_output__'])), None, res['step_input'],
                     res['step_depends'], res['step_output'], 
                     res['step_local_input'], res['step_local_output'], context=context)
+                added_node += 1
                 resolved += 1
-        return resolved
 
+            # for existing targets... we should check if still need to be regenerated
+            for target in existing_targets:
+                mo = [(x, self.match(target, x.options['provides'])) for x in self.workflow.auxiliary_sections]
+                mo = [x for x in mo if x[1] is not False]
+                if not mo:
+                    # this is ok, this is just an existing target, no one is designed to 
+                    # generate it.
+                    continue
+                if len(mo) > 1:
+                    # this is not ok.
+                    raise RuntimeError('Multiple steps {} to generate target {}'.format(', '.join(x[0].step_name() for x in mo), target))
+                #
+                # only one step, we need to process it # execute section with specified input
+                #
+                section = mo[0][0]
+                if isinstance(mo[0][1], dict):
+                    for k,v in mo[0][1].items():
+                        env.sos_dict.set(k, v[0])
+                #
+                # for auxiliary, we need to set input and output, here
+                # now, if the step does not provide any alternative (e.g. no variable generated
+                # from patten), we should specify all output as output of step. Otherwise the
+                # step will be created for multiple outputs. issue #243
+                if mo[0][1]:
+                    env.sos_dict['__default_output__'] = [target]
+                elif isinstance(section.options['provides'], Sequence):
+                    env.sos_dict['__default_output__'] = section.options['provides']
+                else:
+                    env.sos_dict['__default_output__'] = [section.options['provides']]
+                # will become input, set to None
+                env.sos_dict['__step_output__'] = None
+                #
+                res = analyze_section(section)
+                #
+                # build DAG with input and output files of step
+                env.logger.info('Adding step {} with output {}'.format(res['step_name'], target))
+                if isinstance(mo[0][1], dict):
+                    context = mo[0][1]
+                else:
+                    context = {}
+                context['__signature_vars__'] = res['signature_vars']
+                context['__environ_vars__'] = res['environ_vars']
+                context['__changed_vars__'] = res['changed_vars']
+                context['__default_output__'] = env.sos_dict['__default_output__']
+                # NOTE: If a step is called multiple times with different targets, it is much better
+                # to use different names because pydotplus can be very slow in handling graphs with nodes
+                # with identical names.
+                dag.add_step(section.uuid, '{} {}'.format(section.step_name(),
+                    short_repr(env.sos_dict['__default_output__'])), None, res['step_input'],
+                    res['step_depends'], res['step_output'], 
+                    res['step_local_input'], res['step_local_output'], context=context)
+                #
+                added_node += 1
+                # this case do not count as resolved
+                # resolved += 1
+            if added_node == 0:
+                break
+        return resolved
 
     def initialize_dag(self, targets=None):
         '''Create a DAG by analyzing sections statically.'''
