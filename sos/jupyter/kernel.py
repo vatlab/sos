@@ -402,13 +402,19 @@ class SoS_Kernel(IPythonKernel):
                 {'name': 'stderr', 'text': message})
 
     def get_magic_and_code(self, code, warn_remaining=False):
-        lines = code.split('\n')
+        if code.startswith('%') or code.startswith('!'):
+            lines = re.split(r'(?<!\\)\n', code, 1)
+            # remove lines joint by \
+            lines[0] = lines[0].replace('\\\n', '')
+        else:
+            lines[0] = code.split('\n', 1)
+
         pieces = lines[0].strip().split(None, 1)
         if len(pieces) == 2:
             command_line = pieces[1]
         else:
             command_line = ''
-        remaining_code = '\n'.join(lines[1:])
+        remaining_code = lines[1] if len(lines) > 1 else ''
         if warn_remaining and remaining_code.strip():
             self.warn('Statement {} ignored'.format(short_repr(remaining_code)))
         return command_line, remaining_code
