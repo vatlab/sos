@@ -45,6 +45,9 @@ define(function() {
                 }
             }
         }
+        // ask the kernel available list of languages
+        IPython.notebook.kernel.execute('%listkernel', {}, {})
+
         // override kernel execute with the wrapper.
         IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute
         IPython.notebook.kernel.execute = my_execute
@@ -99,7 +102,16 @@ define(function() {
 
                     data = msg.content.data;
                     console.log(data)
-
+                    // when the notebook starts it should receive a message in the format of
+                    // a nested array of elements such as
+                    //
+                    // "ir", "R", "/Users/bpeng1/Library/Jupyter/kernels/ir"
+                    //
+                    // NOTE: the user might use name ir or R (both acceptable) but
+                    // the frontend should only display displayed name, and send the
+                    // real kernel name back to kernel (%softwith and metadata).
+                    // I suppose a map of names should be created in the frontend.
+                    //
                     if (data[0] == null) {
                         cell = IPython.notebook.get_selected_cell();
                         // if the kernel is undefined, use new one. Otherwise
