@@ -33,7 +33,6 @@ import pydoc
 from ipykernel.ipkernel import IPythonKernel
 
 
-import pickle
 from types import ModuleType
 from sos.utils import env, WorkflowDict, short_repr, pretty_size
 from sos._version import __sos_version__, __version__
@@ -403,13 +402,19 @@ class SoS_Kernel(IPythonKernel):
                 {'name': 'stderr', 'text': message})
 
     def get_magic_and_code(self, code, warn_remaining=False):
-        lines = code.split('\n')
+        if code.startswith('%') or code.startswith('!'):
+            lines = re.split(r'(?<!\\)\n', code, 1)
+            # remove lines joint by \
+            lines[0] = lines[0].replace('\\\n', '')
+        else:
+            lines[0] = code.split('\n', 1)
+
         pieces = lines[0].strip().split(None, 1)
         if len(pieces) == 2:
             command_line = pieces[1]
         else:
             command_line = ''
-        remaining_code = '\n'.join(lines[1:])
+        remaining_code = lines[1] if len(lines) > 1 else ''
         if warn_remaining and remaining_code.strip():
             self.warn('Statement {} ignored'.format(short_repr(remaining_code)))
         return command_line, remaining_code
@@ -461,7 +466,7 @@ class SoS_Kernel(IPythonKernel):
         elif kernel == self.kernel:
             # the same kernel, do nothing
             return
-        elif kernel == 'sos':
+        elif kernel in ('sos', 'SoS'):
             # switch from non-sos to sos kernel
             self.handle_magic_put(self.RET_VARS)
             self.RET_VARS = []
@@ -474,8 +479,8 @@ class SoS_Kernel(IPythonKernel):
             if kernel not in self.kernels:
                 # start a new kernel
                 try:
-                    self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60,
-                        kernel_name=self.supported_languages[kernel].kernel_name if kernel in self.supported_languages else kernel)
+                    kernel_name=self.supported_languages[kernel].kernel_name if kernel in self.supported_languages else kernel
+                    self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel_name)
                 except Exception as e:
                     self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e))
                     return
@@ -490,7 +495,7 @@ class SoS_Kernel(IPythonKernel):
             self.handle_magic_get(in_vars)
 
     def restart_kernel(self, kernel):
-        if kernel == 'sos':
+        if kernel in ('sos', 'SoS'):
             # cannot restart myself ...
             self.warn('Cannot restart sos kernel from within sos.')
         elif kernel:
@@ -614,13 +619,9 @@ class SoS_Kernel(IPythonKernel):
             if item not in env.sos_dict:
                 self.warn('Variable {} does not exist'.format(item))
                 return
-        if self.kernel.startswith('python'):
-            # if it is a python kernel, passing specified SoS variables to it
-            sos_data = pickle.dumps({x:env.sos_dict[x] for x in items})
-            # this can fail if the underlying python kernel is python 2
-            self.KC.execute("import pickle\nglobals().update(pickle.loads({!r}))".format(sos_data),
-                silent=True, store_history=False)
-        elif self.kernel in self.supported_languages:
+        if not items:
+            return
+        if self.kernel in self.supported_languages:
             lan = self.supported_languages[self.kernel]
             try:
                 statements = []
@@ -679,22 +680,7 @@ class SoS_Kernel(IPythonKernel):
         if not items:
             # we do not simply return because we need to return default variables (with name startswith sos
             items = []
-        if self.kernel.startswith('python'):
-            # if it is a python kernel, passing specified SoS variables to it
-            default_items = [x for x in env.sos_dict.keys() if x.startswith('sos') and x not in self.original_keys]
-            response = self.get_response('import pickle\npickle.dumps({{ {} }})'.format(','.join('"{0}":{0}'.format(x) for x in items + default_items)),
-                ['execute_result'])
-            try:
-                env.sos_dict.update(
-                    pickle.loads(eval(response['data']['text/plain']))
-                    )
-            except Exception as e:
-                self.warn('Failed to put variable {}: {}\n'.format(', '.join(items), e))
-            # verify
-            for item in items:
-                if not item in env.sos_dict:
-                    self.warn('Failed to put variable {} to SoS namespace\n'.format(item))
-        elif self.kernel in self.supported_languages:
+        if self.kernel in self.supported_languages:
             lan = self.supported_languages[self.kernel]
             objects = lan.lan_to_sos(items)
             if not isinstance(objects, dict):
@@ -960,8 +946,31 @@ class SoS_Kernel(IPythonKernel):
                 {'execution_count': self._execution_count, 'data': format_dict,
                 'metadata': md_dict})
 
+    def get_kernel_list(self):
+        from jupyter_client.kernelspec import KernelSpecManager
+        km = KernelSpecManager()
+        specs = km.find_kernel_specs()
+        # get supported languages
+        name_map = []
+        lan_map = {self.supported_languages[x].kernel_name:(x, self.supported_languages[x].background_color) for x in self.supported_languages.keys()
+                if x != self.supported_languages[x].kernel_name}
+        for spec in specs.keys():
+            if spec == 'sos':
+                # the SoS kernel will be default theme color.
+                name_map.append(['sos', 'SoS', ''])
+            elif spec in lan_map:
+                # e.g. ir ==> R
+                name_map.append([spec, lan_map[spec][0], lan_map[spec][1]])
+            else:
+                # undefined language also use default theme color
+                name_map.append([spec, spec, ''])
+        return name_map
+
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
+        if code.startswith('%listkernel'):
+            self.send_frontend_msg(self.get_kernel_list())
+            return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': -1}
         # a flag for if the kernel is hard switched (by %use)
         self.hard_switch_kernel = False
         # evaluate user expression

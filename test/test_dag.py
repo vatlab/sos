@@ -369,17 +369,35 @@ input: 'a.txt'
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
         dag = Base_Executor(wf).initialize_dag()
+        #
+        # Ticket 363:
+        # 
+        # we have two possibilities here, one is to ignore a.txt,
+        # and one is to regenerate a.txt because it is not generated
+        # by sos (without signature)        #
+        #
         #dag.write_dot('a.dot')
         #dag.show_nodes()
-        self.assertDAG(dag,
-'''
-strict digraph "" {
+#        self.assertDAG(dag,
+#'''
+#strict digraph "" {
+#"K ['b.txt']";
+#C_3;
+#C_2;
+#"K ['b.txt']" -> C_2;
+#}
+#''')
+        self.assertDAG(dag, '''
+        strict digraph "" {
+"K ['a.txt']";
 "K ['b.txt']";
-C_3;
 C_2;
+C_3;
+"K ['a.txt']" -> C_3;
 "K ['b.txt']" -> C_2;
 }
 ''')
+
 
     def testCycle(self):
         '''Test cycle detection of DAG'''

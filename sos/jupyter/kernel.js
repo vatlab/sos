@@ -23,85 +23,11 @@
 define(['jquery',
         ],function($) {
 
-
-            // (function (IPython) {
-                "use strict";
-                 var BC = {
-                    'sos': '#FFFFFF',
-                    'R': '#FFE4C4',
-                    'python': '#FFCCFF'
-                }
-
-
-                var load_css = function () {
-                    var css = document.createElement("style");
-                    css.type = "text/css";
-                    css.innerHTML = '.celltoolbar {width:10%;background:none;border:none;border-bottom:none;z-index: 1000;position:relative;margin-bottom:-50pt;float:right;}';
-                    document.body.appendChild(css);
-                };
-
-                load_css();
-
-                var CellToolbar = IPython.CellToolbar;
-                var slideshow_preset = [];
-
-                var select_type = CellToolbar.utils.select_ui_generator([
-                        ["sos"        ,"sos"        ],
-                        ["R"    ,"R"     ],
-                        ["python"     ,"python"     ],
-                        ],
-                        // setter
-                        function(cell, value){
-                            // we check that the slideshow namespace exist and create it if needed
-                            if (cell.metadata.kernel == undefined){cell.metadata.kernel = {}}
-                                cell.metadata.kernel = value
-                                cell.element.css('background-color', BC[value]);
-                                cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[value];
-                            },
-                        //geter
-                        function(cell){ var ns = cell.metadata.kernel;
-                            return (ns == undefined)? undefined: ns.kernel
-                            },
-                        "");
-
-                CellToolbar.register_callback('slideshow.select',select_type);
-                slideshow_preset.push('slideshow.select');
-                var reveal_preset = slideshow_preset.slice();
-                CellToolbar.register_preset('Select cell kernel',reveal_preset);
-                console.log('Select cell kernel loaded.');
-                CellToolbar.global_show();
-                CellToolbar.activate_preset('Select cell kernel');
-
-
-                var dropdown = $("<select></select>").attr("id", "kernel_selector")
-                                             .css("margin-left", "0.75em")
-                                             .attr("class", "form-control select-xs")
-                                             // .change(select_kernel);
-                Jupyter.toolbar.element.append(dropdown);
-                $.each(["sos","R","python"], function(key,value) {   
-                             $('#kernel_selector')
-                                 .append($("<option></option>")
-                                            .attr("value",value)
-                                            .text(value)); 
-                        });
-
-                $('#kernel_selector').change(function(){
-                    var kernel_type = $("#kernel_selector").val();
-                    // var cell = IPython.notebook.get_selected_cell();
-                    // var cells = IPython.notebook.get_cells();
-                    // var cell = cells[cells.length-1]
-                    // cell.metadata.kernel=kernel_type
-                    // changeStyleOnCellKernel(cell,kernel_type)
-                    // console.log(cell.metadata.kernel)
-                    window.default_kernel=kernel_type
-                });
-
-
-
-                 
-            // }(IPython));
-
-
+    "use strict";
+    var BC={}
+    var ND={}
+    var DP=[]
+    window.default_kernel = 'sos'
 
 
     var onload = function() {
@@ -128,56 +54,49 @@ define(['jquery',
                 }
             }
         }
+        // ask the kernel available list of languages
+        IPython.notebook.kernel.execute('%listkernel', {}, {})
+
         // override kernel execute with the wrapper.
         IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute
         IPython.notebook.kernel.execute = my_execute
 
-        // this should be loaded somewhere. amd there would be something like
-        // BC.get_default ... to get a default color for kernel not listed.
-        BC = {
-            'sos': '#FFFFFF',
-            'R': '#FFE4C4',
-            'python': '#FFCCFF'
-        }
+		window.default_kernel = 'sos'
 
-        function changeStyleOnKernel(cell,type){          
-            // this should be loaded from language css file
-            cell.element.css('background-color', BC[type]);
-            cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[type];
+        function changeStyleOnKernel(cell,type){     
+            if (BC[type]) {
+                cell.element.css('background-color', BC[type]);
+                cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[type];
+            }     
+
             $('#kernel_selector').val(type)
             var sel = cell.element[0].getElementsByTagName('select')[0]
             var opts = sel.options;
+            console.log(type)
             console.log(opts)
             for(var opt, j = 0; opt = opts[j]; j++) {
-                if(opt.value == type) {
+                if(opt.value == ND[type]) {
                     sel.selectedIndex = j;
                     break;
                 }
-            }
+            }        
         }
-
-        // update the cells when the notebook is being opened.
-        var cells = IPython.notebook.get_cells();
-        window.default_kernel = 'sos'
-        if (cells.length==1 && cells[0].cell_type=='code' && typeof cells[0].metadata.kernel==='undefined'){
-            cells[0].metadata.kernel=window.default_kernel;
-        }
-        console.log(cells);
-
-        for (var i in cells) {
-            if (cells[i].cell_type == 'code') {
-                // cells[i].element.css('background-color', BC[cells[i].metadata.kernel]);
-                // cells[i].element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[cells[i].metadata.kernel];
-                changeStyleOnKernel(cells[i],cells[i].metadata.kernel);
-            }
-        }
-       
-
+            
         // comm message sent from the kernel
         Jupyter.notebook.kernel.comm_manager.register_target('sos_comm',
             function(comm, msg) {
                 comm.on_msg(function(msg) {
-                    // there are two kinds of messages
+                     // when the notebook starts it should receive a message in the format of
+                    // a nested array of elements such as
+                    //
+                    // "ir", "R", "#ABCDEF"
+                    //
+                    // where are kernel name (jupyter kernel), displayed name (SoS), and background
+                    // color assigned by the language module. The user might use name ir or R (both
+                    // acceptable) but the frontend should only display displayed name, and send
+                    // the real kernel name back to kernel (%softwith and metadata).
+                    //
+                    // there are two kinds of messages from my_execute
                     // 1. cell_idx: kernel
                     //     the kernel used for the cell with source
                     // 2. None: kernel
@@ -186,29 +105,121 @@ define(['jquery',
                     var data = msg.content.data;
                     console.log(data)
 
-                    if (data[0] == null) {
-                        var cell = IPython.notebook.get_selected_cell();
-                        // if the kernel is undefined, use new one. Otherwise
-                        // do not override the default one.
-                        
-                        if (cell.cell_type == 'code' && !cell.metadata.kernel) {
-                            cell.metadata.kernel = data[1];
-
-                            changeStyleOnKernel(cell,data[1])                         
+              
+					if (data[0] instanceof Array) {
+                        for (var i=0;i<data.length;i++){
+                            BC[data[i][0]]=data[i][2]
+                            BC[data[i][1]]=data[i][2]
+                            ND[data[i][0]]=data[i][1]
+                            DP.push([data[i][1],data[i][1]])
                         }
-                        // we also set a global kernel to be used for new cells
-                        window.default_kernel = data[1];
-                    } else {
-                        // get cell from passed cell index, which was sent through the
-                        // %softwith magic
-                        cell = IPython.notebook.get_cell(data[0]);
+                        //add dropdown menu of kernels in frontend
+                        load_select_kernel();
 
-                        cell.metadata.kernel = data[1];
-                        // set meta information
-                        changeStyleOnKernel(cell,data[1])
+                        var cells = IPython.notebook.get_cells();
+                        if (cells.length==1 && cells[0].cell_type=='code' && typeof cells[0].metadata.kernel==='undefined'){
+                            cells[0].metadata.kernel=window.default_kernel;
+                        }
+                        console.log(cells);
+
+                        for (var i in cells) {
+                            if (cells[i].cell_type == 'code') {
+                                // cells[i].element.css('background-color', BC[cells[i].metadata.kernel]);
+                                // cells[i].element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[cells[i].metadata.kernel];
+                                changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
+                            }
+                        }		
+                    }else{   
+						// update the cells when the notebook is being opened.
+    	
+
+    					if (data[0] == null) {
+                            var cell = IPython.notebook.get_selected_cell();
+                            // if the kernel is undefined, use new one. Otherwise
+                            // do not override the default one.
+                            
+                            if (cell.cell_type == 'code' && !cell.metadata.kernel) {
+                                cell.metadata.kernel = data[1];
+                                changeStyleOnKernel(cell,data[1])                         
+                            }
+                            // we also set a global kernel to be used for new cells
+                            window.default_kernel = data[1];
+                        } else {
+                            // get cell from passed cell index, which was sent through the
+                            // %softwith magic
+                            cell = IPython.notebook.get_cell(data[0]);
+
+                            cell.metadata.kernel = data[1];
+                            // set meta information
+                            changeStyleOnKernel(cell,data[1])
+                        }
                     }
                 });
             });
+
+       
+        function load_select_kernel(){
+             //change css for CellToolBar
+            var load_css = function () {
+                var css = document.createElement("style");
+                css.type = "text/css";
+                css.innerHTML = '.celltoolbar {width:10%;background:none;border:none;border-bottom:none;z-index: 1000;position:relative;margin-bottom:-50pt;float:right;}';
+                document.body.appendChild(css);
+            };
+
+            load_css();
+
+            var CellToolbar = IPython.CellToolbar;
+            var slideshow_preset = [];
+            console.log(DP)
+            var select_type = CellToolbar.utils.select_ui_generator(
+                    DP,
+                    // setter
+                    function(cell, value){
+                        // we check that the slideshow namespace exist and create it if needed
+                        if (cell.metadata.kernel == undefined){cell.metadata.kernel = {}}
+                            cell.metadata.kernel = value
+                            cell.element.css('background-color', BC[value]);
+                            cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[value];
+                        },
+                    //geter
+                    function(cell){ var ns = cell.metadata.kernel;
+                        return (ns == undefined)? undefined: ns.kernel
+                        },
+                    "");
+
+            CellToolbar.register_callback('slideshow.select',select_type);
+            slideshow_preset.push('slideshow.select');
+            var reveal_preset = slideshow_preset.slice();
+            CellToolbar.register_preset('Select cell kernel',reveal_preset);
+            console.log('Select cell kernel loaded.');
+            CellToolbar.global_show();
+            CellToolbar.activate_preset('Select cell kernel');
+
+
+            var dropdown = $("<select></select>").attr("id", "kernel_selector")
+                                         .css("margin-left", "0.75em")
+                                         .attr("class", "form-control select-xs")
+                                         // .change(select_kernel);
+            Jupyter.toolbar.element.append(dropdown);
+            $.each(DP, function(key,value) {   
+                         $('#kernel_selector')
+                             .append($("<option></option>")
+                                        .attr("value",value[0])
+                                        .text(value[0])); 
+                    });
+
+            $('#kernel_selector').change(function(){
+                var kernel_type = $("#kernel_selector").val();
+                // var cell = IPython.notebook.get_selected_cell();
+                // var cells = IPython.notebook.get_cells();
+                // var cell = cells[cells.length-1]
+                // cell.metadata.kernel=kernel_type
+                // changeStyleOnCellKernel(cell,kernel_type)
+                // console.log(cell.metadata.kernel)
+                window.default_kernel=kernel_type
+            });
+        }
 
 
         // define SOS CodeMirror syntax highlighter
