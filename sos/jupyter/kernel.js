@@ -55,18 +55,14 @@ define(function() {
         // this should be loaded somewhere. amd there would be something like
         // BC.get_default ... to get a default color for kernel not listed.
         BC = {
-            'sos': '#FFFFFF',
-            'R': '#FDEDEC',
-            'ir': '#FDEDEC',
-            'python': '#EAFAF1',
-            'python3': '#EAFAF1',
-            'Python': '#EAFAF1'
         }
 
         function changeStyleOnKernel(cell,type){          
-            // this should be loaded from language css file
-            cell.element.css('background-color', BC[type]);
-            cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[type];
+            // if type is defined in BC
+			if (BC[type]) {
+	            cell.element.css('background-color', BC[type]);
+		        cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[type];
+			}
             var original_text=cell.element[0].getElementsByClassName("input_prompt")[0].textContent;
             original_text=original_text.replace("In","");
             cell.element[0].getElementsByClassName("input_prompt")[0].textContent=type+original_text;
@@ -74,22 +70,7 @@ define(function() {
             console.log(cell.element[0].getElementsByClassName("input_prompt")[0].textContent)
         }
 
-        // update the cells when the notebook is being opened.
-        var cells = IPython.notebook.get_cells();
-        window.default_kernel = 'sos'
-        if (cells.length==1 && cells[0].cell_type=='code' && typeof cells[0].metadata.kernel==='undefined'){
-            cells[0].metadata.kernel=window.default_kernel;
-        }
-        console.log(cells);
-
-        for (var i in cells) {
-            if (cells[i].cell_type == 'code') {
-                // cells[i].element.css('background-color', BC[cells[i].metadata.kernel]);
-                // cells[i].element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[cells[i].metadata.kernel];
-                changeStyleOnKernel(cells[i],cells[i].metadata.kernel);
-            }
-        }
-       
+   
         // comm message sent from the kernel
         Jupyter.notebook.kernel.comm_manager.register_target('sos_comm',
             function(comm, msg) {
@@ -105,14 +86,32 @@ define(function() {
                     // when the notebook starts it should receive a message in the format of
                     // a nested array of elements such as
                     //
-                    // "ir", "R", "/Users/bpeng1/Library/Jupyter/kernels/ir"
+                    // "ir", "R", "#ABCDEF"
                     //
-                    // NOTE: the user might use name ir or R (both acceptable) but
-                    // the frontend should only display displayed name, and send the
-                    // real kernel name back to kernel (%softwith and metadata).
-                    // I suppose a map of names should be created in the frontend.
-                    //
-                    if (data[0] == null) {
+					// where are kernel name (jupyter kernel), displayed name (SoS), and background
+					// color assigned by the language module. The user might use name ir or R (both
+					// acceptable) but the frontend should only display displayed name, and send
+					// the real kernel name back to kernel (%softwith and metadata).
+					if (data[0].constructor === Array) {
+						// TODO: Fill BC with color information.
+						//
+						// update the cells when the notebook is being opened.
+						var cells = IPython.notebook.get_cells();
+						window.default_kernel = 'sos'
+						if (cells.length==1 && cells[0].cell_type=='code' && typeof cells[0].metadata.kernel==='undefined'){
+							cells[0].metadata.kernel=window.default_kernel;
+						}
+						console.log(cells);
+
+						for (var i in cells) {
+							if (cells[i].cell_type == 'code') {
+								// cells[i].element.css('background-color', BC[cells[i].metadata.kernel]);
+								// cells[i].element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[cells[i].metadata.kernel];
+								changeStyleOnKernel(cells[i],cells[i].metadata.kernel);
+							}
+						}
+
+					} else if (data[0] == null) {
                         cell = IPython.notebook.get_selected_cell();
                         // if the kernel is undefined, use new one. Otherwise
                         // do not override the default one.

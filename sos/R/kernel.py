@@ -207,6 +207,7 @@ class sos_R:
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
         self.kernel_name = 'ir'
+        self.background_color = '#FDEDEC'
         self.init_statements = R_init_statements
 
     def sos_to_lan(self, name, obj):
