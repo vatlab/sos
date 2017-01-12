@@ -55,7 +55,14 @@ define(function() {
         // this should be loaded somewhere. amd there would be something like
         // BC.get_default ... to get a default color for kernel not listed.
         BC = {
+            'sos': '#FFFFFF',
+            'R': '#FDEDEC',
+            'ir': '#FDEDEC',
+            'python': '#EAFAF1',
+            'python3': '#EAFAF1',
+            'Python': '#EAFAF1'
         }
+		window.default_kernel = 'sos'
 
         function changeStyleOnKernel(cell,type){          
             // if type is defined in BC
@@ -63,11 +70,13 @@ define(function() {
 	            cell.element.css('background-color', BC[type]);
 		        cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[type];
 			}
+			/*
             var original_text=cell.element[0].getElementsByClassName("input_prompt")[0].textContent;
             original_text=original_text.replace("In","");
             cell.element[0].getElementsByClassName("input_prompt")[0].textContent=type+original_text;
             console.log(type+original_text);
             console.log(cell.element[0].getElementsByClassName("input_prompt")[0].textContent)
+			*/
         }
 
    
@@ -92,12 +101,11 @@ define(function() {
 					// color assigned by the language module. The user might use name ir or R (both
 					// acceptable) but the frontend should only display displayed name, and send
 					// the real kernel name back to kernel (%softwith and metadata).
-					if (data[0].constructor === Array) {
+					if (data[0] instanceof Array) {
 						// TODO: Fill BC with color information.
 						//
 						// update the cells when the notebook is being opened.
 						var cells = IPython.notebook.get_cells();
-						window.default_kernel = 'sos'
 						if (cells.length==1 && cells[0].cell_type=='code' && typeof cells[0].metadata.kernel==='undefined'){
 							cells[0].metadata.kernel=window.default_kernel;
 						}
@@ -107,7 +115,7 @@ define(function() {
 							if (cells[i].cell_type == 'code') {
 								// cells[i].element.css('background-color', BC[cells[i].metadata.kernel]);
 								// cells[i].element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[cells[i].metadata.kernel];
-								changeStyleOnKernel(cells[i],cells[i].metadata.kernel);
+								changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
 							}
 						}
 
