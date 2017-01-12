@@ -460,13 +460,15 @@ class SoS_Kernel(IPythonKernel):
 
     def switch_kernel(self, kernel, in_vars=[], ret_vars=[]):
         # switching to a non-sos kernel
+        if kernel == 'SoS':
+            kernel = 'sos'
         if not kernel:
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': 'Kernel "{}" is used.\n'.format(self.kernel)})
         elif kernel == self.kernel:
             # the same kernel, do nothing
             return
-        elif kernel in ('sos', 'SoS'):
+        elif kernel  == 'sos':
             # switch from non-sos to sos kernel
             self.handle_magic_put(self.RET_VARS)
             self.RET_VARS = []
