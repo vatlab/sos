@@ -1887,5 +1887,21 @@ sh:
             with open(f) as ifile:
                 self.assertEqual(ifile.read(), 'aa.txt\n')
 
+    def testConfigFileOfNestedWorkflow(self):
+        '''Test passing of configurationg to nested workflow'''
+        script = SoS_Script('''
+[test_1]
+parameter: key = None
+print(CONFIG[key])
+
+[default_1]
+print(CONFIG)
+sos_run('test:1', key = '1')
+    ''')
+        with open('test.conf', 'w') as conf:
+            conf.write("""{'1':'hi'}""")
+        wf = script.workflow()
+        Base_Executor(wf, config={'config_file': 'test.conf'}).run()
+
 if __name__ == '__main__':
     unittest.main()

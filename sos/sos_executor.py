@@ -158,37 +158,35 @@ class Base_Executor:
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__step_output__', [])
 
-        for key in self.shared:
-            if key in old_dict:
-                env.sos_dict.set(key, old_dict[key])
         # load configuration files
-        cfg = {}
-        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
-        if os.path.isfile(sos_config_file):
-            try:
-                with open(sos_config_file) as config:
-                    cfg = yaml.safe_load(config)
-            except Exception as e:
-                raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-        # local config file
-        sos_config_file = 'config.yml'
-        if os.path.isfile(sos_config_file):
-            try:
-                with open(sos_config_file) as config:
-                    dict_merge(cfg, yaml.safe_load(config))
-            except Exception as e:
-                raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-        # user-specified configuration file.
-        if self.config['config_file'] is not None:
-            if not os.path.isfile(self.config['config_file']):
-                raise RuntimeError('Config file {} not found'.format(self.config['config_file']))
-            try:
-                with open(self.config['config_file']) as config:
-                    dict_merge(cfg, yaml.safe_load(config))
-            except Exception as e:
-                raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config['config_file'], e))
-        # set config to CONFIG
-        env.sos_dict.set('CONFIG', frozendict(cfg))
+        if 'CONFIG' not in self.shared:
+            cfg = {}
+            sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
+            if os.path.isfile(sos_config_file):
+                try:
+                    with open(sos_config_file) as config:
+                        cfg = yaml.safe_load(config)
+                except Exception as e:
+                    raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+            # local config file
+            sos_config_file = 'config.yml'
+            if os.path.isfile(sos_config_file):
+                try:
+                    with open(sos_config_file) as config:
+                        dict_merge(cfg, yaml.safe_load(config))
+                except Exception as e:
+                    raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+            # user-specified configuration file.
+            if self.config['config_file'] is not None:
+                if not os.path.isfile(self.config['config_file']):
+                    raise RuntimeError('Config file {} not found'.format(self.config['config_file']))
+                try:
+                    with open(self.config['config_file']) as config:
+                        dict_merge(cfg, yaml.safe_load(config))
+                except Exception as e:
+                    raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config['config_file'], e))
+            # set config to CONFIG
+            env.sos_dict.set('CONFIG', frozendict(cfg))
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
@@ -202,6 +200,10 @@ class Base_Executor:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             raise
+
+        for key in self.shared:
+            if key in old_dict:
+                env.sos_dict.set(key, old_dict[key])
 
     def skip(self, section):
         if section.global_def:
@@ -623,7 +625,8 @@ class Base_Executor:
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
         #
         if queue:
-            queue.put({x: env.sos_dict[x] for x in self.shared if x in env.sos_dict})
+            # the CONFIG object is difficult to pickle because of its readonly property
+            queue.put({x: dict(env.sos_dict[x]) if x == 'CONFIG' else env.sos_dict[x] for x in self.shared if x in env.sos_dict})
 
     def dryrun(self, queue=None, targets=None):
         '''Execute the script in dryrun mode.'''
@@ -816,4 +819,5 @@ class MP_Executor(Base_Executor):
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
         if queue:
-            queue.put({x: env.sos_dict[x] for x in self.shared if x in env.sos_dict})
+            # the CONFIG object is difficult to pickle because of its readonly property
+            queue.put({x: dict(env.sos_dict[x]) if x == 'CONFIG' else env.sos_dict[x] for x in self.shared if x in env.sos_dict})
