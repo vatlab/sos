@@ -61,11 +61,16 @@ define(function() {
             // this should be loaded from language css file
             cell.element.css('background-color', BC[type]);
             cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[type];
-            var original_text=cell.element[0].getElementsByClassName("input_prompt")[0].textContent;
-            original_text=original_text.replace("In","");
-            cell.element[0].getElementsByClassName("input_prompt")[0].textContent=type+original_text;
-            console.log(type+original_text);
-            console.log(cell.element[0].getElementsByClassName("input_prompt")[0].textContent)
+            $('#kernel_selector').val(type)
+            var sel = cell.element[0].getElementsByTagName('select')[0]
+            var opts = sel.options;
+            console.log(opts)
+            for(var opt, j = 0; opt = opts[j]; j++) {
+                if(opt.value == type) {
+                    sel.selectedIndex = j;
+                    break;
+                }
+            }
         }
 
         // update the cells when the notebook is being opened.
@@ -84,6 +89,7 @@ define(function() {
             }
         }
        
+
         // comm message sent from the kernel
         Jupyter.notebook.kernel.comm_manager.register_target('sos_comm',
             function(comm, msg) {
@@ -104,6 +110,7 @@ define(function() {
                         
                         if (cell.cell_type == 'code' && !cell.metadata.kernel) {
                             cell.metadata.kernel = data[1];
+
                             changeStyleOnKernel(cell,data[1])                         
                         }
                         // we also set a global kernel to be used for new cells
@@ -112,6 +119,7 @@ define(function() {
                         // get cell from passed cell index, which was sent through the
                         // %softwith magic
                         cell = IPython.notebook.get_cell(data[0]);
+
                         cell.metadata.kernel = data[1];
                         // set meta information
                         changeStyleOnKernel(cell,data[1])
