@@ -952,16 +952,18 @@ class SoS_Kernel(IPythonKernel):
         specs = km.find_kernel_specs()
         # get supported languages
         name_map = []
-        lan_map = {self.supported_languages[x].kernel_name:x for x in self.supported_languages.keys()
+        lan_map = {self.supported_languages[x].kernel_name:(x, self.supported_languages[x].background_color) for x in self.supported_languages.keys()
                 if x != self.supported_languages[x].kernel_name}
-        for spec, path in specs.items():
+        for spec in specs.keys():
             if spec == 'sos':
-                name_map.append(['sos', 'SoS', path])
+                # the SoS kernel will be default theme color.
+                name_map.append(['sos', 'SoS', ''])
             elif spec in lan_map:
                 # e.g. ir ==> R
-                name_map.append([spec, lan_map[spec], path])
+                name_map.append([spec, lan_map[spec][0], lan_map[spec][1]])
             else:
-                name_map.append([spec, spec, path])
+                # undefined language also use default theme color
+                name_map.append([spec, spec, ''])
         return name_map
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,

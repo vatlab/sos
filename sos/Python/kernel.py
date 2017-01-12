@@ -27,6 +27,7 @@ class sos_Python:
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
         self.kernel_name = 'python3'
+        self.background_color = '#EAFAF1'
         self.init_statements = ''
 
     def sos_to_lan(self, name, obj):
