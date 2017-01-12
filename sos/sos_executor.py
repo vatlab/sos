@@ -33,7 +33,7 @@ from ._version import __version__
 from .sos_step import Dryrun_Step_Executor, SP_Step_Executor, MP_Step_Executor, \
     analyze_section
 from .utils import env, Error, WorkflowDict, get_traceback, ProgressBar, frozendict, dict_merge, short_repr
-from .sos_eval import SoS_exec
+from .sos_eval import SoS_exec, get_default_global_sigil
 from .sos_syntax import SOS_KEYWORDS
 from .dag import SoS_DAG
 from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5
@@ -76,12 +76,11 @@ def __null_func__(*args, **kwargs):
 class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
-    def __init__(self, workflow=None, args=[], shared=[], nested=False, config={}):
+    def __init__(self, workflow=None, args=[], shared=[], config={}):
         env.__task_engine__ = None
         self.workflow = workflow
         self.args = args
         self.shared = shared
-        self.nested = nested
         self.config = config
         for key in ('config_file', 'output_dag', 'report_output'):
             if key not in self.config:
@@ -90,7 +89,7 @@ class Base_Executor:
         if env.sig_mode is None:
             env.sig_mode = 'default'
         # interactive mode does not pass workflow
-        if env.sig_mode != 'ignore' and self.workflow and not nested:
+        if env.sig_mode != 'ignore' and self.workflow and shared != '*':
             self.md5 = self.create_signature()
             # remove old workflow file.
             with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'a') as sig:
@@ -135,7 +134,7 @@ class Base_Executor:
     def reset_dict(self):
         # if creating a new dictionary, set it up with some basic varibles
         # and functions
-        if self.nested:
+        if self.shared == '*':
             #
             # if this is a nested workflow, we do not clear sos_dict because it contains all
             # the symbols from the main workflow. _base_symbols need to be defined though.
@@ -196,6 +195,14 @@ class Base_Executor:
         self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
         self._base_symbols -= {'dynamic'}
 
+        # excute global definition to get some basic setup
+        try:
+            SoS_exec(self.workflow.global_def, get_default_global_sigil())
+        except Exception as e:
+            if env.verbosity > 2:
+                sys.stderr.write(get_traceback())
+            raise
+
     def skip(self, section):
         if section.global_def:
             try:
@@ -242,16 +249,15 @@ class Base_Executor:
         optionally add other targets'''
         resolved = 0
         while True:
-            dangling_targets = dag.dangling(targets)
-            if not dangling_targets:
-                # if no dangling targets, means all objects COULD be produved by DAG
-                break
-            env.logger.info('Resolving {} objects from {} nodes'.format(len(dangling_targets), dag.number_of_nodes()))
+            added_node = 0
+            dangling_targets, existing_targets = dag.dangling(targets)
+            if dangling_targets:
+                env.logger.info('Resolving {} objects from {} nodes'.format(len(dangling_targets), dag.number_of_nodes()))
             # find matching steps
             # check auxiliary steps and see if any steps provides it
             for target in dangling_targets:
                 # target might no longer be dangling after a section is added.
-                if target not in dag.dangling(targets):
+                if target not in dag.dangling(targets)[0]:
                     continue
                 mo = [(x, self.match(target, x.options['provides'])) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
@@ -304,9 +310,67 @@ class Base_Executor:
                     short_repr(env.sos_dict['__default_output__'])), None, res['step_input'],
                     res['step_depends'], res['step_output'], 
                     res['step_local_input'], res['step_local_output'], context=context)
+                added_node += 1
                 resolved += 1
-        return resolved
 
+            # for existing targets... we should check if still need to be regenerated
+            for target in existing_targets:
+                mo = [(x, self.match(target, x.options['provides'])) for x in self.workflow.auxiliary_sections]
+                mo = [x for x in mo if x[1] is not False]
+                if not mo:
+                    # this is ok, this is just an existing target, no one is designed to 
+                    # generate it.
+                    continue
+                if len(mo) > 1:
+                    # this is not ok.
+                    raise RuntimeError('Multiple steps {} to generate target {}'.format(', '.join(x[0].step_name() for x in mo), target))
+                #
+                # only one step, we need to process it # execute section with specified input
+                #
+                section = mo[0][0]
+                if isinstance(mo[0][1], dict):
+                    for k,v in mo[0][1].items():
+                        env.sos_dict.set(k, v[0])
+                #
+                # for auxiliary, we need to set input and output, here
+                # now, if the step does not provide any alternative (e.g. no variable generated
+                # from patten), we should specify all output as output of step. Otherwise the
+                # step will be created for multiple outputs. issue #243
+                if mo[0][1]:
+                    env.sos_dict['__default_output__'] = [target]
+                elif isinstance(section.options['provides'], Sequence):
+                    env.sos_dict['__default_output__'] = section.options['provides']
+                else:
+                    env.sos_dict['__default_output__'] = [section.options['provides']]
+                # will become input, set to None
+                env.sos_dict['__step_output__'] = None
+                #
+                res = analyze_section(section)
+                #
+                # build DAG with input and output files of step
+                env.logger.info('Adding step {} with output {}'.format(res['step_name'], target))
+                if isinstance(mo[0][1], dict):
+                    context = mo[0][1]
+                else:
+                    context = {}
+                context['__signature_vars__'] = res['signature_vars']
+                context['__environ_vars__'] = res['environ_vars']
+                context['__changed_vars__'] = res['changed_vars']
+                context['__default_output__'] = env.sos_dict['__default_output__']
+                # NOTE: If a step is called multiple times with different targets, it is much better
+                # to use different names because pydotplus can be very slow in handling graphs with nodes
+                # with identical names.
+                dag.add_step(section.uuid, '{} {}'.format(section.step_name(),
+                    short_repr(env.sos_dict['__default_output__'])), None, res['step_input'],
+                    res['step_depends'], res['step_output'], 
+                    res['step_local_input'], res['step_local_output'], context=context)
+                #
+                added_node += 1
+                # this case do not count as resolved
+                # resolved += 1
+            if added_node == 0:
+                break
+        return resolved
 
     def initialize_dag(self, targets=None):
         '''Create a DAG by analyzing sections statically.'''
@@ -349,7 +413,7 @@ class Base_Executor:
                 context['__step_output__'] = env.sos_dict['__step_output__']
             # for regular workflow, the output of the last step has
             # to exist (existence of signature does not count)
-            if not self.nested and idx + 1 == len(self.workflow.sections):
+            if idx + 1 == len(self.workflow.sections):
                 context['__hard_target__'] = True
 
             # NOTE: if a section has option 'shared', the execution of this step would
@@ -430,8 +494,11 @@ class Base_Executor:
         # to remove the signature and really generate them
         if targets:
             for t in targets:
-                if not FileTarget(t).exists('target'):
+                if not FileTarget(t).exists('target') and FileTarget(t).exists('signature'):
+                    env.logger.info('Re-generating {}'.format(t))
                     FileTarget(t).remove('signature')
+                else:
+                    env.logger.info('Target {} already exists'.format(t))
         #
         prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
         self.reset_dict()
@@ -570,8 +637,8 @@ class Base_Executor:
 class MP_Executor(Base_Executor):
     #
     # Execute a workflow sequentially in batch mode
-    def __init__(self, workflow, args=[], shared=[], nested=False, config={}):
-        Base_Executor.__init__(self, workflow, args, shared=shared, nested=nested, config=config)
+    def __init__(self, workflow, args=[], shared=[], config={}):
+        Base_Executor.__init__(self, workflow, args, shared=shared, config=config)
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
 
@@ -590,6 +657,16 @@ class MP_Executor(Base_Executor):
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
 
+        #
+        # if targets are specified and there are only signatures for them, we need
+        # to remove the signature and really generate them
+        if targets:
+            for t in targets:
+                if not FileTarget(t).exists('target') and FileTarget(t).exists('signature'):
+                    env.logger.info('Re-generating {}'.format(t))
+                    FileTarget(t).remove('signature')
+                else:
+                    env.logger.info('Target {} already exists'.format(t))
         # process step of the pipelinp
         #
         procs = [None for x in range(env.max_jobs)]
@@ -697,8 +774,7 @@ class MP_Executor(Base_Executor):
                 except RuntimeError as e:
                     if env.verbosity > 2:
                         sys.stderr.write(get_traceback())
-                    raise RuntimeError('Failed to execute statements\n"{}"\n{}'.format(
-                        section.global_def, e))
+                    raise
 
                 # clear existing keys, otherwise the results from some random result
                 # might mess with the execution of another step that does not define input
