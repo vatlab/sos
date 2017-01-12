@@ -43,7 +43,7 @@ if sys.platform != 'win32':
 
 from collections.abc import Sequence
 import multiprocessing as mp
-from .utils import env, ProgressBar, transcribe, AbortExecution, short_repr, get_traceback
+from .utils import env, ProgressBar, transcribe, AbortExecution, short_repr, get_traceback, frozendict
 from .sos_eval import Undetermined, interpolate
 from .target import FileTarget, fileMD5, executable, UnknownTarget, BaseTarget
 from .monitor import ProcessMonitor, summarizeExecution
@@ -280,7 +280,10 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
     # args can be specified both as a dictionary or keyword arguments
     args.update(kwargs)
     if isinstance(shared, str):
-        shared = [shared]
+        shared = [shared, 'CONFIG']
+    elif 'CONFIG' not in shared:
+        shared.append('CONFIG')
+
     # for nested workflow, _input would becomes the input of workflow.
     env.sos_dict.set('__step_output__', copy.deepcopy(env.sos_dict['_input']))
     shared.append('__step_output__')
@@ -325,6 +328,10 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                 if shared:
                     res = q.get()
                     env.sos_dict.quick_update(res)
+                    # the CONFIG would be passed as dictionary because it is difficult to
+                    # pass a fronzendict because of readonly property
+                    if not isinstance(env.sos_dict['CONFIG'], frozendict):
+                        env.sos_dict.set('CONFIG', frozendict(env.sos_dict['CONFIG']))
                 else:
                     res = None
                 p.join()
