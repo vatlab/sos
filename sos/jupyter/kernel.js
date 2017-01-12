@@ -20,7 +20,90 @@
 // with some minor modification. An expert on javascript and code mirror
 // is required to make it work for other langauges that SoS supports.
 //
-define(function() {
+define(['jquery',
+        ],function($) {
+
+
+            // (function (IPython) {
+                "use strict";
+                 var BC = {
+                    'sos': '#FFFFFF',
+                    'R': '#FFE4C4',
+                    'python': '#FFCCFF'
+                }
+
+
+                var load_css = function () {
+                    var css = document.createElement("style");
+                    css.type = "text/css";
+                    css.innerHTML = '.celltoolbar {width:10%;background:none;border:none;border-bottom:none;z-index: 1000;position:relative;margin-bottom:-50pt;float:right;}';
+                    document.body.appendChild(css);
+                };
+
+                load_css();
+
+                var CellToolbar = IPython.CellToolbar;
+                var slideshow_preset = [];
+
+                var select_type = CellToolbar.utils.select_ui_generator([
+                        ["sos"        ,"sos"        ],
+                        ["R"    ,"R"     ],
+                        ["python"     ,"python"     ],
+                        ],
+                        // setter
+                        function(cell, value){
+                            // we check that the slideshow namespace exist and create it if needed
+                            if (cell.metadata.kernel == undefined){cell.metadata.kernel = {}}
+                                cell.metadata.kernel = value
+                                cell.element.css('background-color', BC[value]);
+                                cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BC[value];
+                            },
+                        //geter
+                        function(cell){ var ns = cell.metadata.kernel;
+                            return (ns == undefined)? undefined: ns.kernel
+                            },
+                        "");
+
+                CellToolbar.register_callback('slideshow.select',select_type);
+                slideshow_preset.push('slideshow.select');
+                var reveal_preset = slideshow_preset.slice();
+                CellToolbar.register_preset('Select cell kernel',reveal_preset);
+                console.log('Select cell kernel loaded.');
+                CellToolbar.global_show();
+                CellToolbar.activate_preset('Select cell kernel');
+
+
+                var dropdown = $("<select></select>").attr("id", "kernel_selector")
+                                             .css("margin-left", "0.75em")
+                                             .attr("class", "form-control select-xs")
+                                             // .change(select_kernel);
+                Jupyter.toolbar.element.append(dropdown);
+                $.each(["sos","R","python"], function(key,value) {   
+                             $('#kernel_selector')
+                                 .append($("<option></option>")
+                                            .attr("value",value)
+                                            .text(value)); 
+                        });
+
+                $('#kernel_selector').change(function(){
+                    var kernel_type = $("#kernel_selector").val();
+                    // var cell = IPython.notebook.get_selected_cell();
+                    // var cells = IPython.notebook.get_cells();
+                    // var cell = cells[cells.length-1]
+                    // cell.metadata.kernel=kernel_type
+                    // changeStyleOnCellKernel(cell,kernel_type)
+                    // console.log(cell.metadata.kernel)
+                    window.default_kernel=kernel_type
+                });
+
+
+
+                 
+            // }(IPython));
+
+
+
+
     var onload = function() {
 
         // override the existing execute function by
@@ -100,11 +183,11 @@ define(function() {
                     // 2. None: kernel
                     //     the kernel for the new cell
 
-                    data = msg.content.data;
+                    var data = msg.content.data;
                     console.log(data)
 
                     if (data[0] == null) {
-                        cell = IPython.notebook.get_selected_cell();
+                        var cell = IPython.notebook.get_selected_cell();
                         // if the kernel is undefined, use new one. Otherwise
                         // do not override the default one.
                         
