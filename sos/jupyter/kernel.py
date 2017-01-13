@@ -1070,7 +1070,7 @@ class SoS_Kernel(IPythonKernel):
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
-                if args.kernel != self.kernel and not self.hard_switch_kernel:
+                if not self.hard_switch_kernel:
                     self.switch_kernel(original_kernel)
         elif self.MAGIC_WITH.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
