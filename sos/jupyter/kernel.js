@@ -169,7 +169,7 @@ define(['jquery', ], function($) {
             var load_css = function() {
                 var css = document.createElement("style");
                 css.type = "text/css";
-                css.innerHTML = '.celltoolbar {width:10%;background:none;border:none;border-bottom:none;z-index: 1000;position:relative;margin-bottom:-50pt;float:right;}';
+                css.innerHTML = '.code_cell .celltoolbar {width:10%;background:none;border:none;border-bottom:none;z-index: 1000;position:relative;margin-bottom:-50pt;float:right;} \n .text_cell .celltoolbar {display:none}';
                 document.body.appendChild(css);
             };
 
