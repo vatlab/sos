@@ -216,11 +216,14 @@ class SoS_Kernel(IPythonKernel):
             switch happens the kernel will switch back. However, a %use inside
             the cell will still switch the global kernel. In contrast, a hard
             %with magic will absorb the effect of %use.''')
-        parser.add_argument('kernel', nargs='?', default='',
+        parser.add_argument('--default-kernel', required=True,
+            help='Default global kernel')
+        parser.add_argument('--cell-kernel', required=True,
             help='Kernel to switch to.')
         # pass cell index from notebook so that we know which cell fired
         # the command. Use to set metadata of cell through frontend message
-        parser.add_argument('--cell', dest='cell_idx', help=argparse.SUPPRESS)
+        parser.add_argument('--cell', dest='cell_idx', required=True,
+            help='Index of cell')
         parser.error = self._parse_error
         return parser
 
@@ -474,9 +477,14 @@ class SoS_Kernel(IPythonKernel):
             self.RET_VARS = []
             self.kernel = 'sos'
         elif self.kernel != 'sos':
+            # not to 'sos' (kernel != 'sos'), see if they are the same kernel under
+            # different name (e.g. ir and R)
+            if self.supported_languages[kernel].kernel_name == self.supported_languages[self.kernel].kernel_name:
+                return
             self.switch_kernel('sos', in_vars, ret_vars)
             self.switch_kernel(kernel, in_vars, ret_vars)
         else:
+            # case when self.kernel == 'sos', kernel != 'sos'
             # to a subkernel
             if kernel not in self.kernels:
                 # start a new kernel
@@ -1064,9 +1072,16 @@ class SoS_Kernel(IPythonKernel):
                     'traceback': [],
                     'execution_count': self._execution_count,
                    }
+            # args.default_kernel should be valid
+            if args.default_kernel != self.kernel:
+                self.switch_kernel(args.default_kernel)
+            #
+            if args.cell_kernel == 'undefined':
+                args.cell_kernel = args.default_kernel
+            #
             original_kernel = self.kernel
-            if args.kernel != self.kernel:
-                self.switch_kernel(args.kernel)
+            if args.cell_kernel != self.kernel:
+                self.switch_kernel(args.cell_kernel)
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
