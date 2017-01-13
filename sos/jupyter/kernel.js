@@ -61,10 +61,13 @@ define(['jquery', ], function($) {
         IPython.notebook.kernel.execute = my_execute
 
         function changeStyleOnKernel(cell, type) {
-            console.log('Switch to ' + type + ' with color ' + BackgroundColor[type])
             if (BackgroundColor[type]) {
                 cell.element.css('background-color', BackgroundColor[type]);
                 cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BackgroundColor[type];
+            } else {
+                // FIXME: How can we remove background-color?
+                cell.element.css('background-color', '#FFFFFF');
+                cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = '#FFFFFF';
             }
 
             $('#kernel_selector').val(DisplayName[type])
@@ -137,12 +140,11 @@ define(['jquery', ], function($) {
                             // do not override the default one.
 
                             if (cell.cell_type == 'code' && !cell.metadata.kernel) {
-                                // we only save kernel name (not displayed name) as metadata
-                                cell.metadata.kernel = KernelName[data[1]];
+                                // we change style, but do not yet set metadata.
                                 changeStyleOnKernel(cell, data[1])
                             }
                             // we also set a global kernel to be used for new cells
-                            window.default_kernel = data[1];
+                            window.default_kernel = DisplayName[data[1]];
                         } else {
                             // get cell from passed cell index, which was sent through the
                             // %softwith magic
@@ -216,7 +218,16 @@ define(['jquery', ], function($) {
                 // cell.metadata.kernel=kernel_type
                 // changeStyleOnCellKernel(cell,kernel_type)
                 // console.log(cell.metadata.kernel)
-                window.default_kernel = kernel_type
+                window.default_kernel = kernel_type;
+                IPython.notebook.kernel.orig_execute('%use ' + kernel_type, {}, {})
+
+                var cells = IPython.notebook.get_cells();
+                for (var i in cells) {
+                    if (cells[i].cell_type == 'code' && !cells[i].metadata.kernel) {
+                        changeStyleOnKernel(cells[i], kernel_type);
+                    }
+                }
+
             });
         }
 
