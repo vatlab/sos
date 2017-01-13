@@ -48,7 +48,13 @@ define(['jquery', ], function($) {
                 if (cells[i].input_prompt_number == '*' && code == cells[i].get_text()) {
                     // use cell kernel if meta exists, otherwise use window.default_kernel
                     return this.orig_execute(
-                        "%softwith " + (cells[i].metadata.kernel ? cells[i].metadata.kernel : window.default_kernel) + " --cell " + i.toString() + "\n" + code,
+                        // passing to kernel
+                        // 1. the default kernel (might have been changed from menu bar
+                        // 2. cell kernel (might be unspecified for new cell)
+                        // 3. cell index (for setting style after execution)
+                        "%softwith --default-kernel " + window.default_kernel +
+                        " --cell-kernel " + (cells[i].metadata.kernel ? cells[i].metadata.kernel : window.default_kernel) +
+                        " --cell " + i.toString() + "\n" + code,
                         callbacks, options)
                 }
             }
@@ -102,7 +108,7 @@ define(['jquery', ], function($) {
                     //     the kernel for the new cell
 
                     var data = msg.content.data;
-                    console.log(data)
+                    // console.log(data)
 
                     if (data[0] instanceof Array) {
                         for (var i = 0; i < data.length; i++) {
@@ -194,7 +200,7 @@ define(['jquery', ], function($) {
             slideshow_preset.push('slideshow.select');
             var reveal_preset = slideshow_preset.slice();
             CellToolbar.register_preset('Select cell kernel', reveal_preset);
-            console.log('Select cell kernel loaded.');
+            // console.log('Select cell kernel loaded.');
             CellToolbar.global_show();
             CellToolbar.activate_preset('Select cell kernel');
 
@@ -212,14 +218,8 @@ define(['jquery', ], function($) {
 
             $('#kernel_selector').change(function() {
                 var kernel_type = $("#kernel_selector").val();
-                // var cell = IPython.notebook.get_selected_cell();
-                // var cells = IPython.notebook.get_cells();
-                // var cell = cells[cells.length-1]
-                // cell.metadata.kernel=kernel_type
-                // changeStyleOnCellKernel(cell,kernel_type)
-                // console.log(cell.metadata.kernel)
+
                 window.default_kernel = kernel_type;
-                IPython.notebook.kernel.orig_execute('%use ' + kernel_type, {}, {})
 
                 var cells = IPython.notebook.get_cells();
                 for (var i in cells) {
