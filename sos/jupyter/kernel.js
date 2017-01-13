@@ -70,6 +70,7 @@ define(['jquery', ], function($) {
             if (BackgroundColor[type]) {
                 cell.element.css('background-color', BackgroundColor[type]);
                 cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BackgroundColor[type];
+                cell.metadata.backgroundColor=BackgroundColor[type]
             } else {
                 // FIXME: How can we remove background-color?
                 cell.element.css('background-color', '#FFFFFF');
@@ -169,7 +170,7 @@ define(['jquery', ], function($) {
             var load_css = function() {
                 var css = document.createElement("style");
                 css.type = "text/css";
-                css.innerHTML = '.code_cell .celltoolbar {width:10%;background:none;border:none;border-bottom:none;z-index: 1000;position:relative;margin-bottom:-50pt;float:right;} \n .text_cell .celltoolbar {display:none}';
+                css.innerHTML = '.code_cell .celltoolbar {width:10%;background:none;border:none;border-bottom:none;z-index: 1000;position:relative;margin-bottom:-50pt;float:right;}  .text_cell .celltoolbar {display:none}';
                 document.body.appendChild(css);
             };
 
