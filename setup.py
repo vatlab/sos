@@ -132,9 +132,6 @@ setup(name = "sos",
           'fasteners',
           'pyyaml',
           'pygments',
-          # for docker related actions. This module can be installed 
-          # without docker so we install it by default
-          'docker-py',
           # for jupyter notebook format conversion
           'nbformat',
           'nbconvert>=4.2.0',
@@ -196,8 +193,8 @@ python3 = sos.Python.actions:python3
 R = sos.R.actions:R
 Rmarkdown = sos.R.actions:Rmarkdown
 
-docker_build = sos.docker.actions:docker_build
-docker_commit = sos.docker.actions:docker_commit
+docker_build = sos.docker.actions:docker_build [docker]
+docker_commit = sos.docker.actions:docker_commit [docker]
 
 [sos_executors]
 rq = sos.rq.sos_executor:RQ_Executor [rq]
@@ -265,5 +262,7 @@ ipynb-md.func = sos.jupyter.converter:notebook_to_md
         'celery':   ['celery', 'flower'],
         'bam':      ['pysam'],
         'dot':      ['graphviz'],
+        # docker-py is not working on windows 10 (as of Jan 2017)
+        'docker':   ['docker-py'],
     }
 )
