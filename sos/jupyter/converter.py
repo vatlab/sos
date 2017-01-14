@@ -54,8 +54,8 @@ def get_notebook_to_script_parser():
             script in batch mode''')
     parser.add_argument('--no-index', action='store_true',
         help='''Do not output any index''')
-    parser.add_argument('--metadata', action='store_true',
-        help='''Output metadata''')
+    parser.add_argument('--no-metadata', action='store_true',
+        help='''Do not output any metadata''')
     parser.add_argument('--remove-magic', action='store_true',
         help='''Remove magic lines from the output''')
     return parser
