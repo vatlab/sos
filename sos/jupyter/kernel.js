@@ -27,7 +27,28 @@ define(['jquery', ], function($) {
     var DisplayName = {}
     var KernelName = {}
     var KernelList = []
-    window.default_kernel = 'sos'
+    var events = require('base/js/events');
+
+    window.default_kernel = 'sos';
+
+    // initialize BackgroundColor etc from cell meta data
+    if (! ('sos' in IPython.notebook.metadata))
+        IPython.notebook.metadata['sos'] = {'kernels': [['sos', 'SoS', '']]};
+
+    var data = IPython.notebook.metadata['sos']['kernels'];
+    for (var i = 0; i < data.length; i++) {
+        // BackgroundColor is color
+        BackgroundColor[data[i][0]] = data[i][2];
+        BackgroundColor[data[i][1]] = data[i][2];
+        // DisplayName
+        DisplayName[data[i][0]] = data[i][1];
+        DisplayName[data[i][1]] = data[i][1];
+        // Name
+        KernelName[data[i][0]] = data[i][0];
+        KernelName[data[i][1]] = data[i][0];
+        // KernelList, use displayed name
+        KernelList.push([data[i][1], data[i][1]])
+    }
 
     var onload = function() {
 
@@ -64,12 +85,7 @@ define(['jquery', ], function($) {
                 }
             }
         }
-        // ask the kernel available list of languages
-        IPython.notebook.kernel.execute('%softwith --list-kernel --default-kernel sos --cell-kernel sos', {}, {})
 
-        // override kernel execute with the wrapper.
-        IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute
-        IPython.notebook.kernel.execute = my_execute
 
         function changeStyleOnKernel(cell, type) {
             if (BackgroundColor[type]) {
@@ -93,82 +109,83 @@ define(['jquery', ], function($) {
             }
         }
 
-        // comm message sent from the kernel
-        Jupyter.notebook.kernel.comm_manager.register_target('sos_comm',
-            function(comm, msg) {
-                comm.on_msg(function(msg) {
-                    // when the notebook starts it should receive a message in the format of
-                    // a nested array of elements such as
-                    //
-                    // "ir", "R", "#ABackgroundColorDEF"
-                    //
-                    // where are kernel name (jupyter kernel), displayed name (SoS), and background
-                    // color assigned by the language module. The user might use name ir or R (both
-                    // acceptable) but the frontend should only display displayed name, and send
-                    // the real kernel name back to kernel (%softwith and metadata).
-                    //
-                    // there are two kinds of messages from my_execute
-                    // 1. cell_idx: kernel
-                    //     the kernel used for the cell with source
-                    // 2. None: kernel
-                    //     the kernel for the new cell
+        function prepare_kernel() {
+            console.log('KERNEL READY');
 
-                    var data = msg.content.data;
-                    // console.log(data)
+            // comm message sent from the kernel
+            Jupyter.notebook.kernel.comm_manager.register_target('sos_comm',
+                function(comm, msg) {
+                    comm.on_msg(function(msg) {
+                        // when the notebook starts it should receive a message in the format of
+                        // a nested array of elements such as
+                        //
+                        // "ir", "R", "#ABackgroundColorDEF"
+                        //
+                        // where are kernel name (jupyter kernel), displayed name (SoS), and background
+                        // color assigned by the language module. The user might use name ir or R (both
+                        // acceptable) but the frontend should only display displayed name, and send
+                        // the real kernel name back to kernel (%softwith and metadata).
+                        //
+                        // there are two kinds of messages from my_execute
+                        // 1. cell_idx: kernel
+                        //     the kernel used for the cell with source
+                        // 2. None: kernel
+                        //     the kernel for the new cell
 
-                    if (data[0] instanceof Array) {
-                        for (var i = 0; i < data.length; i++) {
-                            // BackgroundColor is color
-                            BackgroundColor[data[i][0]] = data[i][2];
-                            BackgroundColor[data[i][1]] = data[i][2];
-                            // DisplayName
-                            DisplayName[data[i][0]] = data[i][1];
-                            DisplayName[data[i][1]] = data[i][1];
-                            // Name
-                            KernelName[data[i][0]] = data[i][0];
-                            KernelName[data[i][1]] = data[i][0];
-                            // KernelList, use displayed name
-                            KernelList.push([data[i][1], data[i][1]])
-                        }
-                        //add dropdown menu of kernels in frontend
-                        load_select_kernel();
+                        var data = msg.content.data;
+                        // console.log(data)
 
-                        var cells = IPython.notebook.get_cells();
-                        /*
-                        if (cells.length==1 && cells[0].cell_type=='code' && typeof cells[0].metadata.kernel==='undefined'){
-                            cells[0].metadata.kernel=window.default_kernel;
-                        }
-						*/
-                        for (var i in cells) {
-                            if (cells[i].cell_type == 'code') {
-                                changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
+                        if (data[0] instanceof Array) {
+                            for (var i = 0; i < data.length; i++) {
+                                // BackgroundColor is color
+                                BackgroundColor[data[i][0]] = data[i][2];
+                                BackgroundColor[data[i][1]] = data[i][2];
+                                // DisplayName
+                                DisplayName[data[i][0]] = data[i][1];
+                                DisplayName[data[i][1]] = data[i][1];
+                                // Name
+                                KernelName[data[i][0]] = data[i][0];
+                                KernelName[data[i][1]] = data[i][0];
+                                // KernelList, use displayed name
+                                KernelList.push([data[i][1], data[i][1]])
+                                // if the kernel is not in metadata, push it in
+                                if (IPython.notebook.metadata['sos']['kernels'].findIndex((item) => item[0] === data[i][0]) == -1)
+                                    IPython.notebook.metadata['sos']['kernels'].push(data[i])
                             }
-                        }
-                    } else {
-                        // update the cells when the notebook is being opened.
-                        if (data[0] == null) {
-                            var cell = IPython.notebook.get_selected_cell();
-                            // if the kernel is undefined, use new one. Otherwise
-                            // do not override the default one.
+                            //add dropdown menu of kernels in frontend
+                            load_select_kernel();
 
-                            if (cell.cell_type == 'code' && !cell.metadata.kernel) {
-                                // we change style, but do not yet set metadata.
+                            var cells = IPython.notebook.get_cells();
+                            for (var i in cells) {
+                                if (cells[i].cell_type == 'code') {
+                                    changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
+                                }
+                            }
+                        } else {
+                            // update the cells when the notebook is being opened.
+                            if (data[0] == null) {
+                                var cell = IPython.notebook.get_selected_cell();
+                                // if the kernel is undefined, use new one. Otherwise
+                                // do not override the default one.
+
+                                if (cell.cell_type == 'code' && !cell.metadata.kernel) {
+                                    // we change style, but do not yet set metadata.
+                                    changeStyleOnKernel(cell, data[1])
+                                }
+                                // we also set a global kernel to be used for new cells
+                                window.default_kernel = DisplayName[data[1]];
+                            } else {
+                                // get cell from passed cell index, which was sent through the
+                                // %softwith magic
+                                cell = IPython.notebook.get_cell(data[0]);
+                                cell.metadata.kernel = KernelName[data[1]];
+                                // set meta information
                                 changeStyleOnKernel(cell, data[1])
                             }
-                            // we also set a global kernel to be used for new cells
-                            window.default_kernel = DisplayName[data[1]];
-                        } else {
-                            // get cell from passed cell index, which was sent through the
-                            // %softwith magic
-                            cell = IPython.notebook.get_cell(data[0]);
-                            cell.metadata.kernel = KernelName[data[1]];
-                            // set meta information
-                            changeStyleOnKernel(cell, data[1])
                         }
-                    }
+                    });
                 });
-            });
-
+        }
 
         function load_select_kernel() {
             //change css for CellToolBar
@@ -235,8 +252,24 @@ define(['jquery', ], function($) {
                 }
 
             });
+
         }
 
+        function query_kernels() {
+            console.log('KERNEL READY');
+            // ask the kernel available list of languages
+            IPython.notebook.kernel.execute('%softwith --list-kernel --default-kernel sos --cell-kernel sos', {}, {})
+
+            // override kernel execute with the wrapper.
+            IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute
+            IPython.notebook.kernel.execute = my_execute
+        }
+
+        // setting up frontend using existing metadata (without executing anything)
+        load_select_kernel();
+
+        events.on('kernel_connected.Kernel', prepare_kernel);
+        events.on('kernel_ready.Kernel', query_kernels);
 
         // define SOS CodeMirror syntax highlighter
         (function(mod) {
