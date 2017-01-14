@@ -216,13 +216,15 @@ class SoS_Kernel(IPythonKernel):
             switch happens the kernel will switch back. However, a %use inside
             the cell will still switch the global kernel. In contrast, a hard
             %with magic will absorb the effect of %use.''')
-        parser.add_argument('--default-kernel', required=True,
+        parser.add_argument('--list-kernel', required=False, action='store_true',
+            help='List kernels')
+        parser.add_argument('--default-kernel',
             help='Default global kernel')
-        parser.add_argument('--cell-kernel', required=True,
+        parser.add_argument('--cell-kernel',
             help='Kernel to switch to.')
         # pass cell index from notebook so that we know which cell fired
         # the command. Use to set metadata of cell through frontend message
-        parser.add_argument('--cell', dest='cell_idx', required=True,
+        parser.add_argument('--cell', dest='cell_idx',
             help='Index of cell')
         parser.error = self._parse_error
         return parser
@@ -978,9 +980,9 @@ class SoS_Kernel(IPythonKernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
-        if code.startswith('%listkernel'):
-            self.send_frontend_msg(self.get_kernel_list())
-            return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': -1}
+        #if code.startswith('%listkernel'):
+        #    self.send_frontend_msg(self.get_kernel_list())
+        #    return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': 0}
         # a flag for if the kernel is hard switched (by %use)
         self.hard_switch_kernel = False
         # evaluate user expression
@@ -1072,6 +1074,8 @@ class SoS_Kernel(IPythonKernel):
                     'traceback': [],
                     'execution_count': self._execution_count,
                    }
+            if args.list_kernel:
+                self.send_frontend_msg(self.get_kernel_list())
             # args.default_kernel should be valid
             if args.default_kernel != self.kernel:
                 self.switch_kernel(args.default_kernel)
