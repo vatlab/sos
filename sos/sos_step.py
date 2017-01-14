@@ -716,24 +716,6 @@ class Base_Step_Executor:
             result['__signature_vars__'] = env.accessed_vars
         return result
 
-#    def run(self):
-#        try:
-#            if 'workdir' in self.step.options:
-#                orig_dir = os.getcwd()
-#                if os.path.exists(self.step.options['workdir']):
-#                    if not os.path.isdir(self.step.options['workdir']):
-#                        raise RuntimeError('Failed to change to workdir {}: not an directory'.format(self.step.options['workdir']))
-#                else:
-#                    try:
-#                        os.makedirs(self.step.options['workdir'])
-#                    except Exception as e:
-#                        raise RuntimeError('Failed to create workdir {}: {}'.format(self.step.options['workdir'], e))
-#                os.chdir(self.step.options['workdir'])
-#            return self._run()
-#        finally:
-#            if 'workdir' in self.step.options:
-#                os.chdir(orig_dir)
-
     def run(self):
         '''Execute a single step and return results. The result for batch mode is the
         input, output etc returned as alias, and for interactive mode is the return value
@@ -1072,9 +1054,25 @@ class Queued_Step_Executor(Base_Step_Executor):
     def __init__(self, step, queue):
         Base_Step_Executor.__init__(self, step)
         self.queue = queue
+        # under win 32, env has to be explicitly passed because
+        # win 32 Process is a completely new process
+        if sys.platform == 'win32':
+            self.sos_vars = env.sos_dict.clone_selected_vars()
+            self.env_attr = {}
+            for attr in ['_verbosity', '_logfile', 'run_mode', 'sig_mode',
+                    'readonly_vars', 'max_jobs', 'running_jobs', 'exec_dir',
+                    '__task_engine__']:
+                if hasattr(env, attr):
+                    self.env_attr[attr] = getattr(env, attr)
 
     def run(self):
         try:
+            if sys.platform == 'win32':
+                SoS_exec('import os, sys, glob', None)
+                SoS_exec('from sos.runtime import *', None)
+                for attr, val in self.env_attr.items():
+                    setattr(env, attr, val)
+                env.sos_dict.quick_update(self.sos_vars)
             # update every 60 seconds
             notifier = ActivityNotifier('Running {}'.format(self.step.step_name()), delay=60)
             res = Base_Step_Executor.run(self)
