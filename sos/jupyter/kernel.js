@@ -52,7 +52,12 @@ define(['jquery', ], function($) {
                         // 1. the default kernel (might have been changed from menu bar
                         // 2. cell kernel (might be unspecified for new cell)
                         // 3. cell index (for setting style after execution)
-                        "%softwith --default-kernel " + window.default_kernel +
+                        // in addition, the softwidth command will send a "--list-kernel" request if
+                        // the frontend is not correctly initialized, possibly because the kernel was
+                        // not ready when the frontend sent the command `%listkernel`.
+                        "%softwith " +
+                        ('sos' in BackgroundColor ? "" : " --list-kernel ") +
+                        " --default-kernel " + window.default_kernel +
                         " --cell-kernel " + (cells[i].metadata.kernel ? cells[i].metadata.kernel : window.default_kernel) +
                         " --cell " + i.toString() + "\n" + code,
                         callbacks, options)
@@ -60,7 +65,7 @@ define(['jquery', ], function($) {
             }
         }
         // ask the kernel available list of languages
-        IPython.notebook.kernel.execute('%listkernel', {}, {})
+        IPython.notebook.kernel.execute('%softwith --list-kernel --default-kernel sos --cell-kernel sos', {}, {})
 
         // override kernel execute with the wrapper.
         IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute
