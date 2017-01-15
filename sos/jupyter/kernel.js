@@ -30,7 +30,7 @@ define(['jquery', ], function($) {
     var events = require('base/js/events');
 
     window.default_kernel = 'sos';
-    window.real_kernel_list = false;
+    window.kernel_updated = false;
 
     // initialize BackgroundColor etc from cell meta data
     if (!('sos' in IPython.notebook.metadata))
@@ -82,9 +82,9 @@ define(['jquery', ], function($) {
                         // the frontend is not correctly initialized, possibly because the kernel was
                         // not ready when the frontend sent the command `%listkernel`.
                         "%softwith " +
-                        (window.real_kernel_list ? "" : " --list-kernel ") +
+                        (window.kernel_updated ? "" : " --list-kernel ") +
                         " --default-kernel " + window.default_kernel +
-                        " --cell-kernel " + (cells[i].metadata.kernel ? cells[i].metadata.kernel : window.default_kernel) +
+                        " --cell-kernel " + cells[i].metadata.kernel +
                         " --cell " + i.toString() + "\n" + code,
                         callbacks, options)
                 }
@@ -96,7 +96,6 @@ define(['jquery', ], function($) {
             if (BackgroundColor[type]) {
                 cell.element.css('background-color', BackgroundColor[type]);
                 cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BackgroundColor[type];
-                cell.metadata.backgroundColor = BackgroundColor[type]
             } else {
                 // FIXME: How can we remove background-color?
                 cell.element.css('background-color', '#FFFFFF');
@@ -135,7 +134,6 @@ define(['jquery', ], function($) {
                         //     the kernel for the new cell
 
                         var data = msg.content.data;
-                        console.log(data)
 
                         if (data[0] instanceof Array) {
                             for (var i = 0; i < data.length; i++) {
@@ -157,35 +155,21 @@ define(['jquery', ], function($) {
                             }
                             //add dropdown menu of kernels in frontend
                             load_select_kernel();
-
-                            var cells = IPython.notebook.get_cells();
-                            for (var i in cells) {
-                                if (cells[i].cell_type == 'code') {
-                                    changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
-                                }
-                            }
-                            window.real_kernel_list = true;
                         } else {
                             // update the cells when the notebook is being opened.
                             if (data[0] == null) {
-                                var cell = IPython.notebook.get_selected_cell();
-                                // if the kernel is undefined, use new one. Otherwise
-                                // do not override the default one.
-
-                                if (cell.cell_type == 'code' && !cell.metadata.kernel) {
-                                    // we change style, but do not yet set metadata.
-                                    changeStyleOnKernel(cell, data[1])
-                                }
                                 // we also set a global kernel to be used for new cells
-                                window.default_kernel = DisplayName[data[1]];
-                                $('#kernel_selector').val(window.default_kernel);
+                                if (window.default_kernel != DisplayName[data[1]])
+                                    $('#kernel_selector').val(DisplayName[data[1]]);
                             } else {
                                 // get cell from passed cell index, which was sent through the
                                 // %softwith magic
-                                cell = IPython.notebook.get_cell(data[0]);
-                                cell.metadata.kernel = KernelName[data[1]];
-                                // set meta information
-                                changeStyleOnKernel(cell, data[1])
+                                var cell = IPython.notebook.get_cell(data[0]);
+                                if (cell.metadata.kernel != KernelName[data[1]]) {
+                                    cell.metadata.kernel = KernelName[data[1]];
+                                    // set meta information
+                                    changeStyleOnKernel(cell, data[1])
+                                }
                             }
                         }
                     });
@@ -194,6 +178,8 @@ define(['jquery', ], function($) {
         }
 
         function load_select_kernel() {
+            if (window.kernel_updated)
+                return;
             //change css for CellToolBar
             var load_css = function() {
                 var css = document.createElement("style");
@@ -260,6 +246,13 @@ define(['jquery', ], function($) {
                     }
                 }
             });
+            var cells = IPython.notebook.get_cells();
+            for (var i in cells) {
+                if (cells[i].cell_type == 'code') {
+                    changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
+                }
+            }
+            window.kernel_updated = true;
         }
 
         function wrap_execute() {
