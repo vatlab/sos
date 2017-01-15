@@ -134,8 +134,11 @@ define(['jquery', ], function($) {
                         //     the kernel for the new cell
 
                         var data = msg.content.data;
+                        // console.log(data);
 
                         if (data[0] instanceof Array) {
+                            if (window.kernel_updated)
+                                return;
                             for (var i = 0; i < data.length; i++) {
                                 // BackgroundColor is color
                                 BackgroundColor[data[i][0]] = data[i][2];
@@ -155,6 +158,7 @@ define(['jquery', ], function($) {
                             }
                             //add dropdown menu of kernels in frontend
                             load_select_kernel();
+                            window.kernel_updated = true;
                         } else {
                             // update the cells when the notebook is being opened.
                             if (data[0] == null) {
@@ -178,8 +182,6 @@ define(['jquery', ], function($) {
         }
 
         function load_select_kernel() {
-            if (window.kernel_updated)
-                return;
             //change css for CellToolBar
             var load_css = function() {
                 var css = document.createElement("style");
@@ -252,7 +254,6 @@ define(['jquery', ], function($) {
                     changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
                 }
             }
-            window.kernel_updated = true;
         }
 
         function wrap_execute() {
