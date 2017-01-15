@@ -225,7 +225,8 @@ define(['jquery', ], function($) {
                 .css("margin-left", "0.75em")
                 .attr("class", "form-control select-xs")
             // .change(select_kernel);
-            Jupyter.toolbar.element.append(dropdown);
+            if (Jupyter.toolbar.element.has('#kernel_selector').length == 0)
+                Jupyter.toolbar.element.append(dropdown);
             // remove any existing items
             $('#kernel_selector').empty();
             $.each(KernelList, function(key, value) {
