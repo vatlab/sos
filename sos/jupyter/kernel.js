@@ -33,8 +33,12 @@ define(['jquery', ], function($) {
     window.real_kernel_list = false;
 
     // initialize BackgroundColor etc from cell meta data
-    if (! ('sos' in IPython.notebook.metadata))
-        IPython.notebook.metadata['sos'] = {'kernels': [['sos', 'SoS', '']]};
+    if (!('sos' in IPython.notebook.metadata))
+        IPython.notebook.metadata['sos'] = {
+            'kernels': [
+                ['sos', 'SoS', '']
+            ]
+        };
 
     var data = IPython.notebook.metadata['sos']['kernels'];
     for (var i = 0; i < data.length; i++) {
@@ -92,14 +96,13 @@ define(['jquery', ], function($) {
             if (BackgroundColor[type]) {
                 cell.element.css('background-color', BackgroundColor[type]);
                 cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BackgroundColor[type];
-                cell.metadata.backgroundColor=BackgroundColor[type]
+                cell.metadata.backgroundColor = BackgroundColor[type]
             } else {
                 // FIXME: How can we remove background-color?
                 cell.element.css('background-color', '#FFFFFF');
                 cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = '#FFFFFF';
             }
 
-            $('#kernel_selector').val(DisplayName[type])
             var sel = cell.element[0].getElementsByTagName('select')[0]
             var opts = sel.options;
             for (var opt, j = 0; opt = opts[j]; j++) {
@@ -175,6 +178,7 @@ define(['jquery', ], function($) {
                                 }
                                 // we also set a global kernel to be used for new cells
                                 window.default_kernel = DisplayName[data[1]];
+                                $('#kernel_selector').val(window.default_kernel);
                             } else {
                                 // get cell from passed cell index, which was sent through the
                                 // %softwith magic
@@ -202,7 +206,6 @@ define(['jquery', ], function($) {
 
             var CellToolbar = IPython.CellToolbar;
             var slideshow_preset = [];
-		console.log(KernelList);
             var select_type = CellToolbar.utils.select_ui_generator(
                 KernelList,
                 // setter
@@ -235,6 +238,8 @@ define(['jquery', ], function($) {
                 .attr("class", "form-control select-xs")
             // .change(select_kernel);
             Jupyter.toolbar.element.append(dropdown);
+            // remove any existing items
+            $('#kernel_selector').empty();
             $.each(KernelList, function(key, value) {
                 $('#kernel_selector')
                     .append($("<option></option>")
@@ -242,6 +247,7 @@ define(['jquery', ], function($) {
                         .text(DisplayName[value[0]]));
             });
 
+            $('#kernel_selector').val("SoS");
             $('#kernel_selector').change(function() {
                 var kernel_type = $("#kernel_selector").val();
 
@@ -256,7 +262,7 @@ define(['jquery', ], function($) {
             });
         }
 
-        function query_kernels() {
+        function wrap_execute() {
             // override kernel execute with the wrapper.
             IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute
             IPython.notebook.kernel.execute = my_execute
@@ -272,7 +278,7 @@ define(['jquery', ], function($) {
             }
         }
         events.on('kernel_connected.Kernel', register_sos_comm);
-        events.on('kernel_ready.Kernel', query_kernels);
+        events.on('kernel_ready.Kernel', wrap_execute);
 
         // define SOS CodeMirror syntax highlighter
         (function(mod) {
