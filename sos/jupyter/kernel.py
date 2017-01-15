@@ -468,7 +468,9 @@ class SoS_Kernel(IPythonKernel):
         # switching to a non-sos kernel
         if kernel == 'SoS':
             kernel = 'sos'
-        if not kernel:
+        elif kernel == 'undefined':
+            return
+        elif not kernel:
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': 'Kernel "{}" is used.\n'.format(self.kernel)})
         elif kernel == self.kernel:

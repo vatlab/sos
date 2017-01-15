@@ -30,6 +30,7 @@ define(['jquery', ], function($) {
     var events = require('base/js/events');
 
     window.default_kernel = 'sos';
+    window.real_kernel_list = false;
 
     // initialize BackgroundColor etc from cell meta data
     if (! ('sos' in IPython.notebook.metadata))
@@ -77,7 +78,7 @@ define(['jquery', ], function($) {
                         // the frontend is not correctly initialized, possibly because the kernel was
                         // not ready when the frontend sent the command `%listkernel`.
                         "%softwith " +
-                        ('sos' in BackgroundColor ? "" : " --list-kernel ") +
+                        (window.real_kernel_list ? "" : " --list-kernel ") +
                         " --default-kernel " + window.default_kernel +
                         " --cell-kernel " + (cells[i].metadata.kernel ? cells[i].metadata.kernel : window.default_kernel) +
                         " --cell " + i.toString() + "\n" + code,
@@ -109,9 +110,7 @@ define(['jquery', ], function($) {
             }
         }
 
-        function prepare_kernel() {
-            console.log('KERNEL READY');
-
+        function register_sos_comm() {
             // comm message sent from the kernel
             Jupyter.notebook.kernel.comm_manager.register_target('sos_comm',
                 function(comm, msg) {
@@ -133,7 +132,7 @@ define(['jquery', ], function($) {
                         //     the kernel for the new cell
 
                         var data = msg.content.data;
-                        // console.log(data)
+                        console.log(data)
 
                         if (data[0] instanceof Array) {
                             for (var i = 0; i < data.length; i++) {
@@ -147,7 +146,8 @@ define(['jquery', ], function($) {
                                 KernelName[data[i][0]] = data[i][0];
                                 KernelName[data[i][1]] = data[i][0];
                                 // KernelList, use displayed name
-                                KernelList.push([data[i][1], data[i][1]])
+                                if (KernelList.findIndex((item) => item[0] === data[i][1]) == -1)
+                                    KernelList.push([data[i][1], data[i][1]]);
                                 // if the kernel is not in metadata, push it in
                                 if (IPython.notebook.metadata['sos']['kernels'].findIndex((item) => item[0] === data[i][0]) == -1)
                                     IPython.notebook.metadata['sos']['kernels'].push(data[i])
@@ -161,6 +161,7 @@ define(['jquery', ], function($) {
                                     changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
                                 }
                             }
+                            window.real_kernel_list = true;
                         } else {
                             // update the cells when the notebook is being opened.
                             if (data[0] == null) {
@@ -184,7 +185,8 @@ define(['jquery', ], function($) {
                             }
                         }
                     });
-                });
+                }
+            );
         }
 
         function load_select_kernel() {
@@ -250,16 +252,10 @@ define(['jquery', ], function($) {
                         changeStyleOnKernel(cells[i], kernel_type);
                     }
                 }
-
             });
-
         }
 
         function query_kernels() {
-            console.log('KERNEL READY');
-            // ask the kernel available list of languages
-            IPython.notebook.kernel.execute('%softwith --list-kernel --default-kernel sos --cell-kernel sos', {}, {})
-
             // override kernel execute with the wrapper.
             IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute
             IPython.notebook.kernel.execute = my_execute
@@ -267,8 +263,14 @@ define(['jquery', ], function($) {
 
         // setting up frontend using existing metadata (without executing anything)
         load_select_kernel();
-
-        events.on('kernel_connected.Kernel', prepare_kernel);
+        var cells = IPython.notebook.get_cells();
+        // setting up background color and selection according to notebook metadata
+        for (var i in cells) {
+            if (cells[i].cell_type == 'code') {
+                changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
+            }
+        }
+        events.on('kernel_connected.Kernel', register_sos_comm);
         events.on('kernel_ready.Kernel', query_kernels);
 
         // define SOS CodeMirror syntax highlighter
