@@ -278,10 +278,11 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
-    def same_kernel(self, name1, name2):
-        if name1 not in self._kernel_name or name2 not in self._kernel_name:
-            return False
-        return self._kernel_name[name1] == self._kernel_name[name2]
+    def kernel_name(self, name):
+        if name in self._kernel_name:
+            return self._kernel_name[name]
+        else:
+            return name
 
     def get_supported_languages(self):
         if self._supported_languages is not None:
@@ -475,14 +476,14 @@ class SoS_Kernel(IPythonKernel):
 
     def switch_kernel(self, kernel, in_vars=[], ret_vars=[]):
         # switching to a non-sos kernel
-        if kernel == 'SoS':
-            kernel = 'sos'
+        kernel = self.kernel_name(kernel)
+        # self.warn('Switch from {} to {}'.format(self.kernel, kernel))
         if kernel == 'undefined':
             return
         elif not kernel:
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': 'Kernel "{}" is used.\n'.format(self.kernel)})
-        elif self.same_kernel(kernel, self.kernel):
+        elif kernel == self.kernel:
             # the same kernel, do nothing
             return
         elif kernel  == 'sos':
@@ -500,8 +501,8 @@ class SoS_Kernel(IPythonKernel):
             if kernel not in self.kernels:
                 # start a new kernel
                 try:
-                    kernel_name=self.supported_languages[kernel].kernel_name if kernel in self.supported_languages else kernel
-                    self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel_name)
+                    self.kernels[kernel] = manager.start_new_kernel(
+                            startup_timeout=60, kernel_name=kernel)
                 except Exception as e:
                     self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e))
                     return
@@ -989,7 +990,7 @@ class SoS_Kernel(IPythonKernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
-        self.warn(code)
+        # self.warn(code)
         # a flag for if the kernel is hard switched (by %use)
         self.hard_switch_kernel = False
         # evaluate user expression
@@ -1084,14 +1085,14 @@ class SoS_Kernel(IPythonKernel):
             if args.list_kernel:
                 self.send_frontend_msg(self.get_kernel_list())
             # args.default_kernel should be valid
-            if not self.same_kernel(args.default_kernel, self.kernel):
+            if self.kernel_name(args.default_kernel) != self.kernel_name(self.kernel):
                 self.switch_kernel(args.default_kernel)
             #
             if args.cell_kernel == 'undefined':
                 args.cell_kernel = args.default_kernel
             #
             original_kernel = self.kernel
-            if not self.same_kernel(args.cell_kernel, self.kernel):
+            if self.kernel_name(args.cell_kernel) != self.kernel_name(self.kernel):
                 self.switch_kernel(args.cell_kernel)
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
