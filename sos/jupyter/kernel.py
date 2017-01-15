@@ -216,7 +216,7 @@ class SoS_Kernel(IPythonKernel):
             switch happens the kernel will switch back. However, a %use inside
             the cell will still switch the global kernel. In contrast, a hard
             %with magic will absorb the effect of %use.''')
-        parser.add_argument('--list-kernel', required=False, action='store_true',
+        parser.add_argument('--list-kernel', action='store_true',
             help='List kernels')
         parser.add_argument('--default-kernel',
             help='Default global kernel')
@@ -279,8 +279,10 @@ class SoS_Kernel(IPythonKernel):
         return parser
 
     def kernel_name(self, name):
-        if name in self._kernel_name:
-            return self._kernel_name[name]
+        if name in self.supported_languages:
+            return self.supported_languages[name].kernel_name
+        elif name == 'SoS':
+            return 'sos'
         else:
             return name
 
@@ -298,8 +300,6 @@ class SoS_Kernel(IPythonKernel):
                 # for convenience, we create two entries for, e.g. R and ir
                 if name != plugin.kernel_name:
                     self._supported_languages[plugin.kernel_name] = plugin
-                self._kernel_name[name] = plugin.kernel_name
-                self._kernel_name[plugin.kernel_name] = plugin.kernel_name
             except Exception as e:
                 #raise RuntimeError('Failed to load language {}: {}'.format(entrypoint.name, e))
                 pass
@@ -341,7 +341,6 @@ class SoS_Kernel(IPythonKernel):
         # special communication channel to sos frontend
         self.frontend_comm = None
         self.cell_idx = None
-        self._kernel_name = {'SoS': 'sos', 'sos': 'sos'}
 
     def send_frontend_msg(self, msg):
         if self.frontend_comm is None:
@@ -484,8 +483,25 @@ class SoS_Kernel(IPythonKernel):
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': 'Kernel "{}" is used.\n'.format(self.kernel)})
         elif kernel == self.kernel:
-            # the same kernel, do nothing
-            return
+            # the same kernel, do nothing?
+            # but the senario can be
+            #
+            # kernel in SoS
+            # cell R
+            # %use R -i n
+            #
+            # SoS get:
+            #
+            # %softwidth --default-kernel R --cell-kernel R
+            # %use R -i n
+            #
+            # Now, SoS -> R without variable passing
+            # R -> R should honor -i n
+            if in_vars or ret_vars:
+                self.switch_kernel('sos')
+                self.switch_kernel(kernel, in_vars, ret_vars)
+            else:
+                return
         elif kernel  == 'sos':
             # switch from non-sos to sos kernel
             self.handle_magic_put(self.RET_VARS)
@@ -504,7 +520,7 @@ class SoS_Kernel(IPythonKernel):
                     self.kernels[kernel] = manager.start_new_kernel(
                             startup_timeout=60, kernel_name=kernel)
                 except Exception as e:
-                    self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e))
+                    self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}'.format(kernel, e))
                     return
             self.KM, self.KC = self.kernels[kernel]
             self.RET_VARS = ret_vars
