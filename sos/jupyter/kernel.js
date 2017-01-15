@@ -182,6 +182,12 @@ define(['jquery', ], function($) {
         }
 
         function load_select_kernel() {
+            // this function will be called twice, the first time when the notebook is loaded
+            // to create UT elements using the information from notebook metadata. The second
+            // time will be caused whent the backend sends the frontend a list of available kernels
+            // this is why we should not add additional UI elements when the function is called
+            // the second time.
+
             //change css for CellToolBar
             var load_css = function() {
                 var css = document.createElement("style");
@@ -193,33 +199,36 @@ define(['jquery', ], function($) {
             load_css();
 
             var CellToolbar = IPython.CellToolbar;
-            var slideshow_preset = [];
-            var select_type = CellToolbar.utils.select_ui_generator(
-                KernelList,
-                // setter
-                function(cell, value) {
-                    // we check that the slideshow namespace exist and create it if needed
-                    if (cell.metadata.kernel == undefined) {
-                        cell.metadata.kernel = {}
-                    }
-                    cell.metadata.kernel = KernelName[value];
-                    cell.element.css('background-color', BackgroundColor[value]);
-                    cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BackgroundColor[value];
-                },
-                //geter
-                function(cell) {
-                    var ns = cell.metadata.kernel;
-                    return (ns == undefined) ? undefined : ns.kernel
-                },
-                "");
+            // the cell tool bar might have been added by the previous load_select_kernel call
+            if (CellToolbar.list_presets().indexOf("Select cell kernel") < 0) {
+                var slideshow_preset = [];
+                var select_type = CellToolbar.utils.select_ui_generator(
+                    KernelList,
+                    // setter
+                    function(cell, value) {
+                        // we check that the slideshow namespace exist and create it if needed
+                        if (cell.metadata.kernel == undefined) {
+                            cell.metadata.kernel = {}
+                        }
+                        cell.metadata.kernel = KernelName[value];
+                        cell.element.css('background-color', BackgroundColor[value]);
+                        cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BackgroundColor[value];
+                    },
+                    //geter
+                    function(cell) {
+                        var ns = cell.metadata.kernel;
+                        return (ns == undefined) ? undefined : ns.kernel
+                    },
+                    "");
 
-            CellToolbar.register_callback('slideshow.select', select_type);
-            slideshow_preset.push('slideshow.select');
-            var reveal_preset = slideshow_preset.slice();
-            CellToolbar.register_preset('Select cell kernel', reveal_preset);
-            // console.log('Select cell kernel loaded.');
-            CellToolbar.global_show();
-            CellToolbar.activate_preset('Select cell kernel');
+                CellToolbar.register_callback('slideshow.select', select_type);
+                slideshow_preset.push('slideshow.select');
+                var reveal_preset = slideshow_preset.slice();
+                CellToolbar.register_preset('Select cell kernel', reveal_preset);
+                // console.log('Select cell kernel loaded.');
+                CellToolbar.global_show();
+                CellToolbar.activate_preset('Select cell kernel');
+            }
 
             var dropdown = $("<select></select>").attr("id", "kernel_selector")
                 .css("margin-left", "0.75em")
