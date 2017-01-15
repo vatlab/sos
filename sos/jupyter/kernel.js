@@ -202,6 +202,7 @@ define(['jquery', ], function($) {
 
             var CellToolbar = IPython.CellToolbar;
             var slideshow_preset = [];
+		console.log(KernelList);
             var select_type = CellToolbar.utils.select_ui_generator(
                 KernelList,
                 // setter
