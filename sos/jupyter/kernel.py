@@ -278,6 +278,11 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
+    def same_kernel(self, name1, name2):
+        if name1 not in self._kernel_name or name2 not in self._kernel_name:
+            return False
+        return self._kernel_name[name1] == self._kernel_name[name2]
+
     def get_supported_languages(self):
         if self._supported_languages is not None:
             return self._supported_languages
@@ -292,6 +297,8 @@ class SoS_Kernel(IPythonKernel):
                 # for convenience, we create two entries for, e.g. R and ir
                 if name != plugin.kernel_name:
                     self._supported_languages[plugin.kernel_name] = plugin
+                self._kernel_name[name] = plugin.kernel_name
+                self._kernel_name[plugin.kernel_name] = plugin.kernel_name
             except Exception as e:
                 #raise RuntimeError('Failed to load language {}: {}'.format(entrypoint.name, e))
                 pass
@@ -333,6 +340,7 @@ class SoS_Kernel(IPythonKernel):
         # special communication channel to sos frontend
         self.frontend_comm = None
         self.cell_idx = None
+        self._kernel_name = {'SoS': 'sos', 'sos': 'sos'}
 
     def send_frontend_msg(self, msg):
         if self.frontend_comm is None:
@@ -403,6 +411,7 @@ class SoS_Kernel(IPythonKernel):
                 'status' : 'ok'}
 
     def warn(self, message):
+        message = repr(message).rstrip() + '\n'
         if message.strip():
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stderr', 'text': message})
@@ -468,12 +477,12 @@ class SoS_Kernel(IPythonKernel):
         # switching to a non-sos kernel
         if kernel == 'SoS':
             kernel = 'sos'
-        elif kernel == 'undefined':
+        if kernel == 'undefined':
             return
         elif not kernel:
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': 'Kernel "{}" is used.\n'.format(self.kernel)})
-        elif kernel == self.kernel:
+        elif self.same_kernel(kernel, self.kernel):
             # the same kernel, do nothing
             return
         elif kernel  == 'sos':
@@ -483,9 +492,6 @@ class SoS_Kernel(IPythonKernel):
             self.kernel = 'sos'
         elif self.kernel != 'sos':
             # not to 'sos' (kernel != 'sos'), see if they are the same kernel under
-            # different name (e.g. ir and R)
-            if self.supported_languages[kernel].kernel_name == self.supported_languages[self.kernel].kernel_name:
-                return
             self.switch_kernel('sos', in_vars, ret_vars)
             self.switch_kernel(kernel, in_vars, ret_vars)
         else:
@@ -983,9 +989,7 @@ class SoS_Kernel(IPythonKernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
-        #if code.startswith('%listkernel'):
-        #    self.send_frontend_msg(self.get_kernel_list())
-        #    return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': 0}
+        self.warn(code)
         # a flag for if the kernel is hard switched (by %use)
         self.hard_switch_kernel = False
         # evaluate user expression
@@ -1080,14 +1084,14 @@ class SoS_Kernel(IPythonKernel):
             if args.list_kernel:
                 self.send_frontend_msg(self.get_kernel_list())
             # args.default_kernel should be valid
-            if args.default_kernel != self.kernel:
+            if not self.same_kernel(args.default_kernel, self.kernel):
                 self.switch_kernel(args.default_kernel)
             #
             if args.cell_kernel == 'undefined':
                 args.cell_kernel = args.default_kernel
             #
             original_kernel = self.kernel
-            if args.cell_kernel != self.kernel:
+            if not self.same_kernel(args.cell_kernel, self.kernel):
                 self.switch_kernel(args.cell_kernel)
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
