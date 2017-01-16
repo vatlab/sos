@@ -94,12 +94,12 @@ define(['jquery', ], function($) {
 
         function changeStyleOnKernel(cell, type) {
             if (BackgroundColor[type]) {
-                cell.element.css('background-color', BackgroundColor[type]);
-                cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BackgroundColor[type];
+                cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = BackgroundColor[type];
+                cell.element[0].getElementsByClassName('out_prompt_overlay')[0].style.backgroundColor = BackgroundColor[type];
             } else {
-                // FIXME: How can we remove background-color?
-                cell.element.css('background-color', '#FFFFFF');
-                cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = '#FFFFFF';
+                // Use '' to remove background-color?
+                cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = '';
+                cell.element[0].getElementsByClassName('out_prompt_overlay')[0].style.backgroundColor = '';
             }
 
             var sel = cell.element[0].getElementsByTagName('select')[0]
@@ -134,7 +134,7 @@ define(['jquery', ], function($) {
                         //     the kernel for the new cell
 
                         var data = msg.content.data;
-                        // console.log(data);
+                        console.log(data);
 
                         if (data[0] instanceof Array) {
                             if (window.kernel_updated)
@@ -163,8 +163,9 @@ define(['jquery', ], function($) {
                             // update the cells when the notebook is being opened.
                             if (data[0] == null) {
                                 // we also set a global kernel to be used for new cells
-                                if (window.default_kernel != DisplayName[data[1]])
-                                    $('#kernel_selector').val(DisplayName[data[1]]);
+                                $('#kernel_selector').val(DisplayName[data[1]]);
+                                // a side effect of change is cells without metadata kernel info will change background
+                                $('#kernel_selector').change();
                             } else {
                                 // get cell from passed cell index, which was sent through the
                                 // %softwith magic
@@ -200,34 +201,41 @@ define(['jquery', ], function($) {
 
             var CellToolbar = IPython.CellToolbar;
             // the cell tool bar might have been added by the previous load_select_kernel call
-            if (CellToolbar.list_presets().indexOf("Select cell kernel") < 0) {
-                var slideshow_preset = [];
-                var select_type = CellToolbar.utils.select_ui_generator(
-                    KernelList,
-                    // setter
-                    function(cell, value) {
-                        // we check that the slideshow namespace exist and create it if needed
-                        if (cell.metadata.kernel == undefined) {
-                            cell.metadata.kernel = {}
-                        }
-                        cell.metadata.kernel = KernelName[value];
-                        cell.element.css('background-color', BackgroundColor[value]);
-                        cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BackgroundColor[value];
-                    },
-                    //geter
-                    function(cell) {
-                        var ns = cell.metadata.kernel;
-                        return (ns == undefined) ? undefined : ns.kernel
-                    },
-                    "");
+            var slideshow_preset = [];
+            var select_type = CellToolbar.utils.select_ui_generator(
+                KernelList,
+                // setter
+                function(cell, value) {
+                    // we check that the slideshow namespace exist and create it if needed
+                    if (cell.metadata.kernel == undefined) {
+                        cell.metadata.kernel = {}
+                    }
+                    // cell.metadata.kernel = KernelName[value];
+                    cell.element.css('background-color', BackgroundColor[value]);
+                    cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BackgroundColor[value];
+                },
+                //geter
+                function(cell) {
+                    var ns = cell.metadata.kernel;
+                    return (ns == undefined) ? undefined : ns.kernel
+                },
+                "");
 
-                CellToolbar.register_callback('slideshow.select', select_type);
-                slideshow_preset.push('slideshow.select');
-                var reveal_preset = slideshow_preset.slice();
-                CellToolbar.register_preset('Select cell kernel', reveal_preset);
-                // console.log('Select cell kernel loaded.');
-                CellToolbar.global_show();
-                CellToolbar.activate_preset('Select cell kernel');
+            if (CellToolbar.list_presets().indexOf("Select cell kernel") > 0)
+                CellToolbar.unregister_preset('Select cell kernel');
+            CellToolbar.register_callback('slideshow.select', select_type);
+            slideshow_preset.push('slideshow.select');
+            var reveal_preset = slideshow_preset.slice();
+            CellToolbar.register_preset('Select cell kernel', reveal_preset);
+            // console.log('Select cell kernel loaded.');
+            CellToolbar.global_show();
+            CellToolbar.activate_preset('Select cell kernel');
+
+            var cells = IPython.notebook.get_cells();
+            for (var i in cells) {
+                if (cells[i].cell_type == 'code') {
+                    changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
+                }
             }
 
             var dropdown = $("<select></select>").attr("id", "kernel_selector")
@@ -244,7 +252,6 @@ define(['jquery', ], function($) {
                         .attr("value", DisplayName[value[0]])
                         .text(DisplayName[value[0]]));
             });
-
             $('#kernel_selector').val("SoS");
             $('#kernel_selector').change(function() {
                 var kernel_type = $("#kernel_selector").val();
@@ -258,12 +265,6 @@ define(['jquery', ], function($) {
                     }
                 }
             });
-            var cells = IPython.notebook.get_cells();
-            for (var i in cells) {
-                if (cells[i].cell_type == 'code') {
-                    changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
-                }
-            }
         }
 
         function wrap_execute() {
