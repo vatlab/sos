@@ -1102,10 +1102,6 @@ def sos_handle_parameter_(key, defvalue):
     if isinstance(env.sos_dict['__args__'], dict):
         if key in env.sos_dict['__args__']:
             return env.sos_dict['__args__'][key]
-        elif isinstance(defvalue, type):
-            raise ArgumentError('Argument {} of type {} is required'.format(key, defvalue))
-        else:
-            return defvalue
     #
     parser = argparse.ArgumentParser()
     # thre is a possibility that users specify --cut-off instead of --cut_off for parameter
@@ -1166,7 +1162,7 @@ def sos_handle_parameter_(key, defvalue):
                     default=defvalue)
     #
     parser.error = _parse_error
-    parsed, unknown = parser.parse_known_args(env.sos_dict['__args__'])
+    parsed, unknown = parser.parse_known_args(env.sos_dict['__args__']['__args__'] if isinstance(env.sos_dict['__args__'], dict) else env.sos_dict['__args__'])
     if '__unknown_args__' not in env.sos_dict:
         env.sos_dict.set('__unknown_args__', unknown)
     else:
