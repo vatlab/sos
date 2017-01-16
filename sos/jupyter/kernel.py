@@ -480,8 +480,15 @@ class SoS_Kernel(IPythonKernel):
         if kernel == 'undefined':
             return
         elif not kernel:
+            # all kernel names
+            available_kernels = {x:self.kernel_name(x) for x in self.supported_languages.keys()}
+            # remove aliases
+            available_kernels = {x:y for x,y in available_kernels.items() if x not in available_kernels.values()}
             self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': 'Kernel "{}" is used.\n'.format(self.kernel)})
+                {'name': 'stdout', 'text': 'Kernel "{}" is used.\nAvailable kernels are: SoS (sos), {}.'
+                    .format(self.kernel, ', '.join(
+                    [x if x == y else '{} ({})'.format(x, y)
+                    for x,y in available_kernels.items()]))})
         elif kernel == self.kernel:
             # the same kernel, do nothing?
             # but the senario can be

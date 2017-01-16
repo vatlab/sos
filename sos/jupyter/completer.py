@@ -51,7 +51,7 @@ class SoS_MagicsCompleter(Completer):
                 return text, [x for x in env.sos_dict.keys() if x not in \
                     self.kernel.original_keys and not x.startswith('_')]
             elif any(line.startswith(x) for x in ('%use', '%with', '%restart')):
-                return text, self.kernel.supported_languages.keys()
+                return text, ['sos'] + list(self.kernel.supported_languages.keys())
             else:
                 return None
         elif text.startswith('%') and line.startswith(text):
