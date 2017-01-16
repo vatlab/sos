@@ -279,6 +279,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
         raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
     # args can be specified both as a dictionary or keyword arguments
     args.update(kwargs)
+    args['__args__'] = env.sos_dict['__args__']
     if isinstance(shared, str):
         shared = [shared, 'CONFIG']
     elif 'CONFIG' not in shared:
