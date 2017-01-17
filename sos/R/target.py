@@ -171,6 +171,6 @@ class R_library(BaseTarget):
     def name(self):
         return self._library
 
-    def md5(self):
+    def signature(self):
         # we are supposed to get signature of the library, but we cannot
         return textMD5(repr(self._library))
