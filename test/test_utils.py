@@ -83,6 +83,8 @@ class TestUtils(unittest.TestCase):
                 self.assertFalse('\033[' in line)
             # 4 lines for all logging level (logging level of logfile is fixed to DEBUG)
             self.assertEqual(line_count, 20)
+        import logging
+        logging.shutdown()
         os.remove('test.log')
 
     def testInterpolation(self):
