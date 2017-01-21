@@ -845,7 +845,14 @@ class Base_Step_Executor:
                 env.sos_dict.set('_input', g)
                 self.log('_input')
                 env.sos_dict.set('_index', idx)
-                for statement in self.step.statements[input_statement_idx:]:
+                #
+                if '__default_output__' in env.sos_dict and not \
+                    any(st[0] == ':' and st[1] == 'output' for st in self.step.statements[input_statement_idx:]):
+                    pre_statement = [[':', 'output', '_output']]
+                else:
+                    pre_statement = []
+
+                for statement in pre_statement + self.step.statements[input_statement_idx:]:
                     # if input is undertermined, we can only process output:
                     if isinstance(g, Undetermined) and statement[0] != ':':
                         return self.collect_result()
