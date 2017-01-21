@@ -80,7 +80,11 @@ sh:
         self.assertNonExists(['t_d1/t_f2', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2'])
         # this is the tricky part, directory containing untracked file should remain
         self.assertExists(['t_d1', 't_f1',  't_d1/ut_f4'])
-        
+
+    def testRemoveSignatures(self):
+        '''test removal of signatures'''
+        subprocess.call('sos remove -s', shell=True)
+
     def testRemoveSpecificTracked(self):
         # note the t_f1, which is under current directory and has to be remove specifically.
         subprocess.call('sos remove t_f1 ut_f1 t_d2 ut_d2 -t -y', shell=True)

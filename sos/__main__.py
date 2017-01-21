@@ -371,12 +371,14 @@ def get_remove_parser(desc_only=False):
             For safety reasons, files under the current directory have to be
             listed (not as files under .) to be removed.''')
     group = parser.add_mutually_exclusive_group(required=False)
-    group.add_argument('-t', action='store_true', dest='__tracked__', default=False,
+    group.add_argument('-t', '--tracked', action='store_true', default=False,
         help='''Remove tracked files and their signatures from specified files
             and directories.''')
-    group.add_argument('-u', action='store_true', dest='__untracked__', default=False,
+    group.add_argument('-u', '--untracked', action='store_true', default=False,
         help='''Remove untracked files from specified files and directories.''')
-    parser.add_argument('-n', action='store_true', dest='__dryrun__',
+    group.add_argument('-s', '--signature', action='store_true', default=False,
+        help='''Remove untracked files from specified files and directories.''')
+    parser.add_argument('-n', '--dryrun', action='store_true', dest='__dryrun__',
         help='''List files or directories to be removed, without actually
             removing them.''')
     parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
@@ -418,11 +420,32 @@ def cmd_remove(args, unknown_args):
 
     sig_files = glob.glob('.sos/*.sig')
     if not sig_files:
-        raise sys.exit('No executed workflow is identified.')
+        env.logger.info('No executed workflow is identified. Nothing to remove.')
+        return
     tracked_files = set()
+    runtime_files = set()
     for sig_file in sig_files:
-        tracked_files |= get_tracked_files(sig_file)[1]
+        s, t, r = get_tracked_files(sig_file)
+        tracked_files |= t
+        runtime_files |= r
     #
+    if args.signature:
+        removed_cnt = 0
+        for s in runtime_files:
+            #if s.endswith('.sig'):
+            #    continue
+            try:
+                if args.__dryrun__:
+                    print('Would remove {}'.format(os.path.basename(s)))
+                else:
+                    os.remove(s)
+                removed_cnt += 1
+            except Exception as e:
+                env.logger.debug('Failed to remove signature {}: {}'.format(os.path.basename(s), e))
+        if removed_cnt and not args.__dryrun__:
+            env.logger.info('{} runtime signatures removed'.format(removed_cnt))
+        if not args.tracked and not args.untracked and not args.targets:
+            return
     tracked_files = {os.path.abspath(os.path.expanduser(x)) for x in tracked_files}
     tracked_dirs = set()
     # need to get all directories along the path
@@ -512,10 +535,10 @@ def cmd_remove(args, unknown_args):
                 return False
 
     # in case of tracked or all, we need to remove signature
-    if args.__tracked__ or not args.__untracked__:
+    if args.tracked or not args.untracked:
         for f in specified_tracked_files:
             if args.__dryrun__:
-                if args.__tracked__:
+                if args.tracked:
                     print('Would remove tracked file {} and its signature'.format(f))
             else:
                 if get_response('Remove tracked file {} and its signature'.format(f)):
@@ -524,7 +547,7 @@ def cmd_remove(args, unknown_args):
         # these directories should have been removed.
         for d in sorted(specified_tracked_dirs, key=len, reverse=True):
             if args.__dryrun__:
-                if args.__tracked__:
+                if args.tracked:
                     print('Would remove {} with tracked files if empty'.format(d))
             else:
                 #if os.listdir(d):
@@ -536,7 +559,7 @@ def cmd_remove(args, unknown_args):
                             os.unlink(d)
                 else:
                     print('Do not remove {} with tracked file because it is not empty'.format(d))
-    elif args.__untracked__:
+    elif args.untracked:
         for f in specified_untracked_files:
             if args.__dryrun__:
                 print('Would remove untracked file {}'.format(f))
@@ -555,7 +578,7 @@ def cmd_remove(args, unknown_args):
                     else:
                         os.unlink(d)
     # in case of all, we need to remove everything
-    if not args.__tracked__ and not args.__untracked__:
+    if not args.tracked and not args.untracked:
         for target in args.targets:
             target = os.path.expanduser(target)
             if args.__dryrun__:
