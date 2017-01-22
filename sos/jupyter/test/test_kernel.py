@@ -87,7 +87,7 @@ class TestKernel(unittest.TestCase):
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="print(os.getcwd())")
             stdout, stderr = assemble_output(iopub)
-            self.assertTrue(stdout.strip().endswith('jupyter'))
+            self.assertFalse(stdout.strip().endswith('test'))
             self.assertEqual(stderr, '')
             msg_id, content = execute(kc=kc, code="%cd test")
         

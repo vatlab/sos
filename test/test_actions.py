@@ -233,40 +233,6 @@ run:
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    def testBash(self):
-        '''Test action bash'''
-        script = SoS_Script(r'''
-[0]
-bash:
-echo 'Echo'
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        script = SoS_Script(r'''
-[0]
-bash:
-echo 'Echo
-''')
-        wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
-    
-    def testSh(self):
-        '''Test action run'''
-        script = SoS_Script(r'''
-[0]
-sh:
-echo 'Echo'
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        script = SoS_Script(r'''
-[0]
-sh:
-echo 'Echo
-''')
-        wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
-
     def testArgs(self):
         '''Test args option of scripts'''
         FileTarget('a.txt').remove('both')
@@ -279,80 +245,6 @@ sh: args='-n ${filename!q}'
         Base_Executor(wf).run()
         self.assertFalse(os.path.exists('a.txt'))
 
-
-    def testCsh(self):
-        '''Test action csh'''
-        if not shutil.which('csh'):
-            return
-        script = SoS_Script(r'''
-[0]
-csh:
-     foreach color (red orange yellow green blue)
-        echo $color
-     end
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    def testTcsh(self):
-        '''Test action tcsh'''
-        if not shutil.which('tcsh'):
-            return
-        script = SoS_Script(r'''
-[0]
-tcsh:
-     foreach color (red orange yellow green blue)
-        echo $color
-     end
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    def testZsh(self):
-        '''Test action zsh'''
-        if not shutil.which('zsh'):
-            return
-        script = SoS_Script(r'''
-[0]
-zsh:
-echo "Hello World!", $SHELL
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    def testPython(self):
-        '''Test python command. This might fail if python3 is the
-        default interpreter'''
-        script = SoS_Script(r'''
-[0]
-python:
-a = {'1': 2}
-print(a)
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-
-    def testPython3(self):
-        script = SoS_Script(r'''
-[0]
-python3:
-a = {'1', '2'}
-print(a)
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-
-    def testPython2(self):
-        script = SoS_Script(r'''
-[0]
-python2:
-a = {'1', '2'}
-print(a)
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
 
     def testPerl(self):
         '''Test action ruby'''
