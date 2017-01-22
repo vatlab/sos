@@ -51,8 +51,7 @@ from .monitor import ProcessMonitor, summarizeExecution
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
     'fail_if', 'warn_if', 'stop_if',
     'download',
-    'run', 'bash', 'csh', 'tcsh', 'zsh', 'sh',
-    'perl', 'ruby', 'node', 'JavaScript',
+    'run', 'perl', 'ruby', 'node', 'JavaScript',
     'report', 'pandoc'
     ]
 
@@ -593,31 +592,6 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
 def run(script, args='', **kwargs):
     '''Execute specified script using bash.'''
     return SoS_ExecuteScript(script, '', '', args).run(**kwargs)
-
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
-def bash(script, args='', **kwargs):
-    '''Execute specified script using bash.'''
-    return SoS_ExecuteScript(script, '/bin/bash', '.sh', args).run(**kwargs)
-
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
-def csh(script, args='', **kwargs):
-    '''Execute specified script using csh.'''
-    return SoS_ExecuteScript(script, '/bin/csh', '.csh', args).run(**kwargs)
-
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
-def tcsh(script, args='', **kwargs):
-    '''Execute specified script using tcsh.'''
-    return SoS_ExecuteScript(script, '/bin/tcsh', '.sh', args).run(**kwargs)
-
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
-def zsh(script, args='', **kwargs):
-    '''Execute specified script using zsh.'''
-    return SoS_ExecuteScript(script, '/bin/zsh', '.zsh', args).run(**kwargs)
-
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
-def sh(script, args='', **kwargs):
-    '''Execute specified script using sh.'''
-    return SoS_ExecuteScript(script, '/bin/sh', '.sh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def perl(script, args='', **kwargs):
