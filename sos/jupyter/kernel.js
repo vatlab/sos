@@ -153,8 +153,14 @@ define(['jquery', ], function($) {
                                 if (KernelList.findIndex((item) => item[0] === data[i][1]) == -1)
                                     KernelList.push([data[i][1], data[i][1]]);
                                 // if the kernel is not in metadata, push it in
-                                if (IPython.notebook.metadata['sos']['kernels'].findIndex((item) => item[0] === data[i][0]) == -1)
+                                var k_idx = IPython.notebook.metadata['sos']['kernels'].findIndex((item) => item[0] === data[i][0])
+                                if (k_idx == -1)
                                     IPython.notebook.metadata['sos']['kernels'].push(data[i])
+                                else {
+                                    // if language exist update the display name and color, in case it was using old ones
+                                    IPython.notebook.metadata['sos']['kernels'][k_idx][1] = data[i][1];
+                                    IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
+                                }
                             }
                             //add dropdown menu of kernels in frontend
                             load_select_kernel();
@@ -207,9 +213,9 @@ define(['jquery', ], function($) {
                 // setter
                 function(cell, value) {
                     // we check that the slideshow namespace exist and create it if needed
-                    if (cell.metadata.kernel == undefined) {
-                        cell.metadata.kernel = {}
-                    }
+                    //if (cell.metadata.kernel == undefined) {
+                    cell.metadata.kernel = value;
+                    //}
                     // cell.metadata.kernel = KernelName[value];
                     cell.element.css('background-color', BackgroundColor[value]);
                     cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BackgroundColor[value];

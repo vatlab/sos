@@ -732,10 +732,21 @@ class SoS_Kernel(IPythonKernel):
                     _execution_state = sub_msg["content"]["execution_state"]
                 else:
                     if msg_type in msg_types:
-                        response = sub_msg['content']
+                        if not response:
+                            response = sub_msg['content']
+                        elif isinstance(response, list):
+                            response.append(sub_msg['content'])
+                        else:
+                            response = [response]
+                            response.append(sub_msg['content'])
                     else:
+                        if self._debug_mode:
+                            self.warn('{}: {}'.format(msg_type, sub_msg['content']))
                         self.send_response(self.iopub_socket, msg_type,
                             sub_msg['content'])
+        if not response and self._debug_mode:
+            self.warn('Failed to get a response from message type {}'.format(msg_types))
+
         return response
 
     def handle_magic_put(self, items):

@@ -174,11 +174,13 @@ warn_if = sos.actions:warn_if
 stop_if = sos.actions:stop_if
 download = sos.actions:download
 run = sos.actions:run
-bash = sos.actions:bash
-csh = sos.actions:csh
-tcsh = sos.actions:tcsh
-zsh = sos.actions:zsh
-sh = sos.actions:sh
+
+bash = sos.Bash.actions:bash
+csh = sos.Bash.actions:csh
+tcsh = sos.Bash.actions:tcsh
+zsh = sos.Bash.actions:zsh
+sh = sos.Bash.actions:sh
+
 perl = sos.actions:perl
 ruby = sos.actions:ruby
 node = sos.actions:node
@@ -225,6 +227,7 @@ tarfile:is_tarfile,1 = sos.jupyter.preview:preview_tar
 [sos_languages]
 R = sos.R.kernel:sos_R [R]
 Python = sos.Python.kernel:sos_Python
+Bash = sos.Bash.kernel:sos_Bash
 
 [sos_converters]
 sos-html.parser = sos.converter:get_script_to_html_parser
