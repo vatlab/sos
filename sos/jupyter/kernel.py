@@ -164,6 +164,7 @@ class SoS_Kernel(IPythonKernel):
         'run',
         'preview',
         'sandbox',
+        'debug',
     }
     MAGIC_DICT = re.compile('^%dict(\s|$)')
     MAGIC_CONNECT_INFO = re.compile('^%connect_info(\s|$)')
@@ -181,6 +182,7 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_RERUN = re.compile('^%rerun(\s|$)')
     MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
     MAGIC_SANDBOX = re.compile('^%sandbox(\s|$)')
+    MAGIC_DEBUG = re.compile('^%debug(\s|$)')
 
     def get_use_parser(self):
         parser = argparse.ArgumentParser(prog='%use',
@@ -278,6 +280,17 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
+    def get_debug_parser(self):
+        parser = argparse.ArgumentParser(prog='%debug',
+            description='''Turn on or off debug information''')
+        group = parser.add_mutually_exclusive_group()
+        group.add_argument('--on', action='store_true',
+            help='''Turn on debugging''')
+        group.add_argument('--off', action='store_true',
+            help='''Turn on debugging''')
+        parser.error = self._parse_error
+        return parser
+
     def kernel_name(self, name):
         if name in self.supported_languages:
             return self.supported_languages[name].kernel_name
@@ -302,7 +315,8 @@ class SoS_Kernel(IPythonKernel):
                     self._supported_languages[plugin.kernel_name] = plugin
             except Exception as e:
                 #raise RuntimeError('Failed to load language {}: {}'.format(entrypoint.name, e))
-                pass
+                if self._debug_mode:
+                    self.warn('Failed to load language {}: {}'.format(entrypoint.name, e))
         return self._supported_languages
 
     supported_languages = property(lambda self:self.get_supported_languages())
@@ -337,6 +351,7 @@ class SoS_Kernel(IPythonKernel):
         self._completer = None
         self._inspector = None
         self._execution_count = 1
+        self._debug_mode = False
 
         # special communication channel to sos frontend
         self.frontend_comm = None
@@ -519,6 +534,8 @@ class SoS_Kernel(IPythonKernel):
             self.switch_kernel('sos', in_vars, ret_vars)
             self.switch_kernel(kernel, in_vars, ret_vars)
         else:
+            if self._debug_mode:
+                self.warn('Switch from {} to {}'.format(self.kernel, kernel))
             # case when self.kernel == 'sos', kernel != 'sos'
             # to a subkernel
             if kernel not in self.kernels:
@@ -684,7 +701,8 @@ class SoS_Kernel(IPythonKernel):
             self.warn('Magic %get can only be executed by subkernels')
             return
         else:
-            self.warn('Language {} does not support magic %get.'.format(self.kernel))
+            if self._debug_mode:
+                self.warn('Language {} does not support magic %get.'.format(self.kernel))
             return
         # first thing is wait for any side effects (output, stdin, etc.)
         _execution_state = "busy"
@@ -739,7 +757,8 @@ class SoS_Kernel(IPythonKernel):
         elif self.kernel == 'sos':
             self.warn('Magic %put can only be executed by subkernels')
         else:
-            self.warn('Language {} does not support magic %put.'.format(self.kernel))
+            if self._debug_mode:
+                self.warn('Language {} does not support magic %put.'.format(self.kernel))
 
     def _interpolate_option(self, option, quiet=False):
         # interpolate command
@@ -1013,7 +1032,8 @@ class SoS_Kernel(IPythonKernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
-        # self.warn(code)
+        if self._debug_mode:
+            self.warn(code)
         # a flag for if the kernel is hard switched (by %use)
         self.hard_switch_kernel = False
         # evaluate user expression
@@ -1258,6 +1278,15 @@ class SoS_Kernel(IPythonKernel):
         elif self.MAGIC_CD.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_cd(options)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+        elif self.MAGIC_DEBUG.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            parser = self.get_debug_parser()
+            args = parser.parse_args(options.split())
+            if args.on:
+                self._debug_mode = True
+            elif args.off:
+                self._debug_mode = False
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)
