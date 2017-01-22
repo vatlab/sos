@@ -283,11 +283,8 @@ class SoS_Kernel(IPythonKernel):
     def get_debug_parser(self):
         parser = argparse.ArgumentParser(prog='%debug',
             description='''Turn on or off debug information''')
-        group = parser.add_mutually_exclusive_group()
-        group.add_argument('--on', action='store_true',
-            help='''Turn on debugging''')
-        group.add_argument('--off', action='store_true',
-            help='''Turn on debugging''')
+        parser.add_argument('status', choices=['on', 'off'],
+            help='''Turn on or off debugging''')
         parser.error = self._parse_error
         return parser
 
@@ -659,19 +656,19 @@ class SoS_Kernel(IPythonKernel):
             #self.send_response(self.iopub_socket, 'stream',
             #    {'name': 'stdout', 'text': 'sos options set to "{}"\n'.format(options)})
             if not options.strip().startswith('-'):
-                self.warn('Magic %set cannot set positional argument, {} provided.'.format(options))
+                self.warn('Magic %set cannot set positional argument, {} provided.\n'.format(options))
             else:
                 self.options = options.strip()
                 self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': 'sos options is set to "{}"\n'.format(self.options)})
+                    {'name': 'stdout', 'text': 'Set sos options to "{}"\n'.format(self.options)})
         else:
             if self.options:
                 self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': 'sos options "{}" reset to ""\n'.format(self.options)})
+                    {'name': 'stdout', 'text': 'Reset sos options from "{}" to ""\n'.format(self.options)})
                 self.options = ''
             else:
                 self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': 'Usage: set persistent sos options such as workflow name and -v 3 (debug output)\n'})
+                    {'name': 'stdout', 'text': 'Usage: set persistent sos command line options such as "-v 3" (debug output)\n'})
 
     def handle_magic_get(self, items):
         # autmatically get all variables with names start with 'sos'
@@ -1294,10 +1291,7 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_debug_parser()
             args = parser.parse_args(options.split())
-            if args.on:
-                self._debug_mode = True
-            elif args.off:
-                self._debug_mode = False
+            self._debug_mode = args.status == 'on'
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)

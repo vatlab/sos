@@ -403,7 +403,7 @@ define(['jquery', ], function($) {
                     }
                     // BO PENG
                     // handle shell command
-                    if (state.beginningOfLine && stream.match(/![a-zA-Z]/)) {
+                    if (state.beginningOfLine && stream.match(/![a-zA-Z]+/)) {
                         stream.next();
                         return "meta";
                     }
