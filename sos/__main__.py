@@ -417,6 +417,7 @@ def cmd_remove(args, unknown_args):
     import shutil
     from collections import OrderedDict
     from .target import FileTarget
+    env.verbosity = args.verbosity
 
     sig_files = glob.glob('.sos/*.sig')
     if not sig_files:
