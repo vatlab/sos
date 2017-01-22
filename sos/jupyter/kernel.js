@@ -214,11 +214,17 @@ define(['jquery', ], function($) {
                 function(cell, value) {
                     // we check that the slideshow namespace exist and create it if needed
                     //if (cell.metadata.kernel == undefined) {
-                    cell.metadata.kernel = value;
+                    cell.metadata.kernel = KernelName[value];
                     //}
                     // cell.metadata.kernel = KernelName[value];
-                    cell.element.css('background-color', BackgroundColor[value]);
-                    cell.element[0].getElementsByClassName('input_area')[0].style.backgroundColor = BackgroundColor[value];
+                    if (BackgroundColor[value]) {
+                        cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = BackgroundColor[value];
+                        cell.element[0].getElementsByClassName('out_prompt_overlay')[0].style.backgroundColor = BackgroundColor[value];
+                    } else {
+                        // Use '' to remove background-color?
+                        cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = '';
+                        cell.element[0].getElementsByClassName('out_prompt_overlay')[0].style.backgroundColor = '';
+                    }
                 },
                 //geter
                 function(cell) {
