@@ -409,7 +409,7 @@ def get_tracked_files(sig_file):
                 script_files.append(line.split(':', 1)[1].strip())
             elif line.startswith('# included:'):
                 script_files.extend(line.split(':', 1)[-1].strip().split(','))
-    return set(script_files), set(tracked_files), set(runtime_files)
+    return set([x for x in script_files if x.strip()]), set(tracked_files), set(runtime_files)
 
 def cmd_remove(args, unknown_args):
     import glob
