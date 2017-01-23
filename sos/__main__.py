@@ -253,7 +253,7 @@ def cmd_run(args, workflow_args):
         for entrypoint in pkg_resources.iter_entry_points(group='sos_executors'):
             # Grab the function that is the actual plugin.
             name = entrypoint.name
-            if name == args.__queue:
+            if name == args.__queue__:
                 try:
                     executor_class = entrypoint.load()
                 except Exception as e:
