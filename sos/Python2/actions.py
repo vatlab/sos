@@ -23,17 +23,6 @@
 from sos.actions import SoS_Action, SoS_ExecuteScript
 
 @SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
-def python(script, args='', **kwargs):
-    '''Execute specified script using python (which can be python 2 or 3 depending on system configuration.'''
-    return SoS_ExecuteScript(script, 'python', '.py', args).run(**kwargs)
-
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
-def python3(script, args='', **kwargs):
-    '''Execute specified script using python3, and python if python3 does
-    not exist.'''
-    return SoS_ExecuteScript(script, ['python3', 'python'], '.py', args).run(**kwargs)
-
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def python2(script, args='', **kwargs):
     '''Execute specified script using python2, and python if python2 does
     not exist.'''

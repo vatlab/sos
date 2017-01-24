@@ -164,7 +164,7 @@ executable = sos.target:executable
 sos_variable = sos.target:sos_variable
 env_variable = sos.target:env_variable
 R_library = sos.R.target:R_library
-Py_Module = sos.Python.target:Py_Module
+Py_Module = sos.Python3.target:Py_Module
 
 [sos_actions]
 execute_script = sos.actions:execute_script
@@ -188,9 +188,9 @@ JavaScript = sos.actions:JavaScript
 report = sos.actions:report
 pandoc = sos.actions:pandoc
 
-python = sos.Python.actions:python
-python2 = sos.Python.actions:python2
-python3 = sos.Python.actions:python3
+python = sos.Python3.actions:python
+python2 = sos.Python2.actions:python2
+python3 = sos.Python3.actions:python3
 
 R = sos.R.actions:R
 Rmarkdown = sos.R.actions:Rmarkdown
@@ -226,7 +226,8 @@ tarfile:is_tarfile,1 = sos.jupyter.preview:preview_tar
 
 [sos_languages]
 R = sos.R.kernel:sos_R [R]
-Python = sos.Python.kernel:sos_Python
+Python2 = sos.Python2.kernel:sos_Python2
+Python3 = sos.Python3.kernel:sos_Python3
 Bash = sos.Bash.kernel:sos_Bash
 
 [sos_converters]

@@ -80,7 +80,7 @@ df_var = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             clear_channels(iopub)
             #
             msg_id, content = execute(kc=kc, code='''
-%use Python
+%use Python2
 %get null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var df_var
 %dict -r
 %put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var df_var

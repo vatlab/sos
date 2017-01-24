@@ -23,7 +23,7 @@
 import pickle
 from sos.utils import env
 
-class sos_Python:
+class sos_Python3:
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
         self.kernel_name = 'python3'
@@ -34,10 +34,11 @@ class sos_Python:
         return name, "import pickle\nglobals().update(pickle.loads({!r}))".format(pickle.dumps({name:obj}))
 
     def lan_to_sos(self, items):
-        default_items = [x for x in env.sos_dict.keys() if x.startswith('sos') and x not in self.sos_kernel.original_keys]
-        all_items = default_items + items
-        if not all_items:
+        stmt = 'import pickle\n__vars__={{ {} }}\n__vars__.update({{x:y for x,y in locals().items() if x.startswith("sos")}})\npickle.dumps(__vars__)'.format(','.join('"{0}":{0}'.format(x) for x in items))
+        response = self.sos_kernel.get_response(stmt, ['execute_result'])
+        try:
+            ret = pickle.loads(eval(response['data']['text/plain']))
+            return ret
+        except Exception as e:
+            self.sos_kernel.warn('Failed to import variables {}: {}'.format(items, e))
             return {}
-        response = self.sos_kernel.get_response('import pickle\npickle.dumps({{ {} }})'.format(','.join('"{0}":{0}'.format(x) for x in all_items)),
-            ['execute_result'])
-        return pickle.loads(eval(response['data']['text/plain']))
