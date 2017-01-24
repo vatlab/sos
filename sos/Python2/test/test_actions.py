@@ -21,6 +21,7 @@
 #
 
 import unittest
+import shutil
 
 from sos.sos_script import SoS_Script
 from sos.utils import env
@@ -47,36 +48,14 @@ class TestActions(unittest.TestCase):
         #
         self.temp_files.extend(files)
 
-    def testPython(self):
-        '''Test python command. This might fail if python3 is the
-        default interpreter'''
-        script = SoS_Script(r'''
-[0]
-python:
-a = {'1': 2}
-print(a)
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-
-    def testPython3(self):
-        script = SoS_Script(r'''
-[0]
-python3:
-a = {'1', '2'}
-print(a)
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-
+    @unittest.skipIf(not shutil.which('python2.7'), 'Skip test because of no python2.7 installation')
     def testPython2(self):
+
         script = SoS_Script(r'''
 [0]
 python2:
 a = {'1', '2'}
-print(a)
+print a
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()

@@ -70,16 +70,5 @@ print(a)
         wf = script.workflow()
         Base_Executor(wf).run()
 
-
-    def testPython2(self):
-        script = SoS_Script(r'''
-[0]
-python2:
-a = {'1', '2'}
-print(a)
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
 if __name__ == '__main__':
     unittest.main()

@@ -61,8 +61,6 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code='''
 null_var = None
 num_var = 123
-import numpy
-num_arr_var = numpy.array([1, 2, 3])
 logic_var = True
 logic_arr_var = [True, False, True]
 char_var = '123'
@@ -70,6 +68,9 @@ char_arr_var = ['1', '2', '3']
 list_var = [1, 2, '3']
 dict_var = dict(a=1, b=2, c='3')
 set_var = {1, 2, '3'}
+
+import numpy
+num_arr_var = numpy.array([1, 2, 3])
 mat_var = numpy.matrix([[1,2],[3,4]])
 import pandas as pd
 import numpy as np
@@ -83,28 +84,21 @@ df_var = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
 %use Python2
 %get null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var df_var
 %dict -r
-%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var df_var
+%put null_var num_var logic_var logic_arr_var char_var char_arr_var set_var list_var dict_var
 ''')
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var set_var list_var dict_var")
+            msg_id, content = execute(kc=kc, code="%dict null_var num_var logic_var logic_arr_var char_var char_arr_var set_var list_var dict_var")
             res = get_result(iopub)
             self.assertEqual(res['null_var'], None)
             self.assertEqual(res['num_var'], 123)
-            self.assertEqual(list(res['num_arr_var']), [1,2,3])
             self.assertEqual(res['logic_var'], True)
             self.assertEqual(res['logic_arr_var'], [True, False, True])
             self.assertEqual(res['char_var'], '123')
             self.assertEqual(res['char_arr_var'], ['1', '2', '3'])
             self.assertEqual(res['list_var'], [1,2,'3'])
             self.assertEqual(res['dict_var'], {'a': 1, 'b': 2, 'c': '3'})
-            msg_id, content = execute(kc=kc, code='mat_var.shape')
-            res = get_result(iopub)
-            self.assertEqual(res, (2, 2))
-            msg_id, content = execute(kc=kc, code='df_var.shape')
-            res = get_result(iopub)
-            self.assertEqual(res, (1000, 10))
 
 
 if __name__ == '__main__':

@@ -423,7 +423,7 @@ class SoS_Kernel(IPythonKernel):
                 'status' : 'ok'}
 
     def warn(self, message):
-        message = repr(message).rstrip() + '\n'
+        message = str(message).rstrip() + '\n'
         if message.strip():
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stderr', 'text': message})
@@ -684,17 +684,28 @@ class SoS_Kernel(IPythonKernel):
         if self.kernel in self.supported_languages:
             lan = self.supported_languages[self.kernel]
             try:
-                statements = []
                 for item in items:
                     new_name, py_repr = lan.sos_to_lan(item, env.sos_dict[item])
                     if new_name != item:
                         self.warn('Variable {} is passed from SoS to kernel {} as {}'
                             .format(item, self.kernel, new_name))
-                    statements.append(py_repr)
+                    # first thing is wait for any side effects (output, stdin, etc.)
+                    self.KC.execute(py_repr, silent=True, store_history=False)
+                    _execution_state = "busy"
+                    while _execution_state != 'idle':
+                        # display intermediate print statements, etc.
+                        while self.KC.iopub_channel.msg_ready():
+                            sub_msg = self.KC.iopub_channel.get_msg()
+                            msg_type = sub_msg['header']['msg_type']
+                            if msg_type == 'status':
+                                _execution_state = sub_msg["content"]["execution_state"]
+                            elif msg_type == 'error':
+                                self.warn('Transferring variable {} of type {} to kernel {} is not supported'.format(item, type(env.sos_dict[item]), self.kernel))
+                                if self._debug_mode:
+                                    self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
             except Exception as e:
                 self.warn('Failed to get variable: {}\n'.format(e))
                 return
-            self.KC.execute('\n'.join(statements), silent=True, store_history=False)
         elif self.kernel == 'sos':
             self.warn('Magic %get can only be executed by subkernels')
             return
@@ -702,18 +713,7 @@ class SoS_Kernel(IPythonKernel):
             if self._debug_mode:
                 self.warn('Language {} does not support magic %get.'.format(self.kernel))
             return
-        # first thing is wait for any side effects (output, stdin, etc.)
-        _execution_state = "busy"
-        while _execution_state != 'idle':
-            # display intermediate print statements, etc.
-            while self.KC.iopub_channel.msg_ready():
-                sub_msg = self.KC.iopub_channel.get_msg()
-                msg_type = sub_msg['header']['msg_type']
-                if msg_type == 'status':
-                    _execution_state = sub_msg["content"]["execution_state"]
-                else:
-                    self.send_response(self.iopub_socket, msg_type,
-                        sub_msg['content'])
+
 
     def get_response(self, statement, msg_types):
         # get response of statement of specific msg types.
