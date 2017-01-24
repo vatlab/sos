@@ -33,6 +33,10 @@ USER    root
 RUN     conda install -y feather-format -c conda-forge
 RUN     pip install xlrd docker-py
 RUN     pip install markdown
+
+RUN     pip install bash_kernel
+RUN     python -m bash_kernel.install
+
 RUN     pip install sos
 
 COPY    doc /home/$NB_USER/work/doc
