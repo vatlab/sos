@@ -516,11 +516,12 @@ class SoS_Kernel(IPythonKernel):
             #
             # Now, SoS -> R without variable passing
             # R -> R should honor -i n
-            if in_vars or ret_vars:
+
+            # or, when we randomly jump cells, we should more aggreessively return
+            # automatically shared variables to sos (done by the following) (#375)
+            if kernel != 'sos':
                 self.switch_kernel('sos')
                 self.switch_kernel(kernel, in_vars, ret_vars)
-            else:
-                return
         elif kernel  == 'sos':
             # switch from non-sos to sos kernel
             self.handle_magic_put(self.RET_VARS)
