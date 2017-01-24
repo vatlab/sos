@@ -54,7 +54,7 @@ class TestKernel(unittest.TestCase):
         os.chdir(self.olddir)
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
-    def testGetPythonDataFromBash(self):
+    def testGetDataFromBash(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code='''
