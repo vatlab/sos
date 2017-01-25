@@ -321,7 +321,7 @@ def export_notebook(exporter_class, to_format, notebook_file, output_file, unkno
             pass
     else:
         ret = subprocess.call(['jupyter', 'nbconvert', notebook_file, '--to', to_format,
-            '--output', output_file] + unknown_args)
+            '--output', os.path.abspath(output_file)] + unknown_args)
         if ret != 0:
             env.logger.error('Failed to convert {} to {} format'.format(notebook_file, to_format))
         else:
