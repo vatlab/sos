@@ -280,6 +280,9 @@ define(['jquery', ], function($) {
         }
 
         function wrap_execute() {
+            if (!window.kernel_updated)
+                IPython.notebook.kernel.execute('%softwith --list-kernel',
+                    [], {'silent': true, 'store_history': false});
             // override kernel execute with the wrapper.
             IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute
             IPython.notebook.kernel.execute = my_execute

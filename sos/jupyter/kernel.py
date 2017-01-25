@@ -1061,7 +1061,8 @@ class SoS_Kernel(IPythonKernel):
             out[key] = value
         ret['user_expressions'] = out
         #
-        self._execution_count += 1
+        if not silent:
+            self._execution_count += 1
         # make sure post_executed is triggered after the completion of all cell content
         self.shell.user_ns.update(env.sos_dict._dict)
         # trigger post processing of object and display matplotlib figures
