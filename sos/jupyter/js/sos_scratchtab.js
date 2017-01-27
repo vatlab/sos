@@ -12,7 +12,7 @@ var scratchTab = function (nb) {
 
     // create elements
     this.element = $("<div id='nbextension-scratchTab'>");
-
+    
 
     // create my cell
     var cell = this.cell = new CodeCell(nb.kernel, {
@@ -81,8 +81,9 @@ var scratchTab = function (nb) {
 
 
   function toggle_scratchTab(){
-    if ($('#nbextension-scratchTab').height()==0){
+    if ($('#nbextension-scratchTab').height()<1){
         var site_height = $("#site").height();
+
         $('#nbextension-scratchTab').animate({
           height: site_height,
         }, 200);
