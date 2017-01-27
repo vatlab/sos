@@ -72,9 +72,9 @@ define(['jquery' ], function($) {
         });
        
 
-        $.getScript("/notebooks/sos/jupyter/js/sos_scratchpad.js",function(){
-            load_scratchpad();
-            add_scratchpad_button();
+        $.getScript("/notebooks/sos/jupyter/js/sos_scratchtab.js",function(){
+            load_scratchTab();
+            add_scratchTab_button();
             patch_CodeCell_get_callbacks();
 
         });

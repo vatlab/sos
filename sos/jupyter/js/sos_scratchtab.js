@@ -1,17 +1,19 @@
 // var CodeCell = require('notebook/js/codecell').CodeCell;
 // var utils = require('base/js/utils');
 var container_width=$('#site').width();
-var my_scratchpad;
+var my_scratchTab;
 
 
-var Scratchpad = function (nb) {
-    var scratchpad = this;
+var scratchTab = function (nb) {
+    var scratchTab = this;
     this.notebook = nb;
     this.kernel = nb.kernel;
     this.km = nb.keyboard_manager;
 
     // create elements
-    this.element = $("<div id='nbextension-scratchpad'>");
+    this.element = $("<div id='nbextension-scratchTab'>");
+
+
     // create my cell
     var cell = this.cell = new CodeCell(nb.kernel, {
       events: nb.events,
@@ -33,13 +35,13 @@ var Scratchpad = function (nb) {
     // override ctrl/shift-enter to execute me if I'm focused instead of the notebook's cell
     var execute_and_select_action = this.km.actions.register({
       handler: $.proxy(this.execute_and_select_event, this),
-    }, 'scratchpad-execute-and-select');
+    }, 'scratchTab-execute-and-select');
     var execute_action = this.km.actions.register({
       handler: $.proxy(this.execute_event, this),
-    }, 'scratchpad-execute');
+    }, 'scratchTab-execute');
     var toggle_action = this.km.actions.register({
-      handler: $.proxy(toggle_scratchpad, this),
-    }, 'scratchpad-toggle');
+      handler: $.proxy(toggle_scratchTab, this),
+    }, 'scratchTab-toggle');
     
     var shortcuts = {
       'shift-enter': execute_and_select_action,
@@ -54,7 +56,7 @@ var Scratchpad = function (nb) {
   };
 
 
-  Scratchpad.prototype.execute_and_select_event = function (evt) {
+  scratchTab.prototype.execute_and_select_event = function (evt) {
     if (utils.is_focused(this.element)) {
       this.cell.execute();
     } else {
@@ -62,7 +64,7 @@ var Scratchpad = function (nb) {
     }
   };
 
-  Scratchpad.prototype.execute_event = function (evt) {
+  scratchTab.prototype.execute_event = function (evt) {
     if (utils.is_focused(this.element)) {
       this.cell.execute();
     } else {
@@ -71,32 +73,32 @@ var Scratchpad = function (nb) {
   };
 
 
-  function setup_scratchpad () {
+  function setup_scratchTab () {
     // lazy, hook it up to Jupyter.notebook as the handle on all the singletons
-    console.log("Setting up scratchpad");
-    return new Scratchpad(Jupyter.notebook);
+    console.log("Setting up scratchTab");
+    return new scratchTab(Jupyter.notebook);
   }
 
 
-  function toggle_scratchpad(){
-    if ($('#nbextension-scratchpad').height()==0){
+  function toggle_scratchTab(){
+    if ($('#nbextension-scratchTab').height()==0){
         var site_height = $("#site").height();
-        $('#nbextension-scratchpad').animate({
+        $('#nbextension-scratchTab').animate({
           height: site_height,
         }, 200);
-        $('#nbextension-scratchpad .cell').show();
-        $('#notebook-container').css('margin-left',$('#nbextension-scratchpad').width()+10);
+        $('#nbextension-scratchTab .cell').show();
+        $('#notebook-container').css('margin-left',$('#nbextension-scratchTab').width()+10);
         $('#notebook-container').css('margin-right',50);
-        // $('#notebook-container').css('width',container_width-$('#nbextension-scratchpad').width()-30);
+        // $('#notebook-container').css('width',container_width-$('#nbextension-scratchTab').width()-30);
         $('#notebook-container').css('width','80%');
         $('.celltoolbar label').css('margin-left',0);
         $('.celltoolbar label').css('margin-right',0);
-        my_scratchpad.cell.focus_editor()
+        my_scratchTab.cell.focus_editor()
     }else{
-        $('#nbextension-scratchpad').animate({
+        $('#nbextension-scratchTab').animate({
               height: 0,
             }, 100);
-        $('#nbextension-scratchpad .cell').hide();
+        $('#nbextension-scratchTab .cell').hide();
         $('#notebook-container').css('margin-left','10px');
         $('#notebook-container').css('width',container_width-20);
         $('#notebook-container').css('margin-right',50);
@@ -105,37 +107,37 @@ var Scratchpad = function (nb) {
   }
 
 
-  function load_scratchpad() {
+  function load_scratchTab() {
 
     var load_css = function() {
         var css = document.createElement("style");
         css.type = "text/css";
-        css.innerHTML = '#nbextension-scratchpad {position: absolute; left: 0; bottom: 0; width: 20%; background-color: #F8F5E1; border-left: 1px solid #aaa; border-top: 1px solid #aaa; z-index: 9000; } #nbextension-scratchpad .cell-wrapper {height: 100%; overflow: auto; } .scratchpad-btn {float: left; padding-right: 24px; opacity: 0.2; font-size: 24px; z-index: 9001; } .scratchpad-btn:hover {opacity: 1; } .scratchpad-close {display: none; position: absolute; float: right; bottom: 8px; right: 0; } .scratchpad-open {margin-top: -32px; }}'; 
+        css.innerHTML = '#nbextension-scratchTab {position: absolute; left: 0; bottom: 0; width: 20%; background-color: #F8F5E1; border-left: 1px solid #aaa; border-top: 1px solid #aaa; z-index: 9000; } #nbextension-scratchTab .cell-wrapper {height: 100%; overflow: auto; } .scratchTab-btn {float: left; padding-right: 24px; opacity: 0.2; font-size: 24px; z-index: 9001; } .scratchTab-btn:hover {opacity: 1; } .scratchTab-close {display: none; position: absolute; float: right; bottom: 8px; right: 0; } .scratchTab-open {margin-top: -32px; }}'; 
         document.body.appendChild(css);
     };
 
     load_css();
 
     if (Jupyter.notebook.kernel) {
-      my_scratchpad=setup_scratchpad();
+      my_scratchTab=setup_scratchTab();
     } else {
-      events.on('kernel_ready.Kernel', setup_scratchpad);
+      events.on('kernel_ready.Kernel', setup_scratchTab);
     }
   }
 
 
-function add_scratchpad_button() {
+function add_scratchTab_button() {
     if (!IPython.toolbar) {
-      $([IPython.events]).on("app_initialized.NotebookApp", scratchpad_button);
+      $([IPython.events]).on("app_initialized.NotebookApp", scratchTab_button);
       return;
     }
-    if ($("#scratchpad_button").length === 0) {
+    if ($("#scratchTab_button").length === 0) {
       IPython.toolbar.add_buttons_group([
         {
-          'label'   : 'Scratchpad',
+          'label'   : 'scratchTab',
           'icon'    : 'fa-cube',
-          'callback':  toggle_scratchpad,
-          'id'      : 'scratchpad_button'
+          'callback':  toggle_scratchTab,
+          'id'      : 'scratchTab_button'
         }
       ]);
     }
@@ -143,9 +145,9 @@ function add_scratchpad_button() {
 
 
 function keepWidth(){
-    if ($('#nbextension-scratchpad').height()!=0){
-        $('#notebook-container').css('margin-left',$('#nbextension-scratchpad').width()+30);
-        $('#notebook-container').css('width',container_width-$('#nbextension-scratchpad').width()-30);
+    if ($('#nbextension-scratchTab').height()!=0){
+        $('#notebook-container').css('margin-left',$('#nbextension-scratchTab').width()+30);
+        $('#notebook-container').css('width',container_width-$('#nbextension-scratchTab').width()-30);
         $('.celltoolbar label').css('margin-left',0);
         $('.celltoolbar label').css('margin-right',0);
     }
