@@ -20,7 +20,7 @@
 // with some minor modification. An expert on javascript and code mirror
 // is required to make it work for other langauges that SoS supports.
 //
-define(['jquery' ], function($) {
+define(['jquery'], function($) {
 
     "use strict";
     //variables defined as global which enable access from imported scripts.
@@ -62,24 +62,20 @@ define(['jquery' ], function($) {
     var onload = function() {
 
         // setting up frontend using existing metadata (without executing anything)
-        $.getScript("/notebooks/sos/jupyter/js/sos_selectkernel.js",function(){
-                    load_select_kernel();
-                    changeCellStyle();
-            $.getScript("/notebooks/sos/jupyter/js/sos_comms.js",function(){
+        $.getScript("/notebooks/sos/jupyter/js/sos_selectkernel.js", function() {
+            load_select_kernel();
+            changeCellStyle();
+            $.getScript("/notebooks/sos/jupyter/js/sos_comms.js", function() {
                 events.on('kernel_connected.Kernel', register_sos_comm);
                 events.on('kernel_ready.Kernel', wrap_execute);
             });
         });
-       
 
-        $.getScript("/notebooks/sos/jupyter/js/sos_scratchtab.js",function(){
+        $.getScript("/notebooks/sos/jupyter/js/sos_scratchtab.js", function() {
             load_scratchTab();
             add_scratchTab_button();
             patch_CodeCell_get_callbacks();
-
         });
-
-
 
         // define SOS CodeMirror syntax highlighter
         (function(mod) {
