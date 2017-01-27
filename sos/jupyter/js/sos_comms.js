@@ -31,6 +31,25 @@
                         callbacks, options)
                 }
             }
+            // if this is a command from scratch pad (not part of the notebook)
+            // FIXME:
+
+            // not sure how to get meta data from the scratch pad cell
+            return this.orig_execute(
+                        // passing to kernel
+                        // 1. the default kernel (might have been changed from menu bar
+                        // 2. cell kernel (might be unspecified for new cell)
+                        // 3. cell index (for setting style after execution)
+                        // in addition, the softwidth command will send a "--list-kernel" request if
+                        // the frontend is not correctly initialized, possibly because the kernel was
+                        // not ready when the frontend sent the command `%listkernel`.
+                        "%softwith " +
+                        (window.kernel_updated ? "" : " --list-kernel ") +
+                        " --default-kernel " + window.default_kernel +
+                        " --cell-kernel " + window.my_scratchTab.cell.metadata.kernel
+                        " --cell " + i.toString() + "\n" + code,
+                        callbacks, {'silent': false, 'store_history': false})
+
         }
 
 
