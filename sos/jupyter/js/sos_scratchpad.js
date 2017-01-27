@@ -1,4 +1,5 @@
-var CodeCell = require('notebook/js/codecell').CodeCell;
+// var CodeCell = require('notebook/js/codecell').CodeCell;
+// var utils = require('base/js/utils');
 var container_width=$('#site').width();
 var my_scratchpad;
 
@@ -97,7 +98,7 @@ var Scratchpad = function (nb) {
             }, 100);
         $('#nbextension-scratchpad .cell').hide();
         $('#notebook-container').css('margin-left','10px');
-        $('#notebook-container').css('width',container_width);
+        $('#notebook-container').css('width',container_width-20);
         $('#notebook-container').css('margin-right',50);
     }
 

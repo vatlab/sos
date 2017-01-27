@@ -23,14 +23,15 @@
 define(['jquery' ], function($) {
 
     "use strict";
-    var BackgroundColor = {}
-    var DisplayName = {}
-    var KernelName = {}
-    var KernelList = []
-    var events = require('base/js/events');
-    var utils = require('base/js/utils');
-    var Jupyter = require('base/js/namespace');
-    var CodeCell = require('notebook/js/codecell').CodeCell;
+    //variables defined as global which enable access from imported scripts.
+    window.BackgroundColor = {}
+    window.DisplayName = {}
+    window.KernelName = {}
+    window.KernelList = []
+    window.events = require('base/js/events');
+    window.utils = require('base/js/utils');
+    window.Jupyter = require('base/js/namespace');
+    window.CodeCell = require('notebook/js/codecell').CodeCell;
 
     window.default_kernel = 'sos';
     window.kernel_updated = false;
@@ -43,7 +44,7 @@ define(['jquery' ], function($) {
             ]
         };
 
-    var data = IPython.notebook.metadata['sos']['kernels'];
+    window.data = IPython.notebook.metadata['sos']['kernels'];
     for (var i = 0; i < data.length; i++) {
         // BackgroundColor is color
         BackgroundColor[data[i][0]] = data[i][2];
@@ -58,260 +59,20 @@ define(['jquery' ], function($) {
         KernelList.push([data[i][1], data[i][1]])
     }
 
-    
-
     var onload = function() {
 
-        // override the existing execute function by
-        //
-        // look for all input cells, find one that has prompt '*', which must
-        // be the one that is being executed. Then, get the metadata and send
-        // the kernel and cell index through the %softwith magic.
-        //
-
-        var my_execute = function(code, callbacks, options) {
-            "use strict"
-            var cells = IPython.notebook.get_cells();
-            for (var i = cells.length - 1; i >= 0; --i) {
-                // this is the cell that is being executed...
-                // according to this.set_input_prompt('*') before execute is called.
-                // also, because a cell might be starting without a previous cell
-                // being finished, we should start from reverse and check actual code
-                if (cells[i].input_prompt_number == '*' && code == cells[i].get_text()) {
-                    // use cell kernel if meta exists, otherwise use window.default_kernel
-                    return this.orig_execute(
-                        // passing to kernel
-                        // 1. the default kernel (might have been changed from menu bar
-                        // 2. cell kernel (might be unspecified for new cell)
-                        // 3. cell index (for setting style after execution)
-                        // in addition, the softwidth command will send a "--list-kernel" request if
-                        // the frontend is not correctly initialized, possibly because the kernel was
-                        // not ready when the frontend sent the command `%listkernel`.
-                        "%softwith " +
-                        (window.kernel_updated ? "" : " --list-kernel ") +
-                        " --default-kernel " + window.default_kernel +
-                        " --cell-kernel " + cells[i].metadata.kernel +
-                        " --cell " + i.toString() + "\n" + code,
-                        callbacks, options)
-                }
-            }
-        }
-
-
-        function changeStyleOnKernel(cell, type) {
-            if (BackgroundColor[type]) {
-                cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = BackgroundColor[type];
-                cell.element[0].getElementsByClassName('out_prompt_overlay')[0].style.backgroundColor = BackgroundColor[type];
-            } else {
-                // Use '' to remove background-color?
-                cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = '';
-                cell.element[0].getElementsByClassName('out_prompt_overlay')[0].style.backgroundColor = '';
-            }
-
-            var sel = cell.element[0].getElementsByTagName('select')[0]
-            var opts = sel.options;
-            for (var opt, j = 0; opt = opts[j]; j++) {
-                if (opt.value == DisplayName[type]) {
-                    sel.selectedIndex = j;
-                    break;
-                }
-            }
-        }
-
-        function register_sos_comm() {
-            // comm message sent from the kernel
-            Jupyter.notebook.kernel.comm_manager.register_target('sos_comm',
-                function(comm, msg) {
-                    comm.on_msg(function(msg) {
-                        // when the notebook starts it should receive a message in the format of
-                        // a nested array of elements such as
-                        //
-                        // "ir", "R", "#ABackgroundColorDEF"
-                        //
-                        // where are kernel name (jupyter kernel), displayed name (SoS), and background
-                        // color assigned by the language module. The user might use name ir or R (both
-                        // acceptable) but the frontend should only display displayed name, and send
-                        // the real kernel name back to kernel (%softwith and metadata).
-                        //
-                        // there are two kinds of messages from my_execute
-                        // 1. cell_idx: kernel
-                        //     the kernel used for the cell with source
-                        // 2. None: kernel
-                        //     the kernel for the new cell
-
-                        var data = msg.content.data;
-                        // console.log(data);
-
-                        if (data[0] instanceof Array) {
-                            if (window.kernel_updated)
-                                return;
-                            for (var i = 0; i < data.length; i++) {
-                                // BackgroundColor is color
-                                BackgroundColor[data[i][0]] = data[i][2];
-                                BackgroundColor[data[i][1]] = data[i][2];
-                                // DisplayName
-                                DisplayName[data[i][0]] = data[i][1];
-                                DisplayName[data[i][1]] = data[i][1];
-                                // Name
-                                KernelName[data[i][0]] = data[i][0];
-                                KernelName[data[i][1]] = data[i][0];
-                                // KernelList, use displayed name
-                                if (KernelList.findIndex((item) => item[0] === data[i][1]) == -1)
-                                    KernelList.push([data[i][1], data[i][1]]);
-                                // if the kernel is not in metadata, push it in
-                                var k_idx = IPython.notebook.metadata['sos']['kernels'].findIndex((item) => item[0] === data[i][0])
-                                if (k_idx == -1)
-                                    IPython.notebook.metadata['sos']['kernels'].push(data[i])
-                                else {
-                                    // if language exist update the display name and color, in case it was using old ones
-                                    IPython.notebook.metadata['sos']['kernels'][k_idx][1] = data[i][1];
-                                    IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
-                                }
-                            }
-                            //add dropdown menu of kernels in frontend
-                            load_select_kernel();
-                            window.kernel_updated = true;
-                        } else {
-                            // update the cells when the notebook is being opened.
-                            if (data[0] == null) {
-                                // we also set a global kernel to be used for new cells
-                                $('#kernel_selector').val(DisplayName[data[1]]);
-                                // a side effect of change is cells without metadata kernel info will change background
-                                $('#kernel_selector').change();
-                            } else {
-                                // get cell from passed cell index, which was sent through the
-                                // %softwith magic
-                                var cell = IPython.notebook.get_cell(data[0]);
-                                if (cell.metadata.kernel != KernelName[data[1]]) {
-                                    cell.metadata.kernel = KernelName[data[1]];
-                                    // set meta information
-                                    changeStyleOnKernel(cell, data[1])
-                                }
-                            }
-                        }
-                    });
-                }
-            );
-        }
-
-        function load_select_kernel() {
-            // this function will be called twice, the first time when the notebook is loaded
-            // to create UT elements using the information from notebook metadata. The second
-            // time will be caused whent the backend sends the frontend a list of available kernels
-            // this is why we should not add additional UI elements when the function is called
-            // the second time.
-
-            //change css for CellToolBar
-            var load_css = function() {
-                var css = document.createElement("style");
-                css.type = "text/css";
-                css.innerHTML = '.code_cell .celltoolbar {width:10%;background:none;border:none;border-bottom:none;z-index: 1000;position:relative;margin-bottom:-50pt;float:right;}  .text_cell .celltoolbar {display:none}';
-                document.body.appendChild(css);
-            };
-
-            load_css();
-
-            var CellToolbar = IPython.CellToolbar;
-            // the cell tool bar might have been added by the previous load_select_kernel call
-            var slideshow_preset = [];
-            var select_type = CellToolbar.utils.select_ui_generator(
-                KernelList,
-                // setter
-                function(cell, value) {
-                    // we check that the slideshow namespace exist and create it if needed
-                    //if (cell.metadata.kernel == undefined) {
-                    cell.metadata.kernel = KernelName[value];
-                    //}
-                    // cell.metadata.kernel = KernelName[value];
-                    if (BackgroundColor[value]) {
-                        cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = BackgroundColor[value];
-                        cell.element[0].getElementsByClassName('out_prompt_overlay')[0].style.backgroundColor = BackgroundColor[value];
-                    } else {
-                        // Use '' to remove background-color?
-                        cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = '';
-                        cell.element[0].getElementsByClassName('out_prompt_overlay')[0].style.backgroundColor = '';
-                    }
-                },
-                //geter
-                function(cell) {
-                    var ns = cell.metadata.kernel;
-                    return (ns == undefined) ? undefined : ns.kernel
-                },
-                "");
-
-            if (CellToolbar.list_presets().indexOf("Select cell kernel") > 0)
-                CellToolbar.unregister_preset('Select cell kernel');
-            CellToolbar.register_callback('slideshow.select', select_type);
-            slideshow_preset.push('slideshow.select');
-            var reveal_preset = slideshow_preset.slice();
-            CellToolbar.register_preset('Select cell kernel', reveal_preset);
-            // console.log('Select cell kernel loaded.');
-            CellToolbar.global_show();
-            CellToolbar.activate_preset('Select cell kernel');
-
-            var cells = IPython.notebook.get_cells();
-            for (var i in cells) {
-                if (cells[i].cell_type == 'code') {
-                    changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
-                }
-            }
-
-            var dropdown = $("<select></select>").attr("id", "kernel_selector")
-                .css("margin-left", "0.75em")
-                .attr("class", "form-control select-xs")
-            // .change(select_kernel);
-            if (Jupyter.toolbar.element.has('#kernel_selector').length == 0)
-                Jupyter.toolbar.element.append(dropdown);
-            // remove any existing items
-            $('#kernel_selector').empty();
-            $.each(KernelList, function(key, value) {
-                $('#kernel_selector')
-                    .append($("<option></option>")
-                        .attr("value", DisplayName[value[0]])
-                        .text(DisplayName[value[0]]));
-            });
-            $('#kernel_selector').val("SoS");
-            $('#kernel_selector').change(function() {
-                var kernel_type = $("#kernel_selector").val();
-
-                window.default_kernel = kernel_type;
-
-                var cells = IPython.notebook.get_cells();
-                for (var i in cells) {
-                    if (cells[i].cell_type == 'code' && !cells[i].metadata.kernel) {
-                        changeStyleOnKernel(cells[i], kernel_type);
-                    }
-                }
-            });
-        }
-
-        function wrap_execute() {
-                if (!window.kernel_updated)
-                    IPython.notebook.kernel.execute('%softwith --list-kernel',
-                        [], {'silent': true, 'store_history': false});
-                // override kernel execute with the wrapper.
-                IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute
-                IPython.notebook.kernel.execute = my_execute
-            }
-
-
-
-
         // setting up frontend using existing metadata (without executing anything)
-        load_select_kernel();
-        var cells = IPython.notebook.get_cells();
-        // setting up background color and selection according to notebook metadata
-        for (var i in cells) {
-            if (cells[i].cell_type == 'code') {
-                changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
-            }
-        }
-        events.on('kernel_connected.Kernel', register_sos_comm);
-        events.on('kernel_ready.Kernel', wrap_execute);
+        $.getScript("/notebooks/sos/jupyter/js/sos_selectkernel.js",function(){
+                    load_select_kernel();
+                    changeCellStyle();
+            $.getScript("/notebooks/sos/jupyter/js/sos_comms.js",function(){
+                events.on('kernel_connected.Kernel', register_sos_comm);
+                events.on('kernel_ready.Kernel', wrap_execute);
+            });
+        });
+       
 
-
-
-        $.getScript("/notebooks/sos/jupyter/sos_frontend.js",function(){
+        $.getScript("/notebooks/sos/jupyter/js/sos_scratchpad.js",function(){
             load_scratchpad();
             add_scratchpad_button();
             patch_CodeCell_get_callbacks();
