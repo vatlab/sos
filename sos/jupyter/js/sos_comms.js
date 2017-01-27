@@ -5,7 +5,7 @@
         // the kernel and cell index through the %softwith magic.
         //
 
-        var my_execute = function(code, callbacks, options) {
+       var my_execute = function(code, callbacks, options) {
             "use strict"
             var cells = IPython.notebook.get_cells();
             for (var i = cells.length - 1; i >= 0; --i) {
@@ -32,8 +32,6 @@
                 }
             }
             // if this is a command from scratch pad (not part of the notebook)
-            // FIXME:
-
             // not sure how to get meta data from the scratch pad cell
             return this.orig_execute(
                         // passing to kernel
@@ -46,11 +44,13 @@
                         "%softwith " +
                         (window.kernel_updated ? "" : " --list-kernel ") +
                         " --default-kernel " + window.default_kernel +
-                        " --cell-kernel " + window.my_scratchTab.cell.metadata.kernel
-                        " --cell " + i.toString() + "\n" + code,
+                        " --cell-kernel " + window.my_scratchTab.cell.metadata.kernel +
+                        " --cell -1 " + "\n" + code,
                         callbacks, {'silent': false, 'store_history': false})
 
         }
+
+
 
 
         
@@ -118,7 +118,10 @@
                             } else {
                                 // get cell from passed cell index, which was sent through the
                                 // %softwith magic
-                                var cell = IPython.notebook.get_cell(data[0]);
+                                if (data[0] == -1)
+                                    var cell = window.my_scratchTab.cell;
+                                else
+                                    var cell = IPython.notebook.get_cell(data[0]);
                                 if (cell.metadata.kernel != KernelName[data[1]]) {
                                     cell.metadata.kernel = KernelName[data[1]];
                                     // set meta information
@@ -140,4 +143,4 @@
                 // override kernel execute with the wrapper.
                 IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute
                 IPython.notebook.kernel.execute = my_execute
-            }
+            } 

@@ -1068,7 +1068,8 @@ class SoS_Kernel(IPythonKernel):
         # trigger post processing of object and display matplotlib figures
         self.shell.events.trigger('post_execute')
         # tell the frontend the kernel for the "next" cell
-        self.send_frontend_msg([None, self.kernel])
+        if store_history:
+            self.send_frontend_msg([None, self.kernel])
         return ret
 
     def remove_leading_comments(self, code):
