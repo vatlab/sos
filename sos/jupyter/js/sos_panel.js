@@ -165,13 +165,34 @@ function add_panel_button() {
     }
 };
 
-function keepWidth() {
+function adjustPanel() {
     if ($('#sos-panel').height() != 0) {
         $('#notebook-container').css('margin-left', $('#sos-panel').width() + 30);
         $('#notebook-container').css('width', container_width - $('#sos-panel').width() - 30);
         $('.celltoolbar label').css('margin-left', 0);
         $('.celltoolbar label').css('margin-right', 0);
     }
+    // remove output prompt of the cell panel
+    cell = window.my_panel.cell;
+    // remove output prompt
+    while (true) {
+        var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
+        if (op.length > 0)
+            op[0].parentNode.removeChild(op[0]);
+        else
+            break;
+    }
+    while (true) {
+        var op = cell.element[0].getElementsByClassName('prompt');
+        if (op.length > 0)
+            op[0].parentNode.removeChild(op[0]);
+        else
+            break;
+    }
+    var ops = cell.element[0].getElementsByClassName('output_subarea');
+    for (op in ops)
+        ops[op].style.maxWidth='100%';
+    cell.output_area.expand();
 }
 
 function patch_CodeCell_get_callbacks() {
@@ -182,7 +203,7 @@ function patch_CodeCell_get_callbacks() {
         var prev_reply_callback = callbacks.shell.reply;
         callbacks.shell.reply = function(msg) {
             if (msg.msg_type === 'execute_reply') {
-                keepWidth()
+                adjustPanel()
             }
             return prev_reply_callback(msg);
         };

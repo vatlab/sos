@@ -152,13 +152,20 @@ function register_sos_comm() {
                         cell.output_area.append_stream('Unknown msg type ' + msg_type + '\nPlease notify maintainer of SoS of this bug.');
                     */
                     // remove output prompt
-                    var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
-                    if (op.length > 0)
-                        op[0].parentNode.removeChild(op[0]);
-                    var op = cell.element[0].getElementsByClassName('prompt');
-                    if (op.length > 0)
-                        op[0].parentNode.removeChild(op[0]);
-
+                    while (true) {
+                        var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
+                        if (op.length > 0)
+                            op[0].parentNode.removeChild(op[0]);
+                        else
+                            break;
+                    }
+                    while (true) {
+                        var op = cell.element[0].getElementsByClassName('prompt');
+                        if (op.length > 0)
+                            op[0].parentNode.removeChild(op[0]);
+                        else
+                            break;
+                    }
                     cell.output_area.expand();
                 }
             });
