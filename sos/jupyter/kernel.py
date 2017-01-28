@@ -354,11 +354,11 @@ class SoS_Kernel(IPythonKernel):
         self.frontend_comm = None
         self.cell_idx = None
 
-    def send_frontend_msg(self, msg):
+    def send_frontend_msg(self, msg_type, msg):
         if self.frontend_comm is None:
             self.frontend_comm = Comm(target_name="sos_comm", data={})
             self.frontend_comm.on_msg(self.handle_frontend_msg)
-        self.frontend_comm.send(msg)
+        self.frontend_comm.send(msg, {'msg_type': msg_type})
 
     def handle_frontend_msg(self, msg):
         # this function should receive message from frontend, not tested yet
@@ -794,12 +794,8 @@ class SoS_Kernel(IPythonKernel):
         args = parser.parse_args(shlex.split(options, posix=False))
         if not args.items or args.off:
             return
-        self.send_response(self.iopub_socket, 'display_data',
-            {
-              'source': 'SoS',
-              'metadata': {},
-              'data': { 'text/html': HTML('<pre><font color="green">## %preview {}</font></pre>'.format(options)).data}
-            })
+        self.send_frontend_msg('preview-input',
+              '%preview {}'.format(options))
         # expand items
         for item in args.items:
             try:
@@ -810,18 +806,18 @@ class SoS_Kernel(IPythonKernel):
                 self.warn('\n> Failed to preview file {}: {}'.format(item, e))
                 continue
             try:
-                self.send_response(self.iopub_socket, 'display_data',
+                self.send_frontend_msg('display_data',
                     {'metadata': {},
                     'data': {'text/plain': '>>> ' + item + ':\n',
                         'text/html': HTML('<pre><font color="green">> {}:</font></pre>'.format(item)).data
                         }
                     })
                 format_dict, md_dict = self.preview_var(item)
-                self.send_response(self.iopub_socket, 'display_data',
+                self.send_frontend_msg('display_data',
                     {'execution_count': self._execution_count, 'data': format_dict,
                     'metadata': md_dict})
             except Exception as e:
-                self.warn('\n> Failed to preview file or expression {}'.format(item))
+                self.warn('\n> Failed to preview file or expression {}: {}'.format(item, e))
 
     def handle_magic_cd(self, option):
         # interpolate command
@@ -911,16 +907,12 @@ class SoS_Kernel(IPythonKernel):
                 output_files = []
             # use a table to list input and/or output file if exist
             if output_files:
-                self.send_response(self.iopub_socket, 'display_data',
-                        {
-                            'source': 'SoS',
-                            'metadata': {},
-                            'data': { 'text/html': HTML('<pre><font color="green">## -- Preview output --</font></pre>').data}
-                        })
+                self.send_frontend_msg('preview-input',
+                       '## -- Preview output --')
                 if hasattr(self, 'in_sandbox') and self.in_sandbox:
                     # if in sand box, do not link output to their files because these
                     # files will be removed soon.
-                    self.send_response(self.iopub_socket, 'display_data',
+                    self.send_frontend_msg('display_data',
                         {
                             'source': 'SoS',
                             'metadata': {},
@@ -931,7 +923,7 @@ class SoS_Kernel(IPythonKernel):
                             }
                         })
                 else:
-                    self.send_response(self.iopub_socket, 'display_data',
+                    self.send_frontend_msg('display_data',
                         {
                             'source': 'SoS',
                             'metadata': {},
@@ -958,7 +950,7 @@ class SoS_Kernel(IPythonKernel):
         if not os.path.isfile(filename):
             self.warn('\n> ' + filename + ' does not exist')
             return
-        self.send_response(self.iopub_socket, 'display_data',
+        self.send_frontend_msg('display_data',
              {'metadata': {},
              'data': {
                  'text/plain': '\n> {} ({}):'.format(filename, pretty_size(os.path.getsize(filename))),
@@ -1000,10 +992,10 @@ class SoS_Kernel(IPythonKernel):
             if not result:
                 return
             if isinstance(result, str):
-                self.send_response(self.iopub_socket, 'stream',
+                self.send_frontend_msg('stream',
                     {'name': 'stdout', 'text': result})
             elif isinstance(result, dict):
-                self.send_response(self.iopub_socket, 'display_data',
+                self.send_frontend_msg('display_data',
                     {'source': filename, 'data': result, 'metadata': {}})
             else:
                 self.warn('Unrecognized preview content: {}'.format(result))
@@ -1069,7 +1061,7 @@ class SoS_Kernel(IPythonKernel):
         self.shell.events.trigger('post_execute')
         # tell the frontend the kernel for the "next" cell
         if store_history:
-            self.send_frontend_msg([None, self.kernel])
+            self.send_frontend_msg('default-kernel', self.kernel)
         return ret
 
     def remove_leading_comments(self, code):
@@ -1137,7 +1129,7 @@ class SoS_Kernel(IPythonKernel):
                     'execution_count': self._execution_count,
                    }
             if args.list_kernel:
-                self.send_frontend_msg(self.get_kernel_list())
+                self.send_frontend_msg('kernel-list', self.get_kernel_list())
             # args.default_kernel should be valid
             if self.kernel_name(args.default_kernel) != self.kernel_name(self.kernel):
                 self.switch_kernel(args.default_kernel)
@@ -1306,7 +1298,7 @@ class SoS_Kernel(IPythonKernel):
                 self.last_executed_code = code
             code = self._interpolate_option(code, quiet=False)
             if self.cell_idx is not None:
-                self.send_frontend_msg([self.cell_idx, self.kernel])
+                self.send_frontend_msg('cell-kernel', [self.cell_idx, self.kernel])
                 self.cell_idx = None
             if code is None:
                 return
@@ -1322,7 +1314,7 @@ class SoS_Kernel(IPythonKernel):
             try:
                 self.run_sos_code(code, silent)
                 if self.cell_idx is not None:
-                    self.send_frontend_msg([self.cell_idx, 'sos'])
+                    self.send_frontend_msg('cell-kernel', [self.cell_idx, 'sos'])
                     self.cell_idx = None
                 return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
             except Exception as e:

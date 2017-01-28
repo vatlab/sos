@@ -15,8 +15,6 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-
 // override the existing execute function by
 // look for all input cells, find one that has prompt '*', which must
 // be the one that is being executed. Then, get the metadata and send
@@ -83,9 +81,9 @@ function register_sos_comm() {
                 //     the kernel for the new cell
 
                 var data = msg.content.data;
-                // console.log(data);
+                var msg_type = msg.metadata.msg_type;
 
-                if (data[0] instanceof Array) {
+                if (msg_type == 'kernel-list') {
                     if (window.kernel_updated)
                         return;
                     for (var i = 0; i < data.length; i++) {
@@ -114,26 +112,39 @@ function register_sos_comm() {
                     //add dropdown menu of kernels in frontend
                     load_select_kernel();
                     window.kernel_updated = true;
-                } else {
+                } else if (msg_type == 'default-kernel') {
                     // update the cells when the notebook is being opened.
-                    if (data[0] == null) {
-                        // we also set a global kernel to be used for new cells
-                        $('#kernel_selector').val(DisplayName[data[1]]);
-                        // a side effect of change is cells without metadata kernel info will change background
-                        $('#kernel_selector').change();
-                    } else {
-                        // get cell from passed cell index, which was sent through the
-                        // %softwith magic
-                        if (data[0] == -1)
-                            var cell = window.my_scratchTab.cell;
-                        else
-                            var cell = IPython.notebook.get_cell(data[0]);
-                        if (cell.metadata.kernel != KernelName[data[1]]) {
-                            cell.metadata.kernel = KernelName[data[1]];
-                            // set meta information
-                            changeStyleOnKernel(cell, data[1])
-                        }
+                    // we also set a global kernel to be used for new cells
+                    $('#kernel_selector').val(DisplayName[data]);
+                    // a side effect of change is cells without metadata kernel info will change background
+                    $('#kernel_selector').change();
+                } else if (msg_type == 'cell-kernel') {
+                    // get cell from passed cell index, which was sent through the
+                    // %softwith magic
+                    if (data[0] == -1)
+                        var cell = window.my_scratchTab.cell;
+                    else
+                        var cell = IPython.notebook.get_cell(data[0]);
+                    if (cell.metadata.kernel != KernelName[data[1]]) {
+                        cell.metadata.kernel = KernelName[data[1]];
+                        // set meta information
+                        changeStyleOnKernel(cell, data[1])
                     }
+                } else if (msg_type == 'preview-input') {
+                    cell = window.my_scratchTab.cell;
+                    cell.clear_input();
+                    cell.set_text(data);
+                    cell.clear_output();
+                } else {
+                    // this is preview output
+                    cell = window.my_scratchTab.cell;
+                    if (msg_type === 'display_data')
+                        cell.output_area.append_display_data(data);
+                    else if (msg_type === 'stream')
+                        cell.output_area.append_stream(data);
+                    else
+                        cell.output_area.append_stream('Unknown msg type ' + msg_type);
+                    cell.output_area.expand();
                 }
             });
         }
