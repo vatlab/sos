@@ -1061,33 +1061,23 @@ class Queued_Step_Executor(Base_Step_Executor):
     def __init__(self, step, queue):
         Base_Step_Executor.__init__(self, step)
         self.queue = queue
-        # under win 32, env has to be explicitly passed because
-        # win 32 Process is a completely new process
-        if sys.platform == 'win32':
-            self.sos_vars = env.sos_dict.clone_selected_vars()
-            self.env_attr = {}
-            for attr in ['_verbosity', '_logfile', 'run_mode', 'sig_mode',
-                    'readonly_vars', 'max_jobs', 'running_jobs', 'exec_dir',
-                    '__task_engine__']:
-                if hasattr(env, attr):
-                    self.env_attr[attr] = getattr(env, attr)
 
     def run(self):
         try:
-            if sys.platform == 'win32':
-                SoS_exec('import os, sys, glob', None)
-                SoS_exec('from sos.runtime import *', None)
-                for attr, val in self.env_attr.items():
-                    setattr(env, attr, val)
-                env.sos_dict.quick_update(self.sos_vars)
             # update every 60 seconds
             notifier = ActivityNotifier('Running {}'.format(self.step.step_name()), delay=60)
             res = Base_Step_Executor.run(self)
-            self.queue.put(res)
+            if self.queue is not None:
+                self.queue.put(res)
+            else:
+                return res
         except Exception as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
-            self.queue.put(e)
+            if self.queue is not None:
+                self.queue.put(e)
+            else:
+                raise e
         finally:
             notifier.stop()
 

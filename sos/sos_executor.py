@@ -539,17 +539,24 @@ class Base_Executor:
             env.sos_dict.quick_update(runnable._context)
             # execute section with specified input
             runnable._status = 'running'
-            q = mp.Queue()
-            if mode == 'run':
-                executor = SP_Step_Executor(section, q)
+            if sys.platform == 'win32':
+                if mode == 'run':
+                    executor = SP_Step_Executor(section, None)
+                else:
+                    executor = Dryrun_Step_Executor(section, None)
+                res = executor.run()
             else:
-                executor = Dryrun_Step_Executor(section, q)
-            p = mp.Process(target=executor.run)
-            p.start()
-            #
-            res = q.get()
-            # if we does get the result
-            p.join()
+                q = mp.Queue()
+                if mode == 'run':
+                    executor = SP_Step_Executor(section, q)
+                else:
+                    executor = Dryrun_Step_Executor(section, q)
+                p = mp.Process(target=executor.run)
+                p.start()
+                #
+                res = q.get()
+                # if we does get the result
+                p.join()
             # if the step says unknown target .... need to check if the target can
             # be build dynamically.
             if isinstance(res, (UnknownTarget, RemovedTarget)):
