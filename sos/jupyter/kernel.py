@@ -364,7 +364,7 @@ class SoS_Kernel(IPythonKernel):
         if self.frontend_comm is None:
             self.frontend_comm = Comm(target_name="sos_comm", data={})
             self.frontend_comm.on_msg(self.handle_frontend_msg)
-        if not self._use_panel:
+        if not self._use_panel and msg_type in ('display_data', 'stream', 'preview-input'):
             if msg_type in ('display_data', 'stream'):
                 self.send_response(self.iopub_socket, msg_type, msg)
             elif msg_type == 'preview-input':
