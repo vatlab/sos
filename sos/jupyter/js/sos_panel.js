@@ -137,7 +137,7 @@ function load_panel() {
     var load_css = function() {
         var css = document.createElement("style");
         css.type = "text/css";
-        css.innerHTML = '#sos-panel {position: absolute; left: 0; bottom: 0; width: 20%; background-color: #F8F5E1; border-left: 1px solid #aaa; border-top: 1px solid #aaa; z-index: 9000; } #sos-panel .cell-wrapper {height: 100%; overflow: auto; } .panel-btn {float: left; padding-right: 24px; opacity: 0.2; font-size: 24px; z-index: 9001; } .panel-btn:hover {opacity: 1; } .panel-close {display: none; position: absolute; float: right; bottom: 8px; right: 0; } .panel-open {margin-top: -32px; }}';
+        css.innerHTML = '#sos-panel {position: absolute; left: 0; bottom: 0; width: 25%; background-color: #F8F5E1; border-left: 1px solid #aaa; border-top: 1px solid #aaa; z-index: 9000; } #sos-panel .cell-wrapper {height: 100%; overflow: auto; } .panel-btn {float: left; padding-right: 24px; opacity: 0.2; font-size: 24px; z-index: 9001; } .panel-btn:hover {opacity: 1; } .panel-close {display: none; position: absolute; float: right; bottom: 8px; right: 0; } .panel-open {margin-top: -32px; }}';
         document.body.appendChild(css);
     };
 
@@ -190,7 +190,7 @@ function adjustPanel() {
             break;
     }
     var ops = cell.element[0].getElementsByClassName('output_subarea');
-    for (op in ops)
+    for (var op = 0; op < ops.length; op++)
         ops[op].style.maxWidth='100%';
     cell.output_area.expand();
 }

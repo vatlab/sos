@@ -166,6 +166,9 @@ function register_sos_comm() {
                         else
                             break;
                     }
+                    var ops = cell.element[0].getElementsByClassName('output_subarea');
+                    for (var op = 0; op < ops.length; op++)
+                        ops[op].style.maxWidth='100%';
                     cell.output_area.expand();
                 }
             });
