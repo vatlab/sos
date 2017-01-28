@@ -16,12 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
-// This is a codemirror mode for SoS, currently a clone of Python codemirror.js
-// with some minor modification. An expert on javascript and code mirror
-// is required to make it work for other langauges that SoS supports.
-//
-// var CodeCell = require('notebook/js/codecell').CodeCell;
-// var utils = require('base/js/utils');
+
+
+// The following code is adapted from nbextension scratchPad
+// https://github.com/minrk/nbextension-scratchpad
 
 var container_width = $('#site').width();
 var my_scratchTab;
@@ -33,9 +31,9 @@ var scratchTab = function(nb) {
     this.km = nb.keyboard_manager;
 
     // create elements
-    this.element = $("<div id='nbextension-scratchTab'>");
+    this.element = $("<div id='sos-scratch-panel'>");
 
-
+    // FIXME: we should add tabs here with title scratch
     // create my cell
     var cell = this.cell = new CodeCell(nb.kernel, {
         events: nb.events,
@@ -101,25 +99,25 @@ function setup_scratchTab() {
 }
 
 function toggle_scratchTab() {
-    if ($('#nbextension-scratchTab').height() < 1) {
+    if ($('#sos-scratch-panel').height() < 1) {
         var site_height = $("#site").height();
 
-        $('#nbextension-scratchTab').animate({
+        $('#sos-scratch-panel').animate({
             height: site_height,
         }, 200);
-        $('#nbextension-scratchTab .cell').show();
-        $('#notebook-container').css('margin-left', $('#nbextension-scratchTab').width() + 10);
+        $('#sos-scratch-panel .cell').show();
+        $('#notebook-container').css('margin-left', $('#sos-scratch-panel').width() + 10);
         $('#notebook-container').css('margin-right', 50);
-        // $('#notebook-container').css('width',container_width-$('#nbextension-scratchTab').width()-30);
+        // $('#notebook-container').css('width',container_width-$('#sos-scratch-panel').width()-30);
         $('#notebook-container').css('width', '80%');
         $('.celltoolbar label').css('margin-left', 0);
         $('.celltoolbar label').css('margin-right', 0);
         my_scratchTab.cell.focus_editor()
     } else {
-        $('#nbextension-scratchTab').animate({
+        $('#sos-scratch-panel').animate({
             height: 0,
         }, 100);
-        $('#nbextension-scratchTab .cell').hide();
+        $('#sos-scratch-panel .cell').hide();
         $('#notebook-container').css('margin-left', '10px');
         $('#notebook-container').css('width', container_width - 20);
         $('#notebook-container').css('margin-right', 50);
@@ -131,7 +129,7 @@ function load_scratchTab() {
     var load_css = function() {
         var css = document.createElement("style");
         css.type = "text/css";
-        css.innerHTML = '#nbextension-scratchTab {position: absolute; left: 0; bottom: 0; width: 20%; background-color: #F8F5E1; border-left: 1px solid #aaa; border-top: 1px solid #aaa; z-index: 9000; } #nbextension-scratchTab .cell-wrapper {height: 100%; overflow: auto; } .scratchTab-btn {float: left; padding-right: 24px; opacity: 0.2; font-size: 24px; z-index: 9001; } .scratchTab-btn:hover {opacity: 1; } .scratchTab-close {display: none; position: absolute; float: right; bottom: 8px; right: 0; } .scratchTab-open {margin-top: -32px; }}';
+        css.innerHTML = '#sos-scratch-panel {position: absolute; left: 0; bottom: 0; width: 20%; background-color: #F8F5E1; border-left: 1px solid #aaa; border-top: 1px solid #aaa; z-index: 9000; } #sos-scratch-panel .cell-wrapper {height: 100%; overflow: auto; } .scratchTab-btn {float: left; padding-right: 24px; opacity: 0.2; font-size: 24px; z-index: 9001; } .scratchTab-btn:hover {opacity: 1; } .scratchTab-close {display: none; position: absolute; float: right; bottom: 8px; right: 0; } .scratchTab-open {margin-top: -32px; }}';
         document.body.appendChild(css);
     };
 
@@ -151,7 +149,7 @@ function add_scratchTab_button() {
     }
     if ($("#scratchTab_button").length === 0) {
         IPython.toolbar.add_buttons_group([{
-            'label': 'scratchTab',
+            'label': 'scratch tab',
             'icon': 'fa-cube',
             'callback': toggle_scratchTab,
             'id': 'scratchTab_button'
@@ -160,9 +158,9 @@ function add_scratchTab_button() {
 };
 
 function keepWidth() {
-    if ($('#nbextension-scratchTab').height() != 0) {
-        $('#notebook-container').css('margin-left', $('#nbextension-scratchTab').width() + 30);
-        $('#notebook-container').css('width', container_width - $('#nbextension-scratchTab').width() - 30);
+    if ($('#sos-scratch-panel').height() != 0) {
+        $('#notebook-container').css('margin-left', $('#sos-scratch-panel').width() + 30);
+        $('#notebook-container').css('width', container_width - $('#sos-scratch-panel').width() - 30);
         $('.celltoolbar label').css('margin-left', 0);
         $('.celltoolbar label').css('margin-right', 0);
     }

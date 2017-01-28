@@ -15,13 +15,9 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
-//
-// This is a codemirror mode for SoS, currently a clone of Python codemirror.js
-// with some minor modification. An expert on javascript and code mirror
-// is required to make it work for other langauges that SoS supports.
-//
+
+
 // override the existing execute function by
-//
 // look for all input cells, find one that has prompt '*', which must
 // be the one that is being executed. Then, get the metadata and send
 // the kernel and cell index through the %softwith magic.
@@ -54,13 +50,6 @@ var my_execute = function(code, callbacks, options) {
     }
     // if this is a command from scratch pad (not part of the notebook)
     return this.orig_execute(
-        // passing to kernel
-        // 1. the default kernel (might have been changed from menu bar
-        // 2. cell kernel (might be unspecified for new cell)
-        // 3. cell index (for setting style after execution)
-        // in addition, the softwidth command will send a "--list-kernel" request if
-        // the frontend is not correctly initialized, possibly because the kernel was
-        // not ready when the frontend sent the command `%listkernel`.
         "%softwith " +
         (window.kernel_updated ? "" : " --list-kernel ") +
         " --default-kernel " + window.default_kernel +
