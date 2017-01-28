@@ -173,7 +173,7 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_SET = re.compile('^%set(\s|$)')
     MAGIC_RESTART = re.compile('^%restart(\s|$)')
     MAGIC_WITH = re.compile('^%with(\s|$)')
-    MAGIC_SOFTWITH = re.compile('^%softwith(\s|$)')
+    MAGIC_FRONTEND = re.compile('^%frontend(\s|$)')
     MAGIC_USE = re.compile('^%use(\s|$)')
     MAGIC_GET = re.compile('^%get(\s|$)')
     MAGIC_PUT = re.compile('^%put(\s|$)')
@@ -211,8 +211,8 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
-    def get_softwith_parser(self):
-        parser = argparse.ArgumentParser(prog='%with',
+    def get_frontend_parser(self):
+        parser = argparse.ArgumentParser(prog='%frontend',
             description='''Use specified the subkernel to evaluate current
             cell. soft with tells the start kernel of the cell. If no other
             switch happens the kernel will switch back. However, a %use inside
@@ -224,6 +224,8 @@ class SoS_Kernel(IPythonKernel):
             help='Default global kernel')
         parser.add_argument('--cell-kernel',
             help='Kernel to switch to.')
+        parser.add_argument('--use-panel', action='store_true',
+            help='If panel is open')
         # pass cell index from notebook so that we know which cell fired
         # the command. Use to set metadata of cell through frontend message
         parser.add_argument('--cell', dest='cell_idx',
@@ -349,6 +351,7 @@ class SoS_Kernel(IPythonKernel):
         self._inspector = None
         self._execution_count = 1
         self._debug_mode = False
+        self._use_panel = False
 
         # special communication channel to sos frontend
         self.frontend_comm = None
@@ -358,7 +361,18 @@ class SoS_Kernel(IPythonKernel):
         if self.frontend_comm is None:
             self.frontend_comm = Comm(target_name="sos_comm", data={})
             self.frontend_comm.on_msg(self.handle_frontend_msg)
-        self.frontend_comm.send(msg, {'msg_type': msg_type})
+        if not self._use_panel:
+            if msg_type in ('display_data', 'stream'):
+                self.send_response(self.iopub_socket, msg_type, msg)
+            elif msg_type == 'preview-input':
+                self.send_response(self.iopub_socket, 'display_data',
+                    {
+                        'source': 'SoS',
+                        'metadata': {},
+                        'data': { 'text/html': HTML('<pre><font color="green">{}</font></pre>'.format(msg)).data}
+                    })
+        else:
+            self.frontend_comm.send(msg, {'msg_type': msg_type})
 
     def handle_frontend_msg(self, msg):
         # this function should receive message from frontend, not tested yet
@@ -794,8 +808,7 @@ class SoS_Kernel(IPythonKernel):
         args = parser.parse_args(shlex.split(options, posix=False))
         if not args.items or args.off:
             return
-        self.send_frontend_msg('preview-input',
-              '%preview {}'.format(options))
+        self.send_frontend_msg('preview-input', '%preview {}'.format(options))
         # expand items
         for item in args.items:
             try:
@@ -1114,10 +1127,10 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.restart_kernel(options)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-        elif self.MAGIC_SOFTWITH.match(code):
+        elif self.MAGIC_FRONTEND.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
-                parser = self.get_softwith_parser()
+                parser = self.get_frontend_parser()
                 args = parser.parse_args(options.split())
                 self.cell_idx = args.cell_idx
             except Exception as e:
@@ -1128,6 +1141,7 @@ class SoS_Kernel(IPythonKernel):
                     'traceback': [],
                     'execution_count': self._execution_count,
                    }
+            self._use_panel = args.use_panel is True
             if args.list_kernel:
                 self.send_frontend_msg('kernel-list', self.get_kernel_list())
             # args.default_kernel should be valid

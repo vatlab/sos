@@ -18,7 +18,7 @@
 // override the existing execute function by
 // look for all input cells, find one that has prompt '*', which must
 // be the one that is being executed. Then, get the metadata and send
-// the kernel and cell index through the %softwith magic.
+// the kernel and cell index through the %frontend magic.
 //
 var my_execute = function(code, callbacks, options) {
     "use strict"
@@ -35,11 +35,12 @@ var my_execute = function(code, callbacks, options) {
                 // 1. the default kernel (might have been changed from menu bar
                 // 2. cell kernel (might be unspecified for new cell)
                 // 3. cell index (for setting style after execution)
-                // in addition, the softwidth command will send a "--list-kernel" request if
+                // in addition, the frontend command will send a "--list-kernel" request if
                 // the frontend is not correctly initialized, possibly because the kernel was
                 // not ready when the frontend sent the command `%listkernel`.
-                "%softwith " +
+                "%frontend " +
                 (window.kernel_updated ? "" : " --list-kernel ") +
+                (window.my_panel.displayed ? " --use-panel" : "") +
                 " --default-kernel " + window.default_kernel +
                 " --cell-kernel " + cells[i].metadata.kernel +
                 " --cell " + i.toString() + "\n" + code,
@@ -48,7 +49,7 @@ var my_execute = function(code, callbacks, options) {
     }
     // if this is a command from scratch pad (not part of the notebook)
     return this.orig_execute(
-        "%softwith " +
+        "%frontend " +
         (window.kernel_updated ? "" : " --list-kernel ") +
         " --default-kernel " + window.default_kernel +
         " --cell-kernel " + window.my_panel.cell.metadata.kernel +
@@ -72,7 +73,7 @@ function register_sos_comm() {
                 // where are kernel name (jupyter kernel), displayed name (SoS), and background
                 // color assigned by the language module. The user might use name ir or R (both
                 // acceptable) but the frontend should only display displayed name, and send
-                // the real kernel name back to kernel (%softwith and metadata).
+                // the real kernel name back to kernel (%frontend and metadata).
                 //
                 // there are two kinds of messages from my_execute
                 // 1. cell_idx: kernel
@@ -120,7 +121,7 @@ function register_sos_comm() {
                     $('#kernel_selector').change();
                 } else if (msg_type == 'cell-kernel') {
                     // get cell from passed cell index, which was sent through the
-                    // %softwith magic
+                    // %frontend magic
                     if (data[0] == -1)
                         var cell = window.my_panel.cell;
                     else
@@ -162,7 +163,7 @@ function register_sos_comm() {
 
 function wrap_execute() {
     if (!window.kernel_updated)
-        IPython.notebook.kernel.execute('%softwith --list-kernel', [], {
+        IPython.notebook.kernel.execute('%frontend --list-kernel', [], {
             'silent': true,
             'store_history': false
         });

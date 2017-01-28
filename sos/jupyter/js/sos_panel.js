@@ -117,6 +117,7 @@ function toggle_panel() {
         $('.celltoolbar label').css('margin-left', 0);
         $('.celltoolbar label').css('margin-right', 0);
         my_panel.cell.focus_editor()
+        my_panel.displayed = true;
     } else {
         $('#sos-panel').animate({
             height: 0,
@@ -125,6 +126,7 @@ function toggle_panel() {
         $('#notebook-container').css('margin-left', '10px');
         $('#notebook-container').css('width', container_width - 20);
         $('#notebook-container').css('margin-right', 50);
+        my_panel.displayed = false;
     }
 }
 
