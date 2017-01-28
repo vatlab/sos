@@ -51,6 +51,10 @@ var panel = function(nb) {
     }, 100);
     this.cell.element.hide();
 
+    // remove input and output prompt to save some space
+    var ip = this.cell.element[0].getElementsByClassName('input_prompt');
+    ip[0].parentNode.removeChild(ip[0]);
+
     // override ctrl/shift-enter to execute me if I'm focused instead of the notebook's cell
     var execute_and_select_action = this.km.actions.register({
         handler: $.proxy(this.execute_and_select_event, this),

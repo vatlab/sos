@@ -21,13 +21,20 @@
 // is required to make it work for other langauges that SoS supports.
 //
 function changeStyleOnKernel(cell, type) {
+    var ip = cell.element[0].getElementsByClassName('input_prompt');
+    var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
+
+    // cell in panel does not have prompt area
+    if (ip.length == 0)
+        return;
+
     if (BackgroundColor[type]) {
-        cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = BackgroundColor[type];
-        cell.element[0].getElementsByClassName('out_prompt_overlay')[0].style.backgroundColor = BackgroundColor[type];
+        ip[0].style.backgroundColor = BackgroundColor[type];
+        op[0].style.backgroundColor = BackgroundColor[type];
     } else {
         // Use '' to remove background-color?
-        cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = '';
-        cell.element[0].getElementsByClassName('out_prompt_overlay')[0].style.backgroundColor = '';
+        ip[0].style.backgroundColor = '';
+        op[0].style.backgroundColor = '';
     }
 
     var sel = cell.element[0].getElementsByTagName('select')[0]
@@ -68,15 +75,21 @@ function load_select_kernel() {
             // we check that the slideshow namespace exist and create it if needed
             //if (cell.metadata.kernel == undefined) {
             cell.metadata.kernel = KernelName[value];
+            var ip = cell.element[0].getElementsByClassName('input_prompt');
+            var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
+            // cell in panel does not have prompt area
+            if (ip.length == 0)
+                return;
+
             //}
             // cell.metadata.kernel = KernelName[value];
             if (BackgroundColor[value]) {
-                cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = BackgroundColor[value];
-                cell.element[0].getElementsByClassName('out_prompt_overlay')[0].style.backgroundColor = BackgroundColor[value];
+                ip[0].style.backgroundColor = BackgroundColor[value];
+                op[0].style.backgroundColor = BackgroundColor[value];
             } else {
                 // Use '' to remove background-color?
-                cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = '';
-                cell.element[0].getElementsByClassName('out_prompt_overlay')[0].style.backgroundColor = '';
+                ip[0].style.backgroundColor = '';
+                op[0].style.backgroundColor = '';
             }
         },
         //geter
