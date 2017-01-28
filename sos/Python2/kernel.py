@@ -21,7 +21,6 @@
 #
 
 import pickle
-from sos.utils import env
 
 class sos_Python2:
     def __init__(self, sos_kernel):
@@ -39,7 +38,7 @@ class sos_Python2:
     def lan_to_sos(self, items):
         # python 2 uses protocol 2, which python 3 should be able to pick up
         stmt = 'import pickle\n__vars__={{ {} }}\n__vars__.update({{x:y for x,y in locals().items() if x.startswith("sos")}})\npickle.dumps(__vars__)'.format(','.join('"{0}":{0}'.format(x) for x in items))
-        response = self.sos_kernel.get_response(stmt, ['execute_result'])
+        response = self.sos_kernel.get_response(stmt, ['execute_result'])[0][1]
         try:
             ret = pickle.loads(eval(response['data']['text/plain']).encode('utf-8'))
             if self.sos_kernel._debug_mode:

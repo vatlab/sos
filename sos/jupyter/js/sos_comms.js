@@ -136,15 +136,21 @@ function register_sos_comm() {
                     cell.clear_input();
                     cell.set_text(data);
                     cell.clear_output();
+                } else if (msg_type == 'preview-kernel') {
+                    changeStyleOnKernel(window.my_panel.cell, data);
                 } else {
                     // this is preview output
                     cell = window.my_panel.cell;
+                    data.output_type = msg_type;
+                    cell.output_area.append_output(data);
+                    /*
                     if (msg_type === 'display_data')
                         cell.output_area.append_display_data(data);
                     else if (msg_type === 'stream')
                         cell.output_area.append_stream(data);
                     else
-                        cell.output_area.append_stream('Unknown msg type ' + msg_type);
+                        cell.output_area.append_stream('Unknown msg type ' + msg_type + '\nPlease notify maintainer of SoS of this bug.');
+                    */
                     // remove output prompt
                     var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
                     if (op.length > 0)

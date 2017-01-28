@@ -21,12 +21,25 @@
 // is required to make it work for other langauges that SoS supports.
 //
 function changeStyleOnKernel(cell, type) {
+    var sel = cell.element[0].getElementsByTagName('select')[0]
+    var opts = sel.options;
+    for (var opt, j = 0; opt = opts[j]; j++) {
+        if (opt.value == DisplayName[type]) {
+            sel.selectedIndex = j;
+            break;
+        }
+    }
     var ip = cell.element[0].getElementsByClassName('input_prompt');
     var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
 
     // cell in panel does not have prompt area
-    if (ip.length == 0)
+    if (ip.length == 0) {
+        if (BackgroundColor[type])
+            cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = BackgroundColor[type];
+        else
+            cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = '';
         return;
+    }
 
     if (BackgroundColor[type]) {
         ip[0].style.backgroundColor = BackgroundColor[type];
@@ -37,14 +50,6 @@ function changeStyleOnKernel(cell, type) {
         op[0].style.backgroundColor = '';
     }
 
-    var sel = cell.element[0].getElementsByTagName('select')[0]
-    var opts = sel.options;
-    for (var opt, j = 0; opt = opts[j]; j++) {
-        if (opt.value == DisplayName[type]) {
-            sel.selectedIndex = j;
-            break;
-        }
-    }
 }
 
 
@@ -78,8 +83,13 @@ function load_select_kernel() {
             var ip = cell.element[0].getElementsByClassName('input_prompt');
             var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
             // cell in panel does not have prompt area
-            if (ip.length == 0)
+            if (ip.length == 0) {
+                if (BackgroundColor[value])
+                    cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = BackgroundColor[value];
+                else
+                    cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = '';
                 return;
+            }
 
             //}
             // cell.metadata.kernel = KernelName[value];

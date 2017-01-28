@@ -238,6 +238,9 @@ class SoS_Kernel(IPythonKernel):
             description='''Preview files, sos variables, or expressions''')
         parser.add_argument('items', nargs='*',
             help='''filename, variable name, or expression''')
+        parser.add_argument('--kernel',
+            help='''kernel in which variables will be previewed. By default
+            the variable will be previewed in the current kernel of the cell.''')
         parser.add_argument('--off', action='store_true',
             help='''Turn off file preview''')
         parser.error = self._parse_error
@@ -731,7 +734,7 @@ class SoS_Kernel(IPythonKernel):
 
     def get_response(self, statement, msg_types):
         # get response of statement of specific msg types.
-        response = {}
+        responses = []
         self.KC.execute(statement, silent=False, store_history=False)
         # first thing is wait for any side effects (output, stdin, etc.)
         _execution_state = "busy"
@@ -744,22 +747,16 @@ class SoS_Kernel(IPythonKernel):
                     _execution_state = sub_msg["content"]["execution_state"]
                 else:
                     if msg_type in msg_types:
-                        if not response:
-                            response = sub_msg['content']
-                        elif isinstance(response, list):
-                            response.append(sub_msg['content'])
-                        else:
-                            response = [response]
-                            response.append(sub_msg['content'])
+                        responses.append([msg_type, sub_msg['content']])
                     else:
                         if self._debug_mode:
                             self.warn('{}: {}'.format(msg_type, sub_msg['content']))
                         self.send_response(self.iopub_socket, msg_type,
                             sub_msg['content'])
-        if not response and self._debug_mode:
+        if not responses and self._debug_mode:
             self.warn('Failed to get a response from message type {}'.format(msg_types))
 
-        return response
+        return responses
 
     def handle_magic_put(self, items):
         # items can be None if unspecified
@@ -796,41 +793,55 @@ class SoS_Kernel(IPythonKernel):
             self.warn('Failed to interpolate {}: {}\n'.format(short_repr(option), e))
             return None
 
-    def handle_magic_preview(self, options):
-        # we do string interpolation here because the execution of
-        # statements before it can change the meanings of them.
-        options = self._interpolate_option(options, quiet=True)
-        if options is None:
-            return
+    def handle_magic_preview(self, items, kernel=None):
         # find filenames and quoted expressions
-        import shlex
-        parser = self.get_preview_parser()
-        args = parser.parse_args(shlex.split(options, posix=False))
-        if not args.items or args.off:
-            return
-        self.send_frontend_msg('preview-input', '%preview {}'.format(options))
+        self.send_frontend_msg('preview-input', '%preview {}'.format(' '.join(items)))
         # expand items
-        for item in args.items:
+        handled = [False for x in items]
+        for idx, item in enumerate(items):
             try:
                 if os.path.isfile(item):
+                    handled[idx] = True
                     self.preview_file(item)
                     continue
             except Exception as e:
                 self.warn('\n> Failed to preview file {}: {}'.format(item, e))
                 continue
-            try:
+
+        # all are files
+        if all(handled):
+            return
+
+        # non-sos kernel
+        use_sos = kernel in ('sos', 'SoS') or (kernel is None and self.kernel == 'sos')
+        orig_kernel = self.kernel
+        if kernel is not None and self.kernel != self.kernel_name(kernel):
+            self.switch_kernel(kernel)
+        if self._use_panel:
+            self.send_frontend_msg('preview-kernel', self.kernel)
+        try:
+            for item in (x for x,y in zip(items, handled) if not y):
                 self.send_frontend_msg('display_data',
                     {'metadata': {},
                     'data': {'text/plain': '>>> ' + item + ':\n',
                         'text/html': HTML('<pre><font color="green">> {}:</font></pre>'.format(item)).data
                         }
                     })
-                format_dict, md_dict = self.preview_var(item)
-                self.send_frontend_msg('display_data',
-                    {'execution_count': self._execution_count, 'data': format_dict,
-                    'metadata': md_dict})
-            except Exception as e:
-                self.warn('\n> Failed to preview file or expression {}: {}'.format(item, e))
+                try:
+                    if use_sos:
+                        format_dict, md_dict = self.preview_var(item)
+                        self.send_frontend_msg('display_data',
+                            {'execution_count': self._execution_count, 'data': format_dict,
+                            'metadata': md_dict})
+                    else:
+                        # evaluate
+                        responses = self.get_response(item, ['stream', 'display_data', 'execution_result'])
+                        for response in responses:
+                            self.send_frontend_msg(response[0], response[1])
+                except Exception as e:
+                    self.warn('\n> Failed to preview file or expression {}: {}'.format(item, e))
+        finally:
+            self.switch_kernel(orig_kernel)
 
     def handle_magic_cd(self, option):
         # interpolate command
@@ -1281,6 +1292,7 @@ class SoS_Kernel(IPythonKernel):
         elif self.MAGIC_PREVIEW.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             import shlex
+            options = self._interpolate_option(options, quiet=True)
             parser = self.get_preview_parser()
             args = parser.parse_args(shlex.split(options, posix=False))
             if args.off:
@@ -1290,8 +1302,8 @@ class SoS_Kernel(IPythonKernel):
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
-                if not args.off:
-                    self.handle_magic_preview(options)
+                if not args.off and args.items:
+                    self.handle_magic_preview(args.items, args.kernel)
         elif self.MAGIC_CD.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_cd(options)

@@ -225,7 +225,7 @@ class sos_R:
 
     def lan_to_sos(self, items):
         # first let us get all variables with names starting with sos
-        response = self.sos_kernel.get_response('..py.repr(ls())', ('display_data', 'execute_result'))
+        response = self.sos_kernel.get_response('..py.repr(ls())', ('display_data', 'execute_result'))[0][1]
         expr = response['data']['text/plain']
         all_vars = eval(eval(expr.split(' ', 1)[-1]))
         all_vars = [all_vars] if isinstance(all_vars, str) else all_vars
@@ -243,7 +243,7 @@ class sos_R:
 
         # irkernel (since the new version) does not produce execute_result, only
         # display_data
-        response = self.sos_kernel.get_response(py_repr, ('display_data', 'execute_result'))
+        response = self.sos_kernel.get_response(py_repr, ('display_data', 'execute_result'))[0][1]
         expr = response['data']['text/plain']
         try:
             if 'read_dataframe' in expr:
