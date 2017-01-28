@@ -69,7 +69,7 @@ class sos_Bash:
         response = self.sos_kernel.get_response('env', ('stream'))
         if self.sos_kernel._debug_mode:
             self.sos_kernel.warn('Response {}'.format(response))
-        response = [x['text'].split('=', 1) for x in response]
+        response = [x[1]['text'].split('=', 1) for x in response]
         all_vars = {x:y.strip() for x,y in response if x.startswith('sos') or x in items}
 
         for item in items:
