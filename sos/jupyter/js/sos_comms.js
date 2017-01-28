@@ -113,6 +113,7 @@ function register_sos_comm() {
                     //add dropdown menu of kernels in frontend
                     load_select_kernel();
                     window.kernel_updated = true;
+                    console.log('kernel list updated');
                 } else if (msg_type == 'default-kernel') {
                     // update the cells when the notebook is being opened.
                     // we also set a global kernel to be used for new cells
@@ -174,16 +175,19 @@ function register_sos_comm() {
             });
         }
     );
+    console.log('sos comm registered');
 }
 
 
 function wrap_execute() {
-    if (!window.kernel_updated)
+    if (!window.kernel_updated) {
         IPython.notebook.kernel.execute('%frontend --list-kernel', [], {
             'silent': true,
             'store_history': false
         });
+        console.log('kernel list requested');
+    }
     // override kernel execute with the wrapper.
-    IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute
-    IPython.notebook.kernel.execute = my_execute
+    IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute;
+    IPython.notebook.kernel.execute = my_execute;
 }

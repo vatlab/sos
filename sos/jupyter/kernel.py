@@ -316,9 +316,7 @@ class SoS_Kernel(IPythonKernel):
                 if name != plugin.kernel_name:
                     self._supported_languages[plugin.kernel_name] = plugin
             except Exception as e:
-                #raise RuntimeError('Failed to load language {}: {}'.format(entrypoint.name, e))
-                if self._debug_mode:
-                    self.warn('Failed to load language {}: {}'.format(entrypoint.name, e))
+                self.log.error('Failed to load language {}: {}'.format(entrypoint.name, e))
         return self._supported_languages
 
     supported_languages = property(lambda self:self.get_supported_languages())
