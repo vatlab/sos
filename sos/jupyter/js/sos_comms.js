@@ -51,7 +51,7 @@ var my_execute = function(code, callbacks, options) {
         "%softwith " +
         (window.kernel_updated ? "" : " --list-kernel ") +
         " --default-kernel " + window.default_kernel +
-        " --cell-kernel " + window.my_scratchTab.cell.metadata.kernel +
+        " --cell-kernel " + window.my_panel.cell.metadata.kernel +
         " --cell -1 " + "\n" + code,
         callbacks, {
             'silent': false,
@@ -122,7 +122,7 @@ function register_sos_comm() {
                     // get cell from passed cell index, which was sent through the
                     // %softwith magic
                     if (data[0] == -1)
-                        var cell = window.my_scratchTab.cell;
+                        var cell = window.my_panel.cell;
                     else
                         var cell = IPython.notebook.get_cell(data[0]);
                     if (cell.metadata.kernel != KernelName[data[1]]) {
@@ -131,13 +131,13 @@ function register_sos_comm() {
                         changeStyleOnKernel(cell, data[1])
                     }
                 } else if (msg_type == 'preview-input') {
-                    cell = window.my_scratchTab.cell;
+                    cell = window.my_panel.cell;
                     cell.clear_input();
                     cell.set_text(data);
                     cell.clear_output();
                 } else {
                     // this is preview output
-                    cell = window.my_scratchTab.cell;
+                    cell = window.my_panel.cell;
                     if (msg_type === 'display_data')
                         cell.output_area.append_display_data(data);
                     else if (msg_type === 'stream')

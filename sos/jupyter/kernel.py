@@ -908,7 +908,7 @@ class SoS_Kernel(IPythonKernel):
             # use a table to list input and/or output file if exist
             if output_files:
                 self.send_frontend_msg('preview-input',
-                       '## -- Preview output --')
+                       '%preview {}'.format(' '.join(output_files)))
                 if hasattr(self, 'in_sandbox') and self.in_sandbox:
                     # if in sand box, do not link output to their files because these
                     # files will be removed soon.

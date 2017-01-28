@@ -71,9 +71,9 @@ define(['jquery'], function($) {
             });
         });
 
-        $.getScript("/notebooks/sos/jupyter/js/sos_scratchtab.js", function() {
-            load_scratchTab();
-            add_scratchTab_button();
+        $.getScript("/notebooks/sos/jupyter/js/sos_panel.js", function() {
+            load_panel();
+            add_panel_button();
             patch_CodeCell_get_callbacks();
         });
 
