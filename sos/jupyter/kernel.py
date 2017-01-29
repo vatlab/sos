@@ -31,7 +31,7 @@ import pkg_resources
 import pydoc
 
 from ipykernel.ipkernel import IPythonKernel
-
+from collections.abc import Sized
 
 from types import ModuleType
 from sos.utils import env, WorkflowDict, short_repr, pretty_size
@@ -819,25 +819,41 @@ class SoS_Kernel(IPythonKernel):
             self.send_frontend_msg('preview-kernel', self.kernel)
         try:
             for item in (x for x,y in zip(items, handled) if not y):
-                self.send_frontend_msg('display_data',
-                    {'metadata': {},
-                    'data': {'text/plain': '>>> ' + item + ':\n',
-                        'text/html': HTML('<pre><font color="green">> {}:</font></pre>'.format(item)).data
-                        }
-                    })
                 try:
+                    # quoted
+                    if (item.startswith('"') and item.endswith('"')) or \
+                        (item.startswith("'") and item.endswith("'")):
+                        try:
+                            item = eval(item)
+                        except:
+                            pass
                     if use_sos:
-                        format_dict, md_dict = self.preview_var(item)
+
+                        obj_desc, (format_dict, md_dict) = self.preview_var(item)
+                        self.send_frontend_msg('display_data',
+                            {'metadata': {},
+                            'data': {'text/plain': '>>> ' + item + ':\n',
+                                'text/html': HTML('<pre><font color="green">> {}:</font> {}</pre>'
+                                    .format(item, obj_desc)).data
+                                }
+                            })
                         self.send_frontend_msg('display_data',
                             {'execution_count': self._execution_count, 'data': format_dict,
                             'metadata': md_dict})
                     else:
+                        self.send_frontend_msg('display_data',
+                            {'metadata': {},
+                            'data': {'text/plain': '>>> ' + item + ':\n',
+                                'text/html': HTML('<pre><font color="green">> {}:</font></pre>'.format(item)).data
+                                }
+                            })
                         # evaluate
                         responses = self.get_response(item, ['stream', 'display_data', 'execution_result'])
                         for response in responses:
                             self.send_frontend_msg(response[0], response[1])
                 except Exception as e:
-                    self.warn('\n> Failed to preview file or expression {}: {}'.format(item, e))
+                    self.send_frontend_msg('stream',
+                        {'name': 'stderr', 'text': '> Failed to preview file or expression {}: {}'.format(item, e)})
         finally:
             self.switch_kernel(orig_kernel)
 
@@ -959,14 +975,23 @@ class SoS_Kernel(IPythonKernel):
                     self.preview_file(filename)
 
     def preview_var(self, item):
+
         if item in env.sos_dict:
             obj = env.sos_dict[item]
         else:
             obj = SoS_eval(item, sigil=get_default_global_sigil())
+        # get the basic information of object
+        txt = type(obj).__name__
+        # we could potentially check the shape of data frame and matrix
+        # but then we will need to import the numpy and pandas libraries
+        if hasattr(obj, 'shape'):
+            txt += ' of shape {}'.format(getattr(obj, 'shape'))
+        elif isinstance(obj, Sized):
+            txt += ' of length {}'.format(obj.__len__())
         if callable(obj) or isinstance(obj, ModuleType):
-            return {'text/plain': pydoc.render_doc(obj, title='SoS Documentation: %s')}, {}
+            return txt, ({'text/plain': pydoc.render_doc(obj, title='SoS Documentation: %s')}, {})
         else:
-            return self.format_obj(obj)
+            return txt, self.format_obj(obj)
 
     def preview_file(self, filename):
         if not os.path.isfile(filename):

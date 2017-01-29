@@ -1096,7 +1096,7 @@ def sos_handle_parameter_(key, defvalue):
     env.parameter_vars.add(key)
     if not env.sos_dict['__args__']:
         if isinstance(defvalue, type):
-            raise ArgumentError('Argument {} of type {} is required'.format(key, defvalue))
+            raise ArgumentError('Argument {} of type {} is required'.format(key, defvalue.__name__))
         return defvalue
     # if the parameter is passed from action sos_run
     if isinstance(env.sos_dict['__args__'], dict):
