@@ -185,28 +185,7 @@ define(['jquery'], function($) {
                         data.output_type = msg_type;
                         cell.output_area.append_output(data);
                         // remove output prompt
-                        while (true) {
-                            var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
-                            if (op.length > 0)
-                                op[0].parentNode.removeChild(op[0]);
-                            else
-                                break;
-                        }
-                        while (true) {
-                            var op = cell.element[0].getElementsByClassName('prompt');
-                            if (op.length > 0)
-                                op[0].parentNode.removeChild(op[0]);
-                            else
-                                break;
-                        }
-                        var ops = cell.element[0].getElementsByClassName('output_subarea');
-                        for (var op = 0; op < ops.length; op++)
-                            ops[op].style.maxWidth = '100%';
-                        // this will create output_scroll if needed.
-                        cell.output_area.scroll_if_long();
-                        var ops = cell.element[0].getElementsByClassName('output_scroll');
-                        if (ops.length > 0)
-                            ops[0].style.height = '100%';
+                        adjustPanel();
                     }
                 });
             }
@@ -262,7 +241,6 @@ define(['jquery'], function($) {
         }
 
     }
-
 
     function load_select_kernel() {
         // this function will be called twice, the first time when the notebook is loaded
@@ -409,6 +387,12 @@ define(['jquery'], function($) {
         ip[0].parentNode.removeChild(ip[0]);
         // move the language selection stuff to the top
         this.cell.element[0].getElementsByClassName('celltoolbar')[0].style.marginBottom = 0;
+        // this would allow us to insert lable or title to the left of language dropdown
+        this.cell.element[0].getElementsByClassName('celltoolbar')[0].style.width = '100%';
+        // make the font of the panel slightly smaller than the main notebook
+        // unfortunately the code mirror input cell has fixed font size that cannot
+        // be changed.
+        this.cell.element[0].style.fontSize = '90%';
 
         // override ctrl/shift-enter to execute me if I'm focused instead of the notebook's cell
         var execute_and_select_action = this.km.actions.register({
@@ -455,6 +439,8 @@ define(['jquery'], function($) {
         // lazy, hook it up to Jupyter.notebook as the handle on all the singletons
         console.log("Setting up panel");
         window.my_panel = new panel(Jupyter.notebook);
+        // display panel by default (#388)
+        toggle_panel();
     }
 
     function toggle_panel() {
@@ -525,6 +511,29 @@ define(['jquery'], function($) {
             $('.celltoolbar label').css('margin-left', 0);
             $('.celltoolbar label').css('margin-right', 0);
         }
+        var cell = window.my_panel.cell;
+        while (true) {
+            var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
+            if (op.length > 0)
+                op[0].parentNode.removeChild(op[0]);
+            else
+                break;
+        }
+        while (true) {
+            var op = cell.element[0].getElementsByClassName('prompt');
+            if (op.length > 0)
+                op[0].parentNode.removeChild(op[0]);
+            else
+                break;
+        }
+        var ops = cell.element[0].getElementsByClassName('output_subarea');
+        for (var op = 0; op < ops.length; op++)
+            ops[op].style.maxWidth = '100%';
+        // this will create output_scroll if needed.
+        cell.output_area.scroll_if_long();
+        var ops = cell.element[0].getElementsByClassName('output_scroll');
+        if (ops.length > 0)
+            ops[0].style.height = '100%';
     }
 
     function patch_CodeCell_get_callbacks() {
