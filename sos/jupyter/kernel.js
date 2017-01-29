@@ -211,6 +211,12 @@ define(['jquery'], function($) {
                         for (var op = 0; op < ops.length; op++)
                             ops[op].style.maxWidth = '100%';
                         cell.output_area.expand();
+                        /*
+                        // not sure why this does not work
+                        var ops = cell.element[0].getElementsByClassName('output_scroll');
+                        if (ops.length > 0)
+                            ops[0].style.height = '100% !important';
+                        */
                     }
                 });
             }
@@ -547,6 +553,12 @@ define(['jquery'], function($) {
         for (var op = 0; op < ops.length; op++)
             ops[op].style.maxWidth = '100%';
         cell.output_area.expand();
+        /*
+        // not sure why this does not work.
+        var ops = cell.element[0].getElementsByClassName('output_scroll');
+        if (ops.length > 0)
+            ops[0].style.height = '100% !important';
+        */
     }
 
     function patch_CodeCell_get_callbacks() {
