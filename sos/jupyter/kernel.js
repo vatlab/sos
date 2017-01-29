@@ -35,6 +35,7 @@ define(['jquery'], function($) {
 
     window.default_kernel = 'sos';
     window.kernel_updated = false;
+    window.my_panel = null;
 
     // initialize BackgroundColor etc from cell meta data
     if (!('sos' in IPython.notebook.metadata))
@@ -377,7 +378,6 @@ define(['jquery'], function($) {
     }
 
     var container_width = $('#site').width();
-    var my_panel;
 
     var panel = function(nb) {
         var panel = this;
@@ -455,7 +455,7 @@ define(['jquery'], function($) {
     function setup_panel() {
         // lazy, hook it up to Jupyter.notebook as the handle on all the singletons
         console.log("Setting up panel");
-        return new panel(Jupyter.notebook);
+        window.my_panel = new panel(Jupyter.notebook);
     }
 
     function toggle_panel() {
@@ -498,7 +498,7 @@ define(['jquery'], function($) {
         load_css();
 
         if (Jupyter.notebook.kernel) {
-            my_panel = setup_panel();
+            setup_panel();
         } else {
             events.on('kernel_ready.Kernel', setup_panel);
         }
@@ -527,7 +527,7 @@ define(['jquery'], function($) {
             $('.celltoolbar label').css('margin-right', 0);
         }
         // remove output prompt of the cell panel
-        cell = window.my_panel.cell;
+        var cell = window.my_panel.cell;
         // remove output prompt
         while (true) {
             var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
