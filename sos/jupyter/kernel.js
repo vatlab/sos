@@ -454,7 +454,7 @@ define(['jquery'], function($) {
             $('#notebook-container').css('margin-left', $('#sos-panel').width() + 10);
             $('#notebook-container').css('margin-right', 50);
             // $('#notebook-container').css('width',container_width-$('#sos-panel').width()-30);
-            $('#notebook-container').css('width', '80%');
+            $('#notebook-container').css('width', '75%');
             $('.celltoolbar label').css('margin-left', 0);
             $('.celltoolbar label').css('margin-right', 0);
             my_panel.cell.focus_editor()
