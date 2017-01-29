@@ -224,7 +224,6 @@ define(['jquery'], function($) {
         console.log('sos comm registered');
     }
 
-
     function wrap_execute() {
         if (!window.kernel_updated) {
             IPython.notebook.kernel.execute('%frontend --list-kernel', [], {
@@ -234,8 +233,12 @@ define(['jquery'], function($) {
             console.log('kernel list requested');
         }
         // override kernel execute with the wrapper.
-        IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute;
-        IPython.notebook.kernel.execute = my_execute;
+        // however, this function can be called multiple times for kernel
+        // restart etc, so we should be careful
+        if (IPython.notebook.kernel.orig_execute === undefined) {
+            IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute;
+            IPython.notebook.kernel.execute = my_execute;
+        }
     }
 
     function changeStyleOnKernel(cell, type) {
@@ -582,6 +585,11 @@ define(['jquery'], function($) {
         // setting up frontend using existing metadata (without executing anything)
         load_select_kernel();
         changeCellStyle();
+        // if we reload the page, the kernel will exist but
+        // cannot connect to new frontend comm channel, we therefore
+        // need to restart the kernel.
+        if (IPython.notebook.kernel)
+            IPython.notebook.kernel.restart();
         events.on('kernel_connected.Kernel', register_sos_comm);
         events.on('kernel_ready.Kernel', wrap_execute);
 
