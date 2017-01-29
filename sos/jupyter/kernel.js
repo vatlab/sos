@@ -181,17 +181,9 @@ define(['jquery'], function($) {
                         changeStyleOnKernel(window.my_panel.cell, data);
                     } else {
                         // this is preview output
-                        cell = window.my_panel.cell;
+                        var cell = window.my_panel.cell;
                         data.output_type = msg_type;
                         cell.output_area.append_output(data);
-                        /*
-                        if (msg_type === 'display_data')
-                            cell.output_area.append_display_data(data);
-                        else if (msg_type === 'stream')
-                            cell.output_area.append_stream(data);
-                        else
-                            cell.output_area.append_stream('Unknown msg type ' + msg_type + '\nPlease notify maintainer of SoS of this bug.');
-                        */
                         // remove output prompt
                         while (true) {
                             var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
@@ -210,13 +202,11 @@ define(['jquery'], function($) {
                         var ops = cell.element[0].getElementsByClassName('output_subarea');
                         for (var op = 0; op < ops.length; op++)
                             ops[op].style.maxWidth = '100%';
-                        cell.output_area.expand();
-                        /*
-                        // not sure why this does not work
+                        // this will create output_scroll if needed.
+                        cell.output_area.scroll_if_long();
                         var ops = cell.element[0].getElementsByClassName('output_scroll');
                         if (ops.length > 0)
-                            ops[0].style.height = '100% !important';
-                        */
+                            ops[0].style.height = '100%';
                     }
                 });
             }
@@ -535,33 +525,6 @@ define(['jquery'], function($) {
             $('.celltoolbar label').css('margin-left', 0);
             $('.celltoolbar label').css('margin-right', 0);
         }
-        // remove output prompt of the cell panel
-        var cell = window.my_panel.cell;
-        // remove output prompt
-        while (true) {
-            var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
-            if (op.length > 0)
-                op[0].parentNode.removeChild(op[0]);
-            else
-                break;
-        }
-        while (true) {
-            var op = cell.element[0].getElementsByClassName('prompt');
-            if (op.length > 0)
-                op[0].parentNode.removeChild(op[0]);
-            else
-                break;
-        }
-        var ops = cell.element[0].getElementsByClassName('output_subarea');
-        for (var op = 0; op < ops.length; op++)
-            ops[op].style.maxWidth = '100%';
-        cell.output_area.expand();
-        /*
-        // not sure why this does not work.
-        var ops = cell.element[0].getElementsByClassName('output_scroll');
-        if (ops.length > 0)
-            ops[0].style.height = '100% !important';
-        */
     }
 
     function patch_CodeCell_get_callbacks() {
