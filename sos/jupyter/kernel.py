@@ -1024,11 +1024,15 @@ class SoS_Kernel(IPythonKernel):
                         try:
                             previewer_func = y.load()
                         except Exception as e:
-                            self.warn('Failed to load previewer {}: {}'.format(y, e))
+                            self.send_frontend_msg('stream', {
+                                'name': 'stderr',
+                                'text': 'Failed to load previewer {}: {}'.format(y, e) })
                             continue
                         break
                 except Exception as e:
-                    self.warn(e)
+                    self.send_frontend_msg('stream', {
+                                'name': 'stderr',
+                                'text': str(e)})
                     continue
         #
         # if no previewer can be found
@@ -1045,10 +1049,14 @@ class SoS_Kernel(IPythonKernel):
                 self.send_frontend_msg('display_data',
                     {'source': filename, 'data': result, 'metadata': {}})
             else:
-                self.warn('Unrecognized preview content: {}'.format(result))
+                self.send_frontend_msg('stream', {
+                    'name': 'stderr',
+                    'text': 'Unrecognized preview content: {}'.format(result)})
                 return
         except Exception as e:
-            self.warn('Failed to preview {}: {}'.format(filename, e))
+            self.send_frontend_msg('stream', {
+                'name': 'stderr',
+                'text': 'Failed to preview {}: {}'.format(filename, e)})
 
     def send_result(self, res, silent=False):
         # this is Ok, send result back
