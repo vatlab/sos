@@ -586,7 +586,6 @@ define(['jquery'], function($) {
             var css = document.createElement("style");
             css.type = "text/css";
             css.innerHTML = '.panel {' +
-                '  max-height: 500px;' +
                 '  padding: 0px;' +
                 '  overflow-y: auto;' +
                 '  font-weight: normal;' +
