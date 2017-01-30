@@ -529,6 +529,7 @@ define(['jquery'], function($) {
         this.km.command_shortcuts.add_shortcuts(shortcuts);
 
         this.cell.element.show();
+        this.cell.focus_editor();
         this.displayed = true;
         console.log('panel show');
     };
