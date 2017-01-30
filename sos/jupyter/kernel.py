@@ -1100,7 +1100,7 @@ class SoS_Kernel(IPythonKernel):
             out[key] = value
         ret['user_expressions'] = out
         #
-        if not silent:
+        if not silent and store_history:
             self._execution_count += 1
         # make sure post_executed is triggered after the completion of all cell content
         self.shell.user_ns.update(env.sos_dict._dict)
