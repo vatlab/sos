@@ -260,7 +260,7 @@ define(['jquery'], function($) {
             var css = document.createElement("style");
             css.type = "text/css";
             css.innerHTML = '.code_cell .celltoolbar {' + 
-                'width:20%;background:none;border:none;border-bottom:none;z-index: 1000;' + 
+                'width:40%;background:none;border:none;border-bottom:none;z-index: 1000;' +
                 'position:relative;margin-bottom:-50pt;float:right;}  ' +
                 '.text_cell .celltoolbar {display:none}';
             document.body.appendChild(css);
@@ -407,7 +407,6 @@ define(['jquery'], function($) {
                     $('#notebook-container').css('margin-left', 30);
                     $('#notebook-container').css('width', $('#notebook').width() - 30);
                     $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */); //redraw at begin of of drag (after resizing height)
-
                 }
 
             }, //end of drag function
@@ -418,6 +417,9 @@ define(['jquery'], function($) {
                 // Ensure position is fixed (again)
                 $('#panel-wrapper').css('position', 'fixed');
             },
+            // can only drag from the border, not the panel and the cell. This
+            // allows us to, for example, copy/paste output area.
+            cancel: "#panel"
         });
 
         $('#panel-wrapper').resizable({
