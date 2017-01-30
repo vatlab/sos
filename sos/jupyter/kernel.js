@@ -536,7 +536,7 @@ define(['jquery'], function($) {
 
 
     panel.prototype.execute_and_select_event = function(evt) {
-        if (utils.is_focused(this.element)) {
+        if (utils.is_focused(this.cell.element)) {
             this.cell.execute();
         } else {
             this.notebook.execute_cell_and_select_below();
@@ -544,7 +544,7 @@ define(['jquery'], function($) {
     };
 
     panel.prototype.execute_event = function(evt) {
-        if (utils.is_focused(this.element)) {
+        if (utils.is_focused(this.cell.element)) {
             this.cell.execute();
         } else {
             this.notebook.execute_selected_cells();
@@ -573,8 +573,9 @@ define(['jquery'], function($) {
             },
             'complete': function() {
                 window.my_panel.displayed = $('#panel-wrapper').css('display') === 'block'
-                if (window.my_panel.displayed)
+                if (window.my_panel.displayed) {
                     window.my_panel.cell.focus_editor();
+                }
             }
         });
     }
