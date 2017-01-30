@@ -422,8 +422,12 @@ define(['jquery'], function($) {
 
         $('#panel-wrapper').resizable({
             resize: function(event, ui) {
-                $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
-                $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
+                if (window.cfg.sideBar) {
+                    $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
+                    $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
+                } else {
+                    $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */); 
+                }
             },
             start: function(event, ui) {
                 $(this).width($(this).width());
@@ -599,7 +603,7 @@ define(['jquery'], function($) {
                 '.float-wrapper {' +
                 '  position: fixed !important;' +
                 '  top: 120px;' +
-                '  max-width:600px;' +
+                '  /* max-width:600px; */' +
                 '  right: 20px;' +
                 '  border: thin solid rgba(0, 0, 0, 0.38);' +
                 '  border-radius: 5px;' +
@@ -615,8 +619,8 @@ define(['jquery'], function($) {
                 '    left: 5px;' +
                 '    padding: 10px;' +
                 '    position: fixed !important;' +
-                '    width: 312px;' +
-                '    max-width: 28%;' +
+                '    width: 25%;' +
+                '    max-width: 50%;' +
                 '    background-color: #F8F5E1;' +
                 '    border-style: solid;' +
                 '    border-color: #eeeeee;' +
