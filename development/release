@@ -14,6 +14,7 @@ sh:
 
 
 [pip]
+parameter: version = str
 # check the version of the latest version
 cur_ver = get_output("pip show sos | grep Version | cut -d' ' -f2").strip()
 
@@ -21,7 +22,17 @@ cur_ver = get_output("pip show sos | grep Version | cut -d' ' -f2").strip()
 stop_if(cur_ver == version)
 
 sh:	workdir='..'
-	python setup.py sdist upload
+	python setup.py sdist && \
+	rm -rf /tmp/test_sos && \
+	mkdir /tmp/test_sos && \
+	cp dist/sos-${version}.tar.gz /tmp/test_sos && \
+	cd /tmp/test_sos && \
+	tar zxf sos-${version}.tar.gz && \
+	cd sos-${version} && \
+	python setup.py install
+
+sh: workdir='..'
+	python setup.py sdist upload && \
 	pip install sos --upgrade
   
 [update-docker]
