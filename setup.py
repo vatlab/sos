@@ -93,7 +93,7 @@ class InstallWithConfigurations(install):
         with TemporaryDirectory() as td:
             os.chmod(td, 0o755)  # Starts off as 700, not user readable
             shutil.copy('sos/jupyter/kernel.js', os.path.join(td, 'kernel.js'))
-            shutil.copy('docs/img/logo-64x64.png', os.path.join(td, 'logo-64x64.png'))
+            shutil.copy('misc/logo-64x64.png', os.path.join(td, 'logo-64x64.png'))
             with open(os.path.join(td, 'kernel.json'), 'w') as f:
                 json.dump(kernel_json, f, sort_keys=True)
             try:

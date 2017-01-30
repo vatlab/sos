@@ -31,6 +31,8 @@ MAINTAINER Bo Peng <bpeng@mdanderson.org>
 USER    root
 
 RUN     conda install -y feather-format -c conda-forge
+
+RUN     pip install pip --upgrade
 RUN     pip install xlrd docker-py
 RUN     pip install markdown
 
