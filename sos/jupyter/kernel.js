@@ -259,7 +259,10 @@ define(['jquery'], function($) {
         var load_css = function() {
             var css = document.createElement("style");
             css.type = "text/css";
-            css.innerHTML = '.code_cell .celltoolbar {width:10%;background:none;border:none;border-bottom:none;z-index: 1000;position:relative;margin-bottom:-50pt;float:right;}  .text_cell .celltoolbar {display:none}';
+            css.innerHTML = '.code_cell .celltoolbar {' + 
+                'width:20%;background:none;border:none;border-bottom:none;z-index: 1000;' + 
+                'position:relative;margin-bottom:-50pt;float:right;}  ' +
+                '.text_cell .celltoolbar {display:none}';
             document.body.appendChild(css);
         };
 
@@ -364,11 +367,10 @@ define(['jquery'], function($) {
 
     var create_panel_div = function() {
         var panel_wrapper = $('<div id="panel-wrapper"/>')
-            /*
             .append(
                 $('<div id="panel-header"/>')
-                .addClass("header")
-                .text("Scratch")) */
+                .addClass("panel-header prompt input_prompt")
+                .text("In [-]"))
             .append(
                 $("<div/>").attr("id", "panel").addClass('panel')
             )
@@ -390,7 +392,7 @@ define(['jquery'], function($) {
                     ui.position.top = $('#header').height();
                     ui.position.left = 0;
                     $('#panel-wrapper').css('height', $('#site').height());
-                    $('#panel').css('height', $('#panel-wrapper').height() - $('#panel-header').height());
+                    $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */);
                 }
                 if (ui.position.left <= 0) {
                     ui.position.left = 0;
@@ -404,7 +406,7 @@ define(['jquery'], function($) {
                     panel_wrapper.removeClass('sidebar-wrapper').addClass('float-wrapper');
                     $('#notebook-container').css('margin-left', 30);
                     $('#notebook-container').css('width', $('#notebook').width() - 30);
-                    $('#panel').css('height', $('#panel-wrapper').height() - $('#panel-header').height()); //redraw at begin of of drag (after resizing height)
+                    $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */); //redraw at begin of of drag (after resizing height)
 
                 }
 
@@ -428,7 +430,7 @@ define(['jquery'], function($) {
                 //$(this).css('position', 'fixed');
             },
             stop: function(event, ui) {
-                $('#panel').css('height', $('#panel-wrapper').height() - $('#panel-header').height())
+                $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */)
                 // Ensure position is fixed (again)
                 //$(this).css('position', 'fixed');
             }
@@ -459,7 +461,7 @@ define(['jquery'], function($) {
             }
             setTimeout(function() {
                 $('#panel-wrapper').css('height', $('#site').height());
-                $('#panel').css('height', $('#panel-wrapper').height() - $('#panel-header').height())
+                $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */)
             }, 500)
             setTimeout(function() {
                 $('#panel-wrapper').css('top', $('#header').height());
@@ -666,6 +668,13 @@ define(['jquery'], function($) {
                 '' +
                 '.panel-item-num {' +
                 '    font-style: normal;' +
+                '}' +
+                '' +
+                '.panel-header {' +
+                '    position: absolute;' +
+                '    margin-left: 5pt;' +
+                '    margin-top: 0.5em;' +
+                '    text-align: left;' +
                 '}' +
                 '' +
                 '#panel-wrapper .panel-item-num {' +
