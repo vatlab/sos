@@ -5,3 +5,8 @@ recursive-include sos *.py *.js
 recursive-include misc *.vim *.py *.js
 recursive-include test *.vim *.py *.js
 recursive-include docs/src *.ipynb *.png *.jpg *.sos
+global-exclude .sos
+global-exclude *~
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude .ipynb_checkpoints
