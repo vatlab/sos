@@ -37,6 +37,12 @@ define(['jquery'], function($) {
     window.kernel_updated = false;
     window.my_panel = null;
 
+    window.cfg = {
+        'sideBar': true,
+        'panel_window_display': true,
+        'oldPanelHeight' : 0,
+    }
+
     // initialize BackgroundColor etc from cell meta data
     if (!('sos' in IPython.notebook.metadata))
         IPython.notebook.metadata['sos'] = {
@@ -356,14 +362,123 @@ define(['jquery'], function($) {
 
     var container_width = $('#site').width();
 
+    var create_panel_div = function() {
+        var panel_wrapper = $('<div id="panel-wrapper"/>')
+            /*
+            .append(
+                $('<div id="panel-header"/>')
+                .addClass("header")
+                .text("Scratch")) */
+            .append(
+                $("<div/>").attr("id", "panel").addClass('panel')
+            )
+
+        $("body").append(panel_wrapper);
+
+        // enable dragging and save position on stop moving
+        $('#panel-wrapper').draggable({
+
+            drag: function(event, ui) {
+
+                // If dragging to the left side, then transforms in sidebar
+                if ((ui.position.left <= 0) && (window.cfg.sideBar == false)) {
+                    window.cfg.sideBar = true;
+                    window.cfg.oldPanelHeight = $('#panel-wrapper').css('height');
+                    panel_wrapper.removeClass('float-wrapper').addClass('sidebar-wrapper');
+                    $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30);
+                    $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30);
+                    ui.position.top = $('#header').height();
+                    ui.position.left = 0;
+                    $('#panel-wrapper').css('height', $('#site').height());
+                    $('#panel').css('height', $('#panel-wrapper').height() - $('#panel-header').height());
+                }
+                if (ui.position.left <= 0) {
+                    ui.position.left = 0;
+                    ui.position.top = $('#header').height();
+                }
+                if ((ui.position.left > 0) && (window.cfg.sideBar == true)) {
+                    window.cfg.sideBar = false;
+                    if (window.cfg.oldPanelHeight == 0)
+                        window.cfg.oldPanelHeight = Math.max($('#site').height() / 2, 200)
+                    $('#panel-wrapper').css('height', window.cfg.oldPanelHeight);
+                    panel_wrapper.removeClass('sidebar-wrapper').addClass('float-wrapper');
+                    $('#notebook-container').css('margin-left', 30);
+                    $('#notebook-container').css('width', $('#notebook').width() - 30);
+                    $('#panel').css('height', $('#panel-wrapper').height() - $('#panel-header').height()); //redraw at begin of of drag (after resizing height)
+
+                }
+
+            }, //end of drag function
+            start: function(event, ui) {
+                $(this).width($(this).width());
+            },
+            stop: function(event, ui) {
+                // Ensure position is fixed (again)
+                $('#panel-wrapper').css('position', 'fixed');
+            },
+        });
+
+        $('#panel-wrapper').resizable({
+            resize: function(event, ui) {
+                $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
+                $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
+            },
+            start: function(event, ui) {
+                $(this).width($(this).width());
+                //$(this).css('position', 'fixed');
+            },
+            stop: function(event, ui) {
+                $('#panel').css('height', $('#panel-wrapper').height() - $('#panel-header').height())
+                // Ensure position is fixed (again)
+                //$(this).css('position', 'fixed');
+            }
+        })
+
+        // Ensure position is fixed
+        $('#panel-wrapper').css('position', 'fixed');
+
+        // if panel-wrapper is undefined (first run(?), then hide it)
+        if ($('#panel-wrapper').css('display') == undefined) $('#panel-wrapper').css('display', "none") //block
+
+        $('#site').bind('siteHeight', function() {
+            $('#panel-wrapper').css('height', $('#site').height());
+        })
+
+        $('#site').trigger('siteHeight');
+
+
+        // Initial style
+        ///sideBar = cfg['sideBar']
+        if (window.cfg.sideBar) {
+            $('#panel-wrapper').addClass('sidebar-wrapper');
+            if (window.cfg.panel_window_display) {
+                setTimeout(function() {
+                    $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30);
+                    $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30);
+                }, 500)
+            }
+            setTimeout(function() {
+                $('#panel-wrapper').css('height', $('#site').height());
+                $('#panel').css('height', $('#panel-wrapper').height() - $('#panel-header').height())
+            }, 500)
+            setTimeout(function() {
+                $('#panel-wrapper').css('top', $('#header').height());
+            }, 500) //wait a bit
+            $('#panel-wrapper').css('left', 0);
+
+        }
+    }
+
+
+
     var panel = function(nb) {
         var panel = this;
         this.notebook = nb;
         this.kernel = nb.kernel;
         this.km = nb.keyboard_manager;
 
-        // create elements
-        this.element = $("<div id='sos-panel'>");
+        create_panel_div();
+        console.log('panel created');
 
         // create my cell
         var cell = this.cell = new CodeCell(nb.kernel, {
@@ -374,17 +489,16 @@ define(['jquery'], function($) {
             tooltip: nb.tooltip,
         });
         cell.set_input_prompt();
-        this.element.append($("<div/>").addClass('cell-wrapper').append(this.cell.element));
+        $("#panel").append(this.cell.element);
+
         cell.render();
         cell.refresh();
-        this.element.animate({
-            height: 0,
-        }, 100);
         this.cell.element.hide();
 
         // remove input and output prompt to save some space
         var ip = this.cell.element[0].getElementsByClassName('input_prompt');
-        ip[0].parentNode.removeChild(ip[0]);
+        if (ip.length > 0)
+            ip[0].parentNode.removeChild(ip[0]);
         // move the language selection stuff to the top
         this.cell.element[0].getElementsByClassName('celltoolbar')[0].style.marginBottom = 0;
         // this would allow us to insert lable or title to the left of language dropdown
@@ -393,6 +507,7 @@ define(['jquery'], function($) {
         // unfortunately the code mirror input cell has fixed font size that cannot
         // be changed.
         this.cell.element[0].style.fontSize = '90%';
+        console.log('panel rendered');
 
         // override ctrl/shift-enter to execute me if I'm focused instead of the notebook's cell
         var execute_and_select_action = this.km.actions.register({
@@ -413,8 +528,9 @@ define(['jquery'], function($) {
         this.km.edit_shortcuts.add_shortcuts(shortcuts);
         this.km.command_shortcuts.add_shortcuts(shortcuts);
 
-        // finally, add me to the page
-        $("body").append(this.element);
+        this.cell.element.show();
+        this.displayed = true;
+        console.log('panel show');
     };
 
 
@@ -439,36 +555,27 @@ define(['jquery'], function($) {
         // lazy, hook it up to Jupyter.notebook as the handle on all the singletons
         console.log("Setting up panel");
         window.my_panel = new panel(Jupyter.notebook);
-        // display panel by default (#388)
-        toggle_panel();
     }
 
     function toggle_panel() {
-        if ($('#sos-panel').height() < 1) {
-            var site_height = $("#site").height();
-
-            $('#sos-panel').animate({
-                height: site_height,
-            }, 200);
-            $('#sos-panel .cell').show();
-            $('#notebook-container').css('margin-left', $('#sos-panel').width() + 10);
-            $('#notebook-container').css('margin-right', 50);
-            // $('#notebook-container').css('width',container_width-$('#sos-panel').width()-30);
-            $('#notebook-container').css('width', '75%');
-            $('.celltoolbar label').css('margin-left', 0);
-            $('.celltoolbar label').css('margin-right', 0);
-            my_panel.cell.focus_editor()
-            my_panel.displayed = true;
-        } else {
-            $('#sos-panel').animate({
-                height: 0,
-            }, 100);
-            $('#sos-panel .cell').hide();
-            $('#notebook-container').css('margin-left', '10px');
-            $('#notebook-container').css('width', container_width - 20);
-            $('#notebook-container').css('margin-right', 50);
-            my_panel.displayed = false;
-        }
+        // toggle draw (first because of first-click behavior)
+        //$("#panel-wrapper").toggle({'complete':function(){
+        $("#panel-wrapper").toggle({
+            'progress': function() {
+                if ($('#panel-wrapper').css('display') != 'block') {
+                    $('#notebook-container').css('margin-left', 15);
+                    $('#notebook-container').css('width', $('#site').width());
+                } else {
+                    $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
+                    $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
+                }
+            },
+            'complete': function() {
+                window.my_panel.displayed = $('#panel-wrapper').css('display') === 'block'
+                if (window.my_panel.displayed)
+                    window.my_panel.cell.focus_editor();
+            }
+        });
     }
 
     function load_panel() {
@@ -476,7 +583,95 @@ define(['jquery'], function($) {
         var load_css = function() {
             var css = document.createElement("style");
             css.type = "text/css";
-            css.innerHTML = '#sos-panel {position: absolute; left: 0; bottom: 0; width: 25%; background-color: #F8F5E1; border-left: 1px solid #aaa; border-top: 1px solid #aaa; z-index: 9000; } #sos-panel .cell-wrapper {height: 100%; overflow: auto; } .panel-btn {float: left; padding-right: 24px; opacity: 0.2; font-size: 24px; z-index: 9001; } .panel-btn:hover {opacity: 1; } .panel-close {display: none; position: absolute; float: right; bottom: 8px; right: 0; } .panel-open {margin-top: -32px; }}';
+            css.innerHTML = '.panel {' +
+                '  max-height: 500px;' +
+                '  padding: 0px;' +
+                '  overflow-y: auto;' +
+                '  font-weight: normal;' +
+                '  color: #333333;' +
+                '  white-space: nowrap;' +
+                '  overflow-x: auto;' +
+                '} ' +
+                '' +
+                '.float-wrapper {' +
+                '  position: fixed !important;' +
+                '  top: 120px;' +
+                '  max-width:600px;' +
+                '  right: 20px;' +
+                '  border: thin solid rgba(0, 0, 0, 0.38);' +
+                '  border-radius: 5px;' +
+                '  padding:10px;' +
+                '  background-color: #F8F5E1;' +
+                '  opacity: .8;' +
+                '  z-index: 100;' +
+                '  overflow: hidden;' +
+                '}' +
+                '' +
+                '.sidebar-wrapper {' +
+                '    height: 100%;' +
+                '    left: 5px;' +
+                '    padding: 10px;' +
+                '    position: fixed !important;' +
+                '    width: 312px;' +
+                '    max-width: 28%;' +
+                '    background-color: #F8F5E1;' +
+                '    border-style: solid;' +
+                '    border-color: #eeeeee;' +
+                '    opacity: .99;' +
+                '    overflow: hidden;' +
+                '}' +
+                '' +
+                '.col-md-9 {' +
+                '  overflow:hidden;' +
+                '  margin-left: 14%;' +
+                '  width: 80%}' +
+                '' +
+                '#panel-wrapper.closed {' +
+                '  min-width: 100px;' +
+                '  width: auto;' +
+                '  transition: width;' +
+                '}' +
+                '#panel-wrapper:hover{' +
+                '  opacity: 1;' +
+                '}' +
+                '#panel-wrapper .header {' +
+                '  font-size: 18px;' +
+                '  font-weight: bold;' +
+                '}' +
+                '#panel-wrapper .hide-btn {' +
+                '  font-size: 14px;' +
+                '  font-family: monospace;' +
+                '}' +
+                '' +
+                '#panel-wrapper .reload-btn {' +
+                '  font-size: 14px;' +
+                '  font-family: monospace;' +
+                '}' +
+                '' +
+                '#panel-wrapper .number_sections-btn {' +
+                '  font-size: 14px;' +
+                '  font-family: monospace;' +
+                '}' +
+                '' +
+                '' +
+                '/* dont waste so much screen space... */' +
+                '#panel-wrapper .panel-item{' +
+                '  padding-left: 20px;' +
+                '}' +
+                '' +
+                '#panel-wrapper .panel-item .panel-item{' +
+                '  padding-left: 10px;' +
+                '}' +
+                '' +
+                '.panel-item-num {' +
+                '    font-style: normal;' +
+                '}' +
+                '' +
+                '#panel-wrapper .panel-item-num {' +
+                '    font-style: normal;' +
+                '    font-family: Georgia, Times New Roman, Times, serif;' +
+                '    color: black;' +
+                '}'
             document.body.appendChild(css);
         };
 
@@ -505,12 +700,13 @@ define(['jquery'], function($) {
     };
 
     function adjustPanel() {
+        /*
         if ($('#sos-panel').height() != 0) {
             $('#notebook-container').css('margin-left', $('#sos-panel').width() + 30);
             $('#notebook-container').css('width', container_width - $('#sos-panel').width() - 30);
             $('.celltoolbar label').css('margin-left', 0);
             $('.celltoolbar label').css('margin-right', 0);
-        }
+        } */
         var cell = window.my_panel.cell;
         while (true) {
             var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
@@ -534,6 +730,7 @@ define(['jquery'], function($) {
         var ops = cell.element[0].getElementsByClassName('output_scroll');
         if (ops.length > 0)
             ops[0].style.height = '100%';
+        cell.output_area.expand();
     }
 
     function patch_CodeCell_get_callbacks() {
