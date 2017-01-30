@@ -739,7 +739,7 @@ define(['jquery'], function($) {
         cell.output_area.scroll_if_long();
         var ops = cell.element[0].getElementsByClassName('output_scroll');
         if (ops.length > 0)
-            ops[0].style.height = '100%';
+            ops[0].style.height = 'auto';
         cell.output_area.expand();
     }
 
