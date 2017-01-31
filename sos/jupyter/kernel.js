@@ -250,7 +250,12 @@ define([
             ip[0].style.backgroundColor = '';
             op[0].style.backgroundColor = '';
         }
-        cell.code_mirror.setOption('styleActiveLine', {'nonEmpty': false});
+    }
+
+    function set_codemirror_option(evt) {
+        var cells = IPython.notebook.get_cells();
+        for (var i = cells.length - 1; i >= 0; --i)
+            cells[i].code_mirror.setOption('styleActiveLine', cells[i].selected);
     }
 
     function load_select_kernel() {
@@ -834,6 +839,7 @@ define([
             IPython.notebook.kernel.restart();
         events.on('kernel_connected.Kernel', register_sos_comm);
         events.on('kernel_ready.Kernel', wrap_execute);
+        events.on('select.Cell', set_codemirror_option);
 
         load_panel();
         add_panel_button();
