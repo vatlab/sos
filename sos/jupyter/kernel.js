@@ -557,9 +557,9 @@ define(['jquery'], function($) {
             'shift-enter': execute_and_select_action,
             'ctrl-enter': execute_action,
             'ctrl-b': toggle_action,
-			// It is very strange to me that other key bindings such as
-			// Ctrl-e does not work as it will somehow make the
-			// code_mirror.getSelection() line getting only blank string.
+            // It is very strange to me that other key bindings such as
+            // Ctrl-e does not work as it will somehow make the
+            // code_mirror.getSelection() line getting only blank string.
             'ctrl-shift-enter': execute_selected_in_panel,
         }
         this.km.edit_shortcuts.add_shortcuts(shortcuts);
@@ -593,18 +593,18 @@ define(['jquery'], function($) {
         var cell = evt.notebook.get_selected_cell();
         var text = cell.code_mirror.getSelection();
         if (text === "") {
-			// get current line and move the cursor to the next line
+            // get current line and move the cursor to the next line
             var line_ch = cell.code_mirror.getCursor();
-			text = cell.code_mirror.getLine(line_ch["line"]);
-			cell.code_mirror.setCursor(line_ch["line"] + 1, line_ch["ch"]);
-		}
+            text = cell.code_mirror.getLine(line_ch["line"]);
+            cell.code_mirror.setCursor(line_ch["line"] + 1, line_ch["ch"]);
+        }
         //
         var panel_cell = window.my_panel.cell;
-		// set the kernel of the panel cell as the sending cell
-		if (panel_cell.metadata.kernel !== cell.metadata.kernel) {
-			panel_cell.metadata.kernel = cell.metadata.kernel;
-			changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
-		}
+        // set the kernel of the panel cell as the sending cell
+        if (panel_cell.metadata.kernel !== cell.metadata.kernel) {
+            panel_cell.metadata.kernel = cell.metadata.kernel;
+            changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
+        }
         panel_cell.clear_input();
         panel_cell.set_text(text);
         panel_cell.clear_output();
