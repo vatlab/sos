@@ -592,10 +592,19 @@ define(['jquery'], function($) {
         //var cell = IPython.notebook.get_selected_cell();
         var cell = evt.notebook.get_selected_cell();
         var text = cell.code_mirror.getSelection();
-        if (text === "")
-            text = cell.get_text();
+        if (text === "") {
+			// get current line and move the cursor to the next line
+            var line_ch = cell.code_mirror.getCursor();
+			text = cell.code_mirror.getLine(line_ch["line"]);
+			cell.code_mirror.setCursor(line_ch["line"] + 1, line_ch["ch"]);
+		}
         //
         var panel_cell = window.my_panel.cell;
+		// set the kernel of the panel cell as the sending cell
+		if (panel_cell.metadata.kernel !== cell.metadata.kernel) {
+			panel_cell.metadata.kernel = cell.metadata.kernel;
+			changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
+		}
         panel_cell.clear_input();
         panel_cell.set_text(text);
         panel_cell.clear_output();
