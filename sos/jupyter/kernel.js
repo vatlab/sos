@@ -252,10 +252,11 @@ define([
         }
     }
 
-    function set_codemirror_option(evt) {
+    function set_codemirror_option(evt, cell) {
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i)
             cells[i].code_mirror.setOption('styleActiveLine', cells[i].selected);
+        return true;
     }
 
     function load_select_kernel() {
@@ -429,7 +430,7 @@ define([
             },
             // can only drag from the border, not the panel and the cell. This
             // allows us to, for example, copy/paste output area.
-            cancel: "#panel"
+            cancel: "#panel, #input"
         });
 
         $('#panel-wrapper').resizable({
@@ -604,9 +605,18 @@ define([
         var text = cell.code_mirror.getSelection();
         if (text === "") {
             // get current line and move the cursor to the next line
-            var line_ch = cell.code_mirror.getCursor();
-            text = cell.code_mirror.getLine(line_ch["line"]);
-            cell.code_mirror.setCursor(line_ch["line"] + 1, line_ch["ch"]);
+            var cm = cell.code_mirror;
+            var line_ch = cm.getCursor();
+            var cur_line = line_ch["line"];
+            text = cm.getLine(cur_line);
+            // jump to the next non-empty line
+            var line_cnt = cm.lineCount();
+            while (++cur_line < line_cnt) {
+                if (cm.getLine(cur_line).replace(/^\s+|\s+$/gm,'').length != 0) {
+                    cell.code_mirror.setCursor(cur_line, line_ch["ch"]);
+                    break;
+                }
+            }
         }
         //
         var panel_cell = window.my_panel.cell;
