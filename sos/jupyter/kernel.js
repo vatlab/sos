@@ -549,10 +549,18 @@ define(['jquery'], function($) {
             handler: $.proxy(toggle_panel, this),
         }, 'panel-toggle');
 
+        var execute_selected_in_panel = this.km.actions.register({
+            help: 'run selected text in panel cell',
+            handler: execute_in_panel,
+        }, 'execute-selected');
         var shortcuts = {
             'shift-enter': execute_and_select_action,
             'ctrl-enter': execute_action,
             'ctrl-b': toggle_action,
+			// It is very strange to me that other key bindings such as
+			// Ctrl-e does not work as it will somehow make the
+			// code_mirror.getSelection() line getting only blank string.
+            'ctrl-shift-enter': execute_selected_in_panel,
         }
         this.km.edit_shortcuts.add_shortcuts(shortcuts);
         this.km.command_shortcuts.add_shortcuts(shortcuts);
@@ -580,6 +588,20 @@ define(['jquery'], function($) {
         }
     };
 
+    var execute_in_panel = function(evt) {
+        //var cell = IPython.notebook.get_selected_cell();
+        var cell = evt.notebook.get_selected_cell();
+        var text = cell.code_mirror.getSelection();
+        if (text === "")
+            text = cell.get_text();
+        //
+        var panel_cell = window.my_panel.cell;
+        panel_cell.clear_input();
+        panel_cell.set_text(text);
+        panel_cell.clear_output();
+        panel_cell.execute();
+        return false;
+    };
 
     function setup_panel() {
         // lazy, hook it up to Jupyter.notebook as the handle on all the singletons
