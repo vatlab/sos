@@ -20,7 +20,12 @@
 // with some minor modification. An expert on javascript and code mirror
 // is required to make it work for other langauges that SoS supports.
 //
-define(['jquery'], function($) {
+define([
+    'jquery',
+    'base/js/utils',
+    'codemirror/lib/codemirror',
+    'codemirror/addon/selection/active-line'
+    ], function($) {
 
     "use strict";
     //variables defined as global which enable access from imported scripts.
@@ -245,7 +250,7 @@ define(['jquery'], function($) {
             ip[0].style.backgroundColor = '';
             op[0].style.backgroundColor = '';
         }
-
+        cell.code_mirror.setOption('styleActiveLine', {'nonEmpty': false});
     }
 
     function load_select_kernel() {
