@@ -43,7 +43,7 @@ if sys.platform != 'win32':
 
 from collections.abc import Sequence
 import multiprocessing as mp
-from .utils import env, ProgressBar, transcribe, AbortExecution, short_repr, get_traceback, frozendict
+from .utils import env, ProgressBar, transcribe, AbortExecution, short_repr, get_traceback
 from .sos_eval import Undetermined, interpolate
 from .target import FileTarget, fileMD5, executable, UnknownTarget, BaseTarget
 from .monitor import ProcessMonitor, summarizeExecution
@@ -280,9 +280,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
     args.update(kwargs)
     args['__args__'] = env.sos_dict['__args__']
     if isinstance(shared, str):
-        shared = [shared, 'CONFIG']
-    elif 'CONFIG' not in shared:
-        shared.append('CONFIG')
+        shared = [shared]
 
     # for nested workflow, _input would becomes the input of workflow.
     env.sos_dict.set('__step_output__', copy.deepcopy(env.sos_dict['_input']))
@@ -291,7 +289,8 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
         my_name = env.sos_dict['step_name']
         if env.run_mode == 'dryrun':
             env.logger.info('Checking nested workflow {}'.format(workflow))
-            return Base_Executor(wf, args=args, shared=shared).dryrun(targets=targets)
+            return Base_Executor(wf, args=args, shared=shared,
+                config={'config_file': env.sos_dict['__config_file']}).dryrun(targets=targets)
         elif env.run_mode in ('run', 'interactive'):
             env.logger.info('Executing workflow ``{}`` with input ``{}``'
                 .format(workflow, short_repr(env.sos_dict['_input'], True)))
@@ -312,16 +311,12 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                 if not executor_class:
                     sys.exit('Could not locate specified queue executor {}'.format(env.__task_engine__))
             else:
-                #if env.max_jobs == 1:
-                # for some reason that I do not yet know, if we execute
-                # nested workflow in MP_Executor, which is nested in
-                # another MP_Executor, something might block the pipes
-                # and make sos hang. #396
-                executor_class = Base_Executor
-                #else:
-                #    executor_class = MP_Executor
+                if env.max_jobs == 1:
+                    executor_class = Base_Executor
+                else:
+                    executor_class = MP_Executor
 
-            executor = executor_class(wf, args=args, shared=shared)
+            executor = executor_class(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file']})
             if env.run_mode == 'run':
                 if shared:
                     q = mp.Queue()
@@ -334,10 +329,6 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                     if isinstance(res, Exception):
                         raise res
                     env.sos_dict.quick_update(res)
-                    # the CONFIG would be passed as dictionary because it is difficult to
-                    # pass a fronzendict because of readonly property
-                    if not isinstance(env.sos_dict['CONFIG'], frozendict):
-                        env.sos_dict.set('CONFIG', frozendict(env.sos_dict['CONFIG']))
                 else:
                     res = None
                 p.join()
@@ -711,7 +702,7 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
     '''Convert input file to output using pandoc
 
     The input can be specified in three ways:
-    
+
     1. instant script, which is assumed to be in md format
 
     pandoc:   output='report.html'
@@ -726,7 +717,7 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
 
     If no output is specified, it is assumed to be in html format
     and is written to standard output.
-    
+
     You can specify more options such as "from" and "to" by customizing
     the args parameter of the action. The default value of args is
     `${input!q} --output ${output!q}'
@@ -758,9 +749,9 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
 #
     if not executable('pandoc').exists():
         raise UnknownTarget(executable('pandoc'))
-        
+
     input_file = collect_input(script, input)
-        
+
     write_to_stdout = False
     if output is None:
         write_to_stdout = True

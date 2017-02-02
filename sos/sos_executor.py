@@ -24,6 +24,7 @@ import sys
 import yaml
 import time
 import keyword
+import fasteners
 from collections.abc import Sequence
 import multiprocessing as mp
 from queue import Empty
@@ -152,6 +153,7 @@ class Base_Executor:
         if self.config['report_output']:
             env.sos_dict.set('__report_output__', self.config['report_output'])
         env.sos_dict.set('__null_func__', __null_func__)
+        env.sos_dict.set('__config_file__', self.config['config_file'])
         env.sos_dict.set('__args__', self.args)
         env.sos_dict.set('__unknown_args__', self.args)
         # initial values
@@ -159,34 +161,36 @@ class Base_Executor:
         env.sos_dict.set('__step_output__', [])
 
         # load configuration files
-        if 'CONFIG' not in self.shared:
-            cfg = {}
-            sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
-            if os.path.isfile(sos_config_file):
+        cfg = {}
+        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
+        if os.path.isfile(sos_config_file):
+            with fasteners.InterProcessLock('/tmp/sos_config_'):
                 try:
                     with open(sos_config_file) as config:
                         cfg = yaml.safe_load(config)
                 except Exception as e:
                     raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-            # local config file
-            sos_config_file = 'config.yml'
-            if os.path.isfile(sos_config_file):
+        # local config file
+        sos_config_file = 'config.yml'
+        if os.path.isfile(sos_config_file):
+            with fasteners.InterProcessLock('/tmp/sos_config_'):
                 try:
                     with open(sos_config_file) as config:
                         dict_merge(cfg, yaml.safe_load(config))
                 except Exception as e:
                     raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-            # user-specified configuration file.
-            if self.config['config_file'] is not None:
-                if not os.path.isfile(self.config['config_file']):
-                    raise RuntimeError('Config file {} not found'.format(self.config['config_file']))
+        # user-specified configuration file.
+        if self.config['config_file'] is not None:
+            if not os.path.isfile(self.config['config_file']):
+                raise RuntimeError('Config file {} not found'.format(self.config['config_file']))
+            with fasteners.InterProcessLock('/tmp/sos_config_'):
                 try:
                     with open(self.config['config_file']) as config:
                         dict_merge(cfg, yaml.safe_load(config))
                 except Exception as e:
                     raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config['config_file'], e))
-            # set config to CONFIG
-            env.sos_dict.set('CONFIG', frozendict(cfg))
+        # set config to CONFIG
+        env.sos_dict.set('CONFIG', frozendict(cfg))
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
@@ -834,4 +838,4 @@ class MP_Executor(Base_Executor):
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
         if queue:
             # the CONFIG object is difficult to pickle because of its readonly property
-            queue.put({x: dict(env.sos_dict[x]) if x == 'CONFIG' else env.sos_dict[x] for x in self.shared if x in env.sos_dict})
+            queue.put({env.sos_dict[x] for x in self.shared if x in env.sos_dict})
