@@ -1903,5 +1903,18 @@ sos_run('test:1', key = '1')
         wf = script.workflow()
         Base_Executor(wf, config={'config_file': 'test.conf'}).run()
 
+    def testErrorFromSubworkflow(self):
+        '''Test if error from subworkflow is passed to master (#396)'''
+        script = SoS_Script('''
+[test_1]
+R:
+  set.seed(xxx)
+
+[default]
+sos_run('test')
+''')
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf).run)
+
 if __name__ == '__main__':
     unittest.main()

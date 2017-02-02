@@ -327,6 +327,8 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                 p.start()
                 if shared:
                     res = q.get()
+                    if isinstance(res, Exception):
+                        raise res
                     env.sos_dict.quick_update(res)
                     # the CONFIG would be passed as dictionary because it is difficult to
                     # pass a fronzendict because of readonly property

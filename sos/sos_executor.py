@@ -626,7 +626,11 @@ class Base_Executor:
                 exec_error.append(self.workflow.name,
                     RuntimeError('{} pending step{}: {}'.format(len(sections),
                         's' if len(sections) > 1 else '', ', '.join(sections))))
-            raise exec_error
+            if queue:
+                queue.put(exec_error)
+                return
+            else:
+                raise exec_error
         else:
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
@@ -821,7 +825,10 @@ class MP_Executor(Base_Executor):
                 exec_error.append(self.workflow.name,
                     RuntimeError('{} pending step{}: {}'.format(len(sections), 
                         's' if len(sections) > 1 else '', ', '.join(sections))))
-            raise exec_error
+            if queue is not None:
+                queue.put(exec_error)
+            else:
+                raise exec_error
         else:
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
