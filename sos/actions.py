@@ -312,10 +312,14 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                 if not executor_class:
                     sys.exit('Could not locate specified queue executor {}'.format(env.__task_engine__))
             else:
-                if env.max_jobs == 1:
-                    executor_class = Base_Executor
-                else:
-                    executor_class = MP_Executor
+                #if env.max_jobs == 1:
+                # for some reason that I do not yet know, if we execute
+                # nested workflow in MP_Executor, which is nested in
+                # another MP_Executor, something might block the pipes
+                # and make sos hang. #396
+                executor_class = Base_Executor
+                #else:
+                #    executor_class = MP_Executor
 
             executor = executor_class(wf, args=args, shared=shared)
             if env.run_mode == 'run':
