@@ -204,7 +204,7 @@ define([
         console.log('sos comm registered');
     }
 
-    function wrap_execute() {
+    function request_kernel_list() {
         if (!window.kernel_updated) {
             IPython.notebook.kernel.execute('%frontend --list-kernel', [], {
                 'silent': true,
@@ -212,12 +212,16 @@ define([
             });
             console.log('kernel list requested');
         }
+    }
+
+    function wrap_execute() {
         // override kernel execute with the wrapper.
         // however, this function can be called multiple times for kernel
         // restart etc, so we should be careful
         if (IPython.notebook.kernel.orig_execute === undefined) {
             IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute;
             IPython.notebook.kernel.execute = my_execute;
+            console.log('executor patched');
         }
     }
 
@@ -848,7 +852,8 @@ define([
         if (IPython.notebook.kernel)
             IPython.notebook.kernel.restart();
         events.on('kernel_connected.Kernel', register_sos_comm);
-        events.on('kernel_ready.Kernel', wrap_execute);
+        events.on('kernel_ready.Kernel', request_kernel_list);
+        events.on('execute.CodeCell', wrap_execute);
         events.on('select.Cell', set_codemirror_option);
 
         load_panel();
