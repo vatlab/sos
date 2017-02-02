@@ -88,6 +88,14 @@ def _R_repr(obj):
             feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
             try:
                 data = obj.copy()
+                # if the dataframe has index, it would not be transferred due to limitations
+                # of feather. We will have to do something to save the index separately and 
+                # recreate it. (#397)
+                if isinstance(data.index, pandas.Index):
+                    df_index = list(data.index)
+                elif not isinstance(data.index, pandas.RangeIndex):
+                    # we should give a warning here
+                    df_index=None
                 feather.write_dataframe(data, feather_tmp_)
             except:
                 # if data cannot be written, we try to manipulate data
@@ -96,7 +104,7 @@ def _R_repr(obj):
                     if not homogeneous_type(data[c]):
                         data[c] = [str(x) for x in data[c]]
                 feather.write_dataframe(data, feather_tmp_)
-            return 'read_feather("{}")'.format(feather_tmp_)
+            return '..read.feather("{}", index={})'.format(feather_tmp_, _R_repr(df_index))
         else:
             return repr('Unsupported datatype {}'.format(short_repr(obj)))
 
@@ -200,6 +208,15 @@ R_init_statements = r'''
         "'Untransferrable variable'"
     }
 }
+..read.feather <- function(filename, index=NULL) {
+    if (!require("feather"))
+        install.packages('feather', repos='http://cran.stat.ucla.edu/')
+    library(feather)
+    data = read_feather(filename)
+    if (!is.null(index))
+        rownames(data) <- index
+    return(data)
+}
 '''
 
 
@@ -214,14 +231,7 @@ class sos_R:
         new_name = '.' + name[1:] if name.startswith('_') else name
         r_repr = _R_repr(obj)
         #
-        if 'read_feather' in r_repr:
-            return new_name, '''if (!require("feather")) {{
-                install.packages('feather', repos='http://cran.stat.ucla.edu/')
-                }}
-                library(feather)
-                {} <- {}'''.format('.' + name[1:] if name.startswith('_') else name, r_repr)
-        else:
-            return new_name, '{} <- {}'.format(new_name, r_repr)
+        return new_name, '{} <- {}'.format(new_name, r_repr)
 
     def lan_to_sos(self, items):
         # first let us get all variables with names starting with sos
