@@ -2,7 +2,7 @@
 #
 # This file is part of Script of Scripts (sos), a workflow system
 # for the execution of commands and scripts in different languages.
-# Please visit https://github.com/bpeng2000/SOS for more information.
+# Please visit https://github.com/vatlab/SOS for more information.
 #
 # Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
 
@@ -39,6 +39,6 @@ __py_version__ = '{}.{}.{}'.format(_py_ver.major, _py_ver.minor, _py_ver.micro)
 #
 SOS_FULL_VERSION='{} for Python {}.{}.{}'.format(__version__, _py_ver.major, _py_ver.minor, _py_ver.micro)
 SOS_COPYRIGHT = '''SoS {} : Copyright (c) 2016 Bo Peng'''.format(__version__)
-SOS_CONTACT = '''Please visit http://github.com/bpeng2000/SOS for more information.'''
+SOS_CONTACT = '''Please visit http://github.com/vatlab/SOS for more information.'''
 
 

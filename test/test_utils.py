@@ -2,7 +2,7 @@
 #
 # This file is part of Script of Scripts (SoS), a workflow system
 # for the execution of commands and scripts in different languages.
-# Please visit https://github.com/bpeng2000/SOS for more information.
+# Please visit https://github.com/vatlab/SOS for more information.
 #
 # Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
 #
@@ -24,7 +24,6 @@ import os
 import unittest
 import cProfile
 import timeit
-import shutil
 import textwrap
 
 # these functions are normally not available but can be imported 
@@ -33,7 +32,6 @@ from sos.utils import env, logger, WorkflowDict, stable_repr
 from sos.pattern import extract_pattern, expand_pattern
 from sos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_vars, \
     Undetermined, on_demand_options
-from sos.actions import downloadURL
 from sos.sos_script import SoS_Script
 from sos.sos_executor import Base_Executor, analyze_section
 from sos.target import executable
@@ -303,13 +301,6 @@ sos_run('sub')
 ''')
         wf = script.workflow('a')
         Base_Executor(wf).run()
-
-    @unittest.skipIf(not with_network, 'Skip test because of no internet connection')
-    def testDownload(self):
-        '''Test download file'''
-        downloadURL('https://github.com/bpeng2000/SOS/wiki/SoS_March2016.pdf', 'tmp/SoS_March2016.pdf', index=0)
-        self.assertTrue(os.path.isfile('tmp/SoS_March2016.pdf'))
-        shutil.rmtree('tmp')
 
     def testTextRepr(self):
         # the " as the last character can lead to problems...

@@ -2,7 +2,7 @@
 #
 # This file is part of Script of Scripts (sos), a workflow system
 # for the execution of commands and scripts in different languages.
-# Please visit https://github.com/bpeng2000/SOS
+# Please visit https://github.com/vatlab/SOS for more information.
 #
 # Copyright (C) 2016 Bo Peng (bpeng@mdanderson.org)
 ##
@@ -53,7 +53,7 @@ class DockerClient:
         try:
             self.client.info()
             # mount the /Volumes folder under mac, please refer to
-            #    https://github.com/bpeng2000/SOS/wiki/SoS-Docker-guide
+            #    http://vatlab.github.io/SOS/doc/tutorials/SoS_Docker_Guide.html
             # for details.
             self.has_volumes = False
             if platform.system() == 'Darwin':
@@ -185,7 +185,7 @@ class DockerClient:
                     if platform.system() == 'Darwin':
                         # under Darwin, host_dir must be under /Users
                         if not os.path.abspath(host_dir).startswith('/Users') and not (self.has_volumes and os.path.abspath(host_dir).startswith('/Volumes')):
-                            raise RuntimeError('hostdir ({}) under MacOSX must be under /Users or /Volumes (if properly configured, see https://github.com/bpeng2000/SOS/wiki/SoS-Docker-guide for details) to be usable in docker container'.format(host_dir))
+                            raise RuntimeError('hostdir ({}) under MacOSX must be under /Users or /Volumes (if properly configured, see https://github.com/vatlab/SOS/wiki/SoS-Docker-guide for details) to be usable in docker container'.format(host_dir))
                     binds.append('{}:{}'.format(os.path.abspath(host_dir), mnt_dir))
             #
             volumes_opt = ' '.join('-v {}'.format(x) for x in binds)
