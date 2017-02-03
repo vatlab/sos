@@ -29,7 +29,7 @@ import textwrap
 
 # these functions are normally not available but can be imported 
 # using their names for testing purposes
-from sos.utils import env, logger, WorkflowDict, ProgressBar, stable_repr
+from sos.utils import env, logger, WorkflowDict, stable_repr
 from sos.pattern import extract_pattern, expand_pattern
 from sos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_vars, \
     Undetermined, on_demand_options
@@ -275,14 +275,6 @@ class TestUtils(unittest.TestCase):
     def testProgressBar(self):
         '''Test progress bar'''
         env.verbosity = 1
-        prog = ProgressBar('test', 100)
-        for i in range(100):
-            prog.update(i)
-        prog.done()
-        prog = ProgressBar('test', 100)
-        for i in range(20):
-            prog.progress(5)
-        prog.done()
         #
         script = SoS_Script('''
 
