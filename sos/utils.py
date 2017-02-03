@@ -26,7 +26,6 @@ import re
 import copy
 import types
 import logging
-import shutil
 import glob
 import math
 import collections
@@ -38,11 +37,11 @@ import urllib
 import urllib.parse
 import urllib.request
 import argparse
+from tqdm import tqdm as ProgressBar
 from collections.abc import Sequence
 from io import StringIO, FileIO
 
 from html.parser import HTMLParser
-import uuid
 import fasteners
 
 __all__ = ['logger', 'get_output']
@@ -778,67 +777,19 @@ class ActivityNotifier(threading.Thread):
         self.event = threading.Event()
         self.start()
 
-    def get_index(self):
-        with fasteners.InterProcessLock('/tmp/sos_progress_'):
-            with open('/tmp/sos_progress') as prog_index:
-                lines = prog_index.readlines()
-                try:
-                    idx = lines[::-1].index(self.uuid + '\n')
-                except:
-                    return 0
-            # try to keep the file small
-            if len(lines) > 200:
-                with open('/tmp/sos_progress', 'w') as prog_index:
-                    prog_index.write(''.join(lines[-100:]))
-            return idx
-
     def run(self):
-        if sys.platform != 'win32':
-            import blessings
-            registered = False
-            self.term = blessings.Terminal(stream=sys.stderr)
-            self.term_height = shutil.get_terminal_size((80, 20)).lines
+            prog = ProgressBar(desc=self.msg, position=0, bar_format='{desc}', total=100000000)
             while True:
                 self.event.wait(self.delay)
                 if self.event.is_set():
-                    if registered:
-                        sys.stderr.write("\r\033[K")
-                        sys.stderr.flush()
+                    prog.close()
                     break
-                if not registered:
-                    self.uuid = uuid.uuid4().hex
-                    with fasteners.InterProcessLock('/tmp/sos_progress_'):
-                        with open('/tmp/sos_progress', 'a') as prog_index:
-                            prog_index.write('{}\n'.format(self.uuid))
-                    registered = True
                 second_elapsed = time.time() - self.start_time
-                with self.term.location(0, self.term_height - self.get_index() - 1):
-                    sys.stderr.write('\r' + self.msg + ' ({}{}){}'.format(
-                        '' if second_elapsed < 86400 else '{} day{} '
-                        .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
-                        time.strftime('%H:%M:%S', time.gmtime(second_elapsed)), self.term.clear_eol))
-                    sys.stderr.flush()
-        else:
-            registered = False
-            while True:
-                self.event.wait(self.delay)
-                if self.event.is_set():
-                    if registered:
-                        sys.stderr.write("\r\033[K")
-                        sys.stderr.flush()
-                    break
-                if not registered:
-                    self.uuid = uuid.uuid4().hex
-                    with fasteners.InterProcessLock('/tmp/sos_progress_'):
-                        with open('/tmp/sos_progress', 'a') as prog_index:
-                            prog_index.write('{}\n'.format(self.uuid))
-                    registered = True
-                second_elapsed = time.time() - self.start_time
-                sys.stderr.write('\r' + self.msg + ' ({}{})'.format(
+                prog.set_description(self.msg + ' ({}{})'.format(
                         '' if second_elapsed < 86400 else '{} day{} '
                         .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
                         time.strftime('%H:%M:%S', time.gmtime(second_elapsed)) ))
-                sys.stderr.flush()
+                prog.update(1)
 
     def stop(self):
         self.event.set()
