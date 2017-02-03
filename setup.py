@@ -129,6 +129,8 @@ setup(name = "sos",
     cmdclass={'install': InstallWithConfigurations},
     install_requires=[
           'psutil',
+          # progress bar
+          'tqdm',
           # for file lock
           'fasteners',
           'pyyaml',
@@ -146,7 +148,7 @@ setup(name = "sos",
           # for DAG
           'networkx',
           'pydotplus',
-      ],
+      ] + (['colorama'] if sys.platform == 'win32' else []),
     entry_points= '''
 [console_scripts]
 sos = sos.__main__:main

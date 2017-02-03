@@ -29,11 +29,12 @@ from collections.abc import Sequence
 import multiprocessing as mp
 from queue import Empty
 
+from tqdm import tqdm as ProgressBar
 from io import StringIO
 from ._version import __version__
 from .sos_step import Dryrun_Step_Executor, SP_Step_Executor, MP_Step_Executor, \
     analyze_section
-from .utils import env, Error, WorkflowDict, get_traceback, ProgressBar, frozendict, dict_merge, short_repr
+from .utils import env, Error, WorkflowDict, get_traceback, frozendict, dict_merge, short_repr
 from .sos_eval import SoS_exec, get_default_global_sigil
 from .sos_syntax import SOS_KEYWORDS
 from .dag import SoS_DAG
@@ -506,7 +507,7 @@ class Base_Executor:
                 else:
                     env.logger.info('Target {} already exists'.format(t))
         #
-        prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
+        prog = ProgressBar(desc=self.workflow.name, total=dag.num_nodes(), disable=dag.num_nodes() <= 1 or env.verbosity != 1)
         self.reset_dict()
         env.sos_dict.set('run_mode', env.run_mode)
         exec_error = ExecuteError(self.workflow.name)
@@ -594,7 +595,7 @@ class Base_Executor:
             elif isinstance(res, Exception):
                 runnable._status = 'failed'
                 exec_error.append(runnable._node_id, res)
-                prog.progress(1)
+                prog.update(1)
             else:#
                 for k, v in res.items():
                     env.sos_dict.set(k, v)
@@ -615,9 +616,9 @@ class Base_Executor:
                     env.sos_dict['__step_local_input__'],
                     env.sos_dict['__step_local_output__'])
                 runnable._status = 'completed'
-                prog.progress(1)
+                prog.update(1)
             #env.logger.error('completed')
-        prog.done()
+        prog.close()
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
             if failed_steps:
@@ -688,7 +689,7 @@ class MP_Executor(Base_Executor):
         # process step of the pipelinp
         #
         procs = [None for x in range(env.max_jobs)]
-        prog = ProgressBar(self.workflow.name, dag.num_nodes(), disp=dag.num_nodes() > 1 and env.verbosity == 1)
+        prog = ProgressBar(desc=self.workflow.name, total=dag.num_nodes(), disable=dag.num_nodes() <= 1 or env.verbosity != 1)
         exec_error = ExecuteError(self.workflow.name)
         while True:
             # step 1: check existing jobs and see if they are completed
@@ -741,7 +742,7 @@ class MP_Executor(Base_Executor):
                 elif isinstance(res, Exception):
                     runnable._status = 'failed'
                     exec_error.append(runnable._node_id, res)
-                    prog.progress(1)
+                    prog.update(1)
                     procs[idx] = None
                 else:
                     #
@@ -763,7 +764,7 @@ class MP_Executor(Base_Executor):
                         env.sos_dict['__step_local_input__'],
                         env.sos_dict['__step_local_output__'])
                     runnable._status = 'completed'
-                    prog.progress(1)
+                    prog.update(1)
                     procs[idx] = None
                 #env.logger.error('completed')
                 #dag.show_nodes()
@@ -816,7 +817,7 @@ class MP_Executor(Base_Executor):
                 break
             else:
                 time.sleep(0.1)
-        prog.done()
+        prog.close()
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
             if failed_steps:

@@ -859,7 +859,8 @@ def locate_files(session, include, exclude, all_files):
 def cmd_pack(args, unknown_args):
     import tarfile
     import tempfile
-    from .utils import pretty_size, env, ProgressBar, ProgressFileObj
+    from tqdm import tqdm as ProgressBar
+    from .utils import pretty_size, env, ProgressFileObj
     from .target import FileTarget
     #
     env.verbosity = args.verbosity
@@ -896,7 +897,7 @@ def cmd_pack(args, unknown_args):
         env.logger.info('Operation aborted due to existing output file')
         sys.exit(0)
 
-    prog = ProgressBar('Checking', total_size, disp=args.verbosity == 1)
+    prog = ProgressBar(desc='Checking', total=total_size, disable=args.verbosity != 1)
     manifest_file = tempfile.NamedTemporaryFile(delete=False).name
     with open(manifest_file, 'w') as manifest:
         # write message in repr format (with "\n") to keep it in the same line
@@ -925,7 +926,7 @@ def cmd_pack(args, unknown_args):
                 env.logger.warning('Missing runtime file {}'.format(ft.name()))
             else:
                 manifest.write('RUNTIME\t{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.signature()))
-    prog.done()
+    prog.close()
     #
     if args.dryrun:
         print('A total of {} files ({}) with additional scripts and runtime files would be archived.'.
@@ -934,7 +935,7 @@ def cmd_pack(args, unknown_args):
     else:
         env.logger.info('Archiving {} files ({})...'.format(len(tracked_files), pretty_size(total_size)))
     #
-    prog = ProgressBar(args.output, total_size, disp=args.verbosity == 1)
+    prog = ProgressBar(desc=args.output, total=total_size, disable=args.verbosity != 1)
     with tarfile.open(**tar_args) as archive:
         # add manifest
         archive.add(manifest_file, arcname='MANIFEST.txt')
@@ -967,7 +968,7 @@ def cmd_pack(args, unknown_args):
                 continue
             env.logger.trace('Adding {}'.format(os.path.basename(f)))
             archive.add(f, arcname='runtime/' + os.path.basename(f))
-    prog.done()
+    prog.close()
 
 #
 # command unpack
@@ -1016,7 +1017,8 @@ def get_unpack_parser(desc_only=False):
 
 def cmd_unpack(args, unknown_args):
     import tarfile
-    from .utils import env, ProgressBar, pretty_size, ProgressFileObj
+    from tqdm import tqdm as ProgressBar
+    from .utils import env, pretty_size, ProgressFileObj
     from .target import fileMD5
     import fnmatch
     import time
@@ -1036,8 +1038,8 @@ def cmd_unpack(args, unknown_args):
             elif res == 'n':
                 return False
 
-    prog = ProgressBar('Extracting {}'.format(args.archive), os.path.getsize(args.archive),
-        disp=args.verbosity==1 and not args.__list__)
+    prog = ProgressBar(desc='Extracting {}'.format(args.archive), total=os.path.getsize(args.archive),
+        disable=args.verbosity!=1 or args.__list__)
     try:
         with tarfile.open(fileobj=ProgressFileObj(prog, args.archive, 'rb')) as archive:
             manifest_file = archive.next()
@@ -1130,7 +1132,7 @@ def cmd_unpack(args, unknown_args):
                 archive.extract(f, path=dest)
     except Exception as e:
         raise ValueError('Failed to unpack SoS archive: {}'.format(e))
-    prog.done()
+    prog.close()
 
 
 #
