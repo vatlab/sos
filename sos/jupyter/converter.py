@@ -185,6 +185,22 @@ def add_cell(cells, content, cell_type, cell_count, metainfo):
                  metadata=metainfo)
         )
 
+
+from nbconvert.preprocessors.execute import ExecutePreprocessor, CellExecutionError
+class SoS_ExecutePreprocessor(ExecutePreprocessor):
+    def __init__(self, *args, **kwargs):
+        super(SoS_ExecutePreprocessor, self).__init__(*args, **kwargs)
+
+    def run_cell(self, cell):
+        kernel = cell.metadata.get('kernel', 'sos')
+        try:
+            source = cell.source
+            cell.source = '%frontend --default-kernel sos --cell-kernel {}\n{}'.format(kernel, source)
+            print(cell.source)
+            return super(SoS_ExecutePreprocessor, self).run_cell(cell)
+        finally:
+            cell.source = source
+
 def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
     '''
     Convert a sos script to iPython notebook (.ipynb) so that it can be opened
@@ -267,8 +283,7 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
     )
     err = None
     if args and args.execute:
-        from nbconvert.preprocessors import ExecutePreprocessor, CellExecutionError
-        ep = ExecutePreprocessor(timeout=600, kernel_name='sos')
+        ep = SoS_ExecutePreprocessor(timeout=600, kernel_name='sos')
         try:
             ep.preprocess(nb, {'metadata': {'path': '.'}})
         except CellExecutionError as e:
