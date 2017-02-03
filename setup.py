@@ -148,7 +148,7 @@ setup(name = "sos",
           # for DAG
           'networkx',
           'pydotplus',
-      ] + (['colorama'] if sys.platform == 'win32' else []),
+      ],
     entry_points= '''
 [console_scripts]
 sos = sos.__main__:main
@@ -261,7 +261,6 @@ ipynb-md.func = sos.jupyter.converter:notebook_to_md
 ''',
     extras_require = {
         ':sys_platform=="win32"': ['colorama'],
-        ':sys_platform!="win32"': ['blessings'],
         'image':    ['wand'],
         'md':       ['markdown'],
         'R':        ['feather-format', 'pandas', 'numpy'],
