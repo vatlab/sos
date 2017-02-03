@@ -384,27 +384,34 @@ def downloadURL(URL, dest, decompress=False, index=None):
     term_width = shutil.get_terminal_size((80, 20)).columns
     try:
         env.logger.debug('Download {} to {}'.format(URL, dest))
-        prog = ProgressBar(desc=message, disable=env.verbosity <= 1, position=index, leave=False)
+        prog = ProgressBar(desc=message, disable=env.verbosity <= 1, position=index,
+            leave=True, bar_format='{desc}', total=10000000)
         sig = FileTarget(dest)
         if os.path.isfile(dest):
             if env.sig_mode == 'build':
                 prog.set_description(message + ': \033[32m writing signature\033[0m')
+                prog.update()
                 sig.write_sig()
                 prog.set_description(message + ': \033[32m signature calculated\033[0m')
+                prog.update()
                 prog.close()
                 return True
             elif env.sig_mode == 'ignore':
                 prog.set_description(message + ': \033[32m use existing\033[0m')
+                prog.update()
                 prog.close()
                 return True
             else:
                 prog.set_description(message + ': \033[32m Validating signature\033[0m')
+                prog.update()
                 if sig.validate():
                     prog.set_description(message + ': \033[32m Validated\033[0m')
+                    prog.update()
                     prog.close()
                     return True
                 else:
                     prog.set_description(message + ':\033[91m Signature mismatch\033[0m')
+                    prog.update()
                     prog.close()
         #
         # Stop using pycurl because of libcurl version compatibility problems
@@ -447,6 +454,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     prog.update(len(buffer))
             except urllib.error.HTTPError as e:
                 prog.set_description(message + ':\033[91m {} Error\033[0m'.format(e.code))
+                prog.update()
                 prog.close()
                 try:
                     os.remove(dest_tmp)
@@ -455,6 +463,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 return False
             except Exception as e:
                 prog.set_description(message + ':\033[91m {}\033[0m'.format(e))
+                prog.update()
                 prog.close()
                 try:
                     os.remove(dest_tmp)
@@ -467,6 +476,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
         if decompress:
             if zipfile.is_zipfile(dest):
                 prog.set_description(message + ':\033[91m Decompressing\033[0m')
+                prog.update()
                 prog.close()
                 zip = zipfile.ZipFile(dest)
                 zip.extractall(dest_dir)
@@ -479,6 +489,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                         decompressed += 1
             elif tarfile.is_tarfile(dest):
                 prog.set_description(message + ':\033[91m Decompressing\033[0m')
+                prog.update()
                 prog.close()
                 with tarfile.open(dest, 'r:*') as tar:
                     tar.extractall(dest_dir)
@@ -492,6 +503,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                             decompressed += 1
             elif dest.endswith('.gz'):
                 prog.set_description(message + ':\033[91m Decompressing\033[0m')
+                prog.update()
                 prog.close()
                 decomp = dest[:-3]
                 with gzip.open(dest, 'rb') as fin, open(decomp, 'wb') as fout:
@@ -505,22 +517,26 @@ def downloadURL(URL, dest, decompress=False, index=None):
             decompressed, '' if decompressed <= 1 else 's')
         prog.set_description(message + ':\033[32m downloaded{} {}\033[0m'.format(decompress_msg,
             ' '*(term_width - len(message) - 13 - len(decompress_msg))))
+        prog.update()
         prog.close()
         # if a md5 file exists
         # if downloaded files contains .md5 signature, use them to validate
         # downloaded files.
         if os.path.isfile(dest + '.md5'):
             prog.set_description(message + ':\033[91m Verifying md5 signature\033[0m')
+            prog.update()
             prog.close()
             with open(dest + '.md5') as md5:
                 rec_md5 = md5.readline().split()[0].strip()
                 obs_md5 = fileMD5(dest, partial=False)
                 if rec_md5 != obs_md5:
                     prog.set_description(message + ':\033[91m MD5 signature mismatch\033[0m')
+                    prog.update()
                     prog.close()
                     env.logger.warning('md5 signature mismatch for downloaded file {} (recorded {}, observed {})'
                         .format(filename[:-4], rec_md5, obs_md5))
             prog.set_description(message + ':\033[91m MD5 signature verified\033[0m')
+            prog.update()
             prog.close()
     except Exception as e:
         if env.verbosity > 2:
