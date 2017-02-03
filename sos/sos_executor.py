@@ -837,5 +837,4 @@ class MP_Executor(Base_Executor):
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
         if queue:
-            # the CONFIG object is difficult to pickle because of its readonly property
-            queue.put({env.sos_dict[x] for x in self.shared if x in env.sos_dict})
+            queue.put({x:env.sos_dict[x] for x in self.shared if x in env.sos_dict})

@@ -290,7 +290,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
         if env.run_mode == 'dryrun':
             env.logger.info('Checking nested workflow {}'.format(workflow))
             return Base_Executor(wf, args=args, shared=shared,
-                config={'config_file': env.sos_dict['__config_file']}).dryrun(targets=targets)
+                config={'config_file': env.sos_dict['__config_file__']}).dryrun(targets=targets)
         elif env.run_mode in ('run', 'interactive'):
             env.logger.info('Executing workflow ``{}`` with input ``{}``'
                 .format(workflow, short_repr(env.sos_dict['_input'], True)))
@@ -316,7 +316,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                 else:
                     executor_class = MP_Executor
 
-            executor = executor_class(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file']})
+            executor = executor_class(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__']})
             if env.run_mode == 'run':
                 if shared:
                     q = mp.Queue()
