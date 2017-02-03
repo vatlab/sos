@@ -778,18 +778,21 @@ class ActivityNotifier(threading.Thread):
         self.start()
 
     def run(self):
-            prog = ProgressBar(desc=self.msg, position=0, bar_format='{desc}', total=100000000)
-            while True:
-                self.event.wait(self.delay)
-                if self.event.is_set():
+        prog = None
+        while True:
+            self.event.wait(self.delay)
+            if self.event.is_set():
+                if prog:
                     prog.close()
-                    break
-                second_elapsed = time.time() - self.start_time
-                prog.set_description(self.msg + ' ({}{})'.format(
-                        '' if second_elapsed < 86400 else '{} day{} '
-                        .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
-                        time.strftime('%H:%M:%S', time.gmtime(second_elapsed)) ))
-                prog.update(1)
+                break
+            if not prog:
+                prog = ProgressBar(desc=self.msg, position=0, bar_format='{desc}', total=100000000)
+            second_elapsed = time.time() - self.start_time
+            prog.set_description(self.msg + ' ({}{})'.format(
+                    '' if second_elapsed < 86400 else '{} day{} '
+                    .format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else ''),
+                    time.strftime('%H:%M:%S', time.gmtime(second_elapsed)) ))
+            prog.update(1)
 
     def stop(self):
         self.event.set()
