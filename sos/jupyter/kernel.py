@@ -1353,6 +1353,7 @@ class SoS_Kernel(IPythonKernel):
         elif self.MAGIC_SKIP.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_skip_parser()
+            options = self._interpolate_option(options, quiet=True)
             args = parser.parse_args(options.split())
             skip = True
             if args.__cond__ is not None:
@@ -1367,8 +1368,11 @@ class SoS_Kernel(IPythonKernel):
                     if not os.path.exists(os.path.expanduser(item)):
                         skip = False
             if skip:
-                self.send_frontend_msg('restore-output', self.cell_idx)
-                return {'status': 'abort', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
+                self.send_frontend_msg('restore-output-from-cache', self.cell_idx)
+                return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
+            else:
+                self.send_frontend_msg('purge-output-cache', self.cell_idx)
+                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_DEBUG.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_debug_parser()
