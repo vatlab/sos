@@ -37,6 +37,7 @@ define([
     window.utils = require('base/js/utils');
     window.Jupyter = require('base/js/namespace');
     window.CodeCell = require('notebook/js/codecell').CodeCell;
+    window.output_cache = {};
 
     window.default_kernel = 'sos';
     window.kernel_updated = false;
@@ -183,6 +184,13 @@ define([
                             // set meta information
                             changeStyleOnKernel(cell, data[1])
                         }
+                    } else if (msg_type == 'restore-output') {
+                        if (data == -1)
+                            var cell = window.my_panel.cell;
+                        else
+                            var cell = IPython.notebook.get_cell(data);
+                        cell.output_area.fromJSON(window.output_cache[cell.cell_id]);
+                        window.output_cache['out_' + data.toString()] = '';
                     } else if (msg_type == 'preview-input') {
                         cell = window.my_panel.cell;
                         cell.clear_input();
@@ -256,10 +264,13 @@ define([
         }
     }
 
-    function set_codemirror_option(evt, cell) {
+    function set_codemirror_option(evt, param) {
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i)
             cells[i].code_mirror.setOption('styleActiveLine', cells[i].selected);
+        var cell = param['cell'];
+        if (cell.get_text().indexOf('%skip') >= 0)
+            window.output_cache[cell.cell_id] = cell.output_area.toJSON();
         return true;
     }
 

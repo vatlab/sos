@@ -1367,6 +1367,7 @@ class SoS_Kernel(IPythonKernel):
                     if not os.path.exists(os.path.expanduser(item)):
                         skip = False
             if skip:
+                self.send_frontend_msg('restore-output', self.cell_idx)
                 return {'status': 'abort', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
         elif self.MAGIC_DEBUG.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
