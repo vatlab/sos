@@ -250,6 +250,56 @@ output: "${_data['A']}_${_data['B']}_${_data['C']}.txt"
         Base_Executor(wf).dryrun()
         self.assertEqual(env.sos_dict['res'], ['1_2_Hello.txt', '2_4_World.txt'])
 
+        # test dictionary format of for_each
+        self.touch(['a.txt', 'b.txt', 'a.pdf'])
+        script = SoS_Script(r"""
+[0: shared=['counter', 'all_names', 'all_loop']]
+files = ['a.txt', 'b.txt']
+names = ['a', 'b', 'c']
+counter = 0
+all_names = ''
+all_loop = ''
+
+input: 'a.pdf', files, group_by='single', paired_with='names', for_each={'c':  ['1', '2']}
+
+all_names += _names[0] + " "
+all_loop += c + " "
+
+counter = counter + 1
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertEqual(env.sos_dict['counter'], 6)
+        self.assertEqual(env.sos_dict['all_names'], "a b c a b c ")
+        self.assertEqual(env.sos_dict['all_loop'], "1 1 1 2 2 2 ")
+        #
+        # test same-level for loop and parameter with nested list
+        script = SoS_Script(r"""
+[0: shared=['processed']]
+files = ['a.txt', 'b.txt']
+processed = []
+
+input: files, for_each={'par':[(1, 2), (1, 3), (2, 3)], 'res': ['p1.txt', 'p2.txt', 'p3.txt']}
+output: res
+
+processed.append((par, res))
+""")
+        wf = script.workflow()
+        Base_Executor(wf).dryrun()
+        self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
+        #
+        # test for each for pandas dataframe
+        script = SoS_Script(r"""
+[0: shared={'res':'output'}]
+import pandas as pd
+input: for_each={'data': pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])}
+output: "${data['A']}_${data['B']}_${data['C']}.txt"
+""")
+        wf = script.workflow()
+        Base_Executor(wf).dryrun()
+        self.assertEqual(env.sos_dict['res'], ['1_2_Hello.txt', '2_4_World.txt'])
+
+
     def testPairedWith(self):
         '''Test option paired_with '''
         pass

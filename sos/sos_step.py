@@ -454,7 +454,7 @@ class Base_Step_Executor:
     def handle_for_each(for_each, _groups, _vars):
         if for_each is None or not for_each:
             for_each = []
-        elif isinstance(for_each, str):
+        elif isinstance(for_each, (str, dict)):
             for_each = [for_each]
         elif isinstance(for_each, Sequence):
             for_each = for_each
@@ -462,21 +462,49 @@ class Base_Step_Executor:
             raise ValueError('Unacceptable value for parameter for_each: {}'.format(for_each))
         #
         for fe_all in for_each:
+            if isinstance(fe_all, dict):
+                # in the format of {'name': value}
+                fe_iter_names = []
+                fe_values = []
+                for k, v in fe_all.items():
+                    fe_iter_names.append(k)
+                    fe_values.append(v)
+            else:
+                if ',' in fe_all:
+                    fe_var_names = [x.strip() for x in fe_all.split(',')]
+                    fe_iter_names = ['_' + x for x in fe_var_names]
+                else:
+                    fe_var_names = [fe_all]
+                    fe_iter_names = ['_' + fe_all]
+                # check iterator variable name
+                for name in fe_iter_names:
+                    if '.' in name:
+                        raise ValueError('Invalid iterator variable {}'.format(name))
+                # check variables
+                fe_values = []
+                for name in fe_var_names:
+                    if name.split('.')[0] not in env.sos_dict:
+                        raise ValueError('Variable {} does not exist.'.format(name))
+                    if '.' in name:
+                        fe_values.append(getattr(env.sos_dict[name.split('.')[0]], name.split('.', 1)[-1]))
+                    else:
+                        fe_values.append(env.sos_dict[name])
+
+            # get loop size
             loop_size = None
-            for fe in [x.strip() for x in fe_all.split(',')]:
-                values = env.sos_dict[fe]
+            for name, values in zip(fe_iter_names, fe_values):
                 if not isinstance(values, Sequence):
                     try:
                         import pandas as pd
                         if not isinstance(values, pd.DataFrame):
-                            raise ValueError('Unacceptable for_each data type {}'.format(values.__class__))
+                            raise ValueError('Unacceptable for_each data type {}'.format(values.__class__.__name__))
                     except Exception as e:
-                        raise ValueError('Cannot iterate through variable {}: {}'.format(fe, e))
+                        raise ValueError('Cannot iterate through variable {}: {}'.format(name, e))
                 if loop_size is None:
                     loop_size = len(values)
                 elif loop_size != len(values):
-                    raise ValueError('Length of variable {} (length {}) should match the length of variable {} (length {}).'
-                        .format(fe, len(values), fe_all.split(',')[0], loop_size))
+                    raise ValueError('Length of variable {} (length {}) should match the length of variable (length {}).'
+                        .format(name, len(values), loop_size))
             # expand
             _tmp_groups = copy.deepcopy(_groups)
             _groups.clear()
@@ -487,21 +515,13 @@ class Base_Step_Executor:
             _vars.clear()
             for vidx in range(loop_size):
                 for idx in range(len(_tmp_vars)):
-                    for fe in [x.strip() for x in fe_all.split(',')]:
-                        if fe.split('.')[0] not in env.sos_dict:
-                            raise ValueError('Variable {} does not exist.'.format(fe))
-                        if '.' in fe:
-                            var_name = '_' + fe.replace('.', '_')
-                            values = getattr(env.sos_dict[fe.split('.')[0]], fe.split('.', 1)[-1])
-                        else:
-                            var_name = '_' + fe
-                            values = env.sos_dict[fe]
+                    for var_name, values in zip(fe_iter_names, fe_values):
                         if isinstance(values, Sequence):
                             _tmp_vars[idx][var_name] = values[vidx]
                         elif isinstance(values, pd.DataFrame):
                             _tmp_vars[idx][var_name] = values.iloc[vidx]
                         else:
-                            raise ValueError('Unrecognized for_each variable {}'.format(fe))
+                            raise ValueError('Failed to iterate through for_each variable {}'.format(short_repr(values)))
                 _vars.extend(copy.deepcopy(_tmp_vars))
 
     # directive input
