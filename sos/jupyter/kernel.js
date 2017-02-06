@@ -188,7 +188,8 @@ define([
                             var cell = window.my_panel.cell;
                         else
                             var cell = IPython.notebook.get_cell(data);
-                        cell.output_area.fromJSON(cell.metadata['output_cache'])
+                        cell.output_area.fromJSON(JSON.parse(cell.metadata['output_cache']))
+                        delete cell.metadata['output_cache']
                     } else if (msg_type == 'purge-output-cache') {
                         if (data == -1)
                             var cell = window.my_panel.cell;
@@ -273,8 +274,7 @@ define([
         for (var i = cells.length - 1; i >= 0; --i)
             cells[i].code_mirror.setOption('styleActiveLine', cells[i].selected);
         var cell = param['cell'];
-        if (cell.get_text().indexOf('%skip') >= 0 && cell.output_area)
-            cell.metadata['output_cache'] = cell.output_area.toJSON();
+        cell.metadata['output_cache'] = JSON.stringify(cell.output_area.toJSON());
         return true;
     }
 
