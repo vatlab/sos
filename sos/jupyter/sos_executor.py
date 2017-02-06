@@ -36,7 +36,7 @@ from .sos_step import Interactive_Step_Executor
 
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
-    def __init__(self, workflow=None, args=[], config={}):
+    def __init__(self, workflow=None, args=[], shared=[], config={}):
         # we actually do not have our own workflow, everything is passed from ipython
         # by nested = True we actually mean no new dictionary
         if env.sig_mode is None:
@@ -63,6 +63,7 @@ class Interactive_Executor(Base_Executor):
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__args__', self.args)
+        env.sos_dict.set('__config_file__', self.config['config_file'])
         if self.md5:
             env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
         if self.config['report_output']:

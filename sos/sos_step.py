@@ -503,7 +503,7 @@ class Base_Step_Executor:
                 if loop_size is None:
                     loop_size = len(values)
                 elif loop_size != len(values):
-                    raise ValueError('Length of variable {} (length {}) should match the length of variable (length {}).'
+                    raise ValueError('Length of variable {} (length {}) should match the length of other variables (length {}).'
                         .format(name, len(values), loop_size))
             # expand
             _tmp_groups = copy.deepcopy(_groups)
