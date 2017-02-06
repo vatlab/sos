@@ -119,6 +119,16 @@ run: workdir='..'
 	git commit docs/*.html docs/doc/* --no-verify -m '${msg}'
 	git push --no-verify
 
+[check-doc]
+# check if examples in the documentation can be run successfully
+input: '../docs/src/documentation/*.ipynb', group_by=1
+
+run:
+	# convert ipynb to sos
+	sos convert ${_input!a} ${_input!bn}.sos
+	# then from sos to ipynb with execution
+	sos convert ${_input!bn}.sos ${_input!b} --execute
+
 [check-link]
 
 # https://www.npmjs.com/package/broken-link-checker
