@@ -188,14 +188,14 @@ define([
                             var cell = window.my_panel.cell;
                         else
                             var cell = IPython.notebook.get_cell(data);
-                        cell.output_area.fromJSON(JSON.parse(cell.metadata['output_cache']))
-                        delete cell.metadata['output_cache']
+                        cell.output_area.fromJSON(cell.output_area.cached);
+                        delete cell.output_area.cached;
                     } else if (msg_type == 'purge-output-cache') {
                         if (data == -1)
                             var cell = window.my_panel.cell;
                         else
                             var cell = IPython.notebook.get_cell(data);
-                        delete cell.metadata['output_cache']
+                        delete cell.output_area.cached;
                     } else if (msg_type == 'preview-input') {
                         cell = window.my_panel.cell;
                         cell.clear_input();
@@ -238,7 +238,24 @@ define([
         }
     }
 
+    var my_clear_output = function(wait, ignore) {
+        console.log('clear output');
+        this.cached = this.toJSON();
+        return this.orig_clear_output(wait, ignore);
+    }
+
+    function wrap_output_area(cell) {
+        if (!cell.output_area)
+            return true;
+
+        if (cell.output_area.orig_clear_output === undefined) {
+            cell.output_area.orig_clear_output = cell.output_area.clear_output;
+            cell.output_area.clear_output = my_clear_output;
+        }
+    }
+
     function changeStyleOnKernel(cell, type) {
+        wrap_output_area(cell);
         var sel = cell.element[0].getElementsByTagName('select')[0]
         var opts = sel.options;
         for (var opt, j = 0; opt = opts[j]; j++) {
