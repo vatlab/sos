@@ -603,6 +603,10 @@ define([
 
 
     panel.prototype.execute_and_select_event = function(evt) {
+        // if we execute statements before the kernel is wrapped
+        // from other channels (update kernel list etc), wrap it now.
+        wrap_execute();
+
         if (utils.is_focused(this.cell.element)) {
             this.cell.execute();
         } else {
@@ -611,6 +615,10 @@ define([
     };
 
     panel.prototype.execute_event = function(evt) {
+        // if we execute statements before the kernel is wrapped
+        // from other channels (update kernel list etc), wrap it now.
+        wrap_execute();
+
         if (utils.is_focused(this.cell.element)) {
             this.cell.execute();
         } else {
@@ -867,8 +875,8 @@ define([
         if (IPython.notebook.kernel)
             IPython.notebook.kernel.restart();
         events.on('kernel_connected.Kernel', register_sos_comm);
+        events.on('kernel_connected.CodeCell', wrap_execute);
         events.on('kernel_ready.Kernel', request_kernel_list);
-        events.on('execute.CodeCell', wrap_execute);
         events.on('select.Cell', set_codemirror_option);
 
         load_panel();
