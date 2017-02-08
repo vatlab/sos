@@ -719,7 +719,7 @@ def report(script=None, input=None, output=None, **kwargs):
         file_handle.close()
 
 
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script'])
+@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
 def pandoc(script=None, input=None, output=None, args='${input!q} --output ${output!q}', **kwargs):
     '''Convert input file to output using pandoc
 
