@@ -853,6 +853,7 @@ class Base_Step_Executor:
         # signatures of each index, which can remain to be None if no output
         # is defined.
         signatures = [None for x in self._groups]
+        self.output_groups = [[] for x in self._groups]
         try:
             for idx, (g, v) in enumerate(zip(self._groups, self._vars)):
                 # other variables
@@ -895,6 +896,7 @@ class Base_Step_Executor:
                                             .format(', '.join(x for x in ofiles if x in g)))
                                 # set variable _output and output
                                 self.process_output_args(ofiles, **kwargs)
+                                self.output_groups[idx] = env.sos_dict['_output']
 
                                 # ofiles can be Undetermined
                                 sg = self.step_signature(idx)
@@ -967,6 +969,7 @@ class Base_Step_Executor:
                             self.verify_input()
                             self.execute(statement[1], signatures[idx])
                         except AbortExecution as e:
+                            self.output_groups[idx] = []
                             if e.message:
                                 env.logger.warning(e)
                             skip_index = True
@@ -1033,13 +1036,22 @@ class Base_Step_Executor:
             # NOTE: dynamic output is evaluated at last, so it sets output,
             # not _output. For the same reason, signatures can be wrong if it has
             # Undetermined output.
-            if env.run_mode in ('run', 'interactive') and isinstance(env.sos_dict['output'], Undetermined):
-                self.reevaluate_output()
-                # if output is no longer Undetermined, set it to output
-                # of each signature
-                for sig in signatures:
-                    if sig is not None:
-                        sig.set(env.sos_dict['output'], 'output')
+            if env.run_mode in ('run', 'interactive'):
+                if isinstance(env.sos_dict['output'], Undetermined):
+                    self.reevaluate_output()
+                    # if output is no longer Undetermined, set it to output
+                    # of each signature
+                    for sig in signatures:
+                        if sig is not None:
+                            sig.set(env.sos_dict['output'], 'output')
+                else:
+                    # finalize output from output_groups because some output might be skipped
+                    # this is the final version of the output but we do maintain output
+                    # during the execution of step, for compatibility.
+                    env.sos_dict.set('output', self.output_groups[0])
+                    for og in self.output_groups[1:]:
+                        if og != env.sos_dict['output']:
+                            env.sos_dict['output'].extend(og)
 
             self.log('output')
             # variables defined by the shared option needs to be available to be verified

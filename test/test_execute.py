@@ -1966,5 +1966,31 @@ sos_run('test')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf).run)
 
+    def testStoppedOutput(self):
+        '''test output with stopped step'''
+        for file in ["${a}.txt" for a in range(10)]:
+            FileTarget(file).remove('both')
+
+        script = SoS_Script('''
+[test_1]
+input: for_each={'a': range(10)}
+output: "${a}.txt"
+
+stop_if(a % 2 == 0)
+run:
+    touch ${_output}
+
+[test_2]
+assert(len(input) == 5)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for idx in range(10):
+            if idx % 2 == 0:
+                self.assertFalse(FileTarget("{}.txt".format(idx)).exists())
+            else:
+                self.assertTrue(FileTarget("{}.txt".format(idx)).exists())
+                FileTarget("${idx}.txt").remove('both')
+
 if __name__ == '__main__':
     unittest.main()
