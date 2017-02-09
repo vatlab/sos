@@ -239,7 +239,7 @@ define([
     }
 
     var my_clear_output = function(wait, ignore) {
-        console.log('clear output');
+        //console.log('clear output');
         this.cached = this.toJSON();
         return this.orig_clear_output(wait, ignore);
     }
@@ -668,6 +668,18 @@ define([
         if (panel_cell.metadata.kernel !== cell.metadata.kernel) {
             panel_cell.metadata.kernel = cell.metadata.kernel;
             changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
+        }
+        // if in sos mode and is single line, enable automatic preview
+        if (cell.metadata.kernel == 'sos' && text.indexOf('\n') == -1 && text.indexOf('%') !== 0) {
+            // if it is expression without space
+            if (text.indexOf('=') == -1) {
+                if (text.indexOf(' ') == -1)
+                    text = '%preview ' + text;
+            } else {
+                var varname = text.substring(0, text.indexOf('=')).trim();
+                if (varname.indexOf(' ') == -1)
+                    text = '%preview ' + varname + '\n' + text;
+            }
         }
         panel_cell.clear_input();
         panel_cell.set_text(text);
