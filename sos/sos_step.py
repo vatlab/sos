@@ -1264,7 +1264,7 @@ class SP_Step_Executor(Queued_Step_Executor):
         if env.sig_mode == 'ignore':
             return None
         env_vars = []
-        for var in sorted(env.sos_dict['__environ_vars__']):
+        for var in sorted(env.sos_dict['__signature_vars__']):
             if var in env.sos_dict and isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
                 env_vars.append('{} = {}\n'.format(var, stable_repr(env.sos_dict[var])))
 
