@@ -45,7 +45,9 @@ class UnavailableLock(Error):
     immediately, but will be collected and raised at the end """
 
     def __init__(self, signature):
-        Error.__init__(self, 'Failed to obtain a lock for output %s' % short_repr(signature[0]))
+        Error.__init__(self, ('Failed to obtain a lock for output {}. It is likely ' +
+            'that these files are protected by another SoS process or concurrant task ' +
+            'that is generating the same set of files.').format(short_repr(signature[0])))
         self.output = signature[0]
         self.sig_file = signature[1]
 
