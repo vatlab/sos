@@ -38,7 +38,8 @@ import subprocess
 class TestExecute(unittest.TestCase):
     def setUp(self):
         env.reset()
-        self.resetDir('.sos')
+        subprocess.call('sos remove -s', shell=True)
+        #self.resetDir('~/.sos')
         self.temp_files = []
 
     def tearDown(self):
@@ -57,9 +58,9 @@ class TestExecute(unittest.TestCase):
         self.temp_files.extend(files)
 
     def resetDir(self, dirname):
-        if os.path.isdir(dirname):
-            shutil.rmtree(dirname)
-        os.mkdir(dirname)
+        if os.path.isdir(os.path.expanduser(dirname)):
+            shutil.rmtree(os.path.expanduser(dirname))
+        os.mkdir(os.path.expanduser(dirname))
 
     def testCommandLine(self):
         '''Test command line arguments'''
@@ -1991,6 +1992,43 @@ assert(len(input) == 5)
             else:
                 self.assertTrue(FileTarget("{}.txt".format(idx)).exists())
                 FileTarget("${idx}.txt").remove('both')
+
+    def testSignatureWithVars(self):
+        '''Test revaluation with variable change'''
+        st = time.time()
+        script = SoS_Script('''
+parameter: DB = {'input': ['a1.out'], 'output': ['b2.out']}
+parameter: input_file = DB['input']
+parameter: output_file =  DB['output']
+
+[2]
+input: input_file, group_by = 1 
+output: output_file[_index]
+run:
+  sleep 2
+  touch ${_output}
+  ''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 2)
+        #
+        st = time.time()
+        script = SoS_Script('''
+parameter: DB = {'input': ['a1.out', 'a2.out'], 'output': ['b2.out', 'b1.out']}
+parameter: input_file = DB['input']
+parameter: output_file =  DB['output']
+
+[2]
+input: input_file, group_by = 1
+output: output_file[_index]
+run:
+  sleep 2
+  touch ${_output}
+  ''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 4)
+        self.assertGreater(time.time() - st, 2)
 
 if __name__ == '__main__':
     unittest.main()
