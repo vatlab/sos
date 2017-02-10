@@ -370,7 +370,10 @@ def get_remove_parser(desc_only=False):
             current directory (default). All, tracked, or untracked files
             will be removed depending on other options ('-t' or '-u').
             For safety reasons, files under the current directory have to be
-            listed (not as files under .) to be removed.''')
+            listed (not as files under .) to be removed. Signatures related
+            to these files will be removed unless if option '-s' ('--signature')
+            is specified, in which case only the signatures of these files
+            will be removed.''')
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument('-t', '--tracked', action='store_true', default=False,
         help='''Remove tracked files and their signatures from specified files
@@ -378,7 +381,9 @@ def get_remove_parser(desc_only=False):
     group.add_argument('-u', '--untracked', action='store_true', default=False,
         help='''Remove untracked files from specified files and directories.''')
     group.add_argument('-s', '--signature', action='store_true', default=False,
-        help='''Remove untracked files from specified files and directories.''')
+        help='''Remove signatures of specified files (not files themselves) or
+            all runtime signatures of executed workflows under the current
+            directory.''')
     parser.add_argument('-n', '--dryrun', action='store_true', dest='__dryrun__',
         help='''List files or directories to be removed, without actually
             removing them.''')
@@ -430,8 +435,9 @@ def cmd_remove(args, unknown_args):
         s, t, r = get_tracked_files(sig_file)
         tracked_files |= t
         runtime_files |= r
-    #
-    if args.signature:
+    # a special case where all file and runtime signatures are removed.
+    # no other options are allowed.
+    if not args.tracked and not args.untracked and not args.targets and args.signature:
         removed_cnt = 0
         for s in runtime_files:
             #if s.endswith('.sig'):
@@ -522,7 +528,9 @@ def cmd_remove(args, unknown_args):
     def dedup(_list):
         return OrderedDict((item, None) for item in _list).keys()
 
-    def get_response(msg):
+    def get_response(msg, always_yes = False):
+        if always_yes:
+            return True
         if args.__confirm__:
             print(msg)
             return True
@@ -536,32 +544,45 @@ def cmd_remove(args, unknown_args):
             elif res == 'n':
                 return False
 
+    def remove_all(path, sig):
+        for dirname, dirlist, filelist in os.walk(path):
+            for f in filelist:
+                if get_response('Remove {}'.format(f), always_true = sig):
+                    if sig:
+                        FileTarget.remove('signature')
+                    else:
+                        FileTarget.remove('both')
+        if os.path.isdir(path):
+            os.unlink(path)
+        else:
+            shutil.rmtree(path)
+
     # in case of tracked or all, we need to remove signature
-    if args.tracked or not args.untracked:
+    if args.tracked:
         for f in specified_tracked_files:
             if args.__dryrun__:
                 if args.tracked:
-                    print('Would remove tracked file {} and its signature'.format(f))
+                    if args.signature:
+                        print('Would remove signature of tracked file {}'.format(f))
+                    else:
+                        print('Would remove tracked file {} and its signature'.format(f))
             else:
-                if get_response('Remove tracked file {} and its signature'.format(f)):
-                    FileTarget(f).remove('both')
-        # note: signatures of tracked files under
-        # these directories should have been removed.
+                if args.signature:
+                    FileTarget(f).remove('signature')
+                else:
+                    if get_response('Remove tracked file {} and its signature'.format(f)):
+                        FileTarget(f).remove('both')
         for d in sorted(specified_tracked_dirs, key=len, reverse=True):
             if args.__dryrun__:
                 if args.tracked:
-                    print('Would remove {} with tracked files if empty'.format(d))
+                    if args.signature:
+                        print('Would remove signatures of tracked files under {}'.format(d))
+                    else:
+                        print('Would remove {} with tracked files if empty'.format(d))
             else:
-                #if os.listdir(d):
-                if not os.listdir(d):
-                    if get_response('Remove {} with tracked files'.format(d)):
-                        if os.path.isdir(d):
-                            shutil.rmtree(d)
-                        else:
-                            os.unlink(d)
-                else:
-                    print('Do not remove {} with tracked file because it is not empty'.format(d))
-    elif args.untracked:
+                remove_all(d, args.signature)
+
+    if args.untracked:
         for f in specified_untracked_files:
             if args.__dryrun__:
                 print('Would remove untracked file {}'.format(f))
@@ -574,26 +595,27 @@ def cmd_remove(args, unknown_args):
             if args.__dryrun__:
                 print('Would remove untracked directory {}'.format(d))
             else:
-                if get_response('Remove untracked directory {}'.format(d)):
-                    if os.path.isdir(d):
-                        shutil.rmtree(d)
-                    else:
-                        os.unlink(d)
-    # in case of all, we need to remove everything
+                remove_all(d, args.signature)
+
     if not args.tracked and not args.untracked:
+        # in case of all, we need to remove everything
         for target in args.targets:
             target = os.path.expanduser(target)
             if args.__dryrun__:
-                print('Would remove {}'.format(target))
+                if args.signature:
+                    print('Would remove signatures of {}'.format(target))
+                else:
+                    print('Would remove {}'.format(target))
             elif os.path.exists(target) and target != '.':
-                if get_response('Remove {}'.format(target)):
+                if get_response('Remove {}'.format(target), always_true = args.signature):
                     if os.path.isfile(target):
-                        os.remove(target)
-                    elif os.path.isdir(target):
-                        if os.path.abspath(target) != os.path.abspath('.'):
-                            shutil.rmtree(target)
+                        if args.signature:
+                            FileTarget(target).remove('signature')
+                        else:
+                            FileTarget(target).remove('both')
                     else:
-                        os.unlink(target)
+                        if os.path.abspath(target) != os.path.abspath('.'):
+                            remove_all(target, args.signature)
 
 #
 # subcommand config
