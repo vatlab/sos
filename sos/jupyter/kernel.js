@@ -25,7 +25,7 @@ define([
     'base/js/utils',
     'codemirror/lib/codemirror',
     'codemirror/addon/selection/active-line'
-    ], function($) {
+], function($) {
 
     "use strict";
     //variables defined as global which enable access from imported scripts.
@@ -42,19 +42,32 @@ define([
     window.kernel_updated = false;
     window.my_panel = null;
 
-    window.cfg = {
-        'sideBar': true,
-        'panel_window_display': true,
-        'oldPanelHeight' : 0,
-    }
-
     // initialize BackgroundColor etc from cell meta data
     if (!('sos' in IPython.notebook.metadata))
         IPython.notebook.metadata['sos'] = {
             'kernels': [
                 ['sos', 'SoS', '']
-            ]
+            ],
+            // panel displayed, position (float or side), old panel height
+            'panel': {
+                'displayed': true,
+                'style': 'side',
+                'height': 0
+            },
+            'celltoolbar': true,
         };
+    // for older notebook without panel attribute
+    else if (!IPython.notebook.metadata['sos'].panel) {
+        IPython.notebook.metadata['sos'].panel = {
+            'displayed': true,
+            'style': 'side',
+            'height': 0
+        };
+        IPython.notebook.metadata['sos'].celltoolbar = true;
+    }
+    // Initial style is always side but the style is saved and we can honor this
+    // configuration later on.
+    IPython.notebook.metadata['sos']['panel'].style = 'side';
 
     window.data = IPython.notebook.metadata['sos']['kernels'];
     for (var i = 0; i < data.length; i++) {
@@ -91,7 +104,7 @@ define([
                     // not ready when the frontend sent the command `%listkernel`.
                     "%frontend " +
                     (window.kernel_updated ? "" : " --list-kernel ") +
-                    (window.my_panel.displayed ? " --use-panel" : "") +
+                    (IPython.notebook.metadata['sos']['panel'].displayed ? " --use-panel" : "") +
                     " --default-kernel " + window.default_kernel +
                     " --cell-kernel " + cells[i].metadata.kernel +
                     " --cell " + i.toString() + "\n" + code,
@@ -306,7 +319,7 @@ define([
         var load_css = function() {
             var css = document.createElement("style");
             css.type = "text/css";
-            css.innerHTML = '.code_cell .celltoolbar {' + 
+            css.innerHTML = '.code_cell .celltoolbar {' +
                 'width:40%;background:none;border:none;border-bottom:none;z-index: 1000;' +
                 'position:relative;margin-bottom:-50pt;float:right;}  ' +
                 '.text_cell .celltoolbar {display:none}';
@@ -424,36 +437,52 @@ define([
 
         $("body").append(panel_wrapper);
 
+        $([Jupyter.events]).on("resize-header.Page", function() {
+            if (IPython.notebook.metadata['sos']['panel'].style === 'side') {
+                $('#panel-wrapper').css('top', liveNotebook ? $('#header').height() : 0)
+                $('#panel-wrapper').css('height', $('#site').height());
+                $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ )
+            }
+        });
+        $([Jupyter.events]).on("toggle-all-headers", function() {
+            if (IPython.notebook.metadata['sos']['panel'].style === 'side') {
+                var headerVisibleHeight = $('#header').is(':visible') ? $('#header').height() : 0
+                $('#panel-wrapper').css('top', liveNotebook ? headerVisibleHeight : 0)
+                $('#panel-wrapper').css('height', $('#site').height());
+                $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ )
+            }
+        });
+
         // enable dragging and save position on stop moving
         $('#panel-wrapper').draggable({
 
             drag: function(event, ui) {
 
                 // If dragging to the left side, then transforms in sidebar
-                if ((ui.position.left <= 0) && (window.cfg.sideBar == false)) {
-                    window.cfg.sideBar = true;
-                    window.cfg.oldPanelHeight = $('#panel-wrapper').css('height');
+                if ((ui.position.left <= 0) && (IPython.notebook.metadata['sos']['panel'].style === 'float')) {
+                    IPython.notebook.metadata['sos']['panel'].style = 'side';
+                    IPython.notebook.metadata['sos']['panel'].height = $('#panel-wrapper').css('height');
                     panel_wrapper.removeClass('float-wrapper').addClass('sidebar-wrapper');
                     $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30);
                     $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30);
                     ui.position.top = $('#header').height();
                     ui.position.left = 0;
                     $('#panel-wrapper').css('height', $('#site').height());
-                    $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */);
+                    $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ );
                 }
                 if (ui.position.left <= 0) {
                     ui.position.left = 0;
                     ui.position.top = $('#header').height();
                 }
-                if ((ui.position.left > 0) && (window.cfg.sideBar == true)) {
-                    window.cfg.sideBar = false;
-                    if (window.cfg.oldPanelHeight == 0)
-                        window.cfg.oldPanelHeight = Math.max($('#site').height() / 2, 200)
-                    $('#panel-wrapper').css('height', window.cfg.oldPanelHeight);
+                if ((ui.position.left > 0) && (IPython.notebook.metadata['sos']['panel'].style === 'side')) {
+                    IPython.notebook.metadata['sos']['panel'].style = 'float';
+                    if (IPython.notebook.metadata['sos']['panel'].height == 0)
+                        IPython.notebook.metadata['sos']['panel'].height = Math.max($('#site').height() / 2, 200)
+                    $('#panel-wrapper').css('height', IPython.notebook.metadata['sos']['panel'].height);
                     panel_wrapper.removeClass('sidebar-wrapper').addClass('float-wrapper');
                     $('#notebook-container').css('margin-left', 30);
                     $('#notebook-container').css('width', $('#notebook').width() - 30);
-                    $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */); //redraw at begin of of drag (after resizing height)
+                    $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ ); //redraw at begin of of drag (after resizing height)
                 }
 
             }, //end of drag function
@@ -471,11 +500,11 @@ define([
 
         $('#panel-wrapper').resizable({
             resize: function(event, ui) {
-                if (window.cfg.sideBar) {
+                if (IPython.notebook.metadata['sos']['panel'].style === 'side') {
                     $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
                     $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
                 } else {
-                    $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */); 
+                    $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ );
                 }
             },
             start: function(event, ui) {
@@ -483,7 +512,7 @@ define([
                 //$(this).css('position', 'fixed');
             },
             stop: function(event, ui) {
-                $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */)
+                $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ )
                 // Ensure position is fixed (again)
                 //$(this).css('position', 'fixed');
             }
@@ -502,19 +531,15 @@ define([
         $('#site').trigger('siteHeight');
 
 
-        // Initial style
-        ///sideBar = cfg['sideBar']
-        if (window.cfg.sideBar) {
+        if (IPython.notebook.metadata['sos']['panel'].style === 'side') {
             $('#panel-wrapper').addClass('sidebar-wrapper');
-            if (window.cfg.panel_window_display) {
-                setTimeout(function() {
-                    $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30);
-                    $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30);
-                }, 500)
-            }
+            setTimeout(function() {
+                $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30);
+                $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30);
+            }, 500)
             setTimeout(function() {
                 $('#panel-wrapper').css('height', $('#site').height());
-                $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */)
+                $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ )
             }, 500)
             setTimeout(function() {
                 $('#panel-wrapper').css('top', $('#header').height());
@@ -524,24 +549,28 @@ define([
         }
 
 
-        $(window).resize(function(){
-            $('#panel').css({maxHeight: $(window).height() - 30});
-            $('#panel-wrapper').css({maxHeight: $(window).height() - 10});
-    
-            if (window.cfg.sideBar==true) {
-              if ($('#panel-wrapper').css('display')!='block'){
-                  $('#notebook-container').css('margin-left',30);
-                  $('#notebook-container').css('width',$('#notebook').width()-30);  
-              } else{
-                  $('#notebook-container').css('margin-left',$('#panel-wrapper').width()+30);
-                  $('#notebook-container').css('width',$('#notebook').width()-$('#panel-wrapper').width()-30);
-                  $('#panel-wrapper').css('height', $('#site').height());
-                  $('#panel-wrapper').css('top', $('#header').height());
-              }
-            } else{
-              $('#notebook-container').css('margin-left',30);
-              $('#notebook-container').css('width', $('#notebook').width()-30);
-            }  
+        $(window).resize(function() {
+            $('#panel').css({
+                maxHeight: $(window).height() - 30
+            });
+            $('#panel-wrapper').css({
+                maxHeight: $(window).height() - 10
+            });
+
+            if (IPython.notebook.metadata['sos']['panel'].style === 'side') {
+                if ($('#panel-wrapper').css('display') != 'block') {
+                    $('#notebook-container').css('margin-left', 30);
+                    $('#notebook-container').css('width', $('#notebook').width() - 30);
+                } else {
+                    $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30);
+                    $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30);
+                    $('#panel-wrapper').css('height', $('#site').height());
+                    $('#panel-wrapper').css('top', $('#header').height());
+                }
+            } else {
+                $('#notebook-container').css('margin-left', 30);
+                $('#notebook-container').css('width', $('#notebook').width() - 30);
+            }
         });
     }
 
@@ -614,8 +643,8 @@ define([
 
         this.cell.element.show();
         this.cell.focus_editor();
-        this.displayed = true;
-        console.log('panel show');
+        IPython.notebook.metadata['sos']['panel'].displayed = true;
+        console.log('display panel');
     };
 
 
@@ -656,7 +685,7 @@ define([
             // jump to the next non-empty line
             var line_cnt = cm.lineCount();
             while (++cur_line < line_cnt) {
-                if (cm.getLine(cur_line).replace(/^\s+|\s+$/gm,'').length != 0) {
+                if (cm.getLine(cur_line).replace(/^\s+|\s+$/gm, '').length != 0) {
                     cell.code_mirror.setCursor(cur_line, line_ch["ch"]);
                     break;
                 }
@@ -708,8 +737,8 @@ define([
                 }
             },
             'complete': function() {
-                window.my_panel.displayed = $('#panel-wrapper').css('display') === 'block'
-                if (window.my_panel.displayed) {
+                IPython.notebook.metadata['sos']['panel'].displayed = $('#panel-wrapper').css('display') === 'block'
+                if (IPython.notebook.metadata['sos']['panel'].displayed) {
                     window.my_panel.cell.focus_editor();
                 }
             }
