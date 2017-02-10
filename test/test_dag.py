@@ -23,7 +23,6 @@
 
 import os
 import time
-import shutil
 import unittest
 from io import StringIO
 
@@ -32,10 +31,12 @@ from sos.utils import env
 from sos.sos_executor import Base_Executor, MP_Executor
 from sos.target import FileTarget
 
+import subprocess
 
 class TestDAG(unittest.TestCase):
     def setUp(self):
         env.reset()
+        subprocess.call('sos remove -s', shell=True)
         self.temp_files = []
 
     def tearDown(self):
@@ -957,8 +958,6 @@ print(b)
 
     def testChainedDepends(self):
         '''Test chain dependent'''
-        shutil.rmtree('.sos')
-        os.makedirs('.sos/.runtime')
         script = SoS_Script(r'''
 # this step provides variable `var`
 [index: provides='{filename}.bam.bai']
