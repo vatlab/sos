@@ -25,6 +25,7 @@ import unittest
 import shutil
 
 import subprocess
+from sos.target import FileTarget
 
 class TestRemove(unittest.TestCase):
     def setUp(self):
@@ -81,9 +82,37 @@ sh:
         # this is the tricky part, directory containing untracked file should remain
         self.assertExists(['t_d1', 't_f1',  't_d1/ut_f4'])
 
-    def testRemoveSignatures(self):
+    def testRemoveAllSignatures(self):
         '''test removal of signatures'''
+        for f in ('t_f1', 't_d1/t_f2', 't_d2/t_d3/t_f3'):
+            self.assertTrue(FileTarget(f).exists('signature'), '{} has signature'.format(f))
         subprocess.call('sos remove -s', shell=True)
+        # create some other files and directory
+        for f in ('t_f1', 't_d1/t_f2', 't_d2/t_d3/t_f3'):
+            self.assertFalse(FileTarget(f).exists('signature'))
+            self.assertTrue(FileTarget(f).exists('target'))
+
+    def testRemoveSpecifiedSignatures(self):
+        '''test removal of signatures'''
+        for f in ('t_f1', 't_d1/t_f2', 't_d2/t_d3/t_f3'):
+            self.assertTrue(FileTarget(f).exists('signature'), '{} has signature'.format(f))
+        subprocess.call('sos remove t_f1 t_d2/t_d3/t_f3 -s', shell=True)
+        # create some other files and directory
+        for f in ('t_f1', 't_d2/t_d3/t_f3'):
+            self.assertFalse(FileTarget(f).exists('signature'))
+            self.assertTrue(FileTarget(f).exists('target'))
+        self.assertTrue(FileTarget('t_d1/t_f2').exists('signature'))
+        self.assertTrue(FileTarget('t_d1/t_f2').exists('target'))
+
+    def testRemoveTrackedSignatures(self):
+        '''test removal of signatures'''
+        for f in ('t_f1', 't_d1/t_f2', 't_d2/t_d3/t_f3'):
+            self.assertTrue(FileTarget(f).exists('signature'), '{} has signature'.format(f))
+        subprocess.call('sos remove -t -s', shell=True)
+        # create some other files and directory
+        for f in ('t_d1/t_f2', 't_d2/t_d3/t_f3'):
+            self.assertFalse(FileTarget(f).exists('signature'), 'Signature of {} should be removed'.format(f))
+            self.assertTrue(FileTarget(f).exists('target'), 'Target {} should exist'.format(f))
 
     def testRemoveSpecificTracked(self):
         # note the t_f1, which is under current directory and has to be remove specifically.
@@ -113,8 +142,9 @@ sh:
         self.assertExists(['t_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2', 't_f1'])
 
     def tearDown(self):
-        os.chdir('..')
-        shutil.rmtree('temp')
+        #os.chdir('..')
+        #shutil.rmtree('temp')
+        pass
 
 if __name__ == '__main__':
     unittest.main()

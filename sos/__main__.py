@@ -380,7 +380,7 @@ def get_remove_parser(desc_only=False):
             and directories.''')
     group.add_argument('-u', '--untracked', action='store_true', default=False,
         help='''Remove untracked files from specified files and directories.''')
-    group.add_argument('-s', '--signature', action='store_true', default=False,
+    parser.add_argument('-s', '--signature', action='store_true', default=False,
         help='''Remove signatures of specified files (not files themselves) or
             all runtime signatures of executed workflows under the current
             directory.''')
@@ -480,7 +480,7 @@ def cmd_remove(args, unknown_args):
     specified_untracked_dirs = []
     #
     if not args.targets:
-        sys.exit('No files or directories to be removed.')
+        args.targets = ['.']
     #
     for target in args.targets:
         target = os.path.expanduser(target)
@@ -567,6 +567,7 @@ def cmd_remove(args, unknown_args):
                         print('Would remove tracked file {} and its signature'.format(f))
             else:
                 if args.signature:
+                    print('Remove signature of {}'.format(f))
                     FileTarget(f).remove('signature')
                 else:
                     if get_response('Remove tracked file {} and its signature'.format(f)):
@@ -583,7 +584,7 @@ def cmd_remove(args, unknown_args):
             else:
                 print('Ignore non-empty directory {}'.format(d))
 
-    if args.untracked:
+    elif args.untracked:
         for f in specified_untracked_files:
             if args.__dryrun__:
                 print('Would remove untracked file {}'.format(f))
