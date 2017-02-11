@@ -899,7 +899,6 @@ class Base_Step_Executor:
                                         raise RuntimeError('Overlapping input and output files: {}'
                                             .format(', '.join(x for x in ofiles if x in g)))
                                 # set variable _output and output
-                                env.logger.error(ofiles)
                                 self.process_output_args(ofiles, **kwargs)
                                 self.output_groups[idx] = env.sos_dict['_output']
 
