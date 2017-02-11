@@ -384,13 +384,12 @@ def downloadURL(URL, dest, decompress=False, index=None):
     term_width = shutil.get_terminal_size((80, 20)).columns
     try:
         env.logger.debug('Download {} to {}'.format(URL, dest))
-        prog = ProgressBar(desc=message, disable=env.verbosity <= 1, position=index,
-            leave=True, bar_format='{desc}', total=10000000)
         sig = FileTarget(dest)
         if os.path.isfile(dest):
+            prog = ProgressBar(desc=message + ': \033[32m validating\033[0m', disable=env.verbosity <= 1,
+                position=index, leave=True, bar_format='{desc}', total=10000000)
             if env.sig_mode == 'build':
                 if decompress:
-                    # this will usually not be updated because of update is too # soon
                     prog.set_description(message + ': \033[32m scanning decompressed files\033[0m')
                     prog.update()
                     if zipfile.is_zipfile(dest):
@@ -430,7 +429,6 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 prog.close()
                 return True
             else:
-                prog.set_description(message + ': \033[32m Validating signature\033[0m')
                 prog.update()
                 if sig.validate():
                     prog.set_description(message + ': \033[32m Validated\033[0m')
@@ -440,6 +438,10 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 else:
                     prog.set_description(message + ':\033[91m Signature mismatch\033[0m')
                     prog.update()
+        else:
+            prog = ProgressBar(desc=message, disable=env.verbosity <= 1, position=index,
+                leave=True, bar_format='{desc}', total=10000000)
+
         #
         # Stop using pycurl because of libcurl version compatibility problems
         # that happen so often and difficult to fix. Error message looks like
