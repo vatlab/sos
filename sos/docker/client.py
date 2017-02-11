@@ -28,6 +28,7 @@ import tempfile
 import json
 import platform
 import shutil
+import shlex
 
 from io import BytesIO
 from docker import Client
@@ -213,11 +214,11 @@ class DockerClient:
             # we also need to mount the script
             cmd_opt = ''
             if script and interpreter:
-                volumes_opt += ' -v {}:{}'.format(os.path.join(tempdir, tempscript), '/var/lib/sos/{}'.format(tempscript))
+                volumes_opt += ' -v {}:{}'.format(shlex.quote(os.path.join(tempdir, tempscript)), '/var/lib/sos/{}'.format(tempscript))
                 cmd_opt = interpolate('{} {}'.format(interpreter, args), '${ }',
                             {'filename': '/var/lib/sos/{}'.format(tempscript)})
             #
-            working_dir_opt = '-w={}'.format(os.path.abspath(os.getcwd()))
+            working_dir_opt = '-w={}'.format(shlex.quote(os.path.abspath(os.getcwd())))
             if 'working_dir' in kwargs:
                 if not os.path.isabs(kwargs['working_dir']):
                     env.logger.warning('An absolute path is needed for -w option of docker run command. "{}" provided, "{}" used.'
