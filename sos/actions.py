@@ -389,6 +389,34 @@ def downloadURL(URL, dest, decompress=False, index=None):
         sig = FileTarget(dest)
         if os.path.isfile(dest):
             if env.sig_mode == 'build':
+                if decompress:
+                    # this will usually not be updated because of update is too # soon
+                    prog.set_description(message + ': \033[32m scanning decompressed files\033[0m')
+                    prog.update()
+                    if zipfile.is_zipfile(dest):
+                        zip = zipfile.ZipFile(dest)
+                        names = zip.namelist()
+                        for name in names:
+                            dest_file = os.path.join(dest_dir, name)
+                            if not os.path.isfile(dest_file):
+                                env.logger.warning('Missing decompressed file {}'.format(dest_file))
+                            else:
+                                sig.add(dest_file)
+                    elif tarfile.is_tarfile(dest):
+                        with tarfile.open(dest, 'r:*') as tar:
+                            # only extract files
+                            files = [x.name for x in tar.getmembers() if x.isfile()]
+                            for name in files:
+                                dest_file = os.path.join(dest_dir, name)
+                                if not os.path.isfile():
+                                    env.logger.warning('Missing decompressed file {}'.format(dest_file))
+                                else:
+                                    sig.add(dest_file)
+                    elif dest.endswith('.gz'):
+                        decomp = dest[:-3]
+                        if not os.path.isfile(decomp):
+                            env.logger.warning('Missing decompressed file {}'.format(decomp))
+                        sig.add(decomp)
                 prog.set_description(message + ': \033[32m writing signature\033[0m')
                 prog.update()
                 sig.write_sig()
@@ -412,7 +440,6 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 else:
                     prog.set_description(message + ':\033[91m Signature mismatch\033[0m')
                     prog.update()
-                    prog.close()
         #
         # Stop using pycurl because of libcurl version compatibility problems
         # that happen so often and difficult to fix. Error message looks like

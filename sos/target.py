@@ -347,7 +347,8 @@ class FileTarget(BaseTarget):
             md5.write('{}\t{}\t{}\t{}\n'.format(self.fullname(), os.path.getmtime(self.fullname()),
                 os.path.getsize(self.fullname()), self.signature()))
             for f in self._attachments:
-                md5.write('{}\t{}\n'.format(f, fileMD5(f)))
+                md5.write('{}\t{}\t{}\t{}\n'.format(f, os.path.getmtime(f),
+                    os.path.getsize(f), fileMD5(f)))
 
     def validate(self):
         '''Check if file matches its signature'''
