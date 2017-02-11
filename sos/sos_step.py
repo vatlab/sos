@@ -867,11 +867,15 @@ class Base_Step_Executor:
                 self.log('_input')
                 env.sos_dict.set('_index', idx)
                 #
-                if '__default_output__' in env.sos_dict and not \
-                    any(st[0] == ':' and st[1] == 'output' for st in self.step.statements[input_statement_idx:]):
-                    pre_statement = [[':', 'output', '_output']]
-                else:
-                    pre_statement = []
+                pre_statement = []
+                if not any(st[0] == ':' and st[1] == 'output' for st in self.step.statements[input_statement_idx:]):
+                    if '__default_output__' in env.sos_dict:
+                        pre_statement = [[':', 'output', '_output']]
+                    elif 'provides' in self.step.options:
+                        if isinstance(self.step.options['provides'], str):
+                            pre_statement = [[':', 'output', repr(self.step.options['provides'])]]
+                        else:
+                            pre_statement = [[':', 'output', repr([x for x in self.step.options['provides'] if isinstance(x, str)])]]
 
                 for statement in pre_statement + self.step.statements[input_statement_idx:]:
                     # if input is undertermined, we can only process output:
