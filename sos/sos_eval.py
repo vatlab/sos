@@ -266,7 +266,7 @@ class SoS_String:
             sep = ', ' if conversion and ',' in conversion else ' '
             return sep.join([self._repr(x, fmt, conversion) for x in obj])
         elif isinstance(obj, collections.Iterable):
-            sep = ', ' if conversion and ',' in conversion else ' '
+            sep = ',' if conversion and ',' in conversion else ' '
             return sep.join(sorted([self._repr(x, fmt, conversion) for x in obj]))
         elif callable(obj):
             raise InterpolationError('{} cannot be used as interpolation variable'.format(obj))
