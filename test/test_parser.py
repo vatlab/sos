@@ -1160,6 +1160,11 @@ print(CONFIG.StoreOwner)
         self.assertEqual(env.sos_dict['CONFIG']['Price'], 1.05)
         self.assertEqual(env.sos_dict['CONFIG']['StoreOwner'], 'John Doe')
         self.assertEqual(env.sos_dict['CONFIG']['Fruits'], ['apple', 'banana', 'pear'])
+
+        return
+        #
+        # CONFIG is not readonly after frozendict is thawn
+        #
         # configuration items should be readonly
         with open('config.sos', 'w') as sos:
             sos.write('''
