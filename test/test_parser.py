@@ -23,7 +23,6 @@
 import os
 import unittest
 import subprocess
-import shutil
 
 from sos.utils import env, ArgumentError
 from sos.sos_script import SoS_Script, ParsingError
@@ -33,6 +32,7 @@ from sos.target import FileTarget
 class TestParser(unittest.TestCase):
     def setUp(self):
         env.reset()
+        subprocess.call('sos remove -s', shell=True)
         self.temp_files = []
 
     def tearDown(self):
@@ -1043,8 +1043,6 @@ sos_run(wf, shared='executed')
         # nested subworkflow with step option and others
         self.touch(['a.txt', 'b.txt'])
         #
-        shutil.rmtree('.sos')
-        os.makedirs('.sos/.runtime')
         with open('inc.sos', 'w') as sos:
             sos.write('''
 # test sos script
@@ -1082,8 +1080,7 @@ sos_run('A', shared='executed')
         self.assertEqual(env.sos_dict['parB'], 10)
         self.assertEqual(env.sos_dict['executed'], ['b_1', 't.A_1', 't.A_2', 't.A_1', 't.A_2'])
         #
-        shutil.rmtree('.sos')
-        os.makedirs('.sos/.runtime')
+        subprocess.call('sos remove -s', shell=True)
         for file in ('a.txt.a1', 'a.txt.a1.a2', 'b.txt.a1', 'b.txt.a1.a2'):
             FileTarget(file).remove('both')
         script = SoS_Script('''

@@ -93,7 +93,7 @@ class Base_Executor:
         if env.sig_mode is None:
             env.sig_mode = 'default'
         # interactive mode does not pass workflow
-        if env.sig_mode != 'ignore' and self.workflow and shared != '*':
+        if env.sig_mode != 'ignore' and self.workflow:
             self.md5 = self.create_signature()
             # remove old workflow file.
             with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'a') as sig:
