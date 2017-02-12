@@ -87,6 +87,8 @@ class Base_Executor:
         for key in ('config_file', 'output_dag', 'report_output'):
             if key not in self.config:
                 self.config[key] = None
+        if self.config['config_file'] is not None:
+            self.config['config_file'] = os.path.abspath(os.path.expanduser(self.config['config_file']))
         # if the executor is not called from command line, without sigmode setting
         if env.sig_mode is None:
             env.sig_mode = 'default'
