@@ -354,6 +354,28 @@ def cmd_dryrun(args, workflow_args):
     cmd_run(args, workflow_args)
 
 #
+# subcommand execute
+#
+def get_execute_parser(desc_only=False):
+    parser = argparse.ArgumentParser('execute',
+        description='''Execute a packages task''')
+    if desc_only:
+        return parser
+    parser.add_argument('task', help='''A task file''')
+    parser.set_defaults(func=cmd_execute)
+    return parser
+
+def cmd_execute(args, workflow_args):
+    import pickle
+    from .sos_step import execute_task
+    with open(args.task, 'rb') as task:
+        param = pickle.load(task)
+    res = execute_task(param)
+    with open(args.task + '.res', 'wb') as res_file:
+        pickle.dump(res, res_file)
+
+#
+#
 # command remove
 #
 def get_remove_parser(desc_only=False):
@@ -732,7 +754,7 @@ def cmd_config(args, workflow_args):
         #
         k = args.__set_config__[0]
         if not CONFIG_NAME.match(k):
-            env.logger.error('Unacceptable variable name for config file: {}'.format(k))
+            env.logger.error('Unacceptable variable name {}.'.format(k))
             sys.exit(1)
         #
         values = []
@@ -743,7 +765,7 @@ def cmd_config(args, workflow_args):
                 yaml.safe_dump(v_val)
                 v = v_val
             except Exception:
-                env.logger.warning('Value "{}" is an invalid expression and is treated as a string.'.format(v))
+                env.logger.debug('Value "{}" is an invalid expression and is treated as a string.'.format(v))
             values.append(v)
         #
         if len(values) == 1:
@@ -1223,6 +1245,9 @@ def main():
     #
     # command dryrun
     add_sub_parser(subparsers, get_dryrun_parser(desc_only='dryrun'!=subcommand))
+    #
+    # command execute
+    add_sub_parser(subparsers, get_execute_parser(desc_only='execute'!=subcommand))
     #
     # command convert
     add_sub_parser(subparsers, get_convert_parser(desc_only='convert'!=subcommand))
