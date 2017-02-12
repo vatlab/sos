@@ -407,7 +407,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                             files = [x.name for x in tar.getmembers() if x.isfile()]
                             for name in files:
                                 dest_file = os.path.join(dest_dir, name)
-                                if not os.path.isfile():
+                                if not os.path.isfile(dest_file):
                                     env.logger.warning('Missing decompressed file {}'.format(dest_file))
                                 else:
                                     sig.add(dest_file)
