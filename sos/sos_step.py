@@ -27,16 +27,95 @@ import fnmatch
 
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
+import subprocess
 
 from .utils import env, AbortExecution, short_repr, stable_repr,\
     get_traceback, transcribe, ActivityNotifier
 from .pattern import extract_pattern
-from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of
+from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of, interpolate
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 
 __all__ = []
+
+#
+# path map used by interpreter for options to_host and from_host
+#
+def parse_path_map():
+    path_map = {}
+    host = env.sos_dict['_runtime']['on_host']
+    if 'path_map' in env.sos_dict['CONFIG']['hosts'][host]:
+        val = env.sos_dict['CONFIG']['hosts'][host]['path_map']
+        if isinstance(val, str):
+            if ':' not in val:
+                raise ValueError('Path map should be separated as from:to, {} specified'.format(val))
+            elif val.count(':') > 1:
+                raise ValueError('Path map should be separated as from:to, {} specified'.format(val))
+            path_map[val.split(':')[0]] = val.split(':')[1]
+        elif isinstance(val, Sequence):
+            for v in val:
+                if ':' not in v:
+                    raise ValueError('Path map should be separated as from:to, {} specified'.format(v))
+                elif v.count(':') > 1:
+                    raise ValueError('Path map should be separated as from:to, {} specified'.format(v))
+                path_map[v.split(':')[0]] = v.split(':')[1]
+        elif isinstance(val, dict):
+            for k,v in val.items():
+                path_map[k] = v
+        else:
+            raise ValueError('Unacceptable value for configuration path_map: {}'.format(val))
+    return path_map
+
+def send_to_host(*args):
+    path_map = parse_path_map()
+
+    def map_path(source):
+        dest = source
+        for k,v in path_map.items():
+            if dest.startswith(k):
+                dest = v + dest[len(k):]
+        return dest
+
+    transfer = {}
+    for arg in args:
+        if isinstance(arg, str):
+            dest = map_path(arg)
+            transfer[arg] = dest
+        elif isinstance(arg, Sequence):
+            for a in args:
+                dest = map_path(a)
+                transfer[a] = dest
+        else:
+            raise ValueError('Unacceptable parameter {} to function to_host'.format(arg))
+    #
+    # register transfer
+    return transfer
+            
+
+def receive_from_host(*args):
+    path_map = parse_path_map()
+
+    def map_path(dest):
+        source = dest
+        for k,v in path_map.items():
+            if source.startswith(k):
+                source = v + source[len(k):]
+        return source
+
+    transfer = {}
+    for arg in args:
+        if isinstance(arg, str):
+            source = map_path(arg)
+            transfer[source] = arg
+        elif isinstance(arg, Sequence):
+            for a in args:
+                source = map_path(a)
+                transfer[source] = a
+        else:
+            raise ValueError('Unacceptable parameter {} to function from_host'.format(arg))
+    #
+    return transfer
 
 
 class StepInfo(object):
@@ -85,8 +164,13 @@ def execute_task(params):
                     raise RuntimeError('Failed to create workdir {}'.format(sos_dict['_runtime']['workdir']))
             os.chdir(os.path.expanduser(sos_dict['_runtime']['workdir']))
         # set environ ...
+        # we join PATH because the task might be executed on a different machine
         if '_runtime' in sos_dict and 'env' in sos_dict['_runtime']:
-            os.environ.update(sos_dict['_runtime']['env'])
+            for key, value in sos_dict['_runtime']['env'].items():
+                if 'PATH' in key and key in os.environ:
+                    os.environ[key] = value + os.pathsep + os.environ[key]
+                else:
+                    os.environ[key] = value
 
         env.sos_dict.quick_update(sos_dict)
         SoS_exec('import os, sys, glob', None)
@@ -638,22 +722,144 @@ class Base_Step_Executor:
             else:
                 raise ValueError('Unacceptable input for option prepend_path: {}'.format(env.sos_dict['_runtime']['prepend_path']))
 
+        if 'on_host' in env.sos_dict['_runtime']:
+            # run the job on another machine
+            #
+            # copy all relevant input files over
+            host = env.sos_dict['_runtime']['on_host']
+            # configurations for this host?
+            if 'hosts' not in env.sos_dict['CONFIG'] or host not in env.sos_dict['CONFIG']['hosts']:
+                raise ValueError('No configuration is found for host {}'.format(host))
+
+            #
+            if 'execute_cmd' not in env.sos_dict['CONFIG']['hosts'][host]:
+                raise ValueError('No "execute_cmd" is defined for host {}'.format(host))
+            #
+            # FIXME: intepolate task to evaluate to_host function calls?
+            #
+            if 'to_host' in env.sos_dict['_runtime']:
+                transfers = send_to_host(env.sos_dict['_runtime']['to_host'])
+                #
+                if not transfers:
+                    return
+
+                if 'send_cmd' in env.sos_dict['CONFIG']['hosts'][host]:
+                    send_cmd = env.sos_dict['CONFIG']['hosts'][host]['send_cmd']
+                else:
+                    # no copy is needed
+                    return
+
+                for source, dest in transfers.items():
+                    env.logger.info('Copying ``{}`` to {} as {}'.format(source, host, dest))
+                    cmd = interpolate(send_cmd, '${ }', {'source': source, 'dest': dest, 'host': host})
+                    env.logger.debug(cmd)
+                    ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                    if (ret != 0):
+                        raise RuntimeError('Failed to copy {} to {}'.format(source, host))
+
+
     def submit_task(self, signature):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
-        param = TaskParams(
-            name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
-            data = (
-                self.step.task,           # task
-                '',                       # local execusion, no need to re-run global
-                '',
-                # do not clone dict
-                env.sos_dict,
-                signature,
-                self.step.sigil))
+        if 'on_host' in env.sos_dict['_runtime']:
+            # input files must have been copied over
+            # prepare job file
+            param = TaskParams(
+                name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+                data = (
+                    self.step.task,          # task
+                    self.step.global_def,    # global process
+                    self.step.global_sigil,
+                    # if pool, it must not be in prepare mode and have
+                    # __signature_vars__
+                    env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
+                        | {'_input', '_output', '_depends', 'input', 'output',
+                            'depends', '_index', '__args__', 'step_name', '_runtime',
+                            '__workflow_sig__', '__report_output__',
+                            '_local_input_{}'.format(env.sos_dict['_index']),
+                            '_local_output_{}'.format(env.sos_dict['_index']),
+                            'CONFIG',
+                            }),
+                    signature,
+                    self.step.sigil
+                ))
+            import pickle
+            job_file = os.path.join('.sos', '{}_{}.task'.format(self.step.step_name(), env.sos_dict['_index']))
+            with open(job_file, 'wb') as jf:
+                try:
+                    pickle.dump(param, jf)
+                except Exception as e:
+                    env.logger.warning(e)
+                    raise
 
-        self.proc_results.append(
-            execute_task(param)) 
+            # transfer files to remote server
+            host = env.sos_dict['_runtime']['on_host']
+            if 'send_cmd' in env.sos_dict['CONFIG']['hosts'][host]:
+                send_cmd = env.sos_dict['CONFIG']['hosts'][host]['send_cmd']
+                #
+                env.logger.info('Sending job ``{}`` to {}'.format(job_file, host))
+                cmd = interpolate(send_cmd, '${ }', {'source': job_file, 'dest': job_file})
+                env.logger.debug(cmd)
+                ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                if (ret != 0):
+                    raise RuntimeError('Failed to copy {} to {}'.format(job_file, host))
+            # execute command
+            execute_cmd = env.sos_dict['CONFIG']['hosts'][host]['execute_cmd']
+            cmd = interpolate(execute_cmd, '${ }', {'cmd': 'sos execute -e ~/{}'.format(job_file)})
+            env.logger.info('Executing job ``{}``'.format(cmd))
+            env.logger.debug(cmd)
+            ret = subprocess.call(cmd, shell=True) #, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            if (ret != 0):
+                raise RuntimeError('Failed to execute {}'.format(cmd))
+            #
+            if 'receive_cmd' in env.sos_dict['CONFIG']['hosts'][host]:
+                receive_cmd = env.sos_dict['CONFIG']['hosts'][host]['receive_cmd']
+            else:
+                # no copy is needed
+                receive_cmd = None
+
+            # receive picked result
+            res_file = job_file + '.res'
+            if receive_cmd:
+                cmd = interpolate(receive_cmd, '${ }', {'source': res_file, 'dest': res_file})
+                env.logger.debug(cmd)
+                env.logger.info('Receiving result ``{}``'.format(res_file))
+                ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                if (ret != 0):
+                    raise RuntimeError('Failed to receive result {} from {}'.format(res_file, host))
+
+            # decipher result!
+            import pickle
+            with open(res_file, 'rb') as result:
+                res = pickle.load(result)
+
+            if res['succ'] != 0:
+                env.logger.error('Remote job failed.')
+            elif 'from_host' in env.sos_dict['_runtime']:
+                transfers = receive_from_host(env.sos_dict['_runtime']['from_host'])
+                #
+                for source, dest in transfers.items():
+                    env.logger.info('Receiving ``{}`` from {} as {}'.format(dest, host, source))
+                    cmd = interpolate(receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': host})
+                    try:
+                        ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                        if (ret != 0):
+                            raise RuntimeError('Failed to copy {} from {}'.format(source, host))
+                    except Exception as e:
+                        raise  RuntimeError('Failed to copy {} from {}: {}'.format(source, host, e))
+            self.proc_results.append(res)
+        else:
+            param = TaskParams(
+                name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+                data = (
+                    self.step.task,           # task
+                    '',                       # local execusion, no need to re-run global
+                    '',
+                    # do not clone dict
+                    env.sos_dict,
+                    signature,
+                    self.step.sigil))
+            self.proc_results.append( execute_task(param)) 
 
     def wait_for_results(self):
         # no waiting is necessary by default (prepare mode etc)
@@ -1308,6 +1514,9 @@ class MP_Step_Executor(SP_Step_Executor):
         self.pool = None
 
     def submit_task(self, signature):
+        if 'on_host' in env.sos_dict['_runtime']:
+            return super(MP_Step_Executor, self).submit_task(signature)
+
         # if concurrent is set, create a pool object
         import multiprocessing as mp
         if self.pool is None and env.max_jobs > 1 and len(self._groups) > 1 and \
