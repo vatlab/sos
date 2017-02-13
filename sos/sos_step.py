@@ -104,8 +104,14 @@ def to_host(source):
     global CONFIG
     path_map = {}
     host = _runtime['on_host']
-    if 'path_map' in CONFIG['hosts'][host]:
+
+    if 'path_map' in _runtime:
+        val = _runtime['path_map']
+    elif 'path_map' in CONFIG['hosts'][host]:
         val = CONFIG['hosts'][host]['path_map']
+    else:
+        val = None
+    if val is not None:
         if isinstance(val, str):
             val = [val]
         if isinstance(val, Sequence):
