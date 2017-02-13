@@ -21,6 +21,8 @@
 #
 
 import unittest
+import time
+import subprocess
 
 from sos.sos_script import SoS_Script
 from sos.utils import env
@@ -30,6 +32,7 @@ from sos.target import FileTarget
 class TestTarget(unittest.TestCase):
     def setUp(self):
         env.reset()
+        subprocess.call('sos remove -s', shell=True)
         self.temp_files = []
 
     def tearDown(self):
@@ -47,6 +50,22 @@ R:
         wf = script.workflow()
         Base_Executor(wf).run()
 
+
+    def testReexecution(self):
+        '''Test re-execution of steps with R_library'''
+        script = SoS_Script('''
+[1]
+depends: R_library("ggplot2")
+output: '1.txt'
+run:
+    sleep 5
+    touch ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 4)
 
 if __name__ == '__main__':
     unittest.main()
