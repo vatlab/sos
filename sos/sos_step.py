@@ -735,9 +735,14 @@ class Base_Step_Executor:
 
             if res['succ'] != 0:
                 env.logger.error('Remote job failed.')
-            elif 'from_host' in env.sos_dict['_runtime']:
-                host.receive_from_host(env.sos_dict['_runtime']['from_host'])
-
+            else:
+                if 'from_host' in env.sos_dict['_runtime']:
+                    host.receive_from_host(env.sos_dict['_runtime']['from_host'])
+                # the job is executed with a different file system so
+                # we should write our own signature here
+                signature.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
+                    env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
+                signature.release()
             self.proc_results.append(res)
         else:
             param = TaskParams(
