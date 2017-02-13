@@ -446,14 +446,14 @@ class RuntimeInfo:
     def lock(self):
         # we will need to lock on a file that we do not really write to
         # otherwise the lock will be broken when we write to it.
-        self.lock = fasteners.InterProcessLock(self.proc_info + '_')
-        if not self.lock.acquire(blocking=False):
+        self._lock = fasteners.InterProcessLock(self.proc_info + '_')
+        if not self._lock.acquire(blocking=False):
             raise UnavailableLock((self.output_files, self.proc_info))
         else:
             env.logger.trace('Lock acquired for output files {}'.format(short_repr(self.output_files)))
 
     def release(self):
-        self.lock.release()
+        self._lock.release()
         env.logger.trace('Lock released for output files {}'.format(short_repr(self.output_files)))
 
     def set(self, files, file_type):
