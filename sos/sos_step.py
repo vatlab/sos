@@ -39,6 +39,91 @@ from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIO
 
 __all__ = []
 
+class RemoteHost:
+    '''A remote host class that manages how to communicate
+	with remote host'''
+    def __init__(self, alias):
+        self._alias = alias
+        self._address = None
+        self._send_cmd = None
+        self._receive_cmd = None
+        self._execute_cmd = None
+        self._path_map = None
+    
+    def _get_address(self):
+        if not self._address:
+            if 'hosts' not in env.sos_dict['CONFIG'] or \
+                self._alias not in env.sos_dict['CONFIG']['hosts']: 
+                self._address = self._alias
+            else:
+                self._address = env.sos_dict['CONFIG']['hosts'][self._alias]
+        return self._address
+
+    address = property(self._get_address)
+
+    def _get_send_cmd(self):
+        if not self._send_cmd:
+            if 'hosts' not in env.sos_dict['CONFIG'] or \
+                self._alias not in env.sos_dict['CONFIG']['hosts'] or \
+                'send_cmd' not in env.sos_dict['CONFIG']['hosts']['send_cmd']: 
+                self._send_cmd = 'rsync -av ${{source!aq}} {}:${{dest!qd}}'.format(self.address)
+            else:
+                self._send_cmd = env.sos_dict['CONFIG']['hosts'][self._alias]['send_cmd']
+        return self._send_cmd
+
+    send_cmd = property(self._get_send_cmd)
+
+    def _get_receive_cmd(self):
+        if not self._receive_cmd:
+            if 'hosts' not in env.sos_dict['CONFIG'] or \
+                self._alias not in env.sos_dict['CONFIG']['hosts'] or \: 
+                'receive_cmd' not in env.sos_dict['CONFIG']['hosts']['receive_cmd']: 
+                self._receive_cmd = 'rsync -av {}:${{source!aq}} ${{dest!qd}}'.format(self.address)
+            else:
+                self._receive_cmd = env.sos_dict['CONFIG']['hosts'][self._alias]['receive_cmd']
+        return self._receive_cmd
+
+    receive_cmd = property(self._get_receive_cmd)
+
+    def _get_execute_cmd(self):
+        if not self._execute_cmd:
+            if 'hosts' not in env.sos_dict['CONFIG'] or \
+                self._alias not in env.sos_dict['CONFIG']['hosts'] or \: 
+                'execute_cmd' not in env.sos_dict['CONFIG']['hosts']['execute_cmd']: 
+                self._execute_cmd = 'ssh {} "bash --login -c \'${{cmd}}\'"'.format(self.address)
+            else:
+                self._execute_cmd = env.sos_dict['CONFIG']['hosts'][self._alias]['execute_cmd']
+        return self._execute_cmd
+
+    execute_cmd = property(self._get_execute_cmd)
+
+    def _get_path_map(self):
+        if self._path_map is None:
+            path_map = {}
+            host = env.sos_dict['_runtime']['on_host']
+            if 'path_map' in env.sos_dict['CONFIG']['hosts'][host]:
+                val = env.sos_dict['CONFIG']['hosts'][host]['path_map']
+                if isinstance(val, str):
+                    if ':' not in val:
+                        raise ValueError('Path map should be separated as from:to, {} specified'.format(val))
+                    elif val.count(':') > 1:
+                        raise ValueError('Path map should be separated as from:to, {} specified'.format(val))
+                    path_map[val.split(':')[0]] = val.split(':')[1]
+                elif isinstance(val, Sequence):
+                    for v in val:
+                        if ':' not in v:
+                            raise ValueError('Path map should be separated as from:to, {} specified'.format(v))
+                        elif v.count(':') > 1:
+                            raise ValueError('Path map should be separated as from:to, {} specified'.format(v))
+                        path_map[v.split(':')[0]] = v.split(':')[1]
+                elif isinstance(val, dict):
+                    for k,v in val.items():
+                        path_map[k] = v
+                else:
+                    raise ValueError('Unacceptable value for configuration path_map: {}'.format(val))
+            return path_map
+        return self._path_map
+
 #
 # path map used by interpreter for options to_host and from_host
 #
