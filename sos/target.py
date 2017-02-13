@@ -25,6 +25,8 @@ import hashlib
 import shlex
 import shutil
 import fasteners
+import pkg_resources
+
 from .utils import env, Error, short_repr
 from .sos_eval import Undetermined
 
@@ -616,7 +618,21 @@ class RuntimeInfo:
                 try:
                     f, m = line.rsplit('\t', 1)
                     if '(' in f and ')' in f:
-                        freal = eval(f)
+                        # this part is hard, because this can be a customized target.
+                        target_type = f.split('(')[0]
+                        target_class = None
+                        if target_type in globals():
+                            target_class = eval(target_type)
+                        else:
+                            # check registry
+                            for entrypoint in pkg_resources.iter_entry_points(group='sos_targets'):
+                                if entrypoint.name.strip() == target_type:
+                                    target_class = entrypoint.load()
+                                    break
+                        if target_class is None:
+                            raise ValueError('Failed to identify target class {}'.format(target_type))
+                        # parameter of class?
+                        freal = eval(f, {target_type: target_class})
                     else:
                         freal = FileTarget(f)
                     if freal.exists('target'):

@@ -53,6 +53,6 @@ class Py_Module(BaseTarget):
     def name(self):
         return self._module
 
-    def signature(self):
+    def signature(self, mode='any'):
         # we are supposed to get signature of the module, but we cannot
         return textMD5('Python module ' + self._module)
