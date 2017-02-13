@@ -738,6 +738,8 @@ class Base_Step_Executor:
                     raise
 
             host.send_to_host(job_file)
+            # the signature must have been released during pickling
+            signature.lock()
             host.execute_task(job_file)
 
             res_file = job_file + '.res'

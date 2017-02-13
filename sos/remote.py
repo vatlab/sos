@@ -102,7 +102,7 @@ class RemoteHost:
             for k,v in self.path_map.items():
                 if dest.startswith(k):
                     dest = v + dest[len(k):]
-            result[os.path.abspath(source)] = dest
+            result[source] = dest
         elif isinstance(source, Sequence):
             for src in source:
                 result.update(self.map_path(src))
@@ -133,8 +133,11 @@ class RemoteHost:
                 raise  RuntimeError('Failed to copy {} from {}: {}'.format(source, self.alias, e))
 
     def execute_task(self, task):
-        cmd = interpolate(self.execute_cmd, '${ }', {'cmd': 'sos execute {} -v {} -s {}'.format(
-            self.map_path(task)[0], env.verbosity, env.sigmode)})
+        try:
+            cmd = interpolate(self.execute_cmd, '${ }', {'cmd': 'sos execute {} -v {} -s {}'.format(
+                self.map_path(task)[task], env.verbosity, env.sig_mode)})
+        except Exception as e:
+            raise ValueError('Failed to create remote task {}: {}'.format(task, e))
         env.logger.info('Executing job ``{}``'.format(cmd))
         env.logger.debug(cmd)
         ret = subprocess.call(cmd, shell=True)

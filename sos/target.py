@@ -411,23 +411,14 @@ class RuntimeInfo:
 
         self.signature_vars = signature_vars
 
-        sig_name = textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))
-        info_file = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', sig_name)
-        # path to file
-        self.proc_info = '{}.exe_info'.format(info_file)
+        self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(
+            textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))))
 
-        # we will need to lock on a file that we do not really write to
-        # otherwise the lock will be broken when we write to it.
-        self.lock = fasteners.InterProcessLock(self.proc_info + '_')
-        if not self.lock.acquire(blocking=False):
-            raise UnavailableLock((self.output_files, self.proc_info))
-        else:
-            env.logger.trace('Lock acquired for output files {}'.format(short_repr(self.output_files)))
+        self.lock()
 
     def __getstate__(self):
         self.release()
         return {'step_md5': self.step_md5,
-                'proc_info': self.proc_info,
                 'input_files': self.input_files,
                 'output_files': self.output_files,
                 'dependent_files': self.dependent_files,
@@ -438,7 +429,6 @@ class RuntimeInfo:
 
     def __setstate__(self, dict):
         self.step_md5 = dict['step_md5']
-        self.proc_info = dict['proc_info']
         self.input_files = dict['input_files']
         self.output_files = dict['output_files']
         self.local_input_files = dict['local_input_files']
@@ -446,6 +436,16 @@ class RuntimeInfo:
         self.dependent_files = dict['dependent_files']
         self.signature_vars = dict['signature_vars']
         self.script = dict['script']
+        #
+        # the signature might be on a remote machine and has changed location
+        self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(
+            textMD5('{} {} {} {}'.format(self.script, self.input_files, self.output_files, self.dependent_files))))
+
+        self.lock()
+
+    def lock(self):
+        # we will need to lock on a file that we do not really write to
+        # otherwise the lock will be broken when we write to it.
         self.lock = fasteners.InterProcessLock(self.proc_info + '_')
         if not self.lock.acquire(blocking=False):
             raise UnavailableLock((self.output_files, self.proc_info))
