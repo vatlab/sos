@@ -725,7 +725,7 @@ class Base_Step_Executor:
                 env.sos_dict['_runtime']['path_map'] if 'path_map' in env.sos_dict['_runtime'] else None)
 
             import pickle
-            job_file = os.path.join('.sos', '{}_{}.task'.format(self.step.step_name(), env.sos_dict['_index']))
+            job_file = os.path.join(os.path.expanduser('~'), '.sos', '{}_{}.task'.format(self.step.step_name(), env.sos_dict['_index']))
             with open(job_file, 'wb') as jf:
                 try:
                     pickle.dump(param, jf)

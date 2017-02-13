@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
+import os
+
 from .utils import env
 from .sos_eval import interpolate
 import subprocess
@@ -73,7 +75,7 @@ class RemoteHost:
         if 'hosts' not in env.sos_dict['CONFIG'] or \
             self.alias not in env.sos_dict['CONFIG']['hosts'] or \
             'send_cmd' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
-            return 'rsync -av ${{source!aq}} {}:${{dest!qd}}'.format(self.address)
+            return '''ssh {0} mkdir -p ${{dest!dq}}; rsync -av ${{source!aq}} {0}:${{dest!dq}}'''.format(self.address)
         else:
             return env.sos_dict['CONFIG']['hosts'][self.alias]['send_cmd']
 
@@ -81,7 +83,7 @@ class RemoteHost:
         if 'hosts' not in env.sos_dict['CONFIG'] or \
             self.alias not in env.sos_dict['CONFIG']['hosts'] or \
             'receive_cmd' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
-            return 'rsync -av {}:${{source!aq}} ${{dest!qd}}'.format(self.address)
+            return 'mkdir -p ${{dest!dq}}; rsync -av {}:${{source!aq}} ${{dest!dq}}'.format(self.address)
         else:
             return env.sos_dict['CONFIG']['hosts'][self.alias]['receive_cmd']
 
@@ -94,23 +96,22 @@ class RemoteHost:
             return env.sos_dict['CONFIG']['hosts'][self.alias]['execute_cmd']
 
     def map_path(self, source):
-        dest = source
-        for k,v in self.path_map.items():
-            if dest.startswith(k):
-                dest = v + dest[len(k):]
-        return dest
+        result = {}
+        if isinstance(source, str):
+            dest = os.path.abspath(source)
+            for k,v in self.path_map.items():
+                if dest.startswith(k):
+                    dest = v + dest[len(k):]
+            result[os.path.abspath(source)] = dest
+        elif isinstance(source, Sequence):
+            for src in source:
+                result.update(self.map_path(src))
+        else:
+            raise ValueError('Unacceptable parameter {} to option to_host'.format(source))
+        return result
 
     def send_to_host(self, items):
-        transfer = {}
-        if isinstance(items, str):
-            transfer[items] = self.map_path(items)
-        elif isinstance(items, Sequence):
-            for item in items:
-                transfer[item] = self.map_path(item)
-        else:
-            raise ValueError('Unacceptable parameter {} to option to_host'.format(items))
-
-        for source, dest in transfer.items():
+        for source, dest in self.map_path(items).items():
             env.logger.info('Sending ``{}`` to {} as {}'.format(source, self.alias, dest))
             cmd = interpolate(self.send_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
             env.logger.debug(cmd)
@@ -119,14 +120,7 @@ class RemoteHost:
                 raise RuntimeError('Failed to copy {} to {}'.format(source, self.alias))
 
     def receive_from_host(self, items):
-        transfer = {}
-        if isinstance(items, str):
-            transfer[self.map_path(items)] = items
-        elif isinstance(items, Sequence):
-            for item in items:
-                transfer[self.map_path(item)] = item
-        else:
-            raise ValueError('Unacceptable parameter {} to function from_host'.format(items))
+        transfer = {y:x for x,y in self.map_path(items).items()}
         #
         for source, dest in transfer.items():
             env.logger.info('Receiving ``{}`` from {} as {}'.format(dest, self.alias, source))
@@ -139,7 +133,7 @@ class RemoteHost:
                 raise  RuntimeError('Failed to copy {} from {}: {}'.format(source, self.alias, e))
 
     def execute_task(self, task):
-        cmd = interpolate(self.execute_cmd, '${ }', {'cmd': 'sos execute -e ~/{}'.format(task)})
+        cmd = interpolate(self.execute_cmd, '${ }', {'cmd': 'sos execute {}'.format(self.map_path(task)[0])})
         env.logger.info('Executing job ``{}``'.format(cmd))
         env.logger.debug(cmd)
         ret = subprocess.call(cmd, shell=True)
