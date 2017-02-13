@@ -66,12 +66,16 @@ class TaskParams(object):
     def __repr__(self):
         return self.name
 
-def execute_task(params):
+def execute_task(params, verbosity=None, sigmode=None):
     '''A function that execute specified task within a local dictionary
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
     process or remotely on a different machine.'''
     task, global_def, global_sigil, sos_dict, signature, sigil = params.data
+    if verbosity is not None:
+        env.verbosity = verbosity
+    if sigmode is not None:
+        env.sigmode = sigmode
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
     try:

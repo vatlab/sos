@@ -133,7 +133,8 @@ class RemoteHost:
                 raise  RuntimeError('Failed to copy {} from {}: {}'.format(source, self.alias, e))
 
     def execute_task(self, task):
-        cmd = interpolate(self.execute_cmd, '${ }', {'cmd': 'sos execute {}'.format(self.map_path(task)[0])})
+        cmd = interpolate(self.execute_cmd, '${ }', {'cmd': 'sos execute {} -v {} -s {}'.format(
+            self.map_path(task)[0], env.verbosity, env.sigmode)})
         env.logger.info('Executing job ``{}``'.format(cmd))
         env.logger.debug(cmd)
         ret = subprocess.call(cmd, shell=True)

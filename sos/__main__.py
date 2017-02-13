@@ -362,6 +362,22 @@ def get_execute_parser(desc_only=False):
     if desc_only:
         return parser
     parser.add_argument('task', help='''A task file''')
+    parser.add_argument('-s', choices=['default', 'ignore', 'force', 'build', 'assert'],
+        default='default', metavar='SIGMODE',
+        dest='__sigmode__',
+        help='''How runtime signature would be handled, which can be "default"
+            (save and use signature, default mode in batch mode), "ignore"
+            (ignore runtime signature, default mode in interactive mode),
+            "force" (ignore existing signature and overwrite them while
+            executing the workflow), "build" (build new or overwrite
+            existing signature from existing environment and output files), and
+            "assert" for validating existing files against their signatures.
+            Please refer to online documentation for details about the
+            use of runtime signatures.''')
+    parser.add_argument('-v', dest='verbosity', type=int, choices=range(5),
+        default=1,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).''')
     parser.set_defaults(func=cmd_execute)
     return parser
 
@@ -370,7 +386,7 @@ def cmd_execute(args, workflow_args):
     from .sos_step import execute_task
     with open(args.task, 'rb') as task:
         param = pickle.load(task)
-    res = execute_task(param)
+    res = execute_task(param, verbosity=args.verbosity, sigmode=args.__sigmode__)
     with open(args.task + '.res', 'wb') as res_file:
         pickle.dump(res, res_file)
 
