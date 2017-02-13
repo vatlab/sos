@@ -98,16 +98,16 @@ def execute_task(params):
         SoS_exec('from sos.runtime import *', None)
         # define functions to_host, which uses CONFIG and _runtime and cannot be defined in runtime
         SoS_exec('''
+from collections.abc import Sequence
 def to_host(source):
     global _runtime
     global CONFIG
-    print(CONFIG)
     path_map = {}
     host = _runtime['on_host']
     if 'path_map' in CONFIG['hosts'][host]:
         val = CONFIG['hosts'][host]['path_map']
         if isinstance(val, str):
-            val = [va]
+            val = [val]
         if isinstance(val, Sequence):
             for v in val:
                 if ':' not in v or v.count(':') > 1:
