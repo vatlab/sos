@@ -27,181 +27,17 @@ import fnmatch
 
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
-import subprocess
 
 from .utils import env, AbortExecution, short_repr, stable_repr,\
     get_traceback, transcribe, ActivityNotifier
 from .pattern import extract_pattern
-from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of, interpolate
+from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
+from .remote import RemoteHost
 
 __all__ = []
-
-class RemoteHost:
-    '''A remote host class that manages how to communicate
-	with remote host'''
-    def __init__(self, alias):
-        self._alias = alias
-        self._address = None
-        self._send_cmd = None
-        self._receive_cmd = None
-        self._execute_cmd = None
-        self._path_map = None
-    
-    def _get_address(self):
-        if not self._address:
-            if 'hosts' not in env.sos_dict['CONFIG'] or \
-                self._alias not in env.sos_dict['CONFIG']['hosts']: 
-                self._address = self._alias
-            else:
-                self._address = env.sos_dict['CONFIG']['hosts'][self._alias]
-        return self._address
-
-    address = property(self._get_address)
-
-    def _get_send_cmd(self):
-        if not self._send_cmd:
-            if 'hosts' not in env.sos_dict['CONFIG'] or \
-                self._alias not in env.sos_dict['CONFIG']['hosts'] or \
-                'send_cmd' not in env.sos_dict['CONFIG']['hosts']['send_cmd']: 
-                self._send_cmd = 'rsync -av ${{source!aq}} {}:${{dest!qd}}'.format(self.address)
-            else:
-                self._send_cmd = env.sos_dict['CONFIG']['hosts'][self._alias]['send_cmd']
-        return self._send_cmd
-
-    send_cmd = property(self._get_send_cmd)
-
-    def _get_receive_cmd(self):
-        if not self._receive_cmd:
-            if 'hosts' not in env.sos_dict['CONFIG'] or \
-                self._alias not in env.sos_dict['CONFIG']['hosts'] or \: 
-                'receive_cmd' not in env.sos_dict['CONFIG']['hosts']['receive_cmd']: 
-                self._receive_cmd = 'rsync -av {}:${{source!aq}} ${{dest!qd}}'.format(self.address)
-            else:
-                self._receive_cmd = env.sos_dict['CONFIG']['hosts'][self._alias]['receive_cmd']
-        return self._receive_cmd
-
-    receive_cmd = property(self._get_receive_cmd)
-
-    def _get_execute_cmd(self):
-        if not self._execute_cmd:
-            if 'hosts' not in env.sos_dict['CONFIG'] or \
-                self._alias not in env.sos_dict['CONFIG']['hosts'] or \: 
-                'execute_cmd' not in env.sos_dict['CONFIG']['hosts']['execute_cmd']: 
-                self._execute_cmd = 'ssh {} "bash --login -c \'${{cmd}}\'"'.format(self.address)
-            else:
-                self._execute_cmd = env.sos_dict['CONFIG']['hosts'][self._alias]['execute_cmd']
-        return self._execute_cmd
-
-    execute_cmd = property(self._get_execute_cmd)
-
-    def _get_path_map(self):
-        if self._path_map is None:
-            path_map = {}
-            host = env.sos_dict['_runtime']['on_host']
-            if 'path_map' in env.sos_dict['CONFIG']['hosts'][host]:
-                val = env.sos_dict['CONFIG']['hosts'][host]['path_map']
-                if isinstance(val, str):
-                    if ':' not in val:
-                        raise ValueError('Path map should be separated as from:to, {} specified'.format(val))
-                    elif val.count(':') > 1:
-                        raise ValueError('Path map should be separated as from:to, {} specified'.format(val))
-                    path_map[val.split(':')[0]] = val.split(':')[1]
-                elif isinstance(val, Sequence):
-                    for v in val:
-                        if ':' not in v:
-                            raise ValueError('Path map should be separated as from:to, {} specified'.format(v))
-                        elif v.count(':') > 1:
-                            raise ValueError('Path map should be separated as from:to, {} specified'.format(v))
-                        path_map[v.split(':')[0]] = v.split(':')[1]
-                elif isinstance(val, dict):
-                    for k,v in val.items():
-                        path_map[k] = v
-                else:
-                    raise ValueError('Unacceptable value for configuration path_map: {}'.format(val))
-            return path_map
-        return self._path_map
-
-#
-# path map used by interpreter for options to_host and from_host
-#
-def parse_path_map():
-    path_map = {}
-    host = env.sos_dict['_runtime']['on_host']
-    if 'path_map' in env.sos_dict['CONFIG']['hosts'][host]:
-        val = env.sos_dict['CONFIG']['hosts'][host]['path_map']
-        if isinstance(val, str):
-            if ':' not in val:
-                raise ValueError('Path map should be separated as from:to, {} specified'.format(val))
-            elif val.count(':') > 1:
-                raise ValueError('Path map should be separated as from:to, {} specified'.format(val))
-            path_map[val.split(':')[0]] = val.split(':')[1]
-        elif isinstance(val, Sequence):
-            for v in val:
-                if ':' not in v:
-                    raise ValueError('Path map should be separated as from:to, {} specified'.format(v))
-                elif v.count(':') > 1:
-                    raise ValueError('Path map should be separated as from:to, {} specified'.format(v))
-                path_map[v.split(':')[0]] = v.split(':')[1]
-        elif isinstance(val, dict):
-            for k,v in val.items():
-                path_map[k] = v
-        else:
-            raise ValueError('Unacceptable value for configuration path_map: {}'.format(val))
-    return path_map
-
-def send_to_host(*args):
-    path_map = parse_path_map()
-
-    def map_path(source):
-        dest = source
-        for k,v in path_map.items():
-            if dest.startswith(k):
-                dest = v + dest[len(k):]
-        return dest
-
-    transfer = {}
-    for arg in args:
-        if isinstance(arg, str):
-            dest = map_path(arg)
-            transfer[arg] = dest
-        elif isinstance(arg, Sequence):
-            for a in args:
-                dest = map_path(a)
-                transfer[a] = dest
-        else:
-            raise ValueError('Unacceptable parameter {} to function to_host'.format(arg))
-    #
-    # register transfer
-    return transfer
-            
-
-def receive_from_host(*args):
-    path_map = parse_path_map()
-
-    def map_path(dest):
-        source = dest
-        for k,v in path_map.items():
-            if source.startswith(k):
-                source = v + source[len(k):]
-        return source
-
-    transfer = {}
-    for arg in args:
-        if isinstance(arg, str):
-            source = map_path(arg)
-            transfer[source] = arg
-        elif isinstance(arg, Sequence):
-            for a in args:
-                source = map_path(a)
-                transfer[source] = a
-        else:
-            raise ValueError('Unacceptable parameter {} to function from_host'.format(arg))
-    #
-    return transfer
-
 
 class StepInfo(object):
     '''A simple class to hold input, output, and index of step. Its attribute can
@@ -260,6 +96,43 @@ def execute_task(params):
         env.sos_dict.quick_update(sos_dict)
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
+        # define functions to_host, which uses CONFIG and _runtime and cannot be defined in runtime
+        SoS_exec('''
+def to_host(source):
+    global _runtime
+    global CONFIG
+    print(CONFIG)
+    path_map = {}
+    host = _runtime['on_host']
+    if 'path_map' in CONFIG['hosts'][host]:
+        val = CONFIG['hosts'][host]['path_map']
+        if isinstance(val, str):
+            val = [va]
+        if isinstance(val, Sequence):
+            for v in val:
+                if ':' not in v or v.count(':') > 1:
+                    raise ValueError('Path map should be separated as from:to, {} specified'.format(v))
+                path_map[v.split(':')[0]] = v.split(':')[1]
+        elif isinstance(val, dict):
+            for k,v in val.items():
+                path_map[k] = v
+        else:
+            raise ValueError('Unacceptable value for configuration path_map: {}'.format(val))
+
+    def map_path(source):
+        dest = source
+        for k,v in path_map.items():
+            if dest.startswith(k):
+                dest = v + dest[len(k):]
+        return dest
+
+    if isinstance(source, str):
+        return map_path(source)
+    elif isinstance(source, Sequence):
+        return [map_path(x) for x in source]
+    else:
+        raise ValueError('Unacceptable parameter {} to function to_host'.format(source))
+''', None)
         # re-execute global definition because some of the definitions in the
         # global section might not be pickaleable (e.g. functions) and cannot
         # be passed to this separate process.
@@ -808,40 +681,10 @@ class Base_Step_Executor:
                 raise ValueError('Unacceptable input for option prepend_path: {}'.format(env.sos_dict['_runtime']['prepend_path']))
 
         if 'on_host' in env.sos_dict['_runtime']:
-            # run the job on another machine
-            #
-            # copy all relevant input files over
-            host = env.sos_dict['_runtime']['on_host']
-            # configurations for this host?
-            if 'hosts' not in env.sos_dict['CONFIG'] or host not in env.sos_dict['CONFIG']['hosts']:
-                raise ValueError('No configuration is found for host {}'.format(host))
-
-            #
-            if 'execute_cmd' not in env.sos_dict['CONFIG']['hosts'][host]:
-                raise ValueError('No "execute_cmd" is defined for host {}'.format(host))
-            #
-            # FIXME: intepolate task to evaluate to_host function calls?
-            #
+            host = RemoteHost(env.sos_dict['_runtime']['on_host'],
+                env.sos_dict['_runtime']['path_map'] if 'path_map' in env.sos_dict['_runtime'] else None)
             if 'to_host' in env.sos_dict['_runtime']:
-                transfers = send_to_host(env.sos_dict['_runtime']['to_host'])
-                #
-                if not transfers:
-                    return
-
-                if 'send_cmd' in env.sos_dict['CONFIG']['hosts'][host]:
-                    send_cmd = env.sos_dict['CONFIG']['hosts'][host]['send_cmd']
-                else:
-                    # no copy is needed
-                    return
-
-                for source, dest in transfers.items():
-                    env.logger.info('Copying ``{}`` to {} as {}'.format(source, host, dest))
-                    cmd = interpolate(send_cmd, '${ }', {'source': source, 'dest': dest, 'host': host})
-                    env.logger.debug(cmd)
-                    ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-                    if (ret != 0):
-                        raise RuntimeError('Failed to copy {} to {}'.format(source, host))
-
+                host.send_to_host(env.sos_dict['_runtime']['to_host'])
 
     def submit_task(self, signature):
         # submit results using single-thread
@@ -868,6 +711,10 @@ class Base_Step_Executor:
                     signature,
                     self.step.sigil
                 ))
+
+            host = RemoteHost(env.sos_dict['_runtime']['on_host'],
+                env.sos_dict['_runtime']['path_map'] if 'path_map' in env.sos_dict['_runtime'] else None)
+
             import pickle
             job_file = os.path.join('.sos', '{}_{}.task'.format(self.step.step_name(), env.sos_dict['_index']))
             with open(job_file, 'wb') as jf:
@@ -877,43 +724,11 @@ class Base_Step_Executor:
                     env.logger.warning(e)
                     raise
 
-            # transfer files to remote server
-            host = env.sos_dict['_runtime']['on_host']
-            if 'send_cmd' in env.sos_dict['CONFIG']['hosts'][host]:
-                send_cmd = env.sos_dict['CONFIG']['hosts'][host]['send_cmd']
-                #
-                env.logger.info('Sending job ``{}`` to {}'.format(job_file, host))
-                cmd = interpolate(send_cmd, '${ }', {'source': job_file, 'dest': job_file})
-                env.logger.debug(cmd)
-                ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-                if (ret != 0):
-                    raise RuntimeError('Failed to copy {} to {}'.format(job_file, host))
-            # execute command
-            execute_cmd = env.sos_dict['CONFIG']['hosts'][host]['execute_cmd']
-            cmd = interpolate(execute_cmd, '${ }', {'cmd': 'sos execute -e ~/{}'.format(job_file)})
-            env.logger.info('Executing job ``{}``'.format(cmd))
-            env.logger.debug(cmd)
-            ret = subprocess.call(cmd, shell=True) #, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-            if (ret != 0):
-                raise RuntimeError('Failed to execute {}'.format(cmd))
-            #
-            if 'receive_cmd' in env.sos_dict['CONFIG']['hosts'][host]:
-                receive_cmd = env.sos_dict['CONFIG']['hosts'][host]['receive_cmd']
-            else:
-                # no copy is needed
-                receive_cmd = None
+            host.send_to_host(job_file)
+            host.execute_task(job_file)
 
-            # receive picked result
             res_file = job_file + '.res'
-            if receive_cmd:
-                cmd = interpolate(receive_cmd, '${ }', {'source': res_file, 'dest': res_file})
-                env.logger.debug(cmd)
-                env.logger.info('Receiving result ``{}``'.format(res_file))
-                ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-                if (ret != 0):
-                    raise RuntimeError('Failed to receive result {} from {}'.format(res_file, host))
-
-            # decipher result!
+            host.receive_from_host(job_file + '.res')
             import pickle
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
@@ -921,17 +736,8 @@ class Base_Step_Executor:
             if res['succ'] != 0:
                 env.logger.error('Remote job failed.')
             elif 'from_host' in env.sos_dict['_runtime']:
-                transfers = receive_from_host(env.sos_dict['_runtime']['from_host'])
-                #
-                for source, dest in transfers.items():
-                    env.logger.info('Receiving ``{}`` from {} as {}'.format(dest, host, source))
-                    cmd = interpolate(receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': host})
-                    try:
-                        ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-                        if (ret != 0):
-                            raise RuntimeError('Failed to copy {} from {}'.format(source, host))
-                    except Exception as e:
-                        raise  RuntimeError('Failed to copy {} from {}: {}'.format(source, host, e))
+                host.receive_from_host(env.sos_dict['_runtime']['from_host'])
+
             self.proc_results.append(res)
         else:
             param = TaskParams(
