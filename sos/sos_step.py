@@ -105,6 +105,9 @@ def to_host(source):
     path_map = {}
     host = _runtime['on_host']
 
+    if not host:
+        return source
+
     if 'path_map' in _runtime:
         val = _runtime['path_map']
     elif 'path_map' in CONFIG['hosts'][host]:
@@ -686,7 +689,7 @@ class Base_Step_Executor:
             else:
                 raise ValueError('Unacceptable input for option prepend_path: {}'.format(env.sos_dict['_runtime']['prepend_path']))
 
-        if 'on_host' in env.sos_dict['_runtime']:
+        if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
             host = RemoteHost(env.sos_dict['_runtime']['on_host'],
                 env.sos_dict['_runtime']['path_map'] if 'path_map' in env.sos_dict['_runtime'] else None)
             if 'to_host' in env.sos_dict['_runtime']:
@@ -695,7 +698,7 @@ class Base_Step_Executor:
     def submit_task(self, signature):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
-        if 'on_host' in env.sos_dict['_runtime']:
+        if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
             # input files must have been copied over
             # prepare job file
             param = TaskParams(
@@ -1416,7 +1419,7 @@ class MP_Step_Executor(SP_Step_Executor):
         self.pool = None
 
     def submit_task(self, signature):
-        if 'on_host' in env.sos_dict['_runtime']:
+        if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
             return super(MP_Step_Executor, self).submit_task(signature)
 
         # if concurrent is set, create a pool object
