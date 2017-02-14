@@ -37,7 +37,7 @@ from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget,
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 from .remote import RemoteHost
-from .task import TaskParams, execute_task
+from .sos_task import TaskParams, execute_task
 
 __all__ = []
 
@@ -559,8 +559,6 @@ class Base_Step_Executor:
         pass
 
     def prepare_runtime(self):
-        if '_runtime' not in env.sos_dict:
-            env.sos_dict.set('_runtime', {})
         env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
         if 'workdir' in env.sos_dict['_runtime'] and not os.path.isdir(os.path.expanduser(env.sos_dict['_runtime']['workdir'])):
             try:
@@ -739,6 +737,8 @@ class Base_Step_Executor:
         env.sos_dict.set('step_name', self.step.step_name(False))
         # used by nested workflow
         env.sos_dict.set('__step_context__', self.step.context)
+
+        env.sos_dict.set('_runtime', {})
 
         # * input:      input files, which should be __step_output__ if it is defined, or
         #               None otherwise.
@@ -983,7 +983,7 @@ class Base_Step_Executor:
                     continue
 
                 # check if the task is active
-                if '_runtime' in env.sos_dict and 'active' in env.sos_dict['_runtime']:
+                if 'active' in env.sos_dict['_runtime']:
                     active = env.sos_dict['_runtime']['active']
                     if isinstance(active, int):
                         if active >= 0 and env.sos_dict['_index'] != active:

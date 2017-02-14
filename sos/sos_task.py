@@ -23,6 +23,7 @@ import os
 import pickle
 from io import StringIO
 from tokenize import generate_tokens
+from collections import Sequence, OrderedDict
 
 from sos.utils import env
 from sos.sos_eval import SoS_exec
@@ -40,11 +41,10 @@ class TaskParams(object):
     def __repr__(self):
         return self.name
 
-to_host_func = '''
-from collections import Sequence, OrderedDict
 def to_host(source):
-    global _runtime
-    global CONFIG
+    _runtime = env.sos_dict['_runtime']
+    CONFIG = env.sos_dict['CONFIG']
+
     path_map = OrderedDict()
     host = _runtime['on_host']
 
@@ -87,7 +87,6 @@ def to_host(source):
         return [map_path(x) for x in source]
     else:
         raise ValueError('Unacceptable parameter {} to function to_host'.format(source))
-'''
 
 def execute_task(task_file, verbosity=None, sigmode=None):
     '''A function that execute specified task within a local dictionary
@@ -104,6 +103,8 @@ def execute_task(task_file, verbosity=None, sigmode=None):
         env.sigmode = sigmode
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
+
+    env.sos_dict.quick_update(sos_dict)
 
     if env.sig_mode == 'ignore':
         sig = None
@@ -133,11 +134,8 @@ def execute_task(task_file, verbosity=None, sigmode=None):
                 else:
                     os.environ[key] = value
 
-        env.sos_dict.quick_update(sos_dict)
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
-        # define functions to_host, which uses CONFIG and _runtime and cannot be defined in runtime
-        SoS_exec(to_host_func, None)
         # re-execute global definition because some of the definitions in the
         # global section might not be pickaleable (e.g. functions) and cannot
         # be passed to this separate process.

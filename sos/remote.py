@@ -58,6 +58,8 @@ class RemoteHost:
                 'path_map' in env.sos_dict['CONFIG']['hosts'][self.alias]:
                 path_map = env.sos_dict['CONFIG']['hosts'][self.alias]['path_map']
         #
+        if path_map is None:
+            return res
         if isinstance(path_map, str):
             path_map = [path_map]
         if isinstance(path_map, Sequence):
