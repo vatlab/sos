@@ -24,6 +24,7 @@ import sys
 import copy
 import glob
 import fnmatch
+import pickle
 
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
@@ -66,12 +67,15 @@ class TaskParams(object):
     def __repr__(self):
         return self.name
 
-def execute_task(params, verbosity=None, sigmode=None):
+def execute_task(task_file, verbosity=None, sigmode=None):
     '''A function that execute specified task within a local dictionary
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
     process or remotely on a different machine.'''
-    task, global_def, global_sigil, sos_dict, signature, sigil = params.data
+    with open(task_file, 'rb') as task:
+        params = pickle.load(task)
+
+    task, global_def, global_sigil, sos_dict, sigil = params.data
     if verbosity is not None:
         env.verbosity = verbosity
     if sigmode is not None:
@@ -155,10 +159,10 @@ def to_host(source):
         if global_def:
             SoS_exec(global_def, global_sigil)
         # step process
-        if signature is None:
-            env.sos_dict.set('__step_sig__', None)
-        else:
-            env.sos_dict.set('__step_sig__', os.path.basename(signature.proc_info).split('.')[0])
+        #if signature is None:
+        #    env.sos_dict.set('__step_sig__', None)
+        #else:
+        #    env.sos_dict.set('__step_sig__', os.path.basename(signature.proc_info).split('.')[0])
         SoS_exec(task, sigil)
         os.chdir(orig_dir)
     except Exception as e:
@@ -168,10 +172,10 @@ def to_host(source):
     finally:
         env.sos_dict.set('__step_sig__', None)
 
-    if signature is not None:
-        signature.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
-            env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
-        signature.release()
+    #if signature is not None:
+    #    signature.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
+    #        env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
+    #    signature.release()
     env.deregister_process(os.getpid())
     return {'succ': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
 
@@ -703,52 +707,18 @@ class Base_Step_Executor:
             if 'to_host' in env.sos_dict['_runtime']:
                 host.send_to_host(env.sos_dict['_runtime']['to_host'])
 
-    def submit_task(self, signature):
+    def submit_task(self, task):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
         if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
-            # input files must have been copied over
-            # prepare job file
-            param = TaskParams(
-                name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
-                data = (
-                    self.step.task,          # task
-                    self.step.global_def,    # global process
-                    self.step.global_sigil,
-                    # if pool, it must not be in prepare mode and have
-                    # __signature_vars__
-                    env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                        | {'_input', '_output', '_depends', 'input', 'output',
-                            'depends', '_index', '__args__', 'step_name', '_runtime',
-                            '__workflow_sig__', '__report_output__',
-                            '_local_input_{}'.format(env.sos_dict['_index']),
-                            '_local_output_{}'.format(env.sos_dict['_index']),
-                            'CONFIG',
-                            }),
-                    signature,
-                    self.step.sigil
-                ))
-
             host = RemoteHost(env.sos_dict['_runtime']['on_host'],
                 env.sos_dict['_runtime']['path_map'] if 'path_map' in env.sos_dict['_runtime'] else None)
 
-            import pickle
-            job_file = os.path.join(os.path.expanduser('~'), '.sos', '{}_{}.task'.format(self.step.step_name(), env.sos_dict['_index']))
-            with open(job_file, 'wb') as jf:
-                try:
-                    pickle.dump(param, jf)
-                except Exception as e:
-                    env.logger.warning(e)
-                    raise
+            host.send_to_host(task)
+            host.execute_task(task)
 
-            host.send_to_host(job_file)
-            # the signature must have been released during pickling
-            signature.lock()
-            host.execute_task(job_file)
-
-            res_file = job_file + '.res'
-            host.receive_from_host(job_file + '.res')
-            import pickle
+            res_file = task + '.res'
+            host.receive_from_host(res_file)
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
 
@@ -757,24 +727,11 @@ class Base_Step_Executor:
             else:
                 if 'from_host' in env.sos_dict['_runtime']:
                     host.receive_from_host(env.sos_dict['_runtime']['from_host'])
-                # the job is executed with a different file system so
-                # we should write our own signature here
-                signature.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
-                    env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
-                signature.release()
             self.proc_results.append(res)
         else:
-            param = TaskParams(
-                name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
-                data = (
-                    self.step.task,           # task
-                    '',                       # local execusion, no need to re-run global
-                    '',
-                    # do not clone dict
-                    env.sos_dict,
-                    signature,
-                    self.step.sigil))
-            self.proc_results.append( execute_task(param)) 
+            self.proc_results.append(
+                execute_task(task, verbosity=env.verbosity, sigmode=env.sig_mode)
+            )
 
     def wait_for_results(self):
         # no waiting is necessary by default (prepare mode etc)
@@ -812,6 +769,37 @@ class Base_Step_Executor:
             raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(stmt), e))
         finally:
             env.sos_dict.set('__step_sig__', None)
+
+    def save_task(self):
+        # save task to a file
+        param = TaskParams(
+            name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+            data = (
+                self.step.task,          # task
+                self.step.global_def,    # global process
+                self.step.global_sigil,
+                env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
+                    | {'_input', '_output', '_depends', 'input', 'output',
+                        'depends', '_index', '__args__', 'step_name', '_runtime',
+                        '__workflow_sig__', '__report_output__',
+                        '_local_input_{}'.format(env.sos_dict['_index']),
+                        '_local_output_{}'.format(env.sos_dict['_index']),
+                        'CONFIG',
+                        }),
+                self.step.sigil
+            )
+        )
+        job_file = os.path.join(os.path.expanduser('~'), '.sos',
+            '{}_{}_{}.task'.format(self.step.step_name(), env.sos_dict['_index'],
+            self.step.md5))
+        with open(job_file, 'wb') as jf:
+            try:
+                pickle.dump(param, jf)
+            except Exception as e:
+                env.logger.warning(e)
+                raise
+        return job_file
+
 
     def collect_result(self):
         # only results will be sent back to the master process
@@ -1027,7 +1015,7 @@ class Base_Step_Executor:
                                 sg = self.step_signature(idx)
                                 if sg is not None and not isinstance(g, Undetermined):
                                     signatures[idx] = RuntimeInfo(self.step.md5, sg, env.sos_dict['_input'],
-                                        env.sos_dict['_output'], env.sos_dict['_depends'], 
+                                        env.sos_dict['_output'], env.sos_dict['_depends'],
                                         env.sos_dict['__signature_vars__'])
                                     if env.sig_mode == 'default':
                                         matched = signatures[idx].validate()
@@ -1138,10 +1126,8 @@ class Base_Step_Executor:
                 self.log('task')
                 try:
                     self.prepare_runtime()
-                    self.submit_task(signatures[idx])
-                    # the signature is now handled by the external executor
-                    if signatures[idx] is not None:
-                        signatures[idx] = None
+                    task = self.save_task()
+                    self.submit_task(task)
                 except Exception as e:
                     # FIXME: cannot catch exception from subprocesses
                     if env.verbosity > 2:
@@ -1152,6 +1138,14 @@ class Base_Step_Executor:
                 #
             # check results? This is only meaningful for pool
             self.wait_for_results()
+            for idx,res in enumerate(self.proc_results):
+                if signatures[idx] is not None:
+                    if res['succ'] == 0:
+                        signatures[idx].write(
+                            env.sos_dict['_local_input_{}'.format(idx)],
+                            env.sos_dict['_local_output_{}'.format(idx)])
+                    signatures[idx].release()
+                    signatures[idx] = None
             # check results
             for x in self.proc_results:
                 if x['succ'] != 0:
@@ -1428,9 +1422,9 @@ class MP_Step_Executor(SP_Step_Executor):
         SP_Step_Executor.__init__(self, step, queue)
         self.pool = None
 
-    def submit_task(self, signature):
+    def submit_task(self, task):
         if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
-            return super(MP_Step_Executor, self).submit_task(signature)
+            return super(MP_Step_Executor, self).submit_task(task)
 
         # if concurrent is set, create a pool object
         import multiprocessing as mp
@@ -1439,47 +1433,17 @@ class MP_Step_Executor(SP_Step_Executor):
             self.pool = mp.Pool(min(env.max_jobs, len(self._groups)))
 
         if self.pool:
-            param = TaskParams(
-                name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
-                data = (
-                    self.step.task,         # task
-                    self.step.global_def,    # global process
-                    self.step.global_sigil,
-                    # if pool, it must not be in prepare mode and have
-                    # __signature_vars__
-                    env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                        | {'_input', '_output', '_depends', 'input', 'output', 'depends', '_index',
-                        '_runtime', '__workflow_sig__', '__report_output__',
-                        '_local_input_{}'.format(env.sos_dict['_index']),
-                        '_local_output_{}'.format(env.sos_dict['_index'])
-                        }),
-                    signature,
-                    self.step.sigil
-                ))
-
             self.proc_results.append(
                 self.pool.apply_async(
                     execute_task,            # function
-                        (param, )
+                        (task, env.verbosity, env.sig_mode )
                     )
             )
         else:
-            param = TaskParams(
-                name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
-                data = (
-                    self.step.task,           # task
-                    '',                       # local execusion, no need to re-run global
-                    '',
-                    # do not clone dict
-                    env.sos_dict,
-                    signature,
-                    self.step.sigil
-                ))
-
+            # single job case
             self.proc_results.append(
-                execute_task(             # function
-                    param
-                ))
+                execute_task(task, verbosity=env.verbosity, sigmode=env.sig_mode)
+            )
 
     def wait_for_results(self):
         from multiprocessing.pool import AsyncResult

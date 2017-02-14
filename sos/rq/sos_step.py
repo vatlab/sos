@@ -23,7 +23,7 @@ import os
 import time
 
 from sos.utils import env
-from sos.sos_step import SP_Step_Executor, TaskParams, execute_task
+from sos.sos_step import SP_Step_Executor, execute_task
 
 class RQ_Step_Executor(SP_Step_Executor):
     #
@@ -32,7 +32,7 @@ class RQ_Step_Executor(SP_Step_Executor):
         SP_Step_Executor.__init__(self, step, queue)
         self.redis_queue = redis_queue
 
-    def submit_task(self, signature):
+    def submit_task(self, task):
         if 'walltime' in env.sos_dict['_runtime']:
             walltime = env.sos_dict['_runtime']
             if isinstance(walltime, str):
@@ -48,29 +48,10 @@ class RQ_Step_Executor(SP_Step_Executor):
             walltime = 60*60*24*30 
         #
         # tell subprocess where pysos.runtime is
-        param = TaskParams(
-            name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
-            data = (
-                self.step.task,          # task
-                self.step.global_def,    # global process
-                self.step.global_sigil,
-                # if pool, it must not be in prepare mode and have
-                # __signature_vars__
-                env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                    | {'_input', '_output', '_depends', 'input', 'output',
-                        'depends', '_index', '__args__', 'step_name', '_runtime',
-                        '__workflow_sig__', '__report_output__',
-                        '_local_input_{}'.format(env.sos_dict['_index']),
-                        '_local_output_{}'.format(env.sos_dict['_index'])
-                        }),
-                signature,
-                self.step.sigil
-            ))
-
         self.proc_results.append(
             self.redis_queue.enqueue(
             execute_task,            # function
-            args=(param,),
+            args=(task, env.verbosity, env.sig_mode),
             timeout=walltime))
 
     def wait_for_results(self):

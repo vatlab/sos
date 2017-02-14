@@ -24,36 +24,18 @@ import os
 import time
 
 from sos.utils import env
-from sos.sos_step import SP_Step_Executor, TaskParams
+from sos.sos_step import SP_Step_Executor
 
 class Celery_Step_Executor(SP_Step_Executor):
     def __init__(self, step, queue):
         SP_Step_Executor.__init__(self, step, queue)
 
-    def submit_task(self, signature):
+    def submit_task(self, task):
         # if concurrent is set, create a pool object
         from .celery import celery_execute_task
-        param = TaskParams(
-            name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
-            data = (
-                self.step.task,         # task
-                self.step.global_def,   # global process
-                self.step.global_sigil,
-                env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                    | {'_input', '_output', '_depends', 'input', 'output',
-                        'depends', '_index', '__args__', 'step_name', '_runtime',
-                        '__workflow_sig__', '__report_output__',
-                        '_local_input_{}'.format(env.sos_dict['_index']),
-                        '_local_output_{}'.format(env.sos_dict['_index'])
-                        }),
-                        
-                signature,
-                self.step.sigil
-            ))
-
         self.proc_results.append(
             celery_execute_task.apply_async(
-                (param,)
+                (task, env.verbosity, env.sig_mode)
             ))
 
     def wait_for_results(self):
