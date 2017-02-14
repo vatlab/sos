@@ -23,7 +23,8 @@ import os
 import time
 
 from sos.utils import env
-from sos.sos_step import SP_Step_Executor, execute_task
+from sos.sos_step import SP_Step_Executor
+from sos.sos_task import execute_task
 
 class RQ_Step_Executor(SP_Step_Executor):
     #

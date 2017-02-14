@@ -383,10 +383,8 @@ def get_execute_parser(desc_only=False):
 
 def cmd_execute(args, workflow_args):
     import pickle
-    from .sos_step import execute_task
-    with open(args.task, 'rb') as task:
-        param = pickle.load(task)
-    res = execute_task(param, verbosity=args.verbosity, sigmode=args.__sigmode__)
+    from .sos_task import execute_task
+    res = execute_task(args.task, verbosity=args.verbosity, sigmode=args.__sigmode__)
     with open(args.task + '.res', 'wb') as res_file:
         pickle.dump(res, res_file)
 

@@ -21,7 +21,7 @@
 #
 
 
-from .sos_step import execute_task
+from .sos_task import execute_task
 
 from celery import Celery
 
