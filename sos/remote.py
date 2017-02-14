@@ -103,7 +103,7 @@ class RemoteHost:
     def map_path(self, source):
         result = {}
         if isinstance(source, str):
-            dest = os.path.abspath(source)
+            dest = os.path.abspath(os.path.expanduser(source))
             for k,v in self.path_map.items():
                 if dest.startswith(k):
                     dest = v + dest[len(k):]
