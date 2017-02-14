@@ -21,9 +21,13 @@
 #
 import os
 import pickle
+from io import StringIO
+from tokenize import generate_tokens
 
 from sos.utils import env
 from sos.sos_eval import SoS_exec
+
+from .target import textMD5, RuntimeInfo
 
 class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
@@ -36,46 +40,7 @@ class TaskParams(object):
     def __repr__(self):
         return self.name
 
-
-def execute_task(task_file, verbosity=None, sigmode=None):
-    '''A function that execute specified task within a local dictionary
-    (from SoS env.sos_dict). This function should be self-contained in that
-    it can be handled by a task manager, be executed locally in a separate
-    process or remotely on a different machine.'''
-    with open(task_file, 'rb') as task:
-        params = pickle.load(task)
-
-    task, global_def, global_sigil, sos_dict, sigil = params.data
-    if verbosity is not None:
-        env.verbosity = verbosity
-    if sigmode is not None:
-        env.sigmode = sigmode
-    env.register_process(os.getpid(), 'spawned_job with {} {}'
-        .format(sos_dict['_input'], sos_dict['_output']))
-    try:
-        # set current directory if specified
-        orig_dir = os.getcwd()
-        if '_runtime' in sos_dict and 'workdir' in sos_dict['_runtime']:
-            if not os.path.isdir(os.path.expanduser(sos_dict['_runtime']['workdir'])):
-                try:
-                    os.makedirs(os.path.expanduser(sos_dict['_runtime']['workdir']))
-                except Exception as e:
-                    raise RuntimeError('Failed to create workdir {}'.format(sos_dict['_runtime']['workdir']))
-            os.chdir(os.path.expanduser(sos_dict['_runtime']['workdir']))
-        # set environ ...
-        # we join PATH because the task might be executed on a different machine
-        if '_runtime' in sos_dict and 'env' in sos_dict['_runtime']:
-            for key, value in sos_dict['_runtime']['env'].items():
-                if 'PATH' in key and key in os.environ:
-                    os.environ[key] = value + os.pathsep + os.environ[key]
-                else:
-                    os.environ[key] = value
-
-        env.sos_dict.quick_update(sos_dict)
-        SoS_exec('import os, sys, glob', None)
-        SoS_exec('from sos.runtime import *', None)
-        # define functions to_host, which uses CONFIG and _runtime and cannot be defined in runtime
-        SoS_exec('''
+to_host_func = '''
 from collections import Sequence, OrderedDict
 def to_host(source):
     global _runtime
@@ -122,17 +87,63 @@ def to_host(source):
         return [map_path(x) for x in source]
     else:
         raise ValueError('Unacceptable parameter {} to function to_host'.format(source))
-''', None)
+'''
+
+def execute_task(task_file, verbosity=None, sigmode=None):
+    '''A function that execute specified task within a local dictionary
+    (from SoS env.sos_dict). This function should be self-contained in that
+    it can be handled by a task manager, be executed locally in a separate
+    process or remotely on a different machine.'''
+    with open(task_file, 'rb') as task:
+        params = pickle.load(task)
+
+    task, global_def, global_sigil, sos_dict, sigil = params.data
+    if verbosity is not None:
+        env.verbosity = verbosity
+    if sigmode is not None:
+        env.sigmode = sigmode
+    env.register_process(os.getpid(), 'spawned_job with {} {}'
+        .format(sos_dict['_input'], sos_dict['_output']))
+
+    if env.sig_mode == 'ignore':
+        sig = None
+    else:
+        tokens = [x[1] for x in generate_tokens(StringIO(global_def).readline)]
+        tokens.extend([x[1] for x in generate_tokens(StringIO(task).readline)])
+        # try to add #task so that the signature can be different from the step
+        # if everything else is the same
+        sig = RuntimeInfo(textMD5('#task\n' + ' '.join(tokens)), global_def + '\n' + task,
+            env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], [])
+    try:
+        # set current directory if specified
+        orig_dir = os.getcwd()
+        if '_runtime' in sos_dict and 'workdir' in sos_dict['_runtime']:
+            if not os.path.isdir(os.path.expanduser(sos_dict['_runtime']['workdir'])):
+                try:
+                    os.makedirs(os.path.expanduser(sos_dict['_runtime']['workdir']))
+                except Exception as e:
+                    raise RuntimeError('Failed to create workdir {}'.format(sos_dict['_runtime']['workdir']))
+            os.chdir(os.path.expanduser(sos_dict['_runtime']['workdir']))
+        # set environ ...
+        # we join PATH because the task might be executed on a different machine
+        if '_runtime' in sos_dict and 'env' in sos_dict['_runtime']:
+            for key, value in sos_dict['_runtime']['env'].items():
+                if 'PATH' in key and key in os.environ:
+                    os.environ[key] = value + os.pathsep + os.environ[key]
+                else:
+                    os.environ[key] = value
+
+        env.sos_dict.quick_update(sos_dict)
+        SoS_exec('import os, sys, glob', None)
+        SoS_exec('from sos.runtime import *', None)
+        # define functions to_host, which uses CONFIG and _runtime and cannot be defined in runtime
+        SoS_exec(to_host_func, None)
         # re-execute global definition because some of the definitions in the
         # global section might not be pickaleable (e.g. functions) and cannot
         # be passed to this separate process.
         if global_def:
             SoS_exec(global_def, global_sigil)
         # step process
-        #if signature is None:
-        #    env.sos_dict.set('__step_sig__', None)
-        #else:
-        #    env.sos_dict.set('__step_sig__', os.path.basename(signature.proc_info).split('.')[0])
         SoS_exec(task, sigil)
         os.chdir(orig_dir)
     except Exception as e:
@@ -142,9 +153,9 @@ def to_host(source):
     finally:
         env.sos_dict.set('__step_sig__', None)
 
-    #if signature is not None:
-    #    signature.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
-    #        env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
-    #    signature.release()
+    if sig:
+        sig.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
+            env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
+        sig.release()
     env.deregister_process(os.getpid())
     return {'succ': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
