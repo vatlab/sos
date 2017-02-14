@@ -151,6 +151,7 @@ class TestUtils(unittest.TestCase):
                 #
                 # !q conversion (added by SoS)
                 ('{0}file_ws[0]!q{1}', "'d i r/f .txt'", False, []),
+                ('{0}file_ws[0]!e{1}', "d\\ i\\ r/f\\ .txt", False, []),
                 #
                 # !, joined by ,
                 ('{0}var2!r,{1}', "1, 2, 3.1", False, []),
@@ -168,7 +169,7 @@ class TestUtils(unittest.TestCase):
                 ('{0}"a/b/c/test_utils.py"!n{1}', 'a/b/c/test_utils', False, []),
                 ('{0}"a/b/c/test_utils.py"!bn{1}', 'test_utils', False, []),
                 ('{0}"~/test_utils.py"!a{1}', os.path.expanduser('~/test_utils.py'), False, []),
-                ('{0}"~/test_utils.py"!e{1}', os.path.expanduser('~/test_utils.py'), False, []),
+                ('{0}"~/test_utils.py"!u{1}', os.path.expanduser('~/test_utils.py'), False, []),
                 ('{0}"test/test_utils.py"!b{1}', "test_utils.py", False, []),
                 # preceded by \
                 (r'\{0}100{1}', '{0}100{1}'.format(l, r), True, []),
