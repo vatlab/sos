@@ -78,7 +78,8 @@ class SoS_String:
         }
 
     CONVERTERS = {
-        'e': os.path.expanduser,
+        'u': os.path.expanduser,
+        'e': lambda x: x.replace(' ', '\\ '),
         'a': lambda x: os.path.abspath(os.path.expanduser(x)),
         'd': os.path.dirname,
         'b': os.path.basename,
