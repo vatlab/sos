@@ -74,6 +74,8 @@ def to_host(source):
     def map_path(source):
         if os.path.isabs(source):
             dest = source
+        elif source.startswith('~'):
+            dest = _runtime['home_dir'] + source[1:]
         else:
             dest = os.path.join(_runtime['cur_dir'], source)
         for k,v in path_map.items():

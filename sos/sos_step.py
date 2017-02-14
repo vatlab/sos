@@ -560,6 +560,7 @@ class Base_Step_Executor:
 
     def prepare_runtime(self):
         env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
+        env.sos_dict['_runtime']['home_dir'] = os.path.expanduser('~')
         if 'workdir' in env.sos_dict['_runtime'] and not os.path.isdir(os.path.expanduser(env.sos_dict['_runtime']['workdir'])):
             try:
                 os.makedirs(os.path.expanduser(env.sos_dict['_runtime']['workdir']))
