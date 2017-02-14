@@ -133,7 +133,10 @@ def to_host(source):
             raise ValueError('Unacceptable value for configuration path_map: {}'.format(val))
 
     def map_path(source):
-        dest = source
+        if os.path.isabs(source):
+            dest = source
+        else:
+            dest = os.path.join(_runtime['cur_dir'], source)
         for k,v in path_map.items():
             if dest.startswith(k):
                 dest = v + dest[len(k):]
@@ -676,6 +679,7 @@ class Base_Step_Executor:
     def prepare_runtime(self):
         if '_runtime' not in env.sos_dict:
             env.sos_dict.set('_runtime', {})
+        env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
         if 'workdir' in env.sos_dict['_runtime'] and not os.path.isdir(os.path.expanduser(env.sos_dict['_runtime']['workdir'])):
             try:
                 os.makedirs(os.path.expanduser(env.sos_dict['_runtime']['workdir']))

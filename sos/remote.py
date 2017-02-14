@@ -75,7 +75,7 @@ class RemoteHost:
         if 'hosts' not in env.sos_dict['CONFIG'] or \
             self.alias not in env.sos_dict['CONFIG']['hosts'] or \
             'send_cmd' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
-            return '''ssh {0} mkdir -p ${{dest!dq}}; rsync -av ${{source!aq}} {0}:${{dest!dq}}'''.format(self.address)
+            return '''ssh {0} "mkdir -p ${{dest!dq}}"; rsync -av ${{source!ae}} "{0}:${{dest!de}}"'''.format(self.address)
         else:
             return env.sos_dict['CONFIG']['hosts'][self.alias]['send_cmd']
 
@@ -83,7 +83,7 @@ class RemoteHost:
         if 'hosts' not in env.sos_dict['CONFIG'] or \
             self.alias not in env.sos_dict['CONFIG']['hosts'] or \
             'receive_cmd' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
-            return 'mkdir -p ${{dest!dq}}; rsync -av {}:${{source!aq}} ${{dest!dq}}'.format(self.address)
+            return 'mkdir -p ${{dest!dq}}; rsync -av {}:${{source!ae}} "${{dest!de}}"'.format(self.address)
         else:
             return env.sos_dict['CONFIG']['hosts'][self.alias]['receive_cmd']
 
@@ -111,7 +111,9 @@ class RemoteHost:
         return result
 
     def send_to_host(self, items):
-        for source, dest in self.map_path(items).items():
+        sending = self.map_path(items)
+        for source in sorted(sending.keys()):
+            dest = sending[source]
             env.logger.info('Sending ``{}`` to {} as {}'.format(source, self.alias, dest))
             cmd = interpolate(self.send_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
             env.logger.debug(cmd)
@@ -120,9 +122,10 @@ class RemoteHost:
                 raise RuntimeError('Failed to copy {} to {}'.format(source, self.alias))
 
     def receive_from_host(self, items):
-        transfer = {y:x for x,y in self.map_path(items).items()}
+        receiving = {y:x for x,y in self.map_path(items).items()}
         #
-        for source, dest in transfer.items():
+        for source in sorted(receiving.keys()):
+            dest = receiving[source]
             env.logger.info('Receiving ``{}`` from {} as {}'.format(dest, self.alias, source))
             cmd = interpolate(self.receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
             try:
