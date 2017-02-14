@@ -102,11 +102,11 @@ def execute_task(params, verbosity=None, sigmode=None):
         SoS_exec('from sos.runtime import *', None)
         # define functions to_host, which uses CONFIG and _runtime and cannot be defined in runtime
         SoS_exec('''
-from collections.abc import Sequence
+from collections import Sequence, OrderedDict
 def to_host(source):
     global _runtime
     global CONFIG
-    path_map = {}
+    path_map = OrderedDict()
     host = _runtime['on_host']
 
     if not host:

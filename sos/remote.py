@@ -45,7 +45,10 @@ class RemoteHost:
             return env.sos_dict['CONFIG']['hosts'][self.alias]['address']
         
     def _get_path_map(self, path_map=None):
-        res = {}
+        # use ordered map so that users can control the order
+        # in which substitution happens.
+        from collections import OrderedDict
+        res = OrderedDict()
         # if user-specified path_map, it overrides CONFIG
         if path_map is None:
             # if not on_host, no conversion drive map et al
