@@ -26,6 +26,8 @@ import shlex
 import shutil
 import fasteners
 import pkg_resources
+import pickle
+import base64
 
 from .utils import env, Error, short_repr
 from .sos_eval import Undetermined
@@ -532,10 +534,10 @@ class RuntimeInfo:
                 # var can be local and not passed as outside environment
                 if var in env.sos_dict:
                     value = env.sos_dict[var]
-                    if isinstance(value, (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
-                        md5.write('{} = {!r}\n'.format(var, value))
-                    else:
-                        env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, value))
+                    try:
+                        md5.write('{} = {}\n'.format(var, base64.b64encode(pickle.dumps(value))))
+                    except Exception as e:
+                        env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, short_repr(value)))
             md5.write('# step process\n')
             md5.write(self.script)
         # successfully write signature, write in workflow runtime info
@@ -611,9 +613,9 @@ class RuntimeInfo:
                 if cur_type == 'context':
                     key, value = line.split('=', 1)
                     try:
-                        res['vars'][key.strip()] = eval(value.strip())
+                        res['vars'][key.strip()] = pickle.loads(base64.b64decode(eval(value.strip())))
                     except Exception as e:
-                        env.logger.warning('Variable {} with value {} cannot be restored from signature'.format(key, value.strip()))
+                        env.logger.warning('Failed to restore variable {} from signature: {}'.format(key, e))
                     continue
                 try:
                     f, m = line.rsplit('\t', 1)
