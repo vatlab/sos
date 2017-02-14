@@ -196,6 +196,9 @@ class DockerClient:
                     volumes_opt += ' -v /Users:/Users'
                 if self.has_volumes:
                     volumes_opt += ' -v /Volumes:/Volumes'
+            elif platform.system() == 'Linux':
+                if not any(x.startswith('/home:') for x in binds):
+                    volumes_opt += ' -v /home:/home'
             if not any(x.startswith('/tmp:') for x in binds):
                 volumes_opt += ' -v /tmp:/tmp'
             #
