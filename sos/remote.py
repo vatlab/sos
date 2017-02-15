@@ -54,7 +54,8 @@ class RemoteHost:
             # if not on_host, no conversion drive map et al
             if 'on_host' not in env.sos_dict['_runtime']:
                 return {}
-            if self.alias in env.sos_dict['CONFIG']['hosts'] and \
+            if 'hosts' not in env.sos_dict['CONFIG'] and \
+                self.alias in env.sos_dict['CONFIG']['hosts'] and \
                 'path_map' in env.sos_dict['CONFIG']['hosts'][self.alias]:
                 path_map = env.sos_dict['CONFIG']['hosts'][self.alias]['path_map']
         #
