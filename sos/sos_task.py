@@ -66,7 +66,7 @@ def execute_task(task_file, verbosity=None, sigmode=None):
         # try to add #task so that the signature can be different from the step
         # if everything else is the same
         sig = RuntimeInfo(textMD5('#task\n' + ' '.join(tokens)), task,
-            env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], [])
+            env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
 
         idx = env.sos_dict['_index']
         if env.sig_mode == 'default':

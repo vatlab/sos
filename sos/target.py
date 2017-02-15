@@ -120,7 +120,7 @@ class BaseTarget:
     def signature(self, mode='any'):
         # signature of the content of the target, which should be
         # able to detect changes of the content of target
-        # 
+        #
         # if mode == 'target', the target has to exist and the signature
         # has to be calculated. Otherwise you can return cached signature
         raise RuntimeError('Undefined base function')
@@ -311,7 +311,7 @@ class FileTarget(BaseTarget):
 
     def is_external(self):
         try:
-            return os.path.relpath(self.fullname(), '.').startswith('..') 
+            return os.path.relpath(self.fullname(), '.').startswith('..')
         except:
             # under windows the file might be on different volume
             return True
@@ -411,7 +411,7 @@ class RuntimeInfo:
         self.local_input_files = []
         self.local_output_files = []
 
-        self.signature_vars = signature_vars
+        self.signature_vars = {x: env.sos_dict[x] if x in env.sos_dict else Undetermined() for x in signature_vars}
 
         self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(
             textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))))
@@ -471,7 +471,7 @@ class RuntimeInfo:
     def write(self, local_input_files, local_output_files, rebuild=False):
         '''Write signature file with signature of script, input, output and dependent files.
         Because local input and output files can only be determined after the execution
-        of workflow. They are not part of the construction...        
+        of workflow. They are not part of the construction...
         '''
         if isinstance(self.output_files, Undetermined) or isinstance(self.dependent_files, Undetermined):
             env.logger.trace('Write signature failed due to undetermined files')
@@ -528,16 +528,29 @@ class RuntimeInfo:
                 elif not rebuild and f.exists('signature'):
                     md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
-                    return False                    
-            md5.write('# context\n')
-            for var in sorted(self.signature_vars):
+                    return False
+            # context that will be needed for validation
+            md5.write('# init context\n')
+            for var in sorted(self.signature_vars.keys()):
+                # var can be local and not passed as outside environment
+                value = self.signature_vars[var]
+                if not isinstance(value, Undetermined):
+                    try:
+                        md5.write('{}={}\n'.format(var, base64.b64encode(pickle.dumps(value))))
+                    except Exception as e:
+                        env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, short_repr(value)))
+            # context used to return context
+            md5.write('# end context\n')
+            for var in sorted(self.signature_vars.keys()):
                 # var can be local and not passed as outside environment
                 if var in env.sos_dict:
                     value = env.sos_dict[var]
                     try:
-                        md5.write('{} = {}\n'.format(var, base64.b64encode(pickle.dumps(value))))
+                        md5.write('{}={}\n'.format(var, base64.b64encode(pickle.dumps(value))))
                     except Exception as e:
                         env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, short_repr(value)))
+            md5.write('# step process\n')
+            md5.write(self.script)
             md5.write('# step process\n')
             md5.write(self.script)
         # successfully write signature, write in workflow runtime info
@@ -603,17 +616,36 @@ class RuntimeInfo:
                         cur_type = 'local_input'
                     elif line == '# local output\n':
                         cur_type = 'local_output'
-                    elif line == '# context\n':
-                        cur_type = 'context'
+                    elif line == '# init context\n':
+                        cur_type = 'init context'
+                    elif line == '# end context\n':
+                        cur_type = 'end context'
                     elif line == '# step process\n':
                         break
                     else:
                         env.logger.trace('Unrecognized line in sig file {}'.format(line))
                     continue
-                if cur_type == 'context':
+                # for validation
+                if cur_type == 'init context':
+                    key, value = line.split('=', 1)
+                    if key not in env.sos_dict:
+                        return 'Variable {} not in running environment {}'.format(key)
+                    try:
+                        value = pickle.loads(base64.b64decode(eval(value.strip())))
+                        try:
+                            if env.sos_dict[key] != value:
+                                return 'Context variable {} value mismatch: {} saved, {} current'.format(
+                                    key, short_repr(value), short_repr(env.sos_dict[key]))
+                        except Exception as e:
+                            env.logger.warning("Variable {} of type {} cannot be compared: {}".format(key, type(key).__name__, e))
+                    except Exception as e:
+                        env.logger.warning('Failed to restore variable {} from signature: {}'.format(key, e))
+                    continue
+                # for return context
+                elif cur_type == 'end context':
                     key, value = line.split('=', 1)
                     try:
-                        res['vars'][key.strip()] = pickle.loads(base64.b64decode(eval(value.strip())))
+                        res['vars'][key] = pickle.loads(base64.b64decode(eval(value.strip())))
                     except Exception as e:
                         env.logger.warning('Failed to restore variable {} from signature: {}'.format(key, e))
                     continue

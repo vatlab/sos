@@ -584,7 +584,7 @@ class Base_Step_Executor:
                         '__workflow_sig__', '__report_output__',
                         '_local_input_{}'.format(env.sos_dict['_index']),
                         '_local_output_{}'.format(env.sos_dict['_index']),
-                        'CONFIG',
+                        'CONFIG', '__signature_vars__'
                         })
 
         if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
@@ -929,6 +929,8 @@ class Base_Step_Executor:
                                             env.sos_dict.update(matched['vars'])
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
+                                        else:
+                                            env.logger.debug('Signature mismatch: {}'.format(matched))
                                     elif env.sig_mode == 'assert':
                                         matched = signatures[idx].validate()
                                         if isinstance(matched, str):
