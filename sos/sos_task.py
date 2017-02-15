@@ -23,7 +23,6 @@ import os
 import pickle
 from io import StringIO
 from tokenize import generate_tokens
-from collections import Sequence, OrderedDict
 
 from sos.utils import env
 from sos.sos_eval import SoS_exec
@@ -41,55 +40,6 @@ class TaskParams(object):
     def __repr__(self):
         return self.name
 
-def to_host(source):
-    _runtime = env.sos_dict['_runtime']
-    CONFIG = env.sos_dict['CONFIG']
-
-    path_map = OrderedDict()
-    host = _runtime['on_host']
-
-    if not host:
-        return source
-
-    if 'path_map' in _runtime:
-        val = _runtime['path_map']
-    elif 'path_map' in CONFIG['hosts'][host]:
-        val = CONFIG['hosts'][host]['path_map']
-    else:
-        val = None
-    if val is not None:
-        if isinstance(val, str):
-            val = [val]
-        if isinstance(val, Sequence):
-            for v in val:
-                if ':' not in v or v.count(':') > 1:
-                    raise ValueError('Path map should be separated as from:to, {} specified'.format(v))
-                path_map[v.split(':')[0]] = v.split(':')[1]
-        elif isinstance(val, dict):
-            for k,v in val.items():
-                path_map[k] = v
-        else:
-            raise ValueError('Unacceptable value for configuration path_map: {}'.format(val))
-
-    def map_path(source):
-        if os.path.isabs(source):
-            dest = source
-        elif source.startswith('~'):
-            dest = _runtime['home_dir'] + source[1:]
-        else:
-            dest = os.path.join(_runtime['cur_dir'], source)
-        for k,v in path_map.items():
-            if dest.startswith(k):
-                dest = v + dest[len(k):]
-        return dest
-
-    if isinstance(source, str):
-        return map_path(source)
-    elif isinstance(source, Sequence):
-        return [map_path(x) for x in source]
-    else:
-        raise ValueError('Unacceptable parameter {} to function to_host'.format(source))
-
 def execute_task(task_file, verbosity=None, sigmode=None):
     '''A function that execute specified task within a local dictionary
     (from SoS env.sos_dict). This function should be self-contained in that
@@ -98,7 +48,7 @@ def execute_task(task_file, verbosity=None, sigmode=None):
     with open(task_file, 'rb') as task:
         params = pickle.load(task)
 
-    task, global_def, global_sigil, sos_dict, sigil = params.data
+    task, sos_dict, sigil = params.data
     if verbosity is not None:
         env.verbosity = verbosity
     if sigmode is not None:
@@ -112,12 +62,11 @@ def execute_task(task_file, verbosity=None, sigmode=None):
     if env.sig_mode == 'ignore' or env.sos_dict['_output'] is None:
         sig = None
     else:
-        tokens = [x[1] for x in generate_tokens(StringIO(global_def).readline)]
-        tokens.extend([x[1] for x in generate_tokens(StringIO(task).readline)])
+        tokens = [x[1] for x in generate_tokens(StringIO(task).readline)]
         # try to add #task so that the signature can be different from the step
         # if everything else is the same
         env.logger.error(env.sos_dict['_output'])
-        sig = RuntimeInfo(textMD5('#task\n' + ' '.join(tokens)), global_def + '\n' + task,
+        sig = RuntimeInfo(textMD5('#task\n' + ' '.join(tokens)), task,
             env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], [])
 
         idx = env.sos_dict['_index']
@@ -188,11 +137,6 @@ def execute_task(task_file, verbosity=None, sigmode=None):
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
-        # re-execute global definition because some of the definitions in the
-        # global section might not be pickaleable (e.g. functions) and cannot
-        # be passed to this separate process.
-        if global_def:
-            SoS_exec(global_def, global_sigil)
         # step process
         SoS_exec(task, sigil)
         os.chdir(orig_dir)

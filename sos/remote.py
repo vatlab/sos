@@ -100,6 +100,18 @@ class RemoteHost:
         else:
             return env.sos_dict['CONFIG']['hosts'][self.alias]['execute_cmd']
 
+    def map_var(self, source):
+        if isinstance(source, str):
+            dest = os.path.abspath(os.path.expanduser(source))
+            for k,v in self.path_map.items():
+                if dest.startswith(k):
+                    dest = v + dest[len(k):]
+            return dest
+        elif isinstance(source, Sequence):
+            return [self.map_var(x) for x in source]
+        else:
+            raise ValueError('Cannot map variables {} of type {}'.format(source, type(source).__name__))
+
     def map_path(self, source):
         result = {}
         if isinstance(source, str):

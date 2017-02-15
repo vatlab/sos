@@ -584,6 +584,35 @@ class Base_Step_Executor:
             if 'to_host' in env.sos_dict['_runtime']:
                 host.send_to_host(env.sos_dict['_runtime']['to_host'])
 
+            # map variables
+            self.saved_vars = {}
+            vars = ['_input', '_output', '_depends', 'input', 'output', 'depends',
+                '__report_output__', '_local_input_{}'.format(env.sos_dict['_index']),
+                     '_local_output_{}'.format(env.sos_dict['_index'])]
+            if 'map_vars' in env.sos_dict['_runtime']:
+                if isinstance(env.sos_dict['_runtime']['map_vars'], str):
+                    vars.append(env.sos_dict['_runtime']['map_vars'])
+                elif isinstance(env.sos_dict['_runtime']['map_vars'], Sequence):
+                    vars.extend(env.sos_dict['_runtime']['map_vars'])
+                else:
+                    raise ValueError('Unacceptable value for runtime option map_vars: {}'.format(env.sos_dict['_runtime']['map_vars']))
+            for var in vars:
+                if var in env.sos_dict:
+                    try:
+                        mapped = host.map_var(env.sos_dict[var])
+                        if mapped != env.sos_dict[var]:
+                            env.logger.debug('Mapping {} from {} to {}'.format(var, env.sos_dict[var], mapped))
+                            self.saved_vars[var] = copy.deepcopy(env.sos_dict[var])
+                            env.sos_dict.set(var, mapped)
+                    except Exception as e:
+                        env.logger.warning('Failed to save variable {}: {}'.format(var, e))
+ 
+    def reset_runtime(self):
+        if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
+            for key, value in self.saved_vars.items():
+                env.sos_dict.set(key, value)
+            self.saved_vars = {}
+
     def submit_task(self, task):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
@@ -653,8 +682,6 @@ class Base_Step_Executor:
             name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
             data = (
                 self.step.task,          # task
-                self.step.global_def,    # global process
-                self.step.global_sigil,
                 env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
                     | {'_input', '_output', '_depends', 'input', 'output',
                         'depends', '_index', '__args__', 'step_name', '_runtime',
@@ -1007,6 +1034,7 @@ class Base_Step_Executor:
                     self.prepare_runtime()
                     task = self.save_task()
                     self.submit_task(task)
+                    self.reset_runtime()
                 except Exception as e:
                     # FIXME: cannot catch exception from subprocesses
                     if env.verbosity > 2:
