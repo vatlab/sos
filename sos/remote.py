@@ -80,7 +80,7 @@ class RemoteHost:
         if 'hosts' not in env.sos_dict['CONFIG'] or \
             self.alias not in env.sos_dict['CONFIG']['hosts'] or \
             'send_cmd' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
-            return '''ssh {0} "mkdir -p ${dest!dq}"; rsync -av ${source!ae} "${host}:${dest!de}"'''
+            return '''ssh ${host} "mkdir -p ${dest!dq}"; rsync -av ${source!ae} "${host}:${dest!de}"'''
         else:
             return env.sos_dict['CONFIG']['hosts'][self.alias]['send_cmd']
 
