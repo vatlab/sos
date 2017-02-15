@@ -632,12 +632,6 @@ class Base_Step_Executor:
         return job_file
 
 
-    def reset_runtime(self):
-        if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
-            for key, value in self.saved_vars.items():
-                env.sos_dict.set(key, value)
-            self.saved_vars = {}
-
     def submit_task(self, task):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
@@ -1030,7 +1024,6 @@ class Base_Step_Executor:
                 try:
                     task = self.prepare_task()
                     self.submit_task(task)
-                    self.reset_runtime()
                 except Exception as e:
                     # FIXME: cannot catch exception from subprocesses
                     if env.verbosity > 2:
