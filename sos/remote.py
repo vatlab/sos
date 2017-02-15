@@ -119,7 +119,7 @@ class RemoteHost:
         sending = self.map_path(items)
         for source in sorted(sending.keys()):
             dest = sending[source]
-            env.logger.info('Sending ``{}`` to {} as {}'.format(source, self.alias, dest))
+            env.logger.info('Sending ``{}`` to {}:{}'.format(source, self.alias, dest))
             cmd = interpolate(self.send_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
             env.logger.debug(cmd)
             ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
@@ -131,7 +131,7 @@ class RemoteHost:
         #
         for source in sorted(receiving.keys()):
             dest = receiving[source]
-            env.logger.info('Receiving ``{}`` from {} as {}'.format(dest, self.alias, source))
+            env.logger.info('Receiving ``{}`` from {}:{}'.format(dest, self.alias, source))
             cmd = interpolate(self.receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
             try:
                 ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)

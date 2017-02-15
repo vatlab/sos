@@ -102,21 +102,71 @@ def execute_task(task_file, verbosity=None, sigmode=None):
     if verbosity is not None:
         env.verbosity = verbosity
     if sigmode is not None:
-        env.sigmode = sigmode
+        env.sig_mode = sigmode
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
 
     env.sos_dict.quick_update(sos_dict)
 
-    if env.sig_mode == 'ignore':
+    skipped = False
+    if env.sig_mode == 'ignore' or env.sos_dict['_output'] is None:
         sig = None
     else:
         tokens = [x[1] for x in generate_tokens(StringIO(global_def).readline)]
         tokens.extend([x[1] for x in generate_tokens(StringIO(task).readline)])
         # try to add #task so that the signature can be different from the step
         # if everything else is the same
+        env.logger.error(env.sos_dict['_output'])
         sig = RuntimeInfo(textMD5('#task\n' + ' '.join(tokens)), global_def + '\n' + task,
             env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], [])
+
+        idx = env.sos_dict['_index']
+        if env.sig_mode == 'default':
+            matched = sig.validate()
+            if isinstance(matched, dict):
+                # in this case, an Undetermined output can get real output files
+                # from a signature
+                env.sos_dict.set('_input', matched['input'])
+                env.sos_dict.set('_depends', matched['depends'])
+                env.sos_dict.set('_output', matched['output'])
+                env.sos_dict.set('_local_input', matched['local_output'])
+                env.sos_dict.set('_local_output', matched['local_output'])
+                env.sos_dict['local_input'].extend(env.sos_dict['_local_input'])
+                env.sos_dict['local_output'].extend(env.sos_dict['_local_output'])
+                env.sos_dict.update(matched['vars'])
+                env.logger.info('Task ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
+                skipped = True
+        elif env.sig_mode == 'assert':
+            matched = sig.validate()
+            if isinstance(matched, str):
+                raise RuntimeError('Signature mismatch: {}'.format(matched))
+            else:
+                env.sos_dict.set('_input', matched['input'])
+                env.sos_dict.set('_depends', matched['depends'])
+                env.sos_dict.set('_output', matched['output'])
+                env.sos_dict.set('_local_input', matched['local_output'])
+                env.sos_dict.set('_local_output', matched['local_output'])
+                env.sos_dict['local_input'].extend(env.sos_dict['_local_input'])
+                env.sos_dict['local_output'].extend(env.sos_dict['_local_output'])
+                env.sos_dict.update(matched['vars'])
+                env.logger.info('Step ``{}`` (index={}) is ``ignored`` with matching signature'.format(env.sos_dict['step_name'], idx))
+                skipped = True
+        elif env.sig_mode == 'build':
+            # build signature require existence of files
+            if sig.write(
+                env.sos_dict['_local_input_{}'.format(idx)],
+                env.sos_dict['_local_output_{}'.format(idx)],
+                rebuild=True):
+                env.logger.info('Task ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
+                skipped = True
+        elif env.sig_mode == 'force':
+            skipped = False
+        else:
+            raise RuntimeError('Unrecognized signature mode {}'.format(env.sig_mode))
+
+    if skipped:
+        return {'succ': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
+
     try:
         # set current directory if specified
         orig_dir = os.getcwd()
