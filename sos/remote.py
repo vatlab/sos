@@ -80,7 +80,7 @@ class RemoteHost:
         if 'hosts' not in env.sos_dict['CONFIG'] or \
             self.alias not in env.sos_dict['CONFIG']['hosts'] or \
             'send_cmd' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
-            return '''ssh {0} "mkdir -p ${{dest!dq}}"; rsync -av ${{source!ae}} "{0}:${{dest!de}}"'''.format(self.address)
+            return '''ssh {0} "mkdir -p ${dest!dq}"; rsync -av ${source!ae} "${host}:${dest!de}"'''
         else:
             return env.sos_dict['CONFIG']['hosts'][self.alias]['send_cmd']
 
@@ -88,7 +88,7 @@ class RemoteHost:
         if 'hosts' not in env.sos_dict['CONFIG'] or \
             self.alias not in env.sos_dict['CONFIG']['hosts'] or \
             'receive_cmd' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
-            return 'mkdir -p ${{dest!dq}}; rsync -av {}:${{source!ae}} "${{dest!de}}"'.format(self.address)
+            return 'mkdir -p ${dest!dq}; rsync -av ${host}:${source!ae} "${dest!de}"'
         else:
             return env.sos_dict['CONFIG']['hosts'][self.alias]['receive_cmd']
 
@@ -96,7 +96,7 @@ class RemoteHost:
         if 'hosts' not in env.sos_dict['CONFIG'] or \
             self.alias not in env.sos_dict['CONFIG']['hosts'] or \
             'execute_cmd' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
-            return 'ssh {} "bash --login -c \'${{cmd}}\'"'.format(self.address)
+            return '''ssh ${host} "bash --login -c '${cmd}'"'''
         else:
             return env.sos_dict['CONFIG']['hosts'][self.alias]['execute_cmd']
 
@@ -154,8 +154,10 @@ class RemoteHost:
 
     def execute_task(self, task):
         try:
-            cmd = interpolate(self.execute_cmd, '${ }', {'cmd': 'sos execute {} -v {} -s {}'.format(
-                self.map_path(task)[task], env.verbosity, env.sig_mode)})
+            cmd = interpolate(self.execute_cmd, '${ }', {
+                'host': self.address,
+                'cmd': 'sos execute {} -v {} -s {}'.format(
+                    self.map_path(task)[task], env.verbosity, env.sig_mode)})
         except Exception as e:
             raise ValueError('Failed to create remote task {}: {}'.format(task, e))
         env.logger.info('Executing job ``{}``'.format(cmd))
