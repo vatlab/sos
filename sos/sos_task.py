@@ -65,7 +65,6 @@ def execute_task(task_file, verbosity=None, sigmode=None):
         tokens = [x[1] for x in generate_tokens(StringIO(task).readline)]
         # try to add #task so that the signature can be different from the step
         # if everything else is the same
-        env.logger.error(env.sos_dict['_output'])
         sig = RuntimeInfo(textMD5('#task\n' + ' '.join(tokens)), task,
             env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], [])
 

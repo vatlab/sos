@@ -558,7 +558,7 @@ class Base_Step_Executor:
     def reevaluate_output(self):
         pass
 
-    def prepare_runtime(self):
+    def prepare_task(self):
         env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
         env.sos_dict['_runtime']['home_dir'] = os.path.expanduser('~')
         if 'workdir' in env.sos_dict['_runtime'] and not os.path.isdir(os.path.expanduser(env.sos_dict['_runtime']['workdir'])):
@@ -578,6 +578,15 @@ class Base_Step_Executor:
             else:
                 raise ValueError('Unacceptable input for option prepend_path: {}'.format(env.sos_dict['_runtime']['prepend_path']))
 
+        task_vars = env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
+                    | {'_input', '_output', '_depends', 'input', 'output',
+                        'depends', '_index', '__args__', 'step_name', '_runtime',
+                        '__workflow_sig__', '__report_output__',
+                        '_local_input_{}'.format(env.sos_dict['_index']),
+                        '_local_output_{}'.format(env.sos_dict['_index']),
+                        'CONFIG',
+                        })
+
         if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
             host = RemoteHost(env.sos_dict['_runtime']['on_host'],
                 env.sos_dict['_runtime']['path_map'] if 'path_map' in env.sos_dict['_runtime'] else None)
@@ -585,7 +594,6 @@ class Base_Step_Executor:
                 host.send_to_host(env.sos_dict['_runtime']['to_host'])
 
             # map variables
-            self.saved_vars = {}
             vars = ['_input', '_output', '_depends', 'input', 'output', 'depends',
                 '__report_output__', '_local_input_{}'.format(env.sos_dict['_index']),
                      '_local_output_{}'.format(env.sos_dict['_index'])]
@@ -599,14 +607,31 @@ class Base_Step_Executor:
             for var in vars:
                 if var in env.sos_dict:
                     try:
-                        mapped = host.map_var(env.sos_dict[var])
-                        if mapped != env.sos_dict[var]:
-                            env.logger.debug('Mapping {} from {} to {}'.format(var, env.sos_dict[var], mapped))
-                            self.saved_vars[var] = copy.deepcopy(env.sos_dict[var])
-                            env.sos_dict.set(var, mapped)
+                        task_vars[var] = host.map_var(env.sos_dict[var])
                     except Exception as e:
                         env.logger.warning('Failed to save variable {}: {}'.format(var, e))
  
+        # save task to a file
+        param = TaskParams(
+            name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
+            data = (
+                self.step.task,          # task
+                task_vars,
+                self.step.sigil
+            )
+        )
+        job_file = os.path.join(os.path.expanduser('~'), '.sos',
+            '{}_{}_{}.task'.format(self.step.step_name(), env.sos_dict['_index'],
+            self.step.md5))
+        with open(job_file, 'wb') as jf:
+            try:
+                pickle.dump(param, jf)
+            except Exception as e:
+                env.logger.warning(e)
+                raise
+        return job_file
+
+
     def reset_runtime(self):
         if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
             for key, value in self.saved_vars.items():
@@ -675,34 +700,6 @@ class Base_Step_Executor:
             raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(stmt), e))
         finally:
             env.sos_dict.set('__step_sig__', None)
-
-    def save_task(self):
-        # save task to a file
-        param = TaskParams(
-            name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
-            data = (
-                self.step.task,          # task
-                env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                    | {'_input', '_output', '_depends', 'input', 'output',
-                        'depends', '_index', '__args__', 'step_name', '_runtime',
-                        '__workflow_sig__', '__report_output__',
-                        '_local_input_{}'.format(env.sos_dict['_index']),
-                        '_local_output_{}'.format(env.sos_dict['_index']),
-                        'CONFIG',
-                        }),
-                self.step.sigil
-            )
-        )
-        job_file = os.path.join(os.path.expanduser('~'), '.sos',
-            '{}_{}_{}.task'.format(self.step.step_name(), env.sos_dict['_index'],
-            self.step.md5))
-        with open(job_file, 'wb') as jf:
-            try:
-                pickle.dump(param, jf)
-            except Exception as e:
-                env.logger.warning(e)
-                raise
-        return job_file
 
 
     def collect_result(self):
@@ -1031,8 +1028,7 @@ class Base_Step_Executor:
 
                 self.log('task')
                 try:
-                    self.prepare_runtime()
-                    task = self.save_task()
+                    task = self.prepare_task()
                     self.submit_task(task)
                     self.reset_runtime()
                 except Exception as e:
