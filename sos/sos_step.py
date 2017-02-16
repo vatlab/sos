@@ -587,8 +587,7 @@ class Base_Step_Executor:
                     })
 
         if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
-            host = RemoteHost(env.sos_dict['_runtime']['on_host'],
-                env.sos_dict['_runtime']['path_map'] if 'path_map' in env.sos_dict['_runtime'] else None)
+            host = RemoteHost(env.sos_dict['_runtime']['on_host'])
             if 'to_host' in env.sos_dict['_runtime']:
                 host.send_to_host(env.sos_dict['_runtime']['to_host'])
 
@@ -645,8 +644,7 @@ class Base_Step_Executor:
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
         if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
-            host = RemoteHost(env.sos_dict['_runtime']['on_host'],
-                env.sos_dict['_runtime']['path_map'] if 'path_map' in env.sos_dict['_runtime'] else None)
+            host = RemoteHost(env.sos_dict['_runtime']['on_host'])
 
             host.send_to_host(task)
             host.execute_task(task)

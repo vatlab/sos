@@ -28,53 +28,46 @@ from collections.abc import Sequence
 
 class RemoteHost:
     '''A remote host class that manages how to communicate with remote host'''
-    def __init__(self, alias, path_map=None):
-        self.alias = alias
-        self.address = self._get_address()
+    def __init__(self, host):
+        if isinstance(host, str):
+            # read from configuration file
+            if 'hosts' in env.sos_dict['CONFIG'] and \
+                self.alias in env.sos_dict['CONFIG']['hosts']:
+                self.config = env.sos_dict['CONFIG']['hosts'][host]
+                if 'address' not in self.config:
+                    self.config['address'] = host
+            else:
+                self.config = { 'address': host }
+        elif isinstance(host, dict):
+            if 'address' not in host:
+                raise ValueError('Please define at least "address" for host specification')
+            self.config = host
+        #
+        self.address = self.config['address']
         self.shared_dirs = self._get_shared_dirs()
-        self.path_map = self._get_path_map(path_map)
+        self.path_map = self._get_path_map()
         self.send_cmd = self._get_send_cmd()
         self.receive_cmd = self._get_receive_cmd()
         self.execute_cmd = self._get_execute_cmd()
 
-    def _get_address(self):
-        if 'hosts' not in env.sos_dict['CONFIG'] or \
-            self.alias not in env.sos_dict['CONFIG']['hosts'] or \
-            'address' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
-            return self.alias
-        else:
-            return env.sos_dict['CONFIG']['hosts'][self.alias]['address']
-        
     def _get_shared_dirs(self):
-        if 'hosts' not in env.sos_dict['CONFIG'] or \
-            self.alias not in env.sos_dict['CONFIG']['hosts'] or \
-            'shared' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
-            return []
+        value = self.config.get('shared', [])
+        if isinstance(value, str):
+            return [value]
+        elif isinstance(value, Sequence):
+            return value
         else:
-            value = env.sos_dict['CONFIG']['hosts'][self.alias]['shared']
-            if isinstance(value, str):
-                return [value]
-            elif isinstance(value, Sequence):
-                return value
-            else:
-                raise ValueError('Option shared can only be a string or a list of strings')
+            raise ValueError('Option shared can only be a string or a list of strings')
 
-    def _get_path_map(self, path_map=None):
+    def _get_path_map(self):
         # use ordered map so that users can control the order
         # in which substitution happens.
         from collections import OrderedDict
         res = OrderedDict()
         # if user-specified path_map, it overrides CONFIG
-        if path_map is None:
-            # if not on_host, no conversion drive map et al
-            if 'on_host' not in env.sos_dict['_runtime']:
-                return {}
-            if 'hosts' in env.sos_dict['CONFIG'] and \
-                self.alias in env.sos_dict['CONFIG']['hosts'] and \
-                'path_map' in env.sos_dict['CONFIG']['hosts'][self.alias]:
-                path_map = env.sos_dict['CONFIG']['hosts'][self.alias]['path_map']
+        path_map = self.config.get('path_map', [])
         #
-        if path_map is None:
+        if not path_map:
             return res
         if isinstance(path_map, str):
             path_map = [path_map]
@@ -93,28 +86,16 @@ class RemoteHost:
         return res
 
     def _get_send_cmd(self):
-        if 'hosts' not in env.sos_dict['CONFIG'] or \
-            self.alias not in env.sos_dict['CONFIG']['hosts'] or \
-            'send_cmd' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
-            return '''ssh ${host} "mkdir -p ${dest!dq}"; rsync -av ${source!ae} "${host}:${dest!de}"'''
-        else:
-            return env.sos_dict['CONFIG']['hosts'][self.alias]['send_cmd']
+        return self.config.get('send_cmd', 
+            '''ssh ${host} "mkdir -p ${dest!dq}"; rsync -av ${source!ae} "${host}:${dest!de}"''')
 
     def _get_receive_cmd(self):
-        if 'hosts' not in env.sos_dict['CONFIG'] or \
-            self.alias not in env.sos_dict['CONFIG']['hosts'] or \
-            'receive_cmd' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
-            return 'mkdir -p ${dest!dq}; rsync -av ${host}:${source!ae} "${dest!de}"'
-        else:
-            return env.sos_dict['CONFIG']['hosts'][self.alias]['receive_cmd']
+        return self.config.get('receive_cmd',
+            'mkdir -p ${dest!dq}; rsync -av ${host}:${source!ae} "${dest!de}"')
 
     def _get_execute_cmd(self):
-        if 'hosts' not in env.sos_dict['CONFIG'] or \
-            self.alias not in env.sos_dict['CONFIG']['hosts'] or \
-            'execute_cmd' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
-            return '''ssh ${host} "bash --login -c '${cmd}'"'''
-        else:
-            return env.sos_dict['CONFIG']['hosts'][self.alias]['execute_cmd']
+        return self.config.get('execute_cmd',
+            '''ssh ${host} "bash --login -c '${cmd}'"''')
 
     def is_shared(self, path):
         fullpath = os.path.abspath(os.path.expanduser(path))
