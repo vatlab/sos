@@ -595,20 +595,20 @@ class Base_Step_Executor:
             # map variables
             vars = ['_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__',
                 '_local_input_{}'.format(env.sos_dict['_index']),
-                '_local_output_{}'.format(env.sos_dict['_index'])]
-            if 'map_vars' in env.sos_dict['_runtime']:
-                if isinstance(env.sos_dict['_runtime']['map_vars'], str):
-                    vars.append(env.sos_dict['_runtime']['map_vars'])
-                elif isinstance(env.sos_dict['_runtime']['map_vars'], Sequence):
-                    vars.extend(env.sos_dict['_runtime']['map_vars'])
-                elif env.sos_dict['_runtime']['map_vars'] is True:
-                    vars.extend(env.sos_dict['__signature_vars__'])
+                '_local_output_{}'.format(env.sos_dict['_index'])] + list(env.sos_dict['__signature_vars__'])
+            preserved = set()
+            if 'preserved_vars' in env.sos_dict['_runtime']:
+                if isinstance(env.sos_dict['_runtime']['preserved_vars'], str):
+                    preserved.add(env.sos_dict['_runtime']['preserved_vars'])
+                elif isinstance(env.sos_dict['_runtime']['preserved_vars'], (set, Sequence)):
+                    preserved |= set(env.sos_dict['_runtime']['preserved_vars'])
                 else:
-                    raise ValueError('Unacceptable value for runtime option map_vars: {}'.format(env.sos_dict['_runtime']['map_vars']))
-            else:
-                vars.extend(env.sos_dict['__signature_vars__'])
+                    raise ValueError('Unacceptable value for runtime option preserved_vars: {}'.format(env.sos_dict['_runtime']['preserved_vars']))
+            env.logger.debug('Translating {}'.format(vars))
             for var in vars:
-                if var in env.sos_dict:
+                if var in preserved:
+                    env.logger.debug('Value of variable {} is preserved'.format(var))
+                elif var in env.sos_dict:
                     try:
                         task_vars[var] = host.map_var(env.sos_dict[var])
                         if task_vars[var] != env.sos_dict[var]:
@@ -617,6 +617,8 @@ class Base_Step_Executor:
                             env.logger.debug('{}: {} is kept'.format(var, short_repr(env.sos_dict[var])))
                     except Exception as e:
                         env.logger.debug(e)
+                else:
+                    env.logger.debug('Variable {} not in env.'.format(var))
  
         # save task to a file
         param = TaskParams(
