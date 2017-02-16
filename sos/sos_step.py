@@ -615,7 +615,7 @@ class Base_Step_Executor:
                     try:
                         task_vars[var] = host.map_var(env.sos_dict[var])
                         if task_vars[var] != env.sos_dict[var]:
-                            env.logger.debug('{}: {} ==> {}'.format(var, short_repr(env.sos_dict[var]), short_repr(task_vars[var])))
+                            env.logger.info('On {}: ``{}`` = {}'.format(host.alias, var, short_repr(task_vars[var])))
                         else:
                             env.logger.debug('{}: {} is kept'.format(var, short_repr(env.sos_dict[var])))
                     except Exception as e:
