@@ -31,6 +31,7 @@ class RemoteHost:
     def __init__(self, host):
         if isinstance(host, str):
             # read from configuration file
+            self.alias = host
             if 'hosts' in env.sos_dict['CONFIG'] and \
                 self.alias in env.sos_dict['CONFIG']['hosts']:
                 self.config = env.sos_dict['CONFIG']['hosts'][host]
@@ -42,6 +43,7 @@ class RemoteHost:
             if 'address' not in host:
                 raise ValueError('Please define at least "address" for host specification')
             self.config = host
+            self.alias = self.config.get('alias', self.config['address'])
         #
         self.address = self.config['address']
         self.shared_dirs = self._get_shared_dirs()
