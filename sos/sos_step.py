@@ -579,13 +579,12 @@ class Base_Step_Executor:
                 raise ValueError('Unacceptable input for option prepend_path: {}'.format(env.sos_dict['_runtime']['prepend_path']))
 
         task_vars = env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                    | {'_input', '_output', '_depends', 'input', 'output',
-                        'depends', '_index', '__args__', 'step_name', '_runtime',
-                        '__workflow_sig__', '__report_output__',
-                        '_local_input_{}'.format(env.sos_dict['_index']),
-                        '_local_output_{}'.format(env.sos_dict['_index']),
-                        'CONFIG', '__signature_vars__'
-                        })
+                    | {'_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__',
+                    '_local_input_{}'.format(env.sos_dict['_index']),
+                    '_local_output_{}'.format(env.sos_dict['_index']),
+                    '_index', '__args__', 'step_name', '_runtime',  '__workflow_sig__',
+                    'CONFIG', '__signature_vars__'
+                    })
 
         if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
             host = RemoteHost(env.sos_dict['_runtime']['on_host'],
@@ -594,22 +593,30 @@ class Base_Step_Executor:
                 host.send_to_host(env.sos_dict['_runtime']['to_host'])
 
             # map variables
-            vars = ['_input', '_output', '_depends', 'input', 'output', 'depends',
-                '__report_output__', '_local_input_{}'.format(env.sos_dict['_index']),
-                     '_local_output_{}'.format(env.sos_dict['_index'])]
+            vars = ['_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__',
+                '_local_input_{}'.format(env.sos_dict['_index']),
+                '_local_output_{}'.format(env.sos_dict['_index'])]
             if 'map_vars' in env.sos_dict['_runtime']:
                 if isinstance(env.sos_dict['_runtime']['map_vars'], str):
                     vars.append(env.sos_dict['_runtime']['map_vars'])
                 elif isinstance(env.sos_dict['_runtime']['map_vars'], Sequence):
                     vars.extend(env.sos_dict['_runtime']['map_vars'])
+                elif env.sos_dict['_runtime']['map_vars'] is True:
+                    vars.extend(env.sos_dict['__signature_vars__'])
                 else:
                     raise ValueError('Unacceptable value for runtime option map_vars: {}'.format(env.sos_dict['_runtime']['map_vars']))
+            else:
+                vars.extend(env.sos_dict['__signature_vars__'])
             for var in vars:
                 if var in env.sos_dict:
                     try:
                         task_vars[var] = host.map_var(env.sos_dict[var])
+                        if task_vars[var] != env.sos_dict[var]:
+                            env.logger.debug('{}: {} ==> {}'.format(var, short_repr(env.sos_dict[var]), short_repr(task_vars[var])))
+                        else:
+                            env.logger.debug('{}: {} is kept'.format(var, short_repr(env.sos_dict[var])))
                     except Exception as e:
-                        env.logger.warning('Failed to save variable {}: {}'.format(var, e))
+                        env.logger.debug(e)
  
         # save task to a file
         param = TaskParams(
