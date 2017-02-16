@@ -361,7 +361,7 @@ def get_execute_parser(desc_only=False):
         description='''Execute a packages task''')
     if desc_only:
         return parser
-    parser.add_argument('task', help='''A task file''')
+    parser.add_argument('task', help='''ID of the task.''')
     parser.add_argument('-s', choices=['default', 'ignore', 'force', 'build', 'assert'],
         default='default', metavar='SIGMODE',
         dest='__sigmode__',
@@ -378,15 +378,62 @@ def get_execute_parser(desc_only=False):
         default=1,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
+    parser.add_argument('-q', '--query', action='store_true',
+        help='''Query the status of the task.''')
     parser.set_defaults(func=cmd_execute)
     return parser
+
+def check_task(task):
+    status_file =  os.path.join(os.path.expanduser('~'), '.sos', task + '.status')
+    res_file =  os.path.join(os.path.expanduser('~'), '.sos', task + '.res')
+    if not os.path.isfile(status_file):
+        return 'not started'
+    elif os.path.isfile(res_file):
+        return 'completed'
+    # dead?
+    import time
+    start_stamp = os.stat(status_file).st_mtime
+    # wait for 10 second and see if the status line has changed.
+    time.sleep(12)
+    end_stamp = os.stat(status_file).st_mtime
+    # the process is still alive
+    if start_stamp != end_stamp:
+        return 'running'
+    else:
+        return 'failed'
 
 def cmd_execute(args, workflow_args):
     import pickle
     from .sos_task import execute_task
-    res = execute_task(args.task, verbosity=args.verbosity, sigmode=args.__sigmode__)
-    with open(args.task + '.res', 'wb') as res_file:
-        pickle.dump(res, res_file)
+    from .monitor import summarizeExecution
+    if args.query:
+        status = check_task(args.task)
+        if args.verbosity <= 1:
+            print(status)
+        else:
+            if status in ('completed', 'running'):
+                print(summarizeExecution(args.task, status=status))
+            else:
+                print(status)
+    else:
+        status = check_task(args.task)
+        if status == 'completed':
+            if args.verbosity <= 1:
+                print(status)
+            else:
+                print(summarizeExecution(args.task, status=status))
+            sys.exit(0)
+        if status in 'running':
+            if args.verbosity <= 1:
+                print(status)
+            else:
+                print(summarizeExecution(args.task, status=status))
+            sys.exit(1)
+        #
+        res = execute_task(args.task, verbosity=args.verbosity, sigmode=args.__sigmode__)
+        res_file =  os.path.join(os.path.expanduser('~'), '.sos', args.task + '.res')
+        with open(res_file, 'wb') as res_file:
+            pickle.dump(res, res_file)
 
 #
 #

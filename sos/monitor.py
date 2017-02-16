@@ -23,24 +23,20 @@ import os
 import psutil
 import threading
 import time
-import fasteners
 from datetime import datetime
 from .utils import env
 
 class ProcessMonitor(threading.Thread):
-    def __init__(self, pid, msg='', interval=1, sig=None):
+    def __init__(self, task_id, interval=5):
         threading.Thread.__init__(self)
-        self.pid = pid
+        self.pid = os.getpid()
         self.interval = interval
-        self.proc_file = os.path.join(env.exec_dir, '.sos', '{}.proc'.format(self.pid))
-        with open(self.proc_file, 'w') as pd:
-            if msg:
-                pd.write('# {}\n'.format(msg.replace('\n', '\n# ')))
-            if sig:
-                pd.write('# step_sig: {}\n'.format(sig))
+        self.status_file = os.path.join(os.path.expanduser('~'), '.sos', task_id + '.status')
+        with open(self.status_file, 'w') as pd:
+            pd.write('#task: {}\n'.format(task_id))
             pd.write('#started at {}\n#\n'.format(datetime.now().strftime("%A, %d. %B %Y %I:%M%p")))
             pd.write('#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n')
-                 
+
     def _check(self):
         current_process = psutil.Process(self.pid)
         par_cpu = current_process.cpu_percent()
@@ -59,7 +55,7 @@ class ProcessMonitor(threading.Thread):
             try:
                 cpu, mem, nch, ch_cpu, ch_mem = self._check()
                 time.sleep(self.interval)
-                with open(self.proc_file, 'a') as pd:
+                with open(self.status_file, 'a') as pd:
                     pd.write('{}\t{:.2f}\t{}\t{}\t{}\t{}\n'.format(time.time(), cpu, mem, nch, ch_cpu, ch_mem))
             except Exception:
                 # if the process died, exit the thread
@@ -68,9 +64,9 @@ class ProcessMonitor(threading.Thread):
                 #env.logger.warning(e)
                 break
 
-def summarizeExecution(pid):
-    proc_file = os.path.join(env.exec_dir, '.sos/{}.proc'.format(pid))
-    if not os.path.isfile(proc_file):
+def summarizeExecution(task_id, status='Unknown'):
+    status_file = os.path.join(os.path.expanduser('~'), '.sos', task_id + '.status')
+    if not os.path.isfile(status_file):
         return
     peak_cpu = 0
     accu_cpu = 0
@@ -80,11 +76,8 @@ def summarizeExecution(pid):
     start_time = None
     end_time = None
     count = 0
-    sig = ''
-    with open(proc_file) as proc:
+    with open(status_file) as proc:
         for line in proc:
-            if line.startswith('# step_sig:'):
-                sig = line.strip()[12:]
             if line.startswith('#'):
                 continue
             try:
@@ -104,13 +97,23 @@ def summarizeExecution(pid):
                 peak_mem = float(m) + float(cm)
             if int(nch) > peak_nch:
                 peak_nch = int(nch)
-    if start_time is not None and end_time is not None and '__workflow_sig__' in env.sos_dict:
-        # successfully write signature, write in workflow runtime info
-        workflow_sig = env.sos_dict['__workflow_sig__']
-        with fasteners.InterProcessLock(workflow_sig + '_'):
-            with open(workflow_sig, 'a') as wf:
-                wf.write('EXE_RESOURCE\tsession={}\tnproc={}\tstart={}\tend={}\tcpu_peak={:.1f}\tcpu_avg={:.1f}\tmem_peak={:.1f}Mb\tmem_avg={:.1f}Mb\n'.format(
-                    sig, peak_nch, start_time, end_time,
-                    peak_cpu, accu_cpu/count, peak_mem/1024/1024, accu_mem/1024/1024/count))
+    second_elapsed = end_time - start_time
+    result = [
+        ('status', status),
+        ('task', task_id),
+        ('nproc', str(peak_nch)),
+        ('start', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))),
+        ('end', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))),
+        ('duration', ('' if second_elapsed < 86400 else '{} day{} '.format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else '')) + \
+                time.strftime('%H:%M:%S', time.gmtime(second_elapsed))),
+        ('cpu_peak', '{:.1f}'.format(peak_cpu)),
+        ('cpu_avg', '{:.1f}'.format(accu_cpu/count)),
+        ('mem_peak', '{:.1f}Mb'.format(peak_mem/1024/1024)),
+        ('mem_avg', '{:.1f}Mb'.format(accu_mem/1024/1024/count))
+        ]
+    max_width = [max(len(x) for x in col) for col in result]
+    return ' '.join(s.ljust(l) for s,l in zip([x[0] for x in result], max_width)) + '\n' + \
+        ' '.join(s.ljust(l) for s,l in zip([x[1] for x in result], max_width))
+
         
 

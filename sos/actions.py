@@ -44,7 +44,6 @@ from tqdm import tqdm as ProgressBar
 from .utils import env, transcribe, AbortExecution, short_repr, get_traceback
 from .sos_eval import Undetermined, interpolate
 from .target import FileTarget, fileMD5, executable, UnknownTarget, BaseTarget
-from .monitor import ProcessMonitor, summarizeExecution
 
 __all__ = ['SoS_Action', 'execute_script', 'sos_run',
     'fail_if', 'warn_if', 'stop_if',
@@ -225,7 +224,6 @@ class SoS_ExecuteScript:
                 if env.run_mode == 'interactive':
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
                     p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                    pid = p.pid
                     env.register_process(p.pid, 'Runing {}'.format(script_file))
                     out, err = p.communicate()
                     sys.stdout.write(out.decode())
@@ -235,15 +233,7 @@ class SoS_ExecuteScript:
                     sys.stderr.flush()
                 else:
                     p = subprocess.Popen(cmd, shell=True)
-                    pid = p.pid
-                    if '__step_sig__' in env.sos_dict and env.sos_dict['__step_sig__'] is not None:
-                        m = ProcessMonitor(pid, msg=self.script, sig=env.sos_dict['__step_sig__'])
-                        m.start()
-                    env.register_process(pid, 'Runing {}'.format(script_file))
                     ret = p.wait()
-                    if '__step_sig__' in env.sos_dict and env.sos_dict['__step_sig__'] is not None:
-                        summarizeExecution(pid)
-
                 if ret != 0:
                     with open(debug_script_file, 'w') as sfile:
                         sfile.write(self.script)

@@ -632,28 +632,28 @@ class Base_Step_Executor:
                 self.step.sigil
             )
         )
-        job_file = os.path.join(os.path.expanduser('~'), '.sos',
-            '{}_{}_{}.task'.format(self.step.step_name(), env.sos_dict['_index'],
-            self.step.md5))
+        task_id = '{}_{}_{}'.format(self.step.step_name(), env.sos_dict['_index'], self.step.md5)
+        job_file = os.path.join(os.path.expanduser('~'), '.sos', task_id + '.task')
         with open(job_file, 'wb') as jf:
             try:
                 pickle.dump(param, jf)
             except Exception as e:
                 env.logger.warning(e)
                 raise
-        return job_file
+        return task_id
 
 
-    def submit_task(self, task):
+    def submit_task(self, task_id):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
         if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
             host = RemoteHost(env.sos_dict['_runtime']['on_host'])
 
-            host.send_to_host(task)
-            host.execute_task(task)
+            job_file = os.path.join(os.path.expanduser('~'), '.sos', task_id + '.task')
+            host.send_to_host(job_file)
+            host.execute_task(task_id)
 
-            res_file = task + '.res'
+            res_file = os.path.join(os.path.expanduser('~'), '.sos', task_id + '.res')
             host.receive_from_host(res_file)
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
@@ -668,7 +668,7 @@ class Base_Step_Executor:
             self.proc_results.append(res)
         else:
             self.proc_results.append(
-                execute_task(task, verbosity=env.verbosity, sigmode=env.sig_mode)
+                execute_task(task_id, verbosity=env.verbosity, sigmode=env.sig_mode)
             )
 
     def wait_for_results(self):

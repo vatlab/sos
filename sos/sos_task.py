@@ -28,6 +28,7 @@ from sos.utils import env
 from sos.sos_eval import SoS_exec
 
 from .target import textMD5, RuntimeInfo
+from .monitor import ProcessMonitor
 
 class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
@@ -40,11 +41,17 @@ class TaskParams(object):
     def __repr__(self):
         return self.name
 
-def execute_task(task_file, verbosity=None, sigmode=None):
+def execute_task(task_id, verbosity=None, sigmode=None):
     '''A function that execute specified task within a local dictionary
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
     process or remotely on a different machine.'''
+    # start a monitoring file, which would be killed after the job
+    # is done (killed etc)
+    m = ProcessMonitor(task_id, interval=5)
+    m.start()
+
+    task_file = os.path.join(os.path.expanduser('~'), '.sos', task_id + '.task')
     with open(task_file, 'rb') as task:
         params = pickle.load(task)
 

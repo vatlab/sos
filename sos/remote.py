@@ -164,14 +164,14 @@ class RemoteHost:
                 except Exception as e:
                     raise  RuntimeError('Failed to copy {} from {}: {}'.format(source, self.alias, e))
 
-    def execute_task(self, task):
+    def execute_task(self, task_id):
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
                 'host': self.address,
                 'cmd': 'sos execute {} -v {} -s {}'.format(
-                    self.map_path(task)[task], env.verbosity, env.sig_mode)})
+                    task_id, env.verbosity, env.sig_mode)})
         except Exception as e:
-            raise ValueError('Failed to create remote task {}: {}'.format(task, e))
+            raise ValueError('Failed to create remote task {}: {}'.format(task_id, e))
         env.logger.info('Executing job ``{}``'.format(cmd))
         env.logger.debug(cmd)
         ret = subprocess.call(cmd, shell=True)
