@@ -31,7 +31,9 @@ class RemoteHost:
     def __init__(self, alias, path_map=None):
         self.alias = alias
         self.address = self._get_address()
+        self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map(path_map)
+        self.copy_cmd = self._get_copy_cmd()
         self.send_cmd = self._get_send_cmd()
         self.receive_cmd = self._get_receive_cmd()
         self.execute_cmd = self._get_execute_cmd()
@@ -44,6 +46,20 @@ class RemoteHost:
         else:
             return env.sos_dict['CONFIG']['hosts'][self.alias]['address']
         
+    def _get_shared_dirs(self):
+        if 'hosts' not in env.sos_dict['CONFIG'] or \
+            self.alias not in env.sos_dict['CONFIG']['hosts'] or \
+            'shared' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
+            return []
+        else:
+            value = env.sos_dict['CONFIG']['hosts'][self.alias]['shared']
+            if isinstance(value, str):
+                return [value]
+            elif isinstance(value, Sequence):
+                return value
+            else:
+                raise ValueError('Option shared can only be a string or a list of strings')
+
     def _get_path_map(self, path_map=None):
         # use ordered map so that users can control the order
         # in which substitution happens.
@@ -77,6 +93,14 @@ class RemoteHost:
             raise ValueError('Unacceptable path_mapue for configuration path_map: {}'.format(path_map))
         return res
 
+    def _get_copy_cmd(self):
+        if 'hosts' not in env.sos_dict['CONFIG'] or \
+            self.alias not in env.sos_dict['CONFIG']['hosts'] or \
+            'copy_cmd' not in env.sos_dict['CONFIG']['hosts'][self.alias]: 
+            return 'mkdir -p ${dest!dq}; rsync -av ${source!ae} "${dest!de}"'
+        else:
+            return env.sos_dict['CONFIG']['hosts'][self.alias]['copy_cmd']
+
     def _get_send_cmd(self):
         if 'hosts' not in env.sos_dict['CONFIG'] or \
             self.alias not in env.sos_dict['CONFIG']['hosts'] or \
@@ -100,6 +124,13 @@ class RemoteHost:
             return '''ssh ${host} "bash --login -c '${cmd}'"'''
         else:
             return env.sos_dict['CONFIG']['hosts'][self.alias]['execute_cmd']
+
+    def is_shared(self, path):
+        fullpath = os.path.abspath(os.path.expanduser(path))
+        for dir in self.shared_dirs:
+            if fullpath.startswith(dir):
+                return True
+        return False
 
     def map_var(self, source):
         if isinstance(source, str):
@@ -132,26 +163,50 @@ class RemoteHost:
         sending = self.map_path(items)
         for source in sorted(sending.keys()):
             dest = sending[source]
-            env.logger.info('Sending ``{}`` to {}:{}'.format(source, self.alias, dest))
-            cmd = interpolate(self.send_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
-            env.logger.debug(cmd)
-            ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-            if (ret != 0):
-                raise RuntimeError('Failed to copy {} to {}'.format(source, self.alias))
+            if self.is_shared(source):
+                source = os.path.abspath(os.path.expanduser(source))
+                if source == dest:
+                    env.logger.debug('Skip identical path {} on local host'.format(source))
+                else:
+                    env.logger.info('Copying ``{}`` to {} locally'.format(source, dest))
+                    cmd = interpolate(self.copy_cmd, '${ }', {'source': source, 'dest': dest})
+                    env.logger.debug(cmd)
+                    ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                    if (ret != 0):
+                        raise RuntimeError('Failed to copy {} locally'.format(source))
+            else: 
+                env.logger.info('Sending ``{}`` to {}:{}'.format(source, self.alias, dest))
+                cmd = interpolate(self.send_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
+                env.logger.debug(cmd)
+                ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                if (ret != 0):
+                    raise RuntimeError('Failed to copy {} to {}'.format(source, self.alias))
 
     def receive_from_host(self, items):
         receiving = {y:x for x,y in self.map_path(items).items()}
         #
         for source in sorted(receiving.keys()):
             dest = receiving[source]
-            env.logger.info('Receiving ``{}`` from {}:{}'.format(dest, self.alias, source))
-            cmd = interpolate(self.receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
-            try:
-                ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-                if (ret != 0):
-                    raise RuntimeError('Failed to copy {} from {}'.format(source, self.alias))
-            except Exception as e:
-                raise  RuntimeError('Failed to copy {} from {}: {}'.format(source, self.alias, e))
+            if self.is_shared(source):
+                dest = os.path.abspath(os.path.expanduser(dest))
+                if source == dest:
+                    env.logger.debug('Skip identical path {} on local host'.format(source))
+                else:
+                    env.logger.info('Copying ``{}`` to {} locally'.format(source, dest))
+                    cmd = interpolate(self.copy_cmd, '${ }', {'source': source, 'dest': dest})
+                    env.logger.debug(cmd)
+                    ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                    if (ret != 0):
+                        raise RuntimeError('Failed to copy {} locally'.format(source))
+            else:
+                env.logger.info('Receiving ``{}`` from {}:{}'.format(dest, self.alias, source))
+                cmd = interpolate(self.receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
+                try:
+                    ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                    if (ret != 0):
+                        raise RuntimeError('Failed to copy {} from {}'.format(source, self.alias))
+                except Exception as e:
+                    raise  RuntimeError('Failed to copy {} from {}: {}'.format(source, self.alias, e))
 
     def execute_task(self, task):
         try:
