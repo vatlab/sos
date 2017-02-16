@@ -588,6 +588,10 @@ class Base_Step_Executor:
 
         if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
             host = RemoteHost(env.sos_dict['_runtime']['on_host'])
+            if env.sos_dict['_input'] and not isinstance(env.sos_dict['_input'], Undetermined):
+                host.send_to_host(env.sos_dict['_input'])
+            if env.sos_dict['_depends'] and not isinstance(env.sos_dict['_depends'], Undetermined):
+                host.send_to_host(env.sos_dict['_depends'])
             if 'to_host' in env.sos_dict['_runtime']:
                 host.send_to_host(env.sos_dict['_runtime']['to_host'])
 
@@ -657,6 +661,8 @@ class Base_Step_Executor:
             if res['succ'] != 0:
                 env.logger.error('Remote job failed.')
             else:
+                if env.sos_dict['_output'] and not isinstance(env.sos_dict['_output'], Undetermined):
+                    host.receive_from_host(env.sos_dict['_output'])
                 if 'from_host' in env.sos_dict['_runtime']:
                     host.receive_from_host(env.sos_dict['_runtime']['from_host'])
             self.proc_results.append(res)
