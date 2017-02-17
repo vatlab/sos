@@ -361,6 +361,7 @@ class SoS_Kernel(IPythonKernel):
         self._supported_languages = None
         self._completer = None
         self._inspector = None
+        self._real_execution_count = 1
         self._execution_count = 1
         self._debug_mode = False
         self._use_panel = False
@@ -1120,7 +1121,8 @@ class SoS_Kernel(IPythonKernel):
         ret['user_expressions'] = out
         #
         if not silent and store_history:
-            self._execution_count += 1
+            self._real_execution_count += 1
+        self._execution_count = self._real_execution_count
         # make sure post_executed is triggered after the completion of all cell content
         self.shell.user_ns.update(env.sos_dict._dict)
         # trigger post processing of object and display matplotlib figures
@@ -1186,6 +1188,9 @@ class SoS_Kernel(IPythonKernel):
                 parser = self.get_frontend_parser()
                 args = parser.parse_args(options.split())
                 self.cell_idx = args.cell_idx
+                # for panel cell, we return a non-informative execution count
+                if int(self.cell_idx) < 0:
+                    self._execution_count = '-'
             except Exception as e:
                 self.warn('Invalid option "{}": {}\n'.format(options, e))
                 return {'status': 'error',

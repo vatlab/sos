@@ -428,10 +428,6 @@ define([
     var create_panel_div = function() {
         var panel_wrapper = $('<div id="panel-wrapper"/>')
             .append(
-                $('<div id="panel-header"/>')
-                .addClass("panel-header prompt input_prompt")
-                .text("In [-]"))
-            .append(
                 $("<div/>").attr("id", "panel").addClass('panel')
             )
 
@@ -600,10 +596,8 @@ define([
         cell.refresh();
         this.cell.element.hide();
 
-        // remove input and output prompt to save some space
-        var ip = this.cell.element[0].getElementsByClassName('input_prompt');
-        if (ip.length > 0)
-            ip[0].parentNode.removeChild(ip[0]);
+        // move input prompt on top of the cell
+        this.cell.element.find('div.input_prompt').css('position', 'fixed').text('In [-]');
         // move the language selection stuff to the top
         this.cell.element[0].getElementsByClassName('celltoolbar')[0].style.marginBottom = 0;
         // this would allow us to insert lable or title to the left of language dropdown
@@ -889,7 +883,7 @@ define([
                 break;
         }
         while (true) {
-            var op = cell.element[0].getElementsByClassName('prompt');
+            var op = cell.element[0].getElementsByClassName('output_prompt');
             if (op.length > 0)
                 op[0].parentNode.removeChild(op[0]);
             else
