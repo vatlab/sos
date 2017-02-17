@@ -153,7 +153,7 @@ class RemoteHost:
         for source in sorted(receiving.keys()):
             dest = receiving[source]
             if self.is_shared(dest):
-                env.logger.debug('Skip retrieving {} from shared file system'.format(dest))
+                env.logger.info('Skip retrieving ``{}`` from shared file system'.format(dest))
             else:
                 env.logger.info('Receiving ``{}`` from {}:{}'.format(dest, self.alias, source))
                 cmd = interpolate(self.receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
