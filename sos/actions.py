@@ -194,6 +194,7 @@ class SoS_ExecuteScript:
                 **kwargs)
         else:
             try:
+                p = None
                 script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=self.suffix, delete=False).name
                 with open(script_file, 'w') as sfile:
                     sfile.write(self.script)
@@ -246,7 +247,8 @@ class SoS_ExecuteScript:
                 env.logger.error('Failed to execute script: {}'.format(e))
                 raise
             finally:
-                env.deregister_process(p.pid)
+                if p:
+                    env.deregister_process(p.pid)
                 os.remove(script_file)
 
 
@@ -804,6 +806,7 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
     #
     ret = 1
     try:
+        p = None
         cmd = interpolate('pandoc {}'.format(args), '${ }', {'input': input_file, 'output': output_file})
         env.logger.trace('Running command "{}"'.format(cmd))
         if env.run_mode == 'interactive':
@@ -823,7 +826,8 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
     except Exception as e:
         env.logger.error(e)
     finally:
-        env.deregister_process(p.pid)
+        if p:
+            env.deregister_process(p.pid)
     if ret != 0:
         temp_file = os.path.join('.sos', '{}_{}.md'.format('pandoc', os.getpid()))
         shutil.copyfile(input_file, temp_file)
