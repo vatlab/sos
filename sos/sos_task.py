@@ -30,6 +30,8 @@ from sos.sos_eval import SoS_exec
 from .target import textMD5, RuntimeInfo
 from .monitor import ProcessMonitor
 
+from collections import OrderedDict
+
 class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
     task executors. This would makes the output of workers, especially
@@ -46,6 +48,7 @@ def execute_task(task_id, verbosity=None, sigmode=None):
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
     process or remotely on a different machine.'''
+    env.logger.info('Executing task {}'.format(task_id))
     # start a monitoring file, which would be killed after the job
     # is done (killed etc)
     m = ProcessMonitor(task_id, interval=5)
@@ -137,7 +140,12 @@ def execute_task(task_id, verbosity=None, sigmode=None):
         if '_runtime' in sos_dict and 'env' in sos_dict['_runtime']:
             for key, value in sos_dict['_runtime']['env'].items():
                 if 'PATH' in key and key in os.environ:
-                    os.environ[key] = value + os.pathsep + os.environ[key]
+                    new_path = OrderedDict()
+                    for p in value.split(os.pathsep):
+                        new_path[p] = 1
+                    for p in value.split(os.environ[key]):
+                        new_path[p] = 1
+                    os.environ[key] = os.pathsep.join(new_path.keys())
                 else:
                     os.environ[key] = value
 
