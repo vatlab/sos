@@ -466,6 +466,22 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Invalid signature file type {}'.format(file_type))
 
+    def save_var(self, name, var):
+        if type(var) in (int, str) or \
+            (type(var) == (tuple, list) and all(type(x) in (int, str) for x in var)) or \
+            (type(var) == dict and all(type(x) in (int, str) and type(y) in (int, str) for x,y in var.items())):
+            return '{}={!r}'.format(name, var)
+        else:
+             # for more complex type, we use pickle + base64
+             return '{}:={}'.format(name, base64.b64encode(pickle.dumps(var)))
+
+    def load_var(self, line):
+        key, value = line.split('=', 1)
+        if key.endswith(':'):
+            return key[:-1], pickle.loads(base64.b64decode(eval(value.strip())))
+        else:
+            return key, eval(value.strip())
+
     def write(self, local_input_files, local_output_files, rebuild=False):
         '''Write signature file with signature of script, input, output and dependent files.
         Because local input and output files can only be determined after the execution
@@ -534,7 +550,7 @@ class RuntimeInfo:
                 value = self.signature_vars[var]
                 if not isinstance(value, Undetermined):
                     try:
-                        md5.write('{}={}\n'.format(var, base64.b64encode(pickle.dumps(value))))
+                        md5.write(self.save_var(var, value))
                     except Exception as e:
                         env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, short_repr(value)))
             # context used to return context
@@ -544,7 +560,7 @@ class RuntimeInfo:
                 if var in env.sos_dict:
                     value = env.sos_dict[var]
                     try:
-                        md5.write('{}={}\n'.format(var, base64.b64encode(pickle.dumps(value))))
+                        md5.write(self.save_var(var, value))
                     except Exception as e:
                         env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, short_repr(value)))
             md5.write('# step process\n')
@@ -625,11 +641,10 @@ class RuntimeInfo:
                     continue
                 # for validation
                 if cur_type == 'init context':
-                    key, value = line.split('=', 1)
+                    key, value = self.load_var(line)
                     if key not in env.sos_dict:
                         return 'Variable {} not in running environment {}'.format(key)
                     try:
-                        value = pickle.loads(base64.b64decode(eval(value.strip())))
                         try:
                             if env.sos_dict[key] != value:
                                 return 'Context variable {} value mismatch: {} saved, {} current'.format(
@@ -641,9 +656,9 @@ class RuntimeInfo:
                     continue
                 # for return context
                 elif cur_type == 'end context':
-                    key, value = line.split('=', 1)
                     try:
-                        res['vars'][key] = pickle.loads(base64.b64decode(eval(value.strip())))
+                        key, value = self.load_var(line)
+                        res['vars'][key] = value
                     except Exception as e:
                         env.logger.warning('Failed to restore variable {} from signature: {}'.format(key, e))
                     continue
