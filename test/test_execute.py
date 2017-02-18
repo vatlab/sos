@@ -1995,6 +1995,7 @@ assert(len(input) == 5)
 
     def testSignatureWithVars(self):
         '''Test revaluation with variable change'''
+        self.touch(('a1.out', 'a2.out'))
         st = time.time()
         script = SoS_Script('''
 parameter: DB = {'input': ['a1.out'], 'output': ['b2.out']}

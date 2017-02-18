@@ -368,19 +368,25 @@ class FileTarget(BaseTarget):
                     return False
         return True
 
+def simple_type(var):
+    return type(var) in (int, str) or \
+    (type(var) == (tuple, list) and all(type(x) in (int, str) for x in var)) or \
+    (type(var) == dict and all(type(x) in (int, str) and type(y) in (int, str) for x,y in var.items()))
 
 class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.
     '''
     def __init__(self, step_md5, script, input_files=[], output_files=[], dependent_files = [],
-        signature_vars = []):
+        signature_vars = [], sdict=None):
         '''Runtime information for specified output files
 
         output_files:
             intended output file
 
         '''
+        if sdict is None:
+            sdict = env.sos_dict
         self.step_md5 = step_md5
         self.script = script
         # input can only be a list of files
@@ -411,10 +417,12 @@ class RuntimeInfo:
         self.local_input_files = []
         self.local_output_files = []
 
-        self.signature_vars = {x: env.sos_dict[x] if x in env.sos_dict else Undetermined() for x in signature_vars}
+        self.signature_vars = {x: sdict[x] if x in sdict else Undetermined() for x in signature_vars}
 
-        self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(
-            textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))))
+        self.sig_id = textMD5('{} {} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files,
+            ''.join('{}:{!r}'.format(x, sdict[x]) for x in signature_vars if x in sdict and simple_type(sdict[x]))))
+
+        self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(self.sig_id))
 
     def __getstate__(self):
         self.release()
@@ -467,13 +475,11 @@ class RuntimeInfo:
             raise RuntimeError('Invalid signature file type {}'.format(file_type))
 
     def save_var(self, name, var):
-        if type(var) in (int, str) or \
-            (type(var) == (tuple, list) and all(type(x) in (int, str) for x in var)) or \
-            (type(var) == dict and all(type(x) in (int, str) and type(y) in (int, str) for x,y in var.items())):
-            return '{}={!r}'.format(name, var)
+        if simple_type(var):
+            return '{}={!r}\n'.format(name, var)
         else:
              # for more complex type, we use pickle + base64
-             return '{}:={}'.format(name, base64.b64encode(pickle.dumps(var)))
+             return '{}:={}\n'.format(name, base64.b64encode(pickle.dumps(var)))
 
     def load_var(self, line):
         key, value = line.split('=', 1)
