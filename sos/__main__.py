@@ -392,8 +392,17 @@ def check_task(task):
         return 'completed'
     # dead?
     import time
+    from .utils import env
     start_stamp = os.stat(status_file).st_mtime
-    # wait for 10 second and see if the status line has changed.
+    elapsed = time.time() - start_stamp
+    if elapsed < 0:
+        env.logger.warning('{} is created in the future. Your system time might be problematic'.format(status_file))
+    # if the file is within 5 seconds
+    if elapsed < 6:
+        return 'running'
+    elif elapsed > 20:
+        return 'failed'
+    # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
     time.sleep(12)
     end_stamp = os.stat(status_file).st_mtime
     # the process is still alive
