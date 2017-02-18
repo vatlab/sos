@@ -126,8 +126,16 @@ def execute_task(task_id, verbosity=None, sigmode=None):
         return {'succ': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
 
     try:
-        # set current directory if specified
+        # go to 'cur_dir'
         orig_dir = os.getcwd()
+        if '_runtime' in sos_dict and 'cur_dir' in sos_dict['_runtime']:
+            if not os.path.isdir(os.path.expanduser(sos_dict['_runtime']['cur_dir'])):
+                try:
+                    os.makedirs(os.path.expanduser(sos_dict['_runtime']['cur_dir']))
+                except Exception as e:
+                    raise RuntimeError('Failed to create cur_dir {}'.format(sos_dict['_runtime']['cur_dir']))
+            os.chdir(os.path.expanduser(sos_dict['_runtime']['cur_dir']))
+        # go to user specified workdir
         if '_runtime' in sos_dict and 'workdir' in sos_dict['_runtime']:
             if not os.path.isdir(os.path.expanduser(sos_dict['_runtime']['workdir'])):
                 try:

@@ -560,7 +560,6 @@ class Base_Step_Executor:
 
     def prepare_task(self):
         env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
-        env.sos_dict['_runtime']['home_dir'] = os.path.expanduser('~')
         if 'workdir' in env.sos_dict['_runtime'] and not os.path.isdir(os.path.expanduser(env.sos_dict['_runtime']['workdir'])):
             try:
                 os.makedirs(os.path.expanduser(env.sos_dict['_runtime']['workdir']))
@@ -620,6 +619,10 @@ class Base_Step_Executor:
                             env.logger.debug('{}: {} is kept'.format(var, short_repr(env.sos_dict[var])))
                     except Exception as e:
                         env.logger.debug(e)
+                elif var == '_runtime':
+                    task_vars[var]['cur_dir'] = host.map_var(env.sos_dict[var]['cur_dir'])
+                    if 'workdir' in env.sos_dict[var]:
+                        task_vars[var]['workdir'] = host.map_var(env.sos_dict[var]['workdir'])
                 else:
                     env.logger.debug('Variable {} not in env.'.format(var))
  
