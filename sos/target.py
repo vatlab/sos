@@ -416,8 +416,6 @@ class RuntimeInfo:
         self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(
             textMD5('{} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files))))
 
-        self.lock()
-
     def __getstate__(self):
         self.release()
         return {'step_md5': self.step_md5,

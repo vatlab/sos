@@ -77,6 +77,7 @@ def execute_task(task_id, verbosity=None, sigmode=None):
         # if everything else is the same
         sig = RuntimeInfo(textMD5('#task\n' + ' '.join(tokens)), task,
             env.sos_dict['_input'], env.sos_dict['_output'], env.sos_dict['_depends'], env.sos_dict['__signature_vars__'])
+        sig.lock()
 
         idx = env.sos_dict['_index']
         if env.sig_mode == 'default':

@@ -930,6 +930,7 @@ class Base_Step_Executor:
                                     signatures[idx] = RuntimeInfo(self.step.md5, sg, env.sos_dict['_input'],
                                         env.sos_dict['_output'], env.sos_dict['_depends'],
                                         env.sos_dict['__signature_vars__'])
+                                    signatures[idx].lock()
                                     if env.sig_mode == 'default':
                                         matched = signatures[idx].validate()
                                         if isinstance(matched, dict):
