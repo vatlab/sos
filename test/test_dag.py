@@ -1100,5 +1100,29 @@ strict digraph "" {
         for f in ['C2.txt', 'B3.txt', 'C4.txt', 'test.dot', 'test_2.dot']:
             FileTarget(f).remove('both')
 
+    def testStepWithMultipleOutput(self):
+        '''Test addition of steps with multiple outputs. It should be added only once'''
+        script = SoS_Script('''
+[test_1: provides=['{}.txt'.format(i) for i in range(10)]]
+output: ['{}.txt'.format(i) for i in range(10)]
+run:
+  touch ${output}
+
+[test_2: provides=['{}.txt'.format(i) for i in range(10, 20)]]
+depends: ['{}.txt'.format(i) for i in range(10)]
+output: ['{}.txt'.format(i) for i in range(10, 20)]
+run:
+  touch ${output}
+
+[default]
+depends: ['{}.txt'.format(i) for i in range(10, 20)]
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={'output_dag':'test'}).initialize_dag()
+        with open('test.dot') as dot:
+            lc = len(dot.readlines())
+        self.assertTrue(lc, 6)
+
+
 if __name__ == '__main__':
     unittest.main()
