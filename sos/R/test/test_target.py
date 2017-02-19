@@ -23,6 +23,7 @@
 import unittest
 import time
 import subprocess
+import shutil
 
 from sos.sos_script import SoS_Script
 from sos.utils import env
@@ -50,6 +51,24 @@ R:
         wf = script.workflow()
         Base_Executor(wf).run()
 
+
+    def testDependsRLibrary(self):
+        '''Testing depending on R_library'''
+        # first remove xtable package
+        if not shutil.which('R'):
+            return 
+        subprocess.call('R CMD REMOVE xtable', shell=True)
+        script = SoS_Script('''
+[0]
+
+depends: R_library('xtable')
+R:
+    library('xtable')
+    ## Demonstrate data.frame
+    tli.table <- xtable(cars)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
     def testReexecution(self):
         '''Test re-execution of steps with R_library'''
