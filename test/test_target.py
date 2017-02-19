@@ -343,6 +343,106 @@ output: expand_pattern('{base}-{name}-{par}.txt'), expand_pattern('{par}.txt')
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
         self.assertEqual(env.sos_dict['_output'], ['a-20-a-20.txt', 'b-10-b-10.txt', '20.txt', '10.txt'])
 
+    def testShared(self):
+        '''Test option shared'''
+        script = SoS_Script(r"""
+parameter: res = 1
+
+[0]
+res = 2
+
+[1]
+res = 3
+""")
+        wf = script.workflow()
+        Base_Executor(wf).dryrun()
+        self.assertEqual(env.sos_dict['res'], 1)
+        #
+        script = SoS_Script(r"""
+parameter: res = 1
+
+[0: shared='res']
+res = 2
+
+[1]
+res = 3
+""")
+        wf = script.workflow()
+        Base_Executor(wf).dryrun()
+        self.assertEqual(env.sos_dict['res'], 2)
+        #
+        script = SoS_Script(r"""
+parameter: res = 1
+parameter: a = 30
+
+[0: shared='a']
+res = 2
+
+[1: shared='res']
+res = 3
+a = 5
+
+""")
+        wf = script.workflow()
+        Base_Executor(wf).dryrun()
+        self.assertEqual(env.sos_dict['res'], 3)
+        self.assertEqual(env.sos_dict['a'], 30)
+        # test multiple vars
+        script = SoS_Script(r"""
+parameter: res = 1
+parameter: a = 30
+
+[1: shared=('res', 'a')]
+res = 3
+a = 5
+
+""")
+        wf = script.workflow()
+        Base_Executor(wf).dryrun()
+        self.assertEqual(env.sos_dict['res'], 3)
+        self.assertEqual(env.sos_dict['a'], 5)
+        #
+        # test expression
+        script = SoS_Script(r"""
+parameter: res = 1
+parameter: a = 30
+
+[1: shared={'res': 'res + 6', 'c': 'a'}]
+res = 3
+a = 5
+
+""")
+        wf = script.workflow()
+        Base_Executor(wf).dryrun()
+        self.assertEqual(env.sos_dict['res'], 9)
+        self.assertEqual(env.sos_dict['c'], 5)
+        # test mixed vars and mapping
+        script = SoS_Script(r"""
+parameter: res = 1
+parameter: a = 30
+
+[1: shared=['res', {'c': 'a'}]]
+res = 3
+a = 5
+
+""")
+        wf = script.workflow()
+        Base_Executor(wf).dryrun()
+        self.assertEqual(env.sos_dict['res'], 3)
+        self.assertEqual(env.sos_dict['c'], 5)
+
+#    def testSectionOptionWorkdir(self):
+#        '''Test section option workdir'''
+#        script = SoS_Script(r"""
+#
+#[1: workdir='tmp']
+#run:
+#    touch 'a.txt'
+#""")
+#        wf = script.workflow()
+#        Base_Executor(wf).run()
+#        self.assertTrue(os.path.isfile('tmp/a.txt'))
+#        shutil.rmtree('tmp')
 
     def testFileType(self):
         '''Test input option filetype'''
@@ -1018,6 +1118,492 @@ touch ${output}
             self.assertEqual(len(out.read().split()), 15)
         shutil.rmtree('temp')
 
+    def testSignature(self):
+        self._testSignature(r"""
+import time
+[*_0]
+output: 'temp/a.txt', 'temp/b.txt'
+task:
+if run_mode == 'run':
+   time.sleep(1)
+   run('''echo "a.txt" > 'temp/a.txt' ''')
+   run('''echo "b.txt" > 'temp/b.txt' ''')
+
+[1: shared={'oa':'output'}]
+dest = ['temp/c.txt', 'temp/d.txt']
+input: group_by='single', paired_with='dest'
+output: _dest
+
+task:
+if run_mode == 'run':
+    time.sleep(0.5)
+    run(" cp ${_input} ${_dest} ")
+""")
+        #
+        env.max_jobs = 4
+        self._testSignature(r"""
+import time
+[*_0]
+output: 'temp/a.txt', 'temp/b.txt'
+
+task:
+if run_mode == 'run':
+    time.sleep(1)
+    run('''echo "a.txt" > 'temp/a.txt' ''')
+    run('''echo "b.txt" > 'temp/b.txt' ''')
+
+[1: shared={'oa':'output'}]
+dest = ['temp/c.txt', 'temp/d.txt']
+input: group_by='single', paired_with='dest'
+output: _dest
+
+task:
+if run_mode == 'run':
+   time.sleep(0.5)
+   run(" cp ${_input} ${_dest} ")
+""")
+        # script format
+        env.max_jobs = 4
+        self._testSignature(r"""
+import time
+[*_0]
+output: 'temp/a.txt', 'temp/b.txt'
+
+run:
+sleep 1
+echo "a.txt" > 'temp/a.txt'
+
+run:
+
+echo "b.txt" > 'temp/b.txt'
+
+[1: shared={'oa':'output'}]
+dest = ['temp/c.txt', 'temp/d.txt']
+input: group_by='single', paired_with='dest'
+output: _dest
+
+task:
+if run_mode == 'run':
+    time.sleep(0.5)
+run:
+cp ${_input} ${_dest}
+""")
+        # reset env mode
+        env.sig_mode = 'default'
+        shutil.rmtree('temp')
+
+    def testSignatureWithSharedVariable(self):
+        '''Test restoration of signature from variables.'''
+        FileTarget('a.txt').remove('both')
+        # shared 
+        script = SoS_Script(r"""
+import time
+[0: shared='a']
+output: 'a.txt'
+run:
+   sleep 3
+   touch a.txt
+
+a= 5
+
+[1]
+print(a)
+
+""")
+        # alias should also be recovered.
+        wf = script.workflow('default')
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 3)
+        # rerun
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 1)
+        FileTarget('a.txt').remove('both')
+
+    def testSignatureWithoutOutput(self):
+        # signature without output file
+        self._testSignature(r"""
+import time
+[*_0]
+output: []
+
+run:
+sleep 1
+[ -d temp ] || mkdir temp
+echo "a.txt" > 'temp/a.txt'
+
+run:
+
+echo "b.txt" > 'temp/b.txt'
+
+[1: shared={'oa':'output'}]
+dest = ['temp/c.txt', 'temp/d.txt']
+input: 'temp/a.txt', 'temp/b.txt', group_by='single', paired_with='dest'
+output: _dest
+
+run:
+sleep 0.5
+cp ${_input} ${_dest}
+""")
+        # reset env mode
+        env.sig_mode = 'default'
+        shutil.rmtree('temp')
+
+    def _testSignature(self, text):
+        '''Test recognizing the format of SoS script'''
+        script = SoS_Script(text)
+        for f in ['temp/a.txt', 'temp/b.txt']:
+            FileTarget(f).remove('both')
+        #
+        # only the first step
+        wf = script.workflow('default:0')
+        start = time.time()
+        env.sig_mode = 'force'
+        if env.max_jobs == 1:
+            Base_Executor(wf).run()
+        else:
+            MP_Executor(wf).run()
+        self.assertGreater(time.time() - start, 1)
+        self.assertTrue(os.path.isfile('temp/a.txt'))
+        self.assertTrue(os.path.isfile('temp/b.txt'))
+        with open('temp/a.txt') as ta:
+            self.assertTrue(ta.read(), 'a.txt')
+        with open('temp/b.txt') as tb:
+            self.assertTrue(tb.read(), 'b.txt')
+        env.sig_mode = 'assert'
+        if env.max_jobs == 1:
+            Base_Executor(wf).run()
+        else:
+            MP_Executor(wf).run()
+        #
+        wf = script.workflow()
+        start = time.time()
+        env.sig_mode = 'build'
+        if env.max_jobs == 1:
+            Base_Executor(wf).run()
+        else:
+            MP_Executor(wf).run()
+
+        self.assertLess(time.time() - start, 1.5)
+        #
+        self.assertTrue(os.path.isfile('temp/c.txt'))
+        self.assertTrue(os.path.isfile('temp/d.txt'))
+        with open('temp/c.txt') as tc:
+            self.assertTrue(tc.read(), 'a.txt')
+        with open('temp/d.txt') as td:
+            self.assertTrue(td.read(), 'b.txt')
+        self.assertEqual(env.sos_dict['oa'], ['temp/c.txt', 'temp/d.txt'])
+        #
+        # now in assert mode, the signature should be there
+        env.sig_mode = 'assert'
+        if env.max_jobs == 1:
+            Base_Executor(wf).run()
+        else:
+            MP_Executor(wf).run()
+
+        #
+        start = time.time()
+        env.sig_mode = 'default'
+        if env.max_jobs == 1:
+            Base_Executor(wf).run()
+        else:
+            MP_Executor(wf).run()
+        
+        self.assertLess(time.time() - start, 1.5)
+        #
+        # change script a little bit
+        script = SoS_Script('# comment\n' + text)
+        wf = script.workflow()
+        env.sig_mode = 'assert'
+        if env.max_jobs == 1:
+            Base_Executor(wf).run()
+        else:
+            MP_Executor(wf).run()
+
+        # add some other variable?
+        #script = SoS_Script('comment = 1\n' + text)
+        #wf = script.workflow()
+        #env.sig_mode = 'assert'
+        #self.assertRaises(ExecuteError, Base_Executor(wf).run)
+
+    def testReexecution(self):
+        '''Test -f option of sos run'''
+        script = SoS_Script('''
+import time
+
+[0]
+output: 'a.txt'
+task:
+time.sleep(3)
+run("touch ${output}")
+''')
+        wf = script.workflow()
+        try:
+            # remove existing output if exists
+            FileTarget('a.txt').remove('both')
+        except:
+            pass
+        start = time.time()
+        Base_Executor(wf).run()
+        # regularly take more than 5 seconds to execute
+        self.assertGreater(time.time() - start, 2)
+        # now, rerun should be much faster
+        start = time.time()
+        Base_Executor(wf).run()
+        # rerun takes less than 1 second
+        self.assertLess(time.time() - start, 1)
+        #
+        # force rerun mode
+        start = time.time()
+        env.sig_mode = 'ignore'
+        Base_Executor(wf).run()
+        # regularly take more than 5 seconds to execute
+        self.assertGreater(time.time() - start, 2)
+        try:
+            # remove existing output if exists
+            os.remove('a.txt')
+        except:
+            pass
+
+    def testDependsExecutable(self):
+        '''Testing target executable.'''
+        script = SoS_Script('''
+[0]
+depends: executable('ls')
+sh:
+    touch a.txt
+''')
+        wf = script.workflow()
+        FileTarget('a.txt').remove('both')
+        Base_Executor(wf).run()
+        self.assertTrue(os.path.isfile('a.txt'))
+        FileTarget('a.txt').remove('both')
+        
+    def testOutputExecutable(self):
+        '''Testing target executable.'''
+        # change $PATH so that lls can be found at the current
+        # directory.
+        os.environ['PATH'] += os.pathsep + '.'
+        script = SoS_Script('''
+[0]
+output: executable('lls')
+sh:
+    touch lls
+    sleep 3
+    chmod +x lls
+''')
+        wf = script.workflow()
+        FileTarget('lls').remove('both')
+        env.sig_mode = 'force'
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 2)
+        # test validation
+        env.sig_mode = 'default'
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 2)
+        FileTarget('lls').remove('both')
+
+    def testDependsRLibrary(self):
+        '''Testing depending on R_library'''
+        # first remove xtable package
+        if not shutil.which('R'):
+            return 
+        subprocess.call('R CMD REMOVE xtable', shell=True)
+        script = SoS_Script('''
+[0]
+
+depends: R_library('xtable')
+R:
+    library('xtable')
+    ## Demonstrate data.frame
+    tli.table <- xtable(cars)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+    def testDependsEnvVariable(self):
+        '''Testing target env_variable.'''
+        FileTarget('a.txt').remove('both')
+        script = SoS_Script('''
+[0]
+depends: env_variable('AA')
+output:  'a.txt'
+sh:
+    sleep 2
+    echo $AA > a.txt
+''')
+        wf = script.workflow()
+        os.environ['AA'] = 'A1'
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 1.5)
+        with open('a.txt') as at:
+            self.assertEqual(at.read(), 'A1\n')
+        # test validation
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 1)
+        # now if we change var, it should be rerun
+        os.environ['AA'] = 'A2'
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 1.5)
+        with open('a.txt') as at:
+            self.assertEqual(at.read(), 'A2\n')
+        FileTarget('a.txt').remove('both')
+
+    def testProvidesExecutable(self):
+        '''Testing provides executable target.'''
+        # change $PATH so that lls can be found at the current
+        # directory.
+        os.environ['PATH'] += os.pathsep + '.'
+        FileTarget('lls').remove('both')
+        script = SoS_Script('''
+[lls: provides=executable('lkls')]
+sh:
+    touch lkls
+    sleep 3
+    chmod +x lkls
+
+[c]
+depends: executable('lkls')
+
+''')
+        wf = script.workflow('c')
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 2)
+        FileTarget('lkls').remove('both')
+
+
+    def testSignatureAfterRemovalOfFiles(self):
+        '''test action shrink'''
+        if os.path.isfile('largefile.txt'):
+            os.remove('largefile.txt')
+        script = SoS_Script(r'''
+[10]
+
+# generate a file
+output: 'largefile.txt'
+
+python:
+    import time
+    time.sleep(3)
+    with open("${output}", 'w') as out:
+        for i in range(1000):
+            out.write('{}\n'.format(i))
+
+''')
+        wf = script.workflow()
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 3)
+        # rerun, because this is the final target, it has to be
+        # re-generated
+        os.remove('largefile.txt')
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 3)
+        # 
+        self.assertTrue(os.path.isfile('largefile.txt'))
+        # we discard just the signature, the step will be ignored
+        # as long as the file is not touched.
+        st = time.time()
+        FileTarget('largefile.txt').remove('signature')
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 0.5)
+        #
+        # now if we touch the file, it needs to be regenerated
+        st = time.time()
+        with open('largefile.txt', 'a') as lf:
+            lf.write('something')
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 3)
+        FileTarget('largefile.txt').remove('both')
+
+    def testSignatureWithParameter(self):
+        '''Test signature'''
+        FileTarget('myfile.txt').remove('both')
+        #
+        script = SoS_Script(r'''
+parameter: gvar = 10
+
+[10]
+# generate a file
+output: 'myfile.txt'
+# additional comment
+python:
+    import time
+    time.sleep(3)
+    with open(${output!r}, 'w') as tmp:
+        tmp.write('${gvar}')
+
+''')
+        st = time.time()
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 2.5)
+        with open('myfile.txt') as tmp:
+            self.assertEqual(tmp.read(), '10')
+        #
+        # now if we change parameter, the step should be rerun
+        st = time.time()
+        wf = script.workflow()
+        Base_Executor(wf, args=['--gvar', '20']).run()
+        with open('myfile.txt') as tmp:
+            self.assertEqual(tmp.read(), '20')
+        self.assertGreater(time.time() - st, 2.5)
+        #
+        # do it again, signature should be effective
+        st = time.time()
+        wf = script.workflow()
+        Base_Executor(wf, args=['--gvar', '20']).run()
+        with open('myfile.txt') as tmp:
+            self.assertEqual(tmp.read(), '20')
+        self.assertLess(time.time() - st, 2.5)
+
+        #
+        script = SoS_Script(r'''
+parameter: gvar = 10
+
+[10]
+# generate a file
+output: 'myfile.txt'
+# additional comment
+task:
+python:
+    import time
+    time.sleep(3)
+    with open(${output!r}, 'w') as tmp:
+        tmp.write('${gvar}')
+
+''')
+        st = time.time()
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 2.5)
+        with open('myfile.txt') as tmp:
+            self.assertEqual(tmp.read(), '10')
+        #
+        # now if we change parameter, the step should be rerun
+        st = time.time()
+        wf = script.workflow()
+        Base_Executor(wf, args=['--gvar', '20']).run()
+        with open('myfile.txt') as tmp:
+            self.assertEqual(tmp.read(), '20')
+        self.assertGreater(time.time() - st, 2.5)
+        #
+        # do it again, signature should be effective
+        st = time.time()
+        wf = script.workflow()
+        Base_Executor(wf, args=['--gvar', '20']).run()
+        with open('myfile.txt') as tmp:
+            self.assertEqual(tmp.read(), '20')
+        self.assertLess(time.time() - st, 2.5)
+        FileTarget('myfile.txt').remove('both')
 
     def testPassingVarToTask(self):
         '''Test passing used variable to tasks'''
@@ -1051,6 +1637,80 @@ python:
             FileTarget('myfile_{}.txt'.format(t)).remove('both')
 
 
+    def testLoopWiseSignature(self):
+        '''Test partial signature'''
+        for i in range(10, 12):
+            FileTarget('myfile_{}.txt'.format(i)).remove('both')
+        #
+        script = SoS_Script(r'''
+parameter: gvar = 10
+
+[10]
+tt = [gvar]
+input: for_each='tt'
+output: "myfile_${_tt}.txt"
+python:
+    import time
+    time.sleep(3)
+    print("DO ${_tt}")
+    with open(${_output!r}, 'w') as tmp:
+        tmp.write('${_tt}')
+''')
+        st = time.time()
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 2.5)
+        # now we modify the script 
+        script = SoS_Script(r'''
+parameter: gvar = 10
+
+[10]
+tt = [gvar, gvar + 1]
+input: for_each='tt'
+output: "myfile_${_tt}.txt"
+python:
+    import time
+    time.sleep(3)
+    print("DO ${_tt}")
+    with open(${_output!r}, 'w') as tmp:
+        tmp.write('${_tt}')
+''')
+        st = time.time()
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 2.5)
+        self.assertLess(time.time() - st, 5)
+        #
+        # run it again, neither needs to be rerun
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 2)
+        #
+        # change again, the second one is already there.
+        script = SoS_Script(r'''
+parameter: gvar = 10
+
+[10]
+tt = [gvar + 1]
+input: for_each='tt'
+output: "myfile_${_tt}.txt"
+python:
+    import time
+    time.sleep(3)
+    print("DO ${_tt}")
+    with open(${_output!r}, 'w') as tmp:
+        tmp.write('${_tt}')
+''')
+        st = time.time()
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 2)
+        #
+        for t in range(10, 12):
+            with open('myfile_{}.txt'.format(t)) as tmp:
+                self.assertEqual(tmp.read(), str(t))
+            FileTarget('myfile_{}.txt'.format(t)).remove('both')
+
 
     def testExecutionLock(self):
         '''Test execution lock of two processes'''
@@ -1080,6 +1740,33 @@ with open('b.txt', 'w') as txt:
         # takes less than 5 seconds
         self.assertLess(time.time() - st, 7)
         FileTarget('lock.sos').remove('both')
+
+
+    def testOutputFromSignature(self):
+        'Test restoration of output from signature'''
+        self.touch(['1.txt', '2.txt'])
+        script = SoS_Script('''
+parameter: K = [2,3]
+
+[work_1]
+input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
+output: expand_pattern('{_name}.out')
+run:
+  touch ${_output}
+
+[work_2]
+
+input: group_by = 'single', pattern = '{name}.{ext}', paired_with = ['K']
+output: expand_pattern('{_name}.{_K}.out')
+run: 
+  touch ${_output}
+    ''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        # for the second run, output should be correctly constructed
+        Base_Executor(wf).run()
+        for file in ['1.out', '2.out', '1.2.out', '2.3.out']:
+            FileTarget(file).remove('both')
 
 
     def testRemovedIntermediateFiles(self):
@@ -1129,6 +1816,67 @@ sh:
         #
         FileTarget('a.txt').remove('both')
         FileTarget('aa.txt').remove('both')
+
+    def testSharedVarInPairedWith(self):
+        self.touch(['1.txt', '2.txt'])
+        script = SoS_Script('''
+[work_1: shared = {'data': 'output'}]
+input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
+output: expand_pattern('{_name}.out')
+run:
+  touch ${_output}
+
+[work_2]
+input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}', paired_with = ['data']
+output: expand_pattern('{_name}.out2')
+run:
+  touch ${_data} ${_output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for file in ('1.out', '2.out', '1.out2', '2.out2'):
+            FileTarget(file).remove('both')
+
+    def testSharedVarInForEach(self):
+        self.touch(['1.txt', '2.txt'])
+        script = SoS_Script('''
+[work_1: shared = {'data': 'output'}]
+input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
+output: expand_pattern('{_name}.out')
+run:
+  touch ${_output}
+
+[work_2]
+input: "1.txt", "2.txt", group_by = 'single', for_each = 'data, data',  pattern = '{name}.{ext}'
+output: expand_pattern('{_name}.out2')
+run:
+  touch ${_data} ${_output}
+
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+    def testRemovedDepends(self):
+        '''Test a case where a dependent file has signature, but
+        gets removed before the next run.'''
+        script = SoS_Script('''
+[tet: provides='a.txt']
+run:
+    echo "something" > a.txt
+
+[20]
+depends: 'a.txt'
+output: 'b.txt'
+run:
+    cat b.txt > b.txt
+''')
+        wf = script.workflow()
+        # this should be ok.
+        Base_Executor(wf).run()
+        # now let us remove a.txt (but the signature is still there)
+        os.remove('a.txt')
+        os.remove('b.txt')
+        Base_Executor(wf).run()
 
     def testNestedWorkdir(self):
         '''Test nested runtime option for work directory'''
@@ -1244,6 +1992,44 @@ assert(len(input) == 5)
             else:
                 self.assertTrue(FileTarget("{}.txt".format(idx)).exists())
                 FileTarget("${idx}.txt").remove('both')
+
+    def testSignatureWithVars(self):
+        '''Test revaluation with variable change'''
+        self.touch(('a1.out', 'a2.out'))
+        st = time.time()
+        script = SoS_Script('''
+parameter: DB = {'input': ['a1.out'], 'output': ['b2.out']}
+parameter: input_file = DB['input']
+parameter: output_file =  DB['output']
+
+[2]
+input: input_file, group_by = 1 
+output: output_file[_index]
+run:
+  sleep 2
+  touch ${_output}
+  ''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 2)
+        #
+        st = time.time()
+        script = SoS_Script('''
+parameter: DB = {'input': ['a1.out', 'a2.out'], 'output': ['b2.out', 'b1.out']}
+parameter: input_file = DB['input']
+parameter: output_file =  DB['output']
+
+[2]
+input: input_file, group_by = 1
+output: output_file[_index]
+run:
+  sleep 2
+  touch ${_output}
+  ''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, 4)
+        self.assertGreater(time.time() - st, 2)
 
 if __name__ == '__main__':
     unittest.main()
