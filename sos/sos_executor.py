@@ -324,6 +324,8 @@ class Base_Executor:
 
             # for existing targets... we should check if still need to be regenerated
             for target in existing_targets:
+                if target not in dag.dangling(targets)[1]:
+                    continue
                 mo = [(x, self.match(target, x.options['provides'])) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
                 if not mo:
