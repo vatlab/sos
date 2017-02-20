@@ -277,17 +277,17 @@ define([
                 break;
             }
         }
-        var ip = cell.element[0].getElementsByClassName('input_prompt');
-        var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
-
         // cell in panel does not have prompt area
-        if (ip.length == 0) {
+        if (cell.is_panel !== undefined) {
             if (BackgroundColor[type])
                 cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = BackgroundColor[type];
             else
                 cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = '';
             return;
         }
+
+        var ip = cell.element[0].getElementsByClassName('input_prompt');
+        var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
 
         if (BackgroundColor[type]) {
             ip[0].style.backgroundColor = BackgroundColor[type];
@@ -338,10 +338,8 @@ define([
                 // we check that the slideshow namespace exist and create it if needed
                 //if (cell.metadata.kernel == undefined) {
                 cell.metadata.kernel = KernelName[value];
-                var ip = cell.element[0].getElementsByClassName('input_prompt');
-                var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
                 // cell in panel does not have prompt area
-                if (ip.length == 0) {
+                if (cell.is_panel !== undefined) {
                     if (BackgroundColor[value])
                         cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = BackgroundColor[value];
                     else
@@ -349,8 +347,8 @@ define([
                     return;
                 }
 
-                //}
-                // cell.metadata.kernel = KernelName[value];
+                var ip = cell.element[0].getElementsByClassName('input_prompt');
+                var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
                 if (BackgroundColor[value]) {
                     ip[0].style.backgroundColor = BackgroundColor[value];
                     op[0].style.backgroundColor = BackgroundColor[value];
@@ -590,6 +588,7 @@ define([
             tooltip: nb.tooltip,
         });
         cell.set_input_prompt();
+        cell.is_panel = true;
         $("#panel").append(this.cell.element);
 
         cell.render();
@@ -877,7 +876,7 @@ define([
         var cell = window.my_panel.cell;
         $('.output_area .prompt', cell.element).remove()
         $('.output_area .output_prompt', cell.element).remove()
-        $('.output_area .out_prompt_overlay', cell.element).remove()
+        $('.output_wrapper .out_prompt_overlay', cell.element).remove()
         var ops = cell.element[0].getElementsByClassName('output_subarea');
         for (var op = 0; op < ops.length; op++)
             ops[op].style.maxWidth = '100%';
