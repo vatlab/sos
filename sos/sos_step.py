@@ -199,8 +199,24 @@ def analyze_section(section, default_input=None):
         # assuming everything starts from 0 is after input
         input_statement_idx = 0
 
+    pre_statement = []
+    if not any(st[0] == ':' and st[1] == 'output' for st in section.statements[input_statement_idx:]) and \
+        'provides' in section.options:
+        # there are two cases: 
+        #
+        #  1. pattern match. provides can have only length 1 and we use default_output
+        if isinstance(section.options['provides'], str) or (isinstance(section.options['provides'], Sequence) and len(section.options['provides']) == 1):
+            if '__default_output__' in env.sos_dict:
+                pre_statement = [[':', 'output', repr(env.sos_dict['__default_output__'])]]
+            else:
+                # this should not happen, but let us see
+                pre_statement = [[':', 'output', repr([x for x in section.options['provides'] if isinstance(x, str)])]]
+        else:
+            # multiple 
+            pre_statement = [[':', 'output', repr(section.options['provides'])]]
+
     # other variables
-    for statement in section.statements[input_statement_idx:]:
+    for statement in pre_statement + section.statements[input_statement_idx:]:
         # if input is undertermined, we can only process output:
         if statement[0] == '=':
             signature_vars |= accessed_vars('='.join(statement[1:3]), section.sigil)
@@ -894,10 +910,7 @@ class Base_Step_Executor:
                     if '__default_output__' in env.sos_dict:
                         pre_statement = [[':', 'output', '_output']]
                     elif 'provides' in self.step.options:
-                        if isinstance(self.step.options['provides'], str):
-                            pre_statement = [[':', 'output', repr(self.step.options['provides'])]]
-                        else:
-                            pre_statement = [[':', 'output', repr([x for x in self.step.options['provides'] if isinstance(x, str)])]]
+                        pre_statement = [[':', 'output', repr([x for x in self.step.options['provides'] if isinstance(x, str)])]]
 
                 for statement in pre_statement + self.step.statements[input_statement_idx:]:
                     # if input is undertermined, we can only process output:
