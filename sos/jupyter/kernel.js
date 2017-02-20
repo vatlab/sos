@@ -875,20 +875,9 @@ define([
             $('.celltoolbar label').css('margin-right', 0);
         } */
         var cell = window.my_panel.cell;
-        while (true) {
-            var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
-            if (op.length > 0)
-                op[0].parentNode.removeChild(op[0]);
-            else
-                break;
-        }
-        while (true) {
-            var op = cell.element[0].getElementsByClassName('output_prompt');
-            if (op.length > 0)
-                op[0].parentNode.removeChild(op[0]);
-            else
-                break;
-        }
+        $('.output_area .prompt', cell.element).remove()
+        $('.output_area .output_prompt', cell.element).remove()
+        $('.output_area .out_prompt_overlay', cell.element).remove()
         var ops = cell.element[0].getElementsByClassName('output_subarea');
         for (var op = 0; op < ops.length; op++)
             ops[op].style.maxWidth = '100%';
