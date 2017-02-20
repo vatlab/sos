@@ -635,7 +635,10 @@ class Base_Step_Executor:
                 self.step.sigil
             )
         )
-        task_id = '{}_{}_{}'.format(self.step.step_name(), env.sos_dict['_index'], self.step.md5)
+        # temporarily create task signature to obtain sig_id
+        task_id = RuntimeInfo(self.step.md5, self.step.task, task_vars['_input'],
+                task_vars['_output'], task_vars['_depends'],
+                task_vars['__signature_vars__'], task_vars).sig_id
         job_file = os.path.join(os.path.expanduser('~'), '.sos', task_id + '.task')
         with open(job_file, 'wb') as jf:
             try:

@@ -282,8 +282,10 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
             return Base_Executor(wf, args=args, shared=shared,
                 config={'config_file': env.sos_dict['__config_file__']}).dryrun(targets=targets)
         elif env.run_mode in ('run', 'interactive'):
-            env.logger.info('Executing workflow ``{}`` with input ``{}``'
-                .format(workflow, short_repr(env.sos_dict['_input'], True)))
+            args_output = ', '.join('{}={}'.format(x, short_repr(y)) for x,y in args.items() if not x.startswith('__'))
+            env.logger.info('Executing workflow ``{}`` with input ``{}`` and {}'
+                .format(workflow, short_repr(env.sos_dict['_input'], True),
+                'no args' if not args_output else args_output))
 
             if env.__task_engine__:
                 import pkg_resources
