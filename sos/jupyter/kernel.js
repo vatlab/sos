@@ -596,7 +596,7 @@ define([
         this.cell.element.hide();
 
         // move input prompt on top of the cell
-        this.cell.element.find('div.input_prompt').css('position', 'fixed').text('In [-]');
+        this.cell.element.find('div.input_prompt').css('min-width', '0ex').css('width', '0ex').text('In [-]');
         // move the language selection stuff to the top
         this.cell.element[0].getElementsByClassName('celltoolbar')[0].style.marginBottom = 0;
         // this would allow us to insert lable or title to the left of language dropdown
