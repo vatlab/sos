@@ -139,11 +139,25 @@ def SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['*']):
                 try:
                     olddir = os.getcwd()
                     os.chdir(os.path.expanduser(kwargs['workdir']))
-                    res = func(*args, **kwargs)
+                    try:
+                        res = func(*args, **kwargs)
+                    except Exception as e:
+                        if 'allow_error' in kwargs and kwargs['allow_error']:
+                            env.logger.warning(e)
+                            res = None
+                        else:
+                            raise
                 finally:
                     os.chdir(olddir)
             else:
-                res = func(*args, **kwargs)
+                try:
+                    res = func(*args, **kwargs)
+                except Exception as e:
+                    if 'allow_error' in kwargs and kwargs['allow_error']:
+                        env.logger.warning(e)
+                        res = None
+                    else:
+                        raise
             if '__local_output__' in env.sos_dict:
                 for item in env.sos_dict['__local_output__']:
                     if isinstance(item, str):

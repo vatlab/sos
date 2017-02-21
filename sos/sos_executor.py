@@ -144,6 +144,10 @@ class Base_Executor:
             # the symbols from the main workflow. _base_symbols need to be defined though.
             self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
             self._base_symbols -= {'dynamic'}
+            if isinstance(self.args, dict):
+                for key, value in self.args.items():
+                    if not key.startswith('__'):
+                        env.sos_dict.set(key, value)
             return
 
         old_dict = env.sos_dict
@@ -211,6 +215,11 @@ class Base_Executor:
         for key in self.shared:
             if key in old_dict:
                 env.sos_dict.set(key, old_dict[key])
+
+        if isinstance(self.args, dict):
+            for key, value in self.args.items():
+                if not key.startswith('__'):
+                    env.sos_dict.set(key, value)
 
     def skip(self, section):
         if section.global_def:
