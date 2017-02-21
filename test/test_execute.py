@@ -1245,5 +1245,22 @@ assert(len(input) == 5)
                 self.assertTrue(FileTarget("{}.txt".format(idx)).exists())
                 FileTarget("${idx}.txt").remove('both')
 
+    def testAllowError(self):
+        '''Test option allow error'''
+        FileTarget('a.txt').remove('all')
+        script = SoS_Script('''
+[test]
+sh:  allow_error=True
+    something_wrong
+
+sh:
+    touch a.txt
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertTrue(FileTarget('a.txt').exists())
+        FileTarget('a.txt').remove('all')
+
+
 if __name__ == '__main__':
     unittest.main()
