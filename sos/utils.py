@@ -863,7 +863,7 @@ def sos_handle_parameter_(key, defvalue):
     # Argparse would produce cut_off for both definition of --cut-off and --cut_off, however
     # you can only use the matching input...
 
-    if isinstance(defvalue, type):
+    if isinstance(defvalue, type) or defvalue is None:
         if defvalue == bool:
             feature_parser = parser.add_mutually_exclusive_group(required=True)
             feature_parser.add_argument('--{}'.format(key), dest=key, action='store_true')
@@ -872,6 +872,8 @@ def sos_handle_parameter_(key, defvalue):
                 feature_parser.add_argument('--{}'.format(key.replace('_', '-')), dest=key, action='store_true')
                 feature_parser.add_argument('--no-{}'.format(key.replace('_', '-')), dest=key, action='store_false')
         else:
+            if defvalue is None:
+                defvalue = str
             # if only a type is specified, it is a required document of required type
             if '_' in key:
                 feature_parser = parser.add_mutually_exclusive_group(required=True)
