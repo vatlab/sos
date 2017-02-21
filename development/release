@@ -102,6 +102,17 @@ run: workdir='../docs/doc/examples'
 	cp ${_input!a} .
 	sos convert ${_input!b} ${_output!b} --raw ${_input!b}
 
+[convert-large-examples]
+input:  '../docs/src/examples/*/*.sos', group_by=1
+output: "../docs/doc/examples/${_input!db}/${_input!bn}.html"
+
+run: workdir='../docs/doc/examples'
+	[ -d ${_input!db} ] || mkdir ${_input!db}
+	cp ${_input!a} ${_input!db}
+	cp ${_input!da}/README.md ${_input!db}
+	cd ${_input!db}
+	sos convert ${_input!b} ${_output!b} --raw ${_input!b}
+
 [update-website]
 
 # convert ipynb to HTML
@@ -110,6 +121,7 @@ sos_run('convert-documentation')
 sos_run('convert-tutorials')
 sos_run('convert-homepage')
 sos_run('convert-examples')
+sos_run('convert-large-examples')
 
 # push changes to website
 parameter: msg = "Update website"
