@@ -57,12 +57,12 @@ class R_library(BaseTarget):
             options(warn=-1)
             package_repo <- ${name!r}
             package <- basename(package_repo)
-            if (require(package, character.only=TRUE, quietly=TRUE)) {
+            if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {
                 write(paste(package, packageVersion(package), "AVAILABLE"), file="${output_file}")
             } else {
                 devtools::install_github(package_repo)
                 # if it still does not exist, write the package name to output
-                if (require(package, character.only=TRUE, quietly=TRUE)) {
+                if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {
                     write(paste(package, packageVersion(package), "INSTALLED"), file="${output_file}")
                 } else {
                     write(paste(package, "NA", "MISSING"), file="${output_file}")
@@ -76,18 +76,18 @@ class R_library(BaseTarget):
             install_script = interpolate('''
             options(warn=-1)
             package <- ${name!r}
-            if (require(package, character.only=TRUE, quietly=TRUE)) {
+            if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {
                 write(paste(package, packageVersion(package), "AVAILABLE"), file="${output_file}")
             } else {
                 install.packages(package, repos="${repos}",
                     quiet=FALSE)
                 # if the package still does not exist
-                if (!require(package, character.only=TRUE, quietly=TRUE)) {
+                if (!suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {
                     source("http://bioconductor.org/biocLite.R")
                     biocLite(package, suppressUpdates=TRUE, suppressAutoUpdate=TRUE, ask=FALSE)
                 }
                 # if it still does not exist, write the package name to output
-                if (require(package, character.only=TRUE, quietly=TRUE)) {
+                if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {
                     write(paste(package, packageVersion(package), "INSTALLED"), file="${output_file}")
                 } else {
                     write(paste(package, "NA", "MISSING"), file="${output_file}")
