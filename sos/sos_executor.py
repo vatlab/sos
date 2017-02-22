@@ -136,6 +136,7 @@ class Base_Executor:
         return textMD5(self.sig_content)[:16]
 
     def reset_dict(self):
+
         # if creating a new dictionary, set it up with some basic varibles
         # and functions
         if self.shared == '*':
@@ -144,6 +145,8 @@ class Base_Executor:
             # the symbols from the main workflow. _base_symbols need to be defined though.
             self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
             self._base_symbols -= {'dynamic'}
+            # no step has been executed...
+            env.sos_dict.set('__completed__', [])
             if isinstance(self.args, dict):
                 for key, value in self.args.items():
                     if not key.startswith('__'):
@@ -153,6 +156,8 @@ class Base_Executor:
         old_dict = env.sos_dict
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
+        # no step has been executed...
+        env.sos_dict.set('__completed__', [])
 
         # inject a few things
         if self.md5:
@@ -610,9 +615,11 @@ class Base_Executor:
                 exec_error.append(runnable._node_id, res)
                 prog.update(1)
             else:#
+                # successful  execution of step
                 for k, v in res.items():
                     env.sos_dict.set(k, v)
                 #
+                env.sos_dict['__completed__'].append(res['__step_name__'])
                 # set context to the next logic step.
                 for edge in dag.out_edges(runnable):
                     node = edge[1]
@@ -762,6 +769,7 @@ class MP_Executor(Base_Executor):
                     for k, v in res.items():
                         env.sos_dict.set(k, v)
                     #
+                    env.sos_dict['__completed__'].append(res['__step_name__'])
                     # set context to the next logic step.
                     for edge in dag.out_edges(runnable):
                         node = edge[1]
