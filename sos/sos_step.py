@@ -921,7 +921,7 @@ class Base_Step_Executor:
                                 if not isinstance(g, (type(None), Undetermined)) and not isinstance(ofiles, (type(None), Undetermined)):
                                     if any(x in g for x in ofiles):
                                         raise RuntimeError('Overlapping input and output files: {}'
-                                            .format(', '.join(x for x in ofiles if x in g)))
+                                            .format(', '.join(repr(x) for x in ofiles if x in g)))
                                 # set variable _output and output
                                 self.process_output_args(ofiles, **kwargs)
                                 self.output_groups[idx] = env.sos_dict['_output']
