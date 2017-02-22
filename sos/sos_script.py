@@ -386,10 +386,10 @@ class SoS_Workflow:
         #
         for section in sections:
             for name, index, alias in section.names:
-                if 'provides' in section.options or 'shared' in section.options:
-                    self.auxiliary_sections.append(section)
-                    self.auxiliary_sections[-1].name = section.names[0][0]
-                    self.auxiliary_sections[-1].uuid = uuid4()
+                #if 'provides' in section.options or 'shared' in section.options:
+                self.auxiliary_sections.append(section)
+                self.auxiliary_sections[-1].name = section.names[0][0]
+                self.auxiliary_sections[-1].uuid = uuid4()
                 # an auxiliary step can also serve as a regular step
                 # as long as it matches workflow name.
                 if fnmatch.fnmatch(workflow_name, name):
@@ -1151,19 +1151,19 @@ for __n, __v in {}.items():
             raise ValueError('Workflow {} is undefined. Available workflows are: {}'.format(wf_name,
                 ', '.join(self.workflows)))
         # do not send extra parameters of ...
-        sections = []
-        for section in self.sections:
-            # skip, skip=True, skip=1 etc are all allowed.
-            if 'provides' in section.options or 'shared' in section.options:
-                # section global is shared by all workflows
-                sections.append(section)
-                continue
-            for name, index, _ in section.names:
-                # exact match or filename like match if name contains * etc
-                if fnmatch.fnmatch(wf_name, name):
-                    sections.append(section)
-                    break
-        return SoS_Workflow(self.content, wf_name, allowed_steps, sections, self.global_def)
+        #sections = []
+        #for section in self.sections:
+        #    # skip, skip=True, skip=1 etc are all allowed.
+        #    if 'provides' in section.options or 'shared' in section.options:
+        #        # section global is shared by all workflows
+        #        sections.append(section)
+        #        continue
+        #    for name, index, _ in section.names:
+        #        # exact match or filename like match if name contains * etc
+        #        if fnmatch.fnmatch(wf_name, name):
+        #            sections.append(section)
+        #            break
+        return SoS_Workflow(self.content, wf_name, allowed_steps, self.sections, self.global_def)
 
     def print_help(self):
         '''print a help message from the script'''
