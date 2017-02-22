@@ -320,6 +320,14 @@ class RuntimeEnvironments(object):
         self.running_jobs = 0
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
+        #
+        if not os.path.isdir(os.path.join(os.path.expanduser('~'), '.sos', 'tasks')):
+            with fasteners.InterProcessLock('/tmp/sos_runtime_lock'):
+                # the directory might haver been created during waiting
+                if not os.path.isdir(os.path.join(os.path.expanduser('~'), '.sos', 'tasks')):
+                    os.makedirs(os.path.join(os.path.expanduser('~'), '.sos', 'tasks'))
+                if not os.path.isdir(os.path.join(os.path.expanduser('~'), '.sos', '.runtime')):
+                    os.makedirs(os.path.join(os.path.expanduser('~'), '.sos', '.runtime'))
 
     def register_process(self, pid, msg=''):
         '''Register a process used by this SoS instance. It will also be
@@ -388,7 +396,6 @@ class RuntimeEnvironments(object):
             ch.setLevel(logging.DEBUG)
             ch.setFormatter(logging.Formatter('%(asctime)s: %(levelname)s: %(message)s'))
             self._logger.addHandler(ch)
-    #
     #
     # attribute exec_dir
     def _assure_runtime_dir(self, dir):

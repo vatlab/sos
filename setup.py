@@ -167,6 +167,7 @@ executable = sos.target:executable
 sos_variable = sos.target:sos_variable
 sos_step = sos.target:sos_step
 env_variable = sos.target:env_variable
+bundle = sos.target:bundle
 R_library = sos.R.target:R_library
 Py_Module = sos.Python3.target:Py_Module
 

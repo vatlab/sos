@@ -384,8 +384,8 @@ def get_execute_parser(desc_only=False):
     return parser
 
 def check_task(task):
-    status_file =  os.path.join(os.path.expanduser('~'), '.sos', task + '.status')
-    res_file =  os.path.join(os.path.expanduser('~'), '.sos', task + '.res')
+    status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
+    res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
     if not os.path.isfile(status_file):
         return 'not started'
     elif os.path.isfile(res_file):
@@ -398,9 +398,9 @@ def check_task(task):
     if elapsed < 0:
         env.logger.warning('{} is created in the future. Your system time might be problematic'.format(status_file))
     # if the file is within 5 seconds
-    if elapsed < 6:
+    if elapsed < 12:
         return 'running'
-    elif elapsed > 20:
+    elif elapsed > 22:
         return 'failed'
     # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
     time.sleep(12)
