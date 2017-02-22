@@ -245,6 +245,8 @@ class Base_Executor:
         # for sos_step, we need to match step name
         if isinstance(target, sos_step):
             return step.match(target.name())
+        if not 'provides' in step.options:
+            return False
         patterns = step.options['provides']
         if isinstance(patterns, (str, BaseTarget)):
             patterns = [patterns]
