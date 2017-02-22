@@ -191,7 +191,7 @@ class sos_step(BaseTarget):
     def exists(self, mode='any'):
         # the target exists only if it has been executed?
         # which is indicated by a variable
-        return '__completed__' in env.sos_dict and self._step_name in env.sos_dict
+        return '__completed__' in env.sos_dict and self._step_name in env.sos_dict['__completed__']
 
     def name(self):
         return self._step_name

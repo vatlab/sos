@@ -112,6 +112,13 @@ class SoS_Step:
                     ('_{}'.format(self.index) if isinstance(self.index, int) else '') + \
                     (' ({})'.format(self.alias) if alias and self.alias else '')
 
+    def match(self, step_name):
+        # if this step provides name...
+        for name, index, _ in self.names:
+            if step_name == name or step_name == '{}_{}'.format(name, index):
+                return True
+        return False
+
     def indented_script(self):
         ''' check self._script and see if it is indented '''
         # get all leading space, tab and newline

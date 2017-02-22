@@ -256,8 +256,9 @@ def analyze_section(section, default_input=None):
         'step_depends': step_depends,
         'step_local_input': step_local_input,
         'step_local_output': step_local_output,
-        'environ_vars': environ_vars - local_vars,
-        'signature_vars': signature_vars,
+        # variables starting with __ are internals...
+        'environ_vars': {x for x in environ_vars - local_vars if not x.startswith('__')},
+        'signature_vars': {x for x in signature_vars if not x.startswith('__')},
         'changed_vars': changed_vars
         }
 
