@@ -247,7 +247,9 @@ class SoS_ExecuteScript:
                     sys.stdout.flush()
                     sys.stderr.flush()
                 else:
-                    p = subprocess.Popen(cmd, shell=True)
+                    p = subprocess.Popen(cmd, shell=True,
+                                         stderr=subprocess.PIPE if env.verbosity > 1 else subprocess.DEVNULL,
+                                         stdout=subprocess.PIPE if env.verbosity > 1 else subprocess.DEVNULL)
                     ret = p.wait()
                 if ret != 0:
                     with open(debug_script_file, 'w') as sfile:
