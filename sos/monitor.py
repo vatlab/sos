@@ -27,11 +27,11 @@ from datetime import datetime
 from .utils import env
 
 class ProcessMonitor(threading.Thread):
-    def __init__(self, task_id, interval=5):
+    def __init__(self, task_id, interval=10):
         threading.Thread.__init__(self)
         self.pid = os.getpid()
         self.interval = interval
-        self.status_file = os.path.join(os.path.expanduser('~'), '.sos', task_id + '.status')
+        self.status_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.status')
         with open(self.status_file, 'w') as pd:
             pd.write('#task: {}\n'.format(task_id))
             pd.write('#started at {}\n#\n'.format(datetime.now().strftime("%A, %d. %B %Y %I:%M%p")))
@@ -65,7 +65,7 @@ class ProcessMonitor(threading.Thread):
                 break
 
 def summarizeExecution(task_id, status='Unknown'):
-    status_file = os.path.join(os.path.expanduser('~'), '.sos', task_id + '.status')
+    status_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.status')
     if not os.path.isfile(status_file):
         return
     peak_cpu = 0

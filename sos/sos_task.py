@@ -54,7 +54,7 @@ def execute_task(task_id, verbosity=None, sigmode=None):
     m = ProcessMonitor(task_id, interval=5)
     m.start()
 
-    task_file = os.path.join(os.path.expanduser('~'), '.sos', task_id + '.task')
+    task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
     with open(task_file, 'rb') as task:
         params = pickle.load(task)
 
