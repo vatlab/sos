@@ -319,9 +319,9 @@ run:
     def testSoSStep(self):
         '''Test target sos_step'''
         for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
-            FileTarget(file).remove('all')
+            FileTarget(file).remove('both')
         script = SoS_Script('''
-[t1: provides='t1.txt']
+[t1]
 run:
     touch t1.txt
 
@@ -348,8 +348,8 @@ run:
         # this should be ok.
         Base_Executor(wf).run()
         for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
-            self.assertTrue(FileTarget(file).exists())
-            FileTarget(file).remove('all')
+            self.assertTrue(FileTarget(file).exists(), file + ' should exist')
+            FileTarget(file).remove('both')
 
 
 if __name__ == '__main__':
