@@ -660,11 +660,11 @@ class Base_Step_Executor:
         if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
             host = RemoteHost(env.sos_dict['_runtime']['on_host'])
 
-            job_file = os.path.join(os.path.expanduser('~'), '.sos', task_id + '.task')
+            job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
             host.send_to_host(job_file)
             host.execute_task(task_id)
 
-            res_file = os.path.join(os.path.expanduser('~'), '.sos', task_id + '.res')
+            res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
             host.receive_from_host(res_file)
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)

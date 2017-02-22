@@ -30,7 +30,7 @@ import pickle
 import base64
 from collections import Iterable
 
-from .utils import env, Error, short_repr
+from .utils import env, Error, short_repr, stable_repr
 from .sos_eval import Undetermined
 
 __all__ = ['dynamic', 'executable', 'env_variable', 'sos_variable']
@@ -466,8 +466,9 @@ class RuntimeInfo:
 
         self.signature_vars = {x: sdict[x] if x in sdict else Undetermined() for x in signature_vars}
 
+        sig_vars = sorted([x for x in signature_vars if x in sdict and simple_type(sdict[x])])
         self.sig_id = textMD5('{} {} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files,
-            ''.join('{}:{!r}'.format(x, sdict[x]) for x in signature_vars if x in sdict and simple_type(sdict[x]))))
+            '\n'.join('{}:{}'.format(x, stable_repr(sdict[x])) for x in sig_vars)))
 
         self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(self.sig_id))
 
@@ -523,7 +524,7 @@ class RuntimeInfo:
 
     def save_var(self, name, var):
         if simple_type(var):
-            return '{}={!r}\n'.format(name, var)
+            return '{}={}\n'.format(name, stable_repr(var))
         else:
              # for more complex type, we use pickle + base64
              return '{}:={}\n'.format(name, base64.b64encode(pickle.dumps(var)))
