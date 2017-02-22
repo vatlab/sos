@@ -31,7 +31,7 @@ from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
 import subprocess
 
-class TestExecute(unittest.TestCase):
+class TestTarget(unittest.TestCase):
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
@@ -315,6 +315,41 @@ run:
         os.remove('a.txt')
         os.remove('b.txt')
         Base_Executor(wf).run()
+
+    def testSoSStep(self):
+        '''Test target sos_step'''
+        for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
+            FileTarget(file).remove('both')
+        script = SoS_Script('''
+[t1]
+run:
+    touch t1.txt
+
+[t2: provides='t2.txt']
+depends: sos_step('t1')
+run:
+    touch t2.txt
+
+[5]
+run:
+    touch 5.txt
+
+[10]
+depends: sos_step('t2')
+run:
+    touch 10.txt
+
+[20]
+depends: sos_step('t1')
+run:
+    touch 20.txt
+''')
+        wf = script.workflow()
+        # this should be ok.
+        Base_Executor(wf).run()
+        for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:
+            self.assertTrue(FileTarget(file).exists(), file + ' should exist')
+            FileTarget(file).remove('both')
 
 
 if __name__ == '__main__':

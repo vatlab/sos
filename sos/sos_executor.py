@@ -38,7 +38,7 @@ from .utils import env, Error, WorkflowDict, get_traceback, frozendict, dict_mer
 from .sos_eval import SoS_exec, get_default_global_sigil
 from .sos_syntax import SOS_KEYWORDS
 from .dag import SoS_DAG
-from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5
+from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step
 from .pattern import extract_pattern
 
 __all__ = []
@@ -136,6 +136,7 @@ class Base_Executor:
         return textMD5(self.sig_content)[:16]
 
     def reset_dict(self):
+
         # if creating a new dictionary, set it up with some basic varibles
         # and functions
         if self.shared == '*':
@@ -240,7 +241,13 @@ class Base_Executor:
                 raise RuntimeError('The value of section option skip can only be None, True or False, {} provided'.format(val_skip))
         return False
 
-    def match(self, target, patterns):
+    def match(self, target, step):
+        # for sos_step, we need to match step name
+        if isinstance(target, sos_step):
+            return step.match(target.name())
+        if not 'provides' in step.options:
+            return False
+        patterns = step.options['provides']
         if isinstance(patterns, (str, BaseTarget)):
             patterns = [patterns]
         elif not isinstance(patterns, Sequence):
@@ -277,7 +284,7 @@ class Base_Executor:
                 # target might no longer be dangling after a section is added.
                 if target not in dag.dangling(targets)[0]:
                     continue
-                mo = [(x, self.match(target, x.options['provides'])) for x in self.workflow.auxiliary_sections]
+                mo = [(x, self.match(target, x)) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
                 if not mo:
                     for x in self.workflow.auxiliary_sections:
@@ -301,7 +308,7 @@ class Base_Executor:
                 # from patten), we should specify all output as output of step. Otherwise the
                 # step will be created for multiple outputs. issue #243
                 if mo[0][1]:
-                    env.sos_dict['__default_output__'] = [target]
+                    env.sos_dict['__default_output__'] = [] if isinstance(target, sos_step) else [target]
                 elif isinstance(section.options['provides'], Sequence):
                     env.sos_dict['__default_output__'] = section.options['provides']
                 else:
@@ -335,7 +342,7 @@ class Base_Executor:
             for target in existing_targets:
                 if target not in dag.dangling(targets)[1]:
                     continue
-                mo = [(x, self.match(target, x.options['provides'])) for x in self.workflow.auxiliary_sections]
+                mo = [(x, self.match(target, x)) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
                 if not mo:
                     # this is ok, this is just an existing target, no one is designed to 
@@ -610,6 +617,7 @@ class Base_Executor:
                 exec_error.append(runnable._node_id, res)
                 prog.update(1)
             else:#
+                # successful  execution of step
                 for k, v in res.items():
                     env.sos_dict.set(k, v)
                 #
@@ -622,6 +630,7 @@ class Base_Executor:
                         node._context.update(env.sos_dict.clone_selected_vars(
                             node._context['__signature_vars__'] | node._context['__environ_vars__'] \
                             | {'_input', '__step_output__', '__default_output__', '__args__'}))
+                    node._context['__completed__'].append(res['__step_name__'])
                 # update node itself
                 dag.update_step(runnable, env.sos_dict['__step_input__'],
                     env.sos_dict['__step_output__'],
@@ -771,6 +780,7 @@ class MP_Executor(Base_Executor):
                             node._context.update(env.sos_dict.clone_selected_vars(
                                 node._context['__signature_vars__'] | node._context['__environ_vars__'] \
                                 | {'_input', '__step_output__', '__default_output__', '__args__'}))
+                        node._context['__completed__'].append(res['__step_name__'])
                     dag.update_step(runnable, env.sos_dict['__step_input__'],
                         env.sos_dict['__step_output__'],
                         env.sos_dict['__step_depends__'],

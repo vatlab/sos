@@ -256,8 +256,9 @@ def analyze_section(section, default_input=None):
         'step_depends': step_depends,
         'step_local_input': step_local_input,
         'step_local_output': step_local_output,
-        'environ_vars': environ_vars - local_vars,
-        'signature_vars': signature_vars,
+        # variables starting with __ are internals...
+        'environ_vars': {x for x in environ_vars - local_vars if not x.startswith('__')},
+        'signature_vars': {x for x in signature_vars if not x.startswith('__')},
         'changed_vars': changed_vars
         }
 
@@ -921,7 +922,7 @@ class Base_Step_Executor:
                                 if not isinstance(g, (type(None), Undetermined)) and not isinstance(ofiles, (type(None), Undetermined)):
                                     if any(x in g for x in ofiles):
                                         raise RuntimeError('Overlapping input and output files: {}'
-                                            .format(', '.join(x for x in ofiles if x in g)))
+                                            .format(', '.join(repr(x) for x in ofiles if x in g)))
                                 # set variable _output and output
                                 self.process_output_args(ofiles, **kwargs)
                                 self.output_groups[idx] = env.sos_dict['_output']

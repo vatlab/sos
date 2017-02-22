@@ -29,7 +29,7 @@ import fasteners
 
 from .utils import env, ActivityNotifier, short_repr
 from .sos_eval import Undetermined
-from .target import FileTarget, sos_variable, textMD5
+from .target import FileTarget, sos_variable, textMD5, sos_step
 
 
 #
@@ -106,6 +106,8 @@ class SoS_Node(object):
         #env.logger.error('Note {}: Input: {} Depends: {} Output: {}'.format(self._node_id, self._input_targets,
         #      self._depends_targets,  self._output_targets))
         self._context = copy.deepcopy(context)
+        if '__completed__' not in self._context:
+            self._context['__completed__'] = []
         self._status = None
         # unique ID to avoid add duplicate nodes ...
         self._node_uuid = textMD5(pickle.dumps((step_uuid, node_name, node_index,
@@ -136,6 +138,9 @@ class SoS_DAG(nx.DiGraph):
             output_targets, local_input_targets, local_output_targets, context)
         if node._node_uuid in [x._node_uuid for x in self.nodes()]:
             return
+        # adding a step would add a sos_step target to met the depends on sos_step
+        # requirement of some steps.
+        self._all_output_files[sos_step(node_name.split(' ')[0])].append(node)
         if not isinstance(input_targets, (type(None), Undetermined)):
             for x in input_targets:
                 self._all_dependent_files[x].append(node)

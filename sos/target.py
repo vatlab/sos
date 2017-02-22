@@ -183,6 +183,26 @@ class env_variable(BaseTarget):
     def signature(self, mode='any'):
         return textMD5(repr(os.environ[self._var]))
 
+class sos_step(BaseTarget):
+    '''A target for a step of sos.'''
+    def __init__(self, step_name):
+        super(sos_step, self).__init__()
+        self._step_name = step_name
+
+    def exists(self, mode='any'):
+        # the target exists only if it has been executed?
+        # which is indicated by a variable
+        return '__completed__' in env.sos_dict and self._step_name in env.sos_dict['__completed__']
+
+    def name(self):
+        return self._step_name
+
+    def signature(self, mode='any'):
+        return textMD5('sos_step({})'.format(self._step_name))
+
+    def write_sig(self):
+        pass
+
 class dynamic(BaseTarget):
     '''A dynamic executable that only handles input files when
     it is available. This target is handled directly with its `resolve`
