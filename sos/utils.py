@@ -315,6 +315,7 @@ class RuntimeEnvironments(object):
         # parameters of the workflow, which will be handled differently
         self.parameter_vars = set()
         #
+        self.__queue__ = None
         # maximum number of concurrent jobs
         self.max_jobs = 1
         self.running_jobs = 0
