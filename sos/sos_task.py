@@ -52,7 +52,7 @@ def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5,
     env.logger.info('Executing task {}'.format(task_id))
     # start a monitoring file, which would be killed after the job
     # is done (killed etc)
-    m = ProcessMonitor(task_id, interval=monitor_interval,
+    m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
         resource_monitor_interval=resource_monitor_interval)
     m.start()
 
