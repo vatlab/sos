@@ -103,6 +103,7 @@ class SoS_String:
         self.error_count = 0
         self.local_dict = local_dict
         self.my_eval = eval
+        self.last_text = None
         if trace_vars:
             self.accessed_vars = set()
 
@@ -126,6 +127,15 @@ class SoS_String:
             if self.l not in text:
                 return text
         #
+        # in a very rare case where there are multiple errors in the text
+        # interpolate might go into a dead loop
+        if self.last_text is None:
+            self.last_text = text
+        elif self.last_text == text:
+            raise InterpolationError('Failed to interpolate {}'.format(short_repr(text)))
+        else:
+            self.last_text = text
+        #
         # split by left sigil
         #
         # '${a} part1 ${ expr2 ${ nested }} and another ${expr2 {}} and done'
@@ -147,7 +157,14 @@ class SoS_String:
                 self.accessed_vars |= accessed_vars(pieces[i], '${ }')
                 pieces[i] = ''
             else:
-                pieces[i] = self._repr(eval(pieces[i], env.sos_dict._dict, self.local_dict))
+                mo = FORMAT_SPECIFIER.match(pieces[i])
+                if mo:
+                    expr, fmt, conversion = mo.group('expr', 'format_spec', 'conversion')
+                else:
+                    expr = pieces[i]
+                    fmt = None
+                    conversion = None
+                pieces[i] = self._repr(eval(expr, env.sos_dict._dict, self.local_dict), fmt, conversion)
         return ''.join(pieces)
 
     def _interpolate(self, text, start_nested=0):

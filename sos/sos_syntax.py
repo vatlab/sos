@@ -386,9 +386,27 @@ _SIMPLE_SUB_TMPL = r'''
     \\                                  # a back slash
     )
     \$\{                                # left sigil
-    (                                   # capture variable name
+    (?P<variable>                       # capture variable name
     [_a-zA-Z]\w*                        # alpha numeric with no leading numeric
+    (?:\[                               # optional []
+    [\d:-]+                             # index
+    \]
+    )?
+    (?:!\s*                             # conversion starting with !
+    [srqabdenu,]+                       # conversion, q, a, b, n, e, u, and , are added by SoS
+    )?
+    (?::\s*                             # format_spec starting with :
+    (?:.?[<>=^])?                       # optional fill|align
+    (?:[-+ ])?                          # optional sign
+    \#?                                 #
+    0?                                  #
+    (?:\d+)?                            # optional width
+    ,?                                  # optional ,
+    (?:\.\d+)?                          # optional precision
+    (?:[bcdeEfFgGnosxX%])?              # optional type
+    )?                                  # optional format_spec
     )
+    \s*                                 # end of tring
     \}                                  # right sigil
     '''
 
