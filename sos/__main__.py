@@ -442,7 +442,7 @@ def cmd_execute(args, workflow_args):
             sys.exit(1)
         #
         res = execute_task(args.task, verbosity=args.verbosity, sigmode=args.__sigmode__, monitor_interval=monitor_interval)
-        res_file =  os.path.join(os.path.expanduser('~'), '.sos', args.task + '.res')
+        res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', args.task + '.res')
         with open(res_file, 'wb') as res_file:
             pickle.dump(res, res_file)
 
