@@ -31,6 +31,7 @@ class ProcessMonitor(threading.Thread):
         threading.Thread.__init__(self)
         self.pid = os.getpid()
         self.interval = interval
+        self.daemon = True
         self.status_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.status')
         with open(self.status_file, 'w') as pd:
             pd.write('#task: {}\n'.format(task_id))

@@ -164,7 +164,7 @@ def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5):
         SoS_exec(task, sigil)
         os.chdir(orig_dir)
     except Exception as e:
-        env.logger.warning(e)
+        env.logger.error('Task {} terminated with error: {}'.format(task_id, e))
         return {'succ': 1, 'exception': e, 'path': os.environ['PATH']}
     except KeyboardInterrupt:
         raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
