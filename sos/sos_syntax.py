@@ -27,7 +27,7 @@ SOS_INPUT_OPTIONS = ['group_by', 'filetype', 'paired_with', 'for_each', 'pattern
 SOS_OUTPUT_OPTIONS = []
 SOS_DEPENDS_OPTIONS = []
 SOS_RUNTIME_OPTIONS = ['workdir', 'concurrent', 'active', 'walltime', 'env', 'prepend_path',
-    'on_host', 'to_host', 'from_host', 'preserved_vars']
+    'queue', 'to_host', 'from_host', 'preserved_vars']
 SOS_ACTION_OPTIONS = ['workdir', 'docker_image', 'docker_file', 'active', 'input', 'output', 'allow_error']
 
 SOS_DIRECTIVES = ['input', 'output', 'depends', 'task', 'parameter']

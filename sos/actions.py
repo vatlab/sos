@@ -303,26 +303,10 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                 .format(workflow, short_repr(env.sos_dict['_input'], True),
                 'no args' if not args_output else args_output))
 
-            if env.__task_engine__:
-                import pkg_resources
-                # import all executors
-                executor_class = None
-                for entrypoint in pkg_resources.iter_entry_points(group='sos_executors'):
-                    # Grab the function that is the actual plugin.
-                    name = entrypoint.name
-                    if name == env.__task_engine__:
-                        try:
-                            executor_class = entrypoint.load()
-                        except Exception as e:
-                            print('Failed to load queue executor {}: {}'.format(entrypoint.name, e))
-
-                if not executor_class:
-                    sys.exit('Could not locate specified queue executor {}'.format(env.__task_engine__))
+            if env.max_jobs == 1:
+                executor_class = Base_Executor
             else:
-                if env.max_jobs == 1:
-                    executor_class = Base_Executor
-                else:
-                    executor_class = MP_Executor
+                executor_class = MP_Executor
 
             executor = executor_class(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__']})
             if env.run_mode == 'run':

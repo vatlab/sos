@@ -20,7 +20,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from sos.utils import env
 from sos.sos_executor import MP_Executor
 
 from .sos_step import Celery_Step_Executor
@@ -28,7 +27,6 @@ from .sos_step import Celery_Step_Executor
 class Celery_Executor(MP_Executor):
     def __init__(self, workflow, args=[], shared=[], config={}):
         MP_Executor.__init__(self, workflow, args, shared=shared, config=config)
-        env.__task_engine__ = 'Celery'
 
     def step_executor(self, section, queue):
         # pass celery_app if needed

@@ -79,7 +79,6 @@ class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
     def __init__(self, workflow=None, args=[], shared=[], config={}):
-        env.__task_engine__ = None
         self.workflow = workflow
         self.args = args
         self.shared = shared

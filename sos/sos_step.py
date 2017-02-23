@@ -586,8 +586,11 @@ class Base_Step_Executor:
                     'CONFIG', '__signature_vars__'
                     })
 
-        if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
-            host = RemoteHost(env.sos_dict['_runtime']['on_host'])
+        if env.__queue__ or ('queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']):
+            if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
+                host = RemoteHost(env.sos_dict['_runtime']['queue'])
+            else:
+                host = RemoteHost(env.__queue__)
             if env.sos_dict['_input'] and not isinstance(env.sos_dict['_input'], Undetermined):
                 host.send_to_host(env.sos_dict['_input'])
             if env.sos_dict['_depends'] and not isinstance(env.sos_dict['_depends'], Undetermined):
@@ -657,8 +660,11 @@ class Base_Step_Executor:
     def submit_task(self, task_id):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
-        if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
-            host = RemoteHost(env.sos_dict['_runtime']['on_host'])
+        if env.__queue__ or ('queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']):
+            if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
+                host = RemoteHost(env.sos_dict['_runtime']['queue'])
+            else:
+                host = RemoteHost(env.__queue__)
 
             job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
             host.send_to_host(job_file)
@@ -1341,7 +1347,7 @@ class MP_Step_Executor(SP_Step_Executor):
         self.pool = None
 
     def submit_task(self, task):
-        if 'on_host' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['on_host']:
+        if env.__queue__ or ('queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']):
             return super(MP_Step_Executor, self).submit_task(task)
 
         # if concurrent is set, create a pool object

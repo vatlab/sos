@@ -189,11 +189,13 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         default=['~/.sos/bin'], help=bindir_help)
     if not interactive:
         parser.add_argument('-q', dest='__queue__', metavar='QUEUE',
-        help='''Task-processing queue. SoS by default uses a local multiprocessing
-            queue where tasks are executed by different processes. Supported task
-            queues include a 'rq' engine where tasks will be distributed to one or
-            more rq-workers with assistance from a redis server, and a 'celery'
-            quque where tasks will be distributed to celery workers.''')
+        help='''host (server) or job queues to execute all tasks in the
+            workflow. The queue should be defined in global or local
+            configuration file with queue type (remote server, cluster job
+            queue etc), file synchronization (e.g. path_map), and methods
+            to interaction with remote host or queuing systems. This option
+            provides default queue for all tasks but it does not override
+            task option queue defined in the workflow.''')
     parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', nargs='?',
          help='''Default output of action report, which is by default the
             standard output but you can redirect it to another file with this
@@ -247,27 +249,13 @@ def cmd_run(args, workflow_args):
         args.__dag__ = None
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
+    env.__queue__ = args.__queue__
 
-    if args.__queue__:
-        # import all executors
-        executor_class = None
-        for entrypoint in pkg_resources.iter_entry_points(group='sos_executors'):
-            # Grab the function that is the actual plugin.
-            name = entrypoint.name
-            if name == args.__queue__:
-                try:
-                    executor_class = entrypoint.load()
-                except Exception as e:
-                    print('Failed to load queue executor {}: {}'.format(entrypoint.name, e))
-
-        if not executor_class:
-            sys.exit('Could not locate specified queue executor {}'.format(args.__queue__))
+    from .sos_executor import Base_Executor, MP_Executor
+    if args.__max_jobs__ == 1:
+        executor_class = Base_Executor
     else:
-        from .sos_executor import Base_Executor, MP_Executor
-        if args.__max_jobs__ == 1:
-            executor_class = Base_Executor
-        else:
-            executor_class = MP_Executor
+        executor_class = MP_Executor
 
     # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)
