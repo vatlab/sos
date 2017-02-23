@@ -504,13 +504,15 @@ class RuntimeInfo:
         # otherwise the lock will be broken when we write to it.
         self._lock = fasteners.InterProcessLock(self.proc_info + '_')
         if not self._lock.acquire(blocking=False):
+            self._lock = None
             raise UnavailableLock((self.output_files, self.proc_info))
         else:
             env.logger.trace('Lock acquired for output files {}'.format(short_repr(self.output_files)))
 
     def release(self):
-        self._lock.release()
-        env.logger.trace('Lock released for output files {}'.format(short_repr(self.output_files)))
+        if self._lock:
+            self._lock.release()
+            env.logger.trace('Lock released for output files {}'.format(short_repr(self.output_files)))
 
     def set(self, files, file_type):
         # add signature file if input and output files are dynamic
