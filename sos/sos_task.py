@@ -43,7 +43,8 @@ class TaskParams(object):
     def __repr__(self):
         return self.name
 
-def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5):
+def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5,
+    resource_monitor_interval=60):
     '''A function that execute specified task within a local dictionary
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
@@ -51,7 +52,8 @@ def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5):
     env.logger.info('Executing task {}'.format(task_id))
     # start a monitoring file, which would be killed after the job
     # is done (killed etc)
-    m = ProcessMonitor(task_id, interval=monitor_interval)
+    m = ProcessMonitor(task_id, interval=monitor_interval,
+        resource_monitor_interval=resource_monitor_interval)
     m.start()
 
     task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')

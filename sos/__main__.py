@@ -384,6 +384,7 @@ def get_execute_parser(desc_only=False):
     return parser
 
 monitor_interval = 3
+resource_monitor_interval = 15
 
 def check_task(task):
     status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
@@ -450,7 +451,8 @@ def cmd_execute(args, workflow_args):
                 print(summarizeExecution(args.task, status=status))
             sys.exit(1)
         #
-        res = execute_task(args.task, verbosity=args.verbosity, sigmode=args.__sigmode__, monitor_interval=monitor_interval)
+        res = execute_task(args.task, verbosity=args.verbosity, sigmode=args.__sigmode__, 
+            monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
         res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', args.task + '.res')
         with open(res_file, 'wb') as res_file:
             pickle.dump(res, res_file)

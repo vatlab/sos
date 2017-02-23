@@ -27,10 +27,11 @@ from datetime import datetime
 from .utils import env
 
 class ProcessMonitor(threading.Thread):
-    def __init__(self, task_id, interval):
+    def __init__(self, task_id, monitor_interval, resource_monitor_interval):
         threading.Thread.__init__(self)
         self.pid = os.getpid()
-        self.interval = interval
+        self.monitor_interval = monitor_interval
+        self.resource_monitor_interval = max(resource_monitor_interval // monitor_interval, 1)
         self.daemon = True
         self.status_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.status')
         with open(self.status_file, 'w') as pd:
@@ -52,12 +53,17 @@ class ProcessMonitor(threading.Thread):
         return par_cpu, par_mem, n_children, ch_cpu, ch_mem
 
     def run(self):
+        counter = 0
         while True:
             try:
-                cpu, mem, nch, ch_cpu, ch_mem = self._check()
+                # most of the time we only update 
+                if counter % self.resource_monitor_interval:
+                    os.utime(self.status_file, None)
+                else:
+                    cpu, mem, nch, ch_cpu, ch_mem = self._check()
+                    with open(self.status_file, 'a') as pd:
+                        pd.write('{}\t{:.2f}\t{}\t{}\t{}\t{}\n'.format(time.time(), cpu, mem, nch, ch_cpu, ch_mem))
                 time.sleep(self.interval)
-                with open(self.status_file, 'a') as pd:
-                    pd.write('{}\t{:.2f}\t{}\t{}\t{}\t{}\n'.format(time.time(), cpu, mem, nch, ch_cpu, ch_mem))
             except Exception:
                 # if the process died, exit the thread
                 # the warning message is usually:
