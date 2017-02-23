@@ -27,7 +27,7 @@ from datetime import datetime
 from .utils import env
 
 class ProcessMonitor(threading.Thread):
-    def __init__(self, task_id, interval=10):
+    def __init__(self, task_id, interval):
         threading.Thread.__init__(self)
         self.pid = os.getpid()
         self.interval = interval

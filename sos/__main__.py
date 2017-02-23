@@ -383,6 +383,8 @@ def get_execute_parser(desc_only=False):
     parser.set_defaults(func=cmd_execute)
     return parser
 
+monitor_interval = 3
+
 def check_task(task):
     status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
     res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
@@ -398,12 +400,12 @@ def check_task(task):
     if elapsed < 0:
         env.logger.warning('{} is created in the future. Your system time might be problematic'.format(status_file))
     # if the file is within 5 seconds
-    if elapsed < 12:
+    if elapsed < monitor_interval:
         return 'running'
-    elif elapsed > 22:
+    elif elapsed > 2 * monitor_interval:
         return 'failed'
     # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
-    time.sleep(12)
+    time.sleep(monitor_interval + 2)
     end_stamp = os.stat(status_file).st_mtime
     # the process is still alive
     if start_stamp != end_stamp:
@@ -439,7 +441,7 @@ def cmd_execute(args, workflow_args):
                 print(summarizeExecution(args.task, status=status))
             sys.exit(1)
         #
-        res = execute_task(args.task, verbosity=args.verbosity, sigmode=args.__sigmode__)
+        res = execute_task(args.task, verbosity=args.verbosity, sigmode=args.__sigmode__, monitor_interval=monitor_interval)
         res_file =  os.path.join(os.path.expanduser('~'), '.sos', args.task + '.res')
         with open(res_file, 'wb') as res_file:
             pickle.dump(res, res_file)

@@ -43,7 +43,7 @@ class TaskParams(object):
     def __repr__(self):
         return self.name
 
-def execute_task(task_id, verbosity=None, sigmode=None):
+def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5):
     '''A function that execute specified task within a local dictionary
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
@@ -51,7 +51,7 @@ def execute_task(task_id, verbosity=None, sigmode=None):
     env.logger.info('Executing task {}'.format(task_id))
     # start a monitoring file, which would be killed after the job
     # is done (killed etc)
-    m = ProcessMonitor(task_id, interval=5)
+    m = ProcessMonitor(task_id, interval=monitor_interval)
     m.start()
 
     task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
@@ -164,6 +164,7 @@ def execute_task(task_id, verbosity=None, sigmode=None):
         SoS_exec(task, sigil)
         os.chdir(orig_dir)
     except Exception as e:
+        env.logger.warning(e)
         return {'succ': 1, 'exception': e, 'path': os.environ['PATH']}
     except KeyboardInterrupt:
         raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
