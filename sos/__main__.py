@@ -391,7 +391,16 @@ def check_task(task):
     if not os.path.isfile(status_file):
         return 'not started'
     elif os.path.isfile(res_file):
-        return 'completed'
+        import pickle
+        try:
+            with open(res_file, 'rb') as result:
+                res = pickle.load(result)
+            if res['succ'] == 0:
+                return 'completed'
+            else:
+                return 'failed'
+        except Exception as e:
+            return 'failed'
     # dead?
     import time
     from .utils import env
