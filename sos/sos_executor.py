@@ -287,7 +287,8 @@ class Base_Executor:
                 mo = [x for x in mo if x[1] is not False]
                 if not mo:
                     for x in self.workflow.auxiliary_sections:
-                        env.logger.debug('{}: {}'.format(x.step_name(), x.options['provides']))
+                        env.logger.debug('{}: {}'.format(x.step_name(),
+                            x.options['provides'] if 'provides' in x.options else ''))
                     raise RuntimeError('No step to generate target {}{}'.format(target, dag.steps_depending_on(target, self.workflow)))
                 if len(mo) > 1:
                     raise RuntimeError('Multiple steps {} to generate target {}'.format(', '.join(x[0].step_name() for x in mo), target))
