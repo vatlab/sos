@@ -316,6 +316,7 @@ class RuntimeEnvironments(object):
         self.parameter_vars = set()
         #
         self.__queue__ = None
+        self.__wait__ = False
         # maximum number of concurrent jobs
         self.max_jobs = 1
         self.running_jobs = 0

@@ -255,6 +255,7 @@ def cmd_run(args, workflow_args):
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
     env.__queue__ = args.__queue__
+    env.__wait__ = args.__wait__
 
     from .sos_executor import Base_Executor, MP_Executor
     if args.__max_jobs__ == 1:

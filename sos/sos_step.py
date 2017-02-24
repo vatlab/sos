@@ -656,7 +656,6 @@ class Base_Step_Executor:
                 raise
         return task_id
 
-
     def submit_task(self, task_id):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
@@ -666,26 +665,33 @@ class Base_Step_Executor:
             else:
                 host = RemoteHost(env.__queue__)
 
-            res_file = host.execute_task(task_id)
-            with open(res_file, 'rb') as result:
-                res = pickle.load(result)
-
-            if res['succ'] != 0:
-                env.logger.error('Remote job failed.')
-            else:
-                if env.sos_dict['_output'] and not isinstance(env.sos_dict['_output'], Undetermined):
-                    host.receive_from_host(env.sos_dict['_output'])
-                if 'from_host' in env.sos_dict['_runtime']:
-                    host.receive_from_host(env.sos_dict['_runtime']['from_host'])
-            self.proc_results.append(res)
+            host.submit_task(task_id)
+            self.proc_results.append(task_id)
         else:
             self.proc_results.append(
                 execute_task(task_id, verbosity=env.verbosity, sigmode=env.sig_mode)
             )
 
     def wait_for_results(self):
-        # no waiting is necessary by default (prepare mode etc)
-        pass
+        if env.__queue__ or ('queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']):
+            if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
+                host = RemoteHost(env.sos_dict['_runtime']['queue'])
+            else:
+                host = RemoteHost(env.__queue__)
+            for idx, task in self.proc_results:
+                # if it is done
+                if isinstance(task, dict):
+                    continue
+                res = host.wait_task(task)
+
+                if res['succ'] != 0:
+                    env.logger.error('Remote job failed.')
+                else:
+                    if env.sos_dict['_output'] and not isinstance(env.sos_dict['_output'], Undetermined):
+                        host.receive_from_host(env.sos_dict['_output'])
+                    if 'from_host' in env.sos_dict['_runtime']:
+                        host.receive_from_host(env.sos_dict['_runtime']['from_host'])
+                self.proc_results[idx] = res
 
     def log(self, stage=None, msg=None):
         raise RuntimeError('Please redefine the log function in derived step executor.')
