@@ -24,6 +24,8 @@ import os
 from .utils import env
 from .sos_eval import interpolate
 import subprocess
+import time
+import pickle
 from collections.abc import Sequence
 
 class RemoteHost:
@@ -51,6 +53,7 @@ class RemoteHost:
         self.send_cmd = self._get_send_cmd()
         self.receive_cmd = self._get_receive_cmd()
         self.execute_cmd = self._get_execute_cmd()
+        self.query_cmd = self._get_query_cmd()
 
     def _get_shared_dirs(self):
         value = self.config.get('shared', [])
@@ -97,7 +100,11 @@ class RemoteHost:
 
     def _get_execute_cmd(self):
         return self.config.get('execute_cmd',
-            '''ssh ${host} "bash --login -c '${cmd}'"''')
+            '''ssh ${host} "nohup bash --login -c '${cmd}' > ~/.sos/tasks/${task}.out 2> ~/.sos/tasks/${task}.err" & ''')
+
+    def _get_query_cmd(self):
+        return self.config.get('query_cmd',
+            '''ssh ${host} "bash --login -c 'sos execute ${task} --query -v 0'" ''')
 
     def is_shared(self, path):
         fullpath = os.path.abspath(os.path.expanduser(path))
@@ -164,10 +171,17 @@ class RemoteHost:
                 except Exception as e:
                     raise  RuntimeError('Failed to copy {} from {}: {}'.format(source, self.alias, e))
 
-    def execute_task(self, task_id):
+    def submit_task(self, task_id):
+        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+        send_cmd = 'scp {} {}:.sos/tasks'.format(job_file, self.address)
+        # use scp for this simple case
+        ret = subprocess.call(send_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        if (ret != 0):
+            raise RuntimeError('Failed to copy job {} to {}'.format(task_id, self.alias))
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
                 'host': self.address,
+                'task': task_id,
                 'cmd': 'sos execute {} -v {} -s {}'.format(
                     task_id, env.verbosity, env.sig_mode)})
         except Exception as e:
@@ -177,3 +191,29 @@ class RemoteHost:
         ret = subprocess.call(cmd, shell=True)
         if (ret != 0):
             raise RuntimeError('Failed to execute {}'.format(cmd))
+
+    def query_task(self, task_id):
+        try:
+            cmd = interpolate(self.query_cmd, '${ }', {
+                'host': self.address,
+                'task': task_id})
+        except Exception as e:
+            raise ValueError('Failed to create remote task {}: {}'.format(task_id, e))
+        return subprocess.check_output(cmd, shell=True)
+
+    def wait_task(self, task_id):
+        while True:
+            status = self.query_task(task_id)
+            if status != 'running':
+                break
+            time.sleep(10)
+        if status == 'completed':
+            receive_cmd = 'scp {}:.sos/tasks/{}.res {}/.sos/tasks'.format(self.address, task_id, os.path.expanduser('~'))
+            ret = subprocess.checcall(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            if (ret != 0):
+                raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
+            res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
+            with open(res_file, 'rb') as result:
+                res = pickle.load(result)
+            return res
+ 

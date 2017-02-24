@@ -187,8 +187,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             to generate specified targets.''')
     parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIR',
         default=['~/.sos/bin'], help=bindir_help)
-    if not interactive:
-        parser.add_argument('-q', dest='__queue__', metavar='QUEUE',
+    parser.add_argument('-q', dest='__queue__', metavar='QUEUE',
         help='''host (server) or job queues to execute all tasks in the
             workflow. The queue should be defined in global or local
             configuration file with queue type (remote server, cluster job
@@ -196,6 +195,12 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             to interaction with remote host or queuing systems. This option
             provides default queue for all tasks but it does not override
             task option queue defined in the workflow.''')
+    parser.add_argument('-w', dest='__wait__', action='store_true',
+        help='''Whether or not wait for the completion of external jobs. By
+            default, a sos step will return immediately after submitting a task,
+            and the master process would exit after all tasks have been submitted
+            and there is no more step to execute. Specifying option "-w" will make
+            SoS wait for the completion of all tasks.''')
     parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', nargs='?',
          help='''Default output of action report, which is by default the
             standard output but you can redirect it to another file with this
@@ -250,6 +255,7 @@ def cmd_run(args, workflow_args):
     env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
     env.__queue__ = args.__queue__
+    env.__wait__ = args.__wait__
 
     from .sos_executor import Base_Executor, MP_Executor
     if args.__max_jobs__ == 1:
