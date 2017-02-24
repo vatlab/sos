@@ -97,7 +97,7 @@ class RemoteHost:
 
     def _get_execute_cmd(self):
         return self.config.get('execute_cmd',
-            '''ssh ${host} "bash --login -c '${cmd}'"''')
+            '''ssh ${host} "nohup bash --login -c '${cmd}' > ~/.sos/tasks/${task}.out 2> ~/.sos/tasks/${task}.err" & ''')
 
     def is_shared(self, path):
         fullpath = os.path.abspath(os.path.expanduser(path))
@@ -174,6 +174,7 @@ class RemoteHost:
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
                 'host': self.address,
+                'task': task_id,
                 'cmd': 'sos execute {} -v {} -s {}'.format(
                     task_id, env.verbosity, env.sig_mode)})
         except Exception as e:
@@ -187,7 +188,7 @@ class RemoteHost:
         receive_cmd = 'scp {}:.sos/tasks/{}.res {}/.sos/tasks'.format(self.address, task_id, os.path.expanduser('~'))
         ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
-            raise RuntimeError('Failed to copy job {} to {}'.format(task_id, self.alias))
+            raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
         res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
         return res_file
 

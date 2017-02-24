@@ -196,6 +196,12 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             to interaction with remote host or queuing systems. This option
             provides default queue for all tasks but it does not override
             task option queue defined in the workflow.''')
+        parser.add_argument('-w', dest='__wait__', metavar='WAIT', action='store_true',
+        help='''Whether or not wait for the completion of external jobs. By
+            default, a sos step will return immediately after submitting a task,
+            and the master process would exit after all tasks have been submitted
+            and there is no more step to execute. Specifying option "-w" will make
+            SoS wait for the completion of all tasks.''')
     parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', nargs='?',
          help='''Default output of action report, which is by default the
             standard output but you can redirect it to another file with this
