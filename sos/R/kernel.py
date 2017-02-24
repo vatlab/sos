@@ -212,7 +212,7 @@ R_init_statements = r'''
     if (!require("feather"))
         install.packages('feather', repos='http://cran.stat.ucla.edu/')
     library(feather)
-    data = read_feather(filename)
+    data = as.data.frame(read_feather(filename))
     if (!is.null(index))
         rownames(data) <- index
     return(data)
