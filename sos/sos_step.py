@@ -408,8 +408,19 @@ class Base_Step_Executor:
                 fe_iter_names = []
                 fe_values = []
                 for k, v in fe_all.items():
-                    fe_iter_names.append(k)
-                    fe_values.append(v)
+                    if ',' in k:
+                        names = [x.strip() for x in k.split(',')]
+                        values = []
+                        for _i,_v in enumerate(v):
+                            if len(_v) != len(names):
+                                raise ValueError('Unable to unpack {} variables to {} (of length {})'.\
+                                                 format(len(_v), k, len(names)))
+                            values.append(_v)
+                        fe_iter_names.extend(names)
+                        fe_values.extend(list(zip(*values)))
+                    else:
+                        fe_iter_names.append(k)
+                        fe_values.append(v)
             else:
                 if ',' in fe_all:
                     fe_var_names = [x.strip() for x in fe_all.split(',')]
