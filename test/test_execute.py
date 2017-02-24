@@ -274,6 +274,29 @@ counter = counter + 1
         self.assertEqual(env.sos_dict['all_names'], "a b c a b c ")
         self.assertEqual(env.sos_dict['all_loop'], "1 1 1 2 2 2 ")
         #
+        # test multi-key dictionary format of for_each
+        self.touch(['a.txt'])
+        script = SoS_Script(r"""
+import itertools
+[0: shared=['counter', 'all_names', 'all_loop']]
+parameter: n = [300, 100]
+parameter: p = [50, 200, 100]
+parameter: outfile = ['1', '2', '3', '4', '5', '6']
+counter = 0
+all_names = ''
+all_loop = ''
+input: 'a.txt', group_by='single', for_each={'_n,_p': [(_n,_p) for _n,_p in itertools.product(n,p) if _n > _p]}
+
+all_names += outfile[_index] + " "
+all_loop += '{} {} '.format(_n, _p)
+counter = counter + 1
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertEqual(env.sos_dict['counter'], 4)
+        self.assertEqual(env.sos_dict['all_names'], "1 2 3 4 ")
+        self.assertEqual(env.sos_dict['all_loop'], "300 50 300 200 300 100 100 50 ")
+        #
         # test same-level for loop and parameter with nested list
         script = SoS_Script(r"""
 [0: shared=['processed']]
