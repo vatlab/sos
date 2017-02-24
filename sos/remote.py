@@ -165,6 +165,12 @@ class RemoteHost:
                     raise  RuntimeError('Failed to copy {} from {}: {}'.format(source, self.alias, e))
 
     def execute_task(self, task_id):
+        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+        send_cmd = 'scp {} {}:.sos/tasks'.format(job_file, self.address)
+        # use scp for this simple case
+        ret = subprocess.call(send_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        if (ret != 0):
+            raise RuntimeError('Failed to copy job {} to {}'.format(task_id, self.alias))
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
                 'host': self.address,
@@ -177,3 +183,11 @@ class RemoteHost:
         ret = subprocess.call(cmd, shell=True)
         if (ret != 0):
             raise RuntimeError('Failed to execute {}'.format(cmd))
+
+        receive_cmd = 'scp {}:.sos/tasks/{}.res {}/.sos/tasks'.format(self.address, task_id, os.path.expanduser('~'))
+        ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        if (ret != 0):
+            raise RuntimeError('Failed to copy job {} to {}'.format(task_id, self.alias))
+        res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
+        return res_file
+

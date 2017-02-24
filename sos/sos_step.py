@@ -666,12 +666,7 @@ class Base_Step_Executor:
             else:
                 host = RemoteHost(env.__queue__)
 
-            job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
-            host.send_to_host(job_file)
-            host.execute_task(task_id)
-
-            res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
-            host.receive_from_host(res_file)
+            res_file = host.execute_task(task_id)
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
 
