@@ -344,6 +344,7 @@ def cmd_dryrun(args, workflow_args):
     args.__max_jobs__ = 1
     args.__report__ = None
     args.__dryrun__ = True
+    args.__wait__ = True
     args.__bin_dirs__ = []
     cmd_run(args, workflow_args)
 
