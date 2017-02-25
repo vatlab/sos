@@ -142,9 +142,8 @@ sh:
         self.assertExists(['t_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2', 't_f1'])
 
     def tearDown(self):
-        #os.chdir('..')
-        #shutil.rmtree('temp')
-        pass
+        os.chdir('..')
+        shutil.rmtree('temp')
 
 if __name__ == '__main__':
     unittest.main()
