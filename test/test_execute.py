@@ -31,7 +31,6 @@ from sos._version import __version__
 from sos.utils import env
 from sos.sos_eval import Undetermined
 from sos.sos_executor import Base_Executor, MP_Executor, ExecuteError
-from sos.sos_script import ParsingError
 from sos.target import FileTarget
 import subprocess
 
@@ -428,100 +427,6 @@ counter += 1
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['step'], ['a.txt.bak', 'b.txt.bak'])
 
-    def testWorkdir(self):
-        '''Test workdir option for runtime environment'''
-        script =  SoS_Script(r"""
-[0]
-
-task: workdir='..'
-
-with open('test/result.txt', 'w') as res:
-   for file in os.listdir('test'):
-       res.write(file + '\n')
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        with open('result.txt') as res:
-            content = [x.strip() for x in res.readlines()]
-            self.assertTrue('test_execute.py' in content)
-        os.remove('result.txt')
-
-    def testConcurrency(self):
-        '''Test workdir option for runtime environment'''
-        env.max_jobs = 5
-        script =  SoS_Script(r"""
-[0]
-
-repeat = range(4)
-input: for_each='repeat'
-
-task: concurrent=False
-
-import time
-time.sleep(_repeat + 1)
-print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
-""")
-        wf = script.workflow()
-        start = time.time()
-        MP_Executor(wf).run()
-        self.assertGreater(time.time() - start, 9)
-        #
-        #
-        script =  SoS_Script(r"""
-[0]
-
-repeat = range(4)
-input: for_each='repeat'
-
-task: concurrent=True
-
-if run_mode == 'run':
-    import time
-    time.sleep(_repeat + 1)
-    print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
-""")
-        wf = script.workflow()
-        start = time.time()
-        MP_Executor(wf).run()
-        self.assertLess(time.time() - start, 6)
-
-    def testPrependPath(self):
-        '''Test prepend path'''
-        import stat
-        if not os.path.isdir('temp'):
-            os.mkdir('temp')
-        with open('temp/temp_cmd', 'w') as tc:
-            tc.write('echo "a"')
-        os.chmod('temp/temp_cmd', stat.S_IXUSR | stat.S_IWUSR | stat.S_IRUSR)
-        #
-        script = SoS_Script(r"""
-[1]
-task:
-sh:
-    temp_cmd
-""")
-        wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
-        # use option env
-        script = SoS_Script(r"""
-[1]
-task: env={'PATH': 'temp' + os.pathsep + os.environ['PATH']}
-sh:
-    temp_cmd
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run()
-        #
-        #
-        script = SoS_Script(r"""
-[1]
-task: prepend_path='temp'
-sh:
-    temp_cmd
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
 
     def testRunmode(self):
         '''Test the runmode decoration'''
@@ -876,73 +781,6 @@ if run_mode == 'run':
         self.assertEqual(len(files), 3)
         shutil.rmtree('temp')
 
-    def testActiveActionOption(self):
-        '''Test the active option of actions'''
-        # disallow
-        self.assertRaises(ParsingError, SoS_Script, '''
-[1]
-rep = range(5)
-input: for_each = 'rep'
-# ff should change and be usable inside run
-ff = "${_rep}.txt"
-run:  active=1,2
-echo ${ff}
-touch temp/${ff}
-''')
-        #
-        for active, result in [
-            ('0', ['temp/0.txt']),
-            ('-1', ['temp/4.txt']),
-            ('(1,2)', ['temp/1.txt', 'temp/2.txt']),
-            ('[2,3]', ['temp/2.txt', 'temp/3.txt']),
-            ('(0,2,4)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
-            ('slice(1,None)', ['temp/1.txt', 'temp/2.txt', 'temp/3.txt', 'temp/4.txt']),
-            ('slice(1,-2)', ['temp/1.txt', 'temp/2.txt']),
-            ('slice(None,None,2)', ['temp/0.txt', 'temp/2.txt', 'temp/4.txt']),
-            ]:
-            if os.path.isdir('temp'):
-                shutil.rmtree('temp')
-            os.mkdir('temp')
-            # test first iteration
-            script = SoS_Script('''
-[1]
-rep = range(5)
-input: for_each = 'rep'
-# ff should change and be usable inside run
-ff = "${_rep}.txt"
-run:  active=%s
-echo ${ff}
-touch temp/${ff}
-''' % active)
-            wf = script.workflow()
-            Base_Executor(wf).run()
-            files = list(glob.glob('temp/*.txt'))
-            self.assertEqual(files, result)
-            #
-            # test last iteration
-            shutil.rmtree('temp')
-            #
-            # test active option for task
-            os.mkdir('temp')
-            script = SoS_Script('''
-[1]
-rep = range(5)
-input: for_each = 'rep'
-# ff should change and be usable inside run
-ff = "${_rep}.txt"
-task:  active=%s
-run:
-echo ${ff}
-touch temp/${ff}
-''' % active)
-            wf = script.workflow()
-            Base_Executor(wf).run()
-            files = list(glob.glob('temp/*.txt'))
-            self.assertEqual(files, result)
-            #
-            # test last iteration
-            shutil.rmtree('temp')
-
     def testActionBeforeInput(self):
         '''Testing the execution of actions before input directive
         (variables such as _index should be made available). '''
@@ -1152,26 +990,6 @@ sh:
         #
         FileTarget('a.txt').remove('both')
         FileTarget('aa.txt').remove('both')
-
-    def testNestedWorkdir(self):
-        '''Test nested runtime option for work directory'''
-        if os.path.isdir('tmp'):
-            shutil.rmtree('tmp')
-        script = SoS_Script('''
-[step]
-task: workdir='tmp'
-bash:
-    touch 'a.txt'
-
-[default]
-task: workdir='tmp'
-sos_run('step')
-''')
-        wf = script.workflow()
-        # this should be ok.
-        Base_Executor(wf).run()
-        os.path.isfile('tmp/tmp/a.txt')
-        shutil.rmtree('tmp')
 
     def testReexecutionOfAuxiliaryStep(self):
         '''Test re-execution of auxiliary step if the step has been changed.'''
