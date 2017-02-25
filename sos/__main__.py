@@ -373,54 +373,18 @@ def get_execute_parser(desc_only=False):
         default=1,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
-    parser.add_argument('-q', '--query', action='store_true',
+    action = parser.add_mutually_exclusive_group(required=False)
+    action.add_argument('-q', '--query', action='store_true',
         help='''Query the status of the task.''')
+    action.add_argument('-k', '--kill', action='store_true',
+        help='''Kill a running task.''')
     parser.set_defaults(func=cmd_execute)
     return parser
 
-monitor_interval = 3
-resource_monitor_interval = 15
-
-def check_task(task):
-    status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
-    res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
-    if not os.path.isfile(status_file):
-        return 'not started'
-    elif os.path.isfile(res_file):
-        import pickle
-        try:
-            with open(res_file, 'rb') as result:
-                res = pickle.load(result)
-            if res['succ'] == 0:
-                return 'completed'
-            else:
-                return 'failed'
-        except Exception as e:
-            return 'failed'
-    # dead?
-    import time
-    from .utils import env
-    start_stamp = os.stat(status_file).st_mtime
-    elapsed = time.time() - start_stamp
-    if elapsed < 0:
-        env.logger.warning('{} is created in the future. Your system time might be problematic'.format(status_file))
-    # if the file is within 5 seconds
-    if elapsed < monitor_interval:
-        return 'running'
-    elif elapsed > 2 * monitor_interval:
-        return 'failed'
-    # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
-    time.sleep(monitor_interval + 2)
-    end_stamp = os.stat(status_file).st_mtime
-    # the process is still alive
-    if start_stamp != end_stamp:
-        return 'running'
-    else:
-        return 'failed'
 
 def cmd_execute(args, workflow_args):
     import pickle
-    from .sos_task import execute_task
+    from .sos_task import execute_task, check_task, kill_task, monitor_interval, resource_monitor_interval
     from .monitor import summarizeExecution
     if args.query:
         status = check_task(args.task)
@@ -431,6 +395,8 @@ def cmd_execute(args, workflow_args):
                 print(summarizeExecution(args.task, status=status))
             else:
                 print(status)
+    elif args.kill:
+        print(kill_task(args.task))
     else:
         status = check_task(args.task)
         if status == 'completed':

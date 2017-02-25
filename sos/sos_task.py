@@ -21,6 +21,7 @@
 #
 import os
 import pickle
+import time
 from io import StringIO
 from tokenize import generate_tokens
 
@@ -31,6 +32,10 @@ from .target import textMD5, RuntimeInfo
 from .monitor import ProcessMonitor
 
 from collections import OrderedDict
+
+
+monitor_interval = 3
+resource_monitor_interval = 15
 
 class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
@@ -179,3 +184,69 @@ def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5,
         sig.release()
     env.deregister_process(os.getpid())
     return {'succ': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
+
+
+def check_task(task):
+    status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
+    res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
+    if not os.path.isfile(status_file):
+        return 'pending'
+    elif os.path.isfile(res_file):
+        try:
+            with open(res_file, 'rb') as result:
+                res = pickle.load(result)
+            if res['succ'] == 0:
+                return 'completed'
+            else:
+                return 'failed'
+        except Exception as e:
+            return 'failed'
+    # dead?
+    start_stamp = os.stat(status_file).st_mtime
+    elapsed = time.time() - start_stamp
+    if elapsed < 0:
+        env.logger.warning('{} is created in the future. Your system time might be problematic'.format(status_file))
+    # if the file is within 5 seconds
+    if elapsed < monitor_interval:
+        return 'running'
+    elif elapsed > 2 * monitor_interval:
+        return 'failed'
+    # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
+    time.sleep(monitor_interval + 2)
+    end_stamp = os.stat(status_file).st_mtime
+    # the process is still alive
+    if start_stamp != end_stamp:
+        return 'running'
+    else:
+        return 'failed'
+
+def kill_task(task):
+    status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
+    res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
+    if not os.path.isfile(status_file):
+        return 'pending'
+    elif os.path.isfile(res_file):
+        try:
+            with open(res_file, 'rb') as result:
+                res = pickle.load(result)
+            if res['succ'] == 0:
+                return 'completed'
+            else:
+                return 'failed'
+        except Exception as e:
+            return 'failed'
+    #
+    start_stamp = os.stat(status_file).st_mtime
+    elapsed = time.time() - start_stamp
+    if elapsed < 0:
+        env.logger.warning('{} is created in the future. Your system time might be problematic'.format(status_file))
+    # if the file is within 5 seconds
+    if elapsed < monitor_interval:
+        # job is running, try to kill it
+        kill_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.stop')
+        with open(kill_file, 'w'):
+            pass
+        return 'killed'
+    else:
+        return 'failed'
+
