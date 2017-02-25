@@ -30,7 +30,7 @@ from sos.sos_script import SoS_Script
 from sos._version import __version__
 from sos.utils import env
 from sos.sos_eval import Undetermined
-from sos.sos_executor import Base_Executor, MP_Executor, ExecuteError
+from sos.sos_executor import Base_Executor, ExecuteError
 from sos.target import FileTarget
 import subprocess
 
@@ -905,7 +905,7 @@ python:
 ''')
         wf = script.workflow()
         env.max_jobs = 4
-        MP_Executor(wf).run()
+        Base_Executor(wf).run()
         for t in range(10, 13):
             with open('myfile_{}.txt'.format(t)) as tmp:
                 self.assertEqual(tmp.read(), str(t) + '_' + str(t-10))

@@ -28,11 +28,11 @@ import glob
 
 from sos.sos_script import SoS_Script, ParsingError
 from sos.utils import env
-from sos.sos_executor import Base_Executor, MP_Executor, ExecuteError
+from sos.sos_executor import Base_Executor, ExecuteError
 from sos.target import FileTarget
 import subprocess
 
-class TestTast(unittest.TestCase):
+class TestTask(unittest.TestCase):
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
@@ -74,7 +74,7 @@ with open('test/result.txt', 'w') as res:
         os.remove('result.txt')
 
     def testConcurrency(self):
-        '''Test workdir option for runtime environment'''
+        '''Test concurrency option for runtime environment'''
         env.max_jobs = 5
         script =  SoS_Script(r"""
 [0]
@@ -90,7 +90,7 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 """)
         wf = script.workflow()
         start = time.time()
-        MP_Executor(wf).run()
+        Base_Executor(wf).run()
         self.assertGreater(time.time() - start, 9)
         #
         #
@@ -109,7 +109,7 @@ if run_mode == 'run':
 """)
         wf = script.workflow()
         start = time.time()
-        MP_Executor(wf).run()
+        Base_Executor(wf).run()
         self.assertLess(time.time() - start, 6)
 
     def testPrependPath(self):

@@ -28,7 +28,7 @@ from io import StringIO
 
 from sos.sos_script import SoS_Script
 from sos.utils import env
-from sos.sos_executor import Base_Executor, MP_Executor
+from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
 
 import subprocess
@@ -761,7 +761,7 @@ A_2;
         env.max_jobs = 4
         st = time.time()
         #env.verbosity = 4
-        MP_Executor(wf).run()
+        Base_Executor(wf).run()
         self.assertLess(time.time() - st, 4)
         for f in ['A1.txt', 'B2.txt', 'A2.txt']:
             FileTarget(f).remove('both')
@@ -850,7 +850,7 @@ A_1 -> A_3;
 ''')
         env.max_jobs = 3
         st = time.time()
-        MP_Executor(wf).run()
+        Base_Executor(wf).run()
         self.assertLess(time.time() - st, 5)
         for f in ['A1.txt']:
             self.assertTrue(FileTarget(f).exists())
@@ -909,7 +909,7 @@ A_4 -> A_5;
 ''')
         env.max_jobs = 3
         st = time.time()
-        MP_Executor(wf).run()
+        Base_Executor(wf).run()
         self.assertLess(time.time() - st, 5)
         for f in ['A1.txt']:
             self.assertTrue(FileTarget(f).exists())

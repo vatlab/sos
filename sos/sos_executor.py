@@ -32,7 +32,7 @@ from queue import Empty
 from tqdm import tqdm as ProgressBar
 from io import StringIO
 from ._version import __version__
-from .sos_step import Dryrun_Step_Executor, SP_Step_Executor, MP_Step_Executor, \
+from .sos_step import Dryrun_Step_Executor, MP_Step_Executor, \
     analyze_section
 from .utils import env, Error, WorkflowDict, get_traceback, frozendict, dict_merge, short_repr
 from .sos_eval import SoS_exec, get_default_global_sigil
@@ -105,6 +105,8 @@ class Base_Executor:
                 sig.write('# runtime signatures\n')
         else:
             self.md5 = None
+        if hasattr(env, 'accessed_vars'):
+            delattr(env, 'accessed_vars')
 
     def save_dag(self, dag):
         if self.config['output_dag'] is None:
@@ -503,12 +505,12 @@ class Base_Executor:
                 sigfile.write('# end time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
                 sigfile.write('# input and dependent files\n')
         
-    def run(self, targets=None, queue=None, mode='run'):
+    def dryrun(self, targets=None, queue=None):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
         self.reset_dict()
-        env.run_mode = mode
+        env.run_mode = 'dryrun'
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
         env.sos_dict.set('run_mode', env.run_mode)
@@ -565,17 +567,11 @@ class Base_Executor:
             # execute section with specified input
             runnable._status = 'running'
             if sys.platform == 'win32':
-                if mode == 'run':
-                    executor = SP_Step_Executor(section, None)
-                else:
-                    executor = Dryrun_Step_Executor(section, None)
+                executor = Dryrun_Step_Executor(section, None)
                 res = executor.run()
             else:
                 q = mp.Queue()
-                if mode == 'run':
-                    executor = SP_Step_Executor(section, q)
-                else:
-                    executor = Dryrun_Step_Executor(section, q)
+                executor = Dryrun_Step_Executor(section, q)
                 p = mp.Process(target=executor.run)
                 p.start()
                 #
@@ -666,26 +662,6 @@ class Base_Executor:
             # the CONFIG object is difficult to pickle because of its readonly property
             queue.put({x: dict(env.sos_dict[x]) if x == 'CONFIG' else env.sos_dict[x] for x in self.shared if x in env.sos_dict})
 
-    def dryrun(self, queue=None, targets=None):
-        '''Execute the script in dryrun mode.'''
-        try:
-            self.run(targets=targets, queue=queue, mode='dryrun')
-        # only runtime errors are ignored
-        except RuntimeError as e:
-            env.logger.warning('Workflow cannot be completed in dryrun mode: {}'.format(e))
-
-
-class MP_Executor(Base_Executor):
-    #
-    # Execute a workflow sequentially in batch mode
-    def __init__(self, workflow, args=[], shared=[], config={}):
-        Base_Executor.__init__(self, workflow, args, shared=shared, config=config)
-        if hasattr(env, 'accessed_vars'):
-            delattr(env, 'accessed_vars')
-
-    def step_executor(self, section, queue):
-        return MP_Step_Executor(section, queue)
-
     def run(self, targets=None, queue=None, mode='run'):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
@@ -753,6 +729,7 @@ class MP_Executor(Base_Executor):
                         if cycle:
                             raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
                     self.save_dag(dag)
+                    procs[idx] = None
                 elif isinstance(res, UnavailableLock):
                     runnable._status = 'pending'
                     runnable._signature = (res.output, res.sig_file)
@@ -793,7 +770,6 @@ class MP_Executor(Base_Executor):
                 #dag.show_nodes()
             # step 2: submit new jobs if there are empty slots
             for idx, proc in enumerate(procs):
-                # if there is empty slot, submit
                 if proc is not None:
                     continue
                 # find any step that can be executed and run it, and update the DAT
@@ -828,7 +804,7 @@ class MP_Executor(Base_Executor):
                 # execute section with specified input
                 runnable._status = 'running'
                 q = mp.Queue()
-                executor = self.step_executor(section, q)
+                executor = MP_Step_Executor(section, q)
                 p = mp.Process(target=executor.run)
                 procs[idx] = (p, q, runnable._node_uuid)
                 p.start()
@@ -836,6 +812,7 @@ class MP_Executor(Base_Executor):
                 #env.logger.error('started')
                 #dag.show_nodes()
             #
+            env.logger.trace('PROC {}'.format(', '.join(['None' if x is None else x[2] for x in procs])))
             if all(x is None for x in procs):
                 break
             else:

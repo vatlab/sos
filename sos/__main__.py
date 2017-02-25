@@ -257,11 +257,8 @@ def cmd_run(args, workflow_args):
     env.__queue__ = args.__queue__
     env.__wait__ = args.__wait__
 
-    from .sos_executor import Base_Executor, MP_Executor
-    if args.__max_jobs__ == 1:
-        executor_class = Base_Executor
-    else:
-        executor_class = MP_Executor
+    from .sos_executor import Base_Executor
+    executor_class = Base_Executor
 
     # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)

@@ -27,7 +27,7 @@ import shutil
 
 from sos.sos_script import SoS_Script
 from sos.utils import env
-from sos.sos_executor import Base_Executor, MP_Executor
+from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
 import subprocess
 
@@ -204,7 +204,7 @@ cp ${_input} ${_dest}
         if env.max_jobs == 1:
             Base_Executor(wf).run()
         else:
-            MP_Executor(wf).run()
+            Base_Executor(wf).run()
         self.assertGreater(time.time() - start, 1)
         self.assertTrue(os.path.isfile('temp/a.txt'))
         self.assertTrue(os.path.isfile('temp/b.txt'))
@@ -216,7 +216,7 @@ cp ${_input} ${_dest}
         if env.max_jobs == 1:
             Base_Executor(wf).run()
         else:
-            MP_Executor(wf).run()
+            Base_Executor(wf).run()
         #
         wf = script.workflow()
         start = time.time()
@@ -224,7 +224,7 @@ cp ${_input} ${_dest}
         if env.max_jobs == 1:
             Base_Executor(wf).run()
         else:
-            MP_Executor(wf).run()
+            Base_Executor(wf).run()
 
         self.assertLess(time.time() - start, 1.5)
         #
@@ -241,7 +241,7 @@ cp ${_input} ${_dest}
         if env.max_jobs == 1:
             Base_Executor(wf).run()
         else:
-            MP_Executor(wf).run()
+            Base_Executor(wf).run()
 
         #
         start = time.time()
@@ -249,7 +249,7 @@ cp ${_input} ${_dest}
         if env.max_jobs == 1:
             Base_Executor(wf).run()
         else:
-            MP_Executor(wf).run()
+            Base_Executor(wf).run()
         
         self.assertLess(time.time() - start, 1.5)
         #
@@ -260,7 +260,7 @@ cp ${_input} ${_dest}
         if env.max_jobs == 1:
             Base_Executor(wf).run()
         else:
-            MP_Executor(wf).run()
+            Base_Executor(wf).run()
 
         # add some other variable?
         #script = SoS_Script('comment = 1\n' + text)

@@ -275,7 +275,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
     extra sos files can be specified from paramter source. The workflow
     will be execute in the current step namespace with _input as workflow
     input. '''
-    from .sos_executor import Base_Executor, MP_Executor
+    from .sos_executor import Base_Executor
     script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
     wf = script.workflow(workflow, use_default=not targets)
     # if wf contains the current step or one of the previous one, this constitute
@@ -303,10 +303,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                 .format(workflow, short_repr(env.sos_dict['_input'], True),
                 'no args' if not args_output else args_output))
 
-            if env.max_jobs == 1:
-                executor_class = Base_Executor
-            else:
-                executor_class = MP_Executor
+            executor_class = Base_Executor
 
             executor = executor_class(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__']})
             if env.run_mode == 'run':
