@@ -454,7 +454,9 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Dependent files must be a list of filenames or Undetermined for runtime signature.')
 
-        if isinstance(output_files, list):
+        if output_files is None:
+            self.output_files = []
+        elif isinstance(output_files, list):
             self.output_files = [FileTarget(x) if isinstance(x, str) else x for x in output_files]
         elif isinstance(output_files, Undetermined):
             self.output_files = output_files

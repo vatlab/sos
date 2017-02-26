@@ -201,6 +201,7 @@ class SoS_ExecuteScript:
         env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
         with open(debug_script_file, 'w') as sfile:
             sfile.write(self.script)
+        env.logger.trace(self.script)
         if 'docker_image' in kwargs:
             from .docker.client import DockerClient
             docker = DockerClient()
@@ -248,8 +249,8 @@ class SoS_ExecuteScript:
                     sys.stderr.flush()
                 else:
                     p = subprocess.Popen(cmd, shell=True,
-                                         stderr=subprocess.PIPE if env.verbosity > 1 else subprocess.DEVNULL,
-                                         stdout=subprocess.PIPE if env.verbosity > 1 else subprocess.DEVNULL)
+                                         stderr=None if env.verbosity > 1 else subprocess.DEVNULL,
+                                         stdout=None if env.verbosity > 1 else subprocess.DEVNULL)
                     ret = p.wait()
                 if ret != 0:
                     with open(debug_script_file, 'w') as sfile:

@@ -240,9 +240,9 @@ class Host:
         else:
             self._host_agene = RemoteHost(self.config)
 
-        if 'task_engine' in self.config:
+        if 'task_engine' not in self.config:
             self._task_engine_type = 'background_execution'
-            self._task_engine = BackgroundProcess_TaskEngine()
+            self._task_engine = BackgroundProcess_TaskEngine(self._host_agent)
         else:
             self._task_engine_type = self.config['task_engine']
             self._task_engine = None
@@ -252,7 +252,7 @@ class Host:
                 try:
                     available_engines.append(entrypoint.name)
                     if entrypoint.name == self._task_engine_type:
-                        self.task_engine = entrypoint.load()(self.config)
+                        self.task_engine = entrypoint.load()(self._host_agent)
                 except Exception as e:
                     env.logger.debug('Failed to load task engine {}: {}'.format(self._task_engine_type, e))
 
@@ -271,12 +271,13 @@ class Host:
 
     def submit_task(self, task_id):
         self._host_agent.send_task(task_id)
-        return self._host_agent.run_command(
-            self._task_agent.submit_cmd(task_id))
+        return self._task_engine.submit_task(task_id)
         
     def query_task(self, task_id):
-        return self._host_agent.run_command(
-            self._task_agent.query_cmd(task_id))
+        return self._task_engine.query_task(task_id)
+
+    def kill_task(self, task_id):
+        return self._task_engine.kill_task(task_id)
 
     def wait_task(self, task_id):
         while True:

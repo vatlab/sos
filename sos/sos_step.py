@@ -37,7 +37,7 @@ from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget,
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 from .hosts import Host
-from .sos_task import TaskParams, execute_task
+from .sos_task import TaskParams
 
 __all__ = []
 
@@ -651,13 +651,10 @@ class Base_Step_Executor:
             )
         )
         # if no output (thus no signature)
-        if task_vars['_output'] is None:
-            task_id = self.step.md5
-        else:
-            # temporarily create task signature to obtain sig_id
-            task_id = RuntimeInfo(self.step.md5, self.step.task, task_vars['_input'],
-                task_vars['_output'], task_vars['_depends'],
-                task_vars['__signature_vars__'], task_vars).sig_id
+        # temporarily create task signature to obtain sig_id
+        task_id = RuntimeInfo(self.step.md5, self.step.task, task_vars['_input'],
+            task_vars['_output'], task_vars['_depends'],
+            task_vars['__signature_vars__'], task_vars).sig_id
         job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
         with open(job_file, 'wb') as jf:
             try:
@@ -670,15 +667,17 @@ class Base_Step_Executor:
     def submit_task(self, task_id):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
-        task = self.host.submit_task(task_id)
-        self.proc_results.append(task)
+        env.logger.info('Submit task {}'.format(task_id))
+        self.host.submit_task(task_id)
+        # FIXME: check return status
+        self.proc_results.append(task_id)
 
     def wait_for_results(self):
-        for idx, task in self.proc_results:
+        for idx, task in enumerate(self.proc_results):
             # if it is done
-            if not isinstance(task, Host):
+            if isinstance(task, dict):
                 continue
-            res = task.wait()
+            res = self.host.wait_task(task)
 
             if res['succ'] != 0:
                 env.logger.error('Remote job failed.')
@@ -1055,6 +1054,10 @@ class Base_Step_Executor:
                         sys.stderr.write(get_traceback())
                     raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(short_repr(self.step.task), e))
                 #
+                # if not concurrent, we have to wait for the completion of the task
+                if 'concurrent' not in env.sos_dict['_runtime'] or not env.sos_dict['_runtime']['concurrent']:
+                    self.host.wait_task(task)
+                #
                 # endfor loop for each input group
                 #
             # check results? This is only meaningful for pool
@@ -1342,48 +1345,6 @@ class MP_Step_Executor(SP_Step_Executor):
     def __init__(self, step, queue):
         SP_Step_Executor.__init__(self, step, queue)
         self.pool = None
-
-    def submit_task(self, task):
-        if env.__queue__ or ('queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']):
-            return super(MP_Step_Executor, self).submit_task(task)
-
-        # if concurrent is set, create a pool object
-        import multiprocessing as mp
-        if self.pool is None and env.max_jobs > 1 and len(self._groups) > 1 and \
-            'concurrent' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['concurrent']:
-            self.pool = mp.Pool(min(env.max_jobs, len(self._groups)))
-
-        if self.pool:
-            self.proc_results.append(
-                self.pool.apply_async(
-                    execute_task,            # function
-                        (task, env.verbosity, env.sig_mode )
-                    )
-            )
-        else:
-            # single job case
-            self.proc_results.append(
-                execute_task(task, verbosity=env.verbosity, sigmode=env.sig_mode)
-            )
-
-    def wait_for_results(self):
-        from multiprocessing.pool import AsyncResult
-        if self.pool is None:
-            return
-        try:
-            self.proc_results = [res.get() if isinstance(res, AsyncResult) else res for res in self.proc_results]
-        except KeyboardInterrupt:
-            # if keyboard interrupt
-            raise RuntimeError('KeyboardInterrupt fro m {} (master)'.format(os.getpid()))
-        except Exception as e:
-            # if keyboard interrupt etc
-            env.logger.error('Caught {}'.format(e))
-            raise
-        finally:
-            # finally, write results back to the master process
-            self.pool.terminate()
-            self.pool.close()
-            self.pool.join()
 
     def log(self, stage=None, msg=None):
         if stage == 'start':

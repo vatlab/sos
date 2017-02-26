@@ -252,13 +252,30 @@ def kill_task(task):
 
 
 class TaskEngine:
-    def __init__(self):
-        pass
+    def __init__(self, agent):
+        #
+        # agent is the agent that provides function
+        #
+        #    run_command
+        #
+        # to submit command, which can be a direct process call, or a call
+        # on the remote server.
+        #
+        self._agent = agent
 
 class BackgroundProcess_TaskEngine(TaskEngine):
-    def __init__(self):
-        super(TaskEngine, self).__init__()
+    def __init__(self, agent):
+        super(BackgroundProcess_TaskEngine, self).__init__(agent)
 
-    def submit_cmd(self, task_id):
-        return "sos execute ${task_id} -v ${verbosity} -s {sig_mode}"
+    def submit_task(self, task_id):
+        return self._agent.run_command("sos execute {0} -v {1} -s {2} > ~/.sos/tasks/{0}.out 2> ~/.sos/tasks/{0}.err".format(
+            task_id, env.verbosity, env.sig_mode))
+
+    def query_task(self, task_id):
+        return self._agent.run_command("sos status {} -v {}".format(
+            task_id, env.verbosity))
+
+    def kill_task(self, task_id):
+        return self._agent.run_command("sos kill {} -v {}".format(
+            task_id, env.verbosity))
 
