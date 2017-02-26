@@ -477,6 +477,7 @@ print('I am nested [nested] with seed [seed]')
 reps = range(5)
 input: for_each='reps'
 task: concurrent=True
+import random
 nested = _reps
 seed = random.randint(1, 1000)
 print('Passing [seed] to [nested]')
