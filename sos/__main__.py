@@ -370,52 +370,97 @@ def get_execute_parser(desc_only=False):
         default=1,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
-    action = parser.add_mutually_exclusive_group(required=False)
-    action.add_argument('-q', '--query', action='store_true',
-        help='''Query the status of the task.''')
-    action.add_argument('-k', '--kill', action='store_true',
-        help='''Kill a running task.''')
     parser.set_defaults(func=cmd_execute)
     return parser
 
 
 def cmd_execute(args, workflow_args):
     import pickle
-    from .sos_task import execute_task, check_task, kill_task, monitor_interval, resource_monitor_interval
+    from .sos_task import execute_task, check_task, monitor_interval, resource_monitor_interval
     from .monitor import summarizeExecution
-    if args.query:
-        status = check_task(args.task)
+    status = check_task(args.task)
+    if status == 'completed':
         if args.verbosity <= 1:
             print(status)
         else:
-            if status in ('completed', 'running'):
-                print(summarizeExecution(args.task, status=status))
-            else:
-                print(status)
-    elif args.kill:
-        print(kill_task(args.task))
-    else:
-        status = check_task(args.task)
-        if status == 'completed':
-            if args.verbosity <= 1:
-                print(status)
-            else:
-                print(summarizeExecution(args.task, status=status))
-            sys.exit(0)
-        if status in 'running':
-            if args.verbosity <= 1:
-                print(status)
-            else:
-                print(summarizeExecution(args.task, status=status))
-            sys.exit(1)
-        #
-        res = execute_task(args.task, verbosity=args.verbosity, sigmode=args.__sigmode__, 
-            monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
-        res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', args.task + '.res')
-        with open(res_file, 'wb') as res_file:
-            pickle.dump(res, res_file)
+            print(summarizeExecution(args.task, status=status))
+        sys.exit(0)
+    if status in 'running':
+        if args.verbosity <= 1:
+            print(status)
+        else:
+            print(summarizeExecution(args.task, status=status))
+        sys.exit(1)
+    #
+    res = execute_task(args.task, verbosity=args.verbosity, sigmode=args.__sigmode__, 
+        monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
+    res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', args.task + '.res')
+    with open(res_file, 'wb') as res_file:
+        pickle.dump(res, res_file)
 
 #
+# command status
+#
+def get_status_parser(desc_only=False):
+    parser = argparse.ArgumentParser('status',
+        description='''Check the status of specified tasks''')
+    if desc_only:
+        return parser
+    parser.add_argument('task', help='''ID of the task.''')
+    parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=1,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).''')
+    parser.set_defaults(func=cmd_status)
+    return parser
+
+
+def cmd_status(args, workflow_args):
+    from .sos_task import check_task
+    from .monitor import summarizeExecution
+    status = check_task(args.task)
+    if args.verbosity <= 1:
+        print(status)
+    else:
+        if status in ('completed', 'running'):
+            print(summarizeExecution(args.task, status=status))
+        else:
+            print(status)
+
+#
+# command kill
+#
+#
+def get_kill_parser(desc_only=False):
+    parser = argparse.ArgumentParser('kill',
+        description='''Stop the execution of running task''')
+    if desc_only:
+        return parser
+    parser.add_argument('task', help='''ID of the task.''')
+    parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=1,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).''')
+    parser.set_defaults(func=cmd_kill)
+    return parser
+
+
+def cmd_kill(args, workflow_args):
+    from .sos_task import check_task, kill_task
+    from .monitor import summarizeExecution
+    status = check_task(args.task)
+    if status != 'running':
+        if args.verbosity <= 1:
+            print(status)
+        else:
+            print(summarizeExecution(args.task, status=status))
+    else:
+        # FIXME: kill the job
+        kill_task(args.task)
+        if args.verbosity <= 1:
+            print('killed')
+        else:
+            print(summarizeExecution(args.task, status='killed'))
+
+
 #
 # command remove
 #
@@ -1289,6 +1334,12 @@ def main():
     #
     # command execute
     add_sub_parser(subparsers, get_execute_parser(desc_only='execute'!=subcommand))
+    #
+    # command status
+    add_sub_parser(subparsers, get_status_parser(desc_only='status'!=subcommand))
+    #
+    # command kill
+    add_sub_parser(subparsers, get_kill_parser(desc_only='kill'!=subcommand))
     #
     # command convert
     add_sub_parser(subparsers, get_convert_parser(desc_only='convert'!=subcommand))

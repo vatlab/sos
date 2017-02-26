@@ -113,7 +113,7 @@ class RemoteHost:
 
     def _get_query_cmd(self):
         return self.config.get('query_cmd',
-            '''ssh ${host} "bash --login -c 'sos execute ${task} --query -v 0'" ''')
+            '''ssh ${host} "bash --login -c 'sos status ${task} -v 0'" ''')
 
     def is_shared(self, path):
         fullpath = os.path.abspath(os.path.expanduser(path))
