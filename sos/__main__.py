@@ -379,22 +379,26 @@ def cmd_execute(args, workflow_args):
     from .sos_task import execute_task, check_task, monitor_interval, resource_monitor_interval
     from .monitor import summarizeExecution
     status = check_task(args.task)
-    if status == 'completed':
-        if args.verbosity <= 1:
-            print(status)
-        else:
-            print(summarizeExecution(args.task, status=status))
-        sys.exit(0)
-    if status in 'running':
+    res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', args.task + '.res')
+    if status == 'running':
         if args.verbosity <= 1:
             print(status)
         else:
             print(summarizeExecution(args.task, status=status))
         sys.exit(1)
+    if status.startswith('completed')  and args.__sigmode__ != 'force':
+        # touch the result file
+        os.utime(res_file, None)
+        if args.verbosity <= 1:
+            print(status)
+        else:
+            print(summarizeExecution(args.task, status=status))
+        sys.exit(0)
     #
+    if os.path.isfile(res_file):
+        os.remove(res_file)
     res = execute_task(args.task, verbosity=args.verbosity, sigmode=args.__sigmode__, 
         monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
-    res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', args.task + '.res')
     with open(res_file, 'wb') as res_file:
         pickle.dump(res, res_file)
 

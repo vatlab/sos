@@ -187,20 +187,46 @@ def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5,
 
 
 def check_task(task):
+    #
+    # status of the job, which can be
+    #
+    # completed-old: if there is an old result file with succ
+    # completed:     if there is a new result file with succ
+    # failed-old:    if there is an old result file with fail status
+    # failed:        if there is a new result file with fail status
+    # pending:       if there is no result file, without status file or with an old status file
+    #                   and result file, have not started running.
+    # running:       if with a status file that has just been updated
+    # frozen:        if with a new status file that has not been updated
+    # 
+    #
+    task_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.task')
     status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
     res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
-    if not os.path.isfile(status_file):
-        return 'pending'
-    elif os.path.isfile(res_file):
+
+    if os.path.isfile(res_file):
+        new_res = os.path.getmtime(task_file) <= os.path.getmtime(res_file)
         try:
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
             if res['succ'] == 0:
-                return 'completed'
+                if new_res:
+                    return 'completed'
+                else:
+                    return 'completed-old'
             else:
-                return 'failed'
+                if new_res:
+                    return 'failed'
+                else:
+                    return 'failed-old'
         except Exception as e:
             return 'failed'
+    try:
+        if not os.path.isfile(status_file) or os.path.getmtime(status_file) < os.path.getmtime(res_file):
+            return 'pending'
+    except:
+        # there is a slight chance that the old res_file is removed
+        pass
     # dead?
     start_stamp = os.stat(status_file).st_mtime
     elapsed = time.time() - start_stamp
@@ -209,16 +235,18 @@ def check_task(task):
     # if the file is within 5 seconds
     if elapsed < monitor_interval:
         return 'running'
-    elif elapsed > 2 * monitor_interval:
-        return 'failed'
+    elif elapsed > 5 * monitor_interval:
+        return 'frozen'
     # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
-    time.sleep(monitor_interval + 2)
+    time.sleep(5 * monitor_interval)
     end_stamp = os.stat(status_file).st_mtime
     # the process is still alive
     if start_stamp != end_stamp:
         return 'running'
+    elif os.path.isfile(res_file):
+        return 'completed'
     else:
-        return 'failed'
+        return 'frozen'
 
 def kill_task(task):
     status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')

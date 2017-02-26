@@ -50,10 +50,11 @@ class LocalHost:
 
     def run_command(self, cmd):
         p = subprocess.Popen(cmd, shell=True)
-        ret = p.wait()
-        if (ret != 0):
-            raise RuntimeError('Failed to execute {}'.format(cmd))
-        return ret
+        #ret = p.wait()
+        #if (ret != 0):
+        #    raise RuntimeError('Failed to execute {}'.format(cmd))
+        #return ret
+        return p
 
     def check_output(self, cmd):
         return subprocess.check_output(cmd, shell=True)
@@ -307,12 +308,12 @@ class Host:
     def wait_task(self, task_id):
         while True:
             status = self.query_task(task_id).decode().strip()
-            if status != 'running':
+            if status not in ('pending', 'running', 'completed-old'):
                 break
             time.sleep(1)
         if status == 'completed':
             env.logger.info('{} ``completed``'.format(task_id))
             return self._host_agent.receive_result(task_id)
-        raise RuntimeError(status)
+        raise RuntimeError('Job returned with status {}'.format(status))
 
 

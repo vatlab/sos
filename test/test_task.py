@@ -76,6 +76,7 @@ with open('test/result.txt', 'w') as res:
     def testConcurrency(self):
         '''Test concurrency option for runtime environment'''
         env.max_jobs = 5
+        env.sig_mode = 'force'
         script =  SoS_Script(r"""
 [0]
 
@@ -91,7 +92,7 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
         wf = script.workflow()
         start = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - start, 9)
+        self.assertGreater(time.time() - start, 11)
         #
         #
         script =  SoS_Script(r"""
@@ -110,7 +111,7 @@ if run_mode == 'run':
         wf = script.workflow()
         start = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - start, 6)
+        self.assertLess(time.time() - start, 9)
 
     def testPrependPath(self):
         '''Test prepend path'''
