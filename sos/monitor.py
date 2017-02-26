@@ -80,8 +80,8 @@ def summarizeExecution(task_id, status='Unknown'):
     peak_mem = 0
     accu_mem = 0
     peak_nch = 0
-    start_time = None
-    end_time = None
+    start_time = 0
+    end_time = 0
     count = 0
     with open(status_file) as proc:
         for line in proc:

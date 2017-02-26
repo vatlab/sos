@@ -667,7 +667,6 @@ class Base_Step_Executor:
     def submit_task(self, task_id):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
-        env.logger.info('Submit task {}'.format(task_id))
         self.host.submit_task(task_id)
         # FIXME: check return status
         self.proc_results.append(task_id)
@@ -1056,7 +1055,7 @@ class Base_Step_Executor:
                 #
                 # if not concurrent, we have to wait for the completion of the task
                 if 'concurrent' not in env.sos_dict['_runtime'] or not env.sos_dict['_runtime']['concurrent']:
-                    self.host.wait_task(task)
+                    self.proc_results[-1] = self.host.wait_task(task)
                 #
                 # endfor loop for each input group
                 #

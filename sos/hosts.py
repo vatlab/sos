@@ -49,7 +49,20 @@ class LocalHost:
         pass
 
     def run_command(self, cmd):
-        return subprocess.Popen(cmd, shell=True)
+        p = subprocess.Popen(cmd, shell=True)
+        ret = p.wait()
+        if (ret != 0):
+            raise RuntimeError('Failed to execute {}'.format(cmd))
+        return ret
+
+    def check_output(self, cmd):
+        return subprocess.check_output(cmd, shell=True)
+
+    def receive_result(self, task_id):
+        res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
+        with open(res_file, 'rb') as result:
+            res = pickle.load(result)
+        return res 
 
 class RemoteHost:
     '''A remote host class that manages how to communicate with remote host'''
@@ -198,6 +211,17 @@ class RemoteHost:
             res = pickle.load(result)
         return res
 
+    def check_output(self, cmd):
+        try:
+            cmd = interpolate(self.execute_cmd, '${ }', {
+                'host': self.address,
+                'cmd': cmd})
+        except Exception as e:
+            raise ValueError('Failed to run command {}: {}'.format(cmd, e))
+        env.logger.info('Executing command ``{}``'.format(cmd))
+        env.logger.debug(cmd)
+        return subprocess.check_output(cmd, shell=True)
+
     def run_command(self, cmd):
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
@@ -208,10 +232,10 @@ class RemoteHost:
         env.logger.info('Executing command ``{}``'.format(cmd))
         env.logger.debug(cmd)
         p = subprocess.Popen(cmd, shell=True)
-        p.wait()
-        if (p.ret_code != 0):
+        ret = p.wait()
+        if (ret != 0):
             raise RuntimeError('Failed to execute {}'.format(cmd))
-        return p.output
+        return ret
 
 
 class Host:
@@ -271,6 +295,7 @@ class Host:
 
     def submit_task(self, task_id):
         self._host_agent.send_task(task_id)
+        env.logger.info('{} ``submitted``'.format(task_id))
         return self._task_engine.submit_task(task_id)
         
     def query_task(self, task_id):
@@ -281,11 +306,12 @@ class Host:
 
     def wait_task(self, task_id):
         while True:
-            status = self.query_task(task_id)
+            status = self.query_task(task_id).decode().strip()
             if status != 'running':
                 break
-            time.sleep(10)
+            time.sleep(1)
         if status == 'completed':
+            env.logger.info('{} ``completed``'.format(task_id))
             return self._host_agent.receive_result(task_id)
         raise RuntimeError(status)
 

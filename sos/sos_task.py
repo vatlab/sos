@@ -268,14 +268,13 @@ class BackgroundProcess_TaskEngine(TaskEngine):
         super(BackgroundProcess_TaskEngine, self).__init__(agent)
 
     def submit_task(self, task_id):
-        return self._agent.run_command("sos execute {0} -v {1} -s {2} > ~/.sos/tasks/{0}.out 2> ~/.sos/tasks/{0}.err".format(
+        return self._agent.run_command("sos execute {0} -v {1} -s {2}".format(
             task_id, env.verbosity, env.sig_mode))
 
     def query_task(self, task_id):
-        return self._agent.run_command("sos status {} -v {}".format(
-            task_id, env.verbosity))
+        return self._agent.check_output("sos status {} -v 0".format(task_id))
 
     def kill_task(self, task_id):
-        return self._agent.run_command("sos kill {} -v {}".format(
+        return self._agent.check_output("sos kill {} -v {}".format(
             task_id, env.verbosity))
 
