@@ -36,7 +36,7 @@ from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
-from .remote import RemoteHost
+from .hosts import Host
 from .sos_task import TaskParams, execute_task
 
 __all__ = []
@@ -594,49 +594,52 @@ class Base_Step_Executor:
                     'CONFIG', '__signature_vars__'
                     })
 
-        if env.__queue__ or ('queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']):
-            if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
-                host = RemoteHost(env.sos_dict['_runtime']['queue'])
-            else:
-                host = RemoteHost(env.__queue__)
-            if env.sos_dict['_input'] and not isinstance(env.sos_dict['_input'], Undetermined):
-                host.send_to_host(env.sos_dict['_input'])
-            if env.sos_dict['_depends'] and not isinstance(env.sos_dict['_depends'], Undetermined):
-                host.send_to_host(env.sos_dict['_depends'])
-            if 'to_host' in env.sos_dict['_runtime']:
-                host.send_to_host(env.sos_dict['_runtime']['to_host'])
+        if env.__queue__:
+            self.host = Host(env.__queue__)
+        elif 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
+            self.host = Host(env.sos_dict['_runtime']['queue'])
+        else:
+            # local host
+            self.host = Host()
 
-            # map variables
-            vars = ['_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__',
-                '_local_input_{}'.format(env.sos_dict['_index']),
-                '_local_output_{}'.format(env.sos_dict['_index'])] + list(env.sos_dict['__signature_vars__'])
-            preserved = set()
-            if 'preserved_vars' in env.sos_dict['_runtime']:
-                if isinstance(env.sos_dict['_runtime']['preserved_vars'], str):
-                    preserved.add(env.sos_dict['_runtime']['preserved_vars'])
-                elif isinstance(env.sos_dict['_runtime']['preserved_vars'], (set, Sequence)):
-                    preserved |= set(env.sos_dict['_runtime']['preserved_vars'])
-                else:
-                    raise ValueError('Unacceptable value for runtime option preserved_vars: {}'.format(env.sos_dict['_runtime']['preserved_vars']))
-            env.logger.debug('Translating {}'.format(vars))
-            for var in vars:
-                if var in preserved:
-                    env.logger.debug('Value of variable {} is preserved'.format(var))
-                elif var in env.sos_dict:
-                    try:
-                        task_vars[var] = host.map_var(env.sos_dict[var])
-                        if task_vars[var] != env.sos_dict[var]:
-                            env.logger.info('On {}: ``{}`` = {}'.format(host.alias, var, short_repr(task_vars[var])))
-                        else:
-                            env.logger.debug('{}: {} is kept'.format(var, short_repr(env.sos_dict[var])))
-                    except Exception as e:
-                        env.logger.debug(e)
-                elif var == '_runtime':
-                    task_vars[var]['cur_dir'] = host.map_var(env.sos_dict[var]['cur_dir'])
-                    if 'workdir' in env.sos_dict[var]:
-                        task_vars[var]['workdir'] = host.map_var(env.sos_dict[var]['workdir'])
-                else:
-                    env.logger.debug('Variable {} not in env.'.format(var))
+        if env.sos_dict['_input'] and not isinstance(env.sos_dict['_input'], Undetermined):
+            self.host.send_to_host(env.sos_dict['_input'])
+        if env.sos_dict['_depends'] and not isinstance(env.sos_dict['_depends'], Undetermined):
+            self.host.send_to_host(env.sos_dict['_depends'])
+        if 'to_host' in env.sos_dict['_runtime']:
+            self.host.send_to_host(env.sos_dict['_runtime']['to_host'])
+
+        # map variables
+        vars = ['_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__',
+            '_local_input_{}'.format(env.sos_dict['_index']),
+            '_local_output_{}'.format(env.sos_dict['_index'])] + list(env.sos_dict['__signature_vars__'])
+        preserved = set()
+        if 'preserved_vars' in env.sos_dict['_runtime']:
+            if isinstance(env.sos_dict['_runtime']['preserved_vars'], str):
+                preserved.add(env.sos_dict['_runtime']['preserved_vars'])
+            elif isinstance(env.sos_dict['_runtime']['preserved_vars'], (set, Sequence)):
+                preserved |= set(env.sos_dict['_runtime']['preserved_vars'])
+            else:
+                raise ValueError('Unacceptable value for runtime option preserved_vars: {}'.format(env.sos_dict['_runtime']['preserved_vars']))
+        env.logger.debug('Translating {}'.format(vars))
+        for var in vars:
+            if var in preserved:
+                env.logger.debug('Value of variable {} is preserved'.format(var))
+            elif var in env.sos_dict:
+                try:
+                    task_vars[var] = self.host.map_var(env.sos_dict[var])
+                    if task_vars[var] != env.sos_dict[var]:
+                        env.logger.info('On {}: ``{}`` = {}'.format(self.host.alias, var, short_repr(task_vars[var])))
+                    else:
+                        env.logger.debug('{}: {} is kept'.format(var, short_repr(env.sos_dict[var])))
+                except Exception as e:
+                    env.logger.debug(e)
+            elif var == '_runtime':
+                task_vars[var]['cur_dir'] = self.host.map_var(env.sos_dict[var]['cur_dir'])
+                if 'workdir' in env.sos_dict[var]:
+                    task_vars[var]['workdir'] = self.host.map_var(env.sos_dict[var]['workdir'])
+            else:
+                env.logger.debug('Variable {} not in env.'.format(var))
  
         # save task to a file
         param = TaskParams(
@@ -667,39 +670,24 @@ class Base_Step_Executor:
     def submit_task(self, task_id):
         # submit results using single-thread
         # this is the default mode for prepare and interactive mode
-        if env.__queue__ or ('queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']):
-            if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
-                host = RemoteHost(env.sos_dict['_runtime']['queue'])
-            else:
-                host = RemoteHost(env.__queue__)
-
-            host.submit_task(task_id)
-            self.proc_results.append(task_id)
-        else:
-            self.proc_results.append(
-                execute_task(task_id, verbosity=env.verbosity, sigmode=env.sig_mode)
-            )
+        task = self.host.submit_task(task_id)
+        self.proc_results.append(task)
 
     def wait_for_results(self):
-        if env.__queue__ or ('queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']):
-            if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
-                host = RemoteHost(env.sos_dict['_runtime']['queue'])
-            else:
-                host = RemoteHost(env.__queue__)
-            for idx, task in self.proc_results:
-                # if it is done
-                if isinstance(task, dict):
-                    continue
-                res = host.wait_task(task)
+        for idx, task in self.proc_results:
+            # if it is done
+            if not isinstance(task, Host):
+                continue
+            res = task.wait()
 
-                if res['succ'] != 0:
-                    env.logger.error('Remote job failed.')
-                else:
-                    if env.sos_dict['_output'] and not isinstance(env.sos_dict['_output'], Undetermined):
-                        host.receive_from_host(env.sos_dict['_output'])
-                    if 'from_host' in env.sos_dict['_runtime']:
-                        host.receive_from_host(env.sos_dict['_runtime']['from_host'])
-                self.proc_results[idx] = res
+            if res['succ'] != 0:
+                env.logger.error('Remote job failed.')
+            else:
+                if env.sos_dict['_output'] and not isinstance(env.sos_dict['_output'], Undetermined):
+                    self.host.receive_from_host(env.sos_dict['_output'])
+                if 'from_host' in env.sos_dict['_runtime']:
+                    self.host.receive_from_host(env.sos_dict['_runtime']['from_host'])
+            self.proc_results[idx] = res
 
     def log(self, stage=None, msg=None):
         raise RuntimeError('Please redefine the log function in derived step executor.')

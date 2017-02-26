@@ -21,31 +21,40 @@
 #
 import os
 
-from .utils import env
-from .sos_eval import interpolate
 import subprocess
 import time
 import pickle
+import pkg_resources
 from collections.abc import Sequence
+
+from .utils import env
+from .sos_eval import interpolate
+from .sos_task import BackgroundProcess_TaskEngine
+
+class LocalHost:
+    '''For local host, no path map, send and receive ...'''
+    def __init__(self):
+        self.alias = 'localhost'
+
+    def send_to_host(self, items):
+        pass
+
+    def receive_from_host(self, items):
+        pass
+
+    def map_vars(self, vars):
+        return vars
+
+    def send_task(self, task):
+        pass
+
+    def run_command(self, cmd):
+        return subprocess.Popen(cmd, shell=True)
 
 class RemoteHost:
     '''A remote host class that manages how to communicate with remote host'''
-    def __init__(self, host):
-        if isinstance(host, str):
-            # read from configuration file
-            self.alias = host
-            if 'hosts' in env.sos_dict['CONFIG'] and \
-                self.alias in env.sos_dict['CONFIG']['hosts']:
-                self.config = env.sos_dict['CONFIG']['hosts'][host]
-                if 'address' not in self.config:
-                    self.config['address'] = host
-            else:
-                self.config = { 'address': host }
-        elif isinstance(host, dict):
-            if 'address' not in host:
-                raise ValueError('Please define at least "address" for host specification')
-            self.config = host
-            self.alias = self.config.get('alias', self.config['address'])
+    def __init__(self, config):
+        self.config = config
         #
         self.address = self.config['address']
         self.shared_dirs = self._get_shared_dirs()
@@ -125,7 +134,7 @@ class RemoteHost:
         else:
             raise ValueError('Cannot map variables {} of type {}'.format(source, type(source).__name__))
 
-    def map_path(self, source):
+    def _map_path(self, source):
         result = {}
         if isinstance(source, str):
             dest = os.path.abspath(os.path.expanduser(source))
@@ -135,13 +144,13 @@ class RemoteHost:
             result[source] = dest
         elif isinstance(source, Sequence):
             for src in source:
-                result.update(self.map_path(src))
+                result.update(self._map_path(src))
         else:
             raise ValueError('Unacceptable parameter {} to option to_host'.format(source))
         return result
 
     def send_to_host(self, items):
-        sending = self.map_path(items)
+        sending = self._map_path(items)
         for source in sorted(sending.keys()):
             if self.is_shared(source):
                 env.logger.debug('Skip sending {} on shared file system'.format(source))
@@ -155,7 +164,7 @@ class RemoteHost:
                     raise RuntimeError('Failed to copy {} to {}'.format(source, self.alias))
 
     def receive_from_host(self, items):
-        receiving = {y:x for x,y in self.map_path(items).items()}
+        receiving = {y:x for x,y in self._map_path(items).items()}
         #
         for source in sorted(receiving.keys()):
             dest = receiving[source]
@@ -171,35 +180,103 @@ class RemoteHost:
                 except Exception as e:
                     raise  RuntimeError('Failed to copy {} from {}: {}'.format(source, self.alias, e))
 
-    def submit_task(self, task_id):
+    def send_task(self, task_id):
         job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
         send_cmd = 'scp {} {}:.sos/tasks'.format(job_file, self.address)
         # use scp for this simple case
         ret = subprocess.call(send_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
             raise RuntimeError('Failed to copy job {} to {}'.format(task_id, self.alias))
+
+    def receive_result(self, task_id):
+        receive_cmd = 'scp {}:.sos/tasks/{}.res {}/.sos/tasks'.format(self.address, task_id, os.path.expanduser('~'))
+        ret = subprocess.checcall(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        if (ret != 0):
+            raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
+        res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
+        with open(res_file, 'rb') as result:
+            res = pickle.load(result)
+        return res
+
+    def run_command(self, cmd):
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
                 'host': self.address,
-                'task': task_id,
-                'cmd': 'sos execute {} -v {} -s {}'.format(
-                    task_id, env.verbosity, env.sig_mode)})
+                'cmd': cmd})
         except Exception as e:
-            raise ValueError('Failed to create remote task {}: {}'.format(task_id, e))
-        env.logger.info('Executing job ``{}``'.format(cmd))
+            raise ValueError('Failed to run command {}: {}'.format(cmd, e))
+        env.logger.info('Executing command ``{}``'.format(cmd))
         env.logger.debug(cmd)
-        ret = subprocess.call(cmd, shell=True)
-        if (ret != 0):
+        p = subprocess.Popen(cmd, shell=True)
+        p.wait()
+        if (p.ret_code != 0):
             raise RuntimeError('Failed to execute {}'.format(cmd))
+        return p.output
 
+
+class Host:
+    def __init__(self, host = ''):
+        if not host:
+            self.alias = 'losthost'
+            self.config = {'alias': 'localhost'}
+        elif isinstance(host, str):
+            # read from configuration file
+            self.alias = host
+            if 'hosts' in env.sos_dict['CONFIG'] and \
+                self.alias in env.sos_dict['CONFIG']['hosts']:
+                self.config = env.sos_dict['CONFIG']['hosts'][host]
+                if 'address' not in self.config:
+                    self.config['address'] = host
+            else:
+                self.config = { 'address': host }
+        elif isinstance(host, dict):
+            if 'address' not in host:
+                raise ValueError('Please define at least "address" for host specification')
+            self.config = host
+            self.alias = self.config.get('alias', self.config['address'])
+
+        if self.alias == 'losthost':
+            self._host_agent = LocalHost()
+        else:
+            self._host_agene = RemoteHost(self.config)
+
+        if 'task_engine' in self.config:
+            self._task_engine_type = 'background_execution'
+            self._task_engine = BackgroundProcess_TaskEngine()
+        else:
+            self._task_engine_type = self.config['task_engine']
+            self._task_engine = None
+
+            available_engines = []
+            for entrypoint in pkg_resources.iter_entry_points(group='sos_taskengines'):
+                try:
+                    available_engines.append(entrypoint.name)
+                    if entrypoint.name == self._task_engine_type:
+                        self.task_engine = entrypoint.load()(self.config)
+                except Exception as e:
+                    env.logger.debug('Failed to load task engine {}: {}'.format(self._task_engine_type, e))
+
+            if self._task_engine is None:
+                raise RuntimeError('Failed to locate task engine type {}. Available engine types are {}'.format(
+                    self.task_engine, ', '.join(available_engines)))
+
+    def send_to_host(self, items):
+        return self._host_agent.send_to_host(items)
+
+    def receive_from_host(self, items):
+        return self._host_agent.receive_from_host(items)
+
+    def map_vars(self, vars):
+        return self._host_agent.map_vars(vars)
+
+    def submit_task(self, task_id):
+        self._host_agent.send_task(task_id)
+        return self._host_agent.run_command(
+            self._task_agent.submit_cmd(task_id))
+        
     def query_task(self, task_id):
-        try:
-            cmd = interpolate(self.query_cmd, '${ }', {
-                'host': self.address,
-                'task': task_id})
-        except Exception as e:
-            raise ValueError('Failed to create remote task {}: {}'.format(task_id, e))
-        return subprocess.check_output(cmd, shell=True)
+        return self._host_agent.run_command(
+            self._task_agent.query_cmd(task_id))
 
     def wait_task(self, task_id):
         while True:
@@ -208,12 +285,7 @@ class RemoteHost:
                 break
             time.sleep(10)
         if status == 'completed':
-            receive_cmd = 'scp {}:.sos/tasks/{}.res {}/.sos/tasks'.format(self.address, task_id, os.path.expanduser('~'))
-            ret = subprocess.checcall(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-            if (ret != 0):
-                raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
-            res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
-            with open(res_file, 'rb') as result:
-                res = pickle.load(result)
-            return res
- 
+            return self._host_agent.receive_result(task_id)
+        raise RuntimeError(status)
+
+

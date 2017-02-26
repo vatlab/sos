@@ -250,3 +250,15 @@ def kill_task(task):
     else:
         return 'failed'
 
+
+class TaskEngine:
+    def __init__(self):
+        pass
+
+class BackgroundProcess_TaskEngine(TaskEngine):
+    def __init__(self):
+        super(TaskEngine, self).__init__()
+
+    def submit_cmd(self, task_id):
+        return "sos execute ${task_id} -v ${verbosity} -s {sig_mode}"
+
