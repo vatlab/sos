@@ -591,7 +591,7 @@ class Base_Step_Executor:
                     '_local_input_{}'.format(env.sos_dict['_index']),
                     '_local_output_{}'.format(env.sos_dict['_index']),
                     '_index', '__args__', 'step_name', '_runtime',  '__workflow_sig__',
-                    'CONFIG', '__signature_vars__'
+                    'CONFIG', '__signature_vars__', '__step_context__', '__config_file__'
                     })
 
         if env.__queue__:

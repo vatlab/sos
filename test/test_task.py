@@ -28,7 +28,7 @@ import glob
 
 from sos.sos_script import SoS_Script, ParsingError
 from sos.utils import env
-from sos.sos_executor import Base_Executor, ExecuteError
+from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
 import subprocess
 
@@ -129,7 +129,8 @@ sh:
     temp_cmd
 """)
         wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
+        env.sig_mode = 'force'
+        self.assertRaises(Exception, Base_Executor(wf).run)
         # use option env
         script = SoS_Script(r"""
 [1]
@@ -138,6 +139,7 @@ sh:
     temp_cmd
 """)
         wf = script.workflow()
+        env.sig_mode = 'force'
         Base_Executor(wf).run()
         #
         #
@@ -190,6 +192,7 @@ echo ${ff}
 touch temp/${ff}
 ''' % active)
             wf = script.workflow()
+            env.sig_mode = 'force'
             Base_Executor(wf).run()
             files = list(glob.glob('temp/*.txt'))
             self.assertEqual(files, result)
@@ -211,6 +214,7 @@ echo ${ff}
 touch temp/${ff}
 ''' % active)
             wf = script.workflow()
+            env.sig_mode = 'force'
             Base_Executor(wf).run()
             files = list(glob.glob('temp/*.txt'))
             self.assertEqual(files, result)
