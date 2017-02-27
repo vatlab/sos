@@ -243,11 +243,13 @@ def check_task(task):
             time.sleep(1)
             return check_task(task)
     try:
-        if not os.path.isfile(status_file) or os.path.getmtime(status_file) < os.path.getmtime(res_file):
+        if not os.path.isfile(status_file) or os.path.getmtime(status_file) < os.path.getmtime(task_file):
             return 'pending'
-    except:
-        # there is a slight chance that the old res_file is removed
-        pass
+    except Exception as e:
+        # there is a slight chance that the old status_file is removed
+        env.logger.warning(e)
+        time.sleep(1)
+        return check_task(task)
     # dead?
     start_stamp = os.stat(status_file).st_mtime
     elapsed = time.time() - start_stamp
@@ -257,7 +259,11 @@ def check_task(task):
     if elapsed < monitor_interval:
         return 'running'
     elif elapsed > 5 * monitor_interval:
-        return 'frozen'
+        if os.path.isfile(res_file):
+            # result file appears
+            return check_task(task)
+        else:
+            return 'frozen'
     # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
     time.sleep(5 * monitor_interval)
     end_stamp = os.stat(status_file).st_mtime
@@ -265,7 +271,7 @@ def check_task(task):
     if start_stamp != end_stamp:
         return 'running'
     elif os.path.isfile(res_file):
-        return 'completed'
+        return check_task(task)
     else:
         return 'frozen'
 
