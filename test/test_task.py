@@ -244,5 +244,38 @@ sos_run('step')
         shutil.rmtree('tmp')
 
 
+
+    def testPassingVarToTask(self):
+        '''Test passing used variable to tasks'''
+        for i in range(10, 13):
+            FileTarget('myfile_{}.txt'.format(i)).remove('both')
+        #
+        env.sig_mode = 'force'
+        script = SoS_Script(r'''
+parameter: gvar = 10
+
+[10]
+# generate a file
+tt = range(gvar, gvar + 3)
+input: for_each='tt'
+output: "myfile_${_tt}.txt"
+# additional comment
+
+# _tt should be used in task
+task: concurrent=True
+python:
+    # ${gvar}
+    with open(${_output!r}, 'w') as tmp:
+        tmp.write('${_tt}_${_index}')
+
+''')
+        wf = script.workflow()
+        env.max_jobs = 4
+        Base_Executor(wf).run()
+        for t in range(10, 13):
+            with open('myfile_{}.txt'.format(t)) as tmp:
+                self.assertEqual(tmp.read(), str(t) + '_' + str(t-10))
+            FileTarget('myfile_{}.txt'.format(t)).remove('both')
+
 if __name__ == '__main__':
     unittest.main()
