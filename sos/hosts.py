@@ -308,7 +308,8 @@ class Host:
     def wait_task(self, task_id):
         while True:
             status = self.query_task(task_id).decode().strip()
-            if status not in ('pending', 'running', 'completed-old', 'failed-old'):
+            env.logger.error('{} {}'.format(task_id, status))
+            if status not in ('pending', 'running', 'completed-old', 'failed-old', 'failed-missing-output', 'failed-old-missing-output'):
                 break
             time.sleep(1)
         if status == 'completed':

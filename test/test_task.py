@@ -59,7 +59,7 @@ class TestTask(unittest.TestCase):
         '''Test workdir option for runtime environment'''
         script =  SoS_Script(r"""
 [0]
-
+output: 'result.txt'
 task: workdir='..'
 
 with open('test/result.txt', 'w') as res:

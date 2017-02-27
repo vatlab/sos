@@ -192,6 +192,8 @@ def check_task(task):
     #
     # completed-old: if there is an old result file with succ
     # completed:     if there is a new result file with succ
+    # failed-mismatch: completed but signature mismatch
+    # failed-old-mismatch: completed from an old run but signature mismatch
     # failed-old:    if there is an old result file with fail status
     # failed:        if there is a new result file with fail status
     # pending:       if there is no result file, without status file or with an old status file
@@ -207,20 +209,39 @@ def check_task(task):
     if os.path.isfile(res_file):
         new_res = os.path.getmtime(task_file) <= os.path.getmtime(res_file)
         try:
+            from .target import FileTarget
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
             if res['succ'] == 0:
-                if new_res:
-                    return 'completed'
+                if isinstance(res['output'], list):
+                    if all(FileTarget(x).exists('any') for x in res['output'] if isinstance(x, str) and '(' not in x):
+                        if new_res:
+                            return 'completed'
+                        else:
+                            return 'completed-old'
+                    else:
+                        env.logger.debug('{} not found'.format(res['output']))
+                        if new_res:
+                            return 'failed-missing-output'
+                        else:
+                            return 'failed-old-missing-output'
                 else:
-                    return 'completed-old'
+                    if new_res:
+                        return 'completed'
+                    else:
+                        return 'completed-old'
             else:
                 if new_res:
+                    env.logger.debug(res['exception'])
                     return 'failed'
                 else:
                     return 'failed-old'
         except Exception as e:
-            return 'failed'
+            # sometimes the resfile is changed while we are reading it
+            # so we wait a bit and try again.
+            env.logger.warning(e)
+            time.sleep(1)
+            return check_task(task)
     try:
         if not os.path.isfile(status_file) or os.path.getmtime(status_file) < os.path.getmtime(res_file):
             return 'pending'

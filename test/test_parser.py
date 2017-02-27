@@ -1200,19 +1200,7 @@ print(output)
         wf = script.workflow()
         # this does not work before until we make variable output available sooner
         Base_Executor(wf).dryrun()
-        # however, output should be the same in task
-        script = SoS_Script('''
-[0]
-seq = range(3)
-input: for_each='seq'
-output: "test${_seq}.txt"
-assert(len(output), _index + 1)
-task:
-assert(len(output), 3)
-''')
-        wf = script.workflow()
-        # this does not work before until we make variable output available sooner
-        Base_Executor(wf).dryrun()
+
 
     def testInclude(self):
         '''Test include keyword'''

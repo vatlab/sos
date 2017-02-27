@@ -397,7 +397,6 @@ parameter: gvar = 10
 # generate a file
 output: 'myfile.txt'
 # additional comment
-task:
 python:
     import time
     time.sleep(3)
