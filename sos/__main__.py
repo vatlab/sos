@@ -367,7 +367,7 @@ def get_execute_parser(desc_only=False):
             Please refer to online documentation for details about the
             use of runtime signatures.''')
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5),
-        default=1,
+        default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
     parser.set_defaults(func=cmd_execute)
