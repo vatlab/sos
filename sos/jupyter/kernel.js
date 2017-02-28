@@ -904,7 +904,27 @@ define([
         };
     }
 
+    function remove_extension(extension){
+         if ($(extension).length){
+             console.log("remove "+extension)
+             $(extension).remove()
+          }else{
+             window.setTimeout(function (){
+                console.log("Wait 3 sec and remove"+extension)
+                $(extension).remove(); }, 3000);
+          }        
+    }
+
+    function remove_nbextensions(){
+        var extenstionArray=["#toc-wrapper","#nbextension-scratchpad"]
+        return Array.prototype.map.call(extenstionArray,remove_extension)
+    }
+
+
+
     var onload = function() {
+
+        remove_nbextensions()
 
         // setting up frontend using existing metadata (without executing anything)
         load_select_kernel();
