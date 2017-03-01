@@ -412,6 +412,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
         super(BackgroundProcess_TaskEngine, self).__init__(agent)
 
     def execute_task(self, task_id):
+        env.logger.info('{} ``submitted``'.format(task_id))
         return self.agent.run_command("sos execute {0} -v {1} -s {2}".format(
             task_id, env.verbosity, env.sig_mode))
 

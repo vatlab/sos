@@ -152,7 +152,7 @@ class RemoteHost:
 
     def _get_send_cmd(self):
         return self.config.get('send_cmd', 
-            '''ssh ${host} "mkdir -p ${dest!dq}"; rsync -av ${source!ae} "${host}:${dest!de}"''')
+            '''ssh -q ${host} "mkdir -p ${dest!dq}"; rsync -av ${source!ae} "${host}:${dest!de}"''')
 
     def _get_receive_cmd(self):
         return self.config.get('receive_cmd',
@@ -160,11 +160,11 @@ class RemoteHost:
 
     def _get_execute_cmd(self):
         return self.config.get('execute_cmd',
-            '''ssh ${host} "bash --login -c '${cmd}'" ''')
+            '''ssh -q ${host} "bash --login -c '${cmd}'" ''')
 
     def _get_query_cmd(self):
         return self.config.get('query_cmd',
-            '''ssh ${host} "bash --login -c 'sos status ${task} -v 0'" ''')
+            '''ssh -q ${host} "bash --login -c 'sos status ${task} -v 0'" ''')
 
     def is_shared(self, path):
         fullpath = os.path.abspath(os.path.expanduser(path))
@@ -236,7 +236,7 @@ class RemoteHost:
 
     def send_task(self, task_id):
         job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
-        send_cmd = 'ssh {1} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks ]"; scp -q {0} {1}:.sos/tasks/'.format(job_file, self.address)
+        send_cmd = 'ssh -q {1} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks ]"; scp -q {0} {1}:.sos/tasks/'.format(job_file, self.address)
         # use scp for this simple case
         ret = subprocess.call(send_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
@@ -259,9 +259,11 @@ class RemoteHost:
                 'cmd': cmd})
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
-        env.logger.info('Executing command ``{}``'.format(cmd))
-        env.logger.debug(cmd)
-        return subprocess.check_output(cmd, shell=True)
+        env.logger.debug('Executing command ``{}``'.format(cmd))
+        try:
+            return subprocess.check_output(cmd, shell=True)
+        except Exception as e:
+            env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
 
     def run_command(self, cmd):
         try:
@@ -270,8 +272,7 @@ class RemoteHost:
                 'cmd': cmd})
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
-        env.logger.info('Executing command ``{}``'.format(cmd))
-        env.logger.debug(cmd)
+        env.logger.debug('Executing command ``{}``'.format(cmd))
         p = subprocess.Popen(cmd, shell=True)
         return p
 
@@ -341,6 +342,9 @@ class Host:
         self._host_agent = self.host_instances[self.alias]
         # for convenience
         self._task_engine = self._host_agent._task_engine
+        if not self._task_engine.is_alive():
+            env.logger.warning('Restart non-working task engine')
+            self._task_engine.start()
 
     # public interface
     #
@@ -357,7 +361,7 @@ class Host:
 
     def submit_task(self, task_id):
         self._host_agent.send_task(task_id)
-        env.logger.info('{} ``submitted``'.format(task_id))
+        env.logger.info('{} ``queued``'.format(task_id))
         return self._task_engine.submit_task(task_id)
         
     def kill_task(self, task_id):
