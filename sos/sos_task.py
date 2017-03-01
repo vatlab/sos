@@ -203,6 +203,8 @@ def check_task(task):
     # 
     #
     task_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.task')
+    if not os.path.isfile(task_file):
+        raise ValueError('Task does not exist: {}'.format(task))
     status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
     res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
 
@@ -275,6 +277,24 @@ def check_task(task):
     else:
         return 'frozen'
 
+def check_tasks(tasks, verbose=False):
+    # verbose is ignored for now
+    import glob
+    if not tasks:
+        tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
+        all_tasks = [os.path.basename(x)[:-5] for x in tasks]
+    else:
+        all_tasks = []
+        for t in tasks:
+            matched = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}*.task'.format(t)))
+            matched = [os.path.basename(x)[:-5] for x in matched]
+            if not matched:
+                env.logger.warning('{} does not match any existing task'.format(t))
+            else:
+                all_tasks.extend(matched)
+    for task in sorted(list(set(all_tasks))):
+        print('{}\t{}'.format(task, check_task(task)))
+        
 def kill_task(task):
     status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
     res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
@@ -316,20 +336,41 @@ class TaskEngine:
         # to submit command, which can be a direct process call, or a call
         # on the remote server.
         #
-        self._agent = agent
+        self.agent = agent
+        self.config = agent.config
+        self.tasks = set()
+        self.task_status = {}
+        self.last_checked = None
+        if 'status_check_interval' not in self.config:
+            self.status_check_interval = 10
+        else:
+            self.status_check_interval = self.config['status_check_interval']
+
+    def query_task(self, task_id):
+        if self.last_checked is not None and time.time() - self.last_checked < self.status_check_interval:
+            return self.task_status[task_id]
+        # query_tasks 
+        self.query_tasks()
+        self.last_checked = time.time()
+        return self.task_status[task_id]
+
 
 class BackgroundProcess_TaskEngine(TaskEngine):
     def __init__(self, agent):
         super(BackgroundProcess_TaskEngine, self).__init__(agent)
 
     def submit_task(self, task_id):
-        return self._agent.run_command("sos execute {0} -v {1} -s {2}".format(
+        self.tasks.add(task_id)
+        return self.agent.run_command("sos execute {0} -v {1} -s {2}".format(
             task_id, env.verbosity, env.sig_mode))
 
-    def query_task(self, task_id):
-        return self._agent.check_output("sos status {} -v 0".format(task_id))
+    def query_tasks(self):
+        tasks_status = self.agent.check_output("sos status {} -v 0".format(' '.join(self.tasks))).decode()
+        for line in tasks_status.split('\n'):
+            task_id, status = line.split('\t')
+            self.task_status[task_id] = status
 
     def kill_task(self, task_id):
-        return self._agent.check_output("sos kill {} -v {}".format(
+        return self.agent.check_output("sos kill {} -v {}".format(
             task_id, env.verbosity))
 

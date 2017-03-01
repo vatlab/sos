@@ -32,10 +32,42 @@ from .utils import env
 from .sos_eval import interpolate
 from .sos_task import BackgroundProcess_TaskEngine
 
+#
+# A 'queue' is defined by queue configurations in SoS configuration files.
+# It encapsulate properties of a queue and tells sos how to interact with
+# the queue. A queue can be a local host, a remote host without queue, or 
+# a remote host with a task queue, or a RQ or Celery server. There are 
+# two main categories of properties of a host.
+#
+# 1. host properties, namely how to copy files and how to execute comamnds
+#   on the host. Note that even for queues that communicate with sos
+#   through network, the workers might be on a different host with different
+#   file systems.
+#
+#   Keys for host configuration include:
+#   * path_map: path map between local and remote hosts
+#   * shared: paths that are shared between local and remote hosts
+#   * send_cmd (optional): alternative command to send files
+#   * receive_cmd (optional): alternative command to receive files
+#   * execute_cmd (optional): alternative command to execute commands
+#
+# 2. task properties, namely how to manage running jobs. These include
+#   direct execution, PBS and various cluster systems, and various task
+#   queues.
+#
+#   Keys for task configuration depend largely one queue type.
+#
+#   * task_engine: type of task engine
+#   * max_jobs: maximum number of concurrent jobs on the host.
+#
+#
+# Implementation wise, a queue instance is created for each queue.
+#
+
 class LocalHost:
     '''For local host, no path map, send and receive ...'''
-    def __init__(self):
-        self.alias = 'localhost'
+    def __init__(self, alias='localhost'):
+        self.alias = alias
 
     def send_to_host(self, items):
         pass
@@ -47,9 +79,11 @@ class LocalHost:
         return vars
 
     def send_task(self, task):
+        # on the same file system, no action is needed.
         pass
 
     def run_command(self, cmd):
+        # run command but does not wait for result.
         p = subprocess.Popen(cmd, shell=True)
         #ret = p.wait()
         #if (ret != 0):
@@ -58,6 +92,7 @@ class LocalHost:
         return p
 
     def check_output(self, cmd):
+        # get the output of command
         return subprocess.check_output(cmd, shell=True)
 
     def receive_result(self, task_id):
@@ -77,7 +112,6 @@ class RemoteHost:
         self.send_cmd = self._get_send_cmd()
         self.receive_cmd = self._get_receive_cmd()
         self.execute_cmd = self._get_execute_cmd()
-        self.query_cmd = self._get_query_cmd()
 
     def _get_shared_dirs(self):
         value = self.config.get('shared', [])
@@ -137,18 +171,6 @@ class RemoteHost:
                 return True
         return False
 
-    def map_var(self, source):
-        if isinstance(source, str):
-            dest = os.path.abspath(os.path.expanduser(source))
-            for k,v in self.path_map.items():
-                if dest.startswith(k):
-                    dest = v + dest[len(k):]
-            return dest
-        elif isinstance(source, Sequence):
-            return [self.map_var(x) for x in source]
-        else:
-            raise ValueError('Cannot map variables {} of type {}'.format(source, type(source).__name__))
-
     def _map_path(self, source):
         result = {}
         if isinstance(source, str):
@@ -163,6 +185,21 @@ class RemoteHost:
         else:
             raise ValueError('Unacceptable parameter {} to option to_host'.format(source))
         return result
+
+    #
+    # Interface functions
+    #
+    def map_var(self, source):
+        if isinstance(source, str):
+            dest = os.path.abspath(os.path.expanduser(source))
+            for k,v in self.path_map.items():
+                if dest.startswith(k):
+                    dest = v + dest[len(k):]
+            return dest
+        elif isinstance(source, Sequence):
+            return [self.map_var(x) for x in source]
+        else:
+            raise ValueError('Cannot map variables {} of type {}'.format(source, type(source).__name__))
 
     def send_to_host(self, items):
         sending = self._map_path(items)
@@ -234,58 +271,76 @@ class RemoteHost:
         env.logger.info('Executing command ``{}``'.format(cmd))
         env.logger.debug(cmd)
         p = subprocess.Popen(cmd, shell=True)
-        ret = p.wait()
-        if (ret != 0):
-            raise RuntimeError('Failed to execute {}'.format(cmd))
-        return ret
+        return p
 
+#
+# host instances are shared by all tasks so there should be only one
+# instance for each host.
+#
 
 class Host:
-    def __init__(self, host = ''):
-        if not host:
-            self.alias = 'losthost'
+    host_instances = {}
+    def __init__(self, alias=''):
+        self._get_config(alias)
+        self._get_host_agent()
+
+    def _get_config(self, alias):
+        if not alias:
+            self.alias = 'localhost'
             self.config = {'alias': 'localhost'}
-        elif isinstance(host, str):
+        elif isinstance(alias, str):
             # read from configuration file
-            self.alias = host
+            self.alias = alias
             if 'hosts' in env.sos_dict['CONFIG'] and \
-                self.alias in env.sos_dict['CONFIG']['hosts']:
-                self.config = env.sos_dict['CONFIG']['hosts'][host]
+                alias in env.sos_dict['CONFIG']['hosts']:
+                self.config = env.sos_dict['CONFIG']['hosts'][alias]
                 if 'address' not in self.config:
-                    self.config['address'] = host
+                    self.config['address'] = alias
             else:
-                self.config = { 'address': host }
-        elif isinstance(host, dict):
-            if 'address' not in host:
+                self.config = { 'address': alias }
+        elif isinstance(alias, dict):
+            if 'address' not in alias:
                 raise ValueError('Please define at least "address" for host specification')
-            self.config = host
+            self.config = alias
             self.alias = self.config.get('alias', self.config['address'])
 
-        if self.alias == 'losthost':
-            self._host_agent = LocalHost()
-        else:
-            self._host_agene = RemoteHost(self.config)
+    def _get_host_agent(self):
+        if self.alias not in self.host_instances:
+            if self.alias == 'localhost':
+                self.host_instances[self.alias] = LocalHost()
+            else:
+                self.host_instances[self.alias] = RemoteHost(self.config)
 
-        if 'task_engine' not in self.config:
-            self._task_engine_type = 'background_execution'
-            self._task_engine = BackgroundProcess_TaskEngine(self._host_agent)
-        else:
-            self._task_engine_type = self.config['task_engine']
-            self._task_engine = None
+            if 'task_engine' not in self.config:
+                task_engine_type = 'background_execution'
+                task_engine = BackgroundProcess_TaskEngine(self.host_instances[self.alias])
+            else:
+                task_engine_type = self.config['task_engine']
+                task_engine = None
 
-            available_engines = []
-            for entrypoint in pkg_resources.iter_entry_points(group='sos_taskengines'):
-                try:
-                    available_engines.append(entrypoint.name)
-                    if entrypoint.name == self._task_engine_type:
-                        self.task_engine = entrypoint.load()(self._host_agent)
-                except Exception as e:
-                    env.logger.debug('Failed to load task engine {}: {}'.format(self._task_engine_type, e))
+                available_engines = []
+                for entrypoint in pkg_resources.iter_entry_points(group='sos_taskengines'):
+                    try:
+                        available_engines.append(entrypoint.name)
+                        if entrypoint.name == task_engine_type:
+                            task_engine = entrypoint.load()(self.host_instances[self.alias])
+                    except Exception as e:
+                        env.logger.debug('Failed to load task engine {}: {}'.format(task_engine_type, e))
 
-            if self._task_engine is None:
-                raise RuntimeError('Failed to locate task engine type {}. Available engine types are {}'.format(
-                    self.task_engine, ', '.join(available_engines)))
+                if task_engine is None:
+                    raise RuntimeError('Failed to locate task engine type {}. Available engine types are {}'.format(
+                        task_engine, ', '.join(available_engines)))
 
+            self.host_instances[self.alias]._task_engine = task_engine
+
+        self._host_agent = self.host_instances[self.alias]
+        # for convenience
+        self._task_engine = self._host_agent._task_engine
+
+    # public interface
+    #
+    # based on Host definition
+    #
     def send_to_host(self, items):
         return self._host_agent.send_to_host(items)
 
@@ -301,6 +356,9 @@ class Host:
         return self._task_engine.submit_task(task_id)
         
     def query_task(self, task_id):
+        # task engine should not do this for each task and should
+        # keep perform the query for all tasks and return a cached
+        # result for specific task
         return self._task_engine.query_task(task_id)
 
     def kill_task(self, task_id):
