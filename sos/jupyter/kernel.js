@@ -221,9 +221,9 @@ define([
                         var cell = window.my_panel.cell;
                         data.output_type = msg_type;
                         cell.output_area.append_output(data);
-                        // remove output prompt
-                        adjustPanel();
+                        // remove output prompt                     
                     }
+                    adjustPanel();
                 });
             }
         );
@@ -721,7 +721,7 @@ define([
         //$("#panel-wrapper").toggle({'complete':function(){
         $("#panel-wrapper").toggle({
             'progress': function() {
-                if ($('#panel-wrapper').css('display') != 'block') {
+                if ($('#panel-wrapper').css('display') != 'block' && $('#toc-wrapper').css('display') != 'block') {
                     $('#notebook-container').css('margin-left', 15);
                     $('#notebook-container').css('width', $('#site').width());
                 } else {
@@ -866,13 +866,14 @@ define([
     };
 
     function adjustPanel() {
-        /*
-        if ($('#sos-panel').height() != 0) {
-            $('#notebook-container').css('margin-left', $('#sos-panel').width() + 30);
-            $('#notebook-container').css('width', container_width - $('#sos-panel').width() - 30);
+        
+        if ($('#panel-wrapper').css('display')!="none" || $('#toc-wrapper').css('display')!="none") {
+            
+            $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30);
+            $('#notebook-container').css('width', container_width - $('#panel-wrapper').width() - 30);
             $('.celltoolbar label').css('margin-left', 0);
             $('.celltoolbar label').css('margin-right', 0);
-        } */
+        } 
         var cell = window.my_panel.cell;
         $('.output_area .prompt', cell.element).remove()
         $('.output_area .output_prompt', cell.element).remove()
@@ -910,13 +911,14 @@ define([
              $(extension).remove()
           }else{
              window.setTimeout(function (){
-                console.log("Wait 3 sec and remove"+extension)
-                $(extension).remove(); }, 3000);
+                console.log("Wait 4 sec and remove"+extension)
+                $(extension).remove(); }, 4000);
           }        
     }
 
     function remove_nbextensions(){
-        var extenstionArray=["#toc-wrapper","#nbextension-scratchpad"]
+        // var extenstionArray=["#toc-wrapper","#nbextension-scratchpad"]
+        var extenstionArray=["#nbextension-scratchpad"]
         return Array.prototype.map.call(extenstionArray,remove_extension)
     }
 
@@ -942,6 +944,7 @@ define([
         load_panel();
         add_panel_button();
         patch_CodeCell_get_callbacks();
+        adjustPanel();
 
         // define SOS CodeMirror syntax highlighter
         (function(mod) {
