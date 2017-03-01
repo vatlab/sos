@@ -68,6 +68,7 @@ class LocalHost:
     '''For local host, no path map, send and receive ...'''
     def __init__(self, alias='localhost'):
         self.alias = alias
+        self.config = {'alias': 'localhost'}
 
     def send_to_host(self, items):
         pass
@@ -75,7 +76,7 @@ class LocalHost:
     def receive_from_host(self, items):
         pass
 
-    def map_vars(self, vars):
+    def map_var(self, vars):
         return vars
 
     def send_task(self, task):
@@ -332,6 +333,8 @@ class Host:
                         task_engine, ', '.join(available_engines)))
 
             self.host_instances[self.alias]._task_engine = task_engine
+            # the task engine is a thread and will run continously
+            self.host_instances[self.alias]._task_engine.start()
 
         self._host_agent = self.host_instances[self.alias]
         # for convenience
@@ -347,27 +350,21 @@ class Host:
     def receive_from_host(self, items):
         return self._host_agent.receive_from_host(items)
 
-    def map_vars(self, vars):
-        return self._host_agent.map_vars(vars)
+    def map_var(self, vars):
+        return self._host_agent.map_var(vars)
 
     def submit_task(self, task_id):
         self._host_agent.send_task(task_id)
         env.logger.info('{} ``submitted``'.format(task_id))
         return self._task_engine.submit_task(task_id)
         
-    def query_task(self, task_id):
-        # task engine should not do this for each task and should
-        # keep perform the query for all tasks and return a cached
-        # result for specific task
-        return self._task_engine.query_task(task_id)
-
     def kill_task(self, task_id):
         return self._task_engine.kill_task(task_id)
 
     def wait_task(self, task_id):
         st = time.time()
         while True:
-            status = self.query_task(task_id).decode().strip()
+            status = self._task_engine.check_task_status(task_id)
             if status not in ('pending', 'running', 'completed-old', 'failed-old', 'failed-missing-output', 'failed-old-missing-output'):
                 break
             elapsed = time.time() - st

@@ -22,6 +22,7 @@
 import os
 import pickle
 import time
+import threading
 from io import StringIO
 from tokenize import generate_tokens
 
@@ -326,8 +327,10 @@ def kill_task(task):
         return 'failed'
 
 
-class TaskEngine:
+class TaskEngine(threading.Thread):
     def __init__(self, agent):
+        threading.Thread.__init__(self)
+        self.daemon = True
         #
         # agent is the agent that provides function
         #
@@ -338,37 +341,95 @@ class TaskEngine:
         #
         self.agent = agent
         self.config = agent.config
-        self.tasks = set()
+
+        self.tasks = []
+        self.pending_tasks = []
+
         self.task_status = {}
         self.last_checked = None
         if 'status_check_interval' not in self.config:
             self.status_check_interval = 10
         else:
             self.status_check_interval = self.config['status_check_interval']
+        #
+        if 'max_running_jobs' not in self.config:
+            self.max_running_jobs = 10
+        else:
+            self.max_running_jobs = self.config['max_running_jobs']
 
-    def query_task(self, task_id):
-        if self.last_checked is not None and time.time() - self.last_checked < self.status_check_interval:
-            return self.task_status[task_id]
-        # query_tasks 
-        self.query_tasks()
-        self.last_checked = time.time()
-        return self.task_status[task_id]
+    def run(self):
+        while True:
+            to_run = []
+            with threading.Lock():
+                # check status
+                active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
+                if len(active_tasks) < self.max_running_jobs and self.pending_tasks:
+                    to_run = self.pending_tasks[ : self.max_running_jobs - len(active_tasks)]
 
+            for tid in to_run:
+                self.execute_task(tid)
+            #
+            with threading.Lock():
+                self.tasks.extend(to_run)
+                for tid in to_run:
+                    self.pending_tasks.remove(tid)
+                    self.task_status[tid] = 'pending'
+                #
+                active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
+
+            status = self.query_tasks(active_tasks)
+
+            with threading.Lock():
+                self.task_status.update(status)
+                self.summarize_status()
+            time.sleep(self.status_check_interval)
+
+    def submit_task(self, task_id):
+        # submit tasks simply add task_id to pending task list
+        with threading.Lock():
+            self.pending_tasks.append(task_id)
+
+    def summarize_status(self):
+        from collections import Counter
+        statuses = Counter(self.task_status.values())
+        env.logger.debug(
+            ' '.join('{}: {}'.format(x, y) for x, y in statuses.items()))
+
+    def check_task_status(self, task_id):
+        try:
+            with threading.Lock():
+                return self.task_status[task_id]
+        except:
+            # job not yet submitted
+            return 'pending'
+
+    def pending_tasks(self):
+        with threading.Lock():
+            return self.pending_tasks
 
 class BackgroundProcess_TaskEngine(TaskEngine):
     def __init__(self, agent):
         super(BackgroundProcess_TaskEngine, self).__init__(agent)
 
-    def submit_task(self, task_id):
-        self.tasks.add(task_id)
+    def execute_task(self, task_id):
         return self.agent.run_command("sos execute {0} -v {1} -s {2}".format(
             task_id, env.verbosity, env.sig_mode))
 
-    def query_tasks(self):
-        tasks_status = self.agent.check_output("sos status {} -v 0".format(' '.join(self.tasks))).decode()
+    def query_tasks(self, tasks=None):
+        if tasks == []:
+            return {}
+        tasks_status = self.agent.check_output("sos status {} -v 0".format(
+                ' '.join(tasks))).decode()
+        status = {}
         for line in tasks_status.split('\n'):
-            task_id, status = line.split('\t')
-            self.task_status[task_id] = status
+            if not line.strip():
+                continue
+            try:
+                tid, tst = line.split('\t')
+                status[tid] = tst
+            except Exception as e:
+                env.logger.warning('Unrecognized response {}: {}'.format(line, e))
+        return status
 
     def kill_task(self, task_id):
         return self.agent.check_output("sos kill {} -v {}".format(
