@@ -94,7 +94,11 @@ class LocalHost:
 
     def check_output(self, cmd):
         # get the output of command
-        return subprocess.check_output(cmd, shell=True)
+        try:
+            return subprocess.check_output(cmd, shell=True)
+        except Exception as e:
+            env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
+            return ''
 
     def receive_result(self, task_id):
         res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
@@ -264,6 +268,7 @@ class RemoteHost:
             return subprocess.check_output(cmd, shell=True)
         except Exception as e:
             env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
+            return ''
 
     def run_command(self, cmd):
         try:
