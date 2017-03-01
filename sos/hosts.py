@@ -106,6 +106,7 @@ class RemoteHost:
     '''A remote host class that manages how to communicate with remote host'''
     def __init__(self, config):
         self.config = config
+        self.alias = self.config['alias']
         #
         self.address = self.config['address']
         self.shared_dirs = self._get_shared_dirs()
@@ -159,7 +160,7 @@ class RemoteHost:
 
     def _get_execute_cmd(self):
         return self.config.get('execute_cmd',
-            '''ssh ${host} "nohup bash --login -c '${cmd}' > ~/.sos/tasks/${task}.out 2> ~/.sos/tasks/${task}.err" & ''')
+            '''ssh ${host} "bash --login -c '${cmd}'" ''')
 
     def _get_query_cmd(self):
         return self.config.get('query_cmd',
@@ -235,15 +236,15 @@ class RemoteHost:
 
     def send_task(self, task_id):
         job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
-        send_cmd = 'scp {} {}:.sos/tasks'.format(job_file, self.address)
+        send_cmd = 'ssh {1} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks ]"; scp -q {0} {1}:.sos/tasks/'.format(job_file, self.address)
         # use scp for this simple case
         ret = subprocess.call(send_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
-            raise RuntimeError('Failed to copy job {} to {}'.format(task_id, self.alias))
+            raise RuntimeError('Failed to copy job {} to {} using command {}'.format(task_id, self.alias, send_cmd))
 
     def receive_result(self, task_id):
-        receive_cmd = 'scp {}:.sos/tasks/{}.res {}/.sos/tasks'.format(self.address, task_id, os.path.expanduser('~'))
-        ret = subprocess.checcall(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        receive_cmd = 'scp -q {}:.sos/tasks/{}.res {}/.sos/tasks'.format(self.address, task_id, os.path.expanduser('~'))
+        ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
             raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
         res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
@@ -297,8 +298,9 @@ class Host:
                 self.config = env.sos_dict['CONFIG']['hosts'][alias]
                 if 'address' not in self.config:
                     self.config['address'] = alias
+                self.config['alias'] = alias
             else:
-                self.config = { 'address': alias }
+                self.config = { 'address': alias, 'alias': alias }
         elif isinstance(alias, dict):
             if 'address' not in alias:
                 raise ValueError('Please define at least "address" for host specification')
