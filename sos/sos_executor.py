@@ -763,7 +763,10 @@ class Base_Executor:
                     env.logger.info('Target {} already exists'.format(t))
         # process step of the pipelinp
         #
-        procs = [None for x in range(env.max_jobs)]
+        # running processes
+        procs = []
+        # process pools
+        pool = []
         prog = ProgressBar(desc=self.workflow.name, total=dag.num_nodes(), disable=dag.num_nodes() <= 1 or env.verbosity != 1)
         exec_error = ExecuteError(self.workflow.name)
         while True:
@@ -771,6 +774,7 @@ class Base_Executor:
             for idx, proc in enumerate(procs):
                 if proc is None:
                     continue
+
                 [p, q, runnable] = proc
                 if not q.poll():
                     continue
@@ -789,9 +793,10 @@ class Base_Executor:
                     else:
                         raise RuntimeError('Unexpected value from step {}'.format(res))
 
-                # if we does get the result
-                p[1].put(None)
-                p[0].join()
+                # if we does get the result,
+                # we send the process to pool
+                pool.append(procs[idx])
+                procs[idx] = None
 
                 if isinstance(res, (UnknownTarget, RemovedTarget)):
                     runnable._status = None
@@ -817,20 +822,16 @@ class Base_Executor:
                         if cycle:
                             raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
                     self.save_dag(dag)
-                    procs[idx] = None
                 elif isinstance(res, UnavailableLock):
                     runnable._status = 'signature_pending'
                     runnable._signature = (res.output, res.sig_file)
                     section = self.workflow.section_by_id(runnable._step_uuid)
                     env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
-                    # move away to let other tasks to run first
-                    procs[idx] = None
                 # if the job is failed
                 elif isinstance(res, Exception):
                     runnable._status = 'failed'
                     exec_error.append(runnable._node_id, res)
                     prog.update(1)
-                    procs[idx] = None
                 else:
                     #
                     for k, v in res.items():
@@ -853,23 +854,14 @@ class Base_Executor:
                         env.sos_dict['__step_local_output__'])
                     runnable._status = 'completed'
                     prog.update(1)
-                    procs[idx] = None
-                #env.logger.error('completed')
-                #dag.show_nodes()
 
-            # if there are pending jobs, we add some slots
-            num_pending = len([x for x in procs if x is not None and x[2]._status == 'task_pending'])
-            num_running = len([x for x in procs if x is not None and x[2]._status != 'task_pending'])
-            num_vacant = len([x for x in procs if x is None])
+            # remove None
+            procs = [x for x in procs if x is not None]
 
-            if num_vacant == 0 and num_pending > 0:
-                env.logger.debug('Extending {} processes because of pending jobs'.format(num_pending)) 
-                procs.extend([None for x in range(num_pending)])
-
-            # step 2: submit new jobs if there are empty slots
-            for idx, proc in enumerate(procs):
+            # step 2: check is some jobs are done
+            for proc in procs:
                 # if a job is pending, check if it is done.
-                if proc is not None and proc[2]._status == 'task_pending':
+                if proc[2]._status == 'task_pending':
                     res = proc[2]._host.check_status(proc[2]._pending_tasks)
                     if any(x in  ('pending', 'running', 'completed-old', 'failed-old', 'failed-missing-output', 'failed-old-missing-output') for x in res):
                         continue
@@ -881,9 +873,9 @@ class Base_Executor:
                     else:
                         raise RuntimeError('Job returned with status {}'.format(res))
 
-                if proc is not None:
-                    continue
-
+            # step 3: check if there is room and need for another job
+            while True:
+                num_running = len([x for x in procs if x[2]._status != 'task_pending'])
                 if num_running >= env.max_jobs:
                     break
                 # find any step that can be executed and run it, and update the DAT
@@ -919,28 +911,30 @@ class Base_Executor:
                 runnable._status = 'running'
                 q = mp.Pipe()
 
-                
-                worker_queue = mp.Queue()
-                worker = StepWorker(queue=worker_queue, config=self.config, args=self.args)
-                worker.start()
+                # if pool is empty, create a new process
+                if not pool:
+                    worker_queue = mp.Queue()
+                    worker = StepWorker(queue=worker_queue, config=self.config, args=self.args)
+                    worker.start()
+                else:
+                    # get worker, q and runnable is not needed any more
+                    p, _, _ = pool.pop(0)
+                    worker = p[0]
+                    worker_queue = p[1]
+
                 worker_queue.put((section, q[1]))
-                procs[idx] = [[worker, worker_queue], q[0], runnable]
-
-                num_running += 1
-                #
-                #env.logger.error('started')
-                #dag.show_nodes()
+                procs.append( [[worker, worker_queue], q[0], runnable])
             #
-            num_running = len([x for x in procs if x is not None and x[2]._status != 'task_pending'])
+            num_running = len([x for x in procs if x[2]._status != 'task_pending'])
 
-            env.logger.trace('PROC {}'.format(', '.join(['None' if x is None else x[2]._status for x in procs])))
-            if all(x is None for x in procs):
+            env.logger.trace('PROC {}'.format(', '.join([x[2]._status for x in procs])))
+            if not procs:
                 break
             elif not env.__wait__ and num_running == 0:
                 # if all jobs are pending, let us check if all jbos have been submitted.
                 pending_tasks = []
                 running_tasks = []
-                for n in [x[2] for x in procs if x is not None and x[2]._status == 'task_pending']:
+                for n in [x[2] for x in procs if x[2]._status == 'task_pending']:
                     p, r = n._host._task_engine.get_tasks()
                     pending_tasks.extend(p)
                     running_tasks.extend(r)
@@ -951,6 +945,10 @@ class Base_Executor:
                     break
             else:
                 time.sleep(0.1)
+        # close all processes
+        for p, _, _ in procs + pool:
+            p[1].put(None)
+            p[0].join()
         prog.close()
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
