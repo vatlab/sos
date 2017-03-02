@@ -104,10 +104,9 @@ input: for_each='repeat'
 
 task: concurrent=True
 
-if run_mode == 'run':
-    import time
-    time.sleep(_repeat + 1)
-    print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
+import time
+time.sleep(_repeat + 1)
+print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 """)
         wf = script.workflow()
         start = time.time()
