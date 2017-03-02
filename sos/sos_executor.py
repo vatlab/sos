@@ -33,7 +33,7 @@ from io import StringIO
 from ._version import __version__
 from .sos_step import Dryrun_Step_Executor, MP_Step_Executor, \
     analyze_section
-from .utils import env, Error, WorkflowDict, get_traceback, frozendict, dict_merge, short_repr
+from .utils import env, Error, WorkflowDict, get_traceback, frozendict, dict_merge, short_repr, pickleable
 from .sos_eval import SoS_exec, get_default_global_sigil
 from .sos_syntax import SOS_KEYWORDS
 from .dag import SoS_DAG
@@ -147,7 +147,7 @@ class StepWorker(mp.Process):
             if step is None:
                 break
             
-            section, context, sig_mode, verbosity, pipe = step
+            section, context, shared, sig_mode, verbosity, pipe = step
             #
             # this is to keep compatibility of dag run with sequential run because
             # in sequential run, we evaluate global section of each step in
@@ -168,6 +168,7 @@ class StepWorker(mp.Process):
                     env.sos_dict.pop(k)
             # if the step has its own context
             env.sos_dict.quick_update(context)
+            env.sos_dict.quick_update(shared)
             env.sig_mode = sig_mode
             env.verbosity = verbosity
 
@@ -925,7 +926,11 @@ class Base_Executor:
                     worker = p[0]
                     worker_queue = p[1]
 
-                worker_queue.put((section, runnable._context, env.sig_mode, env.verbosity, q[1]))
+                # workflow shared variables
+                shared = {x: env.sos_dict[x] for x in self.shared if x in env.sos_dict and pickleable(env.sos_dict[x], x)}
+                if 'shared' in section.options:
+                    shared.update({x: env.sos_dict[x] for x in section.options['shared'] if x in env.sos_dict and pickleable(env.sos_dict[x], x)})
+                worker_queue.put((section, runnable._context, shared, env.sig_mode, env.verbosity, q[1]))
                 procs.append( [[worker, worker_queue], q[0], runnable])
             #
             num_running = len([x for x in procs if x[2]._status != 'task_pending'])

@@ -68,6 +68,7 @@ with open('test/result.txt', 'w') as res:
 """)
         wf = script.workflow()
         Base_Executor(wf).run()
+        env.sig_mode = 'force'
         with open('result.txt') as res:
             content = [x.strip() for x in res.readlines()]
             self.assertTrue('test_execute.py' in content)

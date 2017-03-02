@@ -22,7 +22,6 @@
 import os
 
 import subprocess
-import time
 import pickle
 import pkg_resources
 from collections.abc import Sequence
@@ -347,12 +346,15 @@ class Host:
         self._host_agent = self.host_instances[self.alias]
         # for convenience
         self._task_engine = self._host_agent._task_engine
-        if not self._task_engine.is_alive():
-            # wait a bit
-            time.sleep(1)
-            if not self._task_engine.is_alive():
-                env.logger.warning('Restart non-working task engine')
-                self._task_engine.start()
+        #
+        # task engine can be unavailable because of time need to start it
+        #
+        #if not self._task_engine.is_alive():
+        #    # wait a bit
+        #    time.sleep(1)
+        #    if not self._task_engine.is_alive():
+        #        env.logger.warning('Restart non-working task engine')
+        #        self._task_engine.start()
 
     # public interface
     #
