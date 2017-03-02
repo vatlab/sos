@@ -549,7 +549,7 @@ _output = ['b.txt']
         env.run_mode = 'dryrun'
         # I would like to disallow setting _output directly, but this is
         # not the case now.
-        self.assertRaises(ExecuteError, Base_Executor(wf).dryrun)
+        self.assertRaises(Exception, Base_Executor(wf).dryrun)
 
     def testLocalNamespace(self):
         '''Test if steps are well separated.'''
@@ -769,10 +769,9 @@ touch temp/%(ff)
         script = SoS_Script('''
 [1: shared={'res':'output'}]
 import random
-if run_mode == 'run':
-    for i in range(3):
-        with open("temp/test_${random.randint(1, 100000)}.txt", 'w') as res:
-            res.write(str(i))
+for i in range(3):
+    with open("temp/test_${random.randint(1, 100000)}.txt", 'w') as res:
+        res.write(str(i))
 
 ''')
         wf = script.workflow()

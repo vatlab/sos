@@ -689,7 +689,7 @@ class Base_Step_Executor:
 
     def assign(self, key, value):
         try:
-            env.sos_dict[key] = SoS_eval(value, self.step.sigil)
+            env.sos_dict.set(key, SoS_eval(value, self.step.sigil))
         except (UnknownTarget, RemovedTarget, UnavailableLock):
             raise
         except Exception as e:

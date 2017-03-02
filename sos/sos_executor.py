@@ -141,12 +141,12 @@ class StepWorker(mp.Process):
     def run(self):
         # wait to handle jobs
         #
-        self.reset_dict()
         while True:
             step = self.queue.get()
             if step is None:
                 break
             
+            self.reset_dict()
             section, context, shared, sig_mode, verbosity, pipe = step
             #
             # this is to keep compatibility of dag run with sequential run because
@@ -667,18 +667,8 @@ class Base_Executor:
             env.sos_dict.quick_update(runnable._context)
             # execute section with specified input
             runnable._status = 'running'
-            if sys.platform == 'win32':
-                executor = Dryrun_Step_Executor(section, None)
-                res = executor.run()
-            else:
-                q = mp.Pipe()
-                executor = Dryrun_Step_Executor(section, q[1])
-                p = mp.Process(target=executor.run)
-                p.start()
-                #
-                res = q[0].recv()
-                # if we does get the result
-                p.join()
+            executor = Dryrun_Step_Executor(section, None)
+            res = executor.run()
             # if the step says unknown target .... need to check if the target can
             # be build dynamically.
             if isinstance(res, (UnknownTarget, RemovedTarget)):
@@ -756,7 +746,6 @@ class Base_Executor:
             else:
                 raise exec_error
         else:
-            self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
         #
         if queue:
