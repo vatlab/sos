@@ -23,6 +23,8 @@
 from sos.utils import env
 
 from sos.sos_step import SP_Step_Executor, Base_Step_Executor
+from sos.hosts import Host
+import time
 
 class Interactive_Step_Executor(SP_Step_Executor):
     def __init__(self, step):
@@ -31,6 +33,18 @@ class Interactive_Step_Executor(SP_Step_Executor):
         # use the Queue mechanism, so the __init__ and the run
         # functions are copied from Base_Step_Executor
         Base_Step_Executor.__init__(self, step)
+
+    def pending_tasks(self, tasks):
+        host = Host()
+        for task in tasks:
+            host.submit_task(task)
+        while True:
+             res = host.check_status(tasks)
+             if any(x in  ('pending', 'running', 'completed-old', 'failed-old', 'failed-missing-output', 'failed-old-missing-output') for x in res):
+                continue
+             elif all(x == 'completed' for x in res):
+                return host.retrieve_results(tasks)
+             time.sleep(1)
 
     def run(self):
         return Base_Step_Executor.run(self)

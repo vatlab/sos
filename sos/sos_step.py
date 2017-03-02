@@ -1351,7 +1351,6 @@ class SP_Step_Executor(Queued_Step_Executor):
 class MP_Step_Executor(SP_Step_Executor):
     def __init__(self, step, queue):
         SP_Step_Executor.__init__(self, step, queue)
-        self.pool = None
 
     def log(self, stage=None, msg=None):
         if stage == 'start':
