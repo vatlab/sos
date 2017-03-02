@@ -87,8 +87,9 @@ input: for_each='repeat'
 task: concurrent=False
 
 import time
-time.sleep(_repeat + 1)
 print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
+time.sleep(_repeat + 1)
+print('I am {}, done'.format(_index))
 """)
         wf = script.workflow()
         start = time.time()
@@ -108,14 +109,14 @@ input: for_each='repeat'
 task: concurrent=True
 
 import time
-time.sleep(_repeat + 1)
 print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
+time.sleep(_repeat + 1)
+print('I am {}, done'.format(_index))
 """)
         wf = script.workflow()
         start = time.time()
-        env.verbosity = 4
         Base_Executor(wf).run()
-        self.assertLess(time.time() - start, 9)
+        self.assertLess(time.time() - start, 11)
 
     def testPrependPath(self):
         '''Test prepend path'''

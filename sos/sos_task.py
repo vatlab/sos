@@ -401,7 +401,8 @@ class TaskEngine(threading.Thread):
     def submit_task(self, task_id):
         # submit tasks simply add task_id to pending task list
         with threading.Lock():
-            if len(self.tasks) < self.max_running_jobs:
+            active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
+            if len(active_tasks) < self.max_running_jobs:
                 self.tasks.append(task_id)
                 self.execute_task(task_id)
                 self.task_status[task_id] = 'pending'
