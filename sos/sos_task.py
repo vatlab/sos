@@ -99,8 +99,8 @@ def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5,
                 env.sos_dict.set('_output', matched['output'])
                 env.sos_dict.set('_local_input', matched['local_output'])
                 env.sos_dict.set('_local_output', matched['local_output'])
-                env.sos_dict['local_input'].extend(env.sos_dict['_local_input'])
-                env.sos_dict['local_output'].extend(env.sos_dict['_local_output'])
+                env.sos_dict.set('local_input', env.sos_dict['_local_input'])
+                env.sos_dict.set('local_output', env.sos_dict['_local_output'])
                 env.sos_dict.update(matched['vars'])
                 env.logger.info('Task ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
                 skipped = True

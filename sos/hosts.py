@@ -66,7 +66,8 @@ class LocalHost:
     '''For local host, no path map, send and receive ...'''
     def __init__(self, alias='localhost'):
         self.alias = alias
-        self.config = {'alias': 'localhost'}
+        # we checkk local jobs more aggressively
+        self.config = {'alias': 'localhost', 'status_check_interval': 2}
 
     def send_to_host(self, items):
         pass
