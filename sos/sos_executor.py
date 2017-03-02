@@ -847,8 +847,12 @@ class Base_Executor:
                     prog.update(1)
                 else:
                     #
+                    svar = {}
                     for k, v in res.items():
-                        env.sos_dict.set(k, v)
+                        if k == '__shared__':
+                            svar = v
+                        else:
+                            env.sos_dict.set(k, v)
                     #
                     # set context to the next logic step.
                     for edge in dag.out_edges(runnable):
@@ -859,6 +863,7 @@ class Base_Executor:
                             node._context.update(env.sos_dict.clone_selected_vars(
                                 node._context['__signature_vars__'] | node._context['__environ_vars__'] \
                                 | {'_input', '__step_output__', '__default_output__', '__args__'}))
+                        node._context.update(svar)
                         node._context['__completed__'].append(res['__step_name__'])
                     dag.update_step(runnable, env.sos_dict['__step_input__'],
                         env.sos_dict['__step_output__'],

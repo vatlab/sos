@@ -734,24 +734,25 @@ class Base_Step_Executor:
         }
         result['__last_res__'] = self.last_res
         result['__changed_vars__'] = set()
+        result['__shared__'] = {}
         if 'shared' in self.step.options:
             vars = self.step.options['shared']
             if isinstance(vars, str):
                 result['__changed_vars__'].add(vars)
-                result[vars] = copy.deepcopy(env.sos_dict[vars])
+                result['__shared__'][vars] = copy.deepcopy(env.sos_dict[vars])
             elif isinstance(vars, Mapping):
                 result['__changed_vars__'] |= vars.keys()
                 for var in vars.keys():
-                    result[var] = copy.deepcopy(env.sos_dict[var])
+                    result['__shared__'][var] = copy.deepcopy(env.sos_dict[var])
             elif isinstance(vars, Sequence):
                 for item in vars:
                     if isinstance(item, str):
                         result['__changed_vars__'].add(item)
-                        result[item] = copy.deepcopy(env.sos_dict[item])
+                        result['__shared__'][item] = copy.deepcopy(env.sos_dict[item])
                     elif isinstance(item, Mapping):
                         result['__changed_vars__'] |= item.keys()
                         for var in item.keys():
-                            result[var] = copy.deepcopy(env.sos_dict[var])
+                            result['__shared__'][var] = copy.deepcopy(env.sos_dict[var])
                     else:
                         raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(vars))
             else:
