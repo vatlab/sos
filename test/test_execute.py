@@ -477,6 +477,7 @@ print('I am nested [nested] with seed [seed]')
 reps = range(5)
 input: for_each='reps'
 task: concurrent=True
+import random
 nested = _reps
 seed = random.randint(1, 1000)
 print('Passing [seed] to [nested]')
@@ -548,7 +549,7 @@ _output = ['b.txt']
         env.run_mode = 'dryrun'
         # I would like to disallow setting _output directly, but this is
         # not the case now.
-        self.assertRaises(ExecuteError, Base_Executor(wf).dryrun)
+        self.assertRaises(Exception, Base_Executor(wf).dryrun)
 
     def testLocalNamespace(self):
         '''Test if steps are well separated.'''
@@ -768,10 +769,9 @@ touch temp/%(ff)
         script = SoS_Script('''
 [1: shared={'res':'output'}]
 import random
-if run_mode == 'run':
-    for i in range(3):
-        with open("temp/test_${random.randint(1, 100000)}.txt", 'w') as res:
-            res.write(str(i))
+for i in range(3):
+    with open("temp/test_${random.randint(1, 100000)}.txt", 'w') as res:
+        res.write(str(i))
 
 ''')
         wf = script.workflow()
@@ -867,7 +867,6 @@ input: for_each = ['s']
 output: output_files[_index]
 run: active = 0
 rm -f temp/out.log
-task:
 run:
 echo ${output} >> temp/out.log
 touch ${output}
@@ -878,40 +877,6 @@ touch ${output}
         with open('temp/out.log') as out:
             self.assertEqual(len(out.read().split()), 15)
         shutil.rmtree('temp')
-
-
-    def testPassingVarToTask(self):
-        '''Test passing used variable to tasks'''
-        for i in range(10, 13):
-            FileTarget('myfile_{}.txt'.format(i)).remove('both')
-        #
-        script = SoS_Script(r'''
-parameter: gvar = 10
-
-[10]
-# generate a file
-tt = range(gvar, gvar + 3)
-input: for_each='tt'
-output: "myfile_${_tt}.txt"
-# additional comment
-
-# _tt should be used in task
-task: concurrent=True
-python:
-    # ${gvar}
-    with open(${_output!r}, 'w') as tmp:
-        tmp.write('${_tt}_${_index}')
-
-''')
-        wf = script.workflow()
-        env.max_jobs = 4
-        Base_Executor(wf).run()
-        for t in range(10, 13):
-            with open('myfile_{}.txt'.format(t)) as tmp:
-                self.assertEqual(tmp.read(), str(t) + '_' + str(t-10))
-            FileTarget('myfile_{}.txt'.format(t)).remove('both')
-
-
 
     def testExecutionLock(self):
         '''Test execution lock of two processes'''
@@ -939,7 +904,7 @@ with open('b.txt', 'w') as txt:
         ret2.wait()
         # two processes execute A_1 and A_2 separately, usually
         # takes less than 5 seconds
-        self.assertLess(time.time() - st, 7)
+        self.assertLess(time.time() - st, 9)
         FileTarget('lock.sos').remove('both')
 
 

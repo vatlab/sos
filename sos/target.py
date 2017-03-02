@@ -454,7 +454,9 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Dependent files must be a list of filenames or Undetermined for runtime signature.')
 
-        if isinstance(output_files, list):
+        if output_files is None:
+            self.output_files = []
+        elif isinstance(output_files, list):
             self.output_files = [FileTarget(x) if isinstance(x, str) else x for x in output_files]
         elif isinstance(output_files, Undetermined):
             self.output_files = output_files
@@ -473,7 +475,6 @@ class RuntimeInfo:
         self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(self.sig_id))
 
     def __getstate__(self):
-        self.release()
         return {'step_md5': self.step_md5,
                 'input_files': self.input_files,
                 'output_files': self.output_files,
@@ -497,7 +498,6 @@ class RuntimeInfo:
         self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(
             textMD5('{} {} {} {}'.format(self.script, self.input_files, self.output_files, self.dependent_files))))
 
-        self.lock()
 
     def lock(self):
         # we will need to lock on a file that we do not really write to

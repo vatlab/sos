@@ -70,7 +70,7 @@ res = 2
 res = 3
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], 1)
         #
         script = SoS_Script(r"""
@@ -83,7 +83,7 @@ res = 2
 res = 3
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], 2)
         #
         script = SoS_Script(r"""
@@ -99,7 +99,7 @@ a = 5
 
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], 3)
         self.assertEqual(env.sos_dict['a'], 30)
         # test multiple vars
@@ -113,7 +113,7 @@ a = 5
 
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], 3)
         self.assertEqual(env.sos_dict['a'], 5)
         #
@@ -128,7 +128,7 @@ a = 5
 
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], 9)
         self.assertEqual(env.sos_dict['c'], 5)
         # test mixed vars and mapping
@@ -142,7 +142,7 @@ a = 5
 
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['res'], 3)
         self.assertEqual(env.sos_dict['c'], 5)
 

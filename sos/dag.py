@@ -192,7 +192,7 @@ class SoS_DAG(nx.DiGraph):
                 if not with_dependency:
                     return node
         # if no node could be found, let use try pending ones
-        pending_jobs = [x for x in self.nodes() if x._status == 'pending']
+        pending_jobs = [x for x in self.nodes() if x._status == 'signature_pending']
         if pending_jobs:
             try:
                 notifier = ActivityNotifier('Waiting for another process for output {}'.format(short_repr(

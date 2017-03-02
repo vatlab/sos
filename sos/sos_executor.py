@@ -27,22 +27,21 @@ import keyword
 import fasteners
 from collections.abc import Sequence
 import multiprocessing as mp
-from queue import Empty
 
 from tqdm import tqdm as ProgressBar
 from io import StringIO
 from ._version import __version__
 from .sos_step import Dryrun_Step_Executor, MP_Step_Executor, \
     analyze_section
-from .utils import env, Error, WorkflowDict, get_traceback, frozendict, dict_merge, short_repr
+from .utils import env, Error, WorkflowDict, get_traceback, frozendict, dict_merge, short_repr, pickleable
 from .sos_eval import SoS_exec, get_default_global_sigil
 from .sos_syntax import SOS_KEYWORDS
 from .dag import SoS_DAG
 from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step
 from .pattern import extract_pattern
+from .hosts import Host
 
 __all__ = []
-
 
 class ExecuteError(Error):
     """Raised when there are errors in dryrun mode. Such errors are not raised
@@ -74,6 +73,108 @@ def __null_func__(*args, **kwargs):
     '''This function will be passed to SoS's namespace and be executed
     to evaluate functions of input, output, and depends directives.'''
     return args, kwargs
+
+class StepWorker(mp.Process):
+    def __init__(self, queue, config={}, args=[], **kwargs):
+        # the worker process knows configuration file, command line argument etc
+        super(StepWorker, self).__init__(**kwargs)
+        self.queue = queue
+        self.config = config
+        self.args = args
+
+    def reset_dict(self):
+        env.sos_dict = WorkflowDict()
+        env.parameter_vars.clear()
+
+        if self.config['report_output']:
+            env.sos_dict.set('__report_output__', self.config['report_output'])
+        env.sos_dict.set('__null_func__', __null_func__)
+        env.sos_dict.set('__config_file__', self.config['config_file'])
+        env.sos_dict.set('__args__', self.args)
+        env.sos_dict.set('__unknown_args__', self.args)
+        # initial values
+        env.sos_dict.set('SOS_VERSION', __version__)
+        env.sos_dict.set('__step_output__', [])
+
+        # load configuration files
+        cfg = {}
+        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
+        if os.path.isfile(sos_config_file):
+            with fasteners.InterProcessLock('/tmp/sos_config_'):
+                try:
+                    with open(sos_config_file) as config:
+                        cfg = yaml.safe_load(config)
+                except Exception as e:
+                    raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+        # local config file
+        sos_config_file = 'config.yml'
+        if os.path.isfile(sos_config_file):
+            with fasteners.InterProcessLock('/tmp/sos_config_'):
+                try:
+                    with open(sos_config_file) as config:
+                        dict_merge(cfg, yaml.safe_load(config))
+                except Exception as e:
+                    raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+        # user-specified configuration file.
+        if self.config['config_file'] is not None:
+            if not os.path.isfile(self.config['config_file']):
+                raise RuntimeError('Config file {} not found'.format(self.config['config_file']))
+            with fasteners.InterProcessLock('/tmp/sos_config_'):
+                try:
+                    with open(self.config['config_file']) as config:
+                        dict_merge(cfg, yaml.safe_load(config))
+                except Exception as e:
+                    raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config['config_file'], e))
+        # set config to CONFIG
+        env.sos_dict.set('CONFIG', frozendict(cfg))
+
+        SoS_exec('import os, sys, glob', None)
+        SoS_exec('from sos.runtime import *', None)
+        self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
+        self._base_symbols -= {'dynamic'}
+
+        if isinstance(self.args, dict):
+            for key, value in self.args.items():
+                if not key.startswith('__'):
+                    env.sos_dict.set(key, value)
+
+    def run(self):
+        # wait to handle jobs
+        #
+        while True:
+            step = self.queue.get()
+            if step is None:
+                break
+            
+            self.reset_dict()
+            section, context, shared, sig_mode, verbosity, pipe = step
+            #
+            # this is to keep compatibility of dag run with sequential run because
+            # in sequential run, we evaluate global section of each step in
+            # order to determine values of options such as skip.
+            # The consequence is that global definitions are available in
+            # SoS namespace.
+            try:
+                SoS_exec(section.global_def, section.global_sigil)
+            except RuntimeError as e:
+                if env.verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                raise
+
+            # clear existing keys, otherwise the results from some random result
+            # might mess with the execution of another step that does not define input
+            for k in ['__step_input__', '__default_output__', '__step_output__']:
+                if k in env.sos_dict:
+                    env.sos_dict.pop(k)
+            # if the step has its own context
+            env.sos_dict.quick_update(context)
+            env.sos_dict.quick_update(shared)
+            env.sig_mode = sig_mode
+            env.verbosity = verbosity
+
+            executor = MP_Step_Executor(section, pipe)
+            executor.run()
+
 
 class Base_Executor:
     '''This is the base class of all executor that provides common
@@ -566,18 +667,8 @@ class Base_Executor:
             env.sos_dict.quick_update(runnable._context)
             # execute section with specified input
             runnable._status = 'running'
-            if sys.platform == 'win32':
-                executor = Dryrun_Step_Executor(section, None)
-                res = executor.run()
-            else:
-                q = mp.Queue()
-                executor = Dryrun_Step_Executor(section, q)
-                p = mp.Process(target=executor.run)
-                p.start()
-                #
-                res = q.get()
-                # if we does get the result
-                p.join()
+            executor = Dryrun_Step_Executor(section, None)
+            res = executor.run()
             # if the step says unknown target .... need to check if the target can
             # be build dynamically.
             if isinstance(res, (UnknownTarget, RemovedTarget)):
@@ -604,7 +695,7 @@ class Base_Executor:
                         raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
                 self.save_dag(dag)
             elif isinstance(res, UnavailableLock):
-                runnable._status = 'pending'
+                runnable._status = 'signature_pending'
                 runnable._signature = (res.output, res.sig_file)
                 env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
             # if the job is failed
@@ -655,7 +746,6 @@ class Base_Executor:
             else:
                 raise exec_error
         else:
-            self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
         #
         if queue:
@@ -686,138 +776,206 @@ class Base_Executor:
                     env.logger.info('Target {} already exists'.format(t))
         # process step of the pipelinp
         #
-        procs = [None for x in range(env.max_jobs)]
-        prog = ProgressBar(desc=self.workflow.name, total=dag.num_nodes(), disable=dag.num_nodes() <= 1 or env.verbosity != 1)
-        exec_error = ExecuteError(self.workflow.name)
-        while True:
-            # step 1: check existing jobs and see if they are completed
-            for idx, proc in enumerate(procs):
-                if proc is None:
-                    continue
-                (p, q, u) = proc
-                try:
-                    res = q.get_nowait()
-                except Empty:
-                    # continue waiting
-                    continue
-                #
-                # if we does get the result
-                p.join()
+        # running processes
+        procs = []
+        # process pools
+        pool = []
+        try:
+            prog = ProgressBar(desc=self.workflow.name, total=dag.num_nodes(), disable=dag.num_nodes() <= 1 or env.verbosity != 1)
+            exec_error = ExecuteError(self.workflow.name)
+            while True:
+                # step 1: check existing jobs and see if they are completed
+                for idx, proc in enumerate(procs):
+                    if proc is None:
+                        continue
 
-                runnable = dag.node_by_id(u)
-                if isinstance(res, (UnknownTarget, RemovedTarget)):
-                    runnable._status = None
-                    target = res.target
-                    if dag.regenerate_target(target):
-                        #runnable._depends_targets.append(target)
-                        #dag._all_dependent_files[target].append(runnable)
-                        dag.build(self.workflow.auxiliary_sections)
-                        #
-                        cycle = dag.circular_dependencies()
-                        if cycle:
-                            raise RuntimeError('Circular dependency detected {} after regeneration. It is likely a later step produces input of a previous step.'.format(cycle))
+                    [p, q, runnable] = proc
+                    if not q.poll():
+                        continue
 
+                    res = q.recv()
+                    # the step is waiting for external tasks
+                    if isinstance(res, str):
+                        if res.startswith('task'):
+                            env.logger.debug('Receive {}'.format(res))
+                            runnable._host = Host(res.split(' ')[1], start_task_engine=True)
+                            runnable._pending_tasks = res.split(' ')[2:]
+                            for task in runnable._pending_tasks:
+                                runnable._host.submit_task(task)
+                            runnable._status = 'task_pending'
+                            continue
+                        else:
+                            raise RuntimeError('Unexpected value from step {}'.format(res))
+
+                    # if we does get the result,
+                    # we send the process to pool
+                    pool.append(procs[idx])
+                    procs[idx] = None
+
+                    if isinstance(res, (UnknownTarget, RemovedTarget)):
+                        runnable._status = None
+                        target = res.target
+                        if dag.regenerate_target(target):
+                            #runnable._depends_targets.append(target)
+                            #dag._all_dependent_files[target].append(runnable)
+                            dag.build(self.workflow.auxiliary_sections)
+                            #
+                            cycle = dag.circular_dependencies()
+                            if cycle:
+                                raise RuntimeError('Circular dependency detected {} after regeneration. It is likely a later step produces input of a previous step.'.format(cycle))
+
+                        else:
+                            if self.resolve_dangling_targets(dag, [target]) == 0:
+                                raise RuntimeError('Failed to regenerate or resolve {}{}.'
+                                    .format(target, dag.steps_depending_on(target, self.workflow)))
+                            runnable._depends_targets.append(target)
+                            dag._all_dependent_files[target].append(runnable)
+                            dag.build(self.workflow.auxiliary_sections)
+                            #
+                            cycle = dag.circular_dependencies()
+                            if cycle:
+                                raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
+                        self.save_dag(dag)
+                    elif isinstance(res, UnavailableLock):
+                        runnable._status = 'signature_pending'
+                        runnable._signature = (res.output, res.sig_file)
+                        section = self.workflow.section_by_id(runnable._step_uuid)
+                        env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
+                    # if the job is failed
+                    elif isinstance(res, Exception):
+                        runnable._status = 'failed'
+                        exec_error.append(runnable._node_id, res)
+                        prog.update(1)
                     else:
-                        if self.resolve_dangling_targets(dag, [target]) == 0:
-                            raise RuntimeError('Failed to regenerate or resolve {}{}.'
-                                .format(target, dag.steps_depending_on(target, self.workflow)))
-                        runnable._depends_targets.append(target)
-                        dag._all_dependent_files[target].append(runnable)
-                        dag.build(self.workflow.auxiliary_sections)
                         #
-                        cycle = dag.circular_dependencies()
-                        if cycle:
-                            raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
-                    self.save_dag(dag)
-                    procs[idx] = None
-                elif isinstance(res, UnavailableLock):
-                    runnable._status = 'pending'
-                    runnable._signature = (res.output, res.sig_file)
-                    section = self.workflow.section_by_id(runnable._step_uuid)
-                    env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
-                    # move away to let other tasks to run first
-                    procs[idx] = None
-                # if the job is failed
-                elif isinstance(res, Exception):
-                    runnable._status = 'failed'
-                    exec_error.append(runnable._node_id, res)
-                    prog.update(1)
-                    procs[idx] = None
-                else:
-                    #
-                    for k, v in res.items():
-                        env.sos_dict.set(k, v)
-                    #
-                    # set context to the next logic step.
-                    for edge in dag.out_edges(runnable):
-                        node = edge[1]
-                        # if node is the logical next step...
-                        if node._node_index is not None and runnable._node_index is not None:
-                            #and node._node_index == runnable._node_index + 1:
-                            node._context.update(env.sos_dict.clone_selected_vars(
-                                node._context['__signature_vars__'] | node._context['__environ_vars__'] \
-                                | {'_input', '__step_output__', '__default_output__', '__args__'}))
-                        node._context['__completed__'].append(res['__step_name__'])
-                    dag.update_step(runnable, env.sos_dict['__step_input__'],
-                        env.sos_dict['__step_output__'],
-                        env.sos_dict['__step_depends__'],
-                        env.sos_dict['__step_local_input__'],
-                        env.sos_dict['__step_local_output__'])
-                    runnable._status = 'completed'
-                    prog.update(1)
-                    procs[idx] = None
-                #env.logger.error('completed')
-                #dag.show_nodes()
-            # step 2: submit new jobs if there are empty slots
-            for idx, proc in enumerate(procs):
-                if proc is not None:
-                    continue
-                # find any step that can be executed and run it, and update the DAT
-                # with status.
-                runnable = dag.find_executable()
-                if runnable is None:
-                    # no runnable
-                    #dag.show_nodes()
-                    break
-                # find the section from runnable
-                section = self.workflow.section_by_id(runnable._step_uuid)
-                #
-                # this is to keep compatibility of dag run with sequential run because
-                # in sequential run, we evaluate global section of each step in
-                # order to determine values of options such as skip.
-                # The consequence is that global definitions are available in
-                # SoS namespace.
-                try:
-                    SoS_exec(section.global_def, section.global_sigil)
-                except RuntimeError as e:
-                    if env.verbosity > 2:
-                        sys.stderr.write(get_traceback())
-                    raise
+                        svar = {}
+                        for k, v in res.items():
+                            if k == '__shared__':
+                                svar = v
+                                env.sos_dict.update(v)
+                            else:
+                                env.sos_dict.set(k, v)
+                        #
+                        # set context to the next logic step.
+                        for edge in dag.out_edges(runnable):
+                            node = edge[1]
+                            # if node is the logical next step...
+                            if node._node_index is not None and runnable._node_index is not None:
+                                #and node._node_index == runnable._node_index + 1:
+                                node._context.update(env.sos_dict.clone_selected_vars(
+                                    node._context['__signature_vars__'] | node._context['__environ_vars__'] \
+                                    | {'_input', '__step_output__', '__default_output__', '__args__'}))
+                            node._context.update(svar)
+                            node._context['__completed__'].append(res['__step_name__'])
+                        dag.update_step(runnable, env.sos_dict['__step_input__'],
+                            env.sos_dict['__step_output__'],
+                            env.sos_dict['__step_depends__'],
+                            env.sos_dict['__step_local_input__'],
+                            env.sos_dict['__step_local_output__'])
+                        runnable._status = 'completed'
+                        prog.update(1)
 
-                # clear existing keys, otherwise the results from some random result
-                # might mess with the execution of another step that does not define input
-                for k in ['__step_input__', '__default_output__', '__step_output__']:
-                    if k in env.sos_dict:
-                        env.sos_dict.pop(k)
-                # if the step has its own context
-                env.sos_dict.quick_update(runnable._context)
-                # execute section with specified input
-                runnable._status = 'running'
-                q = mp.Queue()
-                executor = MP_Step_Executor(section, q)
-                p = mp.Process(target=executor.run)
-                procs[idx] = (p, q, runnable._node_uuid)
-                p.start()
+                # remove None
+                procs = [x for x in procs if x is not None]
+
+                # step 2: check is some jobs are done
+                for proc in procs:
+                    # if a job is pending, check if it is done.
+                    if proc[2]._status == 'task_pending':
+                        res = proc[2]._host.check_status(proc[2]._pending_tasks)
+                        if any(x in  ('pending', 'running', 'completed-old', 'failed-old', 'failed-missing-output', 'failed-old-missing-output') for x in res):
+                            continue
+                        elif all(x == 'completed' for x in res):
+                            env.logger.debug('Put results for {}'.format(' '.join(proc[2]._pending_tasks)))
+                            res = runnable._host.retrieve_results(proc[2]._pending_tasks)
+                            proc[1].send(res)
+                            proc[2]._status == 'running'
+                        else:
+                            raise RuntimeError('Job returned with status {}'.format(res))
+
+                # step 3: check if there is room and need for another job
+                while True:
+                    num_running = len([x for x in procs if x[2]._status != 'task_pending'])
+                    if num_running >= env.max_jobs:
+                        break
+                    # find any step that can be executed and run it, and update the DAT
+                    # with status.
+                    runnable = dag.find_executable()
+                    if runnable is None:
+                        # no runnable
+                        #dag.show_nodes()
+                        break
+                    # find the section from runnable
+                    section = self.workflow.section_by_id(runnable._step_uuid)
+                    # execute section with specified input
+                    runnable._status = 'running'
+                    q = mp.Pipe()
+
+                    # if pool is empty, create a new process
+                    if not pool:
+                        worker_queue = mp.Queue()
+                        worker = StepWorker(queue=worker_queue, config=self.config, args=self.args)
+                        worker.start()
+                    else:
+                        # get worker, q and runnable is not needed any more
+                        p, _, _ = pool.pop(0)
+                        worker = p[0]
+                        worker_queue = p[1]
+
+                    # workflow shared variables
+                    shared = {x: env.sos_dict[x] for x in self.shared if x in env.sos_dict and pickleable(env.sos_dict[x], x)}
+                    if 'shared' in section.options:
+                        if isinstance(section.options['shared'], str):
+                            svars = [section.options['shared']]
+                        elif isinstance(section.options['shared'], dict):
+                            svars = section.options['shared'].keys()
+                        elif isinstance(section.options['shared'], Sequence):
+                            svars = []
+                            for x in section.options['shared']:
+                                if isinstance(x, str):
+                                    svars.append(x)
+                                elif isinstance(x, dict):
+                                    svars.extend(x.keys())
+                                else:
+                                    raise ValueError('Unacceptable value for parameter shared: {}'.format(section.options['shared']))
+                        else:
+                            raise ValueError('Unacceptable value for parameter shared: {}'.format(section.options['shared']))
+                        shared.update({x: env.sos_dict[x] for x in svars if x in env.sos_dict and pickleable(env.sos_dict[x], x)})
+                    if '__workflow_sig__' in env.sos_dict:
+                        runnable._context['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
+                    worker_queue.put((section, runnable._context, shared, env.sig_mode, env.verbosity, q[1]))
+                    procs.append( [[worker, worker_queue], q[0], runnable])
                 #
-                #env.logger.error('started')
-                #dag.show_nodes()
-            #
-            env.logger.trace('PROC {}'.format(', '.join(['None' if x is None else x[2] for x in procs])))
-            if all(x is None for x in procs):
-                break
-            else:
-                time.sleep(0.1)
-        prog.close()
+                num_running = len([x for x in procs if x[2]._status != 'task_pending'])
+
+                if not procs:
+                    break
+                #elif not env.__wait__ and num_running == 0:
+                #    # if all jobs are pending, let us check if all jbos have been submitted.
+                #    pending_tasks = []
+                #    running_tasks = []
+                #    for n in [x[2] for x in procs if x[2]._status == 'task_pending']:
+                #        p, r = n._host._task_engine.get_tasks()
+                #        pending_tasks.extend(p)
+                #        running_tasks.extend(r)
+                #    if not pending_tasks:
+                #        env.logger.info('SoS exists with {} running tasks'.format(len(running_tasks)))
+                #        for task in running_tasks:
+                #            env.logger.info(task)
+                #        break
+                else:
+                    time.sleep(0.1)
+            # close all processes
+        except:
+            for p, _, _ in procs + pool:
+                p[0].terminate()
+            raise
+        finally:
+            for p, _, _ in procs + pool:
+                p[1].put(None)
+                p[0].terminate()
+                p[0].join()
+            prog.close()
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
             if failed_steps:

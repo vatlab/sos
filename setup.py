@@ -203,11 +203,10 @@ Rmarkdown = sos.R.actions:Rmarkdown
 docker_build = sos.docker.actions:docker_build [docker]
 docker_commit = sos.docker.actions:docker_commit [docker]
 
-[sos_executors]
-rq = sos.rq.sos_executor:RQ_Executor [rq]
-celery = sos.celery.sos_executor:Celery_Executor [celery]
-interactive = sos.jupyter.sos_executor:Interactive_Executor
-moab = sos.moab.sos_executor:MOAB_Executor
+[sos_taskengines]
+rq = sos.rq.sos_task:RQ_TaskEngine [rq]
+celery = sos.celery.sos_task:Celery_TaskEngine [celery]
+moab = sos.moab.sos_task:MOAB_TaskEngine
 
 [sos_functions]
 runfile = sos.jupyter.sos_executor:runfile

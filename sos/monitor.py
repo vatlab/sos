@@ -63,7 +63,8 @@ class ProcessMonitor(threading.Thread):
                     cpu, mem, nch, ch_cpu, ch_mem = self._check()
                     with open(self.status_file, 'a') as pd:
                         pd.write('{}\t{:.2f}\t{}\t{}\t{}\t{}\n'.format(time.time(), cpu, mem, nch, ch_cpu, ch_mem))
-                time.sleep(self.interval)
+                time.sleep(self.monitor_interval)
+                counter += 1
             except Exception:
                 # if the process died, exit the thread
                 # the warning message is usually:
@@ -80,8 +81,8 @@ def summarizeExecution(task_id, status='Unknown'):
     peak_mem = 0
     accu_mem = 0
     peak_nch = 0
-    start_time = None
-    end_time = None
+    start_time = 0
+    end_time = 0
     count = 0
     with open(status_file) as proc:
         for line in proc:

@@ -65,20 +65,18 @@ import time
 [*_0]
 output: 'temp/a.txt', 'temp/b.txt'
 task:
-if run_mode == 'run':
-   time.sleep(1)
-   run('''echo "a.txt" > 'temp/a.txt' ''')
-   run('''echo "b.txt" > 'temp/b.txt' ''')
+import time
+time.sleep(1)
+run('''echo "a.txt" > 'temp/a.txt' ''')
+run('''echo "b.txt" > 'temp/b.txt' ''')
 
 [1: shared={'oa':'output'}]
 dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
 
-task:
-if run_mode == 'run':
-    time.sleep(0.5)
-    run(" cp ${_input} ${_dest} ")
+time.sleep(0.5)
+run(" cp ${_input} ${_dest} ")
 """)
         #
         env.max_jobs = 4
@@ -88,20 +86,18 @@ import time
 output: 'temp/a.txt', 'temp/b.txt'
 
 task:
-if run_mode == 'run':
-    time.sleep(1)
-    run('''echo "a.txt" > 'temp/a.txt' ''')
-    run('''echo "b.txt" > 'temp/b.txt' ''')
+import time
+time.sleep(1)
+run('''echo "a.txt" > 'temp/a.txt' ''')
+run('''echo "b.txt" > 'temp/b.txt' ''')
 
 [1: shared={'oa':'output'}]
 dest = ['temp/c.txt', 'temp/d.txt']
 input: group_by='single', paired_with='dest'
 output: _dest
 
-task:
-if run_mode == 'run':
-   time.sleep(0.5)
-   run(" cp ${_input} ${_dest} ")
+time.sleep(0.5)
+run(" cp ${_input} ${_dest} ")
 """)
         # script format
         env.max_jobs = 4
@@ -275,7 +271,7 @@ import time
 
 [0]
 output: 'a.txt'
-task:
+import time
 time.sleep(3)
 run("touch ${output}")
 ''')
@@ -401,7 +397,6 @@ parameter: gvar = 10
 # generate a file
 output: 'myfile.txt'
 # additional comment
-task:
 python:
     import time
     time.sleep(3)
