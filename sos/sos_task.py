@@ -395,6 +395,8 @@ class TaskEngine(threading.Thread):
         # submit tasks simply add task_id to pending task list
         with threading.Lock():
             self.pending_tasks.append(task_id)
+            # there is a change that the task_id already exists...
+            self.task_status[task_id] = 'pending'
 
     def summarize_status(self):
         from collections import Counter
