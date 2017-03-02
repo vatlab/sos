@@ -948,7 +948,6 @@ class Base_Executor:
                 #
                 num_running = len([x for x in procs if x[2]._status != 'task_pending'])
 
-                env.logger.trace('PROC {}'.format(', '.join([x[2]._status for x in procs])))
                 if not procs:
                     break
                 #elif not env.__wait__ and num_running == 0:

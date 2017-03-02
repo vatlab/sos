@@ -56,7 +56,7 @@ def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5,
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
     process or remotely on a different machine.'''
-    env.logger.info('Executing task {}'.format(task_id))
+    env.logger.info('{} ``started``'.format(task_id))
     # start a monitoring file, which would be killed after the job
     # is done (killed etc)
     m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
@@ -133,6 +133,7 @@ def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5,
             raise RuntimeError('Unrecognized signature mode {}'.format(env.sig_mode))
 
     if skipped:
+        env.logger.info('{} ``skipped``'.format(task_id))
         return {'succ': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
 
     try:
@@ -173,9 +174,10 @@ def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5,
         SoS_exec(task, sigil)
         os.chdir(orig_dir)
     except Exception as e:
-        env.logger.error('Task {} terminated with error: {}'.format(task_id, e))
+        env.logger.error('{} ``failed`` with error {}'.format(task_id, e))
         return {'succ': 1, 'exception': e, 'path': os.environ['PATH']}
     except KeyboardInterrupt:
+        env.logger.info('{} ``interrupted`'.format(task_id))
         raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
     finally:
         env.sos_dict.set('__step_sig__', None)
@@ -185,6 +187,7 @@ def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5,
             env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
         sig.release()
     env.deregister_process(os.getpid())
+    env.logger.info('{} ``completed``'.format(task_id))
     return {'succ': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
 
 
@@ -282,6 +285,7 @@ def check_task(task):
 def check_tasks(tasks, verbose=False):
     # verbose is ignored for now
     import glob
+    from multiprocessing.pool import ThreadPool as Pool
     if not tasks:
         tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
         all_tasks = [os.path.basename(x)[:-5] for x in tasks]
@@ -294,8 +298,11 @@ def check_tasks(tasks, verbose=False):
                 env.logger.warning('{} does not match any existing task'.format(t))
             else:
                 all_tasks.extend(matched)
-    for task in sorted(list(set(all_tasks))):
-        print('{}\t{}'.format(task, check_task(task)))
+    all_tasks = sorted(list(set(all_tasks)))
+    p = Pool(len(all_tasks))
+    status = p.map(check_task, all_tasks)
+    for s, t in zip(status, all_tasks):
+        print('{}\t{}'.format(t, s))
         
 def kill_task(task):
     status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
@@ -429,9 +436,11 @@ class BackgroundProcess_TaskEngine(TaskEngine):
         if tasks == []:
             return {}
         tasks_status = self.agent.check_output("sos status {} -v 0".format(
-                ' '.join(tasks))).decode()
+                ' '.join(tasks)))
+        if not tasks_status:
+            return {}
         status = {}
-        for line in tasks_status.split('\n'):
+        for line in tasks_status.decode().split('\n'):
             if not line.strip():
                 continue
             try:
