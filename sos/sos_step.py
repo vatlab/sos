@@ -672,10 +672,12 @@ class Base_Step_Executor:
         self.proc_results.append(task_id)
 
     def wait_for_results(self):
+        self.report_pending(self.host._task_engine.get_tasks())
         for idx, task in enumerate(self.proc_results):
             # if it is done
             if isinstance(task, dict):
                 continue
+
             res = self.host.wait_task(task)
 
             if res['succ'] != 0:
@@ -1055,6 +1057,7 @@ class Base_Step_Executor:
                 #
                 # if not concurrent, we have to wait for the completion of the task
                 if 'concurrent' not in env.sos_dict['_runtime'] or not env.sos_dict['_runtime']['concurrent']:
+                    self.report_pending(self.host._task_engine.get_tasks())
                     self.proc_results[-1] = self.host.wait_task(task)
                 #
                 # endfor loop for each input group
@@ -1135,6 +1138,10 @@ class Queued_Step_Executor(Base_Step_Executor):
     def __init__(self, step, queue):
         Base_Step_Executor.__init__(self, step)
         self.queue = queue
+
+    def report_pending(self, tasks):
+        if self.queue is not None:
+            self.queue.put('pending {}, {}'.format(' '.join(tasks[0]), ' '.join(tasks[1])))
 
     def run(self):
         try:

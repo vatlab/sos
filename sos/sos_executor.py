@@ -40,7 +40,6 @@ from .sos_syntax import SOS_KEYWORDS
 from .dag import SoS_DAG
 from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step
 from .pattern import extract_pattern
-from .hosts import Host
 
 __all__ = []
 
@@ -605,7 +604,7 @@ class Base_Executor:
                         raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
                 self.save_dag(dag)
             elif isinstance(res, UnavailableLock):
-                runnable._status = 'pending'
+                runnable._status = 'signature_pending'
                 runnable._signature = (res.output, res.sig_file)
                 env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
             # if the job is failed
@@ -702,9 +701,17 @@ class Base_Executor:
                     # continue waiting
                     continue
                 # the step is waiting for external tasks
-                if res == 'pending':
-                    runnable.status = 'pending'
-                    continue
+                if isinstance(res, str):
+                    while True:
+                        try:
+                            res = q.get_nowait()
+                        except Empty:
+                            break
+                    if res.startswith('pending'):
+                        runnable._pending_tasks = [x.strip() for x in res[7:].split(',')[0].split() if x.strip()]
+                        runnable._running_tasks = [x.strip() for x in res.split(',')[1].split() if x.strip()]
+                        runnable._status = 'task_pending'
+                        continue
 
                 # if we does get the result
                 p.join()
@@ -735,7 +742,7 @@ class Base_Executor:
                     self.save_dag(dag)
                     procs[idx] = None
                 elif isinstance(res, UnavailableLock):
-                    runnable._status = 'pending'
+                    runnable._status = 'signature_pending'
                     runnable._signature = (res.output, res.sig_file)
                     section = self.workflow.section_by_id(runnable._step_uuid)
                     env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
@@ -774,8 +781,8 @@ class Base_Executor:
                 #dag.show_nodes()
 
             # if there are pending jobs, we add some slots
-            num_pending = len([x for x in procs if x is not None and x[2]._status == 'pending'])
-            num_running = len([x for x in procs if x is not None and x[2]._status != 'pending'])
+            num_pending = len([x for x in procs if x is not None and x[2]._status == 'task_pending'])
+            num_running = len([x for x in procs if x is not None and x[2]._status != 'task_pending'])
             num_vacant = len([x for x in procs if x is None])
 
             if num_vacant == 0 and num_pending > 0:
@@ -786,6 +793,9 @@ class Base_Executor:
             for idx, proc in enumerate(procs):
                 if proc is not None:
                     continue
+
+                if num_running >= env.max_jobs:
+                    break
                 # find any step that can be executed and run it, and update the DAT
                 # with status.
                 runnable = dag.find_executable()
@@ -822,21 +832,26 @@ class Base_Executor:
                 p = mp.Process(target=executor.run)
                 procs[idx] = [p, q, runnable]
                 p.start()
+
+                num_running += 1
                 #
                 #env.logger.error('started')
                 #dag.show_nodes()
             #
-            num_running = len([x for x in procs if x is not None and x[2]._status != 'pending'])
+            num_running = len([x for x in procs if x is not None and x[2]._status != 'task_pending'])
 
-            env.logger.trace('PROC {}'.format(', '.join(['None' if x is None else x[2] for x in procs])))
+            env.logger.trace('PROC {}'.format(', '.join(['None' if x is None else x[2]._status for x in procs])))
             if all(x is None for x in procs):
                 break
             elif not env.__wait__ and num_running == 0:
                 # if all jobs are pending, let us check if all jbos have been submitted.
-                pending_tasks = Host.pending_tasks()
+                pending_tasks = []
+                running_tasks = []
+                for n in [x[2] for x in procs if x is not None and x[2]._status == 'task_pending']:
+                    pending_tasks.extend(n._pending_tasks)
+                    running_tasks.extend(n._running_tasks)
                 if not pending_tasks:
-                    running_tasks = Host.running_tasks()
-                    env.logger.info('SoS exists with {} pending tasks'.format(len(running_tasks)))
+                    env.logger.info('SoS exists with {} running tasks'.format(len(running_tasks)))
                     for task in running_tasks:
                         env.logger.info(task)
                     break
