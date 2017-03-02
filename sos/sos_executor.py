@@ -918,7 +918,22 @@ class Base_Executor:
                 # workflow shared variables
                 shared = {x: env.sos_dict[x] for x in self.shared if x in env.sos_dict and pickleable(env.sos_dict[x], x)}
                 if 'shared' in section.options:
-                    shared.update({x: env.sos_dict[x] for x in section.options['shared'] if x in env.sos_dict and pickleable(env.sos_dict[x], x)})
+                    if isinstance(section.options['shared'], str):
+                        svars = [section.options['shared']]
+                    elif isinstance(section.options['shared'], dict):
+                        svars = section.options['shared'].keys()
+                    elif isinstance(section.options['shared'], Sequence):
+                        svars = []
+                        for x in section.options['shared']:
+                            if isinstance(x, str):
+                                svars.append(x)
+                            elif isinstance(x, dict):
+                                svars.extend(x.keys())
+                            else:
+                                raise ValueError('Unacceptable value for parameter shared: {}'.format(section.options['shared']))
+                    else:
+                        raise ValueError('Unacceptable value for parameter shared: {}'.format(section.options['shared']))
+                    shared.update({x: env.sos_dict[x] for x in svars if x in env.sos_dict and pickleable(env.sos_dict[x], x)})
                 if '__workflow_sig__' in env.sos_dict:
                     runnable._context['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
                 worker_queue.put((section, runnable._context, shared, env.sig_mode, env.verbosity, q[1]))
