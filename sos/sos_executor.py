@@ -785,7 +785,7 @@ class Base_Executor:
             num_vacant = len([x for x in procs if x is None])
 
             if num_vacant == 0 and num_pending > 0:
-                env.debug('Extending {} processes because of pending jobs'.format(num_pending)) 
+                env.logger.debug('Extending {} processes because of pending jobs'.format(num_pending)) 
                 procs.extend([None for x in range(num_pending)])
 
             # step 2: submit new jobs if there are empty slots
