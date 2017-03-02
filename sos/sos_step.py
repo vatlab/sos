@@ -30,7 +30,7 @@ from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
 from .utils import env, AbortExecution, short_repr, stable_repr,\
-    get_traceback, transcribe, ActivityNotifier
+    get_traceback, transcribe, ActivityNotifier, pickleable
 from .pattern import extract_pattern
 from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
@@ -629,7 +629,7 @@ class Base_Step_Executor:
                 task_vars[var]['cur_dir'] = self.host.map_var(env.sos_dict[var]['cur_dir'])
                 if 'workdir' in env.sos_dict[var]:
                     task_vars[var]['workdir'] = self.host.map_var(env.sos_dict[var]['workdir'])
-            elif var in env.sos_dict:
+            elif var in env.sos_dict and pickleable(env.sos_dict[var], var):
                 try:
                     task_vars[var] = self.host.map_var(env.sos_dict[var])
                     if task_vars[var] != env.sos_dict[var]:

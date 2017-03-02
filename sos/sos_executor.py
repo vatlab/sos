@@ -147,7 +147,30 @@ class StepWorker(mp.Process):
             if step is None:
                 break
             
-            section, pipe = step
+            section, context, sig_mode, verbosity, pipe = step
+            #
+            # this is to keep compatibility of dag run with sequential run because
+            # in sequential run, we evaluate global section of each step in
+            # order to determine values of options such as skip.
+            # The consequence is that global definitions are available in
+            # SoS namespace.
+            try:
+                SoS_exec(section.global_def, section.global_sigil)
+            except RuntimeError as e:
+                if env.verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                raise
+
+            # clear existing keys, otherwise the results from some random result
+            # might mess with the execution of another step that does not define input
+            for k in ['__step_input__', '__default_output__', '__step_output__']:
+                if k in env.sos_dict:
+                    env.sos_dict.pop(k)
+            # if the step has its own context
+            env.sos_dict.quick_update(context)
+            env.sig_mode = sig_mode
+            env.verbosity = verbosity
+
             executor = MP_Step_Executor(section, pipe)
             executor.run()
 
@@ -887,26 +910,6 @@ class Base_Executor:
                     break
                 # find the section from runnable
                 section = self.workflow.section_by_id(runnable._step_uuid)
-                #
-                # this is to keep compatibility of dag run with sequential run because
-                # in sequential run, we evaluate global section of each step in
-                # order to determine values of options such as skip.
-                # The consequence is that global definitions are available in
-                # SoS namespace.
-                try:
-                    SoS_exec(section.global_def, section.global_sigil)
-                except RuntimeError as e:
-                    if env.verbosity > 2:
-                        sys.stderr.write(get_traceback())
-                    raise
-
-                # clear existing keys, otherwise the results from some random result
-                # might mess with the execution of another step that does not define input
-                for k in ['__step_input__', '__default_output__', '__step_output__']:
-                    if k in env.sos_dict:
-                        env.sos_dict.pop(k)
-                # if the step has its own context
-                env.sos_dict.quick_update(runnable._context)
                 # execute section with specified input
                 runnable._status = 'running'
                 q = mp.Pipe()
@@ -922,7 +925,7 @@ class Base_Executor:
                     worker = p[0]
                     worker_queue = p[1]
 
-                worker_queue.put((section, q[1]))
+                worker_queue.put((section, runnable._context, env.sig_mode, env.verbosity, q[1]))
                 procs.append( [[worker, worker_queue], q[0], runnable])
             #
             num_running = len([x for x in procs if x[2]._status != 'task_pending'])
