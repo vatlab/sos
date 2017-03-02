@@ -288,6 +288,21 @@ class RemoteHost:
 
 class Host:
     host_instances = {}
+
+    @classmethod
+    def pending_tasks(cls):
+        tasks = []
+        for host in cls.host_instances:
+            tasks.extend(host._task_engine.pending_tasks)
+        return tasks
+
+    @classmethod
+    def running_tasks(cls):
+        tasks = []
+        for host in cls.host_instances:
+            tasks.extend(host._task_engine.running_tasks)
+        return tasks
+
     def __init__(self, alias=''):
         self._get_config(alias)
         self._get_host_agent()

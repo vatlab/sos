@@ -22,6 +22,7 @@
 import os
 import pickle
 import time
+import copy
 import threading
 from io import StringIO
 from tokenize import generate_tokens
@@ -356,6 +357,16 @@ class TaskEngine(threading.Thread):
             self.max_running_jobs = 10
         else:
             self.max_running_jobs = self.config['max_running_jobs']
+
+    def pending_tasks(self):
+        with threading.Lock():
+            pt = copy.deepcopy(self.pending_tasks)
+        return pt
+
+    def running_tasks(self):
+        with threading.Lock():
+            pt = [x for x in self.tasks if self.task_status[x] == 'running'])
+        return pt
 
     def run(self):
         while True:
