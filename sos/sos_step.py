@@ -640,7 +640,7 @@ class Base_Step_Executor:
                     env.logger.debug(e)
             else:
                 env.logger.debug('Variable {} not in env.'.format(var))
- 
+
         # save task to a file
         param = TaskParams(
             name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
@@ -664,21 +664,16 @@ class Base_Step_Executor:
                 raise
         return task_id
 
-    def submit_task(self, task_id):
-        # submit results using single-thread
-        # this is the default mode for prepare and interactive mode
-        self.host.submit_task(task_id)
-        # FIXME: check return status
-        self.proc_results.append(task_id)
 
     def wait_for_results(self):
-        self.report_pending(self.host._task_engine.get_tasks())
+        results = self.pending_tasks([x for x in self.proc_results if isinstance(x, str)])
+
         for idx, task in enumerate(self.proc_results):
             # if it is done
             if isinstance(task, dict):
                 continue
 
-            res = self.host.wait_task(task)
+            res = results[task]
 
             if res['succ'] != 0:
                 env.logger.error('Remote job failed.')
@@ -1048,7 +1043,7 @@ class Base_Step_Executor:
                 self.log('task')
                 try:
                     task = self.prepare_task()
-                    self.submit_task(task)
+                    self.proc_results.append(task)
                 except Exception as e:
                     # FIXME: cannot catch exception from subprocesses
                     if env.verbosity > 2:
@@ -1057,8 +1052,7 @@ class Base_Step_Executor:
                 #
                 # if not concurrent, we have to wait for the completion of the task
                 if 'concurrent' not in env.sos_dict['_runtime'] or not env.sos_dict['_runtime']['concurrent']:
-                    self.report_pending(self.host._task_engine.get_tasks())
-                    self.proc_results[-1] = self.host.wait_task(task)
+                    self.wait_for_results()
                 #
                 # endfor loop for each input group
                 #
@@ -1135,28 +1129,34 @@ class Base_Step_Executor:
 class Queued_Step_Executor(Base_Step_Executor):
     # this class execute the step in a separate process
     # and returns result using a queue
-    def __init__(self, step, queue):
+    def __init__(self, step, pipe):
         Base_Step_Executor.__init__(self, step)
-        self.queue = queue
+        self.pipe = pipe
 
-    def report_pending(self, tasks):
-        if self.queue is not None:
-            self.queue.put('pending {}, {}'.format(' '.join(tasks[0]), ' '.join(tasks[1])))
+    def pending_tasks(self, tasks):
+        env.logger.debug('Send {}'.format(tasks))
+        if self.pipe is not None:
+            if not tasks:
+                return {}
+            self.pipe.send('tasks {} {}'.format(self.host.alias, ' '.join(tasks)))
+            # wait till the executor responde
+            results = self.pipe.recv()
+            return results
 
     def run(self):
         try:
             # update every 60 seconds
             notifier = ActivityNotifier('Running {}'.format(self.step.step_name()), delay=60)
             res = Base_Step_Executor.run(self)
-            if self.queue is not None:
-                self.queue.put(res)
+            if self.pipe is not None:
+                self.pipe.send(res)
             else:
                 return res
         except Exception as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
-            if self.queue is not None:
-                self.queue.put(e)
+            if self.pipe is not None:
+                self.pipe.send(e)
             else:
                 raise e
         finally:

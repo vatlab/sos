@@ -27,7 +27,6 @@ import keyword
 import fasteners
 from collections.abc import Sequence
 import multiprocessing as mp
-from queue import Empty
 
 from tqdm import tqdm as ProgressBar
 from io import StringIO
@@ -40,6 +39,7 @@ from .sos_syntax import SOS_KEYWORDS
 from .dag import SoS_DAG
 from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step
 from .pattern import extract_pattern
+from .hosts import Host
 
 __all__ = []
 
@@ -570,12 +570,12 @@ class Base_Executor:
                 executor = Dryrun_Step_Executor(section, None)
                 res = executor.run()
             else:
-                q = mp.Queue()
-                executor = Dryrun_Step_Executor(section, q)
+                q = mp.Pipe()
+                executor = Dryrun_Step_Executor(section, q[1])
                 p = mp.Process(target=executor.run)
                 p.start()
                 #
-                res = q.get()
+                res = q[0].recv()
                 # if we does get the result
                 p.join()
             # if the step says unknown target .... need to check if the target can
@@ -695,23 +695,22 @@ class Base_Executor:
                 if proc is None:
                     continue
                 [p, q, runnable] = proc
-                try:
-                    res = q.get_nowait()
-                except Empty:
-                    # continue waiting
+                if not q.poll():
                     continue
+
+                res = q.recv()
                 # the step is waiting for external tasks
                 if isinstance(res, str):
-                    while True:
-                        try:
-                            res = q.get_nowait()
-                        except Empty:
-                            break
-                    if res.startswith('pending'):
-                        runnable._pending_tasks = [x.strip() for x in res[7:].split(',')[0].split() if x.strip()]
-                        runnable._running_tasks = [x.strip() for x in res.split(',')[1].split() if x.strip()]
+                    if res.startswith('task'):
+                        env.logger.debug('Receive {}'.format(res))
+                        runnable._host = Host(res.split(' ')[1])
+                        runnable._pending_tasks = res.split(' ')[2:]
+                        for task in runnable._pending_tasks:
+                            runnable._host.submit_task(task)
                         runnable._status = 'task_pending'
                         continue
+                    else:
+                        raise RuntimeError('Unexpected value from step {}'.format(res))
 
                 # if we does get the result
                 p.join()
@@ -791,6 +790,19 @@ class Base_Executor:
 
             # step 2: submit new jobs if there are empty slots
             for idx, proc in enumerate(procs):
+                # if a job is pending, check if it is done.
+                if proc is not None and proc[2]._status == 'task_pending':
+                    res = proc[2]._host.check_status(proc[2]._pending_tasks)
+                    if any(x in  ('pending', 'running', 'completed-old', 'failed-old', 'failed-missing-output', 'failed-old-missing-output') for x in res):
+                        continue
+                    elif all(x == 'completed' for x in res):
+                        env.logger.debug('Put results for {}'.format(' '.join(proc[2]._pending_tasks)))
+                        res = runnable._host.retrieve_results(proc[2]._pending_tasks)
+                        proc[1].send(res)
+                        proc[2]._status == 'running'
+                    else:
+                        raise RuntimeError('Job returned with status {}'.format(res))
+
                 if proc is not None:
                     continue
 
@@ -827,10 +839,10 @@ class Base_Executor:
                 env.sos_dict.quick_update(runnable._context)
                 # execute section with specified input
                 runnable._status = 'running'
-                q = mp.Queue()
-                executor = MP_Step_Executor(section, q)
+                q = mp.Pipe()
+                executor = MP_Step_Executor(section, q[1])
                 p = mp.Process(target=executor.run)
-                procs[idx] = [p, q, runnable]
+                procs[idx] = [p, q[0], runnable]
                 p.start()
 
                 num_running += 1
@@ -848,8 +860,9 @@ class Base_Executor:
                 pending_tasks = []
                 running_tasks = []
                 for n in [x[2] for x in procs if x is not None and x[2]._status == 'task_pending']:
-                    pending_tasks.extend(n._pending_tasks)
-                    running_tasks.extend(n._running_tasks)
+                    p, r = n._host._task_engine.get_tasks()
+                    pending_tasks.extend(p)
+                    running_tasks.extend(r)
                 if not pending_tasks:
                     env.logger.info('SoS exists with {} running tasks'.format(len(running_tasks)))
                     for task in running_tasks:

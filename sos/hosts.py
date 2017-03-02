@@ -23,7 +23,6 @@ import os
 
 import subprocess
 import time
-import math
 import pickle
 import pkg_resources
 from collections.abc import Sequence
@@ -376,18 +375,11 @@ class Host:
     def kill_task(self, task_id):
         return self._task_engine.kill_task(task_id)
 
-    def wait_task(self, task_id):
-        st = time.time()
-        while True:
-            status = self._task_engine.check_task_status(task_id)
-            if status not in ('pending', 'running', 'completed-old', 'failed-old', 'failed-missing-output', 'failed-old-missing-output'):
-                break
-            elapsed = time.time() - st
-            # the longer the wait, the less frequent the check
-            time.sleep(max(2, math.log(elapsed, 1.3)))
-        if status == 'completed':
-            env.logger.info('{} ``completed``'.format(task_id))
-            return self._host_agent.receive_result(task_id)
-        raise RuntimeError('Job returned with status {}'.format(status))
+    def check_status(self, tasks):
+        # find the task engine
+        return [self._task_engine.check_task_status(task) for task in tasks]
+
+    def retrieve_results(self, tasks):
+        return {task: self._host_agent.receive_result(task) for task in tasks}
 
 
