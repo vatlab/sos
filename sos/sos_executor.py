@@ -851,6 +851,7 @@ class Base_Executor:
                     for k, v in res.items():
                         if k == '__shared__':
                             svar = v
+                            env.sos_dict.update(v)
                         else:
                             env.sos_dict.set(k, v)
                     #
