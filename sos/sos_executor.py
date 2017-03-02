@@ -43,7 +43,6 @@ from .hosts import Host
 
 __all__ = []
 
-
 class ExecuteError(Error):
     """Raised when there are errors in dryrun mode. Such errors are not raised
     immediately, but will be collected and raised at the end """
@@ -74,6 +73,84 @@ def __null_func__(*args, **kwargs):
     '''This function will be passed to SoS's namespace and be executed
     to evaluate functions of input, output, and depends directives.'''
     return args, kwargs
+
+class StepWorker(mp.Process):
+    def __init__(self, queue, config={}, args=[], **kwargs):
+        # the worker process knows configuration file, command line argument etc
+        super(StepWorker, self).__init__(**kwargs)
+        self.queue = queue
+        self.config = config
+        self.args = args
+
+    def reset_dict(self):
+        env.sos_dict = WorkflowDict()
+        env.parameter_vars.clear()
+
+        if self.config['report_output']:
+            env.sos_dict.set('__report_output__', self.config['report_output'])
+        env.sos_dict.set('__null_func__', __null_func__)
+        env.sos_dict.set('__config_file__', self.config['config_file'])
+        env.sos_dict.set('__args__', self.args)
+        env.sos_dict.set('__unknown_args__', self.args)
+        # initial values
+        env.sos_dict.set('SOS_VERSION', __version__)
+        env.sos_dict.set('__step_output__', [])
+
+        # load configuration files
+        cfg = {}
+        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
+        if os.path.isfile(sos_config_file):
+            with fasteners.InterProcessLock('/tmp/sos_config_'):
+                try:
+                    with open(sos_config_file) as config:
+                        cfg = yaml.safe_load(config)
+                except Exception as e:
+                    raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+        # local config file
+        sos_config_file = 'config.yml'
+        if os.path.isfile(sos_config_file):
+            with fasteners.InterProcessLock('/tmp/sos_config_'):
+                try:
+                    with open(sos_config_file) as config:
+                        dict_merge(cfg, yaml.safe_load(config))
+                except Exception as e:
+                    raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+        # user-specified configuration file.
+        if self.config['config_file'] is not None:
+            if not os.path.isfile(self.config['config_file']):
+                raise RuntimeError('Config file {} not found'.format(self.config['config_file']))
+            with fasteners.InterProcessLock('/tmp/sos_config_'):
+                try:
+                    with open(self.config['config_file']) as config:
+                        dict_merge(cfg, yaml.safe_load(config))
+                except Exception as e:
+                    raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config['config_file'], e))
+        # set config to CONFIG
+        env.sos_dict.set('CONFIG', frozendict(cfg))
+
+        SoS_exec('import os, sys, glob', None)
+        SoS_exec('from sos.runtime import *', None)
+        self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
+        self._base_symbols -= {'dynamic'}
+
+        if isinstance(self.args, dict):
+            for key, value in self.args.items():
+                if not key.startswith('__'):
+                    env.sos_dict.set(key, value)
+
+    def run(self):
+        # wait to handle jobs
+        #
+        self.reset_dict()
+        while True:
+            step = self.queue.get()
+            if step is None:
+                break
+            
+            section, pipe = step
+            executor = MP_Step_Executor(section, pipe)
+            executor.run()
+
 
 class Base_Executor:
     '''This is the base class of all executor that provides common
@@ -713,7 +790,8 @@ class Base_Executor:
                         raise RuntimeError('Unexpected value from step {}'.format(res))
 
                 # if we does get the result
-                p.join()
+                p[1].put(None)
+                p[0].join()
 
                 if isinstance(res, (UnknownTarget, RemovedTarget)):
                     runnable._status = None
@@ -840,10 +918,13 @@ class Base_Executor:
                 # execute section with specified input
                 runnable._status = 'running'
                 q = mp.Pipe()
-                executor = MP_Step_Executor(section, q[1])
-                p = mp.Process(target=executor.run)
-                procs[idx] = [p, q[0], runnable]
-                p.start()
+
+                
+                worker_queue = mp.Queue()
+                worker = StepWorker(queue=worker_queue, config=self.config, args=self.args)
+                worker.start()
+                worker_queue.put((section, q[1]))
+                procs[idx] = [[worker, worker_queue], q[0], runnable]
 
                 num_running += 1
                 #
