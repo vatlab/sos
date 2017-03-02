@@ -265,20 +265,20 @@ def check_task(task):
     # if the file is within 5 seconds
     if elapsed < monitor_interval:
         return 'running'
-    elif elapsed > 5 * monitor_interval:
+    elif elapsed > 2 * monitor_interval:
         if os.path.isfile(res_file):
             # result file appears
             return check_task(task)
         else:
             return 'frozen'
     # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
-    time.sleep(5 * monitor_interval)
+    time.sleep(2 * monitor_interval)
     end_stamp = os.stat(status_file).st_mtime
     # the process is still alive
-    if start_stamp != end_stamp:
-        return 'running'
-    elif os.path.isfile(res_file):
+    if os.path.isfile(res_file):
         return check_task(task)
+    elif start_stamp != end_stamp:
+        return 'running'
     else:
         return 'frozen'
 
@@ -401,9 +401,14 @@ class TaskEngine(threading.Thread):
     def submit_task(self, task_id):
         # submit tasks simply add task_id to pending task list
         with threading.Lock():
-            self.pending_tasks.append(task_id)
-            # there is a change that the task_id already exists...
-            self.task_status[task_id] = 'pending'
+            if len(self.tasks) < self.max_running_jobs:
+                self.tasks.append(task_id)
+                self.execute_task(task_id)
+                self.task_status[task_id] = 'pending'
+            else:
+                self.pending_tasks.append(task_id)
+                # there is a change that the task_id already exists...
+                self.task_status[task_id] = 'pending'
 
     def summarize_status(self):
         from collections import Counter
