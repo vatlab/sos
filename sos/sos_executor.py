@@ -40,6 +40,7 @@ from .sos_syntax import SOS_KEYWORDS
 from .dag import SoS_DAG
 from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step
 from .pattern import extract_pattern
+from .hosts import Host
 
 __all__ = []
 
@@ -694,17 +695,20 @@ class Base_Executor:
             for idx, proc in enumerate(procs):
                 if proc is None:
                     continue
-                (p, q, u) = proc
+                [p, q, runnable] = proc
                 try:
                     res = q.get_nowait()
                 except Empty:
                     # continue waiting
                     continue
-                #
+                # the step is waiting for external tasks
+                if res == 'pending':
+                    runnable.status = 'pending'
+                    continue
+
                 # if we does get the result
                 p.join()
 
-                runnable = dag.node_by_id(u)
                 if isinstance(res, (UnknownTarget, RemovedTarget)):
                     runnable._status = None
                     target = res.target
@@ -768,6 +772,16 @@ class Base_Executor:
                     procs[idx] = None
                 #env.logger.error('completed')
                 #dag.show_nodes()
+
+            # if there are pending jobs, we add some slots
+            num_pending = len([x for x in procs if x is not None and x[2]._status == 'pending'])
+            num_running = len([x for x in procs if x is not None and x[2]._status != 'pending'])
+            num_vacant = len([x for x in procs if x is None])
+
+            if num_vacant == 0 and num_pending > 0:
+                env.debug('Extending {} processes because of pending jobs'.format(num_pending)) 
+                procs.extend([None for x in range(num_pending)])
+
             # step 2: submit new jobs if there are empty slots
             for idx, proc in enumerate(procs):
                 if proc is not None:
@@ -806,15 +820,26 @@ class Base_Executor:
                 q = mp.Queue()
                 executor = MP_Step_Executor(section, q)
                 p = mp.Process(target=executor.run)
-                procs[idx] = (p, q, runnable._node_uuid)
+                procs[idx] = [p, q, runnable]
                 p.start()
                 #
                 #env.logger.error('started')
                 #dag.show_nodes()
             #
+            num_running = len([x for x in procs if x is not None and x[2]._status != 'pending'])
+
             env.logger.trace('PROC {}'.format(', '.join(['None' if x is None else x[2] for x in procs])))
             if all(x is None for x in procs):
                 break
+            elif not env.__wait__ and num_running == 0:
+                # if all jobs are pending, let us check if all jbos have been submitted.
+                pending_tasks = Host.pending_tasks()
+                if not pending_tasks:
+                    running_tasks = Host.running_tasks()
+                    env.logger.info('SoS exists with {} pending tasks'.format(len(running_tasks)))
+                    for task in running_tasks:
+                        env.logger.info(task)
+                    break
             else:
                 time.sleep(0.1)
         prog.close()

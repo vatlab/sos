@@ -610,7 +610,7 @@ class Base_Step_Executor:
             self.host.send_to_host(env.sos_dict['_runtime']['to_host'])
 
         # map variables
-        vars = ['_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__',
+        vars = ['_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__', '_runtime',
             '_local_input_{}'.format(env.sos_dict['_index']),
             '_local_output_{}'.format(env.sos_dict['_index'])] + list(env.sos_dict['__signature_vars__'])
         preserved = set()
@@ -625,6 +625,10 @@ class Base_Step_Executor:
         for var in vars:
             if var in preserved:
                 env.logger.debug('Value of variable {} is preserved'.format(var))
+            elif var == '_runtime':
+                task_vars[var]['cur_dir'] = self.host.map_var(env.sos_dict[var]['cur_dir'])
+                if 'workdir' in env.sos_dict[var]:
+                    task_vars[var]['workdir'] = self.host.map_var(env.sos_dict[var]['workdir'])
             elif var in env.sos_dict:
                 try:
                     task_vars[var] = self.host.map_var(env.sos_dict[var])
@@ -634,10 +638,6 @@ class Base_Step_Executor:
                         env.logger.debug('{}: {} is kept'.format(var, short_repr(env.sos_dict[var])))
                 except Exception as e:
                     env.logger.debug(e)
-            elif var == '_runtime':
-                task_vars[var]['cur_dir'] = self.host.map_var(env.sos_dict[var]['cur_dir'])
-                if 'workdir' in env.sos_dict[var]:
-                    task_vars[var]['workdir'] = self.host.map_var(env.sos_dict[var]['workdir'])
             else:
                 env.logger.debug('Variable {} not in env.'.format(var))
  

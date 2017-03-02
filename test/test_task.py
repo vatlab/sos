@@ -277,5 +277,43 @@ python:
                 self.assertEqual(tmp.read(), str(t) + '_' + str(t-10))
             FileTarget('myfile_{}.txt'.format(t)).remove('both')
 
+    def testMaxJobs(self):
+        '''Test default max number of jobs'''
+        script = SoS_Script(r'''
+
+[10]
+input: for_each=[{'a': range(10)}, {'b': range(3)}]
+
+task: concurrent=True
+run:
+    echo "a = ${a}, b = ${b}"
+    sleep ${a + b}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+
+    def testNoWait(self):
+        '''Test no wait'''
+        script = SoS_Script(r'''
+[10]
+input: for_each=[{'a': range(5)}]
+
+task: concurrent=True
+run:
+    echo "a = ${a}"
+    sleep 10 + ${a}
+''')
+        wf = script.workflow()
+        st = time.time()
+        Base_Executor(wf).run()
+        # sos should quit
+        self.assertLess(time.time() - st, 5)
+        #
+        env.__wait__ = True
+        Base_Executor(wf).run()
+        # sos should wait till everything exists
+        self.assertGreater(time.time() - st, 14)
+        #
+
 if __name__ == '__main__':
     unittest.main()

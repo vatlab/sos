@@ -516,8 +516,8 @@ define([
         $('#panel-wrapper').css('position', 'fixed');
 
         // if panel-wrapper is undefined (first run(?), then hide it)
-        if ($('#panel-wrapper').css('display') == undefined) $('#panel-wrapper').css('display', "none") //block
-
+        // if ($('#panel-wrapper').css('display') == undefined) $('#panel-wrapper').css('display', "none") //block
+         if ($('#panel-wrapper').css('display') == undefined) $('#panel-wrapper').css('display', "block") //block
         $('#site').bind('siteHeight', function() {
             $('#panel-wrapper').css('height', $('#site').height());
         })
@@ -732,7 +732,20 @@ define([
             'complete': function() {
                 IPython.notebook.metadata['sos']['panel'].displayed = $('#panel-wrapper').css('display') === 'block'
                 if (IPython.notebook.metadata['sos']['panel'].displayed) {
+                    console.log("panel open toc close")
                     window.my_panel.cell.focus_editor();
+                    $('#toc-wrapper').css('display','none')
+                    $('#toc-wrapper').css('z-index',5)
+                    $('#panel-wrapper').css('z-index',10)
+                }else if ($("#toc-wrapper").css('display')==='block'){
+                    $('#toc-wrapper').css('z-index',5)
+                    $('#panel-wrapper').css('z-index',10)
+                    $('#panel-wrapper').css('display','block')
+                    $('#panel-wrapper').css('display','none')
+                    $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
+                    $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
+
+
                 }
             }
         });
@@ -911,8 +924,8 @@ define([
              $(extension).remove()
           }else{
              window.setTimeout(function (){
-                console.log("Wait 4 sec and remove"+extension)
-                $(extension).remove(); }, 4000);
+                console.log("Wait 5 sec and remove"+extension)
+                $(extension).remove(); }, 5000);
           }        
     }
 
@@ -945,6 +958,28 @@ define([
         add_panel_button();
         patch_CodeCell_get_callbacks();
         adjustPanel();
+        if ($("#toc_button").length !== 0) {
+            $("#toc_button").click(function(){
+                if ($('#panel-wrapper').css('display')==='block' && $('#toc-wrapper').css('display')==='block'){
+                    if ( $('#toc-wrapper').css('z-index')=="auto" && $('#panel-wrapper').css('z-index')=="auto"){
+                        $('#toc-wrapper').css('z-index',10)
+                        $('#panel-wrapper').css('z-index',5)
+                        $('#panel-wrapper').css('display','none')
+                    }else if (parseInt($('#toc-wrapper').css('z-index'))<parseInt($('#panel-wrapper').css('z-index'))){
+                        console.log("click on toc hide panel")
+                        $('#toc-wrapper').css('z-index',10)
+                        $('#panel-wrapper').css('z-index',5)
+                        $('#panel-wrapper').css('display','none')
+                        $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
+                        $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
+    
+                    }
+                }else if($('#panel-wrapper').css('display')==='none' && $('#toc-wrapper').css('display')==='none'){
+                    $('#notebook-container').css('margin-left', 15);
+                    $('#notebook-container').css('width', $('#site').width());
+                }
+            });
+        }
 
         // define SOS CodeMirror syntax highlighter
         (function(mod) {

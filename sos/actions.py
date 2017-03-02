@@ -396,13 +396,19 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     elif tarfile.is_tarfile(dest):
                         with tarfile.open(dest, 'r:*') as tar:
                             # only extract files
-                            files = [x.name for x in tar.getmembers() if x.isfile()]
-                            for name in files:
-                                dest_file = os.path.join(dest_dir, name)
-                                if not os.path.isfile(dest_file):
-                                    env.logger.warning('Missing decompressed file {}'.format(dest_file))
-                                else:
-                                    sig.add(dest_file)
+                            file_count = 0
+                            for tarinfo in tar:
+                                if tarinfo.isfile():
+                                    dest_file = os.path.join(dest_dir, tarinfo.name)
+                                    if not os.path.isfile(dest_file):
+                                        env.logger.warning('Missing decompressed file {}'.format(dest_file))
+                                    else:
+                                        sig.add(dest_file)
+                                        file_count += 1
+                                # sometimes the file is very large but we do not need to decompress all
+                                # and track all files.
+                                if file_count > 10:
+                                    break
                     elif dest.endswith('.gz'):
                         decomp = dest[:-3]
                         if not os.path.isfile(decomp):
