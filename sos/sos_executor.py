@@ -919,6 +919,8 @@ class Base_Executor:
                 shared = {x: env.sos_dict[x] for x in self.shared if x in env.sos_dict and pickleable(env.sos_dict[x], x)}
                 if 'shared' in section.options:
                     shared.update({x: env.sos_dict[x] for x in section.options['shared'] if x in env.sos_dict and pickleable(env.sos_dict[x], x)})
+                if '__workflow_sig__' in env.sos_dict:
+                    runnable._context['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
                 worker_queue.put((section, runnable._context, shared, env.sig_mode, env.verbosity, q[1]))
                 procs.append( [[worker, worker_queue], q[0], runnable])
             #
