@@ -288,8 +288,9 @@ class RemoteHost:
 class Host:
     host_instances = {}
 
-    def __init__(self, alias=''):
+    def __init__(self, alias='', start_task_engine=False):
         self._get_config(alias)
+        self._start_task_engine = start_task_engine
         self._get_host_agent()
 
     def _get_config(self, alias):
@@ -320,33 +321,36 @@ class Host:
             else:
                 self.host_instances[self.alias] = RemoteHost(self.config)
 
-            if 'task_engine' not in self.config:
-                task_engine_type = 'background_execution'
-                task_engine = BackgroundProcess_TaskEngine(self.host_instances[self.alias])
-            else:
-                task_engine_type = self.config['task_engine']
-                task_engine = None
+            if self._start_task_engine:
 
-                available_engines = []
-                for entrypoint in pkg_resources.iter_entry_points(group='sos_taskengines'):
-                    try:
-                        available_engines.append(entrypoint.name)
-                        if entrypoint.name == task_engine_type:
-                            task_engine = entrypoint.load()(self.host_instances[self.alias])
-                    except Exception as e:
-                        env.logger.debug('Failed to load task engine {}: {}'.format(task_engine_type, e))
+                if 'task_engine' not in self.config:
+                    task_engine_type = 'background_execution'
+                    task_engine = BackgroundProcess_TaskEngine(self.host_instances[self.alias])
+                else:
+                    task_engine_type = self.config['task_engine']
+                    task_engine = None
 
-                if task_engine is None:
-                    raise RuntimeError('Failed to locate task engine type {}. Available engine types are {}'.format(
-                        task_engine, ', '.join(available_engines)))
+                    available_engines = []
+                    for entrypoint in pkg_resources.iter_entry_points(group='sos_taskengines'):
+                        try:
+                            available_engines.append(entrypoint.name)
+                            if entrypoint.name == task_engine_type:
+                                task_engine = entrypoint.load()(self.host_instances[self.alias])
+                        except Exception as e:
+                            env.logger.debug('Failed to load task engine {}: {}'.format(task_engine_type, e))
 
-            self.host_instances[self.alias]._task_engine = task_engine
-            # the task engine is a thread and will run continously
-            self.host_instances[self.alias]._task_engine.start()
+                    if task_engine is None:
+                        raise RuntimeError('Failed to locate task engine type {}. Available engine types are {}'.format(
+                            task_engine, ', '.join(available_engines)))
+
+                self.host_instances[self.alias]._task_engine = task_engine
+                # the task engine is a thread and will run continously
+                self.host_instances[self.alias]._task_engine.start()
 
         self._host_agent = self.host_instances[self.alias]
         # for convenience
-        self._task_engine = self._host_agent._task_engine
+        if self._start_task_engine:
+            self._task_engine = self._host_agent._task_engine
         #
         # task engine can be unavailable because of time need to start it
         #
@@ -376,13 +380,19 @@ class Host:
         return self._task_engine.submit_task(task_id)
         
     def kill_task(self, task_id):
+        if not self._start_task_engine:
+            raise RuntimeError('This host instance does not have a start engine')
         return self._task_engine.kill_task(task_id)
 
     def check_status(self, tasks):
         # find the task engine
+        if not self._start_task_engine:
+            raise RuntimeError('This host instance does not have a start engine')
         return [self._task_engine.check_task_status(task) for task in tasks]
 
     def retrieve_results(self, tasks):
+        if not self._start_task_engine:
+            raise RuntimeError('This host instance does not have a start engine')
         return {task: self._host_agent.receive_result(task) for task in tasks}
 
 
