@@ -301,7 +301,7 @@ input: for_each=[{'a': range(5)}]
 task: concurrent=True
 run:
     echo "a = ${a}"
-    sleep 10 + ${a}
+    sleep ${10+a}
 ''')
         wf = script.workflow()
         st = time.time()
