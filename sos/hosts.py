@@ -26,15 +26,15 @@ import pickle
 import pkg_resources
 from collections.abc import Sequence
 
-from .utils import env
-from .sos_eval import interpolate
-from .sos_task import BackgroundProcess_TaskEngine
+from .utils import env, pickleable, short_repr
+from .sos_eval import interpolate, Undetermined
+from .sos_task import BackgroundProcess_TaskEngine, TaskParams
 
 #
 # A 'queue' is defined by queue configurations in SoS configuration files.
 # It encapsulate properties of a queue and tells sos how to interact with
-# the queue. A queue can be a local host, a remote host without queue, or 
-# a remote host with a task queue, or a RQ or Celery server. There are 
+# the queue. A queue can be a local host, a remote host without queue, or
+# a remote host with a task queue, or a RQ or Celery server. There are
 # two main categories of properties of a host.
 #
 # 1. host properties, namely how to copy files and how to execute comamnds
@@ -64,23 +64,26 @@ from .sos_task import BackgroundProcess_TaskEngine
 
 class LocalHost:
     '''For local host, no path map, send and receive ...'''
+
     def __init__(self, alias='localhost'):
         self.alias = alias
         # we checkk local jobs more aggressively
         self.config = {'alias': 'localhost', 'status_check_interval': 2}
 
-    def send_to_host(self, items):
-        pass
-
-    def receive_from_host(self, items):
-        pass
-
-    def map_var(self, vars):
-        return vars
+    def prepare_task(self, task_id):
+        return task_id
 
     def send_task(self, task):
         # on the same file system, no action is needed.
         pass
+
+    def check_output(self, cmd):
+        # get the output of command
+        try:
+            return subprocess.check_output(cmd, shell=True)
+        except Exception as e:
+            env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
+            return ''
 
     def run_command(self, cmd):
         # run command but does not wait for result.
@@ -91,19 +94,12 @@ class LocalHost:
         #return ret
         return p
 
-    def check_output(self, cmd):
-        # get the output of command
-        try:
-            return subprocess.check_output(cmd, shell=True)
-        except Exception as e:
-            env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
-            return ''
-
     def receive_result(self, task_id):
         res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
         with open(res_file, 'rb') as result:
             res = pickle.load(result)
-        return res 
+        return res
+
 
 class RemoteHost:
     '''A remote host class that manages how to communicate with remote host'''
@@ -117,6 +113,10 @@ class RemoteHost:
         self.send_cmd = self._get_send_cmd()
         self.receive_cmd = self._get_receive_cmd()
         self.execute_cmd = self._get_execute_cmd()
+
+        self.task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias)
+        if not os.path.isdir(self.task_dir):
+            os.mkdir(self.task_dir)
 
     def _get_shared_dirs(self):
         value = self.config.get('shared', [])
@@ -154,7 +154,7 @@ class RemoteHost:
         return res
 
     def _get_send_cmd(self):
-        return self.config.get('send_cmd', 
+        return self.config.get('send_cmd',
             '''ssh -q ${host} "mkdir -p ${dest!dq}"; rsync -av ${source!ae} "${host}:${dest!de}"''')
 
     def _get_receive_cmd(self):
@@ -194,7 +194,7 @@ class RemoteHost:
     #
     # Interface functions
     #
-    def map_var(self, source):
+    def _map_var(self, source):
         if isinstance(source, str):
             dest = os.path.abspath(os.path.expanduser(source))
             for k,v in self.path_map.items():
@@ -206,12 +206,12 @@ class RemoteHost:
         else:
             raise ValueError('Cannot map variables {} of type {}'.format(source, type(source).__name__))
 
-    def send_to_host(self, items):
+    def _send_to_host(self, items):
         sending = self._map_path(items)
         for source in sorted(sending.keys()):
             if self.is_shared(source):
                 env.logger.debug('Skip sending {} on shared file system'.format(source))
-            else: 
+            else:
                 dest = sending[source]
                 env.logger.info('Sending ``{}`` to {}:{}'.format(source, self.alias, dest))
                 cmd = interpolate(self.send_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
@@ -220,7 +220,7 @@ class RemoteHost:
                 if (ret != 0):
                     raise RuntimeError('Failed to copy {} to {}'.format(source, self.alias))
 
-    def receive_from_host(self, items):
+    def _receive_from_host(self, items):
         receiving = {y:x for x,y in self._map_path(items).items()}
         #
         for source in sorted(receiving.keys()):
@@ -237,23 +237,80 @@ class RemoteHost:
                 except Exception as e:
                     raise  RuntimeError('Failed to copy {} from {}: {}'.format(source, self.alias, e))
 
+    #
+    # Interface
+    #
+    #
+
+    def prepare_task(self, task_id):
+        task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+        with open(task_file, 'rb') as task:
+            params = pickle.load(task)
+            task_vars = params.data[1]
+
+        if task_vars['_input'] and not isinstance(task_vars['_input'], Undetermined):
+            self._send_to_host(task_vars['_input'])
+        if task_vars['_depends'] and not isinstance(task_vars['_depends'], Undetermined):
+            self._send_to_host(task_vars['_depends'])
+        if 'to_host' in task_vars['_runtime']:
+            self._send_to_host(task_vars['_runtime']['to_host'])
+
+        # map variables
+        vars = ['_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__', '_runtime',
+            '_local_input_{}'.format(task_vars['_index']),
+            '_local_output_{}'.format(task_vars['_index'])] + list(task_vars['__signature_vars__'])
+        preserved = set()
+        if 'preserved_vars' in task_vars['_runtime']:
+            if isinstance(task_vars['_runtime']['preserved_vars'], str):
+                preserved.add(task_vars['_runtime']['preserved_vars'])
+            elif isinstance(task_vars['_runtime']['preserved_vars'], (set, Sequence)):
+                preserved |= set(task_vars['_runtime']['preserved_vars'])
+            else:
+                raise ValueError('Unacceptable value for runtime option preserved_vars: {}'.format(task_vars['_runtime']['preserved_vars']))
+        env.logger.debug('Translating {}'.format(vars))
+        for var in vars:
+            if var in preserved:
+                env.logger.debug('Value of variable {} is preserved'.format(var))
+            elif var == '_runtime':
+                task_vars[var]['cur_dir'] = self._map_var(task_vars[var]['cur_dir'])
+                if 'workdir' in task_vars[var]:
+                    task_vars[var]['workdir'] = self._map_var(task_vars[var]['workdir'])
+            elif var in task_vars and pickleable(task_vars[var], var):
+                try:
+                    task_vars[var] = self._map_var(task_vars[var])
+                    if task_vars[var] != task_vars[var]:
+                        env.logger.info('On {}: ``{}`` = {}'.format(self.host.alias, var, short_repr(task_vars[var])))
+                    else:
+                        env.logger.debug('{}: {} is kept'.format(var, short_repr(task_vars[var])))
+                except Exception as e:
+                    env.logger.debug(e)
+            else:
+                env.logger.debug('Variable {} not in env.'.format(var))
+
+        new_param = TaskParams(
+            name = params.name,
+            data = (
+                params.data[0],
+                task_vars,
+                params.data[2],
+            )
+        )
+        job_file = os.path.join(self.task_dir, task_id + '.task')
+        with open(job_file, 'wb') as jf:
+            try:
+                pickle.dump(new_param, jf)
+            except Exception as e:
+                env.logger.warning(e)
+                raise
+
+
     def send_task(self, task_id):
-        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+        job_file = os.path.join(self.task_dir, task_id + '.task')
         send_cmd = 'ssh -q {1} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks ]"; scp -q {0} {1}:.sos/tasks/'.format(job_file, self.address)
         # use scp for this simple case
         ret = subprocess.call(send_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
             raise RuntimeError('Failed to copy job {} to {} using command {}'.format(task_id, self.alias, send_cmd))
-
-    def receive_result(self, task_id):
-        receive_cmd = 'scp -q {}:.sos/tasks/{}.res {}/.sos/tasks'.format(self.address, task_id, os.path.expanduser('~'))
-        ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-        if (ret != 0):
-            raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
-        res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
-        with open(res_file, 'rb') as result:
-            res = pickle.load(result)
-        return res
 
     def check_output(self, cmd):
         try:
@@ -280,6 +337,32 @@ class RemoteHost:
         p = subprocess.Popen(cmd, shell=True)
         return p
 
+    def receive_result(self, task_id):
+        receive_cmd = 'scp -q {}:.sos/tasks/{}.res {}'.format(self.address, task_id, self.task_dir)
+        ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        if (ret != 0):
+            raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
+        res_file = os.path.join(self.task_dir, task_id + '.res')
+        with open(res_file, 'rb') as result:
+            res = pickle.load(result)
+
+        if res['succ'] != 0:
+            env.logger.error('Remote job failed.')
+        else:
+            # do we need to copy files? We need to consult original task file
+            # not the converted one
+            task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+            with open(task_file, 'rb') as task:
+                params = pickle.load(task)
+                job_dict = params.data[1]
+            #
+            if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined):
+                self._receive_from_host(job_dict['_output'])
+            if 'from_host' in job_dict['_runtime']:
+                self._receive_from_host(job_dict['_runtime']['from_host'])
+        return res
+
+
 #
 # host instances are shared by all tasks so there should be only one
 # instance for each host.
@@ -288,9 +371,8 @@ class RemoteHost:
 class Host:
     host_instances = {}
 
-    def __init__(self, alias='', start_task_engine=False):
+    def __init__(self, alias=''):
         self._get_config(alias)
-        self._start_task_engine = start_task_engine
         self._get_host_agent()
 
     def _get_config(self, alias):
@@ -321,36 +403,33 @@ class Host:
             else:
                 self.host_instances[self.alias] = RemoteHost(self.config)
 
-            if self._start_task_engine:
+            if 'task_engine' not in self.config:
+                task_engine_type = 'background_execution'
+                task_engine = BackgroundProcess_TaskEngine(self.host_instances[self.alias])
+            else:
+                task_engine_type = self.config['task_engine']
+                task_engine = None
 
-                if 'task_engine' not in self.config:
-                    task_engine_type = 'background_execution'
-                    task_engine = BackgroundProcess_TaskEngine(self.host_instances[self.alias])
-                else:
-                    task_engine_type = self.config['task_engine']
-                    task_engine = None
+                available_engines = []
+                for entrypoint in pkg_resources.iter_entry_points(group='sos_taskengines'):
+                    try:
+                        available_engines.append(entrypoint.name)
+                        if entrypoint.name == task_engine_type:
+                            task_engine = entrypoint.load()(self.host_instances[self.alias])
+                    except Exception as e:
+                        env.logger.debug('Failed to load task engine {}: {}'.format(task_engine_type, e))
 
-                    available_engines = []
-                    for entrypoint in pkg_resources.iter_entry_points(group='sos_taskengines'):
-                        try:
-                            available_engines.append(entrypoint.name)
-                            if entrypoint.name == task_engine_type:
-                                task_engine = entrypoint.load()(self.host_instances[self.alias])
-                        except Exception as e:
-                            env.logger.debug('Failed to load task engine {}: {}'.format(task_engine_type, e))
+                if task_engine is None:
+                    raise RuntimeError('Failed to locate task engine type {}. Available engine types are {}'.format(
+                        task_engine, ', '.join(available_engines)))
 
-                    if task_engine is None:
-                        raise RuntimeError('Failed to locate task engine type {}. Available engine types are {}'.format(
-                            task_engine, ', '.join(available_engines)))
-
-                self.host_instances[self.alias]._task_engine = task_engine
-                # the task engine is a thread and will run continously
-                self.host_instances[self.alias]._task_engine.start()
+            self.host_instances[self.alias]._task_engine = task_engine
+            # the task engine is a thread and will run continously
+            self.host_instances[self.alias]._task_engine.start()
 
         self._host_agent = self.host_instances[self.alias]
         # for convenience
-        if self._start_task_engine:
-            self._task_engine = self._host_agent._task_engine
+        self._task_engine = self._host_agent._task_engine
         #
         # task engine can be unavailable because of time need to start it
         #
@@ -375,24 +454,23 @@ class Host:
         return self._host_agent.map_var(vars)
 
     def submit_task(self, task_id):
+        #
+        # Here we need to prepare the task for execution.
+        #
+        self._host_agent.prepare_task(task_id)
+        #
         self._host_agent.send_task(task_id)
         env.logger.info('{} ``queued``'.format(task_id))
         return self._task_engine.submit_task(task_id)
-        
+
     def kill_task(self, task_id):
-        if not self._start_task_engine:
-            raise RuntimeError('This host instance does not have a start engine')
         return self._task_engine.kill_task(task_id)
 
     def check_status(self, tasks):
         # find the task engine
-        if not self._start_task_engine:
-            raise RuntimeError('This host instance does not have a start engine')
         return [self._task_engine.check_task_status(task) for task in tasks]
 
     def retrieve_results(self, tasks):
-        if not self._start_task_engine:
-            raise RuntimeError('This host instance does not have a start engine')
         return {task: self._host_agent.receive_result(task) for task in tasks}
 
 

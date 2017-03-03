@@ -798,7 +798,13 @@ class Base_Executor:
                     if isinstance(res, str):
                         if res.startswith('task'):
                             env.logger.debug('Receive {}'.format(res))
-                            runnable._host = Host(res.split(' ')[1], start_task_engine=True)
+                            host = res.split(' ')[1]
+                            if host == '__default__':
+                                if env.__queue__:
+                                    host = env.__queue__
+                                else:
+                                    host = 'localhost'
+                            runnable._host = Host(host)
                             runnable._pending_tasks = res.split(' ')[2:]
                             for task in runnable._pending_tasks:
                                 runnable._host.submit_task(task)
