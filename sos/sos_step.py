@@ -252,25 +252,28 @@ class Base_Step_Executor:
     def __init__(self, step):
         self.step = step
 
-    #
-    # The following functions should be redefined in an executor
-    # because it may behave differently in different modes.
-    #
     def expand_input_files(self, value, *args):
-        '''Process input files (perhaps a pattern) to determine input files.
+        if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
+            return Undetermined(value)
 
-        ret:
-            Return a file list or Undetermined.
-        '''
-        raise RuntimeError('Undefined virtual function.')
+        # if unspecified, use __step_output__ as input (default)
+        # resolve dynamic input.
+        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+        if not args:
+            return env.sos_dict['input']
+        else:
+            return _expand_file_list(False, *args)
 
-    def expand_depends_files(self, *args):
-        '''Process dependent files (perhaps a pattern) to determine input files.
+    def expand_depends_files(self, *args, **kwargs):
+        '''handle directive depends'''
+        if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
+            for k in args:
+                if isinstance(k, dynamic):
+                    env.logger.warning('Dependent target {} is dynamic'.format(k))
+            return Undetermined()
 
-        ret:
-            Return a file list or Undetermined.
-        '''
-        raise RuntimeError('Undefined virtual function.')
+        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+        return _expand_file_list(False, *args)
 
     def expand_output_files(self, value, *args):
         '''Process output files (perhaps a pattern) to determine input files.
@@ -281,16 +284,53 @@ class Base_Step_Executor:
             return _expand_file_list(True, *args)
 
     def verify_input(self):
-        '''Check if input files exist.'''
-        pass
+        if self.run_mode == 'dryrun':
+            return
+        # now, if we are actually going to run the script, we
+        # need to check the input files actually exists, not just the signatures
+        for target in (env.sos_dict['_input'] if isinstance(env.sos_dict['_input'], list) else []) + \
+            (env.sos_dict['_depends'] if isinstance(env.sos_dict['_depends'], list) else []):
+            # if the file does not exist (although the signature exists)
+            # request generation of files
+            if isinstance(target, str):
+                if not FileTarget(target).exists('target'):
+                    # remove the signature and regenerate the file
+                    FileTarget(target).remove_sig()
+                    raise RemovedTarget(target)
+            elif not target.exists('target'):
+                target.remove_sig()
+                raise RemovedTarget(target)
 
     def verify_output(self):
-        '''Check if intended output actually exists.'''
-        pass
+        if self.run_mode == 'dryrun':
+            return
+        if env.sos_dict['output'] is None:
+            return
+        if isinstance(env.sos_dict['output'], Undetermined):
+            raise RuntimeError('Output of a completed step cannot be undetermined.')
+        for target in env.sos_dict['output']:
+            if isinstance(target, str):
+                if not FileTarget(target).exists('target' if '__hard_target__' in env.sos_dict else 'any'):
+                    raise RuntimeError('Output target {} does not exist after the completion of step {} (curdir={})'
+                            .format(target, env.sos_dict['step_name'], os.getcwd()))
+            elif not target.exists('any'):
+                raise RuntimeError('Output target {} does not exist after the completion of step {}'
+                            .format(target, env.sos_dict['step_name']))
 
     def step_signature(self, index):
-        '''Base executor does not have signature'''
-        return None
+        '''returns a signature of the step. Change of the step content will
+        lead to the invalidation of the signature, which will then cause the
+        re-execution of the step for any result from the step. '''
+        #
+        if env.sig_mode == 'ignore' or env.run_mode != 'run':
+            return None
+        env_vars = []
+        for var in sorted(env.sos_dict['__signature_vars__']):
+            if var in env.sos_dict and isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
+                env_vars.append('{} = {}\n'.format(var, stable_repr(env.sos_dict[var])))
+
+        # env.logger.warning(''.join(env_vars) + '\n' + self.step.tokens)
+        return ''.join(env_vars) + '\n' + self.step.tokens
 
     # Nested functions to handle different parameters of input directive
     @staticmethod
@@ -619,6 +659,7 @@ class Base_Step_Executor:
             raise
         except Exception as e:
             raise RuntimeError('Failed to assign {} to variable {}: {}'.format(value, key, e))
+        transcribe('{} = {}'.format(key, env.sos_dict[key]))
 
     def execute(self, stmt, sig=None):
         try:
@@ -1110,7 +1151,6 @@ class Step_Executor(Base_Step_Executor):
         super(Step_Executor, self).__init__(step)
         self.pipe = pipe
 
-
     def pending_tasks(self, tasks):
         env.logger.debug('Send {}'.format(tasks))
         if not tasks:
@@ -1145,24 +1185,6 @@ class Step_Executor(Base_Step_Executor):
             notifier.stop()
 
 
-    def verify_input(self):
-        if self.run_mode == 'dryrun':
-            return
-        # now, if we are actually going to run the script, we
-        # need to check the input files actually exists, not just the signatures
-        for target in (env.sos_dict['_input'] if isinstance(env.sos_dict['_input'], list) else []) + \
-            (env.sos_dict['_depends'] if isinstance(env.sos_dict['_depends'], list) else []):
-            # if the file does not exist (although the signature exists)
-            # request generation of files
-            if isinstance(target, str):
-                if not FileTarget(target).exists('target'):
-                    # remove the signature and regenerate the file
-                    FileTarget(target).remove_sig()
-                    raise RemovedTarget(target)
-            elif not target.exists('target'):
-                target.remove_sig()
-                raise RemovedTarget(target)
-
     def log(self, stage=None, msg=None):
         if stage == 'start':
             env.logger.info('{} ``{}``: {}'.format('Checking' if self.run_mode == 'dryrun' else 'Executing',
@@ -1179,47 +1201,6 @@ class Step_Executor(Base_Step_Executor):
             if env.sos_dict['output'] is not None:
                 env.logger.info('output:   ``{}``'.format(short_repr(env.sos_dict['output'])))
 
-    def assign(self, key, value):
-        Base_Step_Executor.assign(self, key, value)
-        transcribe('{} = {}'.format(key, env.sos_dict[key]))
-
-    def expand_input_files(self, value, *args):
-        if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
-            return Undetermined(value)
-
-        # if unspecified, use __step_output__ as input (default)
-        # resolve dynamic input.
-        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-        if not args:
-            return env.sos_dict['input']
-        else:
-            return _expand_file_list(False, *args)
-
-    def step_signature(self, index):
-        '''returns a signature of the step. Change of the step content will
-        lead to the invalidation of the signature, which will then cause the
-        re-execution of the step for any result from the step. '''
-        #
-        if env.sig_mode == 'ignore':
-            return None
-        env_vars = []
-        for var in sorted(env.sos_dict['__signature_vars__']):
-            if var in env.sos_dict and isinstance(env.sos_dict[var], (str, bool, int, float, complex, bytes, list, tuple, set, dict)):
-                env_vars.append('{} = {}\n'.format(var, stable_repr(env.sos_dict[var])))
-
-        # env.logger.warning(''.join(env_vars) + '\n' + self.step.tokens)
-        return ''.join(env_vars) + '\n' + self.step.tokens
-
-    def expand_depends_files(self, *args, **kwargs):
-        '''handle directive depends'''
-        if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
-            for k in args:
-                if isinstance(k, dynamic):
-                    env.logger.warning('Dependent target {} is dynamic'.format(k))
-            return Undetermined()
-
-        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-        return _expand_file_list(False, *args)
 
     def reevaluate_output(self):
         # re-process the output statement to determine output files
@@ -1228,20 +1209,6 @@ class Step_Executor(Base_Step_Executor):
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         env.sos_dict.set('output', self.expand_output_files('', *args))
 
-    def verify_output(self):
-        if self.run_mode == 'dryrun':
-            return
-        if env.sos_dict['output'] is None:
-            return
-        if isinstance(env.sos_dict['output'], Undetermined):
-            raise RuntimeError('Output of a completed step cannot be undetermined.')
-        for target in env.sos_dict['output']:
-            if isinstance(target, str):
-                if not FileTarget(target).exists('target' if '__hard_target__' in env.sos_dict else 'any'):
-                    raise RuntimeError('Output target {} does not exist after the completion of step {} (curdir={})'
-                            .format(target, env.sos_dict['step_name'], os.getcwd()))
-            elif not target.exists('any'):
-                raise RuntimeError('Output target {} does not exist after the completion of step {}'
-                            .format(target, env.sos_dict['step_name']))
+
 
 
