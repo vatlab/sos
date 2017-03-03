@@ -27,7 +27,7 @@ import threading
 from io import StringIO
 from tokenize import generate_tokens
 
-from sos.utils import env
+from sos.utils import env, short_repr
 from sos.sos_eval import SoS_exec
 
 from .target import textMD5, RuntimeInfo
@@ -282,7 +282,7 @@ def check_task(task):
     else:
         return 'frozen'
 
-def check_tasks(tasks, verbose=False):
+def check_tasks(tasks, verbosity=1):
     # verbose is ignored for now
     import glob
     from multiprocessing.pool import ThreadPool as Pool
@@ -301,8 +301,28 @@ def check_tasks(tasks, verbose=False):
     all_tasks = sorted(list(set(all_tasks)))
     p = Pool(len(all_tasks))
     status = p.map(check_task, all_tasks)
-    for s, t in zip(status, all_tasks):
-        print('{}\t{}'.format(t, s))
+    env.logger.error(verbosity)
+    if verbosity == 0:
+        print('\n'.join(status))
+    elif verbosity in (1, 2):
+        for s, t in zip(status, all_tasks):
+            print('{}\t{}'.format(t, s))
+    elif verbosity > 2:
+        for s, t in zip(status, all_tasks):
+            print('{}\t{}'.format(t, s))
+            task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
+            if not os.path.isfile(task_file):
+                continue
+            with open(task_file, 'rb') as task:
+                params = pickle.load(task)
+            print('TASK:')
+            print(params.data[0])
+            print()
+            print('ENVIRONMENT:')
+            job_vars = params.data[1]
+            for k, v in job_vars.items():
+                print('{}:\t{}'.format(k, short_repr(v) if verbosity == 3 else repr(v)))
+            print()
         
 def kill_task(task):
     status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')

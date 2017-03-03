@@ -417,7 +417,15 @@ def get_status_parser(desc_only=False):
         description='''Check the status of specified tasks''')
     if desc_only:
         return parser
-    parser.add_argument('tasks', nargs='*', help='''ID of the task.''')
+    parser.add_argument('tasks', nargs='*', help='''ID of the task. All tasks
+        will be checked if unspecified. There is no need to specify compelte
+        task IDs because SoS will match specified name with tasks starting with
+        these names.''')
+    parser.add_argument('-q', '--queue', help='''Check the status of job on
+        specified tasks queue or remote host if the tasks . The queue must be defined in SoS
+        config file. Please check SoS documentation for details. Note that
+        this parameter must be specified to check the status of jobs if they
+        are executed on that host. ''')
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=1,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
@@ -428,14 +436,7 @@ def get_status_parser(desc_only=False):
 def cmd_status(args, workflow_args):
     from .sos_task import check_tasks
     #from .monitor import summarizeExecution
-    check_tasks(args.tasks, args.verbosity > 1)
-    #if args.verbosity <= 1:
-    #    print(status)
-    #else:
-    #    if status in ('completed', 'running'):
-    #        print(summarizeExecution(args.task, status=status))
-    #    else:
-    #        print(status)
+    check_tasks(args.tasks, args.verbosity)
  
 #
 # command kill
