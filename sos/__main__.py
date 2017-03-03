@@ -228,7 +228,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             use of runtime signatures.''')
     output = parser.add_argument_group(title='Output options',
         description='''Output of workflow''')
-    output.add_argument('-d', nargs='?', default='', metavar='DAG', dest='__dag__', 
+    output.add_argument('-d', nargs='?', default='', metavar='DAG', dest='__dag__',
         help='''Output Direct Acyclic Graph (DAGs) in graphiviz .dot format. An
             exntesion of ".dot" would be added automatically. Because DAG could
             change during the execution of workflow, multiple DAGs could be
@@ -253,7 +253,7 @@ def cmd_run(args, workflow_args):
     import atexit
     from .utils import env, get_traceback
     from .sos_script import SoS_Script
-    
+
     # '' means no -d
     if args.__dag__ is None:
         args.__dag__ = '-'
@@ -328,7 +328,7 @@ def get_dryrun_parser(desc_only=False):
             to generate specified targets. ''')
     output = parser.add_argument_group(title='Output options',
         description='''Output of workflow''')
-    output.add_argument('-d', nargs='?', default='', metavar='DAG', dest='__dag__', 
+    output.add_argument('-d', nargs='?', default='', metavar='DAG', dest='__dag__',
         help='''Output Direct Acyclic Graph (DAGs) in graphiviz .dot format. An
             exntesion of ".dot" would be added automatically. Because DAG could
             change during the execution of workflow, multiple DAGs could be
@@ -360,7 +360,7 @@ def get_execute_parser(desc_only=False):
         description='''Execute a packages task''')
     if desc_only:
         return parser
-    parser.add_argument('task', help='''ID of the task.''')
+    parser.add_argument('tasks', nargs='+', help='''IDs of the task.''')
     parser.add_argument('-s', choices=['default', 'ignore', 'force', 'build', 'assert'],
         default='default', metavar='SIGMODE',
         dest='__sigmode__',
@@ -377,6 +377,15 @@ def get_execute_parser(desc_only=False):
         default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
+    parser.add_argument('-q', '--queue', help='''Execute the task on the specified
+        tasks queue or remote host if the tasks . The queue must be defined in SoS
+        config file (system default or specified with option --config). SoS would
+        perform necessary file synchronization and path translation according to
+        queue configuration, and send the task to appropriate queue for execution.
+        Please check SoS documentation for details.''')
+    parser.add_argument('-c', '--config', help='''A configuration file with host
+        definitions, in case the definitions are not defined in global or local
+        sos config.yml files.''')
     parser.set_defaults(func=cmd_execute)
     return parser
 
@@ -385,29 +394,47 @@ def cmd_execute(args, workflow_args):
     import pickle
     from .sos_task import execute_task, check_task, monitor_interval, resource_monitor_interval
     from .monitor import summarizeExecution
-    status = check_task(args.task)
-    res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', args.task + '.res')
-    if status == 'running':
-        if args.verbosity <= 1:
-            print(status)
-        else:
-            print(summarizeExecution(args.task, status=status))
-        sys.exit(1)
-    #if status.startswith('completed')  and args.__sigmode__ != 'force':
-    #    # touch the result file
-    #    os.utime(res_file, None)
-    #    if args.verbosity <= 1:
-    #        print(status)
-    #    else:
-    #        print(summarizeExecution(args.task, status=status))
-    #    sys.exit(0)
-    #
-    if os.path.isfile(res_file):
-        os.remove(res_file)
-    res = execute_task(args.task, verbosity=args.verbosity, sigmode=args.__sigmode__, 
-        monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
-    with open(res_file, 'wb') as res_file:
-        pickle.dump(res, res_file)
+    if not args.queue:
+        for task in args.tasks:
+            # this is for local execution, perhaps on a remote host, and
+            # there is no daemon process etc. It also does not handle job
+            # preparation.
+            status = check_task(task)
+            res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
+            if status == 'running':
+                if args.verbosity <= 1:
+                    print(status)
+                else:
+                    print(summarizeExecution(task, status=status))
+                sys.exit(1)
+            #if status.startswith('completed')  and args.__sigmode__ != 'force':
+            #    # touch the result file
+            #    os.utime(res_file, None)
+            #    if args.verbosity <= 1:
+            #        print(status)
+            #    else:
+            #        print(summarizeExecution(task, status=status))
+            #    sys.exit(0)
+            #
+            if os.path.isfile(res_file):
+                os.remove(res_file)
+            res = execute_task(task, verbosity=args.verbosity, sigmode=args.__sigmode__,
+                monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
+            with open(res_file, 'wb') as res_file:
+                pickle.dump(res, res_file)
+    else:
+        from .hosts import Host
+        from .utils import env, load_config_files
+        # this is for local execution using a task queue. The task queue
+        # will prepare the task, sync files, and execute this command remotely
+        # if needed.
+        cfg = load_config_files(args.config)
+        env.sos_dict.set('CONFIG', cfg)
+        env.verbosity = args.verbosity
+        env.sig_mode = args.__sigmode__
+        host = Host(args.queue)
+        for task in args.tasks:
+            host.submit_task(task)
 
 #
 # command status
@@ -428,7 +455,7 @@ def get_status_parser(desc_only=False):
         are executed on that host. ''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
-        sos config.yml files.''')        
+        sos config.yml files.''')
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=1,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
@@ -449,7 +476,7 @@ def cmd_status(args, workflow_args):
         env.sos_dict.set('CONFIG', cfg)
         host = Host(args.queue)
         print(host._host_agent.check_output('sos status {} -v {}'.format(' '.join(args.tasks), args.verbosity)))
- 
+
 #
 # command kill
 #
@@ -757,7 +784,7 @@ def cmd_remove(args, unknown_args):
 def get_config_parser(desc_only=False):
     parser = argparse.ArgumentParser('config',
         description='''Displays, set, and unset configuration
-            variables defined in global or local configuration files.''')        
+            variables defined in global or local configuration files.''')
     if desc_only:
         return parser
     parser.add_argument('-g', '--global', action='store_true', dest='__global_config__',
@@ -1217,7 +1244,7 @@ def cmd_unpack(args, unknown_args):
                         if fields[0] == 'RUNTIME':
                             continue
                         print(' {:>9s}  {:>12s} {:>6s} {}'.format(pretty_size(int(fields[3])),
-                            time.strftime('%m-%d-%y %H:%M', time.gmtime(float(fields[2]))), 
+                            time.strftime('%m-%d-%y %H:%M', time.gmtime(float(fields[2]))),
                             fields[0], fields[1]))
                         total_size += int(fields[3])
                         total_files += 1
@@ -1381,7 +1408,7 @@ def main():
     add_sub_parser(subparsers, get_unpack_parser(desc_only='unpack'!=subcommand))
     #
     # addon packages
-    if subcommand is None or subcommand not in ['run', 'dryrun', 'convert', 
+    if subcommand is None or subcommand not in ['run', 'dryrun', 'convert',
             'remove', 'config', 'pack', 'unpack']:
         for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
             if entrypoint.name.strip().endswith('.parser'):
