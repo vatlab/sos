@@ -934,3 +934,34 @@ def sos_handle_parameter_(key, defvalue):
     return vars(parsed)[key]
 
 
+def load_config_files(filename=None):
+    cfg = {}
+    sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
+    if os.path.isfile(sos_config_file):
+        with fasteners.InterProcessLock('/tmp/sos_config_'):
+            try:
+                with open(sos_config_file) as config:
+                    cfg = yaml.safe_load(config)
+            except Exception as e:
+                raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+    # local config file
+    sos_config_file = 'config.yml'
+    if os.path.isfile(sos_config_file):
+        with fasteners.InterProcessLock('/tmp/sos_config_'):
+            try:
+                with open(sos_config_file) as config:
+                    dict_merge(cfg, yaml.safe_load(config))
+            except Exception as e:
+                raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+    # user-specified configuration file.
+    if filename is not None:
+        if not os.path.isfile(filename):
+            raise RuntimeError('Config file {} not found'.format(filename))
+        with fasteners.InterProcessLock('/tmp/sos_config_'):
+            try:
+                with open(filename) as config:
+                    dict_merge(cfg, yaml.safe_load(config))
+            except Exception as e:
+                raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(filename, e))
+    return cfg
+ 

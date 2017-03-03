@@ -33,7 +33,8 @@ from io import StringIO
 from ._version import __version__
 from .sos_step import Dryrun_Step_Executor, MP_Step_Executor, \
     analyze_section
-from .utils import env, Error, WorkflowDict, get_traceback, frozendict, dict_merge, short_repr, pickleable
+from .utils import env, Error, WorkflowDict, get_traceback, frozendict, dict_merge, short_repr, pickleable, \
+    load_config_files
 from .sos_eval import SoS_exec, get_default_global_sigil
 from .sos_syntax import SOS_KEYWORDS
 from .dag import SoS_DAG
@@ -97,35 +98,7 @@ class StepWorker(mp.Process):
         env.sos_dict.set('__step_output__', [])
 
         # load configuration files
-        cfg = {}
-        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
-        if os.path.isfile(sos_config_file):
-            with fasteners.InterProcessLock('/tmp/sos_config_'):
-                try:
-                    with open(sos_config_file) as config:
-                        cfg = yaml.safe_load(config)
-                except Exception as e:
-                    raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-        # local config file
-        sos_config_file = 'config.yml'
-        if os.path.isfile(sos_config_file):
-            with fasteners.InterProcessLock('/tmp/sos_config_'):
-                try:
-                    with open(sos_config_file) as config:
-                        dict_merge(cfg, yaml.safe_load(config))
-                except Exception as e:
-                    raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-        # user-specified configuration file.
-        if self.config['config_file'] is not None:
-            if not os.path.isfile(self.config['config_file']):
-                raise RuntimeError('Config file {} not found'.format(self.config['config_file']))
-            with fasteners.InterProcessLock('/tmp/sos_config_'):
-                try:
-                    with open(self.config['config_file']) as config:
-                        dict_merge(cfg, yaml.safe_load(config))
-                except Exception as e:
-                    raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config['config_file'], e))
-        # set config to CONFIG
+        cfg = load_config_files(self.config['config_file'])
         env.sos_dict.set('CONFIG', frozendict(cfg))
 
         SoS_exec('import os, sys, glob', None)

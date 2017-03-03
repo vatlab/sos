@@ -426,6 +426,9 @@ def get_status_parser(desc_only=False):
         config file. Please check SoS documentation for details. Note that
         this parameter must be specified to check the status of jobs if they
         are executed on that host. ''')
+    parser.add_argument('-c', '--config', help='''A configuration file with host
+        definitions, in case the definitions are not defined in global or local
+        sos config.yml files.''')        
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=1,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
@@ -435,8 +438,17 @@ def get_status_parser(desc_only=False):
 
 def cmd_status(args, workflow_args):
     from .sos_task import check_tasks
+    from .utils import env, load_config_files
+    from .hosts import Host
     #from .monitor import summarizeExecution
-    check_tasks(args.tasks, args.verbosity)
+    if not args.queue:
+        check_tasks(args.tasks, args.verbosity)
+    else:
+        # remote host?
+        cfg = load_config_files(args.config)
+        env.sos_dict.set('CONFIG', cfg)
+        host = Host(args.queue)
+        print(host._host_agent.check_output('sos status {} -v {}'.format(' '.join(args.tasks), args.verbosity)))
  
 #
 # command kill
