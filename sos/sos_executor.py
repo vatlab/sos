@@ -31,8 +31,7 @@ import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
 from io import StringIO
 from ._version import __version__
-from .sos_step import Dryrun_Step_Executor, Step_Executor, \
-    analyze_section
+from .sos_step import Step_Executor, analyze_section
 from .utils import env, Error, WorkflowDict, get_traceback, frozendict, dict_merge, short_repr, pickleable, \
     load_config_files
 from .sos_eval import SoS_exec, get_default_global_sigil
@@ -145,7 +144,7 @@ class StepWorker(mp.Process):
             env.sig_mode = sig_mode
             env.verbosity = verbosity
 
-            executor = Step_Executor(section, pipe)
+            executor = Step_Executor(section, pipe, mode='run')
             executor.run()
 
 
@@ -641,7 +640,7 @@ class Base_Executor:
             env.sos_dict.quick_update(runnable._context)
             # execute section with specified input
             runnable._status = 'running'
-            executor = Dryrun_Step_Executor(section, None)
+            executor = Step_Executor(section, None, mode='dryrun')
             res = executor.run()
             # if the step says unknown target .... need to check if the target can
             # be build dynamically.

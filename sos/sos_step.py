@@ -1138,60 +1138,17 @@ def _expand_file_list(ignore_unknown, *args):
     return tmp
 
 
-class Dryrun_Step_Executor(Queued_Step_Executor):
-    '''Run script in prepare mode'''
-    def __init__(self, step, queue):
-        env.run_mode = 'prepare'
-        if hasattr(env, 'accessed_vars'):
-            delattr(env, 'accessed_vars')
-        Queued_Step_Executor.__init__(self, step, queue)
-
-    def log(self, stage=0, msg=None):
-        if stage == 'start':
-            env.logger.info('Checking ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
-        elif stage == 'input':
-            if env.sos_dict['input'] is not None:
-                env.logger.info('input:    ``{}``'.format(short_repr(env.sos_dict['input'])))
-        elif stage == 'output':
-            if env.sos_dict['output'] is not None:
-                env.logger.info('output:   ``{}``'.format(short_repr(env.sos_dict['output'])))
-
-    def verify_input(self):
-        return
-
-    def verify_output(self):
-        # do nothing to verify output
-        return
-
-    def expand_input_files(self, value, *args):
-        # in prepare mode, we do not resolve unknown targets
-        if any(isinstance(x, dynamic) for x in args):
-            return Undetermined(value)
-        # if unspecified, use __step_output__ as input (default)
-        if not args:
-            return env.sos_dict['input']
-        else:
-            return _expand_file_list(True, *args)
-
-    def expand_depends_files(self, *args):
-        '''handle directive depends'''
-        if any(isinstance(x, dynamic) for x in args):
-            for k in args:
-                if isinstance(k, dynamic):
-                    env.logger.warning('Dependent target {} is dynamic'.format(k))
-            return Undetermined()
-        else:
-            return _expand_file_list(True, *args)
-
 class Step_Executor(Queued_Step_Executor):
     '''Single process step executor'''
-    def __init__(self, step, queue):
-        env.run_mode = 'run'
+    def __init__(self, step, queue, mode='run'):
+        env.run_mode = mode
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
         Queued_Step_Executor.__init__(self, step, queue)
 
     def verify_input(self):
+        if self.run_mode == 'dryrun':
+            return
         # now, if we are actually going to run the script, we
         # need to check the input files actually exists, not just the signatures
         for target in (env.sos_dict['_input'] if isinstance(env.sos_dict['_input'], list) else []) + \
@@ -1209,7 +1166,8 @@ class Step_Executor(Queued_Step_Executor):
 
     def log(self, stage=None, msg=None):
         if stage == 'start':
-            env.logger.info('Executing ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
+            env.logger.info('{} ``{}``: {}'.format('Checking' if self.run_mode == 'dryrun' else 'Executing',
+                self.step.step_name(), self.step.comment.strip()))
         elif stage == 'input statement':
             env.logger.trace('Handling input statement {}'.format(msg))
         elif stage == '_input':
@@ -1227,6 +1185,9 @@ class Step_Executor(Queued_Step_Executor):
         transcribe('{} = {}'.format(key, env.sos_dict[key]))
 
     def expand_input_files(self, value, *args):
+        if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
+            return Undetermined(value)
+
         # if unspecified, use __step_output__ as input (default)
         # resolve dynamic input.
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
@@ -1252,6 +1213,12 @@ class Step_Executor(Queued_Step_Executor):
 
     def expand_depends_files(self, *args, **kwargs):
         '''handle directive depends'''
+        if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
+            for k in args:
+                if isinstance(k, dynamic):
+                    env.logger.warning('Dependent target {} is dynamic'.format(k))
+            return Undetermined()
+
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         return _expand_file_list(False, *args)
 
@@ -1263,6 +1230,8 @@ class Step_Executor(Queued_Step_Executor):
         env.sos_dict.set('output', self.expand_output_files('', *args))
 
     def verify_output(self):
+        if self.run_mode == 'dryrun':
+            return
         if env.sos_dict['output'] is None:
             return
         if isinstance(env.sos_dict['output'], Undetermined):
