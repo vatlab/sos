@@ -35,7 +35,7 @@ class Interactive_Step_Executor(SP_Step_Executor):
         Base_Step_Executor.__init__(self, step)
 
     def pending_tasks(self, tasks):
-        host = Host(start_task_engine=True)
+        host = Host()
         for task in tasks:
             host.submit_task(task)
         while True:
