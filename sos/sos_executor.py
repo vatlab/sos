@@ -162,6 +162,7 @@ class Base_Executor:
                 self.config[key] = None
         if self.config['config_file'] is not None:
             self.config['config_file'] = os.path.abspath(os.path.expanduser(self.config['config_file']))
+        #
         # if the executor is not called from command line, without sigmode setting
         if env.sig_mode is None:
             env.sig_mode = 'default'
@@ -729,6 +730,12 @@ class Base_Executor:
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
+        # if the exexcutor is started from sos_run, these should also be passed
+        if 'sig_mode' in self.config:
+            env.sig_mode = self.config['sig_mode']
+        if 'verbosity' in self.config:
+            env.verbosity = self.config['verbosity']
+
         self.reset_dict()
         env.run_mode = mode
         # passing run_mode to SoS dict so that users can execute blocks of

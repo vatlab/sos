@@ -306,7 +306,8 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
 
             executor_class = Base_Executor
 
-            executor = executor_class(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__']})
+            executor = executor_class(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__'],
+                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
             if env.run_mode == 'run':
                 if shared:
                     q = mp.Queue()
