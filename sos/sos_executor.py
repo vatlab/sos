@@ -31,7 +31,7 @@ import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
 from io import StringIO
 from ._version import __version__
-from .sos_step import Dryrun_Step_Executor, MP_Step_Executor, \
+from .sos_step import Dryrun_Step_Executor, Step_Executor, \
     analyze_section
 from .utils import env, Error, WorkflowDict, get_traceback, frozendict, dict_merge, short_repr, pickleable, \
     load_config_files
@@ -145,7 +145,7 @@ class StepWorker(mp.Process):
             env.sig_mode = sig_mode
             env.verbosity = verbosity
 
-            executor = MP_Step_Executor(section, pipe)
+            executor = Step_Executor(section, pipe)
             executor.run()
 
 

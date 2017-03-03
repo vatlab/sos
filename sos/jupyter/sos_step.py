@@ -22,11 +22,11 @@
 
 from sos.utils import env
 
-from sos.sos_step import SP_Step_Executor, Base_Step_Executor
+from sos.sos_step import Step_Executor, Base_Step_Executor
 from sos.hosts import Host
 import time
 
-class Interactive_Step_Executor(SP_Step_Executor):
+class Interactive_Step_Executor(Step_Executor):
     def __init__(self, step):
         # This is the only interesting part of this executor. Basically
         # it derives everything from SP_Step_Executor but does not

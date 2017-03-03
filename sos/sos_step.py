@@ -40,22 +40,6 @@ from .sos_task import TaskParams
 
 __all__ = []
 
-class StepInfo(object):
-    '''A simple class to hold input, output, and index of step. Its attribute can
-    only be set using an interface, and cannot be assigned. This is to make sure
-    such information is not changed freely by malicious scripts'''
-    def __init__(self):
-        pass
-
-    def set(self, key, value):
-        object.__setattr__(self, key, value)
-
-    def __setattr__(self, key, value):
-        raise RuntimeError('Changing of step info {} is prohibited.'.format(key))
-
-    def __repr__(self):
-        return '{' + ', '.join('{}: {!r}'.format(x,y) for x,y in self.__dict__.items()) + '}'
-
 
 def analyze_section(section, default_input=None):
     '''Analyze a section for how it uses input and output, what variables
@@ -1199,7 +1183,7 @@ class Dryrun_Step_Executor(Queued_Step_Executor):
         else:
             return _expand_file_list(True, *args)
 
-class SP_Step_Executor(Queued_Step_Executor):
+class Step_Executor(Queued_Step_Executor):
     '''Single process step executor'''
     def __init__(self, step, queue):
         env.run_mode = 'run'
@@ -1293,19 +1277,3 @@ class SP_Step_Executor(Queued_Step_Executor):
                             .format(target, env.sos_dict['step_name']))
 
 
-class MP_Step_Executor(SP_Step_Executor):
-    def __init__(self, step, queue):
-        SP_Step_Executor.__init__(self, step, queue)
-
-    def log(self, stage=None, msg=None):
-        if stage == 'start':
-            env.logger.info('Executing ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
-        elif stage == '_input':
-            if env.sos_dict['_input'] is not None:
-                env.logger.debug('{} _input: ``{}``'.format(self.step.step_name(), short_repr(env.sos_dict['_input'])))
-        elif stage == 'input':
-            if env.sos_dict['input'] is not None:
-                env.logger.info('{} input:    ``{}``'.format(self.step.step_name(), short_repr(env.sos_dict['input'])))
-        elif stage == 'output':
-            if env.sos_dict['output'] is not None:
-                env.logger.info('{} output:   ``{}``'.format(self.step.step_name(), short_repr(env.sos_dict['output'])))
