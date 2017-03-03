@@ -80,7 +80,7 @@ class LocalHost:
     def check_output(self, cmd):
         # get the output of command
         try:
-            return subprocess.check_output(cmd, shell=True)
+            return subprocess.check_output(cmd, shell=True).decode()
         except Exception as e:
             env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
             return ''
@@ -321,7 +321,7 @@ class RemoteHost:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
         try:
-            return subprocess.check_output(cmd, shell=True)
+            return subprocess.check_output(cmd, shell=True).decode()
         except Exception as e:
             env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
             return ''

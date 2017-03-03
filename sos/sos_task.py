@@ -466,7 +466,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
         if not tasks_status:
             return {}
         status = {}
-        for line in tasks_status.decode().split('\n'):
+        for line in tasks_status.split('\n'):
             if not line.strip():
                 continue
             try:
