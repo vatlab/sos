@@ -1141,6 +1141,7 @@ def _expand_file_list(ignore_unknown, *args):
 class Step_Executor(Queued_Step_Executor):
     '''Single process step executor'''
     def __init__(self, step, queue, mode='run'):
+        self.run_mode = mode
         env.run_mode = mode
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')

@@ -95,7 +95,7 @@ c=func_both()
         wf = script.workflow()
         Base_Executor(wf).dryrun()
         self.assertTrue(isinstance(env.sos_dict['b'], Undetermined))
-        self.assertTrue(isinstance(env.sos_dict['c'], Undetermined))
+        self.assertEqual(env.sos_dict['c'], 1)
         #
         Base_Executor(wf).run()
         self.assertEqual(env.sos_dict['b'], 1)

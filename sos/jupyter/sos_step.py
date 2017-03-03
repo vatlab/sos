@@ -33,6 +33,7 @@ class Interactive_Step_Executor(Step_Executor):
         # use the Queue mechanism, so the __init__ and the run
         # functions are copied from Base_Step_Executor
         Base_Step_Executor.__init__(self, step)
+        self.run_mode='interactive'
 
     def pending_tasks(self, tasks):
         host = Host()
