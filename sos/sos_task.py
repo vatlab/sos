@@ -461,7 +461,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
     def query_tasks(self, tasks=None):
         if tasks == []:
             return {}
-        tasks_status = self.agent.check_output("sos status {} -v 0".format(
+        tasks_status = self.agent.check_output("sos status {} -v 1".format(
                 ' '.join(tasks)))
         if not tasks_status:
             return {}

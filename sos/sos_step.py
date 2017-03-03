@@ -1052,45 +1052,6 @@ class Base_Step_Executor:
                 if sig is not None:
                     sig.release()
 
-class Queued_Step_Executor(Base_Step_Executor):
-    # this class execute the step in a separate process
-    # and returns result using a queue
-    def __init__(self, step, pipe):
-        Base_Step_Executor.__init__(self, step)
-        self.pipe = pipe
-
-    def pending_tasks(self, tasks):
-        env.logger.debug('Send {}'.format(tasks))
-        if not tasks:
-            return {}
-        if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
-            host = env.sos_dict['_runtime']['queue']
-        else:
-            # otherwise, use workflow default
-            host = '__default__'
-        self.pipe.send('tasks {} {}'.format(host, ' '.join(tasks)))
-        # wait till the executor responde
-        results = self.pipe.recv()
-        return results
-
-    def run(self):
-        try:
-            # update every 60 seconds
-            notifier = ActivityNotifier('Running {}'.format(self.step.step_name()), delay=60)
-            res = Base_Step_Executor.run(self)
-            if self.pipe is not None:
-                self.pipe.send(res)
-            else:
-                return res
-        except Exception as e:
-            if env.verbosity > 2:
-                sys.stderr.write(get_traceback())
-            if self.pipe is not None:
-                self.pipe.send(e)
-            else:
-                raise e
-        finally:
-            notifier.stop()
 
 def _expand_file_list(ignore_unknown, *args):
     ifiles = []
@@ -1138,14 +1099,51 @@ def _expand_file_list(ignore_unknown, *args):
     return tmp
 
 
-class Step_Executor(Queued_Step_Executor):
+
+class Step_Executor(Base_Step_Executor):
     '''Single process step executor'''
-    def __init__(self, step, queue, mode='run'):
+    def __init__(self, step, pipe, mode='run'):
         self.run_mode = mode
         env.run_mode = mode
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
-        Queued_Step_Executor.__init__(self, step, queue)
+        super(Step_Executor, self).__init__(step)
+        self.pipe = pipe
+
+
+    def pending_tasks(self, tasks):
+        env.logger.debug('Send {}'.format(tasks))
+        if not tasks:
+            return {}
+        if 'queue' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['queue']:
+            host = env.sos_dict['_runtime']['queue']
+        else:
+            # otherwise, use workflow default
+            host = '__default__'
+        self.pipe.send('tasks {} {}'.format(host, ' '.join(tasks)))
+        # wait till the executor responde
+        results = self.pipe.recv()
+        return results
+
+    def run(self):
+        try:
+            # update every 60 seconds
+            notifier = ActivityNotifier('Running {}'.format(self.step.step_name()), delay=60)
+            res = Base_Step_Executor.run(self)
+            if self.pipe is not None:
+                self.pipe.send(res)
+            else:
+                return res
+        except Exception as e:
+            if env.verbosity > 2:
+                sys.stderr.write(get_traceback())
+            if self.pipe is not None:
+                self.pipe.send(e)
+            else:
+                raise e
+        finally:
+            notifier.stop()
+
 
     def verify_input(self):
         if self.run_mode == 'dryrun':
