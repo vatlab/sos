@@ -583,12 +583,12 @@ class Base_Step_Executor:
                 raise RuntimeError('Unrecognized runtime option {}={}'.format(k, v))
         env.sos_dict.set('_runtime', kwargs)
 
-    def prepare_input_loop(self):
-        # what do do before input loop
-        pass
-
     def reevaluate_output(self):
-        pass
+        # re-process the output statement to determine output files
+        args, kwargs = SoS_eval('__null_func__({})'.format(env.sos_dict['output'].expr), self.step.sigil)
+        # handle dynamic args
+        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+        env.sos_dict.set('output', self.expand_output_files('', *args))
 
     def prepare_task(self):
         env.sos_dict['_runtime']['cur_dir'] = os.getcwd()
@@ -649,8 +649,22 @@ class Base_Step_Executor:
                 continue
             self.proc_results[idx] = results[task]
 
+    
     def log(self, stage=None, msg=None):
-        raise RuntimeError('Please redefine the log function in derived step executor.')
+        if stage == 'start':
+            env.logger.info('{} ``{}``: {}'.format('Checking' if self.run_mode == 'dryrun' else 'Executing',
+                self.step.step_name(), self.step.comment.strip()))
+        elif stage == 'input statement':
+            env.logger.trace('Handling input statement {}'.format(msg))
+        elif stage == '_input':
+            if env.sos_dict['_input'] is not None:
+                env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'])))
+        elif stage == 'input':
+            if env.sos_dict['input'] is not None:
+                env.logger.info('input:    ``{}``'.format(short_repr(env.sos_dict['input'])))
+        elif stage == 'output':
+            if env.sos_dict['output'] is not None:
+                env.logger.info('output:   ``{}``'.format(short_repr(env.sos_dict['output'])))
 
     def assign(self, key, value):
         try:
@@ -840,8 +854,6 @@ class Base_Step_Executor:
         # run steps after input statement, which will be run multiple times for each input
         # group.
         env.sos_dict.set('__num_groups__', len(self._groups))
-
-        self.prepare_input_loop()
 
         # determine if a single index or the whole step should be skipped
         skip_index = False
@@ -1185,29 +1197,6 @@ class Step_Executor(Base_Step_Executor):
             notifier.stop()
 
 
-    def log(self, stage=None, msg=None):
-        if stage == 'start':
-            env.logger.info('{} ``{}``: {}'.format('Checking' if self.run_mode == 'dryrun' else 'Executing',
-                self.step.step_name(), self.step.comment.strip()))
-        elif stage == 'input statement':
-            env.logger.trace('Handling input statement {}'.format(msg))
-        elif stage == '_input':
-            if env.sos_dict['_input'] is not None:
-                env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'])))
-        elif stage == 'input':
-            if env.sos_dict['input'] is not None:
-                env.logger.info('input:    ``{}``'.format(short_repr(env.sos_dict['input'])))
-        elif stage == 'output':
-            if env.sos_dict['output'] is not None:
-                env.logger.info('output:   ``{}``'.format(short_repr(env.sos_dict['output'])))
-
-
-    def reevaluate_output(self):
-        # re-process the output statement to determine output files
-        args, kwargs = SoS_eval('__null_func__({})'.format(env.sos_dict['output'].expr), self.step.sigil)
-        # handle dynamic args
-        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-        env.sos_dict.set('output', self.expand_output_files('', *args))
 
 
 
