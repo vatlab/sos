@@ -212,8 +212,8 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
     runmode = parser.add_argument_group(title='Run mode options',
         description='''Control how sos scirpt is executed.''')
     runmode.add_argument('-n', action='store_true', dest='__dryrun__',
-        help='''Execute a workflow without executing any actions. This can be
-            used to check the syntax of a SoS file.''')
+        help='''Execute a workflow in dryrun mode. Please check command
+        sos dryrun for details of the dryrun mode.''')
     runmode.add_argument('-s', choices=['default', 'ignore', 'force', 'build', 'assert'],
         default='ignore' if interactive else 'default', metavar='SIGMODE',
         dest='__sigmode__',
@@ -265,7 +265,6 @@ def cmd_run(args, workflow_args):
     env.__wait__ = args.__wait__
 
     from .sos_executor import Base_Executor
-    executor_class = Base_Executor
 
     # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)
@@ -288,17 +287,11 @@ def cmd_run(args, workflow_args):
             raise ValueError("Unrecognized command line option {}".format(' '.join(workflow_args)))
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(args.workflow, use_default=not args.__targets__)
-        executor = executor_class(workflow, args=workflow_args, config={
+        executor = Base_Executor(workflow, args=workflow_args, config={
                 'config_file': args.__config__,
                 'output_dag': args.__dag__,
                 'report_output': args.__report__})
-        #
-        if args.__dryrun__:
-            executor.dryrun(args.__targets__)
-        else:
-            # if dag is None, the script will be run sequentially and cannot handle
-            # make-style steps.
-            executor.run(args.__targets__)
+        executor.run(args.__targets__, mode='dryrun' if args.__dryrun__ else 'run')
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -310,7 +303,13 @@ def cmd_run(args, workflow_args):
 #
 def get_dryrun_parser(desc_only=False):
     parser = argparse.ArgumentParser('dryrun',
-        description='''Inspect specified script for syntax errors''',
+        description='''Execute workflow in dryrun mode. This mode is identical
+        to run mode except that 1). Actions might behavior differently. In
+        particular, script-running steps would print instead of execute script.
+        2). Steps will generate empty output files if specified output do not
+        exist after execution. 3). Signature mode is set to ignore. 4). Option
+        -q is ignored so all tasks are executed locally. 5). Tasks are generated
+        but not executed.''',
         epilog=workflow_options)
     if desc_only:
         return parser
