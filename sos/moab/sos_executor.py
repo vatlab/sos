@@ -29,7 +29,6 @@ from .sos_step import MOAB_Step_Executor
 class MOAB_Executor(MP_Executor):
     def __init__(self, workflow, args=[], shared=[], config={}):
         MP_Executor.__init__(self, workflow, args, shared=shared, config=config)
-        env.__task_engine__ = 'rq'
 
         from rq import Queue as rqQueue
         from redis import Redis

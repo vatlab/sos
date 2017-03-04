@@ -42,7 +42,6 @@ class Interactive_Executor(Base_Executor):
         if env.sig_mode is None:
             env.sig_mode = 'ignore'
         Base_Executor.__init__(self, workflow=workflow, args=args, shared='*', config=config)
-        env.__task_engine__ = 'interactive'
         if env.sig_mode != 'ignore':
             self.md5 = self.create_signature()
             # We append to existing workflow files because some files are ignored and we
@@ -266,7 +265,6 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
     # no multi-processing in interactive mode
     env.max_jobs = 1
     env.verbosity = args.verbosity
-    env.__task_engine__ = 'interactive'
 
     #
     env.sig_mode = args.__sigmode__
@@ -306,9 +304,9 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
             'report_output': args.__report__})
 
         if args.__dryrun__:
-            return executor.dryrun(args.__targets__)
+            return executor.dryrun(args.__targets__, mode='dryrun')
         else:
-            return executor.run(args.__targets__)
+            return executor.run(args.__targets__, mode='interactive')
     except Exception:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
