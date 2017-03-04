@@ -204,9 +204,10 @@ docker_build = sos.docker.actions:docker_build [docker]
 docker_commit = sos.docker.actions:docker_commit [docker]
 
 [sos_taskengines]
+process = sos.sos_task:BackgroundProcess_TaskEngine
 rq = sos.rq.sos_task:RQ_TaskEngine [rq]
 celery = sos.celery.sos_task:Celery_TaskEngine [celery]
-moab = sos.moab.sos_task:MOAB_TaskEngine
+pbs = sos.PBS.sos_task:PBS_TaskEngine
 
 [sos_functions]
 runfile = sos.jupyter.sos_executor:runfile
