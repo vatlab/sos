@@ -303,10 +303,7 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
             'output_dag': args.__dag__,
             'report_output': args.__report__})
 
-        if args.__dryrun__:
-            return executor.dryrun(args.__targets__, mode='dryrun')
-        else:
-            return executor.run(args.__targets__, mode='interactive')
+        return executor.run(args.__targets__, mode='dryrun' if args.__dryrun__ else 'interactive')
     except Exception:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
