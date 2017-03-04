@@ -20,15 +20,15 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import os
+import pickle
+from sos.utils import env
 from sos.sos_task import TaskEngine, execute_task
-
 from celery import Celery
-import yaml
-from sos.__main__ import cmd_
 
 class Celery_TaskEngine(TaskEngine):
     def __init__(self, agent):
-        super(BackgroundProcess_TaskEngine, self).__init__(agent)
+        super(Celery_TaskEngine, self).__init__(agent)
         # we have self.config for configurations
         #
         # broker

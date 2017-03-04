@@ -307,9 +307,10 @@ class RemoteHost:
         job_file = os.path.join(self.task_dir, task_file)
         send_cmd = 'ssh -q {1} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks ]"; scp -q {0} {1}:.sos/tasks/'.format(job_file, self.address)
         # use scp for this simple case
-        ret = subprocess.call(send_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-        if (ret != 0):
-            raise RuntimeError('Failed to copy job {} to {} using command {}'.format(task_file, self.alias, send_cmd))
+        try:
+            subprocess.check_output(send_cmd, shell=True)
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError('Failed to copy job {} to {} using command {}: {}'.format(task_file, self.alias, send_cmd, e))
 
     def check_output(self, cmd):
         try:
@@ -402,11 +403,11 @@ class Host:
             else:
                 self.host_instances[self.alias] = RemoteHost(self.config)
 
-            if 'task_engine' not in self.config:
-                task_engine_type = 'background_execution'
+            if 'queue_type' not in self.config:
+                task_engine_type = 'process'
                 task_engine = BackgroundProcess_TaskEngine(self.host_instances[self.alias])
             else:
-                task_engine_type = self.config['task_engine']
+                task_engine_type = self.config['queue_type'].strip()
                 task_engine = None
 
                 available_engines = []
@@ -415,12 +416,13 @@ class Host:
                         available_engines.append(entrypoint.name)
                         if entrypoint.name == task_engine_type:
                             task_engine = entrypoint.load()(self.host_instances[self.alias])
+                            break
                     except Exception as e:
-                        env.logger.debug('Failed to load task engine {}: {}'.format(task_engine_type, e))
+                        env.logger.warning('Failed to load task engine {}: {}'.format(task_engine_type, e))
 
                 if task_engine is None:
                     raise RuntimeError('Failed to locate task engine type {}. Available engine types are {}'.format(
-                        task_engine, ', '.join(available_engines)))
+                        task_engine_type, ', '.join(available_engines)))
 
             self.host_instances[self.alias]._task_engine = task_engine
             # the task engine is a thread and will run continously

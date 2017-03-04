@@ -723,17 +723,18 @@ class Base_Executor:
                     # if a job is pending, check if it is done.
                     if proc[2]._status == 'task_pending':
                         res = proc[2]._host.check_status(proc[2]._pending_tasks)
-                        if any(x == 'killed' for x in res):
+                        if any(x in ('killed', 'dead', 'failed') for x in res):
                             for t, s in zip(proc[2]._pending_tasks, res):
-                                if s == 'killed' and not (hasattr(proc[2], '_killed_tasks') and t in proc[2]._killed_tasks):
-                                    env.logger.warning('{} ``killed``'.format(t))
+                                if s in ('killed', 'dead', 'failed') and not (hasattr(proc[2], '_killed_tasks') and t in proc[2]._killed_tasks):
+                                    env.logger.warning('{} ``{}``'.format(t, s))
                                     if not hasattr(proc[2], '_killed_tasks'):
                                         proc[2]._killed_tasks = {t}
                                     else:
                                         proc[2]._killed_tasks.add(t)
-                            if all(x in ('killed', 'completed') for x in res):
-                                raise RuntimeError('{} tasks are killed ({} completed)'.format(
-                                    len([x for x in res if x=='killed']), len([x for x in res if x=='completed'])))
+                            if all(x in ('killed', 'completed', 'dead', 'failed') for x in res):
+                                raise RuntimeError('{} completed, {} dead, {} failed, {} killed)'.format(
+                                    len([x for x in res if x=='completed']), len([x for x in res if x=='dead']),   
+                                    len([x for x in res if x=='failed']), len([x for x in res if x=='killed'])))
                         if any(x in  ('pending', 'running', 'completed-old', 'failed-old', 'failed-missing-output', 'failed-old-missing-output') for x in res):
                             continue
                         elif all(x == 'completed' for x in res):

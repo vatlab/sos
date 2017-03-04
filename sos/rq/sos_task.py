@@ -20,17 +20,16 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from sos.sos_task import TaskEngine, execute_task
-
-
+import os
+import pickle
+from sos.utils import env
 from rq import Queue as rqQueue
 from redis import Redis
-import yaml
-from sos.__main__ import cmd_
+from sos.sos_task import TaskEngine, execute_task
 
 class RQ_TaskEngine(TaskEngine):
     def __init__(self, agent):
-        super(BackgroundProcess_TaskEngine, self).__init__(agent)
+        super(RQ_TaskEngine, self).__init__(agent)
         # we have self.config for configurations
         #
         # redis_host
@@ -40,7 +39,7 @@ class RQ_TaskEngine(TaskEngine):
         self.redis_port = self.config['redis_port'] if 'redis_port' in self.config else 6379
 
         try:
-            redis_conn = Redis(host=cfg['host'], port=cfg.get('port', 6379))
+            redis_conn = Redis(host=self.redis_host, port=self.redis_port)
         except Exception as e:
             env.logger.error('Failed to connect to redis server with host {} and port {}: {}'.format(
                 self.redis_server, self.redis.port, e))

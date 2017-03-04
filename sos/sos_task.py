@@ -204,7 +204,7 @@ def check_task(task):
     # pending:       if there is no result file, without status file or with an old status file
     #                   and result file, have not started running.
     # running:       if with a status file that has just been updated
-    # frozen:        if with a new status file that has not been updated
+    # dead:        if with a new status file that has not been updated
     # 
     #
     task_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.task')
@@ -273,7 +273,7 @@ def check_task(task):
             # result file appears
             return check_task(task)
         else:
-            return 'frozen'
+            return 'dead'
     # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
     time.sleep(2 * monitor_interval)
     end_stamp = os.stat(status_file).st_mtime
@@ -283,7 +283,7 @@ def check_task(task):
     elif start_stamp != end_stamp:
         return 'running'
     else:
-        return 'frozen'
+        return 'dead'
 
 def check_tasks(tasks, verbosity=1):
     # verbose is ignored for now
@@ -385,6 +385,7 @@ class TaskEngine(threading.Thread):
         #
         self.agent = agent
         self.config = agent.config
+        self.alias = self.config['alias']
 
         self.tasks = []
         self.pending_tasks = []
@@ -451,8 +452,8 @@ class TaskEngine(threading.Thread):
             active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
             if len(active_tasks) < self.max_running_jobs:
                 self.tasks.append(task_id)
-                self.execute_task(task_id)
                 self.task_status[task_id] = 'pending'
+                self.execute_task(task_id)
             else:
                 self.pending_tasks.append(task_id)
                 # there is a change that the task_id already exists...
