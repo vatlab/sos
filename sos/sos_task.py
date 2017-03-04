@@ -448,15 +448,6 @@ class TaskEngine(threading.Thread):
         with threading.Lock():
             return self.pending_tasks
 
-class BackgroundProcess_TaskEngine(TaskEngine):
-    def __init__(self, agent):
-        super(BackgroundProcess_TaskEngine, self).__init__(agent)
-
-    def execute_task(self, task_id):
-        env.logger.info('{} ``submitted``'.format(task_id))
-        return self.agent.run_command("sos execute {0} -v {1} -s {2}".format(
-            task_id, env.verbosity, env.sig_mode))
-
     def query_tasks(self, tasks=None):
         if tasks == []:
             return {}
@@ -478,4 +469,15 @@ class BackgroundProcess_TaskEngine(TaskEngine):
     def kill_task(self, task_id):
         return self.agent.check_output("sos kill {} -v {}".format(
             task_id, env.verbosity))
+
+
+class BackgroundProcess_TaskEngine(TaskEngine):
+    def __init__(self, agent):
+        super(BackgroundProcess_TaskEngine, self).__init__(agent)
+
+    def execute_task(self, task_id):
+        env.logger.info('{} ``submitted``'.format(task_id))
+        return self.agent.run_command("sos execute {0} -v {1} -s {2}".format(
+            task_id, env.verbosity, env.sig_mode))
+
 

@@ -73,7 +73,7 @@ class LocalHost:
     def prepare_task(self, task_id):
         return task_id
 
-    def send_task(self, task):
+    def send_task_file(self, task_file):
         # on the same file system, no action is needed.
         pass
 
@@ -303,14 +303,13 @@ class RemoteHost:
                 env.logger.warning(e)
                 raise
 
-
-    def send_task(self, task_id):
-        job_file = os.path.join(self.task_dir, task_id + '.task')
+    def send_task_file(self, task_file):
+        job_file = os.path.join(self.task_dir, task_file)
         send_cmd = 'ssh -q {1} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks ]"; scp -q {0} {1}:.sos/tasks/'.format(job_file, self.address)
         # use scp for this simple case
         ret = subprocess.call(send_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
-            raise RuntimeError('Failed to copy job {} to {} using command {}'.format(task_id, self.alias, send_cmd))
+            raise RuntimeError('Failed to copy job {} to {} using command {}'.format(task_file, self.alias, send_cmd))
 
     def check_output(self, cmd):
         try:
@@ -459,7 +458,7 @@ class Host:
         #
         self._host_agent.prepare_task(task_id)
         #
-        self._host_agent.send_task(task_id)
+        self._host_agent.send_task_file(task_id + '.task')
         env.logger.info('{} ``queued``'.format(task_id))
         return self._task_engine.submit_task(task_id)
 
