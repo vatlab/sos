@@ -485,10 +485,9 @@ def get_kill_parser(desc_only=False):
         description='''Stop the execution of running task''')
     if desc_only:
         return parser
-    parser.add_argument('tasks', nargs='*', help='''ID of the task. No task
-        will be killed if unspecified. There is no need to specify compelte
-        task IDs because SoS will match specified name with tasks starting with
-        these names.''')
+    parser.add_argument('tasks', nargs='*', help='''IDs of the tasks
+        that will be killed. There is no need to specify compelte task IDs because
+        SoS will match specified name with tasks starting with these names.''')
     parser.add_argument('-a', '--all', action='store_true',
         help='''Kill all tasks in local or specified remote task queue''')
     parser.add_argument('-q', '--queue', help='''Kill  of job on
@@ -511,13 +510,22 @@ def cmd_kill(args, workflow_args):
     from .utils import env, load_config_files    
     from .hosts import Host    
     if not args.queue:
-        kill_tasks(args.tasks, args.verbosity)
+        if args.all:
+            if args.tasks:
+                env.logger.warning('Task ids "{}" are ignored with option --all'.format(' '.join(args.tasks)))
+            kill_tasks([], args.verbosity)
+        else:
+            if not args.tasks:
+                env.logger.warning('Please specify a task id or option --all to kill all tasks')
+            else:
+                kill_tasks(args.tasks, args.verbosity)
     else:
         # remote host?
         cfg = load_config_files(args.config)
         env.sos_dict.set('CONFIG', cfg)
         host = Host(args.queue)
-        print(host._host_agent.check_output('sos kill {} -v {}'.format(' '.join(args.tasks), args.verbosity)))
+        print(host._host_agent.check_output('sos kill {} -v {}'.format(
+             '--all' if args.all else ' '.join(args.tasks), args.verbosity)))
 
 
 #

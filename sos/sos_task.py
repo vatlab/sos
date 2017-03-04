@@ -302,6 +302,9 @@ def check_tasks(tasks, verbosity=1):
             else:
                 all_tasks.extend(matched)
     all_tasks = sorted(list(set(all_tasks)))
+    if not all_tasks:
+        env.logger.warning('No matching tasks')
+        return
     p = Pool(len(all_tasks))
     status = p.map(check_task, all_tasks)
     if verbosity == 0:
@@ -343,9 +346,12 @@ def kill_tasks(tasks, verbosity=1):
                 env.logger.warning('{} does not match any existing task'.format(t))
             else:
                 all_tasks.extend(matched)
+    if not all_tasks:
+        env.logger.warning('No task to kill')
+        return
     all_tasks = sorted(list(set(all_tasks)))
     p = Pool(len(all_tasks))
-    killed = p.apply(kill_task, all_tasks)
+    killed = p.map(kill_task, all_tasks)
     if verbosity == 0:
         print('\n'.join(killed))
     elif verbosity > 0:
