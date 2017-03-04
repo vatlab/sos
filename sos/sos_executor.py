@@ -119,7 +119,10 @@ class StepWorker(mp.Process):
                 break
             
             self.reset_dict()
-            section, context, shared, sig_mode, verbosity, pipe = step
+            section, context, shared, run_mode, sig_mode, verbosity, pipe = step
+            env.run_mode = run_mode
+            env.sig_mode = sig_mode
+            env.verbosity = verbosity
             #
             # this is to keep compatibility of dag run with sequential run because
             # in sequential run, we evaluate global section of each step in
@@ -141,10 +144,8 @@ class StepWorker(mp.Process):
             # if the step has its own context
             env.sos_dict.quick_update(context)
             env.sos_dict.quick_update(shared)
-            env.sig_mode = sig_mode
-            env.verbosity = verbosity
 
-            executor = Step_Executor(section, pipe, mode='run')
+            executor = Step_Executor(section, pipe, mode=env.run_mode)
             executor.run()
 
 
@@ -782,7 +783,7 @@ class Base_Executor:
                         shared.update({x: env.sos_dict[x] for x in svars if x in env.sos_dict and pickleable(env.sos_dict[x], x)})
                     if '__workflow_sig__' in env.sos_dict:
                         runnable._context['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
-                    worker_queue.put((section, runnable._context, shared, env.sig_mode, env.verbosity, q[1]))
+                    worker_queue.put((section, runnable._context, shared, env.run_mode, env.sig_mode, env.verbosity, q[1]))
                     procs.append( [[worker, worker_queue], q[0], runnable])
                 #
                 num_running = len([x for x in procs if x[2]._status != 'task_pending'])

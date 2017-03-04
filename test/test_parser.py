@@ -707,7 +707,7 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).dryrun)
+        self.assertRaises(Exception, Base_Executor(wf).run, mode="dryrun")
         # incorrect value causes an exception
         script = SoS_Script('''
 [0]
@@ -719,7 +719,7 @@ executed.append(_input)
 
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).dryrun)
+        self.assertRaises(Exception, Base_Executor(wf).run, mode="dryrun")
 
     def testSectionActions(self):
         '''Test actions of sections'''

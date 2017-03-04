@@ -549,7 +549,7 @@ _output = ['b.txt']
         env.run_mode = 'dryrun'
         # I would like to disallow setting _output directly, but this is
         # not the case now.
-        self.assertRaises(Exception, Base_Executor(wf).dryrun)
+        self.assertRaises(Exception, Base_Executor(wf).run, mode="dryrun")
 
     def testLocalNamespace(self):
         '''Test if steps are well separated.'''
