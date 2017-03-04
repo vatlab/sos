@@ -93,7 +93,7 @@ b=func_run()
 c=func_both()
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertTrue(isinstance(env.sos_dict['b'], Undetermined))
         self.assertEqual(env.sos_dict['c'], 1)
         #
@@ -182,7 +182,7 @@ warn_if(input is None, 'Expect to see a warning message')
 """)
         wf = script.workflow()
         # should see a warning message.
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         #self.assertRaises(ExecuteError, Base_Executor(wf).run)
         script = SoS_Script(r"""
 [0]

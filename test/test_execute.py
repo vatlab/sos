@@ -118,7 +118,7 @@ output: ['{}_{}_processed.txt'.format(x,y) for x,y in zip(name, model)]
 
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'],  ['a_1_processed.txt', 'b_2_processed.txt', 'c_2_processed.txt'])
         #
         script = SoS_Script(r"""
@@ -128,7 +128,7 @@ output: ["${x}_${y}_process.txt" for x,y in zip(name, model)]
 
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'],  ['a_1_process.txt', 'b_2_process.txt', 'c_2_process.txt'])
         #
         script = SoS_Script(r"""
@@ -141,7 +141,7 @@ output: add_a(["${x}_${y}_process.txt" for x,y in zip(name, model)])
 
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'],  ['aa_1_process.txt', 'ab_2_process.txt', 'ac_2_process.txt'])
 
     def testGlobalVars(self):
@@ -150,7 +150,7 @@ output: add_a(["${x}_${y}_process.txt" for x,y in zip(name, model)])
 [0]
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['SOS_VERSION'], __version__)
 
     def testFuncDef(self):
@@ -165,7 +165,7 @@ def myfunc(a):
 input: myfunc(['a.txt', 'b.txt'])
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['test'], ['aa.txt', 'ab.txt'])
         # in nested workflow?
         script = SoS_Script(r"""
@@ -179,7 +179,7 @@ input: myfunc(['a.txt', 'b.txt'])
 sos_run('mse')
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         #
         # Names defined in subworkflow is not returned to the master dict
         self.assertTrue('test' not in env.sos_dict)
@@ -192,7 +192,7 @@ input: '*.py'
 output: [x + '.res' for x in _input]
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertTrue('test_execute.py.res' in env.sos_dict['res'])
 
     def testForEach(self):
@@ -234,7 +234,7 @@ output: res
 processed.append((_par, _res))
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
         #
         # test for each for pandas dataframe
@@ -247,7 +247,7 @@ input: for_each='data'
 output: "${_data['A']}_${_data['B']}_${_data['C']}.txt"
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'], ['1_2_Hello.txt', '2_4_World.txt'])
 
         # test dictionary format of for_each
@@ -308,7 +308,7 @@ output: res
 processed.append((par, res))
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['processed'], [((1, 2), 'p1.txt'), ((1, 3), 'p2.txt'), ((2, 3), 'p3.txt')])
         #
         # test for each for pandas dataframe
@@ -319,7 +319,7 @@ input: for_each={'data': pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], column
 output: "${data['A']}_${data['B']}_${data['C']}.txt"
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'], ['1_2_Hello.txt', '2_4_World.txt'])
 
 
@@ -340,7 +340,7 @@ output: ['{}-{}-{}.txt'.format(x,y,z) for x,y,z in zip(_base, _name, _par)]
 
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
@@ -359,7 +359,7 @@ output: expand_pattern('{base}-{name}-{par}.txt'), expand_pattern('{par}.txt')
 
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['base'], ["a-20", 'b-10'])
         self.assertEqual(env.sos_dict['name'], ["a", 'b'])
         self.assertEqual(env.sos_dict['par'], ["20", '10'])
@@ -380,7 +380,7 @@ output: "${_input}.res"
 
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'], ['a.txt.res', 'b.txt.res'])
         #
         script = SoS_Script(r"""
@@ -393,7 +393,7 @@ input: 'a.pdf', 'b.html', files, filetype=('*.txt', '*.pdf'), group_by='single'
 counter += 1
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['counter'], 3)
         #
         script = SoS_Script(r"""
@@ -423,7 +423,7 @@ output: _input[0] + '.bak'
 counter += 1
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['counter'], 2)
         self.assertEqual(env.sos_dict['step'], ['a.txt.bak', 'b.txt.bak'])
 
@@ -441,7 +441,7 @@ def fail():
 a = fail()
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         # should return 0 in dryrun mode
         self.assertTrue(isinstance(env.sos_dict['a'], Undetermined))
         #
@@ -501,7 +501,7 @@ myfunc()
 
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['test'], ['a'])
         # User defined function should also work under nested workflows
         # This is difficult because the 'local namespace' is usually
@@ -520,7 +520,7 @@ myfunc()
 
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['test'], ['a45'])
 
     def testReadOnlyStepVars(self):
@@ -578,7 +578,7 @@ output: [x + '.res' for x in shared]
 
 """)
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['shared'], ['b.txt'])
         self.assertEqual(env.sos_dict['tt'], ['b.txt.res'])
         #
@@ -603,7 +603,7 @@ e = d + 1
         wf = script.workflow()
         # I would like to disallow accessing variables defined
         # in other cases.
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['shared'], 'c.txt')
         self.assertEqual(env.sos_dict['d'], 2)
 
@@ -639,7 +639,7 @@ print(0)
 #        # because 2 being on a separate branch will be executed but
 #        # the later steps will not be executed
 #        try:
-#            Base_Executor(wf).dryrun()
+#            Base_Executor(wf).run(mode='dryrun')
 #        except Exception as e:
 #            self.assertEqual(len(e.errors), 3)
 
@@ -790,7 +790,7 @@ bash('echo "A"')
 input: 
 ''')
         wf = script.workflow()
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
 
     def testDuplicateIOFiles(self):
         '''Test interpretation of duplicate input/output/depends'''
