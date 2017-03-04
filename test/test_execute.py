@@ -34,6 +34,17 @@ from sos.sos_executor import Base_Executor, ExecuteError
 from sos.target import FileTarget
 import subprocess
 
+def multi_attempts(fn):
+    def wrapper(*args, **kwargs):
+        for n in range(4):
+            try:
+                fn(*args, **kwargs)
+                break
+            except:
+                if n > 1:
+                    raise
+    return wrapper
+
 class TestExecute(unittest.TestCase):
     def setUp(self):
         env.reset()
@@ -878,6 +889,7 @@ touch ${output}
             self.assertEqual(len(out.read().split()), 15)
         shutil.rmtree('temp')
 
+    @multi_attempts
     def testExecutionLock(self):
         '''Test execution lock of two processes'''
         with open('lock.sos', 'w') as lock:

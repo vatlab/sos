@@ -298,21 +298,21 @@ parameter: b = int
 [0]
 ''')
         wf = script.workflow()
-        self.assertRaises(ArgumentError, Base_Executor(wf).dryrun)
+        self.assertRaises(ArgumentError, Base_Executor(wf).run, mode='dryrun')
         #
         script = SoS_Script('''
 parameter: b = list
 [0]
 ''')
         wf = script.workflow()
-        self.assertRaises(ArgumentError, Base_Executor(wf).dryrun)
+        self.assertRaises(ArgumentError, Base_Executor(wf).run, mode='dryrun')
         # also require the type
         script = SoS_Script('''
 parameter: b = int
 [0]
 ''')
         wf = script.workflow()
-        self.assertRaises(ArgumentError, Base_Executor(wf, args=['--b', 'file']).dryrun)
+        self.assertRaises(ArgumentError, Base_Executor(wf, args=['--b', 'file']).run, mode='dryrun')
         #
         script = SoS_Script('''
 parameter: b = int
@@ -381,7 +381,7 @@ parameter: a = 5
 [0]
 ''')
         wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf, args=['--a', 7]).dryrun)
+        self.assertRaises(Exception, Base_Executor(wf, args=['--a', 7]).run, mode='dryrun')
         #self.assertEqual(env.sos_dict['a'], 4)
         #
         # test parameters with dash
