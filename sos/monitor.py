@@ -24,6 +24,7 @@ import psutil
 import threading
 import time
 from datetime import datetime
+import stat
 from .utils import env
 
 class ProcessMonitor(threading.Thread):
@@ -34,6 +35,11 @@ class ProcessMonitor(threading.Thread):
         self.resource_monitor_interval = max(resource_monitor_interval // monitor_interval, 1)
         self.daemon = True
         self.status_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.status')
+        # remove previous status file, which could be readonly if the job is killed
+        if os.path.isfile(self.status_file):
+            if not os.access(self.status_file, os.W_OK):
+                os.chmod(self.status_file, stat.S_IREAD | stat.S_IWRITE)
+            os.remove(self.status_file)
         with open(self.status_file, 'w') as pd:
             pd.write('#task: {}\n'.format(task_id))
             pd.write('#started at {}\n#\n'.format(datetime.now().strftime("%A, %d. %B %Y %I:%M%p")))
@@ -56,6 +62,10 @@ class ProcessMonitor(threading.Thread):
         counter = 0
         while True:
             try:
+                if not os.access(self.status_file, stat.W_OK):
+                    # the job should be killed
+                    p = psutil.Process(self.pid)
+                    p.kill()
                 # most of the time we only update 
                 if counter % self.resource_monitor_interval:
                     os.utime(self.status_file, None)

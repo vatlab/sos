@@ -258,6 +258,10 @@ def check_task(task):
         time.sleep(1)
         return check_task(task)
     # dead?
+    st = os.access(status_file)
+    # if the status file is readonly
+    if not (st & os.W_OK):
+        return 'killed'
     start_stamp = os.stat(status_file).st_mtime
     elapsed = time.time() - start_stamp
     if elapsed < 0:
@@ -323,35 +327,43 @@ def check_tasks(tasks, verbosity=1):
                 print('{}:\t{}'.format(k, short_repr(v) if verbosity == 3 else repr(v)))
             print()
         
-def kill_task(task):
-    status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
-    res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
-    if not os.path.isfile(status_file):
-        return 'pending'
-    elif os.path.isfile(res_file):
-        try:
-            with open(res_file, 'rb') as result:
-                res = pickle.load(result)
-            if res['succ'] == 0:
-                return 'completed'
-            else:
-                return 'failed'
-        except Exception as e:
-            return 'failed'
+
+def kill_tasks(tasks, verbosity=1):
     #
-    start_stamp = os.stat(status_file).st_mtime
-    elapsed = time.time() - start_stamp
-    if elapsed < 0:
-        env.logger.warning('{} is created in the future. Your system time might be problematic'.format(status_file))
-    # if the file is within 5 seconds
-    if elapsed < monitor_interval:
-        # job is running, try to kill it
-        kill_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.stop')
-        with open(kill_file, 'w'):
-            pass
-        return 'killed'
+    import glob
+    from multiprocessing.pool import ThreadPool as Pool
+    if not tasks:
+        tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
+        all_tasks = [os.path.basename(x)[:-5] for x in tasks]
     else:
-        return 'failed'
+        all_tasks = []
+        for t in tasks:
+            matched = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}*.task'.format(t)))
+            matched = [os.path.basename(x)[:-5] for x in matched]
+            if not matched:
+                env.logger.warning('{} does not match any existing task'.format(t))
+            else:
+                all_tasks.extend(matched)
+    all_tasks = sorted(list(set(all_tasks)))
+    p = Pool(len(all_tasks))
+    killed = p.apply(kill_task, all_tasks)
+    if verbosity == 0:
+        print('\n'.join(killed))
+    elif verbosity > 0:
+        for s, t in zip(killed, all_tasks):
+            print('{}\t{}'.format(t, s))
+
+def kill_task(task):
+    status = check_task(task)
+    if status == 'pending':
+        return 'cancelled'
+    elif status != 'running':
+        return status
+    # job is running
+    status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
+    from stat import S_IREAD, S_IRGRP, S_IROTH
+    os.chmod(status_file, S_IREAD|S_IRGRP|S_IROTH)
+    return 'killed'
 
 
 class TaskEngine(threading.Thread):
@@ -391,7 +403,7 @@ class TaskEngine(threading.Thread):
             else:
                 return '{}:{}:{}'.format(int(walltime)//(60*60), int(walltime)//(60) % 60, int(walltime) % 60)
         else:
-            if isinstance(wall, str):
+            if isinstance(walltime, str):
                 pieces = walltime.split(':')
                 return int(pieces[0])* 60 * 60 + int(pieces[1]) * 60 + int(pieces[2])
 
@@ -477,9 +489,9 @@ class TaskEngine(threading.Thread):
                 env.logger.warning('Unrecognized response {}: {}'.format(line, e))
         return status
 
-    def kill_task(self, task_id):
+    def kill_tasks(self, tasks):
         return self.agent.check_output("sos kill {} -v {}".format(
-            task_id, env.verbosity))
+            ' '.join(tasks), env.verbosity))
 
 
 class BackgroundProcess_TaskEngine(TaskEngine):

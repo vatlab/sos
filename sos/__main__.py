@@ -485,7 +485,20 @@ def get_kill_parser(desc_only=False):
         description='''Stop the execution of running task''')
     if desc_only:
         return parser
-    parser.add_argument('task', help='''ID of the task.''')
+    parser.add_argument('tasks', nargs='*', help='''ID of the task. No task
+        will be killed if unspecified. There is no need to specify compelte
+        task IDs because SoS will match specified name with tasks starting with
+        these names.''')
+    parser.add_argument('-a', '--all', action='store_true',
+        help='''Kill all tasks in local or specified remote task queue''')
+    parser.add_argument('-q', '--queue', help='''Kill  of job on
+        specified tasks queue or remote host if the tasks . The queue must be defined in SoS
+        config file. Please check SoS documentation for details. Note that
+        this parameter must be specified to check the status of jobs if they
+        are executed on that host. ''')
+    parser.add_argument('-c', '--config', help='''A configuration file with host
+        definitions, in case the definitions are not defined in global or local
+        sos config.yml files.''')    
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=1,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
@@ -494,21 +507,17 @@ def get_kill_parser(desc_only=False):
 
 
 def cmd_kill(args, workflow_args):
-    from .sos_task import check_task, kill_task
-    from .monitor import summarizeExecution
-    status = check_task(args.task)
-    if status != 'running':
-        if args.verbosity <= 1:
-            print(status)
-        else:
-            print(summarizeExecution(args.task, status=status))
+    from .sos_task import kill_tasks
+    from .utils import env, load_config_files    
+    from .hosts import Host    
+    if not args.queue:
+        kill_tasks(args.tasks, args.verbosity)
     else:
-        # FIXME: kill the job
-        kill_task(args.task)
-        if args.verbosity <= 1:
-            print('killed')
-        else:
-            print(summarizeExecution(args.task, status='killed'))
+        # remote host?
+        cfg = load_config_files(args.config)
+        env.sos_dict.set('CONFIG', cfg)
+        host = Host(args.queue)
+        print(host._host_agent.check_output('sos kill {} -v {}'.format(' '.join(args.tasks), args.verbosity)))
 
 
 #
