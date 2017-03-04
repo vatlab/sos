@@ -30,6 +30,7 @@ from .utils import env
 class ProcessMonitor(threading.Thread):
     def __init__(self, task_id, monitor_interval, resource_monitor_interval):
         threading.Thread.__init__(self)
+        self.task_id = task_id
         self.pid = os.getpid()
         self.monitor_interval = monitor_interval
         self.resource_monitor_interval = max(resource_monitor_interval // monitor_interval, 1)
@@ -62,7 +63,7 @@ class ProcessMonitor(threading.Thread):
         counter = 0
         while True:
             try:
-                if not os.access(self.status_file, stat.W_OK):
+                if not os.access(self.status_file, os.W_OK):
                     # the job should be killed
                     p = psutil.Process(self.pid)
                     p.kill()
@@ -75,11 +76,12 @@ class ProcessMonitor(threading.Thread):
                         pd.write('{}\t{:.2f}\t{}\t{}\t{}\t{}\n'.format(time.time(), cpu, mem, nch, ch_cpu, ch_mem))
                 time.sleep(self.monitor_interval)
                 counter += 1
-            except Exception:
+            except Exception as e:
                 # if the process died, exit the thread
                 # the warning message is usually:
                 # WARNING: psutil.NoSuchProcess no process found with pid XXXXX
                 #env.logger.warning(e)
+                env.logger.debug('Monitor of {} failed with message {}'.format(self.task_id, e))
                 break
 
 def summarizeExecution(task_id, status='Unknown'):

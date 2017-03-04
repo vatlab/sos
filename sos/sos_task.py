@@ -258,9 +258,8 @@ def check_task(task):
         time.sleep(1)
         return check_task(task)
     # dead?
-    st = os.access(status_file)
     # if the status file is readonly
-    if not (st & os.W_OK):
+    if not os.access(status_file, os.W_OK):
         return 'killed'
     start_stamp = os.stat(status_file).st_mtime
     elapsed = time.time() - start_stamp
