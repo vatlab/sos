@@ -916,7 +916,7 @@ with open('b.txt', 'w') as txt:
         ret2.wait()
         # two processes execute A_1 and A_2 separately, usually
         # takes less than 5 seconds
-        self.assertLess(time.time() - st, 9)
+        self.assertLess(time.time() - st, 11)
         FileTarget('lock.sos').remove('both')
 
 

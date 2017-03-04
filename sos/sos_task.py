@@ -301,7 +301,6 @@ def check_tasks(tasks, verbosity=1):
     all_tasks = sorted(list(set(all_tasks)))
     p = Pool(len(all_tasks))
     status = p.map(check_task, all_tasks)
-    env.logger.error(verbosity)
     if verbosity == 0:
         print('\n'.join(status))
     elif verbosity in (1, 2):
