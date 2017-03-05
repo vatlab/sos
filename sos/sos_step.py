@@ -30,7 +30,7 @@ from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
 from .utils import env, AbortExecution, short_repr, stable_repr,\
-    get_traceback, transcribe, ActivityNotifier
+    get_traceback, transcribe, ActivityNotifier, expand_size
 from .pattern import extract_pattern
 from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
@@ -578,10 +578,24 @@ class Base_Step_Executor:
             env.sos_dict['output'].extend(ofiles)
 
     def process_task_args(self, **kwargs):
+        env.sos_dict.set('_runtime', {})
         for k,v in kwargs.items():
             if k not in SOS_RUNTIME_OPTIONS:
                 raise RuntimeError('Unrecognized runtime option {}={}'.format(k, v))
-        env.sos_dict.set('_runtime', kwargs)
+            # standardize walltime to an integer
+            if k == 'walltime':
+                if isinstance(v, str):
+                    try:
+                        h, m, s = map(int, v.split(':'))
+                    except Exception as e:
+                        raise ValueError('Input of option walltime should be an integer (seconds) or a string in the format of HH:MM:SS. {} specified: {}'.format(v, e))
+                    v = h * 60 * 60 + m * 60 + s
+                elif not isinstance(v, int):
+                     raise ValueError('Input of option walltime should be an integer (seconds) or a string in the format of HH:MM:SS. {} specified.'.format(v))
+            elif k == 'mem':
+                if isinstance(k, str):
+                    k = expand_size(k)
+            env.sos_dict['_runtime'][k] = v
 
     def reevaluate_output(self):
         # re-process the output statement to determine output files

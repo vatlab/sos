@@ -399,17 +399,6 @@ class TaskEngine(threading.Thread):
         else:
             self.max_running_jobs = self.config['max_running_jobs']
 
-    def format_walltime(self, walltime, format='hms'):
-        if format == 'hms':
-            if isinstance(walltime, str):
-                return walltime
-            else:
-                return '{}:{}:{}'.format(int(walltime)//(60*60), int(walltime)//(60) % 60, int(walltime) % 60)
-        else:
-            if isinstance(walltime, str):
-                pieces = walltime.split(':')
-                return int(pieces[0])* 60 * 60 + int(pieces[1]) * 60 + int(pieces[2])
-
     def get_tasks(self):
         with threading.Lock():
             pending = copy.deepcopy(self.pending_tasks)

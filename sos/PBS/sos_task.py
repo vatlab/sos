@@ -77,7 +77,8 @@ class PBS_TaskEngine(TaskEngine):
         runtime['verbosity'] = env.verbosity
         runtime['sig_mode'] = env.sig_mode
         if 'walltime' in sos_dict['_runtime']:
-            runtime['walltime'] = self.format_walltime(sos_dict['_runtime']['walltime'], format='hms')
+            wt = sos_dict['_runtime']['walltime']
+            runtime['walltime'] = '{}:{}:{}'.format(wt//(60*60), wt//60 % 60, wt % 60)
         if 'nodes' not in runtime:
             runtime['nodes'] = 1
         if 'ppn' not in runtime:

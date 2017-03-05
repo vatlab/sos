@@ -788,6 +788,23 @@ def pretty_size(n,pow=0,b=1024,u='B',pre=['']+[p+'i'for p in'KMGTPEZY']):
     pow,n=min(int(math.log(max(n*b**pow,1),b)),len(pre)-1),n*b**pow
     return "%%.%if %%s%%s"%abs(pow%(-pow-1))%(n/b**float(pow),pre[pow],u)
 
+def expand_size(size):
+    m = re.match(r'\s*([\.\d]*)\s*(\S+)\s*', size)
+    if not m:
+        raise ValueError('Invalid size specified: {}'.format(size))
+    num, unit = m.groups()
+    if not unit:
+        return int(num)
+    if not num:
+        num = 1
+    s = {x + 'I' :1024**(idx+1) for idx,x in enumerate('KMGTPEZY')}
+    s.update({x: 1000**(idx+1) for idx,x in enumerate('KMGTPEZY')})
+    print(s)
+    unit = unit[:-1].upper() if unit[-1].upper().endswith('B') else unit.upper()
+    if unit not in s:
+        raise ValueError('Invalid size specified: {}'.format(size))
+    return int(float(num) * s[unit])
+
 class ActivityNotifier(threading.Thread):
     def __init__(self, msg, delay=5):
         threading.Thread.__init__(self)
