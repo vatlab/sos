@@ -436,10 +436,16 @@ class TaskEngine(threading.Thread):
                 #
                 active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
 
-            status = self.query_tasks(active_tasks)
-
+            status_output = self.query_tasks(active_tasks, verbosity=1)
             with threading.Lock():
-                self.task_status.update(status)
+                for line in status_output.split('\n'):
+                    if not line.strip():
+                        continue
+                    try:
+                        tid, tst = line.split('\t')
+                        self.task_status[tid] = tst
+                    except Exception as e:
+                        env.logger.warning('Unrecognized response {}: {}'.format(line, e))
                 self.summarize_status()
             time.sleep(self.status_check_interval)
 
@@ -474,23 +480,9 @@ class TaskEngine(threading.Thread):
         with threading.Lock():
             return self.pending_tasks
 
-    def query_tasks(self, tasks=None):
-        if tasks == []:
-            return {}
-        tasks_status = self.agent.check_output("sos status {} -v 1".format(
-                ' '.join(tasks)))
-        if not tasks_status:
-            return {}
-        status = {}
-        for line in tasks_status.split('\n'):
-            if not line.strip():
-                continue
-            try:
-                tid, tst = line.split('\t')
-                status[tid] = tst
-            except Exception as e:
-                env.logger.warning('Unrecognized response {}: {}'.format(line, e))
-        return status
+    def query_tasks(self, tasks=None, verbosity=1):
+        return self.agent.check_output("sos status {} -v {}".format(
+                ' '.join(tasks), verbosity))
 
     def kill_tasks(self, tasks, all_tasks=False):
         return self.agent.check_output("sos kill {} {}".format(

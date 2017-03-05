@@ -116,24 +116,43 @@ class PBS_TaskEngine(TaskEngine):
         except Exception as e:
             raise RuntimeError('Failed to submit task {}: {}'.format(task_id, e))
 
-    def check_status(self, task):
-        try:
-            cmd = interpolate(self.status_cmd, '${ }', {'task': task, 'job_id': self.job_ids[task]})
-            print(self.agent.check_output(cmd))
-        except Exception as e:
-            raise ValueError('Failed to get status of job from template "{}": {}'.format(
-                self.status_cmd, e))
+    def query_tasks(self, tasks, verbosity=1):
+        if verbosity <= 1:
+            return super(PBS_TaskEngine, self).query_tasks(tasks, 1)
+        # for more verbose case, we will call pbs's status_cmd to get more accurate information
+        status_lines = super(PBS_TaskEngine, self).query_tasks(tasks, 1)
+        res = ''
+        for line in status_lines.split('\n'):
+            if not line.strip():
+                continue
+            task_id, status = line.split('\t')
+            # call query_tasks again for more verbose output
+            res += super(PBS_TaskEngine, self).query_tasks([task_id], verbosity) + '\n'
+            #
+            job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.job_id')
+            if not os.path.isfile(job_id_file):
+                continue
+            with open(job_id_file) as job:
+                job_id = job.read().strip()
+            try:
+                cmd = interpolate(self.status_cmd, '${ }', {'task': task_id, 'job_id': job_id})
+                res += self.agent.check_output(cmd)
+            except Exception as e:
+                env.logger.debug('Failed to get status of task {} (job_id: {}) from template "{}": {}'.format(
+                    task_id, job_id, self.status_cmd, e))
+        return res
 
     def kill_tasks(self, tasks, all_tasks=False):
         # remove the task from SoS task queue, this would also give us a list of
         # tasks on the remote server
         output = super(PBS_TaskEngine, self).kill_tasks(tasks, all_tasks)
-        #
+        # then we call the real PBS commands to kill tasks
+        res = ''
         for line in output.split('\n'):
             if not line.strip():
                 continue
             task_id, status = line.split('\t')
-            print('{}\t{}'.format(line, status))
+            res += '{}\t{}\n'.format(line, status)
             job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.job_id')
             if not os.path.isfile(job_id_file):
                 continue
@@ -141,8 +160,8 @@ class PBS_TaskEngine(TaskEngine):
                 job_id = job.read().strip()
             try:
                 cmd = interpolate(self.kill_cmd, '${ }', {'task': task_id, 'job_id': job_id})
-                print(self.agent.check_output(cmd))
+                res += self.agent.check_output(cmd) + '\n'
             except Exception as e:
                 env.logger.debug('Failed to kill job {} (job_id: {}) from template "{}": {}'.format(
                     task_id, job_id, self.kill_cmd, e))
-        
+        return res

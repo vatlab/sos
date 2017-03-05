@@ -323,7 +323,7 @@ class RemoteHost:
         try:
             return subprocess.check_output(cmd, shell=True).decode()
         except Exception as e:
-            env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
+            env.logger.debug('Check output of {} failed: {}'.format(cmd, e))
             return ''
 
     def run_command(self, cmd):

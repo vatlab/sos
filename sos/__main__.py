@@ -474,7 +474,7 @@ def cmd_status(args, workflow_args):
         cfg = load_config_files(args.config)
         env.sos_dict.set('CONFIG', cfg)
         host = Host(args.queue)
-        print(host._host_agent.check_output('sos status {} -v {}'.format(' '.join(args.tasks), args.verbosity)))
+        print(host._task_engine.query_tasks(args.tasks, args.verbosity))
 
 #
 # command kill
@@ -521,7 +521,7 @@ def cmd_kill(args, workflow_args):
         cfg = load_config_files(args.config)
         env.sos_dict.set('CONFIG', cfg)
         host = Host(args.queue)
-        host._task_engine.kill_tasks(args.tasks, all_tasks=args.all)
+        print(host._task_engine.kill_tasks(args.tasks, all_tasks=args.all))
 
 #
 # command remove
