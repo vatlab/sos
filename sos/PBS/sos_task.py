@@ -108,7 +108,6 @@ class PBS_TaskEngine(TaskEngine):
             job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.job_id')
             with open(job_id_file, 'w') as job:
                 job.write(job_id)
-            self.agent.send_task_file(task_id + '.job_id')
         except Exception as e:
             raise RuntimeError('Failed to submit task {}: {}'.format(task_id, e))
 
@@ -120,16 +119,25 @@ class PBS_TaskEngine(TaskEngine):
             raise ValueError('Failed to get status of job from template "{}": {}'.format(
                 self.status_cmd, e))
 
-    def kill_tasks(self, tasks):
-        # remove the task from SoS task queue
-        super(PBS_TaskEngine, self).kill(tasks)
-        # actually kill the task from the PBS system
-        for task in tasks:
-            try:
-                if task in self.job_ids:
-                    cmd = interpolate(self.kill_cmd, '${ }', {'task': task, 'job_id': self.job_ids[task]})
+    def kill_tasks(self, tasks, all_tasks=False):
+        # remove the task from SoS task queue, this would also give us a list of
+        # tasks on the remote server
+        output = super(PBS_TaskEngine, self).kill_tasks(tasks, all_tasks)
+        #
+        for line in output.split('\n'):
+            if not line.strip():
+                continue
+            for task_id, status in line.split('\t'):
+                print('{}\t{}'.format(line, status))
+                job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.job_id')
+                if not os.path.isfile(job_id_file):
+                    continue
+                with open(job_id_file) as job:
+                    job_id = job.read().strip()
+                try:
+                    cmd = interpolate(self.kill_cmd, '${ }', {'task': task_id, 'job_id': job_id})
                     print(self.agent.check_output(cmd))
-            except Exception as e:
-                raise ValueError('Failed to kill job from template "{}": {}'.format(
-                    self.kill_cmd, e))
+                except Exception as e:
+                    env.logger.warning('Failed to kill job {} (job_id: {}) from template "{}": {}'.format(
+                        task_id, job_id, self.kill_cmd, e))
         

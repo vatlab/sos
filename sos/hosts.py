@@ -464,9 +464,6 @@ class Host:
         env.logger.info('{} ``queued``'.format(task_id))
         return self._task_engine.submit_task(task_id)
 
-    def kill_tasks(self, tasks):
-        return [self._task_engine.kill_task(task) for task in tasks]
-
     def check_status(self, tasks):
         # find the task engine
         return [self._task_engine.check_task_status(task) for task in tasks]

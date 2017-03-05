@@ -498,9 +498,6 @@ def get_kill_parser(desc_only=False):
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
         sos config.yml files.''')    
-    parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=1,
-        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
-            information to standard output (default to 2).''')
     parser.set_defaults(func=cmd_kill)
     return parser
 
@@ -513,20 +510,18 @@ def cmd_kill(args, workflow_args):
         if args.all:
             if args.tasks:
                 env.logger.warning('Task ids "{}" are ignored with option --all'.format(' '.join(args.tasks)))
-            kill_tasks([], args.verbosity)
+            kill_tasks([])
         else:
             if not args.tasks:
                 env.logger.warning('Please specify a task id or option --all to kill all tasks')
             else:
-                kill_tasks(args.tasks, args.verbosity)
+                kill_tasks(args.tasks)
     else:
         # remote host?
         cfg = load_config_files(args.config)
         env.sos_dict.set('CONFIG', cfg)
         host = Host(args.queue)
-        print(host._host_agent.check_output('sos kill {} -v {}'.format(
-             '--all' if args.all else ' '.join(args.tasks), args.verbosity)))
-
+        host._task_engine.kill_tasks(args.tasks, all=args.all)
 
 #
 # command remove

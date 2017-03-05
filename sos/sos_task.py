@@ -330,7 +330,7 @@ def check_tasks(tasks, verbosity=1):
             print()
         
 
-def kill_tasks(tasks, verbosity=1):
+def kill_tasks(tasks):
     #
     import glob
     from multiprocessing.pool import ThreadPool as Pool
@@ -352,11 +352,8 @@ def kill_tasks(tasks, verbosity=1):
     all_tasks = sorted(list(set(all_tasks)))
     p = Pool(len(all_tasks))
     killed = p.map(kill_task, all_tasks)
-    if verbosity == 0:
-        print('\n'.join(killed))
-    elif verbosity > 0:
-        for s, t in zip(killed, all_tasks):
-            print('{}\t{}'.format(t, s))
+    for s, t in zip(killed, all_tasks):
+        print('{}\t{}'.format(t, s))
 
 def kill_task(task):
     status = check_task(task)
@@ -495,9 +492,9 @@ class TaskEngine(threading.Thread):
                 env.logger.warning('Unrecognized response {}: {}'.format(line, e))
         return status
 
-    def kill_tasks(self, tasks):
-        return self.agent.check_output("sos kill {} -v {}".format(
-            ' '.join(tasks), env.verbosity))
+    def kill_tasks(self, tasks, all_tasks=False):
+        return self.agent.check_output("sos kill {} {}".format(
+            ' '.join(tasks), '-a' if all_tasks else ''))
 
 
 class BackgroundProcess_TaskEngine(TaskEngine):
