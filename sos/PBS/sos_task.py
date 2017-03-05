@@ -135,7 +135,7 @@ class PBS_TaskEngine(TaskEngine):
             with open(job_id_file) as job:
                 job_id = job.read().strip()
             try:
-                cmd = interpolate(self.status_cmd, '${ }', {'task': task_id, 'job_id': job_id})
+                cmd = interpolate(self.status_cmd, '${ }', {'task': task_id, 'job_id': job_id, 'verbosity': verbosity})
                 res += self.agent.check_output(cmd)
             except Exception as e:
                 env.logger.debug('Failed to get status of task {} (job_id: {}) from template "{}": {}'.format(
