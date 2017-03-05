@@ -52,10 +52,15 @@ class PBS_TaskEngine(TaskEngine):
         else:
             self.submit_cmd = self.config['submit_cmd']
 
-        if 'submit_cmd' not in self.config:
-            raise ValueError('Missing configuration submit_cmd for queue {}'.format(self.alias))
+        if 'status_cmd' not in self.config:
+            raise ValueError('Missing configuration status_cmd for queue {}'.format(self.alias))
         else:
-            self.submit_cmd = self.config['submit_cmd']
+            self.status_cmd = self.config['status_cmd']
+
+        if 'kill_cmd' not in self.config:
+            raise ValueError('Missing configuration kill_cmd for queue {}'.format(self.alias))
+        else:
+            self.kill_cmd = self.config['kill_cmd']
 
     def execute_task(self, task_id):
         # read the task file and look for runtime info
@@ -127,17 +132,17 @@ class PBS_TaskEngine(TaskEngine):
         for line in output.split('\n'):
             if not line.strip():
                 continue
-            for task_id, status in line.split('\t'):
-                print('{}\t{}'.format(line, status))
-                job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.job_id')
-                if not os.path.isfile(job_id_file):
-                    continue
-                with open(job_id_file) as job:
-                    job_id = job.read().strip()
-                try:
-                    cmd = interpolate(self.kill_cmd, '${ }', {'task': task_id, 'job_id': job_id})
-                    print(self.agent.check_output(cmd))
-                except Exception as e:
-                    env.logger.warning('Failed to kill job {} (job_id: {}) from template "{}": {}'.format(
-                        task_id, job_id, self.kill_cmd, e))
+            task_id, status = line.split('\t')
+            print('{}\t{}'.format(line, status))
+            job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.job_id')
+            if not os.path.isfile(job_id_file):
+                continue
+            with open(job_id_file) as job:
+                job_id = job.read().strip()
+            try:
+                cmd = interpolate(self.kill_cmd, '${ }', {'task': task_id, 'job_id': job_id})
+                print(self.agent.check_output(cmd))
+            except Exception as e:
+                env.logger.debug('Failed to kill job {} (job_id: {}) from template "{}": {}'.format(
+                    task_id, job_id, self.kill_cmd, e))
         

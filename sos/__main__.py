@@ -521,7 +521,7 @@ def cmd_kill(args, workflow_args):
         cfg = load_config_files(args.config)
         env.sos_dict.set('CONFIG', cfg)
         host = Host(args.queue)
-        host._task_engine.kill_tasks(args.tasks, all=args.all)
+        host._task_engine.kill_tasks(args.tasks, all_tasks=args.all)
 
 #
 # command remove
