@@ -30,7 +30,7 @@ from sos.sos_script import SoS_Script
 from sos.sos_executor import Base_Executor, ExecuteError
 from sos.target import FileTarget
 
-class TestParser(unittest.TestCase):
+class TestNested(unittest.TestCase):
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)

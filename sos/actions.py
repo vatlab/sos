@@ -299,38 +299,46 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
             .format(workflow, short_repr(env.sos_dict['_input'], True),
             'no args' if not args_output else args_output))
 
-        # tell the master process to receive a workflow
-        env.__pipe__.send('workflow {}'.format(uuid.uuid4()))
-        # really send the workflow
-        env.__pipe__.send((wf, targets, args, shared, {'config_file': env.sos_dict['__config_file__'],
-                'sig_mode': env.sig_mode, 'verbosity': env.verbosity}))
-        res = env.__pipe__.recv()
-        env.logger.error('GOT result {}'.format(res))
-        if isinstance(res, Exception):
-            raise res
-        else:
-            env.sos_dict.quick_update(res)
+        if not hasattr(env, '__pipe__'):
+            # if env has no __pipe__, this means the nested workflow is executed from 
+            # within a task, and we can just use an executor to execute it.
+            #         # tell the master process to receive a workflow
+            shared = {x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
+            from sos.sos_executor import Base_Executor
+            executor = Base_Executor(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__'],
+                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
+            if env.run_mode == 'run':
+                if shared:
+                    q = mp.Queue()
+                else:
+                    q = None
+                p = mp.Process(target=executor.run, kwargs={'targets': targets, 'queue': q})
+                p.start()
+                if shared:
+                    res = q.get()
+                    if isinstance(res, Exception):
+                        raise res
+                    env.sos_dict.quick_update(res)
+                else:
+                    res = None
+                p.join()
+            else:
+                res = executor.run(targets=targets)
             return res
-#            executor = Base_Executor(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__'],
-#                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
-#            if env.run_mode == 'run':
-#                if shared:
-#                    q = mp.Queue()
-#                else:
-#                    q = None
-#                p = mp.Process(target=executor.run, kwargs={'targets': targets, 'queue': q})
-#                p.start()
-#                if shared:
-#                    res = q.get()
-#                    if isinstance(res, Exception):
-#                        raise res
-#                    env.sos_dict.quick_update(res)
-#                else:
-#                    res = None
-#                p.join()
-#            else:
-#                res = executor.run(targets=targets)
-#            return res
+        else:
+            # tell the master process to receive a workflow
+            env.__pipe__.send('workflow {}'.format(uuid.uuid4()))
+            # really send the workflow
+            shared = {x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
+            env.__pipe__.send((wf, targets, args, shared, {'config_file': env.sos_dict['__config_file__'],
+                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity}))
+            res = env.__pipe__.recv()
+            env.logger.error('GOT result {}'.format(res))
+            if isinstance(res, Exception):
+                raise res
+            else:
+                env.sos_dict.quick_update(res)
+                return res
     finally:
         # restore step_name in case the subworkflow re-defines it
         env.sos_dict.set('step_name', my_name)

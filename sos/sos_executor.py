@@ -78,8 +78,15 @@ class SoS_Worker(mp.Process):
     def __init__(self, queue, config={}, args=[], **kwargs):
         # the worker process knows configuration file, command line argument etc
         super(SoS_Worker, self).__init__(**kwargs)
+        #
+        # This queue is a single direction queue for the master process to push
+        # items to the worker.
+        #
         self.queue = queue
         self.config = config
+        for key in ('config_file', 'output_dag', 'report_output'):
+            if key not in self.config:
+                self.config[key] = None
         self.args = args
 
     def reset_dict(self):
@@ -125,10 +132,15 @@ class SoS_Worker(mp.Process):
                 self.run_workflow(*work[1:])
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config, pipe):
+        #
+        # The pipe is the way to communicate with the master process.
+        #
         # get workflow, args, shared, and config
         env.logger.warning('working on a workflow {}'.format(workflow_id))
-        #executer = Base_Executor(wf, args=args, shared=shared, 
-        #    config=config)
+        executer = Base_Executor(wf, args=args, shared=shared, 
+            config=config)
+        # this is the dependent run, without queue
+        res = executer.run(targets=targets)
         #child_pipe = mp.Pipe()
         #executer.run(targets=targets, queue=child_pipe[1])
 
@@ -140,13 +152,11 @@ class SoS_Worker(mp.Process):
 #                    q = None
 #                p = mp.Process(target=executor.run, kwargs={'targets': targets, 'queue': q})
 #                p.start()
-
-
-
-
-        pipe.send(
-            {'__workflow_id__': workflow_id
-            })
+        if isinstance(res, Exception):
+            pipe.send(res)
+        else:
+            res['__workflow_id__'] =  workflow_id
+            pipe.send(res)
         
 
     def run_step(self, section, context, shared, run_mode, sig_mode, verbosity, pipe):
@@ -183,7 +193,7 @@ class SoS_Worker(mp.Process):
 class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
-    def __init__(self, workflow=None, args=[], shared=[], config={}):
+    def __init__(self, workflow=None, args=[], shared={}, config={}):
         self.workflow = workflow
         self.args = args
         self.shared = shared
@@ -243,22 +253,6 @@ class Base_Executor:
         return textMD5(self.sig_content)[:16]
 
     def reset_dict(self):
-
-        # if creating a new dictionary, set it up with some basic varibles
-        # and functions
-        if self.shared == '*':
-            #
-            # if this is a nested workflow, we do not clear sos_dict because it contains all
-            # the symbols from the main workflow. _base_symbols need to be defined though.
-            self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
-            self._base_symbols -= {'dynamic'}
-            if isinstance(self.args, dict):
-                for key, value in self.args.items():
-                    if not key.startswith('__'):
-                        env.sos_dict.set(key, value)
-            return
-
-        old_dict = env.sos_dict
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
 
@@ -320,9 +314,7 @@ class Base_Executor:
                 sys.stderr.write(get_traceback())
             raise
 
-        for key in self.shared:
-            if key in old_dict:
-                env.sos_dict.set(key, old_dict[key])
+        env.sos_dict.quick_update(self.shared)
 
         if isinstance(self.args, dict):
             for key, value in self.args.items():
@@ -846,7 +838,7 @@ class Base_Executor:
                         worker_queue = p[1]
 
                     # workflow shared variables
-                    shared = {x: env.sos_dict[x] for x in self.shared if x in env.sos_dict and pickleable(env.sos_dict[x], x)}
+                    shared = {x: env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict and pickleable(env.sos_dict[x], x)}
                     if 'shared' in section.options:
                         if isinstance(section.options['shared'], str):
                             svars = [section.options['shared']]
@@ -919,4 +911,6 @@ class Base_Executor:
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
         if queue:
-            queue.put({x:env.sos_dict[x] for x in self.shared if x in env.sos_dict})
+            queue.put({x:env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict})
+        else:
+            return {x:env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict}
