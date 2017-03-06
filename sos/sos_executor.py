@@ -121,6 +121,33 @@ class SoS_Worker(mp.Process):
             if work[0] == 'step':
                 # this is a step ...
                 self.run_step(*work[1:])
+            else:
+                self.run_workflow(*work[1:])
+
+    def run_workflow(self, workflow_id, wf, targets, args, shared, config, pipe):
+        # get workflow, args, shared, and config
+        env.logger.warning('working on a workflow {}'.format(workflow_id))
+        #executer = Base_Executor(wf, args=args, shared=shared, 
+        #    config=config)
+        #child_pipe = mp.Pipe()
+        #executer.run(targets=targets, queue=child_pipe[1])
+
+#                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
+#            if env.run_mode == 'run':
+#                if shared:
+#                    q = mp.Queue()
+#                else:
+#                    q = None
+#                p = mp.Process(target=executor.run, kwargs={'targets': targets, 'queue': q})
+#                p.start()
+
+
+
+
+        pipe.send(
+            {'__workflow_id__': workflow_id
+            })
+        
 
     def run_step(self, section, context, shared, run_mode, sig_mode, verbosity, pipe):
         self.reset_dict()
@@ -648,6 +675,34 @@ class Base_Executor:
                                 runnable._host.submit_task(task)
                             runnable._status = 'task_pending'
                             continue
+                        elif res.startswith('workflow'):
+                            workflow_id = res.split(' ')[1]
+                            # receive the real definition
+                            env.logger.warning('Receive a workflow {}'.format(workflow_id))
+                            # (wf, args, shared, config)
+                            wf, targets, args, shared, config = q.recv()
+                            # a workflow needs to be executed immediately because otherwise if all workflows
+                            # occupies all workers, no real step could be executed.
+                        
+                            # if pool is empty, create a new process
+                            if not pool:
+                                worker_queue = mp.Queue()
+                                worker = SoS_Worker(queue=worker_queue, config=config, args=args)
+                                worker.start()
+                            else:
+                                # get worker, q and runnable is not needed any more
+                                p, _, _ = pool.pop(0)
+                                worker = p[0]
+                                worker_queue = p[1]
+
+                            q = mp.Pipe()
+                            worker_queue.put(('workflow', workflow_id, wf, targets, args, shared, config, q[1]))
+                            procs.append([[worker, worker_queue], q[0], runnable])
+                            #
+                            # now we would like to find a worker and 
+                            runnable._pending_workflow = workflow_id
+                            runnable._status = 'workflow_pending'
+                            continue                            
                         else:
                             raise RuntimeError('Unexpected value from step {}'.format(res))
 
@@ -690,8 +745,8 @@ class Base_Executor:
                         runnable._status = 'failed'
                         exec_error.append(runnable._node_id, res)
                         prog.update(1)
-                    else:
-                        #
+                    elif '__step_name__' in res:
+                        # if the result of the result of a step
                         svar = {}
                         for k, v in res.items():
                             if k == '__shared__':
@@ -718,6 +773,17 @@ class Base_Executor:
                             env.sos_dict['__step_local_output__'])
                         runnable._status = 'completed'
                         prog.update(1)
+                    elif '__workflow_id__' in res:
+                        # result from a workflow
+                        # the worker process has been returned to the pool, now we need to
+                        # notify the step that is waiting for the result
+                        for proc in procs:
+                            if proc[2]._status == 'workflow_pending' and proc[2]._pending_workflow == res['__workflow_id__']:
+                                proc[1].send(res)
+                                proc[2]._status = 'running'
+                                break
+                    else:
+                        raise RuntimeError('Unrecognized response from a step: {}'.format(res))
 
                 # remove None
                 procs = [x for x in procs if x is not None]
@@ -754,6 +820,7 @@ class Base_Executor:
                     num_running = len([x for x in procs if x[2]._status != 'task_pending'])
                     if num_running >= env.max_jobs:
                         break
+                    #
                     # find any step that can be executed and run it, and update the DAT
                     # with status.
                     runnable = dag.find_executable()

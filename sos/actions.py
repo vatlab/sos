@@ -277,7 +277,6 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
     extra sos files can be specified from paramter source. The workflow
     will be execute in the current step namespace with _input as workflow
     input. '''
-    from .sos_executor import Base_Executor
     script = SoS_Script(env.sos_dict['__step_context__'].content, env.sos_dict['__step_context__'].filename)
     wf = script.workflow(workflow, use_default=not targets)
     # if wf contains the current step or one of the previous one, this constitute
@@ -295,38 +294,43 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
     shared.append('__step_output__')
     try:
         my_name = env.sos_dict['step_name']
-        if env.run_mode == 'dryrun':
-            env.logger.info('Checking nested workflow {}'.format(workflow))
-            return Base_Executor(wf, args=args, shared=shared,
-                config={'config_file': env.sos_dict['__config_file__']}).dryrun(targets=targets)
-        elif env.run_mode in ('run', 'interactive'):
-            args_output = ', '.join('{}={}'.format(x, short_repr(y)) for x,y in args.items() if not x.startswith('__'))
-            env.logger.info('Executing workflow ``{}`` with input ``{}`` and {}'
-                .format(workflow, short_repr(env.sos_dict['_input'], True),
-                'no args' if not args_output else args_output))
+        args_output = ', '.join('{}={}'.format(x, short_repr(y)) for x,y in args.items() if not x.startswith('__'))
+        env.logger.info('Executing workflow ``{}`` with input ``{}`` and {}'
+            .format(workflow, short_repr(env.sos_dict['_input'], True),
+            'no args' if not args_output else args_output))
 
-            executor_class = Base_Executor
-
-            executor = executor_class(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__'],
-                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
-            if env.run_mode == 'run':
-                if shared:
-                    q = mp.Queue()
-                else:
-                    q = None
-                p = mp.Process(target=executor.run, kwargs={'targets': targets, 'queue': q})
-                p.start()
-                if shared:
-                    res = q.get()
-                    if isinstance(res, Exception):
-                        raise res
-                    env.sos_dict.quick_update(res)
-                else:
-                    res = None
-                p.join()
-            else:
-                res = executor.run(targets=targets)
+        # tell the master process to receive a workflow
+        env.__pipe__.send('workflow {}'.format(uuid.uuid4()))
+        # really send the workflow
+        env.__pipe__.send((wf, targets, args, shared, {'config_file': env.sos_dict['__config_file__'],
+                'sig_mode': env.sig_mode, 'verbosity': env.verbosity}))
+        res = env.__pipe__.recv()
+        env.logger.error('GOT result {}'.format(res))
+        if isinstance(res, Exception):
+            raise res
+        else:
+            env.sos_dict.quick_update(res)
             return res
+#            executor = Base_Executor(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__'],
+#                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
+#            if env.run_mode == 'run':
+#                if shared:
+#                    q = mp.Queue()
+#                else:
+#                    q = None
+#                p = mp.Process(target=executor.run, kwargs={'targets': targets, 'queue': q})
+#                p.start()
+#                if shared:
+#                    res = q.get()
+#                    if isinstance(res, Exception):
+#                        raise res
+#                    env.sos_dict.quick_update(res)
+#                else:
+#                    res = None
+#                p.join()
+#            else:
+#                res = executor.run(targets=targets)
+#            return res
     finally:
         # restore step_name in case the subworkflow re-defines it
         env.sos_dict.set('step_name', my_name)

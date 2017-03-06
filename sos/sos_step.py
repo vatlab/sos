@@ -1176,6 +1176,10 @@ class Step_Executor(Base_Step_Executor):
             delattr(env, 'accessed_vars')
         super(Step_Executor, self).__init__(step)
         self.pipe = pipe
+        # because step is executed in a separate SoS_Worker process, this
+        # __pipe__ is available to all the actions that will be executed
+        # in the step
+        env.__pipe__ = pipe
 
     def pending_tasks(self, tasks):
         env.logger.debug('Send {}'.format(tasks))
