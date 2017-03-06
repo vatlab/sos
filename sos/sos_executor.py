@@ -74,10 +74,10 @@ def __null_func__(*args, **kwargs):
     to evaluate functions of input, output, and depends directives.'''
     return args, kwargs
 
-class StepWorker(mp.Process):
+class SoS_Worker(mp.Process):
     def __init__(self, queue, config={}, args=[], **kwargs):
         # the worker process knows configuration file, command line argument etc
-        super(StepWorker, self).__init__(**kwargs)
+        super(SoS_Worker, self).__init__(**kwargs)
         self.queue = queue
         self.config = config
         self.args = args
@@ -114,39 +114,43 @@ class StepWorker(mp.Process):
         # wait to handle jobs
         #
         while True:
-            step = self.queue.get()
-            if step is None:
+            work = self.queue.get()
+            if work is None:
                 break
             
-            self.reset_dict()
-            section, context, shared, run_mode, sig_mode, verbosity, pipe = step
-            env.run_mode = run_mode
-            env.sig_mode = sig_mode
-            env.verbosity = verbosity
-            #
-            # this is to keep compatibility of dag run with sequential run because
-            # in sequential run, we evaluate global section of each step in
-            # order to determine values of options such as skip.
-            # The consequence is that global definitions are available in
-            # SoS namespace.
-            try:
-                SoS_exec(section.global_def, section.global_sigil)
-            except RuntimeError as e:
-                if env.verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                raise
+            if work[0] == 'step':
+                # this is a step ...
+                self.run_step(*work[1:])
 
-            # clear existing keys, otherwise the results from some random result
-            # might mess with the execution of another step that does not define input
-            for k in ['__step_input__', '__default_output__', '__step_output__']:
-                if k in env.sos_dict:
-                    env.sos_dict.pop(k)
-            # if the step has its own context
-            env.sos_dict.quick_update(context)
-            env.sos_dict.quick_update(shared)
+    def run_step(self, section, context, shared, run_mode, sig_mode, verbosity, pipe):
+        self.reset_dict()
+        env.run_mode = run_mode
+        env.sig_mode = sig_mode
+        env.verbosity = verbosity
+        #
+        # this is to keep compatibility of dag run with sequential run because
+        # in sequential run, we evaluate global section of each step in
+        # order to determine values of options such as skip.
+        # The consequence is that global definitions are available in
+        # SoS namespace.
+        try:
+            SoS_exec(section.global_def, section.global_sigil)
+        except RuntimeError as e:
+            if env.verbosity > 2:
+                sys.stderr.write(get_traceback())
+            raise
 
-            executor = Step_Executor(section, pipe, mode=env.run_mode)
-            executor.run()
+        # clear existing keys, otherwise the results from some random result
+        # might mess with the execution of another step that does not define input
+        for k in ['__step_input__', '__default_output__', '__step_output__']:
+            if k in env.sos_dict:
+                env.sos_dict.pop(k)
+        # if the step has its own context
+        env.sos_dict.quick_update(context)
+        env.sos_dict.quick_update(shared)
+
+        executor = Step_Executor(section, pipe, mode=env.run_mode)
+        executor.run()
 
 
 class Base_Executor:
@@ -766,7 +770,7 @@ class Base_Executor:
                     # if pool is empty, create a new process
                     if not pool:
                         worker_queue = mp.Queue()
-                        worker = StepWorker(queue=worker_queue, config=self.config, args=self.args)
+                        worker = SoS_Worker(queue=worker_queue, config=self.config, args=self.args)
                         worker.start()
                     else:
                         # get worker, q and runnable is not needed any more
@@ -795,7 +799,7 @@ class Base_Executor:
                         shared.update({x: env.sos_dict[x] for x in svars if x in env.sos_dict and pickleable(env.sos_dict[x], x)})
                     if '__workflow_sig__' in env.sos_dict:
                         runnable._context['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
-                    worker_queue.put((section, runnable._context, shared, env.run_mode, env.sig_mode, env.verbosity, q[1]))
+                    worker_queue.put(('step', section, runnable._context, shared, env.run_mode, env.sig_mode, env.verbosity, q[1]))
                     procs.append( [[worker, worker_queue], q[0], runnable])
                 #
                 num_running = len([x for x in procs if x[2]._status != 'task_pending'])
