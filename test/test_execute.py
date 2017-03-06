@@ -178,22 +178,6 @@ input: myfunc(['a.txt', 'b.txt'])
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['test'], ['aa.txt', 'ab.txt'])
-        # in nested workflow?
-        script = SoS_Script(r"""
-def myfunc(a):
-    return ['a' + x for x in a]
-
-[mse: shared={'test':'output'}]
-input: myfunc(['a.txt', 'b.txt'])
-
-[1]
-sos_run('mse')
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        #
-        # Names defined in subworkflow is not returned to the master dict
-        self.assertTrue('test' not in env.sos_dict)
 
     def testInput(self):
         '''Test input specification'''
@@ -474,66 +458,6 @@ a += 1
         wf = script.workflow()
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
 
-    def testPassingVarsToNestedWorkflow(self):
-        '''Test if variables can be passed to nested workflows'''
-        script = SoS_Script(r"""
-%set_options sigil='[ ]'
-import time
-import random
-
-[nested]
-print('I am nested [nested] with seed [seed]')
-
-[0]
-reps = range(5)
-input: for_each='reps'
-task: concurrent=True
-import random
-nested = _reps
-seed = random.randint(1, 1000)
-print('Passing [seed] to [nested]')
-sos_run('nested')
-
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
-    def testUserDefinedFunc(self):
-        '''Test the use of user-defined functions in SoS script'''
-        script = SoS_Script(r"""
-
-def myfunc():
-  return 'a'
-
-[1: shared={'test':'output'}]
-output: myfunc()
-
-myfunc()
-
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['test'], ['a'])
-        # User defined function should also work under nested workflows
-        # This is difficult because the 'local namespace' is usually
-        # not seen inside function definition. The solution now is to
-        # use a single workspace.
-        script = SoS_Script(r"""
-
-def myfunc():
-    # test if builtin functions (sum and range) can be used here.
-    return 'a' + str(sum(range(10)))
-
-[1: shared={'test':'output'}]
-output: [myfunc() for i in range(10)][0]
-
-myfunc()
-
-""")
-        wf = script.workflow()
-        Base_Executor(wf).run(mode='dryrun')
-        self.assertEqual(env.sos_dict['test'], ['a45'])
-
     def testReadOnlyStepVars(self):
         '''Test if the step variables can be changed.'''
         #
@@ -654,40 +578,7 @@ print(0)
 #        except Exception as e:
 #            self.assertEqual(len(e.errors), 3)
 
-    def testSearchPath(self):
-        '''Test if any action should exit in five seconds in dryrun mode'''
-        sos_config_file = 'config.yml'
-        #
-        with open(sos_config_file, 'w') as sos_config:
-            sos_config.write('''
-#
-# global sos configuration file
-#
-{{
-    "sos_path": ["{0}/crazy_path", "{0}/crazy_path/more_crazy/"]
-}}
-'''.format(os.getcwd()))
-        #
-        if not os.path.isdir('crazy_path'):
-            os.mkdir('crazy_path')
-            os.mkdir('crazy_path/more_crazy')
-        with open('crazy_path/crazy_master.sos', 'w') as crazy:
-            crazy.write('''
-[0]
-sos_run('cc', source='crazy_slave.sos')
 
-''')
-        with open('crazy_path/more_crazy/crazy_slave.sos', 'w') as crazy:
-            crazy.write('''
-[cc_0]
-print('hay, I am crazy')
-''')
-
-        script = SoS_Script(filename='crazy_master.sos')
-        script.workflow()
-        #
-        shutil.rmtree('crazy_path')
-        os.remove(sos_config_file)
 
     def testDynamicOutput(self):
         '''Testing dynamic output'''
@@ -1008,34 +899,6 @@ sh:
             with open(f) as ifile:
                 self.assertEqual(ifile.read(), 'aa.txt\n')
 
-    def testConfigFileOfNestedWorkflow(self):
-        '''Test passing of configurationg to nested workflow'''
-        script = SoS_Script('''
-[test_1]
-parameter: key = None
-print(CONFIG[key])
-
-[default_1]
-print(CONFIG)
-sos_run('test:1', key = '1')
-    ''')
-        with open('test.conf', 'w') as conf:
-            conf.write("""{'1':'hi'}""")
-        wf = script.workflow()
-        Base_Executor(wf, config={'config_file': 'test.conf'}).run()
-
-    def testErrorFromSubworkflow(self):
-        '''Test if error from subworkflow is passed to master (#396)'''
-        script = SoS_Script('''
-[test_1]
-R:
-  set.seed(xxx)
-
-[default]
-sos_run('test')
-''')
-        wf = script.workflow()
-        self.assertRaises(Exception, Base_Executor(wf).run)
 
     def testStoppedOutput(self):
         '''test output with stopped step'''

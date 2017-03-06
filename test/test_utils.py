@@ -285,23 +285,7 @@ class TestUtils(unittest.TestCase):
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        # progress bar with nested workflow
-        script = SoS_Script('''
-import time
-time.sleep(0.5)
-[sub_1]
-[sub_2]
-[sub_3]
-[sub_4]
-[a_1]
-[a_2]
-[a_3]
-sos_run('sub')
-[a_4]
-[a_5]
-''')
-        wf = script.workflow('a')
-        Base_Executor(wf).run()
+
 
     def testTextRepr(self):
         # the " as the last character can lead to problems...

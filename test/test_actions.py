@@ -472,63 +472,6 @@ pandoc(input=['default_10.md', 'default_20.md'], output='output.html')
             FileTarget(f).remove()
 
 
-    def testSoSRun(self):
-        '''Test action sos_run with keyword parameters'''
-        for f in ['0.txt', '1.txt']:
-            FileTarget(f).remove('both')
-        script = SoS_Script(r'''
-[A]
-parameter: num=5
-sh:
-    touch ${num}.txt
-
-[batch]
-for k in range(2):
-    sos_run('A', num=k)
-''')
-        wf = script.workflow('batch')
-        Base_Executor(wf).run()
-        for f in ['0.txt', '1.txt']:
-            self.assertTrue(FileTarget(f).exists())
-            FileTarget(f).remove('both')
-        #
-        # if we do not pass num, parameter would not change
-        for f in ['0.txt', '1.txt']:
-            FileTarget(f).remove('both')
-        script = SoS_Script(r'''
-[A]
-parameter: num=5
-sh:
-    touch ${num}.txt
-
-[batch]
-for num in range(2):
-    sos_run('A')
-''')
-        wf = script.workflow('batch')
-        Base_Executor(wf).run()
-        for f in ['0.txt', '1.txt']:
-            self.assertFalse(FileTarget(f).exists())
-        self.assertTrue(FileTarget('5.txt').exists())
-        FileTarget('5.txt').remove('both')
-        #
-        # test parameter shared to send and return vars
-        # 
-        script = SoS_Script(r'''
-[A: shared='k']
-k += 10
-
-[batch]
-for k in range(2):
-    sos_run('A', shared='k')
-    sh("touch ${k}.txt")
-''')
-        wf = script.workflow('batch')
-        Base_Executor(wf).run()
-        for f in ['10.txt', '11.txt']:
-            self.assertTrue(FileTarget(f).exists())
-            FileTarget(f).remove('both')
-
 
     def testReport(self):
         '''Test action report'''

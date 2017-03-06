@@ -767,49 +767,6 @@ A_2;
             FileTarget(f).remove('both')
 
 
-    def testDynamicNestedWorkflow(self):
-        #
-        # Because we are not sure which workflows would be executed
-        # until run time, the DAG should not contain nested workflow
-        # until runtime.
-        #
-        for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
-            FileTarget(f).remove('both')
-        #
-        #  A1 <- P <- B
-        #  A1 <- P <- B
-        #  A2
-        #
-        #  ALL calls A and B with parameter
-        #
-        script = SoS_Script('''
-[A_1]
-parameter: num = 2
-input: "B${num}.txt.p"
-
-[B: provides='B{num}.txt']
-sh:
-    touch 'B${num}.txt'
-
-[P: provides='{filename}.p']
-input: filename
-sh:
-    touch ${output}
-
-[ALL]
-
-for i in range(3):
-    sos_run('A', num=i)
-
-
-''')
-        # the workflow should call step K for step C_2, but not C_3
-        wf = script.workflow('ALL')
-        Base_Executor(wf).run()
-        for f in ['B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
-            self.assertTrue(FileTarget(f).exists())
-            FileTarget(f).remove('both')
-
     def testSharedDependency(self):
         #
         # shared variable should introduce additional dependency
