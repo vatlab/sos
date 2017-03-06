@@ -139,10 +139,11 @@ class SoS_Worker(mp.Process):
         env.logger.warning('working on a workflow {}'.format(workflow_id))
         executer = Base_Executor(wf, args=args, shared=shared, 
             config=config)
-        # this is the dependent run, without queue
-        res = executer.run(targets=targets)
+        # we send the pipe to subworkflow, which would send
+        # everything directly to the master process, so we do not 
+        # have to collect result here
+        executer.run(targets=targets, parent_pipe=pipe, my_workflow_id=workflow_id)
         #child_pipe = mp.Pipe()
-        #executer.run(targets=targets, queue=child_pipe[1])
 
 #                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
 #            if env.run_mode == 'run':
@@ -152,11 +153,11 @@ class SoS_Worker(mp.Process):
 #                    q = None
 #                p = mp.Process(target=executor.run, kwargs={'targets': targets, 'queue': q})
 #                p.start()
-        if isinstance(res, Exception):
-            pipe.send(res)
-        else:
-            res['__workflow_id__'] =  workflow_id
-            pipe.send(res)
+        #if isinstance(res, Exception):
+        #    pipe.send(res)
+        #else:
+        #    res['__workflow_id__'] =  workflow_id
+        #    pipe.send(res)
         
 
     def run_step(self, section, context, shared, run_mode, sig_mode, verbosity, pipe):
@@ -603,10 +604,20 @@ class Base_Executor:
                 sigfile.write('# end time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
                 sigfile.write('# input and dependent files\n')
 
-    def run(self, targets=None, queue=None, mode='run'):
+    def run(self, targets=None, parent_pipe=None, my_workflow_id=None, mode='run'):
         '''Execute a workflow with specified command line args. If sub is True, this
         workflow is a nested workflow and be treated slightly differently.
         '''
+        #
+        # There are threee cases
+        #
+        # parent_pipe = None: this is the master workflow executor
+        # parent_pipe != None, my_workflow_id != None: this is a nested workflow inside a master workflow
+        #   executor and needs to pass tasks etc to master
+        # parent_pipe != None, my_workflow_id == None: this is a nested workflow inside a task and needs to 
+        #   handle its own tasks.
+        #
+        #
         # if the exexcutor is started from sos_run, these should also be passed
         if 'sig_mode' in self.config:
             env.sig_mode = self.config['sig_mode']
@@ -779,6 +790,7 @@ class Base_Executor:
 
                 # remove None
                 procs = [x for x in procs if x is not None]
+                # env.logger.warning([x[2]._status for x in procs])
 
                 # step 2: check is some jobs are done
                 for proc in procs:
@@ -863,7 +875,7 @@ class Base_Executor:
                 #
                 num_running = len([x for x in procs if x[2]._status != 'task_pending'])
 
-                if not procs:
+                if not procs or all(x[2]._status == 'failed' for x in procs):
                     break
                 #elif not env.__wait__ and num_running == 0:
                 #    # if all jobs are pending, let us check if all jbos have been submitted.
@@ -881,10 +893,10 @@ class Base_Executor:
                 else:
                     time.sleep(0.1)
             # close all processes
-        except:
+        except Exception as e:
             for p, _, _ in procs + pool:
                 p[0].terminate()
-            raise
+            raise e
         finally:
             for p, _, _ in procs + pool:
                 p[1].put(None)
@@ -903,14 +915,17 @@ class Base_Executor:
                 exec_error.append(self.workflow.name,
                     RuntimeError('{} pending step{}: {}'.format(len(sections), 
                         's' if len(sections) > 1 else '', ', '.join(sections))))
-            if queue is not None:
-                queue.put(exec_error)
+            if parent_pipe is not None:
+                parent_pipe.send(exec_error)
+                return {}
             else:
                 raise exec_error
         else:
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
-        if queue:
-            queue.put({x:env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict})
+        if parent_pipe:
+            res = {x:env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict}
+            res['__workflow_id__'] = my_workflow_id
+            parent_pipe.send(res)
         else:
             return {x:env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict}

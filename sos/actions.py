@@ -309,13 +309,13 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                     'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
             if env.run_mode == 'run':
                 if shared:
-                    q = mp.Queue()
+                    q = mp.Pipe()
                 else:
                     q = None
-                p = mp.Process(target=executor.run, kwargs={'targets': targets, 'queue': q})
+                p = mp.Process(target=executor.run, kwargs={'targets': targets, 'parent_pipe': q[1], 'my_workflow_id': None})
                 p.start()
                 if shared:
-                    res = q.get()
+                    res = q[0].recv()
                     if isinstance(res, Exception):
                         raise res
                     env.sos_dict.quick_update(res)
