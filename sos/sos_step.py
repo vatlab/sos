@@ -593,8 +593,8 @@ class Base_Step_Executor:
                 elif not isinstance(v, int):
                      raise ValueError('Input of option walltime should be an integer (seconds) or a string in the format of HH:MM:SS. {} specified.'.format(v))
             elif k == 'mem':
-                if isinstance(k, str):
-                    k = expand_size(k)
+                if isinstance(v, str):
+                    v = expand_size(v)
             env.sos_dict['_runtime'][k] = v
 
     def reevaluate_output(self):

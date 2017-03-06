@@ -799,7 +799,6 @@ def expand_size(size):
         num = 1
     s = {x + 'I' :1024**(idx+1) for idx,x in enumerate('KMGTPEZY')}
     s.update({x: 1000**(idx+1) for idx,x in enumerate('KMGTPEZY')})
-    print(s)
     unit = unit[:-1].upper() if unit[-1].upper().endswith('B') else unit.upper()
     if unit not in s:
         raise ValueError('Invalid size specified: {}'.format(size))
