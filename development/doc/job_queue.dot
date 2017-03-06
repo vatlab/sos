@@ -68,7 +68,7 @@ digraph job_queue {
         subgraph cluster_8 {
             style=dotted;
             label="PBS Job Queue";
-            job_queue [label="Job Queue"];
+            job_queue [label="Job Queue", shape=box];
             remote_job3 [label="job3"];
             remote_job4 [label="job4"];
         }

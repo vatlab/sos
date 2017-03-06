@@ -9,21 +9,16 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 812)">
 <title>job_queue</title>
 <polygon fill="white" stroke="none" points="-4,4 -4,-812 1291,-812 1291,4 -4,4"/>
-<g id="clust7" class="cluster"><title>cluster_6</title>
-<polygon fill="none" stroke="black" stroke-dasharray="1,5" points="8,-8 8,-306 582,-306 582,-8 8,-8"/>
-<text text-anchor="middle" x="295" y="-290.8" font-family="Times,serif" font-size="14.00">PBS/Moab Cluster</text>
-</g>
-<g id="clust8" class="cluster"><title>cluster_7</title>
-<polygon fill="none" stroke="black" stroke-dasharray="1,5" points="420,-200 420,-275 574,-275 574,-200 420,-200"/>
-<text text-anchor="middle" x="497" y="-259.8" font-family="Times,serif" font-size="14.00">remote tasks</text>
-</g>
-<g id="clust9" class="cluster"><title>cluster_8</title>
-<polygon fill="none" stroke="black" stroke-dasharray="1,5" points="139,-16 139,-179 288,-179 288,-16 139,-16"/>
-<text text-anchor="middle" x="213.5" y="-163.8" font-family="Times,serif" font-size="14.00">PBS Job Queue</text>
-</g>
 <g id="clust1" class="cluster"><title>cluster_0</title>
 <polygon fill="none" stroke="black" stroke-dasharray="1,5" points="235,-338 235,-800 1279,-800 1279,-338 235,-338"/>
 <text text-anchor="middle" x="757" y="-784.8" font-family="Times,serif" font-size="14.00">Local Desktop/Workstation</text>
+</g>
+<g id="clust5" class="cluster"><title>cluster_4</title>
+<polygon fill="none" stroke="black" stroke-dasharray="1,5" points="243,-346 243,-437 568,-437 568,-346 243,-346"/>
+</g>
+<g id="clust6" class="cluster"><title>cluster_5</title>
+<polygon fill="none" stroke="black" stroke-dasharray="1,5" points="406,-354 406,-429 560,-429 560,-354 406,-354"/>
+<text text-anchor="middle" x="483" y="-413.8" font-family="Times,serif" font-size="14.00">tasks</text>
 </g>
 <g id="clust2" class="cluster"><title>cluster_1</title>
 <polygon fill="none" stroke="black" stroke-dasharray="1,5" points="576,-354 576,-769 915,-769 915,-354 576,-354"/>
@@ -36,12 +31,17 @@
 <polygon fill="none" stroke="black" stroke-dasharray="1,5" points="1109,-477 1109,-552 1263,-552 1263,-477 1109,-477"/>
 <text text-anchor="middle" x="1186" y="-536.8" font-family="Times,serif" font-size="14.00">tasks</text>
 </g>
-<g id="clust5" class="cluster"><title>cluster_4</title>
-<polygon fill="none" stroke="black" stroke-dasharray="1,5" points="243,-346 243,-437 568,-437 568,-346 243,-346"/>
+<g id="clust7" class="cluster"><title>cluster_6</title>
+<polygon fill="none" stroke="black" stroke-dasharray="1,5" points="8,-8 8,-306 582,-306 582,-8 8,-8"/>
+<text text-anchor="middle" x="295" y="-290.8" font-family="Times,serif" font-size="14.00">PBS/Moab Cluster</text>
 </g>
-<g id="clust6" class="cluster"><title>cluster_5</title>
-<polygon fill="none" stroke="black" stroke-dasharray="1,5" points="406,-354 406,-429 560,-429 560,-354 406,-354"/>
-<text text-anchor="middle" x="483" y="-413.8" font-family="Times,serif" font-size="14.00">tasks</text>
+<g id="clust8" class="cluster"><title>cluster_7</title>
+<polygon fill="none" stroke="black" stroke-dasharray="1,5" points="420,-200 420,-275 574,-275 574,-200 420,-200"/>
+<text text-anchor="middle" x="497" y="-259.8" font-family="Times,serif" font-size="14.00">remote tasks</text>
+</g>
+<g id="clust9" class="cluster"><title>cluster_8</title>
+<polygon fill="none" stroke="black" stroke-dasharray="1,5" points="143,-16 143,-179 292,-179 292,-16 143,-16"/>
+<text text-anchor="middle" x="217.5" y="-163.8" font-family="Times,serif" font-size="14.00">PBS Job Queue</text>
 </g>
 <!-- step2 -->
 <g id="node1" class="node"><title>step2</title>
@@ -229,40 +229,40 @@
 </g>
 <!-- job_queue -->
 <g id="node19" class="node"><title>job_queue</title>
-<ellipse fill="none" stroke="black" cx="213" cy="-130" rx="49.0941" ry="18"/>
+<polygon fill="none" stroke="black" points="251,-148 175,-148 175,-112 251,-112 251,-148"/>
 <text text-anchor="middle" x="213" y="-126.3" font-family="Times,serif" font-size="14.00">Job Queue</text>
 </g>
 <!-- remote_start3&#45;&gt;job_queue -->
 <g id="edge15" class="edge"><title>remote_start3&#45;&gt;job_queue</title>
-<path fill="none" stroke="black" d="M129.859,-206.876C146.386,-191.794 170.009,-170.234 187.854,-153.949"/>
-<polygon fill="black" stroke="black" points="190.573,-156.206 195.6,-146.879 185.854,-151.035 190.573,-156.206"/>
+<path fill="none" stroke="black" d="M129.859,-206.876C145.98,-192.164 168.854,-171.288 186.53,-155.157"/>
+<polygon fill="black" stroke="black" points="189.216,-157.444 194.243,-148.118 184.497,-152.274 189.216,-157.444"/>
 </g>
 <!-- remote_start4&#45;&gt;job_queue -->
 <g id="edge16" class="edge"><title>remote_start4&#45;&gt;job_queue</title>
-<path fill="none" stroke="black" d="M296.141,-206.876C279.614,-191.794 255.991,-170.234 238.146,-153.949"/>
-<polygon fill="black" stroke="black" points="240.146,-151.035 230.4,-146.879 235.427,-156.206 240.146,-151.035"/>
+<path fill="none" stroke="black" d="M296.141,-206.876C280.02,-192.164 257.146,-171.288 239.47,-155.157"/>
+<polygon fill="black" stroke="black" points="241.503,-152.274 231.757,-148.118 236.784,-157.444 241.503,-152.274"/>
 </g>
 <!-- remote_job3 -->
 <g id="node20" class="node"><title>remote_job3</title>
-<ellipse fill="none" stroke="black" cx="174" cy="-42" rx="27" ry="18"/>
-<text text-anchor="middle" x="174" y="-38.3" font-family="Times,serif" font-size="14.00">job3</text>
+<ellipse fill="none" stroke="black" cx="178" cy="-42" rx="27" ry="18"/>
+<text text-anchor="middle" x="178" y="-38.3" font-family="Times,serif" font-size="14.00">job3</text>
 </g>
 <!-- job_queue&#45;&gt;remote_job3 -->
 <g id="edge13" class="edge"><title>job_queue&#45;&gt;remote_job3</title>
-<path fill="none" stroke="black" d="M192.093,-113.643C186.169,-108.149 180.409,-101.451 177,-94 173.702,-86.7916 172.341,-78.4003 171.967,-70.5306"/>
-<polygon fill="black" stroke="black" points="175.467,-70.2866 171.978,-60.2825 168.467,-70.2785 175.467,-70.2866"/>
-<text text-anchor="middle" x="200" y="-82.3" font-family="Times,serif" font-size="14.00">start job</text>
+<path fill="none" stroke="black" d="M184.662,-111.979C178.746,-106.98 173.306,-100.955 170,-94 166.428,-86.4876 166.498,-77.7189 168.038,-69.5922"/>
+<polygon fill="black" stroke="black" points="171.459,-70.3458 170.612,-59.7848 164.688,-68.5688 171.459,-70.3458"/>
+<text text-anchor="middle" x="193" y="-82.3" font-family="Times,serif" font-size="14.00">start job</text>
 </g>
 <!-- remote_job4 -->
 <g id="node21" class="node"><title>remote_job4</title>
-<ellipse fill="none" stroke="black" cx="246" cy="-42" rx="27" ry="18"/>
-<text text-anchor="middle" x="246" y="-38.3" font-family="Times,serif" font-size="14.00">job4</text>
+<ellipse fill="none" stroke="black" cx="250" cy="-42" rx="27" ry="18"/>
+<text text-anchor="middle" x="250" y="-38.3" font-family="Times,serif" font-size="14.00">job4</text>
 </g>
 <!-- job_queue&#45;&gt;remote_job4 -->
 <g id="edge14" class="edge"><title>job_queue&#45;&gt;remote_job4</title>
-<path fill="none" stroke="black" d="M219.52,-112.009C224.205,-99.7981 230.611,-83.1047 235.948,-69.1952"/>
-<polygon fill="black" stroke="black" points="239.291,-70.2531 239.606,-59.6629 232.756,-67.7453 239.291,-70.2531"/>
-<text text-anchor="middle" x="256" y="-82.3" font-family="Times,serif" font-size="14.00">start job</text>
+<path fill="none" stroke="black" d="M220.488,-111.597C225.755,-99.3532 232.895,-82.7569 238.833,-68.9555"/>
+<polygon fill="black" stroke="black" points="242.163,-70.0713 242.9,-59.5021 235.733,-67.3048 242.163,-70.0713"/>
+<text text-anchor="middle" x="258" y="-82.3" font-family="Times,serif" font-size="14.00">start job</text>
 </g>
 </g>
 </svg>
