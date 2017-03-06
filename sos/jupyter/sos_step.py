@@ -36,6 +36,8 @@ class Interactive_Step_Executor(Step_Executor):
         self.run_mode='interactive'
 
     def pending_tasks(self, tasks):
+        if not tasks:
+            return
         host = Host()
         for task in tasks:
             host.submit_task(task)
