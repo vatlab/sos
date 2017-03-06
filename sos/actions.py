@@ -35,6 +35,7 @@ import shlex
 import gzip
 import tarfile
 import fasteners
+import uuid
 
 from functools import wraps
 
@@ -196,8 +197,8 @@ class SoS_ExecuteScript:
 
     def run(self, **kwargs):
         transcribe(self.script, action=self.interpreter)
-        debug_script_file = os.path.join(env.exec_dir, '.sos', '{}_{}{}'.format(env.sos_dict['step_name'],
-            env.sos_dict['_index'], self.suffix))
+        debug_script_file = os.path.join(env.exec_dir, '.sos', '{}_{}_{}{}'.format(env.sos_dict['step_name'],
+            env.sos_dict['_index'], str(uuid.uuid4())[:8], self.suffix))
         env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
         with open(debug_script_file, 'w') as sfile:
             sfile.write(self.script)
