@@ -1,5 +1,4 @@
 .sos
-*.dot
 *.swp
 __pycache__
 tmp*
