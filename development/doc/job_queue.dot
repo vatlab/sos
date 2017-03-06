@@ -57,8 +57,8 @@ digraph job_queue {
                 remote_task3 [label="task3"];
                 remote_task4 [label="task4"];
             }
-        remote_start3 [label="sos execute task3", shape=box];
-        remote_start4 [label="sos execute task4", shape=box];
+        remote_start3 [label="submit_cmd\n(wrapper of sos execute task3)", shape=box];
+        remote_start4 [label="submit_cmd\n(wrapper of sos execute task4)", shape=box];
 
         job_queue -> remote_job3 [label="start job"];
         job_queue -> remote_job4 [label="start job"];
