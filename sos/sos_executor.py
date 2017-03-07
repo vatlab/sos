@@ -141,7 +141,7 @@ class SoS_Worker(mp.Process):
         # get workflow, args, shared, and config
         self.args = args
         self.reset_dict()
-        env.logger.debug('Worker working on a workflow {}'.format(workflow_id))
+        env.logger.debug('Worker working on a workflow {} with args {}'.format(workflow_id, args))
         executer = Base_Executor(wf, args=args, shared=shared, config=config)
         # we send the pipe to subworkflow, which would send
         # everything directly to the master process, so we do not
@@ -150,8 +150,7 @@ class SoS_Worker(mp.Process):
 
 
     def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity, pipe):
-        self.args = args
-        self.reset_dict()
+        env.logger.debug('Worker working on a step with args {}'.format(args))
         env.run_mode = run_mode
         env.sig_mode = sig_mode
         env.verbosity = verbosity
@@ -168,6 +167,8 @@ class SoS_Worker(mp.Process):
                 sys.stderr.write(get_traceback())
             raise
 
+        self.args = args
+        self.reset_dict()
         # clear existing keys, otherwise the results from some random result
         # might mess with the execution of another step that does not define input
         for k in ['__step_input__', '__default_output__', '__step_output__']:
@@ -700,8 +701,8 @@ class Base_Executor:
                         elif res.startswith('step'):
                             # step sent from nested workflow
                             step_id = res.split(' ')[1]
-                            env.logger.debug('{} receives step reqiest {}'.format(i_am(), step_id))
                             step_params = q.recv()
+                            env.logger.debug('{} receives step request {} with args {}'.format(i_am(), step_id, step_params[3]))
                             self.step_queue[step_id] = step_params
                             continue
                             #
@@ -725,13 +726,18 @@ class Base_Executor:
                                 worker = p[0]
                                 worker_queue = p[1]
 
-                            q = mp.Pipe()
-                            worker_queue.put(('workflow', workflow_id, wf, targets, args, shared, config, q[1]))
-                            procs.append([[worker, worker_queue], q[0], runnable])
-                            #
                             # now we would like to find a worker and
                             runnable._pending_workflow = workflow_id
                             runnable._status = 'workflow_pending'
+
+                            wfrunnable = dummy_node()
+                            wfrunnable._status = 'workflow_running_pending'
+                            wfrunnable._pending_workflow = workflow_id
+                            #
+                            q = mp.Pipe()
+                            worker_queue.put(('workflow', workflow_id, wf, targets, args, shared, config, q[1]))
+                            procs.append([[worker, worker_queue], q[0], wfrunnable])
+                            #
                             continue
                         else:
                             raise RuntimeError('Unexpected value from step {}'.format(res))
@@ -743,8 +749,8 @@ class Base_Executor:
                     env.logger.debug('{} receive a result'.format(i_am()))
                     if hasattr(runnable, '_from_nested'):
                         # if the runnable is from nested, we will need to send the result back to the workflow
-                        env.logger.debug('{} send res to nested'.format(i_am()))
-                        runnable._status = None
+                        env.logger.debug('{} send res with key {} to nested'.format(i_am(), ' '.join(res.keys())))
+                        runnable._status = 'completed'
                         runnable._child_pipe.send(res)
                     elif isinstance(res, (UnknownTarget, RemovedTarget)):
                         runnable._status = None
@@ -847,7 +853,7 @@ class Base_Executor:
                             continue
                         elif all(x == 'completed' for x in res):
                             env.logger.debug('Put results for {}'.format(' '.join(proc[2]._pending_tasks)))
-                            res = runnable._host.retrieve_results(proc[2]._pending_tasks)
+                            res = proc[2]._host.retrieve_results(proc[2]._pending_tasks)
                             proc[1].send(res)
                             proc[2]._status == 'running'
                         else:
@@ -855,6 +861,7 @@ class Base_Executor:
 
                 # step 3: check if there is room and need for another job
                 while True:
+                    #env.logger.error('{} {}'.format(i_am(), [x[2]._status for x in procs]))
                     num_running = len([x for x in procs if not x[2]._status.endswith('_pending')])
                     if num_running >= env.max_jobs:
                         break
@@ -881,7 +888,7 @@ class Base_Executor:
                         runnable._from_nested = True
                         runnable._child_pipe = pipe
 
-                        env.logger.debug('{} execute {} from step_queue'.format(i_am(), step_id))
+                        env.logger.debug('{} execute {} from step queue with args {}'.format(i_am(), step_id, args))
                         worker_queue.put(('step', section, context, shared, args, run_mode, sig_mode, verbosity, q[1]))
                         procs.append( [[worker, worker_queue], q[0], runnable])
                         continue
@@ -942,15 +949,16 @@ class Base_Executor:
                     else:
                         # send the step to the parent
                         step_id = uuid.uuid4()
-                        env.logger.debug('{} send step {} to master'.format(i_am(), step_id))
+                        env.logger.debug('{} send step {} to master with args {}'.format(i_am(), step_id, self.args))
                         parent_pipe.send('step {}'.format(step_id))
                         q = mp.Pipe()
                         parent_pipe.send((section, runnable._context, shared, self.args, env.run_mode, env.sig_mode, env.verbosity, q[1]))
+                        # this is a real step
                         runnable._status = 'step_pending'
                         procs.append([None, q[0], runnable])
 
                 #
-                num_running = len([x for x in procs if x[2]._status != 'task_pending'])
+                num_running = len([x for x in procs if not x[2]._status.endswith('_pending')])
 
                 if not procs or all(x[2]._status == 'failed' for x in procs):
                     break

@@ -532,7 +532,6 @@ myfunc()
         self.assertEqual(env.sos_dict['test'], ['a45'])
 
 
-
     def testConfigFileOfNestedWorkflow(self):
         '''Test passing of configurationg to nested workflow'''
         script = SoS_Script('''
@@ -541,7 +540,6 @@ parameter: key = None
 print(CONFIG[key])
 
 [default_1]
-print(CONFIG)
 sos_run('test:1', key = '1')
     ''')
         with open('test.conf', 'w') as conf:
