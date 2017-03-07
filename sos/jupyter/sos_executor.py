@@ -21,14 +21,15 @@
 #
 import sys
 import os
-import yaml
 import shlex
+import keyword
 import time
-from sos.utils import env, frozendict, dict_merge, _parse_error, get_traceback
+from sos.utils import env, frozendict, _parse_error, get_traceback, load_config_files
 from sos.sos_eval import SoS_exec, get_default_global_sigil
 from sos._version import __version__
 from sos.__main__ import get_run_parser
 from sos.sos_script import SoS_Script
+from sos.sos_syntax import SOS_KEYWORDS
 from sos.sos_executor import Base_Executor, __null_func__
 from sos.sos_syntax import SOS_SECTION_HEADER
 from sos.target import FileTarget, UnknownTarget, RemovedTarget, UnavailableLock
@@ -58,7 +59,7 @@ class Interactive_Executor(Base_Executor):
                 sig.write(self.sig_content)
                 sig.write('# runtime signatures\n')
 
-    def set_dict(self):
+    def reset_dict(self):
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__args__', self.args)
@@ -70,34 +71,13 @@ class Interactive_Executor(Base_Executor):
         elif'__report_output__' in env.sos_dict:
             env.sos_dict.pop('__report_output_')
         
+        self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
+        self._base_symbols -= {'dynamic'}
+
         # load configuration files
-        cfg = {}
-        sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
-        if os.path.isfile(sos_config_file):
-            try:
-                with open(sos_config_file) as config:
-                    cfg = yaml.safe_load(config)
-            except Exception as e:
-                raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-        # local config file
-        sos_config_file = 'config.yml'
-        if os.path.isfile(sos_config_file):
-            try:
-                with open(sos_config_file) as config:
-                    dict_merge(cfg, yaml.safe_load(config))
-            except Exception as e:
-                raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
-        if self.config['config_file'] is not None:
-            # user-specified configuration file.
-            if not os.path.isfile(self.config['config_file']):
-                raise RuntimeError('Config file {} not found'.format(self.config['config_file']))
-            try:
-                with open(self.config['config_file']) as config:
-                    dict_merge(cfg, yaml.safe_load(config))
-            except Exception as e:
-                raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(self.config['config_file'], e))
-        # set config to CONFIG
+        cfg = load_config_files(self.config['config_file'])
         env.sos_dict.set('CONFIG', frozendict(cfg))
+        # set config to CONFIG
         FileTarget('config.yml').remove('both')
 
     def run(self, targets=None, queue=None, mode='interactive'):
@@ -111,7 +91,7 @@ class Interactive_Executor(Base_Executor):
         3. Optionally execute the workflow in preparation mode for debugging purposes.
         '''
         # if there is no valid code do nothing
-        self.set_dict()
+        self.reset_dict()
 
         # this is the result returned by the workflow, if the
         # last stement is an expression.
@@ -131,7 +111,7 @@ class Interactive_Executor(Base_Executor):
                 if not FileTarget(t).exists('target'):
                     FileTarget(t).remove('signature')
         #
-        self.set_dict()
+        self.reset_dict()
         while True:
             # find any step that can be executed and run it, and update the DAT
             # with status.

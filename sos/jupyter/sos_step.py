@@ -20,7 +20,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from sos.utils import env
 
 from sos.sos_step import Step_Executor, Base_Step_Executor
 from sos.hosts import Host
@@ -52,7 +51,7 @@ class Interactive_Step_Executor(Step_Executor):
     def run(self):
         return Base_Step_Executor.run(self)
 
-    def log(self, stage=None, msg=None):
-        if stage == 'start':
-            env.logger.info('Running ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
+    #def log(self, stage=None, msg=None):
+    #    if stage == 'start':
+    #        env.logger.info('Running ``{}``: {}'.format(self.step.step_name(), self.step.comment.strip()))
 
