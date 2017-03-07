@@ -155,6 +155,8 @@ class SoS_Worker(mp.Process):
         env.sig_mode = sig_mode
         env.verbosity = verbosity
         #
+        self.args = args
+        self.reset_dict()
         # this is to keep compatibility of dag run with sequential run because
         # in sequential run, we evaluate global section of each step in
         # order to determine values of options such as skip.
@@ -167,8 +169,6 @@ class SoS_Worker(mp.Process):
                 sys.stderr.write(get_traceback())
             raise
 
-        self.args = args
-        self.reset_dict()
         # clear existing keys, otherwise the results from some random result
         # might mess with the execution of another step that does not define input
         for k in ['__step_input__', '__default_output__', '__step_output__']:
