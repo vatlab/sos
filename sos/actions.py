@@ -333,7 +333,6 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
             env.__pipe__.send((wf, targets, args, shared, {'config_file': env.sos_dict['__config_file__'],
                     'sig_mode': env.sig_mode, 'verbosity': env.verbosity}))
             res = env.__pipe__.recv()
-            env.logger.error('GOT result {}'.format(res))
             if isinstance(res, Exception):
                 raise res
             else:

@@ -24,6 +24,7 @@ import sys
 import yaml
 import time
 import keyword
+import uuid
 import fasteners
 from collections.abc import Sequence
 import multiprocessing as mp
@@ -124,23 +125,25 @@ class SoS_Worker(mp.Process):
             work = self.queue.get()
             if work is None:
                 break
-            
+
+            env.logger.debug('Worker receive request {}'.format(work[0]))
             if work[0] == 'step':
                 # this is a step ...
                 self.run_step(*work[1:])
             else:
                 self.run_workflow(*work[1:])
+            env.logger.debug('Worker complete request {}'.format(work[0]))
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config, pipe):
         #
         # The pipe is the way to communicate with the master process.
         #
         # get workflow, args, shared, and config
-        env.logger.warning('working on a workflow {}'.format(workflow_id))
-        executer = Base_Executor(wf, args=args, shared=shared, 
+        env.logger.debug('Worker working on a workflow {}'.format(workflow_id))
+        executer = Base_Executor(wf, args=args, shared=shared,
             config=config)
         # we send the pipe to subworkflow, which would send
-        # everything directly to the master process, so we do not 
+        # everything directly to the master process, so we do not
         # have to collect result here
         executer.run(targets=targets, parent_pipe=pipe, my_workflow_id=workflow_id)
         #child_pipe = mp.Pipe()
@@ -158,7 +161,7 @@ class SoS_Worker(mp.Process):
         #else:
         #    res['__workflow_id__'] =  workflow_id
         #    pipe.send(res)
-        
+
 
     def run_step(self, section, context, shared, run_mode, sig_mode, verbosity, pipe):
         self.reset_dict()
@@ -190,6 +193,11 @@ class SoS_Worker(mp.Process):
         executor = Step_Executor(section, pipe, mode=env.run_mode)
         executor.run()
 
+class dummy_node:
+    # a dummy node object to store information of node passed
+    # from nested workflow
+    def __init__(self):
+        pass
 
 class Base_Executor:
     '''This is the base class of all executor that provides common
@@ -434,7 +442,7 @@ class Base_Executor:
                 # with identical names.
                 dag.add_step(section.uuid, '{} {}'.format(section.step_name(),
                     short_repr(env.sos_dict['__default_output__'])), None, res['step_input'],
-                    res['step_depends'], res['step_output'], 
+                    res['step_depends'], res['step_output'],
                     res['step_local_input'], res['step_local_output'], context=context)
                 added_node += 1
                 resolved += 1
@@ -446,7 +454,7 @@ class Base_Executor:
                 mo = [(x, self.match(target, x)) for x in self.workflow.auxiliary_sections]
                 mo = [x for x in mo if x[1] is not False]
                 if not mo:
-                    # this is ok, this is just an existing target, no one is designed to 
+                    # this is ok, this is just an existing target, no one is designed to
                     # generate it.
                     continue
                 if len(mo) > 1:
@@ -490,7 +498,7 @@ class Base_Executor:
                 # with identical names.
                 dag.add_step(section.uuid, '{} {}'.format(section.step_name(),
                     short_repr(env.sos_dict['__default_output__'])), None, res['step_input'],
-                    res['step_depends'], res['step_output'], 
+                    res['step_depends'], res['step_output'],
                     res['step_local_input'], res['step_local_output'], context=context)
                 #
                 added_node += 1
@@ -614,9 +622,13 @@ class Base_Executor:
         # parent_pipe = None: this is the master workflow executor
         # parent_pipe != None, my_workflow_id != None: this is a nested workflow inside a master workflow
         #   executor and needs to pass tasks etc to master
-        # parent_pipe != None, my_workflow_id == None: this is a nested workflow inside a task and needs to 
+        # parent_pipe != None, my_workflow_id == None: this is a nested workflow inside a task and needs to
         #   handle its own tasks.
         #
+        nested = parent_pipe is not None and my_workflow_id is not None
+
+        def i_am():
+            return 'Nested' if nested else 'Master'
         #
         # if the exexcutor is started from sos_run, these should also be passed
         if 'sig_mode' in self.config:
@@ -632,7 +644,6 @@ class Base_Executor:
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
 
-        #
         # if targets are specified and there are only signatures for them, we need
         # to remove the signature and really generate them
         if targets:
@@ -644,10 +655,25 @@ class Base_Executor:
                     env.logger.info('Target {} already exists'.format(t))
         # process step of the pipelinp
         #
-        # running processes
+        # running processes. It consisists of
+        #
+        # [ [proc, queue], pipe, node]
+        #
+        # where:
+        #   proc, queue: process, which is None for the nested workflow.
+        #   pipe: pipe to get information from workers
+        #   node: node that is being executed, which is a dummy node
+        #       created on the fly for steps passed from nested workflow
+        #
         procs = []
-        # process pools
+        #
+        # process pool that is used to pool temporarily unused processed.
         pool = []
+        #
+        # steps sent and queued from the nested workflow
+        # they will be executed in random but at a higher priority than the steps
+        # on the master process.
+        self.step_queue = {}
         try:
             prog = ProgressBar(desc=self.workflow.name, total=dag.num_nodes(), disable=dag.num_nodes() <= 1 or env.verbosity != 1)
             exec_error = ExecuteError(self.workflow.name)
@@ -658,14 +684,19 @@ class Base_Executor:
                         continue
 
                     [p, q, runnable] = proc
+                    # echck if there is any message from the pipe
                     if not q.poll():
                         continue
 
+                    # receieve something from the pipe
                     res = q.recv()
-                    # the step is waiting for external tasks
+                    #
+                    # if this is NOT a result, rather some request for task, step, workflow etc
                     if isinstance(res, str):
+                        if nested:
+                            raise RuntimeError('Nested workflow is not supposed to receive task, workflow, or step requests. {} received.'.format(res))
                         if res.startswith('task'):
-                            env.logger.debug('Receive {}'.format(res))
+                            env.logger.debug('{} receives task reqiest {}'.format(i_am(), res))
                             host = res.split(' ')[1]
                             if host == '__default__':
                                 if env.__queue__:
@@ -678,15 +709,23 @@ class Base_Executor:
                                 runnable._host.submit_task(task)
                             runnable._status = 'task_pending'
                             continue
+                        elif res.startswith('step'):
+                            # step sent from nested workflow
+                            step_id = res.split(' ')[1]
+                            env.logger.debug('{} receives step reqiest {}'.format(i_am(), step_id))
+                            step_params = q.recv()
+                            self.step_queue[step_id] = step_params
+                            continue
+                            #
                         elif res.startswith('workflow'):
                             workflow_id = res.split(' ')[1]
                             # receive the real definition
-                            env.logger.warning('Receive a workflow {}'.format(workflow_id))
+                            env.logger.debug('{} receives workflow reqiest {}'.format(i_am(), workflow_id))
                             # (wf, args, shared, config)
                             wf, targets, args, shared, config = q.recv()
                             # a workflow needs to be executed immediately because otherwise if all workflows
                             # occupies all workers, no real step could be executed.
-                        
+
                             # if pool is empty, create a new process
                             if not pool:
                                 worker_queue = mp.Queue()
@@ -702,19 +741,24 @@ class Base_Executor:
                             worker_queue.put(('workflow', workflow_id, wf, targets, args, shared, config, q[1]))
                             procs.append([[worker, worker_queue], q[0], runnable])
                             #
-                            # now we would like to find a worker and 
+                            # now we would like to find a worker and
                             runnable._pending_workflow = workflow_id
                             runnable._status = 'workflow_pending'
-                            continue                            
+                            continue
                         else:
                             raise RuntimeError('Unexpected value from step {}'.format(res))
 
-                    # if we does get the result,
-                    # we send the process to pool
+                    # if we does get the result, we send the process to pool
                     pool.append(procs[idx])
                     procs[idx] = None
 
-                    if isinstance(res, (UnknownTarget, RemovedTarget)):
+                    env.logger.debug('{} receive a result'.format(i_am()))
+                    if hasattr(runnable, '_from_nested'):
+                        # if the runnable is from nested, we will need to send the result back to the workflow
+                        env.logger.debug('{} send res to nested'.format(i_am()))
+                        runnable._status = None
+                        runnable._child_pipe.send(res)
+                    elif isinstance(res, (UnknownTarget, RemovedTarget)):
                         runnable._status = None
                         target = res.target
                         if dag.regenerate_target(target):
@@ -745,10 +789,12 @@ class Base_Executor:
                         env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
                     # if the job is failed
                     elif isinstance(res, Exception):
+                        env.logger.debug('{} received an exception'.format(i_am()))
                         runnable._status = 'failed'
                         exec_error.append(runnable._node_id, res)
                         prog.update(1)
                     elif '__step_name__' in res:
+                        env.logger.debug('{} receive step result '.format(i_am()))
                         # if the result of the result of a step
                         svar = {}
                         for k, v in res.items():
@@ -780,6 +826,7 @@ class Base_Executor:
                         # result from a workflow
                         # the worker process has been returned to the pool, now we need to
                         # notify the step that is waiting for the result
+                        env.logger.warning('{} receive workflow result'.format(i_am()))
                         for proc in procs:
                             if proc[2]._status == 'workflow_pending' and proc[2]._pending_workflow == res['__workflow_id__']:
                                 proc[1].send(res)
@@ -790,9 +837,8 @@ class Base_Executor:
 
                 # remove None
                 procs = [x for x in procs if x is not None]
-                # env.logger.warning([x[2]._status for x in procs])
 
-                # step 2: check is some jobs are done
+                # step 2: check if some jobs are done
                 for proc in procs:
                     # if a job is pending, check if it is done.
                     if proc[2]._status == 'task_pending':
@@ -807,7 +853,7 @@ class Base_Executor:
                                         proc[2]._killed_tasks.add(t)
                             if all(x in ('killed', 'completed', 'dead', 'failed') for x in res):
                                 raise RuntimeError('{} completed, {} dead, {} failed, {} killed)'.format(
-                                    len([x for x in res if x=='completed']), len([x for x in res if x=='dead']),   
+                                    len([x for x in res if x=='completed']), len([x for x in res if x=='dead']),
                                     len([x for x in res if x=='failed']), len([x for x in res if x=='killed'])))
                         if any(x in  ('pending', 'running', 'completed-old', 'failed-old', 'failed-missing-output', 'failed-old-missing-output') for x in res):
                             continue
@@ -821,10 +867,37 @@ class Base_Executor:
 
                 # step 3: check if there is room and need for another job
                 while True:
-                    num_running = len([x for x in procs if x[2]._status != 'task_pending'])
+                    num_running = len([x for x in procs if not x[2]._status.endswith('_pending')])
                     if num_running >= env.max_jobs:
                         break
                     #
+                    # if steps from child nested workflow?
+                    if self.step_queue:
+                        step_id, step_param = self.step_queue.popitem()
+                        section, context, shared, run_mode, sig_mode, verbosity, pipe = step_param
+                        # run it!
+                        q = mp.Pipe()
+                        # if pool is empty, create a new process
+                        if not pool:
+                            worker_queue = mp.Queue()
+                            worker = SoS_Worker(queue=worker_queue, config=self.config, args=self.args)
+                            worker.start()
+                        else:
+                            # get worker, q and runnable is not needed any more
+                            p, _, _ = pool.pop(0)
+                            worker = p[0]
+                            worker_queue = p[1]
+
+                        runnable = dummy_node()
+                        runnable._status = 'running'
+                        runnable._from_nested = True
+                        runnable._child_pipe = pipe
+
+                        env.logger.debug('{} execute {} from step_queue'.format(i_am(), step_id))
+                        worker_queue.put(('step', section, context, shared, run_mode, sig_mode, verbosity, q[1]))
+                        procs.append( [[worker, worker_queue], q[0], runnable])
+                        continue
+
                     # find any step that can be executed and run it, and update the DAT
                     # with status.
                     runnable = dag.find_executable()
@@ -832,22 +905,11 @@ class Base_Executor:
                         # no runnable
                         #dag.show_nodes()
                         break
+
                     # find the section from runnable
                     section = self.workflow.section_by_id(runnable._step_uuid)
                     # execute section with specified input
                     runnable._status = 'running'
-                    q = mp.Pipe()
-
-                    # if pool is empty, create a new process
-                    if not pool:
-                        worker_queue = mp.Queue()
-                        worker = SoS_Worker(queue=worker_queue, config=self.config, args=self.args)
-                        worker.start()
-                    else:
-                        # get worker, q and runnable is not needed any more
-                        p, _, _ = pool.pop(0)
-                        worker = p[0]
-                        worker_queue = p[1]
 
                     # workflow shared variables
                     shared = {x: env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict and pickleable(env.sos_dict[x], x)}
@@ -868,10 +930,37 @@ class Base_Executor:
                         else:
                             raise ValueError('Unacceptable value for parameter shared: {}'.format(section.options['shared']))
                         shared.update({x: env.sos_dict[x] for x in svars if x in env.sos_dict and pickleable(env.sos_dict[x], x)})
+
                     if '__workflow_sig__' in env.sos_dict:
                         runnable._context['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
-                    worker_queue.put(('step', section, runnable._context, shared, env.run_mode, env.sig_mode, env.verbosity, q[1]))
-                    procs.append( [[worker, worker_queue], q[0], runnable])
+
+                    if not nested:
+                        q = mp.Pipe()
+
+                        # if pool is empty, create a new process
+                        if not pool:
+                            worker_queue = mp.Queue()
+                            worker = SoS_Worker(queue=worker_queue, config=self.config, args=self.args)
+                            worker.start()
+                        else:
+                            # get worker, q and runnable is not needed any more
+                            p, _, _ = pool.pop(0)
+                            worker = p[0]
+                            worker_queue = p[1]
+
+                        env.logger.debug('{} execute {} from DAG'.format(i_am(), section.md5))
+                        worker_queue.put(('step', section, runnable._context, shared, env.run_mode, env.sig_mode, env.verbosity, q[1]))
+                        procs.append( [[worker, worker_queue], q[0], runnable])
+                    else:
+                        # send the step to the parent
+                        step_id = uuid.uuid4()
+                        env.logger.debug('{} send step {} to master'.format(i_am(), step_id))
+                        parent_pipe.send('step {}'.format(step_id))
+                        q = mp.Pipe()
+                        parent_pipe.send((section, runnable._context, shared, env.run_mode, env.sig_mode, env.verbosity, q[1]))
+                        runnable._status = 'step_pending'
+                        procs.append([None, q[0], runnable])
+
                 #
                 num_running = len([x for x in procs if x[2]._status != 'task_pending'])
 
@@ -899,21 +988,23 @@ class Base_Executor:
             raise e
         finally:
             for p, _, _ in procs + pool:
-                p[1].put(None)
-                p[0].terminate()
-                p[0].join()
+                if p is not None:
+                    # p in the nested workflow is empty
+                    p[1].put(None)
+                    p[0].terminate()
+                    p[0].join()
             prog.close()
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
             if failed_steps:
                 sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
                 exec_error.append(self.workflow.name,
-                    RuntimeError('{} failed step{}: {}'.format(len(sections), 
+                    RuntimeError('{} failed step{}: {}'.format(len(sections),
                         's' if len(sections) > 1 else '', ', '.join(sections))))
             if pending_steps:
                 sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in pending_steps]
                 exec_error.append(self.workflow.name,
-                    RuntimeError('{} pending step{}: {}'.format(len(sections), 
+                    RuntimeError('{} pending step{}: {}'.format(len(sections),
                         's' if len(sections) > 1 else '', ', '.join(sections))))
             if parent_pipe is not None:
                 parent_pipe.send(exec_error)
