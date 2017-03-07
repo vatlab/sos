@@ -134,7 +134,7 @@ echo 'Echo
         wf = script.workflow()
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
         #
-        Base_Executor(wf).dryrun()
+        Base_Executor(wf).run(mode='dryrun')
 
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
