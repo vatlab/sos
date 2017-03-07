@@ -91,6 +91,7 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 time.sleep(_repeat + 1)
 print('I am {}, done'.format(_index))
 """)
+        env.__wait__ = True
         wf = script.workflow()
         start = time.time()
         Base_Executor(wf).run()
@@ -302,7 +303,7 @@ run:
         Base_Executor(wf).run()
         # sos should wait till everything exists
         self.assertGreater(time.time() - st, 5)
-        self.assertLess(time.time() - st, 9)
+        self.assertLess(time.time() - st, 10)
 
 if __name__ == '__main__':
     unittest.main()

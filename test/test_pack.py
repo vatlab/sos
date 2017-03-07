@@ -59,7 +59,7 @@ sh:
 # does nothing
 a = 1
 ''')
-        subprocess.call('sos run test -s force', shell=True)
+        subprocess.call('sos run test -s force -w', shell=True)
         # create some other files and directory
         for d in ('ut_d1', 'ut_d2', 'ut_d2/ut_d3'):
             os.mkdir(d)
