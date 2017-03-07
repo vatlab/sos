@@ -67,6 +67,7 @@ sos_run('sub')
 [a_4]
 [a_5]
 ''')
+        env.verbosity = 1
         wf = script.workflow('a')
         Base_Executor(wf).run()
 

@@ -731,6 +731,7 @@ class Base_Executor:
                             runnable._status = 'workflow_pending'
 
                             wfrunnable = dummy_node()
+                            wfrunnable._node_id = workflow_id
                             wfrunnable._status = 'workflow_running_pending'
                             wfrunnable._pending_workflow = workflow_id
                             #
@@ -749,7 +750,7 @@ class Base_Executor:
                     env.logger.debug('{} receive a result'.format(i_am()))
                     if hasattr(runnable, '_from_nested'):
                         # if the runnable is from nested, we will need to send the result back to the workflow
-                        env.logger.debug('{} send res with key {} to nested'.format(i_am(), ' '.join(res.keys())))
+                        env.logger.debug('{} send res to nested'.format(i_am()))
                         runnable._status = 'completed'
                         runnable._child_pipe.send(res)
                     elif isinstance(res, (UnknownTarget, RemovedTarget)):
@@ -786,6 +787,14 @@ class Base_Executor:
                         env.logger.debug('{} received an exception'.format(i_am()))
                         runnable._status = 'failed'
                         exec_error.append(runnable._node_id, res)
+                        # if this is a node for a running workflow, need to mark it as failed as well
+                        #                        for proc in procs:
+                        if isinstance(runnable, dummy_node) and hasattr(runnable, '_pending_workflow'):
+                            for proc in procs:
+                                if proc is None:
+                                    continue
+                                if proc[2]._status.endswith('_pending') and proc[2]._pending_workflow == runnable._pending_workflow:
+                                    proc[2]._status = 'failed'
                         prog.update(1)
                     elif '__step_name__' in res:
                         env.logger.debug('{} receive step result '.format(i_am()))
@@ -886,6 +895,7 @@ class Base_Executor:
                             worker_queue = p[1]
 
                         runnable = dummy_node()
+                        runnable._node_id = step_id
                         runnable._status = 'running'
                         runnable._from_nested = True
                         runnable._child_pipe = pipe
