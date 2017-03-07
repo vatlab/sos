@@ -79,7 +79,6 @@ class DaemonizedProcess(mp.Process):
             env.logger.error('_Fork #1 failed: {0}\n'.format(err))
             sys.exit(1)
 
-        env.logger.warning('RUNNING {}'.format(self.cmd))
         os.setsid()
         os.umask(0)
         # do second fork

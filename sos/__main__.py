@@ -243,12 +243,12 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
     return parser
 
 def cmd_run(args, workflow_args):
-    import multiprocessing as mp
+    #import multiprocessing as mp
     # this setting makes sure that subprocesses are spawned in the way that is the same on windows
     # and unix, making sos much portable. The cost is that spawn is performance, which can hopefully
     # be addressed by the use of Pool (because processes do not need to be started and closed very
     # often (for each step)).
-    mp.set_start_method('spawn')
+    #mp.set_start_method('spawn')
 
     import atexit
     from .utils import env, get_traceback
