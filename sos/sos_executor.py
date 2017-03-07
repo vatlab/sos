@@ -837,6 +837,8 @@ class Base_Executor:
                     # if a job is pending, check if it is done.
                     if proc[2]._status == 'task_pending':
                         res = proc[2]._host.check_status(proc[2]._pending_tasks)
+                        #env.logger.warning(proc[2]._pending_tasks)
+                        #env.logger.warning(res)
                         if any(x in ('killed', 'dead', 'failed') for x in res):
                             for t, s in zip(proc[2]._pending_tasks, res):
                                 if s in ('killed', 'dead', 'failed') and not (hasattr(proc[2], '_killed_tasks') and t in proc[2]._killed_tasks):
@@ -983,12 +985,14 @@ class Base_Executor:
                 p[0].terminate()
             raise e
         finally:
-            for p, _, _ in procs + pool:
-                if p is not None:
-                    # p in the nested workflow is empty
+            if not nested:
+                for p, _, _ in procs + pool:
                     p[1].put(None)
-                    p[0].terminate()
-                    p[0].join()
+                time.sleep(0.1)
+                for p, _, _ in procs + pool:
+                    if p[0].is_alive():
+                        p[0].terminate()
+                        p[0].join()
             prog.close()
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()

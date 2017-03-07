@@ -36,12 +36,12 @@ from .sos_step import Interactive_Step_Executor
 
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
-    def __init__(self, workflow=None, args=[], shared=[], config={}):
+    def __init__(self, workflow=None, args=[], shared={}, config={}):
         # we actually do not have our own workflow, everything is passed from ipython
         # by nested = True we actually mean no new dictionary
         if env.sig_mode is None:
             env.sig_mode = 'ignore'
-        Base_Executor.__init__(self, workflow=workflow, args=args, shared='*', config=config)
+        Base_Executor.__init__(self, workflow=workflow, args=args, shared={}, config=config)
         if env.sig_mode != 'ignore':
             self.md5 = self.create_signature()
             # We append to existing workflow files because some files are ignored and we

@@ -214,8 +214,8 @@ def check_task(task):
     res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
 
     if os.path.isfile(res_file):
-        new_res = os.path.getmtime(task_file) <= os.path.getmtime(res_file)
         try:
+            new_res = os.path.getmtime(task_file) <= os.path.getmtime(res_file)
             from .target import FileTarget
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
@@ -407,6 +407,8 @@ class TaskEngine(threading.Thread):
 
     def run(self):
         while True:
+            if not self._active:
+                break
             to_run = []
             with threading.Lock():
                 # check status
@@ -425,6 +427,8 @@ class TaskEngine(threading.Thread):
                 #
                 active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
 
+            # NOTE: even if there is no active task, this monitor gets the status of all tasks in the
+            # system, in case this instance is restarted.
             status_output = self.query_tasks(active_tasks, verbosity=1)
             with threading.Lock():
                 for line in status_output.split('\n'):
