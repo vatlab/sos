@@ -60,6 +60,7 @@ class TestExecute(unittest.TestCase):
 
 
     def testSignature(self):
+        env.__wait__ = True
         self._testSignature(r"""
 import time
 [*_0]
