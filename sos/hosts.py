@@ -20,8 +20,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 import os
+import sys
 
 import subprocess
+import multiprocessing as mp
 import pickle
 import pkg_resources
 from collections.abc import Sequence
@@ -62,6 +64,47 @@ from .sos_task import BackgroundProcess_TaskEngine, TaskParams
 # Implementation wise, a queue instance is created for each queue.
 #
 
+class DaemonizedProcess(mp.Process):
+    def __init__(self, cmd, *args, **kwargs):
+        super(DaemonizedProcess, self).__init__(*args, **kwargs)
+        self.cmd = cmd
+
+    def run(self):
+        try:
+            pid = os.fork()
+            if pid > 0:
+                # exit from second parent
+                sys.exit(0)
+        except OSError as err:
+            env.logger.error('_Fork #1 failed: {0}\n'.format(err))
+            sys.exit(1)
+
+        env.logger.warning('RUNNING {}'.format(self.cmd))
+        os.setsid()
+        os.umask(0)
+        # do second fork
+        try:
+            pid = os.fork()
+            if pid > 0:
+                # exit from second parent
+                sys.exit(0)
+        except OSError as err:
+            env.logger.error('_Fork #2 failed: {0}\n'.format(err))
+            sys.exit(1)
+        # redirect standard file descriptors
+        sys.stdout.flush()
+        sys.stderr.flush()
+        si = open(os.devnull, 'r')
+        so = open(os.devnull, 'w')
+        se = open(os.devnull, 'w')
+        os.dup2(si.fileno(), sys.stdin.fileno())
+        os.dup2(so.fileno(), sys.stdout.fileno())
+        os.dup2(se.fileno(), sys.stderr.fileno())
+
+        # fork a new process
+        subprocess.Popen(self.cmd, shell=True, close_fds=True)
+        return
+
 class LocalHost:
     '''For local host, no path map, send and receive ...'''
 
@@ -87,7 +130,9 @@ class LocalHost:
 
     def run_command(self, cmd):
         # run command but does not wait for result.
-        p = subprocess.Popen(cmd, shell=True)
+        p = DaemonizedProcess(cmd)
+        p.start()
+        p.join()
         #ret = p.wait()
         #if (ret != 0):
         #    raise RuntimeError('Failed to execute {}'.format(cmd))

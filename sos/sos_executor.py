@@ -974,19 +974,19 @@ class Base_Executor:
 
                 if not procs or all(x[2]._status == 'failed' for x in procs):
                     break
-                #elif not env.__wait__ and num_running == 0:
-                #    # if all jobs are pending, let us check if all jbos have been submitted.
-                #    pending_tasks = []
-                #    running_tasks = []
-                #    for n in [x[2] for x in procs if x[2]._status == 'task_pending']:
-                #        p, r = n._host._task_engine.get_tasks()
-                #        pending_tasks.extend(p)
-                #        running_tasks.extend(r)
-                #    if not pending_tasks:
-                #        env.logger.info('SoS exists with {} running tasks'.format(len(running_tasks)))
-                #        for task in running_tasks:
-                #            env.logger.info(task)
-                #        break
+                elif not env.__wait__ and num_running == 0:
+                    # if all jobs are pending, let us check if all jbos have been submitted.
+                    pending_tasks = []
+                    running_tasks = []
+                    for n in [x[2] for x in procs if x[2]._status == 'task_pending']:
+                        p, r = n._host._task_engine.get_tasks()
+                        pending_tasks.extend(p)
+                        running_tasks.extend(r)
+                    if not pending_tasks:
+                        env.logger.info('SoS exists with {} running tasks'.format(len(running_tasks)))
+                        for task in running_tasks:
+                            env.logger.info(task)
+                        break
                 else:
                     time.sleep(0.1)
             # close all processes
