@@ -139,31 +139,18 @@ class SoS_Worker(mp.Process):
         # The pipe is the way to communicate with the master process.
         #
         # get workflow, args, shared, and config
+        self.args = args
+        self.reset_dict()
         env.logger.debug('Worker working on a workflow {}'.format(workflow_id))
-        executer = Base_Executor(wf, args=args, shared=shared,
-            config=config)
+        executer = Base_Executor(wf, args=args, shared=shared, config=config)
         # we send the pipe to subworkflow, which would send
         # everything directly to the master process, so we do not
         # have to collect result here
         executer.run(targets=targets, parent_pipe=pipe, my_workflow_id=workflow_id)
-        #child_pipe = mp.Pipe()
-
-#                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
-#            if env.run_mode == 'run':
-#                if shared:
-#                    q = mp.Queue()
-#                else:
-#                    q = None
-#                p = mp.Process(target=executor.run, kwargs={'targets': targets, 'queue': q})
-#                p.start()
-        #if isinstance(res, Exception):
-        #    pipe.send(res)
-        #else:
-        #    res['__workflow_id__'] =  workflow_id
-        #    pipe.send(res)
 
 
-    def run_step(self, section, context, shared, run_mode, sig_mode, verbosity, pipe):
+    def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity, pipe):
+        self.args = args
         self.reset_dict()
         env.run_mode = run_mode
         env.sig_mode = sig_mode
@@ -629,6 +616,7 @@ class Base_Executor:
 
         def i_am():
             return 'Nested' if nested else 'Master'
+
         #
         # if the exexcutor is started from sos_run, these should also be passed
         if 'sig_mode' in self.config:
@@ -720,7 +708,7 @@ class Base_Executor:
                         elif res.startswith('workflow'):
                             workflow_id = res.split(' ')[1]
                             # receive the real definition
-                            env.logger.debug('{} receives workflow reqiest {}'.format(i_am(), workflow_id))
+                            env.logger.debug('{} receives workflow request {}'.format(i_am(), workflow_id))
                             # (wf, args, shared, config)
                             wf, targets, args, shared, config = q.recv()
                             # a workflow needs to be executed immediately because otherwise if all workflows
@@ -826,7 +814,7 @@ class Base_Executor:
                         # result from a workflow
                         # the worker process has been returned to the pool, now we need to
                         # notify the step that is waiting for the result
-                        env.logger.warning('{} receive workflow result'.format(i_am()))
+                        env.logger.debug('{} receive workflow result'.format(i_am()))
                         for proc in procs:
                             if proc[2]._status == 'workflow_pending' and proc[2]._pending_workflow == res['__workflow_id__']:
                                 proc[1].send(res)
@@ -874,7 +862,7 @@ class Base_Executor:
                     # if steps from child nested workflow?
                     if self.step_queue:
                         step_id, step_param = self.step_queue.popitem()
-                        section, context, shared, run_mode, sig_mode, verbosity, pipe = step_param
+                        section, context, shared, args, run_mode, sig_mode, verbosity, pipe = step_param
                         # run it!
                         q = mp.Pipe()
                         # if pool is empty, create a new process
@@ -894,7 +882,7 @@ class Base_Executor:
                         runnable._child_pipe = pipe
 
                         env.logger.debug('{} execute {} from step_queue'.format(i_am(), step_id))
-                        worker_queue.put(('step', section, context, shared, run_mode, sig_mode, verbosity, q[1]))
+                        worker_queue.put(('step', section, context, shared, args, run_mode, sig_mode, verbosity, q[1]))
                         procs.append( [[worker, worker_queue], q[0], runnable])
                         continue
 
@@ -949,7 +937,7 @@ class Base_Executor:
                             worker_queue = p[1]
 
                         env.logger.debug('{} execute {} from DAG'.format(i_am(), section.md5))
-                        worker_queue.put(('step', section, runnable._context, shared, env.run_mode, env.sig_mode, env.verbosity, q[1]))
+                        worker_queue.put(('step', section, runnable._context, shared, self.args, env.run_mode, env.sig_mode, env.verbosity, q[1]))
                         procs.append( [[worker, worker_queue], q[0], runnable])
                     else:
                         # send the step to the parent
@@ -957,7 +945,7 @@ class Base_Executor:
                         env.logger.debug('{} send step {} to master'.format(i_am(), step_id))
                         parent_pipe.send('step {}'.format(step_id))
                         q = mp.Pipe()
-                        parent_pipe.send((section, runnable._context, shared, env.run_mode, env.sig_mode, env.verbosity, q[1]))
+                        parent_pipe.send((section, runnable._context, shared, self.args, env.run_mode, env.sig_mode, env.verbosity, q[1]))
                         runnable._status = 'step_pending'
                         procs.append([None, q[0], runnable])
 
