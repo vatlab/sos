@@ -407,8 +407,6 @@ class TaskEngine(threading.Thread):
 
     def run(self):
         while True:
-            if not self._active:
-                break
             to_run = []
             with threading.Lock():
                 # check status
