@@ -407,27 +407,10 @@ class TaskEngine(threading.Thread):
 
     def run(self):
         while True:
-            to_run = []
-            with threading.Lock():
-                # check status
-                active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
-                if len(active_tasks) < self.max_running_jobs and self.pending_tasks:
-                    to_run = self.pending_tasks[ : self.max_running_jobs - len(active_tasks)]
-
-            for tid in to_run:
-                self.execute_task(tid)
-            #
-            with threading.Lock():
-                self.tasks.extend(to_run)
-                for tid in to_run:
-                    self.pending_tasks.remove(tid)
-                    self.task_status[tid] = 'pending'
-                #
-                active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
-
             # NOTE: even if there is no active task, this monitor gets the status of all tasks in the
-            # system, in case this instance is restarted.
-            status_output = self.query_tasks(active_tasks, verbosity=1)
+            # system, in case this instance is restarted. Also, new pending tasks could have been
+            # running by a previous session so we need to check them as well.
+            status_output = self.query_tasks(self.tasks + self.pending_tasks, verbosity=1)
             with threading.Lock():
                 for line in status_output.split('\n'):
                     if not line.strip():
@@ -438,17 +421,43 @@ class TaskEngine(threading.Thread):
                     except Exception as e:
                         env.logger.warning('Unrecognized response {}: {}'.format(line, e))
                 self.summarize_status()
+
+            to_run = []
+            with threading.Lock():
+                # check status
+                active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
+                if len(active_tasks) < self.max_running_jobs and self.pending_tasks:
+                    to_run = self.pending_tasks[ : self.max_running_jobs - len(active_tasks)]
+
+            for tid in to_run:
+                if self.task_status[tid] == 'running':
+                    env.logger.info('{} ``runnng``'.format(tid))
+                else:
+                    self.execute_task(tid)
+            #
+            with threading.Lock():
+                self.tasks.extend(to_run)
+                for tid in to_run:
+                    self.pending_tasks.remove(tid)
+                    self.task_status[tid] = 'pending'
+
             time.sleep(self.status_check_interval)
 
     def submit_task(self, task_id):
         # submit tasks simply add task_id to pending task list
         with threading.Lock():
+            # if already in
+            if task_id in self.tasks or task_id in self.pending_tasks:
+                env.logger.info('{} ``{}``'.format(task_id, self.task_status[task_id]))
+                return
+            #
             active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
             if len(active_tasks) < self.max_running_jobs:
                 self.tasks.append(task_id)
                 self.task_status[task_id] = 'pending'
                 self.execute_task(task_id)
             else:
+                env.logger.info('{} ``queued``'.format(task_id))
                 self.pending_tasks.append(task_id)
                 # there is a change that the task_id already exists...
                 self.task_status[task_id] = 'pending'

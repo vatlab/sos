@@ -507,7 +507,6 @@ class Host:
         self._host_agent.prepare_task(task_id)
         #
         self._host_agent.send_task_file(task_id + '.task')
-        env.logger.info('{} ``queued``'.format(task_id))
         return self._task_engine.submit_task(task_id)
 
     def check_status(self, tasks):
