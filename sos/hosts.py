@@ -378,7 +378,9 @@ class RemoteHost:
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
-        p = subprocess.Popen(cmd, shell=True)
+        p = DaemonizedProcess(cmd)
+        p.start()
+        p.join()
         return p
 
     def receive_result(self, task_id):
