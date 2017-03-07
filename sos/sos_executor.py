@@ -974,7 +974,7 @@ class Base_Executor:
 
                 if not procs or all(x[2]._status == 'failed' for x in procs):
                     break
-                elif not env.__wait__ and num_running == 0:
+                elif not env.__wait__ and all(x[2]._status == 'task_pending' for x in procs):
                     # if all jobs are pending, let us check if all jbos have been submitted.
                     pending_tasks = []
                     running_tasks = []
