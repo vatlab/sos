@@ -188,7 +188,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     except Exception as e:
         if env.verbosity > 2:
             sys.stderr.write(get_traceback())
-        env.logger.error('{} ``failed`` with error {}'.format(task_id, e))
+        env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
         return {'succ': 1, 'exception': e, 'path': os.environ['PATH']}
     except KeyboardInterrupt:
         env.logger.info('{} ``interrupted`'.format(task_id))
