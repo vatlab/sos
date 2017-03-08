@@ -20,6 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 import os
+import sys
 import pickle
 import time
 import copy
@@ -28,7 +29,7 @@ from io import StringIO
 from tokenize import generate_tokens
 from collections.abc import Sequence
 
-from sos.utils import env, short_repr
+from sos.utils import env, short_repr, get_traceback
 from sos.sos_eval import SoS_exec
 
 from .target import textMD5, RuntimeInfo
@@ -185,6 +186,8 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         SoS_exec(task, sigil)
         os.chdir(orig_dir)
     except Exception as e:
+        if env.verbosity > 2:
+            sys.stderr.write(get_traceback())
         env.logger.error('{} ``failed`` with error {}'.format(task_id, e))
         return {'succ': 1, 'exception': e, 'path': os.environ['PATH']}
     except KeyboardInterrupt:

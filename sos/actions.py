@@ -717,7 +717,7 @@ def collect_input(script, input):
     return input_file
 
 
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script'])
 def report(script=None, input=None, output=None, **kwargs):
     '''Write script to an output file specified by `output`, which can be
     a filename to which the content of the script will be written,
@@ -725,6 +725,12 @@ def report(script=None, input=None, output=None, **kwargs):
     function will be called with the content. If output is unspecified, the content
     will be written to standard output or appended to a file specified with command
     line option `-r`. '''
+    if env.run_mode == 'dryrun':
+        print('report:\n{}'.format('' if script is None else script))
+        if input is not None:
+            for ifile in input:
+                print('  from file: {}'.format(ifile))
+        return
     file_handle = None
     if isinstance(output, str):
         if not output or output == '-':
