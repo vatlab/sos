@@ -73,7 +73,7 @@ def Rmarkdown(script=None, input=None, output=None, args='${input!r}, output_fil
         write_to_stdout = True
         output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name
     elif isinstance(output, str):
-        output_file = output
+        output_file = os.path.expanduser(output)
     else:
         raise RuntimeError('A filename is expected, {} provided'.format(output))
     #
