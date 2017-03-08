@@ -129,14 +129,12 @@ class LocalHost:
 
     def run_command(self, cmd):
         # run command but does not wait for result.
-        p = DaemonizedProcess(cmd)
-        p.start()
-        p.join()
-        #ret = p.wait()
-        #if (ret != 0):
-        #    raise RuntimeError('Failed to execute {}'.format(cmd))
-        #return ret
-        return p
+        if env.run_mode == 'dryrun':
+            subprocess.Popen(cmd, shell=True)
+        else:
+            p = DaemonizedProcess(cmd)
+            p.start()
+            p.join()
 
     def receive_result(self, task_id):
         res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
@@ -378,10 +376,13 @@ class RemoteHost:
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
-        p = DaemonizedProcess(cmd)
-        p.start()
-        p.join()
-        return p
+
+        if env.run_mode == 'dryrun':
+            subprocess.Popen(cmd, shell=True)
+        else:
+            p = DaemonizedProcess(cmd)
+            p.start()
+            p.join()
 
     def receive_result(self, task_id):
         receive_cmd = 'scp -q {}:.sos/tasks/{}.res {}'.format(self.address, task_id, self.task_dir)
