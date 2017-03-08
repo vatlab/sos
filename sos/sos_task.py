@@ -324,6 +324,7 @@ def check_tasks(tasks, verbosity=1):
         for s, t in zip(status, all_tasks):
             print('{}\t{}'.format(t, s))
     elif verbosity > 2:
+        import pprint
         for s, t in zip(status, all_tasks):
             print('{}\t{}'.format(t, s))
             task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
@@ -336,8 +337,9 @@ def check_tasks(tasks, verbosity=1):
             print()
             print('ENVIRONMENT:')
             job_vars = params.data[1]
-            for k, v in job_vars.items():
-                print('{}:\t{}'.format(k, short_repr(v) if verbosity == 3 else repr(v)))
+            for k in sorted(job_vars.keys()):
+                v = job_vars[k]
+                print('{:22}{}'.format(k, short_repr(v) if verbosity == 3 else pprint.pformat(v)))
             print()
         
 
