@@ -174,8 +174,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             executed sequentially (-j 1). If a greater than 1 number is specified
             SoS will execute the workflow in parallel mode and execute up to
             specified processes concurrently. These include looped processes
-            within a step (with runtime option `concurrent=True`) and steps with
-            non-missing required files.''')
+            within a step and steps with non-missing required files.''')
     parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE',
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary
