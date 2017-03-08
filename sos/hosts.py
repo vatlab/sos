@@ -244,7 +244,7 @@ class RemoteHost:
                     dest = v + dest[len(k):]
             return dest
         elif isinstance(source, Sequence):
-            return [self.map_var(x) for x in source]
+            return [self._map_var(x) for x in source]
         else:
             raise ValueError('Cannot map variables {} of type {}'.format(source, type(source).__name__))
 
@@ -320,10 +320,7 @@ class RemoteHost:
             elif var in task_vars and pickleable(task_vars[var], var):
                 try:
                     task_vars[var] = self._map_var(task_vars[var])
-                    if task_vars[var] != task_vars[var]:
-                        env.logger.info('On {}: ``{}`` = {}'.format(self.host.alias, var, short_repr(task_vars[var])))
-                    else:
-                        env.logger.debug('{}: {} is kept'.format(var, short_repr(task_vars[var])))
+                    env.logger.info('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
                 except Exception as e:
                     env.logger.debug(e)
             else:
@@ -499,7 +496,7 @@ class Host:
         return self._host_agent.receive_from_host(items)
 
     def map_var(self, vars):
-        return self._host_agent.map_var(vars)
+        return self._host_agent._map_var(vars)
 
     def submit_task(self, task_id):
         #

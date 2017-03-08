@@ -319,7 +319,8 @@ def check_tasks(tasks, verbosity=1):
     if not all_tasks:
         env.logger.warning('No matching tasks')
         return
-    p = Pool(len(all_tasks))
+    # at most 20 threads
+    p = Pool(min(20, len(all_tasks)))
     status = p.map(check_task, all_tasks)
     if verbosity == 0:
         print('\n'.join(status))
@@ -430,40 +431,54 @@ class TaskEngine(threading.Thread):
         return pending, running
 
     def run(self):
+        # get all system tasks that might have been running ...
+        # this will be run only once when the task engine starts
+        status_output = self.query_tasks([], verbosity=1)
+        with threading.Lock():
+            for line in status_output.split('\n'):
+                if not line.strip():
+                    continue
+                try:
+                    tid, tst = line.split('\t')
+                    self.task_status[tid] = tst
+                except Exception as e:
+                    env.logger.warning('Unrecognized response {}: {}'.format(line, e))
         while True:
-            # NOTE: even if there is no active task, this monitor gets the status of all tasks in the
-            # system, in case this instance is restarted. Also, new pending tasks could have been
-            # running by a previous session so we need to check them as well.
-            status_output = self.query_tasks(self.tasks + self.pending_tasks, verbosity=1)
-            with threading.Lock():
-                for line in status_output.split('\n'):
-                    if not line.strip():
-                        continue
-                    try:
-                        tid, tst = line.split('\t')
-                        self.task_status[tid] = tst
-                    except Exception as e:
-                        env.logger.warning('Unrecognized response {}: {}'.format(line, e))
-                self.summarize_status()
+            # if no new task, does not do anything.
+            if self.tasks:
+                status_output = self.query_tasks(self.tasks, verbosity=1)
+                with threading.Lock():
+                    for line in status_output.split('\n'):
+                        if not line.strip():
+                            continue
+                        try:
+                            tid, tst = line.split('\t')
+                            self.task_status[tid] = tst
+                        except Exception as e:
+                            env.logger.warning('Unrecognized response {}: {}'.format(line, e))
+                    self.summarize_status()
 
-            to_run = []
-            with threading.Lock():
-                # check status
-                active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
-                if len(active_tasks) < self.max_running_jobs and self.pending_tasks:
-                    to_run = self.pending_tasks[ : self.max_running_jobs - len(active_tasks)]
+            if self.pending_tasks:
+                to_run = []
+                with threading.Lock():
+                    # check status
+                    active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'killed') \
+                            and not self.task_status[x].startswith('failed')]
+                    if len(active_tasks) < self.max_running_jobs:
+                        to_run = self.pending_tasks[ : self.max_running_jobs - len(active_tasks)]
 
-            for tid in to_run:
-                if self.task_status[tid] == 'running':
-                    env.logger.info('{} ``runnng``'.format(tid))
-                else:
-                    self.execute_task(tid)
-            #
-            with threading.Lock():
-                self.tasks.extend(to_run)
+                env.logger.error('{} pending {} running'.format(len(self.pending_tasks), len(active_tasks)))
                 for tid in to_run:
-                    self.pending_tasks.remove(tid)
-                    self.task_status[tid] = 'pending'
+                    if self.task_status[tid] == 'running':
+                        env.logger.info('{} ``runnng``'.format(tid))
+                    else:
+                        self.execute_task(tid)
+                #
+                with threading.Lock():
+                    self.tasks.extend(to_run)
+                    for tid in to_run:
+                        self.pending_tasks.remove(tid)
+                        self.task_status[tid] = 'pending'
 
             time.sleep(self.status_check_interval)
 
@@ -475,10 +490,15 @@ class TaskEngine(threading.Thread):
                 env.logger.info('{} ``{}``'.format(task_id, self.task_status[task_id]))
                 return
             #
+            if task_id in self.task_status and self.task_status[task_id]:
+                if self.task_status[task_id] == 'running':
+                    env.logger.info('{} ``already runnng``'.format(task_id))
+                    return
+
             active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
             if len(active_tasks) < self.max_running_jobs:
                 self.tasks.append(task_id)
-                self.task_status[task_id] = 'pending'
+                self.task_status[task_id] = 'running'
                 self.execute_task(task_id)
             else:
                 env.logger.info('{} ``queued``'.format(task_id))
