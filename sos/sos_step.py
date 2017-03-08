@@ -1033,7 +1033,7 @@ class Base_Step_Executor:
                     raise RuntimeError('Failed to execute process\n"{}"\n{}'.format(short_repr(self.step.task), e))
                 #
                 # if not concurrent, we have to wait for the completion of the task
-                if 'concurrent' not in env.sos_dict['_runtime'] or not env.sos_dict['_runtime']['concurrent']:
+                if 'concurrent' in env.sos_dict['_runtime'] and env.sos_dict['_runtime']['concurrent'] is False:
                     self.wait_for_results()
                 #
                 # endfor loop for each input group
