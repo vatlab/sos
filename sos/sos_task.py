@@ -26,6 +26,7 @@ import copy
 import threading
 from io import StringIO
 from tokenize import generate_tokens
+from collections.abc import Sequence
 
 from sos.utils import env, short_repr
 from sos.sos_eval import SoS_exec
@@ -157,17 +158,26 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
             os.chdir(os.path.expanduser(sos_dict['_runtime']['workdir']))
         # set environ ...
         # we join PATH because the task might be executed on a different machine
-        if '_runtime' in sos_dict and 'env' in sos_dict['_runtime']:
-            for key, value in sos_dict['_runtime']['env'].items():
-                if 'PATH' in key and key in os.environ:
-                    new_path = OrderedDict()
-                    for p in value.split(os.pathsep):
-                        new_path[p] = 1
-                    for p in value.split(os.environ[key]):
-                        new_path[p] = 1
-                    os.environ[key] = os.pathsep.join(new_path.keys())
+        if '_runtime' in sos_dict:
+            if 'env' in sos_dict['_runtime']:
+                for key, value in sos_dict['_runtime']['env'].items():
+                    if 'PATH' in key and key in os.environ:
+                        new_path = OrderedDict()
+                        for p in value.split(os.pathsep):
+                            new_path[p] = 1
+                        for p in value.split(os.environ[key]):
+                            new_path[p] = 1
+                        os.environ[key] = os.pathsep.join(new_path.keys())
+                    else:
+                        os.environ[key] = value
+            if 'prepend_path' in sos_dict['_runtime']:
+                if isinstance(sos_dict['_runtime']['prepend_path'], str):
+                    os.environ['PATH'] = sos_dict['_runtime']['prepend_path'] + os.pathsep + os.environ['PATH']
+                elif isinstance(env.sos_dict['_runtime']['prepend_path'], Sequence):
+                    os.environ['PATH'] = os.pathsep.join(sos_dict['_runtime']['prepend_path']) + os.pathsep + os.environ['PATH']
                 else:
-                    os.environ[key] = value
+                    raise ValueError('Unacceptable input for option prepend_path: {}'.format(sos_dict['_runtime']['prepend_path']))
+
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)

@@ -611,17 +611,6 @@ class Base_Step_Executor:
                 os.makedirs(os.path.expanduser(env.sos_dict['_runtime']['workdir']))
             except Exception as e:
                 raise RuntimeError('Failed to create workdir {}'.format(env.sos_dict['_runtime']['workdir']))
-        if 'env' in env.sos_dict['_runtime']:
-            env.sos_dict['_runtime']['env'].update({x:y for x,y in os.environ.items() if x not in env.sos_dict['_runtime']['env'] and isinstance(y, str)})
-        else:
-            env.sos_dict['_runtime']['env'] = {x:y for x,y in os.environ.items() if isinstance(y, str)}
-        if 'prepend_path' in env.sos_dict['_runtime']:
-            if isinstance(env.sos_dict['_runtime']['prepend_path'], str):
-                env.sos_dict['_runtime']['env']['PATH'] = env.sos_dict['_runtime']['prepend_path'] + os.pathsep + env.sos_dict['_runtime']['env']['PATH']
-            elif isinstance(env.sos_dict['_runtime']['prepend_path'], Sequence):
-                env.sos_dict['_runtime']['env']['PATH'] = os.pathsep.join(env.sos_dict['_runtime']['prepend_path']) + os.pathsep + env.sos_dict['_runtime']['env']['PATH']
-            else:
-                raise ValueError('Unacceptable input for option prepend_path: {}'.format(env.sos_dict['_runtime']['prepend_path']))
 
         task_vars = env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
                     | {'_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__',
