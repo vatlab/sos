@@ -325,23 +325,31 @@ def check_tasks(tasks, verbosity=1):
             print('{}\t{}'.format(t, s))
     elif verbosity > 2:
         import pprint
+        import glob
         for s, t in zip(status, all_tasks):
-            print('{}\t{}'.format(t, s))
+            print('{}\t{}\n'.format(t, s))
             task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 continue
             with open(task_file, 'rb') as task:
                 params = pickle.load(task)
-            print('TASK:')
+            print('TASK:\n=====')
             print(params.data[0])
             print()
-            print('ENVIRONMENT:')
+            print('ENVIRONMENT:\n============')
             job_vars = params.data[1]
             for k in sorted(job_vars.keys()):
                 v = job_vars[k]
                 print('{:22}{}'.format(k, short_repr(v) if verbosity == 3 else pprint.pformat(v)))
             print()
-        
+            if verbosity == 4:
+                # if there are other files such as job file, print them.
+                files = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
+                files = sorted([x for x in files if not x.endswith('.res') and not x.endswith('.task')])
+                for f in files:
+                    print('{}:\n{}'.format(os.path.basename(f), '='*(len(os.path.basename(f))+1)))
+                    with open(f) as fc:
+                        print(fc.read())
 
 def kill_tasks(tasks):
     #
