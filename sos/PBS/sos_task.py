@@ -116,7 +116,7 @@ class PBS_TaskEngine(TaskEngine):
                 raise ValueError('Failed to generate job submission command from template "{}": {}'.format(
                     self.submit_cmd, e))
             env.logger.debug('submit {}: {}'.format(task_id, cmd))
-            env.logger.info('{} ``submitted``'.format(task_id))
+            env.logger.info('{} ``submitted`` to {}'.format(task_id, self.alias))
             try:
                 job_id = self.agent.check_output(cmd)
                 # let us write an job_id file so that we can check status of tasks more easily
