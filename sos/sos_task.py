@@ -50,7 +50,7 @@ class TaskParams(object):
     def __repr__(self):
         return self.name
 
-def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5,
+def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
     resource_monitor_interval=60):
     '''A function that execute specified task within a local dictionary
     (from SoS env.sos_dict). This function should be self-contained in that
@@ -72,6 +72,7 @@ def execute_task(task_id, verbosity=None, sigmode=None, monitor_interval=5,
         env.verbosity = verbosity
     if sigmode is not None:
         env.sig_mode = sigmode
+    env.run_mode = runmode
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
 
@@ -495,7 +496,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
 
     def execute_task(self, task_id):
         env.logger.info('{} ``submitted``'.format(task_id))
-        return self.agent.run_command("sos execute {0} -v {1} -s {2}".format(
-            task_id, env.verbosity, env.sig_mode))
+        return self.agent.run_command("sos execute {0} -v {1} -s {2} {3}".format(
+            task_id, env.verbosity, env.sig_mode, '--dryrun' if env.run_mode == 'dryrun' else ''))
 
 

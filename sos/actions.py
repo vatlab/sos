@@ -204,6 +204,9 @@ class SoS_ExecuteScript:
             sfile.write(self.script)
         env.logger.trace(self.script)
         if 'docker_image' in kwargs:
+            if env.run_mode == 'dryrun':
+                print('In docker image {}\n{}:\n{}\n'.format(kwargs['docker_image'], self.interpreter, self.script))
+                return None
             from .docker.client import DockerClient
             docker = DockerClient()
             docker.run(kwargs['docker_image'], self.script, self.interpreter, self.args, self.suffix,
@@ -236,6 +239,9 @@ class SoS_ExecuteScript:
                             if not self.args:
                                 self.args = '${filename!q}'
                 #
+                if env.run_mode == 'dryrun':
+                    print('{}:\n{}\n'.format(self.interpreter, self.script))
+                    return None
                 cmd = interpolate('{} {}'.format(self.interpreter, self.args), '${ }', {'filename': script_file, 'script': self.script})
                 #
                 if env.run_mode == 'interactive':
@@ -342,9 +348,12 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
         # restore step_name in case the subworkflow re-defines it
         env.sos_dict.set('step_name', my_name)
 
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'interpreter', 'suffix', 'args'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'interpreter', 'suffix', 'args'])
 def execute_script(script, interpreter, suffix, args='', **kwargs):
     '''Execute specified script using specified interpreter.'''
+    if env.run_mode == 'dryrun':
+        print('{}:\n{}\n'.format(interpreter, script))
+        return None
     return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['expr', 'msg'])
@@ -591,7 +600,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
     return os.path.isfile(dest)
 
 
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['URLs', 'dest_dir', 'dest_file', 'decompress'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['URLs', 'dest_dir', 'dest_file', 'decompress'])
 def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     '''Download files from specified URL, which should be space, tab or
     newline separated URLs. The files will be downloaded to specified
@@ -599,6 +608,9 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     validate downloaded `filename`. Unless otherwise specified, compressed
     files are decompressed.
     '''
+    if env.run_mode == 'dryrun':
+        print('download\n{}\n'.format(URLs))
+        return None
     if isinstance(URLs, str):
         urls = [x.strip() for x in URLs.split() if x.strip()]
     else:
@@ -647,27 +659,27 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
         raise RuntimeError('Not all files have been downloaded')
     return 0
 
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def run(script, args='', **kwargs):
     '''Execute specified script using bash.'''
     return SoS_ExecuteScript(script, '', '', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def perl(script, args='', **kwargs):
     '''Execute specified script using perl.'''
     return SoS_ExecuteScript(script, 'perl', '.pl', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def ruby(script, args='', **kwargs):
     '''Execute specified script using ruby.'''
     return SoS_ExecuteScript(script, 'ruby', '.rb', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def node(script, args='', **kwargs):
     '''Execute specified script using node.'''
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)
 
-@SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['script', 'args'])
+@SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def JavaScript(script, args='', **kwargs):
     '''Execute specified script using node.'''
     return SoS_ExecuteScript(script, 'node', '.js', args).run(**kwargs)

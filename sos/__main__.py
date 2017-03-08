@@ -200,7 +200,8 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             default, a sos step will return immediately after submitting a task,
             and the master process would exit after all tasks have been submitted
             and there is no more step to execute. Specifying option "-w" will make
-            SoS wait for the completion of all tasks.''')
+            SoS wait for the completion of all tasks. -w is the default mode
+            in dryrun mode.''')
     parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', nargs='?',
          help='''Default output of action report, which is by default the
             standard output but you can redirect it to another file with this
@@ -263,6 +264,8 @@ def cmd_run(args, workflow_args):
     env.verbosity = args.verbosity
     env.__queue__ = args.__queue__
     env.__wait__ = args.__wait__
+    if args.__dryrun__:
+        env.__wait__ = True
 
     from .sos_executor import Base_Executor
 
@@ -376,6 +379,9 @@ def get_execute_parser(desc_only=False):
         default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
+    parser.add_argument('-n', '--dryrun', action='store_true', dest='__dryrun__',
+        help='''Dryrun mode, which will cause actions to print scripts instead
+            of executing them.''')
     parser.add_argument('-q', '--queue', help='''Execute the task on the specified
         tasks queue or remote host if the tasks . The queue must be defined in SoS
         config file (system default or specified with option --config). SoS would
@@ -417,7 +423,8 @@ def cmd_execute(args, workflow_args):
             #
             if os.path.isfile(res_file):
                 os.remove(res_file)
-            res = execute_task(task, verbosity=args.verbosity, sigmode=args.__sigmode__,
+            res = execute_task(task, verbosity=args.verbosity, runmode='dryrun' if args.__dryrun__ else 'run', 
+                sigmode=args.__sigmode__,
                 monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
             with open(res_file, 'wb') as res_file:
                 pickle.dump(res, res_file)
@@ -431,6 +438,7 @@ def cmd_execute(args, workflow_args):
         env.sos_dict.set('CONFIG', cfg)
         env.verbosity = args.verbosity
         env.sig_mode = args.__sigmode__
+        env.run_mode = 'dryrun' if args.__dryrun__ else 'run'
         host = Host(args.queue)
         for task in args.tasks:
             host.submit_task(task)
@@ -984,7 +992,7 @@ def get_pack_parser(desc_only=False):
         help='''A short message to be included into the archive. Because the
         message would be lost during unpacking, it is highly recommended that
         you create a README file and include it with option --include.''')
-    parser.add_argument('-n', '--dryrun', action='store_true',
+    parser.add_argument('-n', '--dryrun', action='store_true', dest='__dryrun__',
         help='''List files to be included and total file size without actually
         archiving them''')
     parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
@@ -1122,7 +1130,7 @@ def cmd_pack(args, unknown_args):
                 manifest.write('RUNTIME\t{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.signature()))
     prog.close()
     #
-    if args.dryrun:
+    if args.__dryrun__:
         print('A total of {} files ({}) with additional scripts and runtime files would be archived.'.
             format(len(tracked_files), pretty_size(total_size)))
         sys.exit(0)

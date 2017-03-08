@@ -76,6 +76,7 @@ class PBS_TaskEngine(TaskEngine):
         runtime['task'] = task_id
         runtime['verbosity'] = env.verbosity
         runtime['sig_mode'] = env.sig_mode
+        runtime['run_mode'] = env.run_mode
         if 'walltime' in sos_dict['_runtime']:
             wt = sos_dict['_runtime']['walltime']
             runtime['walltime'] = '{}:{}:{}'.format(wt//(60*60), wt//60 % 60, wt % 60)
@@ -99,23 +100,31 @@ class PBS_TaskEngine(TaskEngine):
 
         # then copy the job file to remote host if necessary
         self.agent.send_task_file(task_id + '.pbs')
-        #
-        # now we need to figure out a command to submit the task
-        try:
-            cmd = interpolate(self.submit_cmd, '${ }', runtime)
-        except Exception as e:
-            raise ValueError('Failed to generate job submission command from template "{}": {}'.format(
-                self.submit_cmd, e))
-        env.logger.debug('submit {}: {}'.format(task_id, cmd))
-        env.logger.info('{} ``submitted``'.format(task_id))
-        try:
-            job_id = self.agent.check_output(cmd)
-            # let us write an job_id file so that we can check status of tasks more easily
-            job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.job_id')
-            with open(job_id_file, 'w') as job:
-                job.write(job_id)
-        except Exception as e:
-            raise RuntimeError('Failed to submit task {}: {}'.format(task_id, e))
+
+        if env.run_mode == 'dryrun':
+            try:
+                cmd = 'bash ~/.sos/tasks/{}.pbs'.format(task_id)
+                print(self.agent.check_output(cmd))
+            except Exception as e:
+                raise RuntimeError('Failed to submit task {}: {}'.format(task_id, e))
+        else:
+            #
+            # now we need to figure out a command to submit the task
+            try:
+                cmd = interpolate(self.submit_cmd, '${ }', runtime)
+            except Exception as e:
+                raise ValueError('Failed to generate job submission command from template "{}": {}'.format(
+                    self.submit_cmd, e))
+            env.logger.debug('submit {}: {}'.format(task_id, cmd))
+            env.logger.info('{} ``submitted``'.format(task_id))
+            try:
+                job_id = self.agent.check_output(cmd)
+                # let us write an job_id file so that we can check status of tasks more easily
+                job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.job_id')
+                with open(job_id_file, 'w') as job:
+                    job.write(job_id)
+            except Exception as e:
+                raise RuntimeError('Failed to submit task {}: {}'.format(task_id, e))
 
     def query_tasks(self, tasks, verbosity=1):
         if verbosity <= 1:
