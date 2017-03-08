@@ -390,6 +390,10 @@ def get_execute_parser(desc_only=False):
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
         sos config.yml files.''')
+    parser.add_argument('-w', '--wait', action='store_true', help='''Wait for the
+        completion of the task, and retrieve job results if needed after the
+        completion of the task. This option is only valid with the specification
+        of the -q option.''')
     parser.set_defaults(func=cmd_execute)
     return parser
 
@@ -430,6 +434,7 @@ def cmd_execute(args, workflow_args):
     else:
         from .hosts import Host
         from .utils import env, load_config_files
+        import time
         # this is for local execution using a task queue. The task queue
         # will prepare the task, sync files, and execute this command remotely
         # if needed.
@@ -441,6 +446,29 @@ def cmd_execute(args, workflow_args):
         host = Host(args.queue)
         for task in args.tasks:
             host.submit_task(task)
+        if not args.wait:
+            return
+        failed_tasks = set()
+        while True:
+            res = host.check_status(args.tasks)
+            if any(x in ('killed', 'dead') or x.startswith('failed') for x in res):
+                for t, s in zip(args.tasks, res):
+                    if (s in ('killed', 'dead') or s.startswith('failed')) and t not in failed_tasks:
+                        env.logger.warning('{} ``{}``'.format(t, s))
+                        failed_tasks.add(t)
+                if all(x in ('killed', 'completed', 'dead') or x.startswith('failed') for x in res):
+                    raise RuntimeError('{} completed, {} dead, {} failed, {} killed)'.format(
+                        len([x for x in res if x=='completed']), len([x for x in res if x=='dead']),
+                        len([x for x in res if x.startswith('failed')]), len([x for x in res if x=='killed'])))
+            if any(x in ('pending', 'running', 'completed-old') or x.startswith('failed-old') for x in res):
+                continue
+            elif all(x == 'completed' for x in res):
+                env.logger.debug('Put results for {}'.format(args.tasks))
+                res = host.retrieve_results(args.tasks)
+                return
+            else:
+                raise RuntimeError('Job returned with status {}'.format(res))
+            time.sleep(0.5)
 
 #
 # command status

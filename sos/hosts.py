@@ -268,9 +268,8 @@ class RemoteHost:
         for source in sorted(receiving.keys()):
             dest = receiving[source]
             if self.is_shared(dest):
-                env.logger.info('Skip retrieving ``{}`` from shared file system'.format(dest))
+                env.logger.debug('Skip retrieving ``{}`` from shared file system'.format(dest))
             else:
-                env.logger.info('Receiving ``{}`` from {}:{}'.format(dest, self.alias, source))
                 cmd = interpolate(self.receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
                 try:
                     ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
@@ -382,10 +381,11 @@ class RemoteHost:
             p.join()
 
     def receive_result(self, task_id):
-        receive_cmd = 'scp -q {}:.sos/tasks/{}.res {}'.format(self.address, task_id, self.task_dir)
-        ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-        if (ret != 0):
-            raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
+        for filetype in ('res', 'status'):
+            receive_cmd = 'scp -q {}:.sos/tasks/{}.{} {}'.format(self.address, task_id, filetype, self.task_dir)
+            ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            if (ret != 0):
+                raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
         res_file = os.path.join(self.task_dir, task_id + '.res')
         with open(res_file, 'rb') as result:
             res = pickle.load(result)
@@ -402,8 +402,10 @@ class RemoteHost:
             #
             if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined):
                 self._receive_from_host(job_dict['_output'])
+                env.logger.info('{} ``received`` {}'.format(task_id, short_repr(job_dict['_output'])))
             if 'from_host' in job_dict['_runtime']:
                 self._receive_from_host(job_dict['_runtime']['from_host'])
+                env.logger.info('{} ``received`` {}'.format(task_id, short_repr(job_dict['_runtime']['from_host'])))
         return res
 
 
