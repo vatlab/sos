@@ -281,8 +281,6 @@ class RemoteHost:
     #
     # Interface
     #
-    #
-
     def prepare_task(self, task_id):
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
         with open(task_file, 'rb') as task:
@@ -291,10 +289,13 @@ class RemoteHost:
 
         if task_vars['_input'] and not isinstance(task_vars['_input'], Undetermined):
             self._send_to_host(task_vars['_input'])
+            env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_input'])))
         if task_vars['_depends'] and not isinstance(task_vars['_depends'], Undetermined):
             self._send_to_host(task_vars['_depends'])
+            env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_depends'])))
         if 'to_host' in task_vars['_runtime']:
             self._send_to_host(task_vars['_runtime']['to_host'])
+            env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_runtime']['to_host'])))
 
         # map variables
         vars = ['_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__', '_runtime',
@@ -318,8 +319,14 @@ class RemoteHost:
                     task_vars[var]['workdir'] = self._map_var(task_vars[var]['workdir'])
             elif var in task_vars and pickleable(task_vars[var], var):
                 try:
+                    old_var = task_vars[var]
                     task_vars[var] = self._map_var(task_vars[var])
-                    env.logger.info('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
+                    # looks a bit suspicious
+                    if isinstance(old_var, str) and old_var != task_vars[var] and not os.path.exists(os.path.expanduser(old_var)) \
+                            and os.sep not in old_var:
+                        env.logger.warning('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
+                    else:
+                        env.logger.info('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
                 except Exception as e:
                     env.logger.debug(e)
             else:
