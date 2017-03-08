@@ -616,7 +616,7 @@ class Base_Step_Executor:
                     | {'_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__',
                     '_local_input_{}'.format(env.sos_dict['_index']),
                     '_local_output_{}'.format(env.sos_dict['_index']),
-                    '_index', '__args__', 'step_name', '_runtime',  '__workflow_sig__',
+                    '_index', '__args__', 'step_name', '_runtime',
                     'CONFIG', '__signature_vars__', '__step_context__', '__config_file__'
                     })
 

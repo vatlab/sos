@@ -624,7 +624,7 @@ class RuntimeInfo:
             md5.write('# step process\n')
             md5.write(self.script)
         # successfully write signature, write in workflow runtime info
-        if '__workflow_sig__' in env.sos_dict:
+        if '__workflow_sig__' in env.sos_dict and os.path.isfile(env.sos_dict['__workflow_sig__']):
             workflow_sig = env.sos_dict['__workflow_sig__']
             with fasteners.InterProcessLock(workflow_sig + '_'):
                 with open(workflow_sig, 'a') as wf:
@@ -756,7 +756,7 @@ class RuntimeInfo:
             return 'No MD5 signature for {}'.format(', '.join(x for x,y in files_checked.items() if not y))
         env.logger.trace('Signature matches and returns {}'.format(res))
         # validation success, record signature used
-        if '__workflow_sig__' in env.sos_dict:
+        if '__workflow_sig__' in env.sos_dict and os.path.isfile(env.sos_dict['__workflow_sig__']):
             workflow_sig = env.sos_dict['__workflow_sig__']
             with fasteners.InterProcessLock(workflow_sig + '_'):
                 with open(workflow_sig, 'a') as wf:
