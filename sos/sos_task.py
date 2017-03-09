@@ -58,7 +58,6 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     (from SoS env.sos_dict). This function should be self-contained in that
     it can be handled by a task manager, be executed locally in a separate
     process or remotely on a different machine.'''
-    env.logger.info('{} ``started``'.format(task_id))
     # start a monitoring file, which would be killed after the job
     # is done (killed etc)
     m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
@@ -78,6 +77,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
 
+    env.logger.info('{} ``started``'.format(task_id))
     env.sos_dict.quick_update(sos_dict)
 
     skipped = False
