@@ -28,7 +28,7 @@ import pickle
 import pkg_resources
 from collections.abc import Sequence
 
-from .utils import env, pickleable, short_repr
+from .utils import env, pickleable, short_repr, load_config_files
 from .sos_eval import interpolate, Undetermined
 from .sos_task import BackgroundProcess_TaskEngine, TaskParams
 
@@ -109,6 +109,7 @@ class LocalHost:
 
     def __init__(self, alias='localhost'):
         self.alias = alias
+        self.address = 'localhost'
         # we checkk local jobs more aggressively
         self.config = {'alias': 'localhost', 'status_check_interval': 2}
 
@@ -439,6 +440,7 @@ class Host:
                 raise ValueError('Please define at least "address" for host specification')
             self.config = alias
             self.alias = self.config.get('alias', self.config['address'])
+        self.description = self.config.get('description', '')
 
     def _get_host_agent(self):
         if self.alias not in self.host_instances:
@@ -448,25 +450,25 @@ class Host:
                 self.host_instances[self.alias] = RemoteHost(self.config)
 
             if 'queue_type' not in self.config:
-                task_engine_type = 'process'
+                self._task_engine_type = 'process'
                 task_engine = BackgroundProcess_TaskEngine(self.host_instances[self.alias])
             else:
-                task_engine_type = self.config['queue_type'].strip()
+                self._task_engine_type = self.config['queue_type'].strip()
                 task_engine = None
 
                 available_engines = []
                 for entrypoint in pkg_resources.iter_entry_points(group='sos_taskengines'):
                     try:
                         available_engines.append(entrypoint.name)
-                        if entrypoint.name == task_engine_type:
+                        if entrypoint.name == self._task_engine_type:
                             task_engine = entrypoint.load()(self.host_instances[self.alias])
                             break
                     except Exception as e:
-                        env.logger.warning('Failed to load task engine {}: {}'.format(task_engine_type, e))
+                        env.logger.warning('Failed to load task engine {}: {}'.format(self._task_engine_type, e))
 
                 if task_engine is None:
                     raise RuntimeError('Failed to locate task engine type {}. Available engine types are {}'.format(
-                        task_engine_type, ', '.join(available_engines)))
+                        self._task_engine_type, ', '.join(available_engines)))
 
             self.host_instances[self.alias]._task_engine = task_engine
             # the task engine is a thread and will run continously
@@ -515,3 +517,41 @@ class Host:
         return {task: self._host_agent.receive_result(task) for task in tasks}
 
 
+def list_queues(config_file, verbosity = 1):
+    cfg = load_config_files(config_file)
+    env.sos_dict.set('CONFIG', cfg)
+    hosts = cfg.get('hosts', [])
+    host_description = [['Alias', 'Address', 'Queue Type', 'Description'],
+                        ['-----', '-------', '----------', '-----------']]
+    for host in hosts:
+        h = Host(host)
+        if verbosity == 0:
+            print(h.alias)
+        elif verbosity in (1, 2):
+            host_description.append([
+                h.alias, h._host_agent.address, h._task_engine_type, h.description])
+        else:
+            print('Alias:       {}'.format(h.alias))
+            print('Address:     {}'.format(h._host_agent.address))
+            print('Queue Type:  {}'.format(h._task_engine_type))
+            print('Description: {}'.format(h.description))
+            print('Configuration:')
+            keys = sorted(h.config.keys())
+            for key in keys:
+                print('  {} {}'.format((key + ':').ljust(24), h.config[key]))
+
+            if verbosity == 4:
+                if 'template_file' in keys:
+                    template_file = h.config['template_file']
+                    if not os.path.isfile(os.path.expanduser(template_file)):
+                        env.warning('Missing template_file {}'.format(template_file))
+                    else:
+                        print('------ begin of {} -------------'.format(template_file))
+                        with open(os.path.expanduser(template_file)) as tfile:
+                            print(tfile.read())
+                        print('------ end of file ---------------')
+            print()
+    if verbosity in (1, 2):
+        width = [(len(x) for x in row) for row in host_description]
+        max_width = [max(x) for x in zip(*width)]
+        print('\n'.join(' '.join([t.ljust(w) for t,w in zip(row, max_width)]) for row in host_description))

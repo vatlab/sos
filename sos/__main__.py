@@ -186,14 +186,13 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             to generate specified targets.''')
     parser.add_argument('-b', dest='__bin_dirs__', nargs='*', metavar='BIN_DIR',
         default=['~/.sos/bin'], help=bindir_help)
-    parser.add_argument('-q', dest='__queue__', metavar='QUEUE',
+    parser.add_argument('-q', dest='__queue__', nargs='?', const='', metavar='QUEUE',
         help='''host (server) or job queues to execute all tasks in the
-            workflow. The queue should be defined in global or local
-            configuration file with queue type (remote server, cluster job
-            queue etc), file synchronization (e.g. path_map), and methods
-            to interaction with remote host or queuing systems. This option
-            provides default queue for all tasks but it does not override
-            task option queue defined in the workflow.''')
+            workflow. The queue can be defined in global or local sos
+            configuration file, or a file specified by option  --config. A host is
+            assumed to be a remote machine with process type if no configuration
+            is found. SoS will list all configured queues (with details varying
+            by option -v) if this option is specified without value.''')
     parser.add_argument('-w', dest='__wait__', action='store_true',
         help='''Whether or not wait for the completion of external jobs. By
             default, a sos step will return immediately after submitting a task,
@@ -253,6 +252,11 @@ def cmd_run(args, workflow_args):
     import atexit
     from .utils import env, get_traceback
     from .sos_script import SoS_Script
+
+    if args.__queue__ == '':
+        from .hosts import list_queues
+        list_queues(args.__config__, args.verbosity)
+        return
 
     # '' means no -d
     if args.__dag__ is None:
@@ -327,6 +331,13 @@ def get_dryrun_parser(desc_only=False):
             will be the target of execution. If specified, SoS will execute
             only part of a workflow or multiple workflows or auxiliary steps
             to generate specified targets. ''')
+    parser.add_argument('-q', dest='__queue__', nargs='?', const='', metavar='QUEUE',
+        help='''host (server) or job queues to execute all tasks in the
+            workflow. The queue can be defined in global or local sos
+            configuration file, or a file specified by option  --config. A host is
+            assumed to be a remote machine with process type if no configuration
+            is found. SoS will list all configured queues (with details varying
+            by option -v) if this option is specified without value.''')
     output = parser.add_argument_group(title='Output options',
         description='''Output of workflow''')
     output.add_argument('-d', nargs='?', default='', metavar='DAG', dest='__dag__',
@@ -345,7 +356,6 @@ def get_dryrun_parser(desc_only=False):
 
 def cmd_dryrun(args, workflow_args):
     args.__sigmode__ = 'ignore'
-    args.__queue__ = None
     args.__max_jobs__ = 1
     args.__report__ = None
     args.__dryrun__ = True
@@ -381,12 +391,13 @@ def get_execute_parser(desc_only=False):
     parser.add_argument('-n', '--dryrun', action='store_true', dest='__dryrun__',
         help='''Dryrun mode, which will cause actions to print scripts instead
             of executing them.''')
-    parser.add_argument('-q', '--queue', help='''Execute the task on the specified
-        tasks queue or remote host if the tasks . The queue must be defined in SoS
-        config file (system default or specified with option --config). SoS would
-        perform necessary file synchronization and path translation according to
-        queue configuration, and send the task to appropriate queue for execution.
-        Please check SoS documentation for details.''')
+    parser.add_argument('-q', '--queue', nargs='?', const='',
+        help='''Check the status of job on specified tasks queue or remote host
+        if the tasks . The queue can be defined in global or local sos
+        configuration file, or a file specified by option  --config. A host is
+        assumed to be a remote machine with process type if no configuration
+        is found. SoS will list all configured queues (with details varying
+        by option -v) if this option is specified without value.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
         sos config.yml files.''')
@@ -398,7 +409,7 @@ def cmd_execute(args, workflow_args):
     import pickle
     from .sos_task import execute_task, check_task, monitor_interval, resource_monitor_interval
     from .monitor import summarizeExecution
-    if not args.queue:
+    if args.queue is None:
         for task in args.tasks:
             # this is for local execution, perhaps on a remote host, and
             # there is no daemon process etc. It also does not handle job
@@ -422,11 +433,14 @@ def cmd_execute(args, workflow_args):
             #
             if os.path.isfile(res_file):
                 os.remove(res_file)
-            res = execute_task(task, verbosity=args.verbosity, runmode='dryrun' if args.__dryrun__ else 'run', 
+            res = execute_task(task, verbosity=args.verbosity, runmode='dryrun' if args.__dryrun__ else 'run',
                 sigmode=args.__sigmode__,
                 monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
             with open(res_file, 'wb') as res_file:
                 pickle.dump(res, res_file)
+    elif args.queue == '':
+        from .hosts import list_queues
+        list_queues(args.config, args.verbosity)
     else:
         from .hosts import Host
         from .utils import env, load_config_files
@@ -454,11 +468,13 @@ def get_status_parser(desc_only=False):
         will be checked if unspecified. There is no need to specify compelte
         task IDs because SoS will match specified name with tasks starting with
         these names.''')
-    parser.add_argument('-q', '--queue', help='''Check the status of job on
-        specified tasks queue or remote host if the tasks . The queue must be defined in SoS
-        config file. Please check SoS documentation for details. Note that
-        this parameter must be specified to check the status of jobs if they
-        are executed on that host. ''')
+    parser.add_argument('-q', '--queue', nargs='?', const='',
+        help='''Check the status of job on specified tasks queue or remote host
+        if the tasks . The queue can be defined in global or local sos
+        configuration file, or a file specified by option  --config. A host is
+        assumed to be a remote machine with process type if no configuration
+        is found. SoS will list all configured queues (with details varying
+        by option -v) if this option is specified without value.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
         sos config.yml files.''')
@@ -474,7 +490,10 @@ def cmd_status(args, workflow_args):
     from .utils import env, load_config_files
     from .hosts import Host
     #from .monitor import summarizeExecution
-    if not args.queue:
+    if args.queue == '':
+        from .hosts import list_queues
+        list_queues(args.config, args.verbosity)
+    elif not args.queue:
         check_tasks(args.tasks, args.verbosity)
     else:
         # remote host?
@@ -497,23 +516,31 @@ def get_kill_parser(desc_only=False):
         SoS will match specified name with tasks starting with these names.''')
     parser.add_argument('-a', '--all', action='store_true',
         help='''Kill all tasks in local or specified remote task queue''')
-    parser.add_argument('-q', '--queue', help='''Kill  of job on
-        specified tasks queue or remote host if the tasks . The queue must be defined in SoS
-        config file. Please check SoS documentation for details. Note that
-        this parameter must be specified to check the status of jobs if they
-        are executed on that host. ''')
+    parser.add_argument('-q', '--queue', nargs='?', const='',
+        help='''Kill jobs on specified tasks queue or remote host
+        if the tasks . The queue can be defined in global or local sos
+        configuration file, or a file specified by option  --config. A host is
+        assumed to be a remote machine with process type if no configuration
+        is found. SoS will list all configured queues (with details varying
+        by option -v) if this option is specified without value.''')
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
-        sos config.yml files.''')    
+        sos config.yml files.''')
+    parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).'''),
     parser.set_defaults(func=cmd_kill)
     return parser
 
 
 def cmd_kill(args, workflow_args):
     from .sos_task import kill_tasks
-    from .utils import env, load_config_files    
-    from .hosts import Host    
-    if not args.queue:
+    from .utils import env, load_config_files
+    from .hosts import Host
+    if args.queue == '':
+        from .hosts import list_queues
+        list_queues(args.config, args.verbosity)
+    elif not args.queue:
         if args.all:
             if args.tasks:
                 env.logger.warning('Task ids "{}" are ignored with option --all'.format(' '.join(args.tasks)))
