@@ -860,10 +860,14 @@ def get_config_parser(desc_only=False):
             variables defined in global or local configuration files.''')
     if desc_only:
         return parser
-    parser.add_argument('-g', '--global', action='store_true', dest='__global_config__',
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-g', '--global', action='store_true', dest='__global_config__',
         help='''If set, change global (~/.sos/config.yml) instead of local
         (.sos/config.yml) configuration''')
-    parser.add_argument('-c', '--config', dest='__config_file__', metavar='CONFIG_FILE',
+    group.add_argument('--hosts', action='store_true', dest='__hosts_config__',
+        help='''If set, change hosts (~/.sos/hosts.yml) instead of local
+        (.sos/config.yml) configuration''')
+    group.add_argument('-c', '--config', dest='__config_file__', metavar='CONFIG_FILE',
         help='''User specified configuration file in YAML format. This file will not be
         automatically loaded by SoS but can be specified using option `-c`''')
     group = parser.add_mutually_exclusive_group(required=True)
@@ -900,6 +904,8 @@ def cmd_config(args, workflow_args):
     #
     if args.__global_config__:
         config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
+    elif args.__hosts_config__:
+        config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
     elif args.__config_file__:
         config_file = os.path.expanduser(args.__config_file__)
     else:
