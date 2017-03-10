@@ -494,6 +494,9 @@ class TaskEngine(threading.Thread):
                 if self.task_status[task_id] == 'running':
                     env.logger.info('{} ``already runnng``'.format(task_id))
                     return
+                elif self.task_status[task_id].startswith('completed'):
+                    env.logger.info('{} ``already completed``'.format(task_id))
+                    return
 
             active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
             if len(active_tasks) < self.max_running_jobs:

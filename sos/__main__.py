@@ -426,14 +426,14 @@ def cmd_execute(args, workflow_args):
                 else:
                     print(summarizeExecution(task, status=status))
                 sys.exit(1)
-            #if status.startswith('completed')  and args.__sigmode__ != 'force':
-            #    # touch the result file
-            #    os.utime(res_file, None)
-            #    if args.verbosity <= 1:
-            #        print(status)
-            #    else:
-            #        print(summarizeExecution(task, status=status))
-            #    sys.exit(0)
+            if status.startswith('completed') and args.__sigmode__ != 'force':
+                # touch the result file
+                os.utime(res_file, None)
+                #if args.verbosity <= 1:
+                #    print(status)
+                #else:
+                #    print(summarizeExecution(task, status=status))
+                sys.exit(0)
             #
             if os.path.isfile(res_file):
                 os.remove(res_file)
