@@ -856,13 +856,13 @@ class Base_Executor:
                                         proc[2]._killed_tasks = {t}
                                     else:
                                         proc[2]._killed_tasks.add(t)
-                            if all(x in ('killed', 'completed', 'dead') or x.startswith('failed') for x in res):
+                            if all(x in ('killed', 'completed', 'completed-old', 'dead') or x.startswith('failed') for x in res):
                                 raise RuntimeError('{} completed, {} dead, {} failed, {} killed)'.format(
                                     len([x for x in res if x=='completed']), len([x for x in res if x=='dead']),
                                     len([x for x in res if x.startswith('failed')]), len([x for x in res if x=='killed'])))
-                        if any(x in  ('pending', 'running', 'completed-old') or x.startswith('failed-old') for x in res):
+                        if any(x in  ('pending', 'running') or x.startswith('failed-old') for x in res):
                             continue
-                        elif all(x == 'completed' for x in res):
+                        elif all(x.startswith('completed') for x in res):
                             env.logger.debug('Put results for {}'.format(' '.join(proc[2]._pending_tasks)))
                             res = proc[2]._host.retrieve_results(proc[2]._pending_tasks)
                             proc[1].send(res)
