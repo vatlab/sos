@@ -171,10 +171,7 @@ class RemoteHost:
             raise ValueError('Option shared can only be a string or a list of strings')
 
     def _get_path_map(self):
-        # use ordered map so that users can control the order
-        # in which substitution happens.
-        from collections import OrderedDict
-        res = OrderedDict()
+        res = {}
         # if user-specified path_map, it overrides CONFIG
         path_map = self.config.get('path_map', [])
         #
@@ -223,9 +220,11 @@ class RemoteHost:
         result = {}
         if isinstance(source, str):
             dest = os.path.abspath(os.path.expanduser(source))
-            for k,v in self.path_map.items():
-                if dest.startswith(k):
-                    dest = v + dest[len(k):]
+            matched = [k for k in self.path_map.keys() if dest.startswith(k)]
+            if matched:
+                # pick the longest key that matches
+                k = max(matched, key=len)
+                dest = self.path_map[k] + dest[len(k):]
             result[source] = dest
         elif isinstance(source, Sequence):
             for src in source:
@@ -240,9 +239,11 @@ class RemoteHost:
     def _map_var(self, source):
         if isinstance(source, str):
             dest = os.path.abspath(os.path.expanduser(source))
-            for k,v in self.path_map.items():
-                if dest.startswith(k):
-                    dest = v + dest[len(k):]
+            matched = [k for k in self.path_map.keys() if dest.startswith(k)]
+            if matched:
+                # pick the longest key that matches
+                k = max(matched, key=len)
+                dest = self.path_map[k] + dest[len(k):]
             return dest
         elif isinstance(source, Sequence):
             return [self._map_var(x) for x in source]
