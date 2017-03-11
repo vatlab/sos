@@ -459,11 +459,14 @@ class Host:
             self.config = {x:y for x,y in cfg[alias].items() if x not in ('paths', 'shared')}
             if localhost != alias:
                 self.config['path_map'] = []
+                def append_slash(x):
+                    return x if x.endswith(os.sep) else (x + os.sep)
                 if 'shared' in cfg[localhost] and 'shared' in cfg[alias]:
                     common = set(cfg[localhost]['shared'].keys()) & set(cfg[alias]['shared'].keys())
                     if common:
-                        self.config['shared'] = [cfg[localhost]['shared'][x] for x in common]
-                        self.config['path_map'] = ['{}:{}'.format(cfg[localhost]['shared'][x], cfg[alias]['shared'][x]) for x in common]
+                        self.config['shared'] = [append_slash(cfg[localhost]['shared'][x]) for x in common]
+                        self.config['path_map'] = ['{}:{}'.format(append_slash(cfg[localhost]['shared'][x]), append_slash(cfg[alias]['shared'][x])) \
+                            for x in common if append_slash(cfg[localhost]['shared'][x]) != append_slash(cfg[alias]['shared'][x])]
                 if ('paths' in cfg[localhost] and cfg[localhost]['paths']) or ('paths' in cfg[alias] and cfg[alias]['paths']):
                     if 'paths' not in cfg[localhost] or 'paths' not in cfg[alias] or not cfg[localhost]['paths'] or not cfg[alias]['paths'] or \
                         any(k not in cfg[alias]['paths'] for k in cfg[localhost]['paths'].keys()) or \
@@ -471,8 +474,6 @@ class Host:
                         raise ValueError('Unmatched paths definition between {} ({}) and {} ({})'.format(
                             localhost, ','.join(cfg[localhost]['paths'].keys()), alias, ','.join(cfg[alias]['paths'].keys())))
                     # 
-                    def append_slash(x):
-                        return x if x.endswith(os.sep) else (x + os.sep)
                     self.config['path_map'].extend(['{}:{}'.format(append_slash(cfg[localhost]['paths'][x]), append_slash(cfg[alias]['paths'][x])) \
                         for x in cfg[alias]['paths'].keys() if append_slash(cfg[localhost]['paths'][x]) != append_slash(cfg[alias]['paths'][x])])
                 if 'address' not in self.config:
