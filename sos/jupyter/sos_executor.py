@@ -209,7 +209,7 @@ class Interactive_Executor(Base_Executor):
 #
 # function runfile that is used by spyder to execute complete script
 #
-def runfile(script=None, args='', wdir='.', code=None, **kwargs):
+def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
     # this has something to do with Prefix matching rule of parse_known_args
     #
     # That is to say
@@ -254,6 +254,12 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
     env.sig_mode = args.__sigmode__
     env.__queue__ = args.__queue__
     env.__wait__ = args.__wait__
+
+    if kernel is not None:
+        def notify_kernel(task_status):
+            kernel.send_frontend_msg('task-status', task_status)
+
+        env.__task_notifier__ = notify_kernel
 
     if args.__bin_dirs__:
         import fasteners

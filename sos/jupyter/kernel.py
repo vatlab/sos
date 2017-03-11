@@ -910,7 +910,7 @@ class SoS_Kernel(IPythonKernel):
         with self.redirect_sos_io():
             try:
                 # record input and output
-                res = runfile(code=code, args=self.options)
+                res = runfile(code=code, args=self.options, kernel=self)
                 self.send_result(res, silent)
             except PendingTasks as e:
                 self.send_frontend_msg('pending-tasks', ' '.join(e.tasks))

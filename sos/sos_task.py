@@ -453,6 +453,8 @@ class TaskEngine(threading.Thread):
                             continue
                         try:
                             tid, tst = line.split('\t')
+                            if tid in self.task_status and self.task_status[tid] != tst and hasattr(env, '__task_notifier__'):
+                                env.__task_notifier__('{} {}'.format(tid, tst))
                             self.task_status[tid] = tst
                         except Exception as e:
                             env.logger.warning('Unrecognized response {}: {}'.format(line, e))

@@ -222,6 +222,10 @@ define([
                         cell.clear_input();
                         cell.set_text("%pending " + data);
                         cell.clear_output();
+                    } else if (msg_type == 'task-status') {
+                        cell = window.my_panel.cell;
+                        cell.clear_input();
+                        cell.set_text('%status change ' + data) 
                     } else {
                         // this is preview output
                         var cell = window.my_panel.cell;
