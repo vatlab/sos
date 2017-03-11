@@ -56,12 +56,12 @@ class Interactive_Step_Executor(Step_Executor):
             host.submit_task(task)
         while True:
             res = host.check_status(tasks)
-            if any(x in  ('pending', 'running', 'failed-old', 'failed-missing-output', 'failed-old-missing-output') for x in res):
-               continue
-            elif all(x.startswith('completed') for x in res):
+            if all(x.startswith('completed') for x in res):
                return host.retrieve_results(tasks)
             elif all(x == 'running' for x in res if not x.startswith('completed')) and not env.__wait__:
                 raise PendingTasks(tasks)
+            elif any(x in  ('pending', 'running', 'failed-old', 'failed-missing-output', 'failed-old-missing-output') for x in res):
+               continue
             time.sleep(1)
 
 

@@ -216,6 +216,12 @@ define([
                         cell.clear_output();
                     } else if (msg_type == 'preview-kernel') {
                         changeStyleOnKernel(window.my_panel.cell, data);
+                    } else if (msg_type == 'pending-tasks') {
+                        console.log('pending-tasks ' + data)
+                        cell = window.my_panel.cell;
+                        cell.clear_input();
+                        cell.set_text("%pending " + data);
+                        cell.clear_output();
                     } else {
                         // this is preview output
                         var cell = window.my_panel.cell;

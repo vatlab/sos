@@ -53,6 +53,7 @@ from .completer import SoS_Completer
 from .inspector import SoS_Inspector
 
 from .sos_executor import runfile
+from .sos_step import PendingTasks
 
 class FlushableStringIO(StringIO):
     '''This is a string buffer for output, but it will only
@@ -911,7 +912,10 @@ class SoS_Kernel(IPythonKernel):
                 # record input and output
                 res = runfile(code=code, args=self.options)
                 self.send_result(res, silent)
-            except Exception:
+            except PendingTasks as e:
+                self.send_frontend_msg('pending-tasks', ' '.join(e.tasks))
+                return
+            except Exception as e:
                 sys.stderr.flush()
                 sys.stdout.flush()
                 #self.send_response(self.iopub_socket, 'display_data',
