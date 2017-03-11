@@ -515,20 +515,26 @@ def get_status_parser(desc_only=False):
 
 def cmd_status(args, workflow_args):
     from .sos_task import check_tasks
-    from .utils import env, load_config_files
+    from .utils import env, load_config_files, get_traceback
     from .hosts import Host
     #from .monitor import summarizeExecution
-    if args.queue == '':
-        from .hosts import list_queues
-        list_queues(args.config, args.verbosity)
-    elif not args.queue:
-        check_tasks(args.tasks, args.verbosity)
-    else:
-        # remote host?
-        cfg = load_config_files(args.config)
-        env.sos_dict.set('CONFIG', cfg)
-        host = Host(args.queue)
-        print(host._task_engine.query_tasks(args.tasks, args.verbosity))
+    try:
+        if args.queue == '':
+            from .hosts import list_queues
+            list_queues(args.config, args.verbosity)
+        elif not args.queue:
+            check_tasks(args.tasks, args.verbosity)
+        else:
+            # remote host?
+            cfg = load_config_files(args.config)
+            env.sos_dict.set('CONFIG', cfg)
+            host = Host(args.queue)
+            print(host._task_engine.query_tasks(args.tasks, args.verbosity))
+    except Exception as e:
+        if args.verbosity and args.verbosity > 2:
+            sys.stderr.write(get_traceback())
+        env.logger.error(e)
+        sys.exit(1)
 
 #
 # command kill

@@ -425,33 +425,64 @@ class RemoteHost:
 class Host:
     host_instances = {}
 
-    def __init__(self, alias=''):
+    def __init__(self, alias='', start_engine=True):
         self._get_config(alias)
-        self._get_host_agent()
+        self._get_host_agent(start_engine)
 
     def _get_config(self, alias):
         if not alias:
             self.alias = 'localhost'
-            self.config = {'alias': 'localhost'}
-        elif isinstance(alias, str):
-            # read from configuration file
+            if 'hosts' not in env.sos_dict['CONFIG'] or 'localhost' not in env.sos_dict['CONFIG']:
+                self.config = {'alias': 'localhost'}
+        else:
             self.alias = alias
-            if 'hosts' in env.sos_dict['CONFIG'] and \
-                alias in env.sos_dict['CONFIG']['hosts']:
-                self.config = env.sos_dict['CONFIG']['hosts'][alias]
+        #
+        # check config
+        if not isinstance(alias, str):
+            raise ValueError('An alias or host address is expected')
+
+        if 'hosts' not in env.sos_dict['CONFIG'] or alias not in env.sos_dict['CONFIG']['hosts']:
+            self.config = { 'address': alias, 'alias': alias }
+        else:
+            if 'localhost' not in env.sos_dict['CONFIG']:
+                raise ValueError('localhost undefined in sos configuration file.')
+            if 'hosts' not in env.sos_dict['CONFIG']:
+                raise ValueError('No hosts definitions')
+
+            localhost = env.sos_dict['CONFIG']['localhost']
+            cfg = env.sos_dict['CONFIG']['hosts']
+            if localhost not in cfg:
+                raise ValueError('No definition for localhost {}'.format(localhost))
+            if alias not in cfg:
+                raise ValueError('No definition for host {}'.format(alias))
+            # copy all definitions except for shared and paths
+            self.config = {x:y for x,y in cfg[alias].items() if x not in ('paths', 'shared')}
+            if localhost != alias:
+                self.config['path_map'] = []
+                if 'shared' in cfg[localhost] and 'shared' in cfg[alias]:
+                    common = set(cfg[localhost]['shared'].keys()) & set(cfg[alias]['shared'].keys())
+                    if common:
+                        self.config['shared'] = [cfg[localhost]['shared'][x] for x in common]
+                        self.config['path_map'] = ['{}:{}'.format(cfg[localhost]['shared'][x], cfg[alias]['shared'][x]) for x in common]
+                if ('paths' in cfg[localhost] and cfg[localhost]['paths']) or ('paths' in cfg[alias] and cfg[alias]['paths']):
+                    if 'paths' not in cfg[localhost] or 'paths' not in cfg[alias] or not cfg[localhost]['paths'] or not cfg[alias]['paths'] or \
+                        any(k not in cfg[alias]['paths'] for k in cfg[localhost]['paths'].keys()) or \
+                        any(k not in cfg[localhost]['paths'] for k in cfg[alias]['paths'].keys()):
+                        raise ValueError('Unmatched paths definition between {} ({}) and {} ({})'.format(
+                            localhost, ','.join(cfg[localhost]['paths'].keys()), alias, ','.join(cfg[alias]['paths'].keys())))
+                    # 
+                    def append_slash(x):
+                        return x if x.endswith(os.sep) else (x + os.sep)
+                    self.config['path_map'].extend(['{}:{}'.format(append_slash(cfg[localhost]['paths'][x]), append_slash(cfg[alias]['paths'][x])) \
+                        for x in cfg[alias]['paths'].keys() if append_slash(cfg[localhost]['paths'][x]) != append_slash(cfg[alias]['paths'][x])])
                 if 'address' not in self.config:
-                    self.config['address'] = alias
-                self.config['alias'] = alias
+                    self.config['address'] = ''
             else:
-                self.config = { 'address': alias, 'alias': alias }
-        elif isinstance(alias, dict):
-            if 'address' not in alias:
-                raise ValueError('Please define at least "address" for host specification')
-            self.config = alias
-            self.alias = self.config.get('alias', self.config['address'])
+                self.config['address'] = 'localhost'
+        self.config['alias'] = alias
         self.description = self.config.get('description', '')
 
-    def _get_host_agent(self):
+    def _get_host_agent(self, start_engine):
         if self.alias not in self.host_instances:
             if self.alias == 'localhost':
                 self.host_instances[self.alias] = LocalHost()
@@ -481,7 +512,8 @@ class Host:
 
             self.host_instances[self.alias]._task_engine = task_engine
             # the task engine is a thread and will run continously
-            self.host_instances[self.alias]._task_engine.start()
+            if start_engine:
+                self.host_instances[self.alias]._task_engine.start()
 
         self._host_agent = self.host_instances[self.alias]
         # for convenience
@@ -532,15 +564,15 @@ def list_queues(config_file, verbosity = 1):
     hosts = cfg.get('hosts', [])
     host_description = [['Alias', 'Address', 'Queue Type', 'Description'],
                         ['-----', '-------', '----------', '-----------']]
-    for host in hosts:
-        h = Host(host)
+    for host in sorted(hosts):
+        h = Host(host, start_engine=False)
         if verbosity == 0:
             print(h.alias)
         elif verbosity in (1, 2):
             host_description.append([
                 h.alias, h._host_agent.address, h._task_engine_type, h.description])
         else:
-            print('Alias:       {}'.format(h.alias))
+            print('Queue:       {}'.format(h.alias))
             print('Address:     {}'.format(h._host_agent.address))
             print('Queue Type:  {}'.format(h._task_engine_type))
             print('Description: {}'.format(h.description))
