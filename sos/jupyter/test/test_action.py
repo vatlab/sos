@@ -59,7 +59,7 @@ sos_run('a')
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="b")
             res = get_result(iopub)
-            self.assertEqual(res, '10')
+            self.assertEqual(res, 10)
 
 
 if __name__ == '__main__':

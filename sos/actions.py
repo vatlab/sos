@@ -310,10 +310,10 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
             # within a task, and we can just use an executor to execute it.
             #         # tell the master process to receive a workflow
             shared = {x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
-            from sos.sos_executor import Base_Executor
-            executor = Base_Executor(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__'],
-                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
             if env.run_mode == 'run':
+                from sos.sos_executor import Base_Executor
+                executor = Base_Executor(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__'],
+                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
                 if shared:
                     q = mp.Pipe()
                 else:
@@ -329,8 +329,13 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                     res = None
                 p.join()
             else:
+                from sos.jupyter.sos_executor import Interactive_Executor
+                executor = Interactive_Executor(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__'],
+                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
+                # interactive mode
                 res = executor.run(targets=targets)
             return res
+        
         else:
             # tell the master process to receive a workflow
             env.__pipe__.send('workflow {}'.format(uuid.uuid4()))

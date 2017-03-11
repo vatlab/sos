@@ -696,7 +696,7 @@ class Base_Step_Executor:
         except (AbortExecution, UnknownTarget, RemovedTarget, UnavailableLock):
             raise
         except Exception as e:
-            raise RuntimeError('Failed to process statement {}: {}'.format(short_repr(stmt), e))
+            raise RuntimeError('Failed to process statement {} ({}): {}'.format(short_repr(stmt), e.__class__.__name__, e))
         finally:
             env.sos_dict.set('__step_sig__', None)
 
