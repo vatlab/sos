@@ -434,13 +434,13 @@ class Host:
         if not alias:
             self.alias = 'localhost'
             if 'hosts' not in env.sos_dict['CONFIG'] or 'localhost' not in env.sos_dict['CONFIG']:
-                self.config = {'alias': 'localhost'}
+                self.config = {'alias': 'localhost', 'address': 'localhost'}
         else:
             self.alias = alias
         #
         # check config
         if not isinstance(alias, str):
-            raise ValueError('An alias or host address is expected')
+            raise ValueError('An alias or host address is expected. {} provided.'.format(alias))
 
         if 'hosts' not in env.sos_dict['CONFIG'] or alias not in env.sos_dict['CONFIG']['hosts']:
             self.config = { 'address': alias, 'alias': alias }
@@ -486,7 +486,7 @@ class Host:
 
     def _get_host_agent(self, start_engine):
         if self.alias not in self.host_instances:
-            if self.alias == 'localhost':
+            if self.config['address'] == 'localhost':
                 self.host_instances[self.alias] = LocalHost()
             else:
                 self.host_instances[self.alias] = RemoteHost(self.config)

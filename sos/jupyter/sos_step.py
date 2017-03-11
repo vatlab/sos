@@ -23,6 +23,7 @@
 
 from sos.sos_step import Step_Executor, Base_Step_Executor
 from sos.hosts import Host
+from sos.utils import env
 import time
 
 class Interactive_Step_Executor(Step_Executor):
@@ -37,7 +38,14 @@ class Interactive_Step_Executor(Step_Executor):
     def pending_tasks(self, tasks):
         if not tasks:
             return
-        host = Host()
+        if 'queue' in env.sos_dict['_runtime']:
+            queue = env.sos_dict['_runtime']['queue']
+        elif env.__queue__:
+            queue = env.__queue__
+        else:
+            queue = 'localhost'
+
+        host = Host(queue)
         for task in tasks:
             host.submit_task(task)
         while True:

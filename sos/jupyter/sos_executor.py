@@ -246,8 +246,13 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
     env.max_jobs = 1
     env.verbosity = args.verbosity
 
+    if args.__queue__ == '':
+        from sos.hosts import list_queues
+        list_queues(args.__config__, args.verbosity)
+        return
     #
     env.sig_mode = args.__sigmode__
+    env.__queue__ = args.__queue__
 
     if args.__bin_dirs__:
         import fasteners
