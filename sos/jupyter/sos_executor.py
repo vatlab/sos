@@ -33,7 +33,7 @@ from sos.sos_syntax import SOS_KEYWORDS
 from sos.sos_executor import Base_Executor, __null_func__
 from sos.sos_syntax import SOS_SECTION_HEADER
 from sos.target import FileTarget, UnknownTarget, RemovedTarget, UnavailableLock
-from .sos_step import Interactive_Step_Executor
+from .sos_step import Interactive_Step_Executor, PendingTasks
 
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
@@ -253,6 +253,7 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
     #
     env.sig_mode = args.__sigmode__
     env.__queue__ = args.__queue__
+    env.__wait__ = args.__wait__
 
     if args.__bin_dirs__:
         import fasteners
@@ -289,6 +290,8 @@ def runfile(script=None, args='', wdir='.', code=None, **kwargs):
             'report_output': args.__report__})
 
         return executor.run(args.__targets__, mode='dryrun' if args.__dryrun__ else 'interactive')
+    except PendingTasks as e:
+        raise
     except Exception:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())

@@ -26,6 +26,12 @@ from sos.hosts import Host
 from sos.utils import env
 import time
 
+
+class PendingTasks(Exception):
+    def __init__(self, tasks, *args, **kwargs):
+        super(PendingTasks, self).__init__(*args, **kwargs)
+        self.tasks = tasks
+
 class Interactive_Step_Executor(Step_Executor):
     def __init__(self, step):
         # This is the only interesting part of this executor. Basically
@@ -49,12 +55,15 @@ class Interactive_Step_Executor(Step_Executor):
         for task in tasks:
             host.submit_task(task)
         while True:
-             res = host.check_status(tasks)
-             if any(x in  ('pending', 'running', 'completed-old', 'failed-old', 'failed-missing-output', 'failed-old-missing-output') for x in res):
-                continue
-             elif all(x == 'completed' for x in res):
-                return host.retrieve_results(tasks)
-             time.sleep(1)
+            res = host.check_status(tasks)
+            if any(x in  ('pending', 'running', 'failed-old', 'failed-missing-output', 'failed-old-missing-output') for x in res):
+               continue
+            elif all(x.startswith('completed') for x in res):
+               return host.retrieve_results(tasks)
+            elif all(x == 'running' for x in res if not x.startswith('completed')) and not env.__wait__:
+                raise PendingTasks(tasks)
+            time.sleep(1)
+
 
     def run(self):
         return Base_Step_Executor.run(self)
