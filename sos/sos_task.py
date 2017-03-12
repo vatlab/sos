@@ -453,7 +453,7 @@ class TaskEngine(threading.Thread):
                             continue
                         try:
                             tid, tst = line.split('\t')
-                            if tid in self.task_status and self.task_status[tid] != tst and hasattr(env, '__task_notifier__'):
+                            if tid in self.task_status and (tst == 'running' or self.task_status[tid] != tst) and hasattr(env, '__task_notifier__'):
                                 env.__task_notifier__([tid, tst])
                             self.task_status[tid] = tst
                         except Exception as e:
@@ -495,21 +495,29 @@ class TaskEngine(threading.Thread):
             if task_id in self.task_status and self.task_status[task_id]:
                 if self.task_status[task_id] == 'running':
                     env.logger.info('{} ``already runnng``'.format(task_id))
+                    if hasattr(env, '__task_notifier__'):
+                        env.__task_notifier__([task_id, 'running'])
                     return
                 elif self.task_status[task_id].startswith('completed'):
                     env.logger.info('{} ``already completed``'.format(task_id))
+                    if hasattr(env, '__task_notifier__'):
+                        env.__task_notifier__([task_id, 'completed'])
                     return
 
             active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
             if len(active_tasks) < self.max_running_jobs:
                 self.tasks.append(task_id)
                 self.task_status[task_id] = 'running'
+                if hasattr(env, '__task_notifier__'):
+                    env.__task_notifier__([task_id, 'running'])
                 self.execute_task(task_id)
             else:
                 env.logger.info('{} ``queued``'.format(task_id))
                 self.pending_tasks.append(task_id)
                 # there is a change that the task_id already exists...
                 self.task_status[task_id] = 'pending'
+                if hasattr(env, '__task_notifier__'):
+                    env.__task_notifier__([task_id, 'penging'])
 
     def summarize_status(self):
         from collections import Counter

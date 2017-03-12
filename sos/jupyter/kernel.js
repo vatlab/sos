@@ -41,6 +41,7 @@ define([
     window.default_kernel = 'sos';
     window.kernel_updated = false;
     window.my_panel = null;
+    window.pending_cells = {};
 
     // initialize BackgroundColor etc from cell meta data
     if (!('sos' in IPython.notebook.metadata))
@@ -216,14 +217,60 @@ define([
                         cell.clear_output();
                     } else if (msg_type == 'preview-kernel') {
                         changeStyleOnKernel(window.my_panel.cell, data);
+                    } else if (msg_type == 'tasks-pending') {
+                        console.log(data);
+                        /* we record the pending tasks of cells so that we could
+                           rerun cells once all tasks have been completed */
+                        /* let us get a more perminant id for cell so that we
+                           can still locate the cell once its tasks are completed. */
+                        var cell = IPython.notebook.get_cell(data[0]);
+                        window.pending_cells[cell.cell_id] = data[1];
                     } else if (msg_type == 'task-status') {
                         console.log(data);
-                        /* this should not happen but we just give it a default value */
-                        var new_class = "fa fa-2x fa-question-circle-o";
-                        if (data[1] === "completed")
+                        if (data[1] === "completed" || data[1] === "completed-old") {
                             var new_class = "fa fa-2x fa-check-square-o";
-                        else if (data[1] === "failed")
+                            /* if successful, let us re-run the cell to submt another task
+                               or get the result */
+ console.log(window.pending_cells);
+                            for (cell in window.pending_cells) {
+                                 /* remove task from pending_cells */
+                                 var idx = window.pending_cells[cell].indexOf(data[0]);
+                                 console.log(idx);
+                                 if (idx >= 0)
+                                     window.pending_cells[cell].splice(idx)
+                                 if (window.pending_cells[cell].length === 0) {
+                                     delete window.pending_cells[cell];
+                                     /* if the does not have any pending one, re-run it. */
+                                     var cells = IPython.notebook.get_cells();
+                                     var rerun = null;
+                                     for (var i = 0; i < cells.length; ++i ){
+                                         if (cells[i].cell_idx == cell) {
+                                             rerun = cells[i];
+                                             break;
+                                         }
+                                     }
+
+console.log('rerun')
+                                     if (rerun) {
+                                         rerun.execute();
+                                     }
+                                 }
+                            }
+                        } else if (data[1] === "failed")
                             var new_class = "fa fa-2x fa-times-circle-o";
+                        else if (data[1] === "killed")
+                            var new_class = "fa fa-2x fa-times-circle-o";
+                        else if (data[1] === "failed-missing-output")
+                            var new_class = "fa fa-2x fa-times-circle-o";
+                        else if (data[1] === "failed-old-missing-output")
+                            var new_class = "fa fa-2x fa-times-circle-o";
+                        else if (data[1] === "pending")
+                            var new_class = "fa fa-2x fa-square-o";
+                        else if (data[1] == 'running')
+                            var new_class = "fa fa-spinner fa-pulse fa-2x fa-fw";
+                        else
+                            /* this should not happen but we just give it a default value */
+                            var new_class = "fa fa-2x fa-question-circle-o";
                         document.getElementById(data[0]).className = new_class;
                     } else {
                         // this is preview output

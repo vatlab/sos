@@ -914,6 +914,7 @@ class SoS_Kernel(IPythonKernel):
                 self.send_result(res, silent)
             except PendingTasks as e:
                 # send cell index and task IDs to frontend
+                self.send_frontend_msg('tasks-pending', [self.cell_idx, e.tasks])
                 self.send_response(self.iopub_socket, 'display_data',
                     {
                         'source': 'SoS',
@@ -921,7 +922,7 @@ class SoS_Kernel(IPythonKernel):
                         'data': { 'text/html': 
                             HTML('<table>{}</table>'.format(
                             '\n'.join('''<tr>
-                            <td><i id="{0}" class="fa fa-spinner fa-pulse fa-2x fa-fw"></i> </td>
+                            <td><i id="{0}" class="fa fa-square-o fa-2x"></i> </td>
                             <td><pre>{0}</pre></td>
                             </tr>'''.format(t) for t in e.tasks))).data
                             }
