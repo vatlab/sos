@@ -913,7 +913,19 @@ class SoS_Kernel(IPythonKernel):
                 res = runfile(code=code, args=self.options, kernel=self)
                 self.send_result(res, silent)
             except PendingTasks as e:
-                self.send_frontend_msg('pending-tasks', ' '.join(e.tasks))
+                # send cell index and task IDs to frontend
+                self.send_response(self.iopub_socket, 'display_data',
+                    {
+                        'source': 'SoS',
+                        'metadata': {},
+                        'data': { 'text/html': 
+                            HTML('<table>{}</table>'.format(
+                            '\n'.join('''<tr>
+                            <td><i id="{0}" class="fa fa-spinner fa-pulse fa-2x fa-fw"></i> </td>
+                            <td><pre>{0}</pre></td>
+                            </tr>'''.format(t) for t in e.tasks))).data
+                            }
+                    })
                 return
             except Exception as e:
                 sys.stderr.flush()

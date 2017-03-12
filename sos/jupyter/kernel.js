@@ -216,16 +216,15 @@ define([
                         cell.clear_output();
                     } else if (msg_type == 'preview-kernel') {
                         changeStyleOnKernel(window.my_panel.cell, data);
-                    } else if (msg_type == 'pending-tasks') {
-                        console.log('pending-tasks ' + data)
-                        cell = window.my_panel.cell;
-                        cell.clear_input();
-                        cell.set_text("%pending " + data);
-                        cell.clear_output();
                     } else if (msg_type == 'task-status') {
-                        cell = window.my_panel.cell;
-                        cell.clear_input();
-                        cell.set_text('%status change ' + data) 
+                        console.log(data);
+                        /* this should not happen but we just give it a default value */
+                        var new_class = "fa fa-2x fa-question-circle-o";
+                        if (data[1] === "completed")
+                            var new_class = "fa fa-2x fa-check-square-o";
+                        else if (data[1] === "failed")
+                            var new_class = "fa fa-2x fa-times-circle-o";
+                        document.getElementById(data[0]).className = new_class;
                     } else {
                         // this is preview output
                         var cell = window.my_panel.cell;
