@@ -453,7 +453,7 @@ class TaskEngine(threading.Thread):
                             continue
                         try:
                             tid, tst = line.split('\t')
-                            if tid in self.task_status and (tst == 'running' or self.task_status[tid] != tst) and hasattr(env, '__task_notifier__'):
+                            if hasattr(env, '__task_notifier__'):
                                 env.__task_notifier__([tid, tst])
                             self.task_status[tid] = tst
                         except Exception as e:

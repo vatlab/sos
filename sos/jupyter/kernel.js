@@ -226,16 +226,16 @@ define([
                         var cell = IPython.notebook.get_cell(data[0]);
                         window.pending_cells[cell.cell_id] = data[1];
                     } else if (msg_type == 'task-status') {
-                        console.log(data);
+                        var item = document.getElementById(data[0]);
+                        if (! item)
+                            return
                         if (data[1] === "completed" || data[1] === "completed-old") {
                             var new_class = "fa fa-2x fa-check-square-o";
                             /* if successful, let us re-run the cell to submt another task
                                or get the result */
- console.log(window.pending_cells);
                             for (cell in window.pending_cells) {
                                  /* remove task from pending_cells */
                                  var idx = window.pending_cells[cell].indexOf(data[0]);
-                                 console.log(idx);
                                  if (idx >= 0)
                                      window.pending_cells[cell].splice(idx)
                                  if (window.pending_cells[cell].length === 0) {
@@ -244,16 +244,13 @@ define([
                                      var cells = IPython.notebook.get_cells();
                                      var rerun = null;
                                      for (var i = 0; i < cells.length; ++i ){
-                                         if (cells[i].cell_idx == cell) {
+                                         if (cells[i].cell_id == cell) {
                                              rerun = cells[i];
                                              break;
                                          }
                                      }
-
-console.log('rerun')
-                                     if (rerun) {
+                                     if (rerun)
                                          rerun.execute();
-                                     }
                                  }
                             }
                         } else if (data[1] === "failed")
@@ -271,7 +268,7 @@ console.log('rerun')
                         else
                             /* this should not happen but we just give it a default value */
                             var new_class = "fa fa-2x fa-question-circle-o";
-                        document.getElementById(data[0]).className = new_class;
+                        item.className = new_class;
                     } else {
                         // this is preview output
                         var cell = window.my_panel.cell;
