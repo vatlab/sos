@@ -226,11 +226,13 @@ define([
                         var cell = IPython.notebook.get_cell(data[0]);
                         window.pending_cells[cell.cell_id] = data[1];
                     } else if (msg_type == 'task-status') {
+                        console.log(data);
                         var item = document.getElementById(data[0]);
-                        if (! item)
+                        if (!item)
                             return
+                        else
+                            item.className = data[2];
                         if (data[1] === "completed" || data[1] === "completed-old") {
-                            var new_class = "fa fa-2x fa-check-square-o";
                             /* if successful, let us re-run the cell to submt another task
                                or get the result */
                             for (cell in window.pending_cells) {
@@ -253,22 +255,7 @@ define([
                                          rerun.execute();
                                  }
                             }
-                        } else if (data[1] === "failed")
-                            var new_class = "fa fa-2x fa-times-circle-o";
-                        else if (data[1] === "killed")
-                            var new_class = "fa fa-2x fa-times-circle-o";
-                        else if (data[1] === "failed-missing-output")
-                            var new_class = "fa fa-2x fa-times-circle-o";
-                        else if (data[1] === "failed-old-missing-output")
-                            var new_class = "fa fa-2x fa-times-circle-o";
-                        else if (data[1] === "pending")
-                            var new_class = "fa fa-2x fa-square-o";
-                        else if (data[1] == 'running')
-                            var new_class = "fa fa-spinner fa-pulse fa-2x fa-fw";
-                        else
-                            /* this should not happen but we just give it a default value */
-                            var new_class = "fa fa-2x fa-question-circle-o";
-                        item.className = new_class;
+                        } 
                     } else {
                         // this is preview output
                         var cell = window.my_panel.cell;

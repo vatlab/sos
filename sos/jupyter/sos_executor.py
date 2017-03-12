@@ -34,6 +34,8 @@ from sos.sos_executor import Base_Executor, __null_func__
 from sos.sos_syntax import SOS_SECTION_HEADER
 from sos.target import FileTarget, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_step import Interactive_Step_Executor, PendingTasks
+from IPython.core.display import HTML
+
 
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
@@ -257,7 +259,32 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
 
     if kernel is not None:
         def notify_kernel(task_status):
-            kernel.send_frontend_msg('task-status', task_status)
+            status_class = {
+                'failed':  'fa fa-2x fa-times-circle-o',
+                'killed':  'fa fa-2x fa-times-circle-o',
+                'failed-missing-output': 'fa fa-2x fa-times-circle-o',
+                'failed-old-missing-output': 'fa fa-2x fa-times-circle-o',
+                'pending': 'fa fa-2x fa-square-o',
+                'running': 'fa fa-spinner fa-pulse fa-2x fa-fw',
+                'completed': 'fa fa-2x fa-check-square-o',
+                'completed-old': 'fa fa-2x fa-check-square-o',
+                }
+
+            if task_status[0] == 'submit':
+                 kernel.send_response(kernel.iopub_socket, 'display_data',
+                    {
+                        'source': 'SoS',
+                        'metadata': {},
+                        'data': { 'text/html': 
+                            HTML('''<table><tr>
+                            <td><i id="{0}" class="{1}"></i> </td>
+                            <td><pre>{0}</pre></td>
+                            </tr></table>'''.format(task_status[1],
+                                status_class[task_status[2]])).data
+                            }
+                    })
+            else:
+                kernel.send_frontend_msg('task-status', [task_status[1], task_status[2], status_class[task_status[2]]])
 
         env.__task_notifier__ = notify_kernel
 
