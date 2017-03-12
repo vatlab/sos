@@ -519,7 +519,7 @@ class TaskEngine(threading.Thread):
                 # there is a change that the task_id already exists...
                 self.task_status[task_id] = 'pending'
                 if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['submit', task_id, 'penging'])
+                    env.__task_notifier__(['submit', task_id, 'pending'])
 
     def summarize_status(self):
         from collections import Counter
