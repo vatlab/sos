@@ -260,14 +260,14 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
     if kernel is not None:
         def notify_kernel(task_status):
             status_class = {
-                'failed':  'fa fa-2x fa-times-circle-o',
-                'killed':  'fa fa-2x fa-times-circle-o',
-                'failed-missing-output': 'fa fa-2x fa-times-circle-o',
-                'failed-old-missing-output': 'fa fa-2x fa-times-circle-o',
-                'pending': 'fa fa-2x fa-square-o',
-                'running': 'fa fa-spinner fa-pulse fa-2x fa-fw',
-                'completed': 'fa fa-2x fa-check-square-o',
-                'completed-old': 'fa fa-2x fa-check-square-o',
+                'failed':  'fa fa-2x fa-fw fa-times-circle-o',
+                'killed':  'fa fa-2x fa-fw fa-times-circle-o',
+                'failed-missing-output': 'fa fa-2x fa-fw fa-times-circle-o',
+                'failed-old-missing-output': 'fa fa-2x fa-fw fa-times-circle-o',
+                'pending': 'fa fa-2x fa-fw fa-square-o',
+                'running': 'fa fa-2x fa-fw fa-spinner fa-pulse fa-spin',
+                'completed': 'fa fa-2x fa-fw fa-check-square-o',
+                'completed-old': 'fa fa-2x fa-fw fa-check-square-o',
                 }
 
             if task_status[0] == 'submit':
