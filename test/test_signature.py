@@ -198,10 +198,7 @@ cp ${_input} ${_dest}
         wf = script.workflow('default:0')
         start = time.time()
         env.sig_mode = 'force'
-        if env.max_jobs == 1:
-            Base_Executor(wf).run()
-        else:
-            Base_Executor(wf).run()
+        Base_Executor(wf).run()
         self.assertGreater(time.time() - start, 1)
         self.assertTrue(os.path.isfile('temp/a.txt'))
         self.assertTrue(os.path.isfile('temp/b.txt'))
@@ -210,18 +207,12 @@ cp ${_input} ${_dest}
         with open('temp/b.txt') as tb:
             self.assertTrue(tb.read(), 'b.txt')
         env.sig_mode = 'assert'
-        if env.max_jobs == 1:
-            Base_Executor(wf).run()
-        else:
-            Base_Executor(wf).run()
+        Base_Executor(wf).run()
         #
         wf = script.workflow()
         start = time.time()
         env.sig_mode = 'build'
-        if env.max_jobs == 1:
-            Base_Executor(wf).run()
-        else:
-            Base_Executor(wf).run()
+        Base_Executor(wf).run()
 
         self.assertLess(time.time() - start, 1.5)
         #
@@ -235,18 +226,12 @@ cp ${_input} ${_dest}
         #
         # now in assert mode, the signature should be there
         env.sig_mode = 'assert'
-        if env.max_jobs == 1:
-            Base_Executor(wf).run()
-        else:
-            Base_Executor(wf).run()
+        Base_Executor(wf).run()
 
         #
         start = time.time()
         env.sig_mode = 'default'
-        if env.max_jobs == 1:
-            Base_Executor(wf).run()
-        else:
-            Base_Executor(wf).run()
+        Base_Executor(wf).run()
         
         self.assertLess(time.time() - start, 1.5)
         #
@@ -254,10 +239,7 @@ cp ${_input} ${_dest}
         script = SoS_Script('# comment\n' + text)
         wf = script.workflow()
         env.sig_mode = 'assert'
-        if env.max_jobs == 1:
-            Base_Executor(wf).run()
-        else:
-            Base_Executor(wf).run()
+        Base_Executor(wf).run()
 
         # add some other variable?
         #script = SoS_Script('comment = 1\n' + text)
