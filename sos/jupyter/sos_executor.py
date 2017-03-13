@@ -279,9 +279,9 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                         'source': 'SoS',
                         'metadata': {},
                         'data': { 'text/html': 
-                            HTML('''<table><tr>
-                            <td><i id="{0}" class="{1}"></i> </td>
-                            <td><pre>{0}</pre></td>
+                            HTML('''<table style="border: 0px"><tr style="border: 0px">
+                            <td style="border: 0px"><i id="{0}" class="{1}"></i> </td>
+                            <td style="border: 0px"><pre>{0}</pre></td>
                             </tr></table>'''.format(task_status[1],
                                 status_class[task_status[2]])).data
                             }

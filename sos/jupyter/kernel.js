@@ -218,7 +218,7 @@ define([
                     } else if (msg_type == 'preview-kernel') {
                         changeStyleOnKernel(window.my_panel.cell, data);
                     } else if (msg_type == 'tasks-pending') {
-                        console.log(data);
+                        // console.log(data);
                         /* we record the pending tasks of cells so that we could
                            rerun cells once all tasks have been completed */
                         /* let us get a more perminant id for cell so that we
@@ -226,18 +226,23 @@ define([
                         var cell = IPython.notebook.get_cell(data[0]);
                         window.pending_cells[cell.cell_id] = data[1];
                     } else if (msg_type == 'task-status') {
-                        console.log(data);
+                        // console.log(data);
                         var item = document.getElementById(data[0]);
+
+            
                         if (!item)
                             return;
                         else
+                           
                             item.className = data[2];
                         if (data[1] === "completed" || data[1] === "completed-old") {
                             /* if successful, let us re-run the cell to submt another task
                                or get the result */
+                           
                             for (cell in window.pending_cells) {
                                  /* remove task from pending_cells */
                                  var idx = window.pending_cells[cell].indexOf(data[0]);
+                                  // $("#"+data[0]).css("background-color","#98FB98")
                                  if (idx >= 0)
                                      window.pending_cells[cell].splice(idx)
                                  if (window.pending_cells[cell].length === 0) {
@@ -362,7 +367,7 @@ define([
             css.innerHTML = '.code_cell .celltoolbar {' +
                 'width:40%;background:none;border:none;border-bottom:none;z-index: 1000;' +
                 'position:relative;margin-bottom:-50pt;float:right;}  ' +
-                '.text_cell .celltoolbar {display:none}';
+                '.text_cell .celltoolbar {display:none}  ';
             document.body.appendChild(css);
         };
 
@@ -997,7 +1002,7 @@ define([
         load_panel();
         add_panel_button();
         patch_CodeCell_get_callbacks();
-        adjustPanel();
+        
         if ($("#toc_button").length !== 0) {
             $("#toc_button").click(function(){
                 if ($('#panel-wrapper').css('display')==='block' && $('#toc-wrapper').css('display')==='block'){
@@ -1020,6 +1025,10 @@ define([
                 }
             });
         }
+        setTimeout(function() {
+                adjustPanel();
+        }, 1000)
+        
 
         // define SOS CodeMirror syntax highlighter
         (function(mod) {
