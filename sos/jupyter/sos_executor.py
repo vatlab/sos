@@ -211,6 +211,8 @@ class Interactive_Executor(Base_Executor):
 #
 # function runfile that is used by spyder to execute complete script
 #
+my_tasks = set()
+
 def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
     # this has something to do with Prefix matching rule of parse_known_args
     #
@@ -259,6 +261,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
 
     if kernel is not None:
         def notify_kernel(task_status):
+            global my_tasks;
             status_class = {
                 'failed':  'fa fa-2x fa-fw fa-times-circle-o',
                 'killed':  'fa fa-2x fa-fw fa-times-circle-o',
@@ -271,7 +274,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                 }
 
             if task_status[0] == 'submit':
-                 kernel.send_response(kernel.iopub_socket, 'display_data',
+                kernel.send_response(kernel.iopub_socket, 'display_data',
                     {
                         'source': 'SoS',
                         'metadata': {},
@@ -283,8 +286,12 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                                 status_class[task_status[2]])).data
                             }
                     })
+                # keep tracks of my tasks to avoid updating status of
+                # tasks that does not belong to the notebook
+                my_tasks.add(task_status[1])
             else:
-                kernel.send_frontend_msg('task-status', [task_status[1], task_status[2], status_class[task_status[2]]])
+                if task_status[1] in my_tasks:
+                    kernel.send_frontend_msg('task-status', [task_status[1], task_status[2], status_class[task_status[2]]])
 
         env.__task_notifier__ = notify_kernel
 

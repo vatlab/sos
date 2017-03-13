@@ -229,7 +229,7 @@ define([
                         console.log(data);
                         var item = document.getElementById(data[0]);
                         if (!item)
-                            return
+                            return;
                         else
                             item.className = data[2];
                         if (data[1] === "completed" || data[1] === "completed-old") {
