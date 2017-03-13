@@ -211,7 +211,7 @@ class Interactive_Executor(Base_Executor):
 #
 # function runfile that is used by spyder to execute complete script
 #
-my_tasks = set()
+my_tasks = {}
 
 def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
     # this has something to do with Prefix matching rule of parse_known_args
@@ -273,7 +273,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                 'completed-old': 'fa fa-2x fa-fw fa-check-square-o',
                 }
 
-            if task_status[0] == 'submit':
+            if task_status[0] == 'new-status':
                 kernel.send_response(kernel.iopub_socket, 'display_data',
                     {
                         'source': 'SoS',
@@ -288,10 +288,20 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                     })
                 # keep tracks of my tasks to avoid updating status of
                 # tasks that does not belong to the notebook
-                my_tasks.add(task_status[1])
-            else:
+                my_tasks[task_status[1]] = time.time()
+            elif task_status[0] == 'change-status':
                 if task_status[1] in my_tasks:
                     kernel.send_frontend_msg('task-status', [task_status[1], task_status[2], status_class[task_status[2]]])
+                    my_tasks[task_status[1]] = time.time()
+            elif task_status[0] == 'pulse-status':
+                if task_status[1] in my_tasks:
+                    if time.time() - my_tasks[task_status[1]] < 20:
+                        # if it has been within the first 20 seconds of new or updated message
+                        # can confirm to verify it has been successfully delivered. Otherwise
+                        # ignore such message
+                        kernel.send_frontend_msg('task-status', [task_status[1], task_status[2], status_class[task_status[2]]])
+            else:
+                raise RuntimeError('Unrecognized status change message {}'.format(task_status))
 
         env.__task_notifier__ = notify_kernel
 

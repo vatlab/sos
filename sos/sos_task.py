@@ -453,9 +453,12 @@ class TaskEngine(threading.Thread):
                             continue
                         try:
                             tid, tst = line.split('\t')
-                            self.task_status[tid] = tst
                             if hasattr(env, '__task_notifier__'):
-                                env.__task_notifier__(['status', tid, tst])
+                                if self.task_status[tid] == tst:
+                                    env.__task_notifier__(['pulse-status', tid, tst])
+                                else:
+                                    env.__task_notifier__(['change-status', tid, tst])
+                            self.task_status[tid] = tst
                         except Exception as e:
                             env.logger.warning('Unrecognized response {} (): {}'.format(line, e.__class__.__name__, e))
                     self.summarize_status()
@@ -491,19 +494,19 @@ class TaskEngine(threading.Thread):
             if task_id in self.tasks or task_id in self.pending_tasks:
                 env.logger.info('{} ``{}``'.format(task_id, self.task_status[task_id]))
                 if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['submit', task_id, self.task_status[task_id]])
+                    env.__task_notifier__(['new-status', task_id, self.task_status[task_id]])
                 return
             #
             if task_id in self.task_status and self.task_status[task_id]:
                 if self.task_status[task_id] == 'running':
                     env.logger.info('{} ``already runnng``'.format(task_id))
                     if hasattr(env, '__task_notifier__'):
-                        env.__task_notifier__(['submit', task_id, 'running'])
+                        env.__task_notifier__(['new-status', task_id, 'running'])
                     return
                 elif self.task_status[task_id].startswith('completed'):
                     env.logger.info('{} ``already completed``'.format(task_id))
                     if hasattr(env, '__task_notifier__'):
-                        env.__task_notifier__(['submit', task_id, 'completed'])
+                        env.__task_notifier__(['new-status', task_id, 'completed'])
                     return
 
             active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
@@ -511,7 +514,7 @@ class TaskEngine(threading.Thread):
                 self.tasks.append(task_id)
                 self.task_status[task_id] = 'running'
                 if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['submit', task_id, 'running'])
+                    env.__task_notifier__(['new-status', task_id, 'running'])
                 self.execute_task(task_id)
             else:
                 env.logger.info('{} ``queued``'.format(task_id))
@@ -519,7 +522,7 @@ class TaskEngine(threading.Thread):
                 # there is a change that the task_id already exists...
                 self.task_status[task_id] = 'pending'
                 if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['submit', task_id, 'pending'])
+                    env.__task_notifier__(['new-status', task_id, 'pending'])
 
     def summarize_status(self):
         from collections import Counter
