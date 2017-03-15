@@ -25,6 +25,7 @@ import pickle
 from sos.utils import env
 from sos.sos_eval import interpolate
 from sos.sos_task import TaskEngine
+from sos.pattern import extract_pattern
 
 class PBS_TaskEngine(TaskEngine):
     def __init__(self, agent):
@@ -114,15 +115,51 @@ class PBS_TaskEngine(TaskEngine):
                     self.submit_cmd, e))
             env.logger.debug('submit {}: {}'.format(task_id, cmd))
             try:
-                job_id = self.agent.check_output(cmd).strip()
+                cmd_output = self.agent.check_output(cmd).strip()
+                if 'submit_cmd_output' not in self.config:
+                    submit_cmd_output = '{job_id}'
+                else:
+                    submit_cmd_output = self.config['submit_cmd_output']
+                #
+                if not '{job_id}' in submit_cmd_output:
+                    raise ValueError('Option submit_cmd_output should have at least a pattern for job_id, "{}" specified.'.format(submit_cmd_output))
+                #
+                # try to extract job_id from command output
                 # let us write an job_id file so that we can check status of tasks more easily
                 job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.job_id')
                 with open(job_id_file, 'w') as job:
-                    job.write(job_id)
+                    try:
+                        res = extract_pattern(submit_cmd_output, [cmd_output.strip()])
+                        if 'job_id' not in res or len(res['job_id']) != 1:
+                            env.logger.warning('Failed to extract job_id from "{}" using pattern "{}"'.format(
+                                cmd_output.strip(), submit_cmd_output))
+                            job_id = '000000'
+                            job.write('job_id: {}\n'.format(job_id))
+                        else:
+                            job_id = res['job_id'][0]
+                            # other variables
+                            for k,v in res.items():
+                                job.write('{}: {}\n'.format(k, v[0]))
+                    except Exception as e:
+                        env.logger.warning('Failed to extract job_id from "{}" using pattern "{}"'.format(
+                            cmd_output.strip(), submit_cmd_output))
+                        job_id = '000000'
+                        job.write('job_id: {}\n'.format(job_id))
                 # output job id to stdout
                 env.logger.info('{} ``submitted`` to {} with job id {}'.format(task_id, self.alias, job_id))
             except Exception as e:
                 raise RuntimeError('Failed to submit task {}: {}'.format(task_id, e))
+
+    def _get_job_id(self, task_id):
+        job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.job_id')
+        if not os.path.isfile(job_id_file):
+            return {}
+        with open(job_id_file) as job:
+            result = {}
+            for line in job:
+                k, v = line.split(':', 1)
+                result[k.strip()] = v.strip()
+            return result
 
     def query_tasks(self, tasks, verbosity=1):
         if verbosity <= 1:
@@ -137,13 +174,12 @@ class PBS_TaskEngine(TaskEngine):
             # call query_tasks again for more verbose output
             res += super(PBS_TaskEngine, self).query_tasks([task_id], verbosity) + '\n'
             #
-            job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.job_id')
-            if not os.path.isfile(job_id_file):
+            job_id = self._get_job_id(task_id)
+            if not job_id:
                 continue
-            with open(job_id_file) as job:
-                job_id = job.read().strip()
             try:
-                cmd = interpolate(self.status_cmd, '${ }', {'task': task_id, 'job_id': job_id, 'verbosity': verbosity})
+                job_id.update({'task': task_id, 'verbosity': verbosity})
+                cmd = interpolate(self.status_cmd, '${ }', job_id)
                 res += self.agent.check_output(cmd)
             except Exception as e:
                 env.logger.debug('Failed to get status of task {} (job_id: {}) from template "{}": {}'.format(
@@ -161,13 +197,13 @@ class PBS_TaskEngine(TaskEngine):
                 continue
             task_id, status = line.split('\t')
             res += '{}\t{}\n'.format(line, status)
-            job_id_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.job_id')
-            if not os.path.isfile(job_id_file):
+
+            job_id = self._get_job_id(task_id)
+            if not job_id:
                 continue
-            with open(job_id_file) as job:
-                job_id = job.read().strip()
             try:
-                cmd = interpolate(self.kill_cmd, '${ }', {'task': task_id, 'job_id': job_id})
+                job_id.update({'task': task_id})
+                cmd = interpolate(self.kill_cmd, '${ }', job_id)
                 res += self.agent.check_output(cmd) + '\n'
             except Exception as e:
                 env.logger.debug('Failed to kill job {} (job_id: {}) from template "{}": {}'.format(
