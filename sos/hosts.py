@@ -251,6 +251,9 @@ class RemoteHost:
             raise ValueError('Cannot map variables {} of type {}'.format(source, type(source).__name__))
 
     def _send_to_host(self, items):
+        # we only copy files and directories, not other types of targets
+        if not isinstance(items, str):
+            items = [x for x in items if isinstance(x, str)]
         sending = self._map_path(items)
         for source in sorted(sending.keys()):
             if self.is_shared(source):

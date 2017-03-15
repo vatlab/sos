@@ -132,7 +132,7 @@ class SoS_String:
         if self.last_text is None:
             self.last_text = text
         elif self.last_text == text:
-            raise InterpolationError('Failed to interpolate {}'.format(short_repr(text)))
+            raise InterpolationError(text, 'Failed to interpolate {}'.format(short_repr(text)))
         else:
             self.last_text = text
         #
@@ -287,7 +287,7 @@ class SoS_String:
             sep = ',' if conversion and ',' in conversion else ' '
             return sep.join(sorted([self._repr(x, fmt, conversion) for x in obj]))
         elif callable(obj):
-            raise InterpolationError('{} cannot be used as interpolation variable'.format(obj))
+            raise InterpolationError(repr(obj), '{} cannot be used as interpolation variable'.format(obj))
         else:
             return repr(obj) if fmt is None and conversion is None else self._format(obj, fmt, conversion)
 
