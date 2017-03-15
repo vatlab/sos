@@ -32,7 +32,7 @@ from collections.abc import Sequence
 from sos.utils import env, short_repr, get_traceback
 from sos.sos_eval import SoS_exec
 
-from .target import textMD5, RuntimeInfo
+from .target import textMD5, RuntimeInfo, Undetermined
 from .monitor import ProcessMonitor
 
 from collections import OrderedDict
@@ -179,6 +179,20 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 else:
                     raise ValueError('Unacceptable input for option prepend_path: {}'.format(sos_dict['_runtime']['prepend_path']))
 
+        # create directory. This usually has been done at the step level but the task can be executed
+        # on a remote host where the directory does not yet exist.
+        ofiles = env.sos_dict['_output']
+        if not isinstance(ofiles, Undetermined):
+            for ofile in ofiles:
+                if isinstance(ofile, str):
+                    parent_dir = os.path.split(os.path.expanduser(ofile))[0]
+                    if parent_dir and not os.path.isdir(parent_dir):
+                        try:
+                            os.makedirs(parent_dir)
+                        except Exception as e:
+                            # this can fail but we do not really care because the task itself might
+                            # create this directory, or if the directory has already been created by other tasks
+                            env.logger.warning('Failed to create directory {}: {}'.format(parent_dir, e))
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
