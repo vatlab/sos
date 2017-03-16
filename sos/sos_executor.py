@@ -827,6 +827,8 @@ class Base_Executor:
                                     else:
                                         proc[2]._killed_tasks.add(t)
                             if all(x in ('killed', 'completed', 'completed-old', 'dead') or x.startswith('failed') for x in res):
+                                # we try to get .err .out etc even when jobs are failed.
+                                proc[2]._host.retrieve_results(proc[2]._pending_tasks)
                                 raise RuntimeError('{} completed, {} dead, {} failed, {} killed)'.format(
                                     len([x for x in res if x=='completed']), len([x for x in res if x=='dead']),
                                     len([x for x in res if x.startswith('failed')]), len([x for x in res if x=='killed'])))

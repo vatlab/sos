@@ -393,17 +393,30 @@ class RemoteHost:
             p.join()
 
     def receive_result(self, task_id):
-        for filetype in ('res', 'status'):
-            receive_cmd = 'scp -q {}:.sos/tasks/{}.{} {}'.format(self.address, task_id, filetype, self.task_dir)
-            ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-            if (ret != 0):
-                raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
+        # for filetype in ('res', 'status', 'out', 'err'):
+        receive_cmd = "scp -q '{}:.sos/tasks/{}.*' {}".format(self.address, task_id, self.task_dir)
+        ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        if (ret != 0):
+            raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
+        # show results? Not sure if this is a good idea but helps debugging at this point
+        if env.verbosity >= 2:
+            out_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.out')
+            err_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.err')
+            if os.path.isfile(out_file):
+                env.logger.info('{}.out:'.format(task_id))
+                with open(out_file) as out:
+                    print(out.read())
+            if os.path.isfile(err_file):
+                env.logger.info('{}.err:'.format(task_id))
+                with open(err_file) as err:
+                    print(err.read())
+
         res_file = os.path.join(self.task_dir, task_id + '.res')
         with open(res_file, 'rb') as result:
             res = pickle.load(result)
 
         if res['succ'] != 0:
-            env.logger.error('Remote job failed.')
+            env.logger.info('Ignore remote results for failed job {}.'.format(task_id))
         else:
             # do we need to copy files? We need to consult original task file
             # not the converted one
