@@ -73,7 +73,7 @@ class PBS_TaskEngine(TaskEngine):
 
         # for this task, we will need walltime, nodes, ppn, mem
         # however, these could be fixed in the job template and we do not need to have them all in the runtime
-        runtime = {x:sos_dict['_runtime'][x] for x in ('nodes', 'ppn', 'mem', 'walltime', 'cur_dir') if x in sos_dict['_runtime']}
+        runtime = {x:sos_dict['_runtime'][x] for x in ('nodes', 'ppn', 'mem', 'walltime', 'cur_dir', 'home_dir') if x in sos_dict['_runtime']}
         runtime['task'] = task_id
         runtime['verbosity'] = env.verbosity
         runtime['sig_mode'] = env.sig_mode

@@ -182,7 +182,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         # create directory. This usually has been done at the step level but the task can be executed
         # on a remote host where the directory does not yet exist.
         ofiles = env.sos_dict['_output']
-        if not isinstance(ofiles, Undetermined):
+        if not isinstance(ofiles, (type(None), Undetermined)):
             for ofile in ofiles:
                 if isinstance(ofile, str):
                     parent_dir = os.path.split(os.path.expanduser(ofile))[0]

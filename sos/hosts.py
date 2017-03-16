@@ -239,7 +239,7 @@ class RemoteHost:
     def _map_var(self, source):
         if isinstance(source, str):
             dest = os.path.abspath(os.path.expanduser(source))
-            matched = [k for k in self.path_map.keys() if dest.startswith(k)]
+            matched = [k for k in self.path_map.keys() if dest.startswith(k) or (dest + '/').startswith(k)]
             if matched:
                 # pick the longest key that matches
                 k = max(matched, key=len)
@@ -320,6 +320,7 @@ class RemoteHost:
                 env.logger.debug('Value of variable {} is preserved'.format(var))
             elif var == '_runtime':
                 task_vars[var]['cur_dir'] = self._map_var(task_vars[var]['cur_dir'])
+                task_vars[var]['home_dir'] = self._map_var(task_vars[var]['home_dir'])
                 if 'workdir' in task_vars[var]:
                     task_vars[var]['workdir'] = self._map_var(task_vars[var]['workdir'])
             elif var in task_vars and pickleable(task_vars[var], var):
@@ -394,14 +395,15 @@ class RemoteHost:
 
     def receive_result(self, task_id):
         # for filetype in ('res', 'status', 'out', 'err'):
-        receive_cmd = "scp -q '{}:.sos/tasks/{}.*' {}".format(self.address, task_id, self.task_dir)
+        receive_cmd = "scp -q {}:.sos/tasks/{}.* {}".format(self.address, task_id, self.task_dir)
+        env.logger.debug(receive_cmd)
         ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
             raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
         # show results? Not sure if this is a good idea but helps debugging at this point
         if env.verbosity >= 2:
-            out_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.out')
-            err_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.err')
+            out_file = os.path.join(self.task_dir, task_id + '.out')
+            err_file = os.path.join(self.task_dir, task_id + '.err')
             if os.path.isfile(out_file):
                 env.logger.info('{}.out:'.format(task_id))
                 with open(out_file) as out:
@@ -416,7 +418,7 @@ class RemoteHost:
             res = pickle.load(result)
 
         if res['succ'] != 0:
-            env.logger.info('Ignore remote results for failed job {}.'.format(task_id))
+            env.logger.info('Ignore remote results for failed job {}'.format(task_id))
         else:
             # do we need to copy files? We need to consult original task file
             # not the converted one
