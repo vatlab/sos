@@ -611,6 +611,7 @@ define([
                 $('#notebook-container').css('width', $('#notebook').width() - 30);
             }
         });
+        $(window).trigger('resize');
     }
 
 
@@ -1025,6 +1026,9 @@ define([
                 }
             });
         }
+        $("#to_markdown").click(function(){
+            adjustPanel();
+        })
         setTimeout(function() {
                 adjustPanel();
         }, 1000)
