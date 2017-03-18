@@ -31,7 +31,7 @@ from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
 import subprocess
 
-class TestExecute(unittest.TestCase):
+class TestSignature(unittest.TestCase):
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
@@ -60,7 +60,6 @@ class TestExecute(unittest.TestCase):
 
 
     def testSignature(self):
-        env.__wait__ = True
         self._testSignature(r"""
 import time
 [*_0]
@@ -81,6 +80,8 @@ run(" cp ${_input} ${_dest} ")
 """)
         #
         env.max_jobs = 4
+
+    def testSignature1(self):
         self._testSignature(r"""
 import time
 [*_0]
@@ -101,7 +102,8 @@ time.sleep(0.5)
 run(" cp ${_input} ${_dest} ")
 """)
         # script format
-        env.max_jobs = 4
+
+    def testSignature2(self):
         self._testSignature(r"""
 import time
 [*_0]
@@ -121,8 +123,8 @@ input: group_by='single', paired_with='dest'
 output: _dest
 
 task:
-if run_mode == 'run':
-    time.sleep(0.5)
+import time
+time.sleep(0.5)
 run:
 cp ${_input} ${_dest}
 """)
@@ -190,6 +192,7 @@ cp ${_input} ${_dest}
 
     def _testSignature(self, text):
         '''Test recognizing the format of SoS script'''
+        env.__wait__ = True
         script = SoS_Script(text)
         for f in ['temp/a.txt', 'temp/b.txt']:
             FileTarget(f).remove('both')

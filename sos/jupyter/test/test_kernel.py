@@ -160,6 +160,8 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code="kkk")
             res = get_result(iopub)
             self.assertEqual(res, 'ast1')
+            msg_id, content = execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
 
 
     def testMagicGet(self):
@@ -202,6 +204,8 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code="c")
             res = get_result(iopub)
             self.assertEqual(res, 555)
+            msg_id, content = execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
 
 
     def testAutoSharedVars(self):
