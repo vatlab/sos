@@ -20,10 +20,12 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 import os
+import sys
 import re
 import collections
 from io import StringIO
 from shlex import quote
+from subprocess import list2cmdline
 from tokenize import generate_tokens, untokenize, NAME, STRING, INDENT
 
 from .utils import env, Error, short_repr, DelayedAction
@@ -84,7 +86,7 @@ class SoS_String:
         'd': os.path.dirname,
         'b': os.path.basename,
         'n': lambda x: os.path.splitext(x)[0],
-        'q': quote,
+        'q': (lambda x: list2cmdline([x])) if sys.platform == 'win32' else quote,
         'r': repr,
         's': str,
         # these are handled elsewhere

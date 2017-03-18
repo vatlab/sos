@@ -29,14 +29,17 @@ from sos.sos_script import SoS_Script
 from sos.utils import env
 from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
+from sos.hosts import Host
 import subprocess
 
-class TestExecute(unittest.TestCase):
+class TestSignature(unittest.TestCase):
     def setUp(self):
         env.reset()
         subprocess.call('sos remove -s', shell=True)
         #self.resetDir('~/.sos')
         self.temp_files = []
+        self.resetDir('temp')
+        Host.reset()
 
     def tearDown(self):
         for f in self.temp_files:
@@ -60,7 +63,6 @@ class TestExecute(unittest.TestCase):
 
 
     def testSignature(self):
-        env.__wait__ = True
         self._testSignature(r"""
 import time
 [*_0]
@@ -79,8 +81,8 @@ output: _dest
 time.sleep(0.5)
 run(" cp ${_input} ${_dest} ")
 """)
-        #
-        env.max_jobs = 4
+
+    def testSignature1(self):
         self._testSignature(r"""
 import time
 [*_0]
@@ -101,7 +103,8 @@ time.sleep(0.5)
 run(" cp ${_input} ${_dest} ")
 """)
         # script format
-        env.max_jobs = 4
+
+    def testSignature2(self):
         self._testSignature(r"""
 import time
 [*_0]
@@ -121,14 +124,12 @@ input: group_by='single', paired_with='dest'
 output: _dest
 
 task:
-if run_mode == 'run':
-    time.sleep(0.5)
+import time
+time.sleep(0.5)
 run:
+echo cp ${_input} ${_dest}
 cp ${_input} ${_dest}
 """)
-        # reset env mode
-        env.sig_mode = 'default'
-        shutil.rmtree('temp')
 
     def testSignatureWithSharedVariable(self):
         '''Test restoration of signature from variables.'''
@@ -190,6 +191,7 @@ cp ${_input} ${_dest}
 
     def _testSignature(self, text):
         '''Test recognizing the format of SoS script'''
+        env.__wait__ = True
         script = SoS_Script(text)
         for f in ['temp/a.txt', 'temp/b.txt']:
             FileTarget(f).remove('both')
@@ -208,8 +210,12 @@ cp ${_input} ${_dest}
             self.assertTrue(tb.read(), 'b.txt')
         env.sig_mode = 'assert'
         Base_Executor(wf).run()
-        #
+        # all of them
         wf = script.workflow()
+        env.sig_mode = 'default'
+        # generate files (default step 0 and 1)
+        Base_Executor(wf).run()
+        # now, rerun in build mode
         start = time.time()
         env.sig_mode = 'build'
         Base_Executor(wf).run()

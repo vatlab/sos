@@ -271,18 +271,24 @@ class SoS_Kernel(IPythonKernel):
 
     def get_get_parser(self):
         parser = argparse.ArgumentParser(prog='%get',
-            description='''Get specified variables from the SoS kernel
-            to the existing subkernel.''')
-        parser.add_argument('vars', nargs='?',
+            description='''Get specified variables from another kernel, which is
+                by default the SoS kernel.''')
+        parser.add_argument('--from', dest='__from__',
+            help='''Name of kernel from which the variables will be obtained.
+                Default to the SoS kernel.''')
+        parser.add_argument('vars', nargs='*',
             help='''Names of SoS variables''')
         parser.error = self._parse_error
         return parser
 
     def get_put_parser(self):
         parser = argparse.ArgumentParser(prog='%put',
-            description='''Put specified variables in the subkernel to the
-            SoS kernel.''')
-        parser.add_argument('vars', nargs='?',
+            description='''Put specified variables in the subkernel to another
+            kernel, which is by default the SoS kernel.''')
+        parser.add_argument('--to', dest='__to__',
+            help='''Name of kernel from which the variables will be obtained.
+                Default to the SoS kernel.''')
+        parser.add_argument('vars', nargs='*',
             help='''Names of SoS variables''')
         parser.error = self._parse_error
         return parser
@@ -550,7 +556,7 @@ class SoS_Kernel(IPythonKernel):
             if kernel != 'sos':
                 self.switch_kernel('sos')
                 self.switch_kernel(kernel, in_vars, ret_vars)
-        elif kernel  == 'sos':
+        elif kernel == 'sos':
             # switch from non-sos to sos kernel
             self.handle_magic_put(self.RET_VARS)
             self.RET_VARS = []
@@ -699,48 +705,70 @@ class SoS_Kernel(IPythonKernel):
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Usage: set persistent sos command line options such as "-v 3" (debug output)\n'})
 
-    def handle_magic_get(self, items):
-        # autmatically get all variables with names start with 'sos'
-        default_items = [x for x in env.sos_dict.keys() if x.startswith('sos') and x not in self.original_keys]
-        items = default_items if not items else items + default_items
-        for item in items:
-            if item not in env.sos_dict:
-                self.warn('Variable {} does not exist'.format(item))
+    def handle_magic_get(self, items, kernel=None):
+        if kernel is None or kernel.lower() == 'sos':
+            # autmatically get all variables with names start with 'sos'
+            default_items = [x for x in env.sos_dict.keys() if x.startswith('sos') and x not in self.original_keys]
+            items = default_items if not items else items + default_items
+            for item in items:
+                if item not in env.sos_dict:
+                    self.warn('Variable {} does not exist'.format(item))
+                    return
+            if not items:
                 return
-        if not items:
-            return
-        if self.kernel in self.supported_languages:
-            lan = self.supported_languages[self.kernel]
+            if self.kernel in self.supported_languages:
+                lan = self.supported_languages[self.kernel]
+                try:
+                    for item in items:
+                        new_name, py_repr = lan.sos_to_lan(item, env.sos_dict[item])
+                        if new_name != item:
+                            self.warn('Variable {} is passed from SoS to kernel {} as {}'
+                                .format(item, self.kernel, new_name))
+                        # first thing is wait for any side effects (output, stdin, etc.)
+                        self.KC.execute(py_repr, silent=True, store_history=False)
+                        _execution_state = "busy"
+                        while _execution_state != 'idle':
+                            # display intermediate print statements, etc.
+                            while self.KC.iopub_channel.msg_ready():
+                                sub_msg = self.KC.iopub_channel.get_msg()
+                                msg_type = sub_msg['header']['msg_type']
+                                if msg_type == 'status':
+                                    _execution_state = sub_msg["content"]["execution_state"]
+                                elif msg_type == 'error':
+                                    self.warn('Transferring variable {} of type {} to kernel {} is not supported'.format(item, type(env.sos_dict[item]), self.kernel))
+                                    if self._debug_mode:
+                                        self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
+                except Exception as e:
+                    self.warn('Failed to get variable: {}\n'.format(e))
+                    return
+            elif self.kernel == 'sos':
+                self.warn('Magic %get without option --kernel can only be executed by subkernels')
+                return
+            else:
+                if self._debug_mode:
+                    self.warn('Language {} does not support magic %get.'.format(self.kernel))
+                return
+        elif self.kernel.lower() == 'sos':
+            # if another kernel is specified and the current kernel is sos
+            # we get from subkernel
             try:
-                for item in items:
-                    new_name, py_repr = lan.sos_to_lan(item, env.sos_dict[item])
-                    if new_name != item:
-                        self.warn('Variable {} is passed from SoS to kernel {} as {}'
-                            .format(item, self.kernel, new_name))
-                    # first thing is wait for any side effects (output, stdin, etc.)
-                    self.KC.execute(py_repr, silent=True, store_history=False)
-                    _execution_state = "busy"
-                    while _execution_state != 'idle':
-                        # display intermediate print statements, etc.
-                        while self.KC.iopub_channel.msg_ready():
-                            sub_msg = self.KC.iopub_channel.get_msg()
-                            msg_type = sub_msg['header']['msg_type']
-                            if msg_type == 'status':
-                                _execution_state = sub_msg["content"]["execution_state"]
-                            elif msg_type == 'error':
-                                self.warn('Transferring variable {} of type {} to kernel {} is not supported'.format(item, type(env.sos_dict[item]), self.kernel))
-                                if self._debug_mode:
-                                    self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
-            except Exception as e:
-                self.warn('Failed to get variable: {}\n'.format(e))
-                return
-        elif self.kernel == 'sos':
-            self.warn('Magic %get can only be executed by subkernels')
-            return
+                self.switch_kernel(kernel)
+                self.handle_magic_put(items)
+            finally:
+                self.switch_kernel('sos')
         else:
-            if self._debug_mode:
-                self.warn('Language {} does not support magic %get.'.format(self.kernel))
-            return
+            # if another kernel is specified and the current kernel is not sos
+            # we need to first get from another kernel (to sos) and then to this kernel
+            try:
+                my_kernel = self.kernel
+                self.switch_kernel(kernel)
+                # put stuff to sos
+                self.handle_magic_put(items)
+            finally:
+                # then switch back
+                self.switch_kernel(my_kernel)
+                # and get from sos
+                self.handle_magic_get(items)
 
 
     def get_response(self, statement, msg_types):
@@ -769,27 +797,50 @@ class SoS_Kernel(IPythonKernel):
 
         return responses
 
-    def handle_magic_put(self, items):
-        # items can be None if unspecified
-        if not items:
-            # we do not simply return because we need to return default variables (with name startswith sos
-            items = []
-        if self.kernel in self.supported_languages:
-            lan = self.supported_languages[self.kernel]
-            objects = lan.lan_to_sos(items)
-            if not isinstance(objects, dict):
-                self.warn('Failed to execute %put {}: subkernel returns {}, which is not a dict.'
-                    .format(' '.join(items), short_repr(objects)))
+    def handle_magic_put(self, items, kernel=None):
+        if kernel is None or kernel.lower() == 'sos':
+            # put to sos kernel
+            # items can be None if unspecified
+            if not items:
+                # we do not simply return because we need to return default variables (with name startswith sos
+                items = []
+            if self.kernel in self.supported_languages:
+                lan = self.supported_languages[self.kernel]
+                objects = lan.lan_to_sos(items)
+                if not isinstance(objects, dict):
+                    self.warn('Failed to execute %put {}: subkernel returns {}, which is not a dict.'
+                        .format(' '.join(items), short_repr(objects)))
+                else:
+                    try:
+                        env.sos_dict.update(objects)
+                    except Exception as e:
+                        self.warn('Failed to execute %put: {}'.format(e))
+            elif self.kernel == 'sos':
+                self.warn('Magic %put without option --kernel can only be executed by subkernels')
             else:
-                try:
-                    env.sos_dict.update(objects)
-                except Exception as e:
-                    self.warn('Failed to execute %put: {}'.format(e))
-        elif self.kernel == 'sos':
-            self.warn('Magic %put can only be executed by subkernels')
+                if self._debug_mode:
+                    self.warn('Language {} does not support magic %put.'.format(self.kernel))
+        elif self.kernel.lower() == 'sos':
+            # if another kernel is specified and the current kernel is sos
+            try:
+                # switch to kernel and bring in items
+                self.switch_kernel(kernel, in_vars=items)
+            finally:
+                # switch back
+                self.switch_kernel('sos')
         else:
-            if self._debug_mode:
-                self.warn('Language {} does not support magic %put.'.format(self.kernel))
+            # if another kernel is specified and the current kernel is not sos
+            # we need to first put to sos then to another kernel
+            try:
+                my_kernel = self.kernel
+                # switch to sos, bring in vars
+                self.handle_magic_put(items)
+                # switch to the destination kernel and bring in vars
+                self.switch_kernel(kernel, in_vars=items)
+            finally:
+                # switch back to the original kernel
+                self.switch_kernel(my_kernel)
+                
 
     def _interpolate_option(self, option, quiet=False):
         # interpolate command
@@ -1259,11 +1310,33 @@ class SoS_Kernel(IPythonKernel):
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_GET.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
-            self.handle_magic_get(options.split())
+            try:
+                parser = self.get_get_parser()
+                args = parser.parse_args(options.split())
+            except Exception as e:
+                self.warn('Invalid option "{}": {}\n'.format(options, e))
+                return {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self._execution_count,
+                   }
+            self.handle_magic_get(args.vars, args.__from__)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_PUT.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
-            self.handle_magic_put(options.split())
+            try:
+                parser = self.get_put_parser()
+                args = parser.parse_args(options.split())
+            except Exception as e:
+                self.warn('Invalid option "{}": {}\n'.format(options, e))
+                return {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self._execution_count,
+                   }
+            self.handle_magic_put(args.vars, args.__to__)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_PASTE.match(code):
             options, remaining_code = self.get_magic_and_code(code, True)

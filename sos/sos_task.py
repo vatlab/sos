@@ -130,6 +130,8 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 rebuild=True):
                 env.logger.info('Task ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
                 skipped = True
+            else:
+                env.logger.info('Task ``{}`` (index={}) is ``executed`` with failed signature constructed'.format(env.sos_dict['step_name'], idx))
         elif env.sig_mode == 'force':
             skipped = False
         else:
@@ -226,7 +228,7 @@ def check_task(task):
     # completed-old: if there is an old result file with succ
     # completed:     if there is a new result file with succ
     # failed-mismatch: completed but signature mismatch
-    # failed-old-mismatch: completed from an old run but signature mismatch
+    # failed-missing-output: completed from an old run but signature mismatch
     # failed-old:    if there is an old result file with fail status
     # failed:        if there is a new result file with fail status
     # pending:       if there is no result file, without status file or with an old status file
@@ -437,6 +439,12 @@ class TaskEngine(threading.Thread):
             self.max_running_jobs = 10
         else:
             self.max_running_jobs = self.config['max_running_jobs']
+
+    def reset(self):
+        with threading.Lock():
+            self.tasks = []
+            self.pending_tasks = []
+            self.task_status = {}
 
     def get_tasks(self):
         with threading.Lock():

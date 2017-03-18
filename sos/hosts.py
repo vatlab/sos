@@ -448,6 +448,12 @@ class Host:
         self._get_config(alias)
         self._get_host_agent(start_engine)
 
+    # for test purpose
+    @classmethod
+    def reset(cls):
+        for host in cls.host_instances.values():
+            host._task_engine.reset()
+
     def _get_config(self, alias):
         if not alias:
             self.alias = 'localhost'
