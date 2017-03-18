@@ -193,7 +193,12 @@ class SoS_ExecuteScript:
         else:
             raise RuntimeError('Unacceptable interpreter {}'.format(interpreter))
         self.args = args
-        self.suffix = suffix
+        if suffix:
+            self.suffix = suffix
+        elif sys.platform == 'win32':
+            self.suffix = '.bat'
+        else:
+            self.suffix = '.sh'
 
     def run(self, **kwargs):
         transcribe(self.script, action=self.interpreter)
