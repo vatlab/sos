@@ -29,6 +29,7 @@ from sos.sos_script import SoS_Script
 from sos.utils import env
 from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
+from sos.hosts import Host
 import subprocess
 
 class TestSignature(unittest.TestCase):
@@ -37,6 +38,8 @@ class TestSignature(unittest.TestCase):
         subprocess.call('sos remove -s', shell=True)
         #self.resetDir('~/.sos')
         self.temp_files = []
+        self.resetDir('temp')
+        Host.reset()
 
     def tearDown(self):
         for f in self.temp_files:
@@ -78,8 +81,6 @@ output: _dest
 time.sleep(0.5)
 run(" cp ${_input} ${_dest} ")
 """)
-        #
-        env.max_jobs = 4
 
     def testSignature1(self):
         self._testSignature(r"""
@@ -126,11 +127,9 @@ task:
 import time
 time.sleep(0.5)
 run:
+echo cp ${_input} ${_dest}
 cp ${_input} ${_dest}
 """)
-        # reset env mode
-        env.sig_mode = 'default'
-        shutil.rmtree('temp')
 
     def testSignatureWithSharedVariable(self):
         '''Test restoration of signature from variables.'''
@@ -211,8 +210,12 @@ cp ${_input} ${_dest}
             self.assertTrue(tb.read(), 'b.txt')
         env.sig_mode = 'assert'
         Base_Executor(wf).run()
-        #
+        # all of them
         wf = script.workflow()
+        env.sig_mode = 'default'
+        # generate files (default step 0 and 1)
+        Base_Executor(wf).run()
+        # now, rerun in build mode
         start = time.time()
         env.sig_mode = 'build'
         Base_Executor(wf).run()
