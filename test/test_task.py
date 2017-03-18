@@ -30,6 +30,7 @@ from sos.sos_script import SoS_Script, ParsingError
 from sos.utils import env
 from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
+from sos.hosts import Host
 import subprocess
 
 class TestTask(unittest.TestCase):
@@ -38,6 +39,7 @@ class TestTask(unittest.TestCase):
         subprocess.call('sos remove -s', shell=True)
         #self.resetDir('~/.sos')
         self.temp_files = []
+        Host.reset()
 
     def tearDown(self):
         for f in self.temp_files:
@@ -68,6 +70,7 @@ with open('test/result.txt', 'w') as res:
 """)
         wf = script.workflow()
         env.sig_mode = 'force'
+        env.__wait__ = True
         Base_Executor(wf).run()
         with open('result.txt') as res:
             content = [x.strip() for x in res.readlines()]
@@ -78,6 +81,7 @@ with open('test/result.txt', 'w') as res:
         '''Test concurrency option for runtime environment'''
         env.max_jobs = 5
         env.sig_mode = 'force'
+        env.__wait__ = True
         script =  SoS_Script(r"""
 [0]
 
@@ -203,6 +207,8 @@ touch temp/${ff}
 ''' % active)
             wf = script.workflow()
             env.sig_mode = 'force'
+            env.__wait__ = True
+            Host.reset()
             Base_Executor(wf).run()
             files = list(glob.glob('temp/*.txt'))
             self.assertEqual(files, result)
@@ -225,9 +231,11 @@ touch temp/${ff}
 ''' % active)
             wf = script.workflow()
             env.sig_mode = 'force'
+            env.__wait__ = True
+            Host.reset()
             Base_Executor(wf).run()
             files = list(glob.glob('temp/*.txt'))
-            self.assertEqual(files, result)
+            self.assertEqual(files, result, 'With option {}'.format(active))
             #
             # test last iteration
             shutil.rmtree('temp')
@@ -259,6 +267,7 @@ python:
 ''')
         wf = script.workflow()
         env.max_jobs = 4
+        env.__wait__ = True
         Base_Executor(wf).run()
         for t in range(10, 13):
             with open('myfile_{}.txt'.format(t)) as tmp:
@@ -277,6 +286,7 @@ run:
     echo "a = ${a}, b = ${b}"
     sleep ${a + b}
 ''')
+        env.__wait__ = True
         wf = script.workflow()
         Base_Executor(wf).run()
 
@@ -284,26 +294,29 @@ run:
         '''Test no wait'''
         script = SoS_Script(r'''
 [10]
-input: for_each=[{'a': range(5)}]
+input: for_each=[{'a': range(3)}]
 
 task: concurrent=True
 run:
     echo "a = ${a}"
-    sleep ${10}
+    sleep 20
 ''')
         wf = script.workflow()
         st = time.time()
+        env.sig_mode = 'force'
+        env.__wait__ = False
         Base_Executor(wf).run()
         # sos should quit
-        self.assertLess(time.time() - st, 5)
+        self.assertLess(time.time() - st, 10)
         #
+        time.sleep(18)
+        print('RESTART')
+        env.sig_mode = 'default'
         env.__wait__ = True
-        time.sleep(5)
         st = time.time()
         Base_Executor(wf).run()
         # sos should wait till everything exists
-        self.assertGreater(time.time() - st, 5)
-        self.assertLess(time.time() - st, 10)
+        self.assertLess(time.time() - st, 15)
 
 if __name__ == '__main__':
     unittest.main()

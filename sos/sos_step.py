@@ -643,6 +643,10 @@ class Base_Step_Executor:
             except Exception as e:
                 env.logger.warning(e)
                 raise
+        status_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.status')
+        if env.sig_mode == 'force' and os.path.isfile(status_file):
+            os.remove(status_file)
+
         return task_id
 
     def wait_for_results(self):
