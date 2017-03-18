@@ -348,14 +348,14 @@ C_3 -> C_4;
 [K: provides='{name}.txt']
 output: "${name}.txt"
 
-sh:
+run:
     touch '${name}.txt'
 
 [C_2]
 input: 'b.txt'
 output: 'c.txt'
 
-sh:
+run:
     touch c.txt
 
 [C_3]
@@ -441,50 +441,51 @@ output: 'A.txt'
 [A_1]
 input: 'B1.txt'
 output: 'A1.txt'
-sh:
+run:
     touch A1.txt
 
 [A_2]
 depends:  'B2.txt'
-sh:
+run:
     touch A2.txt
 
 [B1: provides='B1.txt']
 depends: 'B2.txt'
-sh:
+run:
     touch B1.txt
 
 [B2: provides='B2.txt']
 depends: 'B3.txt', 'C1.txt'
-sh:
+run:
     touch B2.txt
 
 [B3: provides='B3.txt']
-sh:
+run:
     touch B3.txt
 
 [C1: provides='C1.txt']
 depends: 'C2.txt', 'C3.txt'
-sh:
+run:
     touch C1.txt
 
 [C2: provides='C2.txt']
 depends: 'C4.txt'
-sh:
+run:
     touch C2.txt
 
 [C3: provides='C3.txt']
 depends: 'C4.txt'
-sh:
+run:
     touch C3.txt
 
 [C4: provides='C4.txt']
-sh:
+run:
     touch C4.txt
 
-        ''')
+''')
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
+        env.verbosity = 4
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
 '''
@@ -533,45 +534,45 @@ A_1 -> A_2;
 [A_1]
 input: 'B1.txt'
 output: 'A1.txt'
-sh:
+run:
     touch A1.txt
 
 [A_2]
 depends:  'B2.txt'
-sh:
+run:
     touch A2.txt
 
 [B1: provides='B1.txt']
 depends: 'B2.txt'
-sh:
+run:
     touch B1.txt
 
 [B2: provides='B2.txt']
 depends: 'B3.txt', 'C1.txt'
-sh:
+run:
     touch B2.txt
 
 [B3: provides='B3.txt']
-sh:
+run:
     touch B3.txt
 
 [C1: provides='C1.txt']
 depends: 'C2.txt', 'C3.txt'
-sh:
+run:
     touch C1.txt
 
 [C2: provides='C2.txt']
 depends: 'C4.txt'
-sh:
+run:
     touch C2.txt
 
 [C3: provides='C3.txt']
 depends: 'C4.txt'
-sh:
+run:
     touch C3.txt
 
 [C4: provides='C4.txt']
-sh:
+run:
     touch C4.txt
 
         ''')
@@ -671,24 +672,24 @@ strict digraph "" {
 [A_1]
 input: 'B1.txt.p', 'B2.txt.p'
 output: 'A1.txt'
-sh:
+run:
     touch A1.txt
 
 [A_2]
-sh:
+run:
     touch A2.txt
 
 [B1: provides='B1.txt']
-sh:
+run:
     touch B1.txt
 
 [B2: provides='B2.txt']
-sh:
+run:
     touch B2.txt
 
 [P: provides='{filename}.p']
 input: filename
-sh:
+run:
     touch ${output}
 ''')
         # the workflow should call step K for step C_2, but not C_3
@@ -728,20 +729,20 @@ A_1 -> A_2;
         script = SoS_Script('''
 [A_1]
 output: 'A1.txt'
-sh:
+run:
     sleep 3
     touch A1.txt
 
 [A_2]
 input:  'B2.txt'
 output: 'A2.txt'
-sh:
+run:
     sleep 3
     touch A2.txt
 
 [B: provides='B2.txt']
 output: 'B2.txt'
-sh:
+run:
     touch B2.txt
 
 
@@ -783,7 +784,7 @@ ss = 'A1'
 [A_2]
 input: None
 
-sh:
+run:
     sleep 3
 
 [A_3]
@@ -823,7 +824,7 @@ A_1 -> A_3;
         #
         script = SoS_Script('''
 [A_1: shared='p']
-sh:
+run:
     touch 'A1.txt'
 
 p = 'A1.txt'
@@ -831,18 +832,18 @@ p = 'A1.txt'
 [A_2]
 input: None
 
-sh:
+run:
     sleep 3
 
 [A_3]
 input: p
 
-sh:
+run:
     sleep 3
 
 [A_4]
 input: p
-sh:
+run:
     sleep 3
 
 [A_5]
@@ -899,7 +900,7 @@ p = c + b
         script = SoS_Script(r'''
 [A: shared='b', provides='a.txt']
 b = 1
-sh:
+run:
     touch a.txt
 
 [B_1]
@@ -919,14 +920,14 @@ print(b)
 # this step provides variable `var`
 [index: provides='{filename}.bam.bai']
 input: "${filename}.bam"
-sh:
+run:
    echo "Generating ${output}"
    touch ${output}
 
 [call: provides='{filename}.vcf']
 input:   "${filename}.bam"
 depends: "${input}.bai"
-sh:
+run:
    echo "Calling variants from ${input} with ${depends} to ${output}"
    touch ${output}
 ''')
@@ -954,45 +955,45 @@ sh:
 [A_1]
 input: 'B1.txt'
 output: 'A1.txt'
-sh:
+run:
     touch A1.txt
 
 [A_2]
 depends:  'B2.txt'
-sh:
+run:
     touch A2.txt
 
 [B1: provides='B1.txt']
 depends: 'B2.txt'
-sh:
+run:
     touch B1.txt
 
 [B2: provides='B2.txt']
 depends: 'B3.txt', 'C1.txt'
-sh:
+run:
     touch B2.txt
 
 [B3: provides='B3.txt']
-sh:
+run:
     touch B3.txt
 
 [C1: provides='C1.txt']
 depends: 'C2.txt', 'C3.txt'
-sh:
+run:
     touch C1.txt
 
 [C2: provides='C2.txt']
 depends: 'C4.txt'
-sh:
+run:
     touch C2.txt
 
 [C3: provides='C3.txt']
 depends: 'C4.txt'
-sh:
+run:
     touch C3.txt
 
 [C4: provides='C4.txt']
-sh:
+run:
     touch C4.txt
 
         ''')
