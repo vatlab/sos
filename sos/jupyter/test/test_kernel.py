@@ -134,6 +134,33 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code="_a_b")
             res = get_result(iopub)
             self.assertEqual(res, 22)
+            #
+            # test to yet another kernel
+            #
+            msg_id, content = execute(kc=kc, code="%put --to Python3 _a_b")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%use Python3")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="_a_b")
+            res = get_result(iopub)
+            self.assertEqual(res, 22)
+            #
+            msg_id, content = execute(kc=kc, code="kkk = 'ast'")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%put --to R kkk")
+            res = get_result(iopub)
+            msg_id, content = execute(kc=kc, code="%use R")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="kkk <- paste0(kkk, '1')")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%put --to Python3 kkk")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%use Python3")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="kkk")
+            res = get_result(iopub)
+            self.assertEqual(res, 'ast1')
+
 
     def testMagicGet(self):
         with sos_kernel() as kc:
@@ -150,6 +177,8 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code="a")
             res = get_display_data(iopub)
             self.assertEqual(res, '[1] 1025')
+            msg_id, content = execute(kc=kc, code="b <- 122\nc<-555")
+            wait_for_idle(kc)
             #
             msg_id, content = execute(kc=kc, code="%get _b_a")
             wait_for_idle(kc)
@@ -158,6 +187,22 @@ class TestKernel(unittest.TestCase):
             self.assertEqual(res, '[1] 22')
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
+            #
+            # get from a sub kernel
+            msg_id, content = execute(kc=kc, code="%get --from R b")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="b")
+            res = get_result(iopub)
+            self.assertEqual(res, 122)
+            # get from a third kernel
+            msg_id, content = execute(kc=kc, code="%use Python3")
+            wait_for_idle(kc) 
+            msg_id, content = execute(kc=kc, code="%get --from R c")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="c")
+            res = get_result(iopub)
+            self.assertEqual(res, 555)
+
 
     def testAutoSharedVars(self):
         with sos_kernel() as kc:

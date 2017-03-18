@@ -86,7 +86,7 @@ class SoS_String:
         'd': os.path.dirname,
         'b': os.path.basename,
         'n': lambda x: os.path.splitext(x)[0],
-        'q': lambda x: list2cmdline([x]) if sys.platform == 'win32' else quote,
+        'q': (lambda x: list2cmdline([x])) if sys.platform == 'win32' else quote,
         'r': repr,
         's': str,
         # these are handled elsewhere
