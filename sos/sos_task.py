@@ -464,7 +464,7 @@ class TaskEngine(threading.Thread):
                     tid, tst = line.split('\t')
                     self.task_status[tid] = tst
                 except Exception as e:
-                    env.logger.warning('Unrecognized response {}: {}'.format(line, e))
+                    env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
         while True:
             # if no new task, does not do anything.
             if self.tasks:
@@ -476,13 +476,13 @@ class TaskEngine(threading.Thread):
                         try:
                             tid, tst = line.split('\t')
                             if hasattr(env, '__task_notifier__'):
-                                if self.task_status[tid] == tst:
+                                if tid in self.task_status and self.task_status[tid] == tst:
                                     env.__task_notifier__(['pulse-status', tid, tst])
                                 else:
                                     env.__task_notifier__(['change-status', tid, tst])
                             self.task_status[tid] = tst
                         except Exception as e:
-                            env.logger.warning('Unrecognized response {} (): {}'.format(line, e.__class__.__name__, e))
+                            env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
                     self.summarize_status()
 
             if self.pending_tasks:
