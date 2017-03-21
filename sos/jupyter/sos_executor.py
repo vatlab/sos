@@ -265,6 +265,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
             status_class = {
                 'failed':  'fa fa-2x fa-fw fa-times-circle-o',
                 'killed':  'fa fa-2x fa-fw fa-times-circle-o',
+                'dead':  'fa fa-2x fa-fw fa-times-circle-o',
                 'failed-missing-output': 'fa fa-2x fa-fw fa-times-circle-o',
                 'failed-old-missing-output': 'fa fa-2x fa-fw fa-times-circle-o',
                 'pending': 'fa fa-2x fa-fw fa-square-o',
