@@ -207,6 +207,7 @@ class Base_Executor:
         self.args = args
         self.shared = shared
         self.config = config
+        env.config = config
         for key in ('config_file', 'output_dag', 'report_output'):
             if key not in self.config:
                 self.config[key] = None
