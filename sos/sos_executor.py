@@ -163,8 +163,8 @@ class SoS_Worker(mp.Process):
 
     def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity, pipe):
         env.logger.debug('Worker working on a step with args {}'.format(args))
-        env.run_mode = run_mode
-        env.sig_mode = sig_mode
+        env.config['run_mode'] = run_mode
+        env.config['sig_mode'] = sig_mode
         env.verbosity = verbosity
         #
         self.args = args
@@ -190,7 +190,7 @@ class SoS_Worker(mp.Process):
         env.sos_dict.quick_update(context)
         env.sos_dict.quick_update(shared)
 
-        executor = Step_Executor(section, pipe, mode=env.run_mode)
+        executor = Step_Executor(section, pipe, mode=env.config['run_mode'])
         executor.run()
 
 class dummy_node:
@@ -214,10 +214,10 @@ class Base_Executor:
             self.config['config_file'] = os.path.abspath(os.path.expanduser(self.config['config_file']))
         #
         # if the executor is not called from command line, without sigmode setting
-        if env.sig_mode is None:
-            env.sig_mode = 'default'
+        if env.config['sig_mode'] is None:
+            env.config['sig_mode'] = 'default'
         # interactive mode does not pass workflow
-        if env.sig_mode != 'ignore' and self.workflow:
+        if env.config['sig_mode'] != 'ignore' and self.workflow:
             self.md5 = self.create_signature()
             # remove old workflow file.
             with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'a') as sig:
@@ -602,15 +602,15 @@ class Base_Executor:
         #
         # if the exexcutor is started from sos_run, these should also be passed
         if 'sig_mode' in self.config:
-            env.sig_mode = self.config['sig_mode']
+            env.config['sig_mode'] = self.config['sig_mode']
         if 'verbosity' in self.config:
             env.verbosity = self.config['verbosity']
 
         self.reset_dict()
-        env.run_mode = mode
+        env.config['run_mode'] = mode
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
-        env.sos_dict.set('run_mode', env.run_mode)
+        env.sos_dict.set('run_mode', env.config['run_mode'])
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
 
@@ -939,7 +939,7 @@ class Base_Executor:
                             worker_queue = p[1]
 
                         env.logger.debug('{} execute {} from DAG'.format(i_am(), section.md5))
-                        worker_queue.put(('step', section, runnable._context, shared, self.args, env.run_mode, env.sig_mode, env.verbosity, q[1]))
+                        worker_queue.put(('step', section, runnable._context, shared, self.args, env.config['run_mode'], env.config['sig_mode'], env.verbosity, q[1]))
                         procs.append( [[worker, worker_queue], q[0], runnable])
                     else:
                         # send the step to the parent
@@ -947,7 +947,7 @@ class Base_Executor:
                         env.logger.debug('{} send step {} to master with args {}'.format(i_am(), step_id, self.args))
                         parent_pipe.send('step {}'.format(step_id))
                         q = mp.Pipe()
-                        parent_pipe.send((section, runnable._context, shared, self.args, env.run_mode, env.sig_mode, env.verbosity, q[1]))
+                        parent_pipe.send((section, runnable._context, shared, self.args, env.config['run_mode'], env.config['sig_mode'], env.verbosity, q[1]))
                         # this is a real step
                         runnable._status = 'step_pending'
                         procs.append([None, q[0], runnable])

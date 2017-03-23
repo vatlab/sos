@@ -130,7 +130,7 @@ class LocalHost:
 
     def run_command(self, cmd):
         # run command but does not wait for result.
-        if env.run_mode == 'dryrun':
+        if env.config['run_mode'] == 'dryrun':
             subprocess.Popen(cmd, shell=True)
         else:
             p = DaemonizedProcess(cmd)
@@ -386,7 +386,7 @@ class RemoteHost:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
 
-        if env.run_mode == 'dryrun':
+        if env.config['run_mode'] == 'dryrun':
             subprocess.Popen(cmd, shell=True)
         else:
             p = DaemonizedProcess(cmd)

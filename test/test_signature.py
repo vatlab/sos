@@ -186,7 +186,7 @@ sleep 0.5
 cp ${_input} ${_dest}
 """)
         # reset env mode
-        env.sig_mode = 'default'
+        env.config['sig_mode'] = 'default'
         shutil.rmtree('temp')
 
     def _testSignature(self, text):
@@ -199,7 +199,7 @@ cp ${_input} ${_dest}
         # only the first step
         wf = script.workflow('default:0')
         start = time.time()
-        env.sig_mode = 'force'
+        env.config['sig_mode'] = 'force'
         Base_Executor(wf).run()
         self.assertGreater(time.time() - start, 1)
         self.assertTrue(os.path.isfile('temp/a.txt'))
@@ -208,16 +208,16 @@ cp ${_input} ${_dest}
             self.assertTrue(ta.read(), 'a.txt')
         with open('temp/b.txt') as tb:
             self.assertTrue(tb.read(), 'b.txt')
-        env.sig_mode = 'assert'
+        env.config['sig_mode'] = 'assert'
         Base_Executor(wf).run()
         # all of them
         wf = script.workflow()
-        env.sig_mode = 'default'
+        env.config['sig_mode'] = 'default'
         # generate files (default step 0 and 1)
         Base_Executor(wf).run()
         # now, rerun in build mode
         start = time.time()
-        env.sig_mode = 'build'
+        env.config['sig_mode'] = 'build'
         Base_Executor(wf).run()
 
         self.assertLess(time.time() - start, 1.5)
@@ -231,12 +231,12 @@ cp ${_input} ${_dest}
         self.assertEqual(env.sos_dict['oa'], ['temp/c.txt', 'temp/d.txt'])
         #
         # now in assert mode, the signature should be there
-        env.sig_mode = 'assert'
+        env.config['sig_mode'] = 'assert'
         Base_Executor(wf).run()
 
         #
         start = time.time()
-        env.sig_mode = 'default'
+        env.config['sig_mode'] = 'default'
         Base_Executor(wf).run()
         
         self.assertLess(time.time() - start, 1.5)
@@ -244,13 +244,13 @@ cp ${_input} ${_dest}
         # change script a little bit
         script = SoS_Script('# comment\n' + text)
         wf = script.workflow()
-        env.sig_mode = 'assert'
+        env.config['sig_mode'] = 'assert'
         Base_Executor(wf).run()
 
         # add some other variable?
         #script = SoS_Script('comment = 1\n' + text)
         #wf = script.workflow()
-        #env.sig_mode = 'assert'
+        #env.config['sig_mode'] = 'assert'
         #self.assertRaises(ExecuteError, Base_Executor(wf).run)
 
     def testReexecution(self):
@@ -282,7 +282,7 @@ run("touch ${output}")
         #
         # force rerun mode
         start = time.time()
-        env.sig_mode = 'ignore'
+        env.config['sig_mode'] = 'ignore'
         Base_Executor(wf).run()
         # regularly take more than 5 seconds to execute
         self.assertGreater(time.time() - start, 2)

@@ -215,7 +215,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         sos dryrun for details of the dryrun mode.''')
     runmode.add_argument('-s', choices=['default', 'ignore', 'force', 'build', 'assert'],
         default='ignore' if interactive else 'default', metavar='SIGMODE',
-        dest='__sigmode__',
+        dest='__sig_mode__',
         help='''How runtime signature would be handled, which can be "default"
             (save and use signature, default mode in batch mode), "ignore"
             (ignore runtime signature, default mode in interactive mode),
@@ -269,8 +269,6 @@ def cmd_run(args, workflow_args):
 
     # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)
-    #
-    env.sig_mode = args.__sigmode__
 
     if args.__bin_dirs__:
         import fasteners
@@ -294,7 +292,10 @@ def cmd_run(args, workflow_args):
                 'report_output': args.__report__,
                 'wait_for_task': args.__wait__ or args.__dryrun__,
                 'default_queue': args.__queue__,
-                'max_jobs': args.__max_jobs__})
+                'max_jobs': args.__max_jobs__,
+                'sig_mode': args.__sig_mode__,
+                'run_mode': args.__run_mode__,
+                })
         executor.run(args.__targets__, mode='dryrun' if args.__dryrun__ else 'run')
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
@@ -353,7 +354,7 @@ def get_dryrun_parser(desc_only=False):
     return parser
 
 def cmd_dryrun(args, workflow_args):
-    args.__sigmode__ = 'ignore'
+    args.__sig_mode__ = 'ignore'
     args.__max_jobs__ = 1
     args.__report__ = None
     args.__dryrun__ = True
@@ -372,7 +373,7 @@ def get_execute_parser(desc_only=False):
     parser.add_argument('tasks', nargs='+', help='''IDs of the task.''')
     parser.add_argument('-s', choices=['default', 'ignore', 'force', 'build', 'assert'],
         default='default', metavar='SIGMODE',
-        dest='__sigmode__',
+        dest='__sig_mode__',
         help='''How runtime signature would be handled, which can be "default"
             (save and use signature, default mode in batch mode), "ignore"
             (ignore runtime signature, default mode in interactive mode),
@@ -424,7 +425,7 @@ def cmd_execute(args, workflow_args):
                 else:
                     print(summarizeExecution(task, status=status))
                 sys.exit(1)
-            if status.startswith('completed') and args.__sigmode__ != 'force':
+            if status.startswith('completed') and args.__sig_mode__ != 'force':
                 # touch the result file
                 os.utime(res_file, None)
                 #if args.verbosity <= 1:
@@ -436,7 +437,7 @@ def cmd_execute(args, workflow_args):
             if os.path.isfile(res_file):
                 os.remove(res_file)
             res = execute_task(task, verbosity=args.verbosity, runmode='dryrun' if args.__dryrun__ else 'run',
-                sigmode=args.__sigmode__,
+                sigmode=args.__sig_mode__,
                 monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
             with open(res_file, 'wb') as res_file:
                 pickle.dump(res, res_file)
@@ -453,8 +454,8 @@ def cmd_execute(args, workflow_args):
         cfg = load_config_files(args.config)
         env.sos_dict.set('CONFIG', cfg)
         env.verbosity = args.verbosity
-        env.sig_mode = args.__sigmode__
-        env.run_mode = 'dryrun' if args.__dryrun__ else 'run'
+        env.config['sig_mode'] = args.__sig_mode__
+        env.config['run_mode'] = 'dryrun' if args.__dryrun__ else 'run'
         host = Host(args.queue)
         for task in args.tasks:
             host.submit_task(task)

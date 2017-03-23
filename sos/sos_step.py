@@ -322,7 +322,7 @@ class Base_Step_Executor:
         lead to the invalidation of the signature, which will then cause the
         re-execution of the step for any result from the step. '''
         #
-        if env.sig_mode == 'ignore' or env.run_mode != 'run':
+        if env.config['sig_mode'] == 'ignore' or env.config['run_mode'] != 'run':
             return None
         env_vars = []
         for var in sorted(env.sos_dict['__signature_vars__']):
@@ -644,7 +644,7 @@ class Base_Step_Executor:
                 env.logger.warning(e)
                 raise
         status_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.status')
-        if env.sig_mode == 'force' and os.path.isfile(status_file):
+        if env.config['sig_mode'] == 'force' and os.path.isfile(status_file):
             os.remove(status_file)
 
         return task_id
@@ -919,7 +919,7 @@ class Base_Step_Executor:
                                         env.sos_dict['_output'], env.sos_dict['_depends'],
                                         env.sos_dict['__signature_vars__'])
                                     signatures[idx].lock()
-                                    if env.sig_mode == 'default':
+                                    if env.config['sig_mode'] == 'default':
                                         matched = signatures[idx].validate()
                                         if isinstance(matched, dict):
                                             # in this case, an Undetermined output can get real output files
@@ -936,7 +936,7 @@ class Base_Step_Executor:
                                             skip_index = True
                                         else:
                                             env.logger.debug('Signature mismatch: {}'.format(matched))
-                                    elif env.sig_mode == 'assert':
+                                    elif env.config['sig_mode'] == 'assert':
                                         matched = signatures[idx].validate()
                                         if isinstance(matched, str):
                                             raise RuntimeError('Signature mismatch: {}'.format(matched))
@@ -951,7 +951,7 @@ class Base_Step_Executor:
                                             env.sos_dict.update(matched['vars'])
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` with matching signature'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
-                                    elif env.sig_mode == 'build':
+                                    elif env.config['sig_mode'] == 'build':
                                         # build signature require existence of files
                                         if signatures[idx].write(
                                             env.sos_dict['_local_input_{}'.format(idx)],
@@ -959,10 +959,10 @@ class Base_Step_Executor:
                                             rebuild=True):
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
-                                    elif env.sig_mode == 'force':
+                                    elif env.config['sig_mode'] == 'force':
                                         skip_index = False
                                     else:
-                                        raise RuntimeError('Unrecognized signature mode {}'.format(env.sig_mode))
+                                        raise RuntimeError('Unrecognized signature mode {}'.format(env.config['sig_mode']))
                                 if skip_index:
                                     break
                             elif key == 'depends':
@@ -1062,7 +1062,7 @@ class Base_Step_Executor:
             # NOTE: dynamic output is evaluated at last, so it sets output,
             # not _output. For the same reason, signatures can be wrong if it has
             # Undetermined output.
-            if env.run_mode in ('run', 'interactive'):
+            if env.config['run_mode'] in ('run', 'interactive'):
                 if isinstance(env.sos_dict['output'], Undetermined):
                     self.reevaluate_output()
                     # if output is no longer Undetermined, set it to output
@@ -1165,7 +1165,7 @@ class Step_Executor(Base_Step_Executor):
     '''Single process step executor'''
     def __init__(self, step, pipe, mode='run'):
         self.run_mode = mode
-        env.run_mode = mode
+        env.config['run_mode'] = mode
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
         super(Step_Executor, self).__init__(step)

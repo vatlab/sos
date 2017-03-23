@@ -69,7 +69,7 @@ with open('test/result.txt', 'w') as res:
        res.write(file + '\n')
 """)
         wf = script.workflow()
-        env.sig_mode = 'force'
+        env.config['sig_mode'] = 'force'
         env.__wait__ = True
         Base_Executor(wf).run()
         with open('result.txt') as res:
@@ -80,7 +80,7 @@ with open('test/result.txt', 'w') as res:
     def testSequencial(self):
         '''Test concurrency option for runtime environment'''
         env.max_jobs = 5
-        env.sig_mode = 'force'
+        env.config['sig_mode'] = 'force'
         env.__wait__ = True
         script =  SoS_Script(r"""
 [0]
@@ -104,7 +104,7 @@ print('I am {}, done'.format(_index))
     def testConcurrency(self):
         '''Test concurrency option for runtime environment'''
         env.max_jobs = 5
-        env.sig_mode = 'force'#
+        env.config['sig_mode'] = 'force'#
         script =  SoS_Script(r"""
 [0]
 
@@ -139,7 +139,7 @@ sh:
     temp_cmd
 """)
         wf = script.workflow()
-        env.sig_mode = 'force'
+        env.config['sig_mode'] = 'force'
         #self.assertRaises(Exception, Base_Executor(wf).run)
         #
         # the following is supposed to create its own task file but
@@ -153,7 +153,7 @@ sh:
     temp_cmd
 """)
         wf = script.workflow()
-        env.sig_mode = 'force'
+        env.config['sig_mode'] = 'force'
         Base_Executor(wf).run()
         #
         #
@@ -206,7 +206,7 @@ echo ${ff}
 touch temp/${ff}
 ''' % active)
             wf = script.workflow()
-            env.sig_mode = 'force'
+            env.config['sig_mode'] = 'force'
             env.__wait__ = True
             Host.reset()
             Base_Executor(wf).run()
@@ -230,7 +230,7 @@ echo ${ff}
 touch temp/${ff}
 ''' % active)
             wf = script.workflow()
-            env.sig_mode = 'force'
+            env.config['sig_mode'] = 'force'
             env.__wait__ = True
             Host.reset()
             Base_Executor(wf).run()
@@ -246,7 +246,7 @@ touch temp/${ff}
         for i in range(10, 13):
             FileTarget('myfile_{}.txt'.format(i)).remove('both')
         #
-        env.sig_mode = 'force'
+        env.config['sig_mode'] = 'force'
         script = SoS_Script(r'''
 parameter: gvar = 10
 
@@ -303,7 +303,7 @@ run:
 ''')
         wf = script.workflow()
         st = time.time()
-        env.sig_mode = 'force'
+        env.config['sig_mode'] = 'force'
         env.__wait__ = False
         Base_Executor(wf).run()
         # sos should quit
@@ -311,7 +311,7 @@ run:
         #
         time.sleep(18)
         print('RESTART')
-        env.sig_mode = 'default'
+        env.config['sig_mode'] = 'default'
         env.__wait__ = True
         st = time.time()
         Base_Executor(wf).run()

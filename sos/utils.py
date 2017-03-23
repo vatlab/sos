@@ -207,7 +207,7 @@ class WorkflowDict(object):
         '''Set value to key, trigger logging and warning messages if needed'''
         if env.verbosity > 2:
             self._log(key, value)
-        if env.run_mode == 'prepare':
+        if env.config['run_mode'] == 'prepare':
             self._warn(key, value)
         if key in ('input', 'output', 'depends', '_input', '_output', '_depends', '_runtime'):
             raise ValueError('Variable {} can only be set by SoS'.format(key))
@@ -225,7 +225,7 @@ class WorkflowDict(object):
             if key in self._readonly_vars:
                 cmp_res = self.__cmp_values__(self._dict[key], self._readonly_vars[key])
                 if not cmp_res:
-                    if env.run_mode != 'interactive':
+                    if env.config['run_mode'] != 'interactive':
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
                             .format(key, short_repr(self._dict[key]), short_repr(self._readonly_vars[key])))
             elif key in self._dict:
@@ -239,12 +239,12 @@ class WorkflowDict(object):
             if key in self._dict:
                 cmp_res = self.__cmp_values__(self._dict[key], self._readonly_vars[key])
                 if not cmp_res:
-                    if env.run_mode != 'interactive':
+                    if env.config['run_mode'] != 'interactive':
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
                             .format(key, short_repr(self._dict[key]), short_repr(self._readonly_vars[key])))
                 cmp_res = self.__cmp_values__(value, self._dict[key])
                 if not cmp_res:
-                    if env.run_mode != 'interactive':
+                    if env.config['run_mode'] != 'interactive':
                         raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
                             .format(key, short_repr(self._dict[key]), short_repr(value)))
 
@@ -298,15 +298,6 @@ class RuntimeEnvironments(object):
         # run mode, this mode controls how SoS actions behave
         #
         self.config = {}
-        self.run_mode = 'run'
-        #
-        # signature mode can be
-        #
-        # default              (save signature, skip if signature match)
-        # ignore               (ignore existing signature but still saves signature)
-        # assert               (verify existing signature and fail if signature mismatch)
-        # construct            (reconstruct signature from existing output files)
-        self.sig_mode = None
         #
         # global dictionaries used by SoS during the
         # execution of SoS workflows

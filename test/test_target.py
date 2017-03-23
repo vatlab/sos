@@ -189,12 +189,12 @@ sh:
 ''')
         wf = script.workflow()
         FileTarget('lls').remove('both')
-        env.sig_mode = 'force'
+        env.config['sig_mode'] = 'force'
         st = time.time()
         Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 2)
         # test validation
-        env.sig_mode = 'default'
+        env.config['sig_mode'] = 'default'
         st = time.time()
         Base_Executor(wf).run()
         self.assertLess(time.time() - st, 2)
@@ -345,7 +345,7 @@ run:
     touch 20.txt
 ''')
         wf = script.workflow()
-        env.sig_mode = 'force'
+        env.config['sig_mode'] = 'force'
         # this should be ok.
         Base_Executor(wf).run()
         for file in ['t1.txt', 't2.txt', '5.txt', '10.txt', '20.txt']:

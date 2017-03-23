@@ -642,7 +642,7 @@ touch <_input>.bak
             shutil.rmtree('temp')
         os.mkdir('temp')
         #
-        env.sig_mode = 'ignore'
+        env.config['sig_mode'] = 'ignore'
         script = SoS_Script('''
 %set_options sigil='%( )'
 [1]
@@ -667,7 +667,7 @@ touch temp/%(ff)
         if os.path.isdir('temp'):
             shutil.rmtree('temp')
         os.mkdir('temp')
-        env.sig_mode = 'ignore'
+        env.config['sig_mode'] = 'ignore'
         script = SoS_Script('''
 [1: shared={'res':'output'}]
 import random
@@ -739,7 +739,7 @@ with open('temp/{}.depends'.format(len([${depends!r,}])), 'w') as f: f.write('')
         if os.path.isdir('temp'):
             shutil.rmtree('temp')
         os.mkdir('temp')
-        env.sig_mode = 'ignore'
+        env.config['sig_mode'] = 'ignore'
         script = SoS_Script('''
 [default]
 s = [x for x in range(5)]
@@ -774,7 +774,7 @@ echo ${output} >> temp/out.log
 touch ${output}
         ''')
         wf = script.workflow()
-        env.sig_mode = 'ignore'
+        env.config['sig_mode'] = 'ignore'
         Base_Executor(wf).run()
         with open('temp/out.log') as out:
             self.assertEqual(len(out.read().split()), 15)

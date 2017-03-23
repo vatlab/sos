@@ -72,8 +72,8 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     if verbosity is not None:
         env.verbosity = verbosity
     if sigmode is not None:
-        env.sig_mode = sigmode
-    env.run_mode = runmode
+        env.config['sig_mode'] = sigmode
+    env.config['run_mode'] = runmode
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
 
@@ -81,7 +81,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     env.sos_dict.quick_update(sos_dict)
 
     skipped = False
-    if env.sig_mode == 'ignore' or env.sos_dict['_output'] is None:
+    if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'] is None:
         sig = None
     else:
         tokens = [x[1] for x in generate_tokens(StringIO(task).readline)]
@@ -92,7 +92,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         sig.lock()
 
         idx = env.sos_dict['_index']
-        if env.sig_mode == 'default':
+        if env.config['sig_mode'] == 'default':
             matched = sig.validate()
             if isinstance(matched, dict):
                 # in this case, an Undetermined output can get real output files
@@ -107,7 +107,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 env.sos_dict.update(matched['vars'])
                 env.logger.info('Task ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
                 skipped = True
-        elif env.sig_mode == 'assert':
+        elif env.config['sig_mode'] == 'assert':
             matched = sig.validate()
             if isinstance(matched, str):
                 raise RuntimeError('Signature mismatch: {}'.format(matched))
@@ -122,7 +122,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 env.sos_dict.update(matched['vars'])
                 env.logger.info('Step ``{}`` (index={}) is ``ignored`` with matching signature'.format(env.sos_dict['step_name'], idx))
                 skipped = True
-        elif env.sig_mode == 'build':
+        elif env.config['sig_mode'] == 'build':
             # build signature require existence of files
             if sig.write(
                 env.sos_dict['_local_input_{}'.format(idx)],
@@ -132,10 +132,10 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 skipped = True
             else:
                 env.logger.info('Task ``{}`` (index={}) is ``executed`` with failed signature constructed'.format(env.sos_dict['step_name'], idx))
-        elif env.sig_mode == 'force':
+        elif env.config['sig_mode'] == 'force':
             skipped = False
         else:
-            raise RuntimeError('Unrecognized signature mode {}'.format(env.sig_mode))
+            raise RuntimeError('Unrecognized signature mode {}'.format(env.config['sig_mode']))
 
     if skipped:
         env.logger.info('{} ``skipped``'.format(task_id))
@@ -580,6 +580,6 @@ class BackgroundProcess_TaskEngine(TaskEngine):
     def execute_task(self, task_id):
         env.logger.info('{} ``submitted``'.format(task_id))
         return self.agent.run_command("sos execute {0} -v {1} -s {2} {3}".format(
-            task_id, env.verbosity, env.sig_mode, '--dryrun' if env.run_mode == 'dryrun' else ''))
+            task_id, env.verbosity, env.config['sig_mode'], '--dryrun' if env.config['run_mode'] == 'dryrun' else ''))
 
 

@@ -116,7 +116,7 @@ output: 'b.txt'
 inputs.append(input)
 sos_run('a+b', shared=['executed', 'inputs'])
 ''')
-        env.sig_mode = 'ignore'
+        env.config['sig_mode'] = 'ignore'
         wf = script.workflow('c')
         Base_Executor(wf).run()
         # order of execution is not guaranteed
