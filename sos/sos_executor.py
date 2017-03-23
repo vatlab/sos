@@ -265,6 +265,7 @@ class Base_Executor:
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
+        env.config = self.config
 
         # inject a few things
         if self.md5:
@@ -672,8 +673,8 @@ class Base_Executor:
                             env.logger.debug('{} receives task reqiest {}'.format(i_am(), res))
                             host = res.split(' ')[1]
                             if host == '__default__':
-                                if env.__queue__:
-                                    host = env.__queue__
+                                if 'default_queue' in env.config:
+                                    host = env.config['default_queue']
                                 else:
                                     host = 'localhost'
                             runnable._host = Host(host)
@@ -960,7 +961,7 @@ class Base_Executor:
 
                 if not procs or all(x[2]._status == 'failed' for x in procs):
                     break
-                elif not env.__wait__ and all(x[2]._status == 'task_pending' for x in procs):
+                elif 'wait_for_task' in env.config and not env.config['wait_for_task'] and all(x[2]._status == 'task_pending' for x in procs):
                     # if all jobs are pending, let us check if all jbos have been submitted.
                     pending_tasks = []
                     running_tasks = []

@@ -297,6 +297,7 @@ class RuntimeEnvironments(object):
         #
         # run mode, this mode controls how SoS actions behave
         #
+        self.config = {}
         self.run_mode = 'run'
         #
         # signature mode can be
@@ -315,8 +316,6 @@ class RuntimeEnvironments(object):
         # parameters of the workflow, which will be handled differently
         self.parameter_vars = set()
         #
-        self.__queue__ = None
-        self.__wait__ = False
         # maximum number of concurrent jobs
         self.max_jobs = 1
         self.running_jobs = 0
