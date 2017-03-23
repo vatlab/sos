@@ -43,9 +43,8 @@ from .hosts import Host
 __all__ = []
 
 class ExecuteError(Error):
-    """Raised when there are errors in dryrun mode. Such errors are not raised
-    immediately, but will be collected and raised at the end """
-
+    """An exception to collect exceptions raised during run time so that
+    other branches of the DAG would continue if some nodes fail to execute."""
     def __init__(self, workflow):
         Error.__init__(self, 'Failed to execute workflow %s' % workflow)
         self.workflow = workflow
@@ -74,30 +73,47 @@ def __null_func__(*args, **kwargs):
     return args, kwargs
 
 class SoS_Worker(mp.Process):
-    def __init__(self, queue, config={}, args=[], **kwargs):
+    '''
+    Worker process to process SoS step or workflow in separate process.
+    '''
+    __worker_id__ = 0
+
+    def __init__(self, cmd_queue, config={}, args=[], **kwargs):
+        '''
+        cmd_queue: a single direction queue for the master process to push
+            items to the worker.
+
+        config:
+            values for command line options
+
+            config_file: -c
+            output_dag: -d
+            report_output: -r
+
+        args:
+            command line argument passed to workflow. However, if a dictionary is passed,
+            then it is assumed to be a nested workflow where parameters are made
+            immediately available.
+        '''
         # the worker process knows configuration file, command line argument etc
         super(SoS_Worker, self).__init__(**kwargs)
         #
-        # This queue is a single direction queue for the master process to push
-        # items to the worker.
-        #
-        self.queue = queue
+        self.cmd_queue = cmd_queue
         self.config = config
-        for key in ('config_file', 'output_dag', 'report_output'):
-            if key not in self.config:
-                self.config[key] = None
         self.args = args
+        self.__worker_id__ += 1
+
+    def worker_id(self):
+        return self.__worker_id__
 
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
 
-        if self.config['report_output']:
-            env.sos_dict.set('__report_output__', self.config['report_output'])
+        env.sos_dict.set('__report_output__', self.config.get('report_output', None))
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__config_file__', self.config['config_file'])
         env.sos_dict.set('__args__', self.args)
-        env.sos_dict.set('__unknown_args__', self.args)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__step_output__', [])
@@ -118,19 +134,18 @@ class SoS_Worker(mp.Process):
 
     def run(self):
         # wait to handle jobs
-        #
         while True:
-            work = self.queue.get()
+            work = self.cmd_queue.get()
             if work is None:
                 break
 
-            env.logger.debug('Worker receive request {}'.format(work[0]))
+            env.logger.debug('Worker {} receives request {}'.format(self.worker_id(), work[0]))
             if work[0] == 'step':
                 # this is a step ...
                 self.run_step(*work[1:])
             else:
                 self.run_workflow(*work[1:])
-            env.logger.debug('Worker complete request {}'.format(work[0]))
+            env.logger.debug('Worker {} completes request {}'.format(self.worker_id(), work[0]))
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config, pipe):
         #
@@ -259,7 +274,6 @@ class Base_Executor:
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__config_file__', self.config['config_file'])
         env.sos_dict.set('__args__', self.args)
-        env.sos_dict.set('__unknown_args__', self.args)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__step_output__', [])
@@ -688,7 +702,7 @@ class Base_Executor:
                             # if pool is empty, create a new process
                             if not pool:
                                 worker_queue = mp.Queue()
-                                worker = SoS_Worker(queue=worker_queue, config=config, args=args)
+                                worker = SoS_Worker(cmd_queue=worker_queue, config=config, args=args)
                                 worker.start()
                             else:
                                 # get worker, q and runnable is not needed any more
@@ -858,7 +872,7 @@ class Base_Executor:
                         # if pool is empty, create a new process
                         if not pool:
                             worker_queue = mp.Queue()
-                            worker = SoS_Worker(queue=worker_queue, config=self.config, args=self.args)
+                            worker = SoS_Worker(cmd_queue=worker_queue, config=self.config, args=self.args)
                             worker.start()
                         else:
                             # get worker, q and runnable is not needed any more
@@ -919,7 +933,7 @@ class Base_Executor:
                         # if pool is empty, create a new process
                         if not pool:
                             worker_queue = mp.Queue()
-                            worker = SoS_Worker(queue=worker_queue, config=self.config, args=self.args)
+                            worker = SoS_Worker(cmd_queue=worker_queue, config=self.config, args=self.args)
                             worker.start()
                         else:
                             # get worker, q and runnable is not needed any more

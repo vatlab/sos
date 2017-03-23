@@ -298,6 +298,8 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
     # for nested workflow, _input would becomes the input of workflow.
     env.sos_dict.set('__step_output__', copy.deepcopy(env.sos_dict['_input']))
     shared.append('__step_output__')
+    local_config = {'config_file': env.sos_dict['__config_file__'],
+                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity, 'report_output': env.sos_dict['__report_output__']}
     try:
         my_name = env.sos_dict['step_name']
         args_output = ', '.join('{}={}'.format(x, short_repr(y)) for x,y in args.items() if not x.startswith('__'))
@@ -312,8 +314,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
             shared = {x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
             if env.run_mode == 'run':
                 from sos.sos_executor import Base_Executor
-                executor = Base_Executor(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__'],
-                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
+                executor = Base_Executor(wf, args=args, shared=shared, config=local_config)
                 if shared:
                     q = mp.Pipe()
                 else:
@@ -330,9 +331,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                 p.join()
             else:
                 from sos.jupyter.sos_executor import Interactive_Executor
-                executor = Interactive_Executor(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__'],
-                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
-                # interactive mode
+                executor = Interactive_Executor(wf, args=args, shared=shared, config=local_config)
                 res = executor.run(targets=targets)
             return res
         
@@ -341,8 +340,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
             env.__pipe__.send('workflow {}'.format(uuid.uuid4()))
             # really send the workflow
             shared = {x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
-            env.__pipe__.send((wf, targets, args, shared, {'config_file': env.sos_dict['__config_file__'],
-                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity}))
+            env.__pipe__.send((wf, targets, args, shared, local_config))
             res = env.__pipe__.recv()
             if isinstance(res, Exception):
                 raise res

@@ -943,10 +943,6 @@ def sos_handle_parameter_(key, defvalue):
     #
     parser.error = _parse_error
     parsed, unknown = parser.parse_known_args(env.sos_dict['__args__']['__args__'] if isinstance(env.sos_dict['__args__'], dict) else env.sos_dict['__args__'])
-    if '__unknown_args__' not in env.sos_dict:
-        env.sos_dict.set('__unknown_args__', unknown)
-    else:
-        env.sos_dict.set('__unknown_args__', [x for x in env.sos_dict['__unknown_args__'] if x in unknown])
     return vars(parsed)[key]
 
 
