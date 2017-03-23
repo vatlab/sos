@@ -87,7 +87,7 @@ def Rmarkdown(script=None, input=None, output=None, args='${input!r}, output_fil
         cmd = interpolate('Rscript -e "rmarkdown::render({})"'.format(args), '${ }',
             {'input': input_file, 'output': output_file})
         env.logger.trace('Running command "{}"'.format(cmd))
-        if env.run_mode == 'interactive':
+        if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             pid = p.pid

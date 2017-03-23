@@ -481,7 +481,7 @@ _output = ['b.txt']
 
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.config['run_mode'] = 'dryrun'
         # I would like to disallow setting _output directly, but this is
         # not the case now.
         self.assertRaises(Exception, Base_Executor(wf).run, mode="dryrun")

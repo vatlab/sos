@@ -109,7 +109,7 @@ class SoS_Worker(mp.Process):
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
-        env.config = self.config
+        env.config.update(self.config)
 
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__args__', self.args)
@@ -207,7 +207,7 @@ class Base_Executor:
         self.args = args
         self.shared = shared
         self.config = config
-        env.config = config
+        env.config.update(config)
         for key in ('config_file', 'output_dag', 'report_output'):
             if key not in self.config:
                 self.config[key] = None
@@ -265,7 +265,7 @@ class Base_Executor:
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
-        env.config = self.config
+        env.config.update(self.config)
 
         # inject a few things
         if self.md5:

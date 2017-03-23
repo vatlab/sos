@@ -42,10 +42,10 @@ class Interactive_Executor(Base_Executor):
     def __init__(self, workflow=None, args=[], shared={}, config={}):
         # we actually do not have our own workflow, everything is passed from ipython
         # by nested = True we actually mean no new dictionary
-        if env.sig_mode is None:
-            env.sig_mode = 'ignore'
+        if env.config['sig_mode'] is None:
+            env.config['sig_mode'] = 'ignore'
         Base_Executor.__init__(self, workflow=workflow, args=args, shared={}, config=config)
-        if env.sig_mode != 'ignore':
+        if env.config['sig_mode'] != 'ignore':
             self.md5 = self.create_signature()
             # We append to existing workflow files because some files are ignored and we
             # still wants their information.
@@ -65,7 +65,6 @@ class Interactive_Executor(Base_Executor):
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__args__', self.args)
-        env.sos_dict.set('__config_file__', self.config['config_file'])
         if self.md5:
             env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
         if self.config['report_output']:
@@ -99,7 +98,7 @@ class Interactive_Executor(Base_Executor):
         # last stement is an expression.
         last_res = None
 
-        env.run_mode = mode
+        env.config['run_mode'] = mode
 
         # process step of the pipelinp
         if isinstance(targets, str):
@@ -255,9 +254,9 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         list_queues(args.__config__, args.verbosity)
         return
     #
-    env.sig_mode = args.__sigmode__
-    env.__queue__ = args.__queue__
-    env.__wait__ = args.__wait__
+    env.config['sig_mode'] = args.__sig_mode__
+    env.config['default_queue'] = args.__queue__
+    env.config['wait_for_task'] = args.__wait__
 
     if kernel is not None:
         def notify_kernel(task_status):
@@ -348,6 +347,6 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
             sys.stderr.write(get_traceback())
         raise
     finally:
-        env.sig_mode = 'default'
+        env.config['sig_mode'] = 'default'
         env.verbosity = 1
 

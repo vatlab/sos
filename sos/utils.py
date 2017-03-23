@@ -297,7 +297,17 @@ class RuntimeEnvironments(object):
         #
         # run mode, this mode controls how SoS actions behave
         #
-        self.config = {}
+        self.config = {
+            'config_file': None,
+            'output_dag': None,
+            'report_output': None,
+            'wait_for_task': False,
+            'default_queue': '',
+            'max_jobs': 4,
+            'sig_mode': 'default',
+            'run_mode': 'run',
+        }
+
         #
         # global dictionaries used by SoS during the
         # execution of SoS workflows

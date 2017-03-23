@@ -76,8 +76,8 @@ class PBS_TaskEngine(TaskEngine):
         runtime = {x:sos_dict['_runtime'][x] for x in ('nodes', 'ppn', 'mem', 'walltime', 'cur_dir', 'home_dir') if x in sos_dict['_runtime']}
         runtime['task'] = task_id
         runtime['verbosity'] = env.verbosity
-        runtime['sig_mode'] = env.sig_mode
-        runtime['run_mode'] = env.run_mode
+        runtime['sig_mode'] = env.config['sig_mode']
+        runtime['run_mode'] = env.config['run_mode']
         if 'nodes' not in runtime:
             runtime['nodes'] = 1
         if 'ppn' not in runtime:
@@ -99,7 +99,7 @@ class PBS_TaskEngine(TaskEngine):
         # then copy the job file to remote host if necessary
         self.agent.send_task_file(task_id + '.pbs')
 
-        if env.run_mode == 'dryrun':
+        if env.config['run_mode'] == 'dryrun':
             try:
                 cmd = 'bash ~/.sos/tasks/{}.pbs'.format(task_id)
                 print(self.agent.check_output(cmd))
