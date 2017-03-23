@@ -191,7 +191,7 @@ cp ${_input} ${_dest}
 
     def _testSignature(self, text):
         '''Test recognizing the format of SoS script'''
-        env.__wait__ = True
+        env.config['wait_for_task'] = True
         script = SoS_Script(text)
         for f in ['temp/a.txt', 'temp/b.txt']:
             FileTarget(f).remove('both')
