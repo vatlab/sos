@@ -109,8 +109,8 @@ class SoS_Worker(mp.Process):
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
+        env.config = self.config
 
-        env.sos_dict.set('__report_output__', self.config.get('report_output', None))
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__config_file__', self.config['config_file'])
         env.sos_dict.set('__args__', self.args)
@@ -270,8 +270,6 @@ class Base_Executor:
         # inject a few things
         if self.md5:
             env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
-        if self.config['report_output']:
-            env.sos_dict.set('__report_output__', self.config['report_output'])
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('__config_file__', self.config['config_file'])
         env.sos_dict.set('__args__', self.args)

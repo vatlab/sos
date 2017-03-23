@@ -303,7 +303,7 @@ class RemoteHost:
             env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_runtime']['to_host'])))
 
         # map variables
-        vars = ['_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__', '_runtime',
+        vars = ['_input', '_output', '_depends', 'input', 'output', 'depends', '_runtime',
             '_local_input_{}'.format(task_vars['_index']),
             '_local_output_{}'.format(task_vars['_index'])] + list(task_vars['__signature_vars__'])
         preserved = set()

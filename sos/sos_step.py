@@ -614,7 +614,7 @@ class Base_Step_Executor:
                 raise RuntimeError('Failed to create workdir {}'.format(env.sos_dict['_runtime']['workdir']))
 
         task_vars = env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                    | {'_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__',
+                    | {'_input', '_output', '_depends', 'input', 'output', 'depends',
                     '_local_input_{}'.format(env.sos_dict['_index']),
                     '_local_output_{}'.format(env.sos_dict['_index']),
                     '_index', '__args__', 'step_name', '_runtime',
