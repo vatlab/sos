@@ -139,8 +139,11 @@ class LocalHost:
 
     def receive_result(self, task_id):
         res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
-        with open(res_file, 'rb') as result:
-            res = pickle.load(result)
+        try:
+            with open(res_file, 'rb') as result:
+                res = pickle.load(result)
+        except Exception as e:
+            raise RuntimeError('Failed to receive result for task {}: {}'.format(task_id, e))
         return res
 
 
@@ -463,11 +466,11 @@ class Host:
             self.alias = alias
         #
         # check config
-        if not isinstance(alias, str):
-            raise ValueError('An alias or host address is expected. {} provided.'.format(alias))
+        if not isinstance(self.alias, str):
+            raise ValueError('An alias or host address is expected. {} provided.'.format(self.alias))
 
-        if 'hosts' not in env.sos_dict['CONFIG'] or alias not in env.sos_dict['CONFIG']['hosts']:
-            self.config = { 'address': alias, 'alias': alias }
+        if 'hosts' not in env.sos_dict['CONFIG'] or self.alias not in env.sos_dict['CONFIG']['hosts']:
+            self.config = { 'address': self.alias, 'alias': self.alias }
         else:
             if 'localhost' not in env.sos_dict['CONFIG']:
                 raise ValueError('localhost undefined in sos configuration file.')
@@ -478,34 +481,34 @@ class Host:
             cfg = env.sos_dict['CONFIG']['hosts']
             if localhost not in cfg:
                 raise ValueError('No definition for localhost {}'.format(localhost))
-            if alias not in cfg:
-                raise ValueError('No definition for host {}'.format(alias))
+            if self.alias not in cfg:
+                raise ValueError('No definition for host {}'.format(self.alias))
             # copy all definitions except for shared and paths
-            self.config = {x:y for x,y in cfg[alias].items() if x not in ('paths', 'shared')}
-            if localhost != alias:
+            self.config = {x:y for x,y in cfg[self.alias].items() if x not in ('paths', 'shared')}
+            if localhost != self.alias:
                 self.config['path_map'] = []
                 def append_slash(x):
                     return x if x.endswith(os.sep) else (x + os.sep)
-                if 'shared' in cfg[localhost] and 'shared' in cfg[alias]:
-                    common = set(cfg[localhost]['shared'].keys()) & set(cfg[alias]['shared'].keys())
+                if 'shared' in cfg[localhost] and 'shared' in cfg[self.alias]:
+                    common = set(cfg[localhost]['shared'].keys()) & set(cfg[self.alias]['shared'].keys())
                     if common:
                         self.config['shared'] = [append_slash(cfg[localhost]['shared'][x]) for x in common]
-                        self.config['path_map'] = ['{}:{}'.format(append_slash(cfg[localhost]['shared'][x]), append_slash(cfg[alias]['shared'][x])) \
-                            for x in common if append_slash(cfg[localhost]['shared'][x]) != append_slash(cfg[alias]['shared'][x])]
-                if ('paths' in cfg[localhost] and cfg[localhost]['paths']) or ('paths' in cfg[alias] and cfg[alias]['paths']):
-                    if 'paths' not in cfg[localhost] or 'paths' not in cfg[alias] or not cfg[localhost]['paths'] or not cfg[alias]['paths'] or \
-                        any(k not in cfg[alias]['paths'] for k in cfg[localhost]['paths'].keys()) or \
-                        any(k not in cfg[localhost]['paths'] for k in cfg[alias]['paths'].keys()):
+                        self.config['path_map'] = ['{}:{}'.format(append_slash(cfg[localhost]['shared'][x]), append_slash(cfg[self.alias]['shared'][x])) \
+                            for x in common if append_slash(cfg[localhost]['shared'][x]) != append_slash(cfg[self.alias]['shared'][x])]
+                if ('paths' in cfg[localhost] and cfg[localhost]['paths']) or ('paths' in cfg[self.alias] and cfg[self.alias]['paths']):
+                    if 'paths' not in cfg[localhost] or 'paths' not in cfg[self.alias] or not cfg[localhost]['paths'] or not cfg[self.alias]['paths'] or \
+                        any(k not in cfg[self.alias]['paths'] for k in cfg[localhost]['paths'].keys()) or \
+                        any(k not in cfg[localhost]['paths'] for k in cfg[self.alias]['paths'].keys()):
                         raise ValueError('Unmatched paths definition between {} ({}) and {} ({})'.format(
-                            localhost, ','.join(cfg[localhost]['paths'].keys()), alias, ','.join(cfg[alias]['paths'].keys())))
+                            localhost, ','.join(cfg[localhost]['paths'].keys()), self.alias, ','.join(cfg[self.alias]['paths'].keys())))
                     # 
-                    self.config['path_map'].extend(['{}:{}'.format(append_slash(cfg[localhost]['paths'][x]), append_slash(cfg[alias]['paths'][x])) \
-                        for x in cfg[alias]['paths'].keys() if append_slash(cfg[localhost]['paths'][x]) != append_slash(cfg[alias]['paths'][x])])
+                    self.config['path_map'].extend(['{}:{}'.format(append_slash(cfg[localhost]['paths'][x]), append_slash(cfg[self.alias]['paths'][x])) \
+                        for x in cfg[self.alias]['paths'].keys() if append_slash(cfg[localhost]['paths'][x]) != append_slash(cfg[self.alias]['paths'][x])])
                 if 'address' not in self.config:
                     self.config['address'] = ''
             else:
                 self.config['address'] = 'localhost'
-        self.config['alias'] = alias
+        self.config['alias'] = self.alias
         self.description = self.config.get('description', '')
 
     def _get_host_agent(self, start_engine):

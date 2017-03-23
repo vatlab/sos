@@ -70,7 +70,7 @@ with open('test/result.txt', 'w') as res:
 """)
         wf = script.workflow()
         env.config['sig_mode'] = 'force'
-        env.__wait__ = True
+        env.config['wait_for_task'] = True
         Base_Executor(wf).run()
         with open('result.txt') as res:
             content = [x.strip() for x in res.readlines()]
@@ -81,7 +81,7 @@ with open('test/result.txt', 'w') as res:
         '''Test concurrency option for runtime environment'''
         env.max_jobs = 5
         env.config['sig_mode'] = 'force'
-        env.__wait__ = True
+        env.config['wait_for_task'] = True
         script =  SoS_Script(r"""
 [0]
 
@@ -95,7 +95,7 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 time.sleep(_repeat + 1)
 print('I am {}, done'.format(_index))
 """)
-        env.__wait__ = True
+        env.config['wait_for_task'] = True
         wf = script.workflow()
         start = time.time()
         Base_Executor(wf).run()
@@ -207,7 +207,7 @@ touch temp/${ff}
 ''' % active)
             wf = script.workflow()
             env.config['sig_mode'] = 'force'
-            env.__wait__ = True
+            env.config['wait_for_task'] = True
             Host.reset()
             Base_Executor(wf).run()
             files = list(glob.glob('temp/*.txt'))
@@ -231,7 +231,7 @@ touch temp/${ff}
 ''' % active)
             wf = script.workflow()
             env.config['sig_mode'] = 'force'
-            env.__wait__ = True
+            env.config['wait_for_task'] = True
             Host.reset()
             Base_Executor(wf).run()
             files = list(glob.glob('temp/*.txt'))
@@ -267,7 +267,7 @@ python:
 ''')
         wf = script.workflow()
         env.max_jobs = 4
-        env.__wait__ = True
+        env.config['wait_for_task'] = True
         Base_Executor(wf).run()
         for t in range(10, 13):
             with open('myfile_{}.txt'.format(t)) as tmp:
@@ -286,7 +286,7 @@ run:
     echo "a = ${a}, b = ${b}"
     sleep ${a + b}
 ''')
-        env.__wait__ = True
+        env.config['wait_for_task'] = True
         wf = script.workflow()
         Base_Executor(wf).run()
 
@@ -304,7 +304,7 @@ run:
         wf = script.workflow()
         st = time.time()
         env.config['sig_mode'] = 'force'
-        env.__wait__ = False
+        env.config['wait_for_task'] = False
         Base_Executor(wf).run()
         # sos should quit
         self.assertLess(time.time() - st, 10)
@@ -312,7 +312,7 @@ run:
         time.sleep(18)
         print('RESTART')
         env.config['sig_mode'] = 'default'
-        env.__wait__ = True
+        env.config['wait_for_task'] = True
         st = time.time()
         Base_Executor(wf).run()
         # sos should wait till everything exists
