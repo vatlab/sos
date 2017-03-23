@@ -857,7 +857,7 @@ class Base_Executor:
                 while True:
                     #env.logger.error('{} {}'.format(i_am(), [x[2]._status for x in procs]))
                     num_running = len([x for x in procs if not x[2]._status.endswith('_pending')])
-                    if num_running >= env.max_jobs:
+                    if num_running >= env.config['max_jobs']:
                         break
                     #
                     # if steps from child nested workflow?

@@ -263,7 +263,6 @@ def cmd_run(args, workflow_args):
         args.__dag__ = '-'
     elif args.__dag__ == '':
         args.__dag__ = None
-    env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
 
     from .sos_executor import Base_Executor
@@ -294,7 +293,8 @@ def cmd_run(args, workflow_args):
                 'output_dag': args.__dag__,
                 'report_output': args.__report__,
                 'wait_for_task': args.__wait__ or args.__dryrun__,
-                'default_queue': args.__queue__})
+                'default_queue': args.__queue__,
+                'max_jobs': args.__max_jobs__})
         executor.run(args.__targets__, mode='dryrun' if args.__dryrun__ else 'run')
     except Exception as e:
         if args.verbosity and args.verbosity > 2:

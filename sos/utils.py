@@ -317,7 +317,6 @@ class RuntimeEnvironments(object):
         self.parameter_vars = set()
         #
         # maximum number of concurrent jobs
-        self.max_jobs = 1
         self.running_jobs = 0
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
