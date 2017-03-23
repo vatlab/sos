@@ -112,7 +112,6 @@ class SoS_Worker(mp.Process):
         env.config = self.config
 
         env.sos_dict.set('__null_func__', __null_func__)
-        env.sos_dict.set('__config_file__', self.config['config_file'])
         env.sos_dict.set('__args__', self.args)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
@@ -271,7 +270,6 @@ class Base_Executor:
         if self.md5:
             env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
         env.sos_dict.set('__null_func__', __null_func__)
-        env.sos_dict.set('__config_file__', self.config['config_file'])
         env.sos_dict.set('__args__', self.args)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)

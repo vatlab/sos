@@ -618,7 +618,7 @@ class Base_Step_Executor:
                     '_local_input_{}'.format(env.sos_dict['_index']),
                     '_local_output_{}'.format(env.sos_dict['_index']),
                     '_index', '__args__', 'step_name', '_runtime',
-                    'CONFIG', '__signature_vars__', '__step_context__', '__config_file__'
+                    'CONFIG', '__signature_vars__', '__step_context__', 
                     })
 
         # save task to a file
