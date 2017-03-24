@@ -168,13 +168,16 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
             help=workflow_spec)
     if not interactive:
-        parser.add_argument('-j', type=int, metavar='JOBS',
-        default=1 if sys.platform == 'win32' else 4, dest='__max_jobs__',
-        help='''Number of concurrent process allowed. A workflow is by default
-            executed sequentially (-j 1). If a greater than 1 number is specified
-            SoS will execute the workflow in parallel mode and execute up to
-            specified processes concurrently. These include looped processes
-            within a step and steps with non-missing required files.''')
+        parser.add_argument('-j', type=int, metavar='STEPS',
+        default=4, dest='__max_jobs__',
+        help='''Maximum number of worker processes for the execution of the
+            workflow if the workflow can be executed in parallel (namely
+            having multiple starting points or execution branches).''')
+    parser.add_argument('-J', type=int, metavars='TASKS',
+        help='''Maximum number of externally running tasks. This option
+            overrides option "max_running_jobs" of a task queue (option -q)
+            so that you can, for example, submit one job at a time (with
+            -J 1) to test the task queue.''')
     parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE',
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary
@@ -194,12 +197,12 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             is found. SoS will list all configured queues (with details varying
             by option -v) if this option is specified without value.''')
     parser.add_argument('-w', dest='__wait__', action='store_true',
-        help='''Whether or not wait for the completion of external jobs. By
-            default, a sos step will return immediately after submitting a task,
-            and the master process would exit after all tasks have been submitted
-            and there is no more step to execute. Specifying option "-w" will make
-            SoS wait for the completion of all tasks. -w is the default mode
-            in dryrun mode.''')
+        help='''Wait for the completion of external tasks regardless of the
+            setting of individual task queue.''')
+    parser.add_argument('-W', dest='__no_wait__', action='store_true',
+        help='''Do not wait for the completion of external tasks and quit SoS
+            if all tasks are being executed by external task queues. This option
+            overrides the default wait setting of task queues.''')
     parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', nargs='?',
          help='''Default output of action report, which is by default the
             standard output but you can redirect it to another file with this
