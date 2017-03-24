@@ -130,7 +130,7 @@ class LocalHost:
 
     def run_command(self, cmd):
         # run command but does not wait for result.
-        if env.config['run_mode'] == 'dryrun':
+        if env.config['run_mode'] == 'dryrun' or env.config['wait_for_task']:
             subprocess.Popen(cmd, shell=True)
         else:
             p = DaemonizedProcess(cmd)
