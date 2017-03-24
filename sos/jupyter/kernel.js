@@ -293,7 +293,7 @@ define([
             IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute;
             IPython.notebook.kernel.execute = my_execute;
             console.log('executor patched');
-        }
+		}
     }
 
     var my_clear_output = function(wait, ignore) {
@@ -996,7 +996,7 @@ define([
         if (IPython.notebook.kernel)
             IPython.notebook.kernel.restart();
         events.on('kernel_connected.Kernel', register_sos_comm);
-        events.on('kernel_connected.CodeCell', wrap_execute);
+        events.on('kernel_connected.Kernel', wrap_execute);
         events.on('kernel_ready.Kernel', request_kernel_list);
         events.on('select.Cell', set_codemirror_option);
 
