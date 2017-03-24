@@ -1257,6 +1257,13 @@ class SoS_Kernel(IPythonKernel):
                    }
             self._use_panel = args.use_panel is True
             if args.list_kernel:
+                # https://github.com/jupyter/help/issues/153#issuecomment-289026056
+                #
+                # when the frontend is refreshed, cached comm would be lost and
+                # communication would be discontinued. However, a kernel-list
+                # request would be sent by the new-connection so we reset the
+                # frontend_comm to re-connect to the frontend.
+                self.frontend_comm = None
                 self.send_frontend_msg('kernel-list', self.get_kernel_list())
             # args.default_kernel should be valid
             if self.kernel_name(args.default_kernel) != self.kernel_name(self.kernel):

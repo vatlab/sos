@@ -293,7 +293,7 @@ define([
             IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute;
             IPython.notebook.kernel.execute = my_execute;
             console.log('executor patched');
-		}
+        }
     }
 
     var my_clear_output = function(wait, ignore) {
@@ -990,12 +990,15 @@ define([
         // setting up frontend using existing metadata (without executing anything)
         load_select_kernel();
         changeCellStyle();
-        // if we reload the page, the kernel will exist but
-        // cannot connect to new frontend comm channel, we therefore
-        // need to restart the kernel.
-        /*if (IPython.notebook.kernel)
-            IPython.notebook.kernel.restart();
-		*/
+        // if we reload the page, the cached sos_comm will be removed so we will
+        // have to re-register sos_comm. In addition, we will need to notify the
+        // kernel that the frontend has been refreshed so that it will create
+        // another Comm object. This is done by sending another --list-kernel
+        // option.
+        if (IPython.notebook.kernel) {
+            register_sos_comm();
+            window.kernel_updated = false;
+        }
         events.on('kernel_connected.Kernel', register_sos_comm);
         events.on('kernel_connected.Kernel', wrap_execute);
         events.on('kernel_ready.Kernel', request_kernel_list);
@@ -1032,7 +1035,7 @@ define([
         });
         setTimeout(function() {
                 adjustPanel();
-        }, 1000)
+        }, 1000);
         
 
         // define SOS CodeMirror syntax highlighter
