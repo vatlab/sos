@@ -969,7 +969,7 @@ define([
              console.log("remove "+extension)
              $(extension).remove()
           }else{
-             window.setTimeout(function (){
+             setTimeout(function (){
                 console.log("Wait 5 sec and remove"+extension)
                 $(extension).remove(); }, 5000);
           }        
@@ -993,8 +993,9 @@ define([
         // if we reload the page, the kernel will exist but
         // cannot connect to new frontend comm channel, we therefore
         // need to restart the kernel.
-        if (IPython.notebook.kernel)
+        /*if (IPython.notebook.kernel)
             IPython.notebook.kernel.restart();
+		*/
         events.on('kernel_connected.Kernel', register_sos_comm);
         events.on('kernel_connected.Kernel', wrap_execute);
         events.on('kernel_ready.Kernel', request_kernel_list);
@@ -1028,7 +1029,7 @@ define([
         }
         $("#to_markdown").click(function(){
             adjustPanel();
-        })
+        });
         setTimeout(function() {
                 adjustPanel();
         }, 1000)
