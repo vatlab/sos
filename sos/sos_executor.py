@@ -958,7 +958,10 @@ class Base_Executor:
 
                 if not procs or all(x[2]._status == 'failed' for x in procs):
                     break
-                elif 'wait_for_task' in env.config and not env.config['wait_for_task'] and all(x[2]._status == 'task_pending' for x in procs):
+                # if -W is specified, or all task queues are not wait
+                elif all(x[2]._status == 'task_pending' for x in procs) and \
+                        (env.config['wait_for_task'] is False or \
+                        (env.config['wait_for_task'] is None and Hosts.not_wait_for_task())):
                     # if all jobs are pending, let us check if all jbos have been submitted.
                     pending_tasks = []
                     running_tasks = []
