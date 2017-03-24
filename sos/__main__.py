@@ -173,7 +173,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         help='''Maximum number of worker processes for the execution of the
             workflow if the workflow can be executed in parallel (namely
             having multiple starting points or execution branches).''')
-    parser.add_argument('-J', type=int, metavars='EXTERNAL_JOBS',
+    parser.add_argument('-J', type=int, metavar='EXTERNAL_JOBS',
         dest='__max_running_jobs__',
         help='''Maximum number of externally running tasks. This option
             overrides option "max_running_jobs" of a task queue (option -q)
