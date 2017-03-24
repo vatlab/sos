@@ -961,7 +961,7 @@ class Base_Executor:
                 # if -W is specified, or all task queues are not wait
                 elif all(x[2]._status == 'task_pending' for x in procs) and \
                         (env.config['wait_for_task'] is False or \
-                        (env.config['wait_for_task'] is None and Hosts.not_wait_for_task())):
+                        (env.config['wait_for_task'] is None and Host.not_wait_for_tasks())):
                     # if all jobs are pending, let us check if all jbos have been submitted.
                     pending_tasks = []
                     running_tasks = []

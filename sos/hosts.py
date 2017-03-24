@@ -459,7 +459,7 @@ class Host:
 
     @classmethod
     def not_wait_for_tasks(cls):
-        return all(host.wait_for_task is False for host in cls.host_instances.values())
+        return all(host._task_engine.wait_for_task is False for host in cls.host_instances.values())
 
     def _get_config(self, alias):
         if not alias or alias == 'localhost':
