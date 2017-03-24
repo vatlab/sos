@@ -128,9 +128,9 @@ class LocalHost:
             env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
             return ''
 
-    def run_command(self, cmd):
+    def run_command(self, cmd, wait_for_task):
         # run command but does not wait for result.
-        if env.config['run_mode'] == 'dryrun' or env.config['wait_for_task']:
+        if wait_for_task:
             subprocess.Popen(cmd, shell=True)
         else:
             p = DaemonizedProcess(cmd)
@@ -380,7 +380,7 @@ class RemoteHost:
             env.logger.debug('Check output of {} failed: {}'.format(cmd, e))
             return ''
 
-    def run_command(self, cmd):
+    def run_command(self, cmd, wait_for_task):
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
                 'host': self.address,
@@ -389,7 +389,7 @@ class RemoteHost:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
 
-        if env.config['run_mode'] == 'dryrun':
+        if wait_for_task:
             subprocess.Popen(cmd, shell=True)
         else:
             p = DaemonizedProcess(cmd)
@@ -458,56 +458,75 @@ class Host:
             host._task_engine.reset()
 
     def _get_config(self, alias):
-        if not alias:
-            self.alias = 'localhost'
-            if 'hosts' not in env.sos_dict['CONFIG'] or 'localhost' not in env.sos_dict['CONFIG']:
-                self.config = {'alias': 'localhost', 'address': 'localhost'}
-        else:
-            self.alias = alias
-        #
-        # check config
-        if not isinstance(self.alias, str):
-            raise ValueError('An alias or host address is expected. {} provided.'.format(self.alias))
-
-        if 'hosts' not in env.sos_dict['CONFIG'] or self.alias not in env.sos_dict['CONFIG']['hosts']:
-            self.config = { 'address': self.alias, 'alias': self.alias }
-        else:
+        if not alias or alias == 'localhost':
+            # if no alias is specified, we are using localhost -> localhost
             if 'localhost' not in env.sos_dict['CONFIG']:
-                raise ValueError('localhost undefined in sos configuration file.')
-            if 'hosts' not in env.sos_dict['CONFIG']:
-                raise ValueError('No hosts definitions')
+                # true default ... we are running localhost -> localhost without definition
+                self.alias = 'localhost'
+                LOCAL = 'localhost'
+            else:
+                # use local host ... it is possible that localhost is a queue system
+                self.alias = env.sos_dict['CONFIG']['localhost']
+                LOCAL = self.alias
+        elif not isinstance(alias, str):
+            raise ValueError('An alias or host address is expected. {} provided.'.format(self.alias))
+        else:
+            # specified "remote" host.
+            # but then we would require a definition for localhost
+            if 'localhost' not in env.sos_dict['CONFIG']:
+                raise ValueError('localhost undefined in sos configuration file when a remote host {} is specified.'.format(alias))
+            self.alias = alias
+            LOCAL = env.sos_dict['CONFIG']['localhost']
 
-            localhost = env.sos_dict['CONFIG']['localhost']
+        # just to make it clear that alias refers to remote_host
+        REMOTE = self.alias
+        # now we need to find definition for local and remote host
+        if 'hosts' not in env.sos_dict['CONFIG']:
+            if LOCAL == 'localhost' and REMOTE == 'localhost':
+                self.config = {
+                        'address': 'localhost',
+                        'alias': 'localhost',
+                }
+            else:
+                raise ValueError('No hosts definitions for local and remote hosts {} and {}'.format(LOCAL, REMOTE))
+        else:
+            if LOCAL not in env.sos_dict['CONFIG']['hosts']:
+                raise ValueError('No hosts definition for local host {}'.format(LOCAL))
+            if REMOTE not in env.sos_dict['CONFIG']['hosts']:
+                raise ValueError('No hosts definition for remote host {}'.format(REMOTE))
+            if 'address' not in env.sos_dict['CONFIG']['hosts'][REMOTE]:
+                raise ValueError('No address defined for remote host {}'.format(REMOTE))
+
+            # now we have definition for local and remote hosts
             cfg = env.sos_dict['CONFIG']['hosts']
-            if localhost not in cfg:
-                raise ValueError('No definition for localhost {}'.format(localhost))
-            if self.alias not in cfg:
-                raise ValueError('No definition for host {}'.format(self.alias))
-            # copy all definitions except for shared and paths
             self.config = {x:y for x,y in cfg[self.alias].items() if x not in ('paths', 'shared')}
-            if localhost != self.alias:
+            # if local and remote hosts are the same
+            if LOCAL == REMOTE:
+                # there would be no path map
+                self.config['path_map'] = []
+                self.config['shared'] = ['/']
+                # override address setting to use localhost
+                self.config['address'] = 'localhost'
+            else:
                 self.config['path_map'] = []
                 def append_slash(x):
                     return x if x.endswith(os.sep) else (x + os.sep)
-                if 'shared' in cfg[localhost] and 'shared' in cfg[self.alias]:
-                    common = set(cfg[localhost]['shared'].keys()) & set(cfg[self.alias]['shared'].keys())
+                if 'shared' in cfg[LOCAL] and 'shared' in cfg[REMOTE]:
+                    common = set(cfg[LOCAL]['shared'].keys()) & set(cfg[REMOTE]['shared'].keys())
                     if common:
-                        self.config['shared'] = [append_slash(cfg[localhost]['shared'][x]) for x in common]
-                        self.config['path_map'] = ['{}:{}'.format(append_slash(cfg[localhost]['shared'][x]), append_slash(cfg[self.alias]['shared'][x])) \
-                            for x in common if append_slash(cfg[localhost]['shared'][x]) != append_slash(cfg[self.alias]['shared'][x])]
-                if ('paths' in cfg[localhost] and cfg[localhost]['paths']) or ('paths' in cfg[self.alias] and cfg[self.alias]['paths']):
-                    if 'paths' not in cfg[localhost] or 'paths' not in cfg[self.alias] or not cfg[localhost]['paths'] or not cfg[self.alias]['paths'] or \
-                        any(k not in cfg[self.alias]['paths'] for k in cfg[localhost]['paths'].keys()) or \
-                        any(k not in cfg[localhost]['paths'] for k in cfg[self.alias]['paths'].keys()):
+                        self.config['shared'] = [append_slash(cfg[LOCAL]['shared'][x]) for x in common]
+                        self.config['path_map'] = ['{}:{}'.format(append_slash(cfg[LOCAL]['shared'][x]), append_slash(cfg[REMOTE]['shared'][x])) \
+                            for x in common if append_slash(cfg[LOCAL]['shared'][x]) != append_slash(cfg[REMOTE]['shared'][x])]
+                if ('paths' in cfg[LOCAL] and cfg[LOCAL]['paths']) or ('paths' in cfg[REMOTE] and cfg[REMOTE]['paths']):
+                    if 'paths' not in cfg[LOCAL] or 'paths' not in cfg[REMOTE] or not cfg[LOCAL]['paths'] or not cfg[REMOTE]['paths'] or \
+                        any(k not in cfg[REMOTE]['paths'] for k in cfg[LOCAL]['paths'].keys()) or \
+                        any(k not in cfg[LOCAL]['paths'] for k in cfg[REMOTE]['paths'].keys()):
                         raise ValueError('Unmatched paths definition between {} ({}) and {} ({})'.format(
-                            localhost, ','.join(cfg[localhost]['paths'].keys()), self.alias, ','.join(cfg[self.alias]['paths'].keys())))
+                            LOCAL, ','.join(cfg[LOCAL]['paths'].keys()), REMOTE, ','.join(cfg[REMOTE]['paths'].keys())))
                     # 
-                    self.config['path_map'].extend(['{}:{}'.format(append_slash(cfg[localhost]['paths'][x]), append_slash(cfg[self.alias]['paths'][x])) \
-                        for x in cfg[self.alias]['paths'].keys() if append_slash(cfg[localhost]['paths'][x]) != append_slash(cfg[self.alias]['paths'][x])])
-                if 'address' not in self.config:
-                    self.config['address'] = ''
-            else:
-                self.config['address'] = 'localhost'
+                    self.config['path_map'].extend(['{}:{}'.format(append_slash(cfg[LOCAL]['paths'][x]), append_slash(cfg[REMOTE]['paths'][x])) \
+                        for x in cfg[REMOTE]['paths'].keys() if append_slash(cfg[LOCAL]['paths'][x]) != append_slash(cfg[REMOTE]['paths'][x])])
+        #
         self.config['alias'] = self.alias
         self.description = self.config.get('description', '')
 
@@ -547,15 +566,6 @@ class Host:
         self._host_agent = self.host_instances[self.alias]
         # for convenience
         self._task_engine = self._host_agent._task_engine
-        #
-        # task engine can be unavailable because of time need to start it
-        #
-        #if not self._task_engine.is_alive():
-        #    # wait a bit
-        #    time.sleep(1)
-        #    if not self._task_engine.is_alive():
-        #        env.logger.warning('Restart non-working task engine')
-        #        self._task_engine.start()
 
     # public interface
     #

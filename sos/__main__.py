@@ -168,12 +168,13 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         parser.add_argument('workflow', metavar='WORKFLOW', nargs='?',
             help=workflow_spec)
     if not interactive:
-        parser.add_argument('-j', type=int, metavar='STEPS',
-        default=4, dest='__max_jobs__',
+        parser.add_argument('-j', type=int, metavar='JOBS',
+        default=4, dest='__max_procs__',
         help='''Maximum number of worker processes for the execution of the
             workflow if the workflow can be executed in parallel (namely
             having multiple starting points or execution branches).''')
-    parser.add_argument('-J', type=int, metavars='TASKS',
+    parser.add_argument('-J', type=int, metavars='EXTERNAL_JOBS',
+        dest='__max_running_jobs__',
         help='''Maximum number of externally running tasks. This option
             overrides option "max_running_jobs" of a task queue (option -q)
             so that you can, for example, submit one job at a time (with
@@ -261,6 +262,9 @@ def cmd_run(args, workflow_args):
         list_queues(args.__config__, args.verbosity)
         return
 
+    if args.__wait__ and args.__no_wait__:
+        sys.exit('Please specify only one of -w (wait) or -W (no-wait)')
+
     # '' means no -d
     if args.__dag__ is None:
         args.__dag__ = '-'
@@ -293,9 +297,11 @@ def cmd_run(args, workflow_args):
                 'config_file': args.__config__,
                 'output_dag': args.__dag__,
                 'report_output': args.__report__,
-                'wait_for_task': args.__wait__ or args.__dryrun__,
+                # wait if -w or in dryrun mode, not wait if -W, otherwise use queue default
+                'wait_for_task': True if args.__wait__ is True or args.__dryrun__ else (False if args.__no_wait__ else None),
                 'default_queue': '' if args.__queue__ is None else args.__queue__,
-                'max_jobs': args.__max_jobs__,
+                'max_procs': args.__max_procs__,
+                'max_running_jobs': args.__max_running_jobs__,
                 'sig_mode': args.__sig_mode__,
                 'run_mode': 'dryrun' if args.__dryrun__ else 'run',
                 })
@@ -358,10 +364,12 @@ def get_dryrun_parser(desc_only=False):
 
 def cmd_dryrun(args, workflow_args):
     args.__sig_mode__ = 'ignore'
-    args.__max_jobs__ = 1
+    args.__max_procs__ = 1
+    args.__max_tasks__ = 1
     args.__report__ = None
     args.__dryrun__ = True
     args.__wait__ = True
+    args.__no_wait__ = False
     args.__bin_dirs__ = []
     cmd_run(args, workflow_args)
 

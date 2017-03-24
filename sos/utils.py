@@ -301,9 +301,10 @@ class RuntimeEnvironments(object):
             'config_file': None,
             'output_dag': None,
             'report_output': None,
-            'wait_for_task': False,
+            'wait_for_task': None,
             'default_queue': '',
-            'max_jobs': 4,
+            'max_procs': 4,
+            'max_running_jobs': None,
             'sig_mode': 'default',
             'run_mode': 'run',
         }

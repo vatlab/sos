@@ -435,10 +435,23 @@ class TaskEngine(threading.Thread):
         else:
             self.status_check_interval = self.config['status_check_interval']
         #
-        if 'max_running_jobs' not in self.config:
+        if env.config['max_running_jobs'] is not None:
+            # override from command line
             self.max_running_jobs = 10
-        else:
+        elif 'max_running_jobs' in self.config:
+            # queue setting
             self.max_running_jobs = self.config['max_running_jobs']
+        else:
+            # default
+            self.max_running_jobs = 10
+        #
+        if env.config['wait_for_task'] is not None:
+            self.wait_for_task = env.config['wait_for_task']
+        elif 'wait_for_task' in self.config:
+            self.wait_for_task = self.config['wait_for_task']
+        else:
+            # default
+            self.wait_for_task = True
 
     def reset(self):
         with threading.Lock():
@@ -580,6 +593,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
     def execute_task(self, task_id):
         env.logger.info('{} ``submitted``'.format(task_id))
         return self.agent.run_command("sos execute {0} -v {1} -s {2} {3}".format(
-            task_id, env.verbosity, env.config['sig_mode'], '--dryrun' if env.config['run_mode'] == 'dryrun' else ''))
+            task_id, env.verbosity, env.config['sig_mode'], '--dryrun' if env.config['run_mode'] == 'dryrun' else ''),
+            wait_for_task = self.wait_for_task)
 
 
