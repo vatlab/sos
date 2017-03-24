@@ -31,7 +31,7 @@ import shutil
 import shlex
 
 from io import BytesIO
-from docker import Client
+from docker.client import DockerClient
 from docker.utils import kwargs_from_env
 from sos.utils import env
 from sos.sos_eval import interpolate
@@ -39,18 +39,18 @@ from sos.sos_eval import interpolate
 #
 # docker support
 #
-class DockerClient:
+class SoS_DockerClient:
     '''A singleton class to ensure there is only one client'''
     _instance = None
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(DockerClient, cls).__new__(cls)
+            cls._instance = super(SoS_DockerClient, cls).__new__(cls)
         return cls._instance
 
     def __init__(self):
         kwargs = kwargs_from_env(assert_hostname=False)
         kwargs.update({'version': 'auto'})
-        self.client = Client(**kwargs)
+        self.client = DockerClient(**kwargs)
         try:
             self.client.info()
             # mount the /Volumes folder under mac, please refer to

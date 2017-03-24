@@ -78,13 +78,13 @@ def SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['*']):
                         raise ValueError('Unrecognized option "{}" for action {}'.format(key, func))
             # docker files will be downloaded in run or prepare mode
             if 'docker_file' in kwargs and env.config['run_mode'] in ['run', 'interactive']:
-                from .docker.client import DockerClient
-                docker = DockerClient()
+                from .docker.client import SoS_DockerClient
+                docker = SoS_DockerClient()
                 docker.import_image(kwargs['docker_file'])
             # handle image
             if 'docker_image' in kwargs:
-                from .docker.client import DockerClient
-                docker = DockerClient()
+                from .docker.client import SoS_DockerClient
+                docker = SoS_DockerClient()
                 docker.pull(kwargs['docker_image'])
             if env.config['run_mode'] not in run_mode:
                 # return dynamic expression when not in run mode, that is to say
@@ -207,8 +207,8 @@ class SoS_ExecuteScript:
             if env.config['run_mode'] == 'dryrun':
                 print('In docker image {}\n{}:\n{}\n'.format(kwargs['docker_image'], self.interpreter, self.script))
                 return None
-            from .docker.client import DockerClient
-            docker = DockerClient()
+            from .docker.client import SoS_DockerClient
+            docker = SoS_DockerClient()
             docker.run(kwargs['docker_image'], self.script, self.interpreter, self.args, self.suffix,
                 **kwargs)
         else:
