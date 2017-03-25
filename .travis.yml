@@ -1,7 +1,10 @@
-language: python3
+language: python
+python:
+     - "3.6"
 before_install:
-      - conda create -n ipykernel_py2 python=2 ipykernel
-      - source activate ipykernel_py2
-      - python -m ipykernel install --user
-script:
-     - python setup.py install
+     - conda create -n ipykernel_py2 python=2 ipykernel
+     - source activate ipykernel_py2
+     - python -m ipykernel install --user
+install: "python setup.py install"
+script: test/run_tests.py
+
