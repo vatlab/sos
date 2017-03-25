@@ -306,7 +306,7 @@ run:
 depends: 'a.txt'
 output: 'b.txt'
 run:
-    cat b.txt > b.txt
+    cat a.txt > b.txt
 ''')
         wf = script.workflow()
         # this should be ok.
