@@ -207,8 +207,8 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
         return {'succ': 1, 'exception': e, 'path': os.environ['PATH']}
     except KeyboardInterrupt:
-        env.logger.info('{} ``interrupted`'.format(task_id))
-        raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
+        env.logger.error('{} ``interrupted``'.format(task_id))
+        raise
     finally:
         env.sos_dict.set('__step_sig__', None)
 

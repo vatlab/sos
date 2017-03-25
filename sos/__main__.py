@@ -1468,76 +1468,85 @@ def main():
         epilog='''Use 'sos cmd -h' for details about each subcommand. Please
             contact Bo Peng (bpeng at mdanderson.org) if you have any question.''')
 
-    master_parser.add_argument('--version', action='version',
-        version='%(prog)s {}'.format(SOS_FULL_VERSION))
-    subparsers = master_parser.add_subparsers(title='subcommands')
-    #
-    # command run
-    add_sub_parser(subparsers, get_run_parser(desc_only='run'!=subcommand))
-    #
-    # command dryrun
-    add_sub_parser(subparsers, get_dryrun_parser(desc_only='dryrun'!=subcommand))
-    #
-    # command execute
-    add_sub_parser(subparsers, get_execute_parser(desc_only='execute'!=subcommand))
-    #
-    # command status
-    add_sub_parser(subparsers, get_status_parser(desc_only='status'!=subcommand))
-    #
-    # command kill
-    add_sub_parser(subparsers, get_kill_parser(desc_only='kill'!=subcommand))
-    #
-    # command convert
-    add_sub_parser(subparsers, get_convert_parser(desc_only='convert'!=subcommand))
-    #
-    # command remove
-    add_sub_parser(subparsers, get_remove_parser(desc_only='remove'!=subcommand))
-    #
-    # command config
-    add_sub_parser(subparsers, get_config_parser(desc_only='config'!=subcommand))
-    #
-    # command pack
-    add_sub_parser(subparsers, get_pack_parser(desc_only='pack'!=subcommand))
-    #
-    # command unpack
-    add_sub_parser(subparsers, get_unpack_parser(desc_only='unpack'!=subcommand))
-    #
-    # addon packages
-    if subcommand is None or subcommand not in ['run', 'dryrun', 'convert',
-            'remove', 'config', 'pack', 'unpack']:
-        for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
-            if entrypoint.name.strip().endswith('.parser'):
-                name = entrypoint.name.rsplit('.', 1)[0]
-                func = entrypoint.load()
-                parser = add_sub_parser(subparsers, func(), name=name)
-                parser.add_argument('--addon-name', help=argparse.SUPPRESS,
-                        default=name)
-                parser.set_defaults(func=handle_addon)
-    #
-    if len(sys.argv) == 1 or sys.argv[1] == '-h':
-        master_parser.print_help()
-        sys.exit(0)
-    if '-h' in sys.argv:
-        if len(sys.argv) > 3 and sys.argv[1] == 'run' and not sys.argv[2].startswith('-'):
-            try:
-                from .sos_script import SoS_Script
-                script = SoS_Script(filename=sys.argv[2])
-                script.print_help()
-                sys.exit(0)
-            except Exception as e:
-                sys.exit('No help information is available for script {}: {}'.format(sys.argv[1], e))
-        if len(sys.argv) > 3 and sys.argv[1] == 'convert':
-            print_converter_help()
-    elif sys.argv[1] == 'convert':
-        # this command has to be processed separately because I hat to use
-        # sos convert sos-html FROM TO etc
-        from_format, to_format = get_converter_formats(sys.argv[2:])
-        if from_format is None or to_format is None:
-            sys.exit('Cannot determine from or to format')
-        sys.argv.insert(2, '{}-{}'.format(from_format, to_format))
-    args, workflow_args = master_parser.parse_known_args()
-    # calling the associated functions
-    args.func(args, workflow_args)
+    try:
+        master_parser.add_argument('--version', action='version',
+            version='%(prog)s {}'.format(SOS_FULL_VERSION))
+        subparsers = master_parser.add_subparsers(title='subcommands')
+        #
+        # command run
+        add_sub_parser(subparsers, get_run_parser(desc_only='run'!=subcommand))
+        #
+        # command dryrun
+        add_sub_parser(subparsers, get_dryrun_parser(desc_only='dryrun'!=subcommand))
+        #
+        # command execute
+        add_sub_parser(subparsers, get_execute_parser(desc_only='execute'!=subcommand))
+        #
+        # command status
+        add_sub_parser(subparsers, get_status_parser(desc_only='status'!=subcommand))
+        #
+        # command kill
+        add_sub_parser(subparsers, get_kill_parser(desc_only='kill'!=subcommand))
+        #
+        # command convert
+        add_sub_parser(subparsers, get_convert_parser(desc_only='convert'!=subcommand))
+        #
+        # command remove
+        add_sub_parser(subparsers, get_remove_parser(desc_only='remove'!=subcommand))
+        #
+        # command config
+        add_sub_parser(subparsers, get_config_parser(desc_only='config'!=subcommand))
+        #
+        # command pack
+        add_sub_parser(subparsers, get_pack_parser(desc_only='pack'!=subcommand))
+        #
+        # command unpack
+        add_sub_parser(subparsers, get_unpack_parser(desc_only='unpack'!=subcommand))
+        #
+        # addon packages
+        if subcommand is None or subcommand not in ['run', 'dryrun', 'convert',
+                'remove', 'config', 'pack', 'unpack']:
+            for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
+                if entrypoint.name.strip().endswith('.parser'):
+                    name = entrypoint.name.rsplit('.', 1)[0]
+                    func = entrypoint.load()
+                    parser = add_sub_parser(subparsers, func(), name=name)
+                    parser.add_argument('--addon-name', help=argparse.SUPPRESS,
+                            default=name)
+                    parser.set_defaults(func=handle_addon)
+        #
+        if len(sys.argv) == 1 or sys.argv[1] == '-h':
+            master_parser.print_help()
+            sys.exit(0)
+        if '-h' in sys.argv:
+            if len(sys.argv) > 3 and sys.argv[1] == 'run' and not sys.argv[2].startswith('-'):
+                try:
+                    from .sos_script import SoS_Script
+                    script = SoS_Script(filename=sys.argv[2])
+                    script.print_help()
+                    sys.exit(0)
+                except Exception as e:
+                    sys.exit('No help information is available for script {}: {}'.format(sys.argv[1], e))
+            if len(sys.argv) > 3 and sys.argv[1] == 'convert':
+                print_converter_help()
+        elif sys.argv[1] == 'convert':
+            # this command has to be processed separately because I hat to use
+            # sos convert sos-html FROM TO etc
+            from_format, to_format = get_converter_formats(sys.argv[2:])
+            if from_format is None or to_format is None:
+                sys.exit('Cannot determine from or to format')
+            sys.argv.insert(2, '{}-{}'.format(from_format, to_format))
+        args, workflow_args = master_parser.parse_known_args()
+        # calling the associated functions
+        args.func(args, workflow_args)
+    except KeyboardInterrupt:
+        sys.exit('KeyboardInterrupt')
+    except Exception as e:
+        from .utils import env, get_traceback
+        if env.verbosity and env.verbosity > 2:
+            sys.stderr.write(get_traceback())
+        env.logger.error(e)
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()

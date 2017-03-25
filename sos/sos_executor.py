@@ -139,12 +139,15 @@ class SoS_Worker(mp.Process):
                 break
 
             env.logger.debug('Worker {} receives request {}'.format(self.worker_id(), work[0]))
-            if work[0] == 'step':
-                # this is a step ...
-                self.run_step(*work[1:])
-            else:
-                self.run_workflow(*work[1:])
-            env.logger.debug('Worker {} completes request {}'.format(self.worker_id(), work[0]))
+            try:
+                if work[0] == 'step':
+                    # this is a step ...
+                    self.run_step(*work[1:])
+                else:
+                    self.run_workflow(*work[1:])
+                env.logger.debug('Worker {} completes request {}'.format(self.worker_id(), work[0]))
+            except KeyboardInterrupt:
+                break
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config, pipe):
         #
