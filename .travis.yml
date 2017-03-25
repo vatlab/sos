@@ -12,7 +12,7 @@ before_install:
     # Useful for debugging any issues with conda
     - conda info -a
     # add docker
-    - pip install docker nose
+    - pip install docker nose sklearn
     - pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
     - pip install fasteners pygments ipython ptpython networkx pydotplus
     # install r kernel
