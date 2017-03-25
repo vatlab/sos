@@ -437,7 +437,7 @@ class TaskEngine(threading.Thread):
         #
         if env.config['max_running_jobs'] is not None:
             # override from command line
-            self.max_running_jobs = 10
+            self.max_running_jobs = env.config['max_running_jobs']
         elif 'max_running_jobs' in self.config:
             # queue setting
             self.max_running_jobs = self.config['max_running_jobs']
