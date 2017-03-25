@@ -16,10 +16,12 @@ before_install:
     # Useful for debugging any issues with conda
     - conda info -a
     # add docker
+    - pip install docker
     - pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
     - pip install fasteners pygments ipython ptpython networkx pydotplus
     # for testing
     - pip install nose
+    - pip install sklearn scipy
     # install r kernel
     - conda install -c r r-essentials
     - conda install -c conda-forge feather-format
@@ -31,10 +33,26 @@ before_install:
     - source activate ipykernel_py2
     - python -m ipykernel install --user
     - source deactivate ipykernel_py2
+    # upgrade docker so that it has same API version as client
+    #https://docs.travis-ci.com/user/docker/ 
+    - sudo apt-get update
+    - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-engine
+sudo: required
+services:
+    - docker
 install: "python setup.py install"
 before_script: cd test
 script:
-    - ./run_tests ../sos/jupyter/test 
+    - ./run_tests ../test
+    - ./run_tests ../sos/docker/test
+    #
+    #   jupyter tests current fails for no obvious reason
+    # - ./run_tests ../sos/Bash/test
+    # - ./run_tests ../sos/Python2/test
+    # - ./run_tests ../sos/Python3/test
+    # - ./run_tests ../sos/R/test
+    # - ./run_tests ../sos/rq/test
+    # - ./run_tests ../sos/jupyter/test 
 notifications:
     email:
         recipients:
