@@ -12,9 +12,11 @@ before_install:
     # Useful for debugging any issues with conda
     - conda info -a
     # add docker
-    - pip install docker nose sklearn
+    - pip install docker
     - pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
     - pip install fasteners pygments ipython ptpython networkx pydotplus
+    # for testing
+    - pip install nose sklearn scipy
     # install r kernel
     - conda install -c r r-essentials
     - conda install -c conda-forge feather-format
