@@ -40,7 +40,16 @@ services:
     - docker
 install: "python setup.py install"
 before_script: cd test
-script: ./run_tests
+script:
+    - ./run_tests ../test
+    - ./run_tests ../sos/Bash/test
+    - ./run_tests ../sos/docker/test
+    - ./run_tests ../sos/Python2/test
+    - ./run_tests ../sos/Python3/test
+    - ./run_tests ../sos/R/test
+    # - ./run_tests ../sos/rq/test
+    #   jupyter tests current fails for no obvious reason
+    # - ./run_tests ../sos/jupyter/test 
 notifications:
     email:
         recipients:
