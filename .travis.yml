@@ -4,6 +4,7 @@ python:
 before_install:
      - sudo apt-get update
      - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+     - bash miniconda.sh -b -p $HOME/miniconda
      - export PATH="$HOME/miniconda/bin:$PATH"
      - hash -r
      - conda config --set always_yes yes --set changeps1 no
@@ -25,5 +26,5 @@ before_install:
      # - source activate test-environment
 install: "python setup.py install"
 before_script: cd test
-script: ./run_tests.py
+script: ./run_tests
 
