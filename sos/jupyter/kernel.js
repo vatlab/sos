@@ -738,7 +738,7 @@ define([
             changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
         }
         // if in sos mode and is single line, enable automatic preview
-        if (cell.metadata.kernel == 'sos' && text.indexOf('\n') == -1 && text.indexOf('%') !== 0) {
+        if ((cell.metadata.kernel == 'sos' || cell.metadata.kernel === undefined) && text.indexOf('\n') == -1 && text.indexOf('%') !== 0) {
             // if it is expression without space
             if (text.indexOf('=') == -1) {
                 if (text.indexOf(' ') == -1)
