@@ -47,6 +47,9 @@ class TestAction(unittest.TestCase):
         os.chdir(self.olddir)
 
     def testInterpolation(self):
+        from sos.jupyter.kernel import SoS_Kernel
+        k = SoS_Kernel()
+        self.assertRaises(Exception, k.do_execute, '100', False)
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code='''
