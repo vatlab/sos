@@ -3,10 +3,10 @@ os:
     # travis does not support python on osx yet (https://github.com/travis-ci/travis-ci/issues/4729)
 language: python
 python:
-    - "3.6"
+    - "3.4"
 before_install:
     - sudo apt-get update
-    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then  wget https://repo.continuum.io/miniconda/Miniconda3-4.2.12-Linux-x86_64.sh -O miniconda.sh; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
     #- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then wget  https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
     - bash miniconda.sh -b -p $HOME/miniconda
     - export PATH="$HOME/miniconda/bin:$PATH"
@@ -15,6 +15,14 @@ before_install:
     - conda update -q conda
     # Useful for debugging any issues with conda
     - conda info -a
+    # install python 2.x kernel
+    - conda create -n ipykernel_py2 python=2 ipykernel
+    - source activate ipykernel_py2
+    - python -m ipykernel install --user
+    - source deactivate ipykernel_py2
+    # downgrade python if needed
+    - conda create -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
+    - conda activate python_test
     # add docker
     - pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
     - pip install fasteners pygments ipython ptpython networkx pydotplus
@@ -26,11 +34,6 @@ before_install:
     # install bash kernel
     - pip install bash_kernel
     - python -m bash_kernel.install
-    # install python 2.x kernel
-    - conda create -n ipykernel_py2 python=2 ipykernel
-    - source activate ipykernel_py2
-    - python -m ipykernel install --user
-    - source deactivate ipykernel_py2
 install: "python setup.py install"
 before_script: cd test
 script:
