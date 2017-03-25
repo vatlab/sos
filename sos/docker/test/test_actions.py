@@ -111,7 +111,7 @@ class TestActions(unittest.TestCase):
         #
         self.temp_files.extend(files)
     
-    #@unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testBashInDocker(self):
         '''Test action bash in docker environment'''
         script = SoS_Script(r'''

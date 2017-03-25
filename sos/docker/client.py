@@ -65,7 +65,7 @@ class SoS_DockerClient:
                 except Exception as e:
                     env.logger.trace('Failed to mount /Volumes to virtual machine: {}'.format(e))
         except Exception as e:
-            env.logger.warning('Docker client init fail: {}'.format(e))
+            env.logger.debug('Docker client init fail: {}'.format(e))
             self.client = None
 
     def total_memory(self, image='ubuntu'):
