@@ -4,6 +4,11 @@ os:
 language: python
 python:
     - "3.4"
+before_install:
+    - pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
+    - pip install fasteners pygments ipython ptpython networkx pydotplus
+    # for testing
+    - pip install nose
 install: "python setup.py install"
 before_script: cd test
 script:
