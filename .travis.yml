@@ -12,7 +12,7 @@ before_install:
     - export PATH="$HOME/miniconda/bin:$PATH"
     - hash -r
     - conda config --set always_yes yes --set changeps1 no
-    - conda update -q conda
+    #- conda update -q conda
     # Useful for debugging any issues with conda
     - conda info -a
     # add docker
@@ -34,6 +34,9 @@ before_install:
     #- python -m ipykernel install --user
     #- source deactivate ipykernel_py2
     # get docker images used by the tests
+    # before_install:
+    - sudo apt-get update
+    - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-engine
     #- docker pull ubuntu
     #- docker pull python
     #- docker pull python
