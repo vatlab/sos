@@ -1,29 +1,43 @@
 language: python
 python:
-     - "3.6"
+    - "3.6"
 before_install:
-     - sudo apt-get update
-     - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-     - bash miniconda.sh -b -p $HOME/miniconda
-     - export PATH="$HOME/miniconda/bin:$PATH"
-     - hash -r
-     - conda config --set always_yes yes --set changeps1 no
-     - conda update -q conda
-     # Useful for debugging any issues with conda
-     - conda info -a
-     # install r kernel
-     - conda install -c r r-essentials
-     - conda install -c conda-forge feather-format
-     # install python 2.x kernel
-     - conda create -n ipykernel_py2 python=2 ipykernel
-     - source activate ipykernel_py2
-     - python -m ipykernel install --user
-     # install bash kernel
-     - pip install bash_kernel
-     - python -m bash_kernel.install
-     # go to test environment, not really necessary
-     # - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION dep1 dep2 ...
-     # - source activate test-environment
+    - sudo apt-get update
+    - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+    - bash miniconda.sh -b -p $HOME/miniconda
+    - export PATH="$HOME/miniconda/bin:$PATH"
+    - hash -r
+    - conda config --set always_yes yes --set changeps1 no
+    - conda update -q conda
+    # Useful for debugging any issues with conda
+    - conda info -a
+    # install r kernel
+    - conda install -c r r-essentials
+    - conda install -c conda-forge feather-format
+    # install python 2.x kernel
+    - conda create -n ipykernel_py2 python=2 ipykernel
+    - source activate ipykernel_py2
+    - python -m ipykernel install --user
+    # install bash kernel
+    - pip install bash_kernel
+    - python -m bash_kernel.install
+    # add docker
+    - pip install docker
+    # get docker images used by the tests
+    - docker pull ubuntu
+    - docker pull python
+    - docker pull python
+    - docker pull ruby
+    - docker pull node
+    - docker pull r-base
+    - docker pull compbio/ngseasy-fastqc:1.0-r001
+    - docker pull blang/busybox-bash
+    # go to test environment, not really necessary
+    # - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION dep1 dep2 ...
+    # - source activate test-environment
+sudo: required
+services:
+    - docker
 install: "python setup.py install"
 before_script: cd test
 script: ./run_tests
