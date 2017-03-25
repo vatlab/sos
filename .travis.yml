@@ -20,7 +20,7 @@ before_install:
     - pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
     - pip install fasteners pygments ipython ptpython networkx pydotplus
     # for testing
-    #- pip install nose
+    - pip install nose
     #- pip install sklearn scipy
     # install r kernel
     #- conda install -c r r-essentials
