@@ -211,7 +211,7 @@ touch temp/${ff}
             Host.reset()
             Base_Executor(wf).run()
             files = list(glob.glob('temp/*.txt'))
-            self.assertEqual(files, result)
+            self.assertEqual(sorted(files), sorted(result))
             #
             # test last iteration
             shutil.rmtree('temp')
@@ -235,7 +235,7 @@ touch temp/${ff}
             Host.reset()
             Base_Executor(wf).run()
             files = list(glob.glob('temp/*.txt'))
-            self.assertEqual(files, result, 'With option {}'.format(active))
+            self.assertEqual(sorted(files), sorted(result), 'With option {}'.format(active))
             #
             # test last iteration
             shutil.rmtree('temp')
