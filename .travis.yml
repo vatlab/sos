@@ -22,7 +22,7 @@ before_install:
     - source deactivate ipykernel_py2
     # downgrade python if needed
     - conda create -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
-    - conda activate python_test
+    - source activate python_test
     # add docker
     - pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
     - pip install fasteners pygments ipython ptpython networkx pydotplus
