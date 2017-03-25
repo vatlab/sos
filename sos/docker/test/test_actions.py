@@ -80,6 +80,7 @@ try:
         has_docker = SoS_DockerClient().client is not None
 except (TimeoutException, DockerException) as e:
     print('Cannot connect to a docker daemon in 2 seconds. Assuming no docker environment.')
+    print(e)
     has_docker = False
 
 class TestActions(unittest.TestCase):
@@ -110,7 +111,7 @@ class TestActions(unittest.TestCase):
         #
         self.temp_files.extend(files)
     
-    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+    #@unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testBashInDocker(self):
         '''Test action bash in docker environment'''
         script = SoS_Script(r'''
