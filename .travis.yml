@@ -2,9 +2,28 @@ language: python
 python:
      - "3.6"
 before_install:
+     - sudo apt-get update
+     - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+     - export PATH="$HOME/miniconda/bin:$PATH"
+     - hash -r
+     - conda config --set always_yes yes --set changeps1 no
+     - conda update -q conda
+     # Useful for debugging any issues with conda
+     - conda info -a
+     # install r kernel
+     - conda install -c r r-essentials
+     - conda install -c conda-forge feather-format
+     # install python 2.x kernel
      - conda create -n ipykernel_py2 python=2 ipykernel
      - source activate ipykernel_py2
      - python -m ipykernel install --user
+     # install bash kernel
+     - pip install bash_kernel
+     - python -m bash_kernel.install
+     # go to test environment, not really necessary
+     # - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION dep1 dep2 ...
+     # - source activate test-environment
 install: "python setup.py install"
-script: test/run_tests.py
+before_script: cd test
+script: ./run_tests.py
 
