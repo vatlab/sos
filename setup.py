@@ -139,6 +139,7 @@ setup(name = "sos",
           'nbformat',
           'nbconvert>=4.2.0',
           'ipython',
+          'ipykernel',
           'notebook',
           'ptpython',
           # spyder is not strictly required by the jupyter kernel

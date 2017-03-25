@@ -5,7 +5,7 @@ language: python
 python:
     - "3.5"
 before_install:
-    - sudo pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
+    - sudo pip install spyder notebook ipykernel nbconvert nbformat pyyaml psutil tqdm
     - sudo pip install fasteners pygments ipython ptpython networkx pydotplus
     # for testing
     - sudo pip install nose
