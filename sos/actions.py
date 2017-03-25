@@ -80,7 +80,7 @@ def SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['*']):
             if 'docker_file' in kwargs and env.config['run_mode'] in ['run', 'interactive']:
                 from .docker.client import SoS_DockerClient
                 docker = SoS_DockerClient()
-                docker.import_image(kwargs['docker_file'])
+                docker.load_image(kwargs['docker_file'])
             # handle image
             if 'docker_image' in kwargs:
                 from .docker.client import SoS_DockerClient
@@ -176,33 +176,11 @@ def SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['*']):
 class SoS_ExecuteScript:
     def __init__(self, script, interpreter, suffix, args=''):
         self.script = script
-        if isinstance(interpreter, str):
-            if interpreter and not shutil.which(shlex.split(interpreter)[0]):
-                raise RuntimeError('Failed to locate interpreter {}'.format(interpreter))
-            self.interpreter = interpreter
-        elif isinstance(interpreter, Sequence):
-            found = False
-            for ip in interpreter:
-                if shutil.which(shlex.split(ip)[0]):
-                    self.interpreter = ip
-                    found = True
-                    break
-            if not found:
-                raise RuntimeError('Failed to locate any of the interpreters {}'
-                    .format(', '.join(interpreter)))
-        else:
-            raise RuntimeError('Unacceptable interpreter {}'.format(interpreter))
+        self.interpreter = interpreter
         self.args = args
         self.suffix = suffix
 
     def run(self, **kwargs):
-        transcribe(self.script, action=self.interpreter)
-        debug_script_file = os.path.join(env.exec_dir, '.sos', '{}_{}_{}{}'.format(env.sos_dict['step_name'],
-            env.sos_dict['_index'], str(uuid.uuid4())[:8], self.suffix))
-        env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
-        with open(debug_script_file, 'w') as sfile:
-            sfile.write(self.script)
-        env.logger.trace(self.script)
         if 'docker_image' in kwargs:
             if env.config['run_mode'] == 'dryrun':
                 print('In docker image {}\n{}:\n{}\n'.format(kwargs['docker_image'], self.interpreter, self.script))
@@ -212,6 +190,30 @@ class SoS_ExecuteScript:
             docker.run(kwargs['docker_image'], self.script, self.interpreter, self.args, self.suffix,
                 **kwargs)
         else:
+            if isinstance(self.interpreter, str):
+                if self.interpreter and not shutil.which(shlex.split(self.interpreter)[0]):
+                    raise RuntimeError('Failed to locate interpreter {}'.format(self.interpreter))
+            elif isinstance(self.interpreter, Sequence):
+                found = False
+                for ip in self.interpreter:
+                    if shutil.which(shlex.split(ip)[0]):
+                        self.interpreter = ip
+                        found = True
+                        break
+                if not found:
+                    raise RuntimeError('Failed to locate any of the interpreters {}'
+                        .format(', '.join(self.interpreter)))
+            else:
+                raise RuntimeError('Unacceptable interpreter {}'.format(self.interpreter))
+
+            transcribe(self.script, action=self.interpreter)
+            debug_script_file = os.path.join(env.exec_dir, '.sos', '{}_{}_{}{}'.format(env.sos_dict['step_name'],
+                env.sos_dict['_index'], str(uuid.uuid4())[:8], self.suffix))
+            env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
+            with open(debug_script_file, 'w') as sfile:
+                sfile.write(self.script)
+            env.logger.trace(self.script)
+
             try:
                 p = None
                 script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=self.suffix, delete=False).name

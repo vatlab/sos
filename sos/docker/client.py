@@ -29,10 +29,9 @@ import json
 import platform
 import shutil
 import shlex
+import docker
 
 from io import BytesIO
-from docker.client import DockerClient
-from docker.utils import kwargs_from_env
 from sos.utils import env
 from sos.sos_eval import interpolate
 
@@ -48,9 +47,7 @@ class SoS_DockerClient:
         return cls._instance
 
     def __init__(self):
-        kwargs = kwargs_from_env(assert_hostname=False)
-        kwargs.update({'version': 'auto'})
-        self.client = DockerClient(**kwargs)
+        self.client = docker.from_env()
         try:
             self.client.info()
             # mount the /Volumes folder under mac, please refer to
@@ -85,7 +82,7 @@ class SoS_DockerClient:
         return self.tot_mem
 
     def _is_image_avail(self, image):
-        images = sum([x['RepoTags'] for x in self.client.images() if x['RepoTags']], [])
+        images = sum([x.tags for x in self.client.images.list()], [])
         # some earlier version of docker-py returns docker.io/ for global repositories
         images = [x[10:] if x.startswith('docker.io/') else x for x in images]
         return (':' in image and image in images) or \
@@ -110,20 +107,20 @@ class SoS_DockerClient:
             raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         if script is not None:
             f = BytesIO(script.encode('utf-8'))
-            for line in self.client.build(fileobj=f, **kwargs):
-                self.stream(line.decode())
+            image = self.client.images.build(fileobj=f, **kwargs)
+            #self.stream(line.decode())
         else:
-            for line in self.client.build(**kwargs):
-                self.stream(line.decode())
+            image = self.client.images.build(**kwargs)
+            #self.stream(line.decode())
         # if a tag is given, check if the image is built
         if 'tag' in kwargs and not self._is_image_avail(kwargs['tag']):
             raise RuntimeError('Image with tag {} is not created.'.format(kwargs['tag']))
 
-    def import_image(self, image, **kwargs):
+    def load_image(self, image, **kwargs):
         if not self.client:
             raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
-        env.logger.info('docker import {}'.format(image))
-        self.client.import_image(image, **kwargs)
+        env.logger.info('docker load {}'.format(image))
+        self.client.images.load(image, **kwargs)
 
     def pull(self, image):
         if not self.client:
@@ -173,6 +170,8 @@ class SoS_DockerClient:
                 if script.startswith('#!'):
                     # make the script executable
                     env.logger.warning('Shebang line in a docker-run script is ignored')
+            elif not isinstance(interpreter, str):
+                interpreter = interpreter[0]
             #
             binds = []
             if 'volumes' in kwargs:
