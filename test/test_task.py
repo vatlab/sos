@@ -121,7 +121,7 @@ print('I am {}, done'.format(_index))
         wf = script.workflow()
         start = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - start, 11)
+        self.assertLess(time.time() - start, 15)
 
     def testPrependPath(self):
         '''Test prepend path'''
