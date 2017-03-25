@@ -20,27 +20,28 @@ before_install:
     - pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
     - pip install fasteners pygments ipython ptpython networkx pydotplus
     # for testing
-    - pip install nose sklearn scipy
+    #- pip install nose
+    #- pip install sklearn scipy
     # install r kernel
-    - conda install -c r r-essentials
-    - conda install -c conda-forge feather-format
+    #- conda install -c r r-essentials
+    #- conda install -c conda-forge feather-format
     # install bash kernel
-    - pip install bash_kernel
-    - python -m bash_kernel.install
+    #- pip install bash_kernel
+      #- python -m bash_kernel.install
     # install python 2.x kernel
-    - conda create -n ipykernel_py2 python=2 ipykernel
-    - source activate ipykernel_py2
-    - python -m ipykernel install --user
-    - source deactivate ipykernel_py2
+    #- conda create -n ipykernel_py2 python=2 ipykernel
+    #- source activate ipykernel_py2
+    #- python -m ipykernel install --user
+    #- source deactivate ipykernel_py2
     # get docker images used by the tests
-    - docker pull ubuntu
-    - docker pull python
-    - docker pull python
-    - docker pull ruby
-    - docker pull node
-    - docker pull r-base
-    - docker pull compbio/ngseasy-fastqc:1.0-r001
-    - docker pull blang/busybox-bash
+    #- docker pull ubuntu
+    #- docker pull python
+    #- docker pull python
+    #- docker pull ruby
+    #- docker pull node
+    #- docker pull r-base
+    #- docker pull compbio/ngseasy-fastqc:1.0-r001
+    #- docker pull blang/busybox-bash
 sudo: required
 services:
     - docker

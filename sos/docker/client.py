@@ -47,8 +47,8 @@ class SoS_DockerClient:
         return cls._instance
 
     def __init__(self):
-        self.client = docker.from_env()
         try:
+            self.client = docker.from_env()
             self.client.info()
             # mount the /Volumes folder under mac, please refer to
             #    http://vatlab.github.io/SOS/doc/tutorials/SoS_Docker_Guide.html
@@ -65,7 +65,7 @@ class SoS_DockerClient:
                 except Exception as e:
                     env.logger.trace('Failed to mount /Volumes to virtual machine: {}'.format(e))
         except Exception as e:
-            env.logger.debug('Docker client init fail: {}'.format(e))
+            env.logger.warning('Docker client init fail: {}'.format(e))
             self.client = None
 
     def total_memory(self, image='ubuntu'):
