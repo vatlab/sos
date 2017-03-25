@@ -11,18 +11,21 @@ before_install:
     - conda update -q conda
     # Useful for debugging any issues with conda
     - conda info -a
+    # add docker
+    - pip install docker
+    - pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
+    - pip install fasteners pygments ipython ptpython networkx pydotplus
     # install r kernel
     - conda install -c r r-essentials
     - conda install -c conda-forge feather-format
+    # install bash kernel
+    - pip install bash_kernel
+    - python -m bash_kernel.install
     # install python 2.x kernel
     - conda create -n ipykernel_py2 python=2 ipykernel
     - source activate ipykernel_py2
     - python -m ipykernel install --user
-    # install bash kernel
-    - pip install bash_kernel
-    - python -m bash_kernel.install
-    # add docker
-    - pip install docker
+    - source deactivate ipykernel_py2
     # get docker images used by the tests
     - docker pull ubuntu
     - docker pull python
@@ -32,9 +35,6 @@ before_install:
     - docker pull r-base
     - docker pull compbio/ngseasy-fastqc:1.0-r001
     - docker pull blang/busybox-bash
-    # go to test environment, not really necessary
-    # - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION dep1 dep2 ...
-    # - source activate test-environment
 sudo: required
 services:
     - docker
