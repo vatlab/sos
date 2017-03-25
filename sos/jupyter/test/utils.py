@@ -66,7 +66,7 @@ def start_sos_kernel():
     """start the global kernel (if it isn't running) and return its client"""
     global KM, KC
     if KM is None:
-        KM, KC = start_new_kernel(kernel_name='python3')
+        KM, KC = start_new_kernel(kernel_name='sos')
         atexit.register(stop_sos_kernel)
     else:
         flush_channels(KC)

@@ -47,6 +47,7 @@ class TestKernel(unittest.TestCase):
         os.chdir(self.olddir)
 
     def testInterpolation(self):
+        import sos.jupyter.kernel
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code='print("a=${100+11}")')
