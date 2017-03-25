@@ -3,13 +3,13 @@ os:
     # travis does not support python on osx yet (https://github.com/travis-ci/travis-ci/issues/4729)
 language: python
 python:
-    - "3.4"
+    - "3.5"
 before_install:
     - sudo pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
     - sudo pip install fasteners pygments ipython ptpython networkx pydotplus
     # for testing
     - sudo pip install nose
-install: "python setup.py install"
+install: "sudo python setup.py install"
 sudo: required
 before_script: cd test
 script:
