@@ -320,7 +320,61 @@ output: "${data['A']}_${data['B']}_${data['C']}.txt"
 
     def testPairedWith(self):
         '''Test option paired_with '''
-        pass
+        self.touch(['a.txt', 'b.txt'])
+        for ofile in ['a.txt1', 'b.txt2']:
+            FileTarget(ofile).remove('both')
+        #
+        # string input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+vars = [1, 2]
+
+input: files, paired_with='vars', group_by=1
+output: "${_input}${_vars}"
+run:
+    touch ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1', 'b.txt2']:
+            self.assertTrue(FileTarget(ofile).exists('target'))
+            FileTarget(ofile).remove('both')
+        #
+        # list input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+vars = [1, 2]
+vars2 = ['a', 'b']
+
+input: files, paired_with=('vars', 'vars2'), group_by=1
+output: "${_input}${_vars}"
+run:
+    touch ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1', 'b.txt2']:
+            self.assertTrue(FileTarget(ofile).exists('target'))
+            FileTarget(ofile).remove('both')
+        #
+        # dict input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+input: files, paired_with={'var': [1,2], 'var2': ['a', 'b']}, group_by=1
+output: "${_input}${var}"
+run:
+    touch ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1', 'b.txt2']:
+            self.assertTrue(FileTarget(ofile).exists('target'))
+            FileTarget(ofile).remove('both')
+
+
 
     def testInputPattern(self):
         '''Test option pattern of step input '''

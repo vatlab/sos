@@ -158,6 +158,9 @@ def analyze_section(section, default_input=None):
                     environ_vars.add(pw)
                 elif isinstance(pw, Iterable):
                     environ_vars |= set(pw)
+                elif isinstance(pw, Iterable):
+                    # value supplied, no environ var
+                    environ_vars |= set()
                 else:
                     raise ValueError('Unacceptable value for parameter paired_with: {}'.format(pw))
             if 'for_each' in kwargs:
@@ -366,31 +369,41 @@ class Base_Step_Executor:
     def handle_paired_with(paired_with, ifiles, _groups, _vars):
         '''Handle input option paired_with'''
         if paired_with is None or not paired_with:
-            paired_with = []
+            var_name = []
+            var_value = []
         elif isinstance(paired_with, str):
-            paired_with = [paired_with]
+            var_name = ['_' + paired_with]
+            if paired_with not in env.sos_dict:
+                raise ValueError('Variable {} does not exist.'.format(paired_with))
+            var_value = [env.sos_dict[paired_with]]
+        elif isinstance(paired_with, dict):
+            var_name = []
+            var_value = []
+            for k,v in paired_with.items():
+                var_name.append(k)
+                var_value.append(v)
         elif isinstance(paired_with, Iterable):
-            paired_with = list(paired_with)
+            try:
+                var_name = ['_'+x for x in paired_with]
+            except Exception as e:
+                raise ValueError('Invalud value for option paired_with {}'.format(paired_with))
+            var_value = []
+            for vn in var_name:
+                if vn[1:] not in env.sos_dict:
+                    raise ValueError('Variable {} does not exist.'.format(vn[1:]))
+                var_value.append(env.sos_dict[vn[1:]])
         else:
             raise ValueError('Unacceptable value for parameter paired_with: {}'.format(paired_with))
         #
-        for wv in paired_with:
-            if '.' in wv:
-                if wv.split('.')[0] not in env.sos_dict:
-                    raise ValueError('Variable {} does not exist.'.format(wv))
-                values = getattr(env.sos_dict[wv.split('.')[0]], wv.split('.', 1)[-1])
-            else:
-                if wv not in env.sos_dict:
-                    raise ValueError('Variable {} does not exist.'.format(wv))
-                values = env.sos_dict[wv]
-            if isinstance(values, str) or not isinstance(values, Iterable):
-                raise ValueError('with_var variable {} is not a sequence ("{}")'.format(wv, values))
-            if len(values) != len(ifiles):
+        for vn, vv in zip(var_name, var_value):
+            if isinstance(vv, str) or not isinstance(vv, Iterable):
+                raise ValueError('paired_with variable {} is not a sequence ("{}")'.format(vn, vv))
+            if len(vv) != len(ifiles):
                 raise ValueError('Length of variable {} (length {}) should match the number of input files (length {}).'
-                    .format(wv, len(values), len(ifiles)))
-            file_map = {x:y for x,y in zip(ifiles, values)}
+                    .format(vn, len(vv), len(ifiles)))
+            file_map = {x:y for x,y in zip(ifiles, vv)}
             for idx, grp in enumerate(_groups):
-                _vars[idx]['_' + wv.split('.')[0]] = [file_map[x] for x in grp]
+                _vars[idx][vn] = [file_map[x] for x in grp]
 
     @staticmethod
     def handle_extract_pattern(pattern, ifiles, _groups, _vars):
