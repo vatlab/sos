@@ -545,8 +545,13 @@ def get_traceback():
     #print "*** print_tb:"
     traceback.print_tb(exc_traceback, limit=1, file=output)
     #print "*** print_exception:"
-    traceback.print_exception(exc_type, exc_value, exc_traceback,
+    try:
+        traceback.print_exception(exc_type, exc_value, exc_traceback,
                               limit=5, file=output)
+    except:
+        # the above function call can fail under Python 3.4 for some
+        # exception but we do not really care if that happens
+        pass
     result = output.getvalue()
     output.close()
     return result
