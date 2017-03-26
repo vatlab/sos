@@ -85,7 +85,8 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             msg_id, content = execute(kc=kc, code='''
 null_var = None
 num_var = 123
-import numpy\nnum_arr_var = numpy.array([1, 2, 3])
+import numpy
+num_arr_var = numpy.array([1, 2, 3])
 logic_var = True
 logic_arr_var = [True, False, True]
 char_var = '123'

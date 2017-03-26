@@ -76,7 +76,7 @@ def _R_repr(obj):
                     'See https://github.com/wesm/feather/tree/master/python for details.')
             feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
             feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
-            return 'data.matrix(read_feather("{}"))'.format(feather_tmp_)
+            return 'data.matrix(..read.feather("{}"))'.format(feather_tmp_)
         elif isinstance(obj, numpy.ndarray):
             return 'c(' + ','.join(_R_repr(x) for x in obj) + ')'
         elif isinstance(obj, pandas.DataFrame):

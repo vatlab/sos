@@ -39,7 +39,7 @@ before_install:
     - pip install nose
     - pip install sklearn scipy
     # install r kernel
-    - conda install -c r r-essentials
+    - conda install -c r r-essentials r-feather
     - conda install -c conda-forge feather-format
     # install bash kernel
     - pip install bash_kernel
