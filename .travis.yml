@@ -5,11 +5,11 @@ language: python
 python:
     - "3.5"
 before_install:
-    - sudo pip install spyder notebook ipykernel nbconvert nbformat pyyaml psutil tqdm
-    - sudo pip install fasteners pygments ipython ptpython networkx pydotplus
+    - pip install spyder notebook ipykernel nbconvert nbformat pyyaml psutil tqdm
+    - pip install fasteners pygments ipython ptpython networkx pydotplus
     # for testing
-    - sudo pip install nose
-install: "sudo python setup.py install"
+    - pip install nose
+install: "python setup.py install"
 sudo: required
 before_script: cd sos/jupyter/test
 script:
