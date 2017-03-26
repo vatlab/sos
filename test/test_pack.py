@@ -125,7 +125,10 @@ a = 1
 
     def tearDown(self):
         os.chdir('..')
-        shutil.rmtree('temp')
+        try:
+            shutil.rmtree('temp')
+        except:
+            pass
 
 if __name__ == '__main__':
     unittest.main()
