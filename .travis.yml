@@ -13,7 +13,7 @@ install: "sudo python setup.py install"
 sudo: required
 before_script: cd sos/jupyter/test
 script:
-    - python test_actions.py
+    - python test_action.py
 notifications:
     email:
         recipients:
