@@ -56,8 +56,8 @@ script:
     - ./run_tests ../sos/Python2/test
     - ./run_tests ../sos/Python3/test
     - ./run_tests ../sos/R/test
-    - ./run_tests ../sos/rq/test
     - ./run_tests ../sos/jupyter/test 
+    #- ./run_tests ../sos/rq/test
 notifications:
     email:
         recipients:
