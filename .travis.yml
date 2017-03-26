@@ -11,9 +11,9 @@ before_install:
     - sudo pip install nose
 install: "sudo python setup.py install"
 sudo: required
-before_script: cd test
+before_script: cd sos/jupyter/test
 script:
-    - ./run_tests ../sos/jupyter/test 
+    - python test_actions.py
 notifications:
     email:
         recipients:
