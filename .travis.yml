@@ -3,7 +3,7 @@ os:
     # travis does not support python on osx yet (https://github.com/travis-ci/travis-ci/issues/4729)
 language: python
 python:
-    - "3.3"
+    #- "3.3" test stops at installing spyder notebook etc
     - "3.4"
     - "3.5"
     - "3.6"
