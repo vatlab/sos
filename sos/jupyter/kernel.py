@@ -357,7 +357,6 @@ class SoS_Kernel(IPythonKernel):
         super(SoS_Kernel, self).__init__(**kwargs)
         self.options = ''
         self.kernel = 'sos'
-        self.banner = self.banner + '\nConnection file {}'.format(os.path.basename(find_connection_file()))
         # FIXME: this should in theory be a MultiKernelManager...
         self.kernels = {}
         #self.shell = InteractiveShell.instance()
