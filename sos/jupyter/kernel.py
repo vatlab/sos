@@ -724,7 +724,7 @@ class SoS_Kernel(IPythonKernel):
                             self.warn('Variable {} is passed from SoS to kernel {} as {}'
                                 .format(item, self.kernel, new_name))
                         # first thing is wait for any side effects (output, stdin, etc.)
-                        self.KC.execute(py_repr, silent=True, store_history=False)
+                        self.KC.execute(py_repr, silent=False, store_history=False)
                         _execution_state = "busy"
                         while _execution_state != 'idle':
                             # display intermediate print statements, etc.
@@ -734,9 +734,11 @@ class SoS_Kernel(IPythonKernel):
                                 if msg_type == 'status':
                                     _execution_state = sub_msg["content"]["execution_state"]
                                 elif msg_type == 'error':
-                                    self.warn('Transferring variable {} of type {} to kernel {} is not supported'.format(item, type(env.sos_dict[item]), self.kernel))
+                                    self.warn('Failed to transferring variable {} of type {} to kernel {}'.format(item, env.sos_dict[item].__class__.__name__, self.kernel))
                                     if self._debug_mode:
                                         self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
+                                elif msg_type == 'stream' and sub_msg['content']['name'] == 'stderr':
+                                    self.warn(sub_msg['content']['text'])
                 except Exception as e:
                     self.warn('Failed to get variable: {}\n'.format(e))
                     return

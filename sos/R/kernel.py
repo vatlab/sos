@@ -209,9 +209,12 @@ R_init_statements = r'''
     }
 }
 ..read.feather <- function(filename, index=NULL) {
-    if (!require("feather"))
-        install.packages('feather', repos='http://cran.stat.ucla.edu/')
-    library(feather)
+    if (! suppressMessages(suppressWarnings(require("feather", quietly = TRUE)))) {
+        try(install.packages('feather', repos='http://cran.stat.ucla.edu/'), silent=TRUE)
+        if (!suppressMessages(suppressWarnings(require("feather"))))
+            stop('Failed to install feather library')
+    }
+    suppressPackageStartupMessages(library(feather, quietly = TRUE))
     data = as.data.frame(read_feather(filename))
     if (!is.null(index))
         rownames(data) <- index
