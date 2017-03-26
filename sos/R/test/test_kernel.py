@@ -82,41 +82,28 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
     def testGetPythonDataFromR(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            msg_id, content = execute(kc=kc, code="null_var = None")
+            msg_id, content = execute(kc=kc, code='''
+null_var = None
+num_var = 123
+import numpy\nnum_arr_var = numpy.array([1, 2, 3])
+logic_var = True
+logic_arr_var = [True, False, True]
+char_var = '123'
+char_arr_var = ['1', '2', '3']
+list_var = [1, 2, '3']
+dict_var = dict(a=1, b=2, c='3')
+set_var = {1, 2, '3'}
+mat_var = numpy.matrix([[1,2],[3,4]])
+''')
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="num_var = 123")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="import numpy\nnum_arr_var = numpy.array([1, 2, 3])")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="logic_var = True")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="logic_arr_var = [True, False, True]")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="char_var = '123'")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="char_arr_var = ['1', '2', '3']")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="list_var = [1, 2, '3']")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="dict_var = dict(a=1, b=2, c='3')")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="set_var = {1, 2, '3'}")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="mat_var = numpy.matrix([[1,2],[3,4]])")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%use R")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%get null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var")
-            wait_for_idle(kc)
-            # need to test passed values
-            # but let us cheat by passing data back
-            msg_id, content = execute(kc=kc, code="%dict -r")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%use sos")
-            wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var")
+            msg_id, content = execute(kc=kc, code='''
+%use R
+%get null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var
+%dict -r
+%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var
+%use sos
+%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var
+''')
             res = get_result(iopub)
             self.assertEqual(res['null_var'], None)
             self.assertEqual(res['num_var'], 123)
