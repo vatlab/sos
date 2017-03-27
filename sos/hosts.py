@@ -498,8 +498,6 @@ class Host:
                 raise ValueError('No hosts definition for local host {}'.format(LOCAL))
             if REMOTE not in env.sos_dict['CONFIG']['hosts']:
                 raise ValueError('No hosts definition for remote host {}'.format(REMOTE))
-            if 'address' not in env.sos_dict['CONFIG']['hosts'][REMOTE]:
-                raise ValueError('No address defined for remote host {}'.format(REMOTE))
 
             # now we have definition for local and remote hosts
             cfg = env.sos_dict['CONFIG']['hosts']
@@ -512,6 +510,8 @@ class Host:
                 # override address setting to use localhost
                 self.config['address'] = 'localhost'
             else:
+                if 'address' not in env.sos_dict['CONFIG']['hosts'][REMOTE]:
+                    raise ValueError('No address defined for remote host {}'.format(REMOTE))
                 self.config['path_map'] = []
                 def append_slash(x):
                     return x if x.endswith(os.sep) else (x + os.sep)
