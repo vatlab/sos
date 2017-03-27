@@ -154,6 +154,7 @@ class RemoteHost:
         self.alias = self.config['alias']
         #
         self.address = self.config['address']
+        self.port = self.config.get('port', 22)
         self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map()
         self.send_cmd = self._get_send_cmd()
@@ -198,19 +199,19 @@ class RemoteHost:
 
     def _get_send_cmd(self):
         return self.config.get('send_cmd',
-            '''ssh -q ${host} "mkdir -p ${dest!dq}"; rsync -av ${source!ae} "${host}:${dest!de}"''')
+            '''ssh -q ${host} -p ${port} "mkdir -p ${dest!dq}"; rsync -av --port ${port} ${source!ae} "${host}:${dest!de}"''')
 
     def _get_receive_cmd(self):
         return self.config.get('receive_cmd',
-            'mkdir -p ${dest!dq}; rsync -av ${host}:${source!ae} "${dest!de}"')
+            'mkdir -p ${dest!dq}; rsync -av --port ${port} ${host}:${source!ae} "${dest!de}"')
 
     def _get_execute_cmd(self):
         return self.config.get('execute_cmd',
-            '''ssh -q ${host} "bash --login -c '${cmd}'" ''')
+            '''ssh -q ${host} -p ${port} "bash --login -c '${cmd}'" ''')
 
     def _get_query_cmd(self):
         return self.config.get('query_cmd',
-            '''ssh -q ${host} "bash --login -c 'sos status ${task} -v 0'" ''')
+            '''ssh -q ${host} -p ${port} "bash --login -c 'sos status ${task} -v 0'" ''')
 
     def is_shared(self, path):
         fullpath = os.path.abspath(os.path.expanduser(path))
@@ -264,7 +265,7 @@ class RemoteHost:
             else:
                 dest = sending[source]
                 env.logger.info('Sending ``{}`` to {}:{}'.format(source, self.alias, dest))
-                cmd = interpolate(self.send_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
+                cmd = interpolate(self.send_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address, 'port': self.port})
                 env.logger.debug(cmd)
                 ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 if (ret != 0):
@@ -278,7 +279,7 @@ class RemoteHost:
             if self.is_shared(dest):
                 env.logger.debug('Skip retrieving ``{}`` from shared file system'.format(dest))
             else:
-                cmd = interpolate(self.receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
+                cmd = interpolate(self.receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address, 'port': self.port})
                 try:
                     ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                     if (ret != 0):
@@ -359,7 +360,8 @@ class RemoteHost:
 
     def send_task_file(self, task_file):
         job_file = os.path.join(self.task_dir, task_file)
-        send_cmd = 'ssh -q {1} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks ]"; scp -q {0} {1}:.sos/tasks/'.format(job_file, self.address)
+        send_cmd = 'ssh -q {1} -p {2} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks ]"; scp -q -P {2} {0} {1}:.sos/tasks/'.format(job_file,
+                self.address, self.port)
         # use scp for this simple case
         try:
             subprocess.check_output(send_cmd, shell=True)
@@ -369,7 +371,7 @@ class RemoteHost:
     def check_output(self, cmd):
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
-                'host': self.address,
+                'host': self.address, 'port': self.port,
                 'cmd': cmd})
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
@@ -383,7 +385,7 @@ class RemoteHost:
     def run_command(self, cmd, wait_for_task):
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
-                'host': self.address,
+                'host': self.address, 'port': self.port,
                 'cmd': cmd})
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
@@ -398,7 +400,7 @@ class RemoteHost:
 
     def receive_result(self, task_id):
         # for filetype in ('res', 'status', 'out', 'err'):
-        receive_cmd = "scp -q {}:.sos/tasks/{}.* {}".format(self.address, task_id, self.task_dir)
+        receive_cmd = "scp -P {0} -q {1}:.sos/tasks/{2}.* {3}".format(self.port, self.address, task_id, self.task_dir)
         env.logger.debug(receive_cmd)
         ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
