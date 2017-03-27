@@ -199,11 +199,11 @@ class RemoteHost:
 
     def _get_send_cmd(self):
         return self.config.get('send_cmd',
-            '''ssh -q ${host} -p ${port} "mkdir -p ${dest!dq}"; rsync -av --port ${port} ${source!ae} "${host}:${dest!de}"''')
+            '''ssh -q ${host} -p ${port} "mkdir -p ${dest!dq}"; rsync -av -e 'ssh -p ${port}' ${source!ae} "${host}:${dest!de}"''')
 
     def _get_receive_cmd(self):
         return self.config.get('receive_cmd',
-            'mkdir -p ${dest!dq}; rsync -av --port ${port} ${host}:${source!ae} "${dest!de}"')
+            '''mkdir -p ${dest!adq}; rsync -av -e 'ssh -p ${port}' ${host}:${source!ae} "${dest!ade}"''')
 
     def _get_execute_cmd(self):
         return self.config.get('execute_cmd',
@@ -280,6 +280,7 @@ class RemoteHost:
                 env.logger.debug('Skip retrieving ``{}`` from shared file system'.format(dest))
             else:
                 cmd = interpolate(self.receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address, 'port': self.port})
+                env.logger.debug(cmd)
                 try:
                     ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                     if (ret != 0):
