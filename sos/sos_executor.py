@@ -190,8 +190,11 @@ class SoS_Worker(mp.Process):
             if k in env.sos_dict:
                 env.sos_dict.pop(k)
         # if the step has its own context
-        env.sos_dict.quick_update(context)
         env.sos_dict.quick_update(shared)
+        # context should be updated after shared because context would contain the
+        # correct __step_output__ of the step, whereas shared might contain
+        # __step_output__ from auxiliary steps. #526
+        env.sos_dict.quick_update(context)
 
         executor = Step_Executor(section, pipe, mode=env.config['run_mode'])
         executor.run()
