@@ -24,7 +24,7 @@ cp ~/.ssh/id_rsa.pub authorized_keys
 cat > Dockerfile << HERE
 FROM python:3.6
 
-RUN apt-get update && apt-get install -y openssh-server rsync
+RUN apt-get update && apt-get install -y openssh-server rsync task-spooler
 RUN mkdir /var/run/sshd
 RUN echo 'root:screencast' | chpasswd
 RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
