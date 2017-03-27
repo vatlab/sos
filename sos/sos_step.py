@@ -680,6 +680,9 @@ class Base_Step_Executor:
         elif stage == '_input':
             if env.sos_dict['_input'] is not None:
                 env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'])))
+        elif stage == '_depends':
+            if env.sos_dict['_depends'] is not None:
+                env.logger.info('_depends: ``{}``'.format(short_repr(env.sos_dict['_depends'])))
         elif stage == 'input':
             if env.sos_dict['input'] is not None:
                 env.logger.info('input:    ``{}``'.format(short_repr(env.sos_dict['input'])))
@@ -979,9 +982,14 @@ class Base_Step_Executor:
                                 if skip_index:
                                     break
                             elif key == 'depends':
-                                dfiles = self.expand_depends_files(*args)
-                                # dfiles can be Undetermined
-                                self.process_depends_args(dfiles, **kwargs)
+                                try:
+                                    dfiles = self.expand_depends_files(*args)
+                                    # dfiles can be Undetermined
+                                    self.process_depends_args(dfiles, **kwargs)
+                                    self.log('_depends')
+                                except Exception as e:
+                                    env.logger.info(e)
+                                    raise
                             elif key == 'task':
                                 self.process_task_args(*args, **kwargs)
                             else:

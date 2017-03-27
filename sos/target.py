@@ -37,12 +37,12 @@ __all__ = ['dynamic', 'executable', 'env_variable', 'sos_variable']
 
 class UnknownTarget(Error):
     def __init__(self, target):
-        Error.__init__(self, 'Unknown target %s' % target)
+        Error.__init__(self, 'Target unavailable: %s' % target)
         self.target = target
 
 class RemovedTarget(Error):
     def __init__(self, target):
-        Error.__init__(self, 'Removed target %s' % target)
+        Error.__init__(self, 'Target removed: %s' % target)
         self.target = target
 
 class UnavailableLock(Error):
