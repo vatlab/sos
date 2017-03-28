@@ -647,6 +647,8 @@ class Base_Executor:
         # process pool that is used to pool temporarily unused processed.
         pool = []
         #
+        wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
+        #
         # steps sent and queued from the nested workflow
         # they will be executed in random but at a higher priority than the steps
         # on the master process.
@@ -976,6 +978,7 @@ class Base_Executor:
                         pending_tasks.extend(p)
                         running_tasks.extend(r)
                     if not pending_tasks:
+                        wf_result['pending_tasks'] = running_tasks
                         env.logger.info('SoS exists with {} running tasks'.format(len(running_tasks)))
                         for task in running_tasks:
                             env.logger.info(task)
@@ -1011,15 +1014,14 @@ class Base_Executor:
                         's' if len(sections) > 1 else '', ', '.join(sections))))
             if parent_pipe is not None:
                 parent_pipe.send(exec_error)
-                return {}
+                return wf_result
             else:
                 raise exec_error
         else:
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
+        wf_result['shared'] = {x:env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict}
         if parent_pipe:
-            res = {x:env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict}
-            res['__workflow_id__'] = my_workflow_id
-            parent_pipe.send(res)
+            parent_pipe.send(wf_result)
         else:
-            return {x:env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict}
+            return wf_result
