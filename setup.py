@@ -142,10 +142,6 @@ setup(name = "sos",
           'ipykernel',
           'notebook',
           'ptpython',
-          # spyder is not strictly required by the jupyter kernel
-          # but install spyder would save the trouble of installing
-          # spyder separately when using sos with spyder
-          'spyder',
           # for DAG
           'networkx',
           'pydotplus',
@@ -156,7 +152,7 @@ sos = sos.__main__:main
 sos-runner = sos.__main__:sosrunner
 
 [sos_addons]
-patch-spyder.parser = sos.addons.patch_spyder:get_patch_spyder_parser
+patch-spyder.parser = sos.addons.patch_spyder:get_patch_spyder_parser [spyder]
 patch-spyder.func   = sos.addons.patch_spyder:patch_spyder
 
 [pygments.lexers]
@@ -274,5 +270,6 @@ ipynb-md.func = sos.jupyter.converter:notebook_to_md
         'dot':      ['graphviz'],
         # docker-py is not working on windows 10 (as of Jan 2017)
         'docker':   ['docker'],
+        'spyder':   ['spyder'],
     }
 )
