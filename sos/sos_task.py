@@ -544,11 +544,20 @@ class TaskEngine(threading.Thread):
                     if hasattr(env, '__task_notifier__'):
                         env.__task_notifier__(['new-status', task_id, 'running'])
                     return
+                # there is a case when the job is already completed (complete-old), but
+                # because we do not know if the user asks to rerun (-s force), we have to
+                # resubmit the job. In the case of not-rerun, the task would be marked
+                # completed very soon.
                 elif self.task_status[task_id].startswith('completed'):
-                    env.logger.info('{} ``already completed``'.format(task_id))
-                    if hasattr(env, '__task_notifier__'):
-                        env.__task_notifier__(['new-status', task_id, 'completed'])
-                    return
+                    if env.config['sig_mode'] != 'force':
+                        env.logger.info('{} ``already completed``'.format(task_id))
+                        if hasattr(env, '__task_notifier__'):
+                            env.__task_notifier__(['new-status', task_id, 'completed'])
+                        return
+                    else:
+                        env.logger.info('{} ``re-execute completed``'.format(task_id))
+                        if hasattr(env, '__task_notifier__'):
+                            env.__task_notifier__(['new-status', task_id, 'pending'])
 
             active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
             if len(active_tasks) < self.max_running_jobs:

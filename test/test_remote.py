@@ -162,7 +162,5 @@ run:
             self.assertEqual(ori.read(), bak.read())
         FileTarget('test_remote.py.bak').remove('both')
 
-
-
 if __name__ == '__main__':
     unittest.main()

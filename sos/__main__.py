@@ -437,10 +437,11 @@ def cmd_execute(args, workflow_args):
                     print(summarizeExecution(task, status=status))
                 sys.exit(1)
             if status.startswith('completed') and args.__sig_mode__ != 'force':
-                # touch the result file
+                # touch the result file, this will effective change task
+                # status from completed-old to completed
                 os.utime(res_file, None)
                 #if args.verbosity <= 1:
-                #    print(status)
+                print(status)
                 #else:
                 #    print(summarizeExecution(task, status=status))
                 sys.exit(0)
