@@ -401,15 +401,22 @@ class RemoteHost:
 
     def receive_result(self, task_id):
         # for filetype in ('res', 'status', 'out', 'err'):
-        receive_cmd = "scp -P {0} -q {1}:.sos/tasks/{2}.* {3}".format(self.port, self.address, task_id, self.task_dir)
-        env.logger.debug(receive_cmd)
-        ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-        if (ret != 0):
-            raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
+        sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
+        # we need to move away task file to avoid it being overwritten
+        os.rename(os.path.join(sys_task_dir, task_id + '.task'), os.path.join(sys_task_dir, 'old_' + task_id + '.task'))
+        try:
+            receive_cmd = "scp -P {0} -q {1}:.sos/tasks/{2}.* {3}".format(self.port, self.address, task_id, sys_task_dir)
+            env.logger.debug(receive_cmd)
+            ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            if (ret != 0):
+                raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
+        finally:
+            # restore task file
+            os.rename(os.path.join(sys_task_dir, 'old_' + task_id + '.task'), os.path.join(sys_task_dir, task_id + '.task'))
         # show results? Not sure if this is a good idea but helps debugging at this point
         if env.verbosity >= 2:
-            out_file = os.path.join(self.task_dir, task_id + '.out')
-            err_file = os.path.join(self.task_dir, task_id + '.err')
+            out_file = os.path.join(sys_task_dir, task_id + '.out')
+            err_file = os.path.join(sys_task_dir, task_id + '.err')
             if os.path.isfile(out_file):
                 env.logger.info('{}.out:'.format(task_id))
                 with open(out_file) as out:
@@ -419,7 +426,7 @@ class RemoteHost:
                 with open(err_file) as err:
                     print(err.read())
 
-        res_file = os.path.join(self.task_dir, task_id + '.res')
+        res_file = os.path.join(sys_task_dir, task_id + '.res')
         with open(res_file, 'rb') as result:
             res = pickle.load(result)
 
@@ -428,7 +435,7 @@ class RemoteHost:
         else:
             # do we need to copy files? We need to consult original task file
             # not the converted one
-            task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+            task_file = os.path.join(sys_task_dir, task_id + '.task')
             with open(task_file, 'rb') as task:
                 params = pickle.load(task)
                 job_dict = params.data[1]
