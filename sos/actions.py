@@ -325,7 +325,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                     res = q[0].recv()
                     if isinstance(res, Exception):
                         raise res
-                    env.sos_dict.quick_update(res)
+                    env.sos_dict.quick_update(res['shared'])
                 else:
                     res = None
                 p.join()
@@ -345,7 +345,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
             if isinstance(res, Exception):
                 raise res
             else:
-                env.sos_dict.quick_update(res)
+                env.sos_dict.quick_update(res['shared'])
                 return res
     finally:
         # restore step_name in case the subworkflow re-defines it
