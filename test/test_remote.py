@@ -139,7 +139,7 @@ files = os.listdir('ll')
                 }).run()
         os.remove('ll')
 
-    @unittest.skipIf(not os.path.samefile(os.path.expanduser('~'), os.path.expanduser('~').upper()),
+    @unittest.skipIf(not os.path.isfile(os.path.expanduser('~')),
             'Skip test for case sensitive file system')
     def testCaseInsensitiveLocalPath(self):
         '''Test path_map from a case insensitive file system.'''
@@ -152,7 +152,6 @@ run:
     cat test_remote.py > ${{output}}
 '''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
         wf = script.workflow()
-        env.verbosity = 3
         Base_Executor(wf, config={
                 'config_file': 'docker.yml',
                 # do not wait for jobs
