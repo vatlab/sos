@@ -516,7 +516,7 @@ def get_status_parser(desc_only=False):
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
         sos config.yml files.''')
-    parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=1,
+    parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
     parser.set_defaults(func=cmd_status)

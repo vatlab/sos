@@ -321,33 +321,39 @@ def check_tasks(tasks, verbosity=1):
     from multiprocessing.pool import ThreadPool as Pool
     if not tasks:
         tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
-        all_tasks = [os.path.basename(x)[:-5] for x in tasks]
+        all_tasks = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in tasks]
     else:
         all_tasks = []
         for t in tasks:
             matched = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}*.task'.format(t)))
-            matched = [os.path.basename(x)[:-5] for x in matched]
+            matched = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in matched]
             if not matched:
                 env.logger.warning('{} does not match any existing task'.format(t))
             else:
                 all_tasks.extend(matched)
-    all_tasks = sorted(list(set(all_tasks)))
+    all_tasks = sorted(list(set(all_tasks)), key=lambda x: x[1])
     if not all_tasks:
         env.logger.warning('No matching tasks')
         return
     # at most 20 threads
     p = Pool(min(20, len(all_tasks)))
-    status = p.map(check_task, all_tasks)
+    status = p.map(check_task, [x[0] for x in all_tasks])
     if verbosity == 0:
         print('\n'.join(status))
-    elif verbosity in (1, 2):
-        for s, t in zip(status, all_tasks):
+    elif verbosity == 1:
+        for s, (t, d) in zip(status, all_tasks):
             print('{}\t{}'.format(t, s))
+    elif verbosity == 2:
+        from .utils import PrettyRelativeTime
+        for s, (t, d) in zip(status, all_tasks):
+            print('{}\t{:>15} ago\t{}'.format(t, PrettyRelativeTime(time.time() - d), s))
     elif verbosity > 2:
+        from .utils import PrettyRelativeTime
         import pprint
         import glob
-        for s, t in zip(status, all_tasks):
+        for s, (t, d) in zip(status, all_tasks):
             print('{}\t{}\n'.format(t, s))
+            print('Started {} ago'.format(PrettyRelativeTime(time.time() - d)))
             task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 continue
