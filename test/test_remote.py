@@ -22,12 +22,9 @@
 
 import os
 import sys
-import time
 import unittest
-import shutil
-import glob
 
-from sos.sos_script import SoS_Script, ParsingError
+from sos.sos_script import SoS_Script
 from sos.utils import env
 from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
@@ -109,7 +106,7 @@ run:
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('pending'), len(res['pending_tasks']))
         # until we run the workflow again
-        st = time.time()
+        #st = time.time()
         Base_Executor(wf, config={
                 'config_file': 'docker.yml',
                 # do not wait for jobs
@@ -139,7 +136,7 @@ files = os.listdir('ll')
                 }).run()
         os.remove('ll')
 
-    @unittest.skipIf(not os.path.isfile(os.path.expanduser('~')),
+    @unittest.skipIf(not os.path.exists(os.path.expanduser('~').upper()),
             'Skip test for case sensitive file system')
     def testCaseInsensitiveLocalPath(self):
         '''Test path_map from a case insensitive file system.'''

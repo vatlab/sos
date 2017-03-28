@@ -32,7 +32,7 @@ from collections.abc import Sequence
 from sos.utils import env, short_repr, get_traceback
 from sos.sos_eval import SoS_exec
 
-from .target import textMD5, RuntimeInfo, Undetermined
+from .target import textMD5, RuntimeInfo, Undetermined, FileTarget
 from .monitor import ProcessMonitor
 
 from collections import OrderedDict
@@ -218,7 +218,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         sig.release()
     env.deregister_process(os.getpid())
     env.logger.info('{} ``completed``'.format(task_id))
-    return {'succ': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
+    return {'succ': 0, 'output': {x:FileTarget(x).signature() for x in env.sos_dict['_output'] if isinstance(x, str)}}
 
 
 def check_task(task):
@@ -250,14 +250,14 @@ def check_task(task):
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
             if res['succ'] == 0:
-                if isinstance(res['output'], list):
-                    if all(FileTarget(x).exists('any') for x in res['output'] if isinstance(x, str) and '(' not in x):
+                if isinstance(res['output'], dict):
+                    if all(FileTarget(x).signature() == y for x,y in res['output'].items()):
                         if new_res:
                             return 'completed'
                         else:
                             return 'completed-old'
                     else:
-                        env.logger.debug('{} not found'.format(res['output']))
+                        env.logger.debug('{} not found or signature mismatch'.format(res['output']))
                         if new_res:
                             return 'failed-missing-output'
                         else:
