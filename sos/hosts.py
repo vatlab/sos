@@ -222,9 +222,17 @@ class RemoteHost:
 
     def _map_path(self, source):
         result = {}
+        cwd = os.getcwd()
         if isinstance(source, str):
             dest = os.path.abspath(os.path.expanduser(source))
-            matched = [k for k in self.path_map.keys() if dest.startswith(k)]
+            # we use samefile to avoid problems with case-insensitive file system #522
+            # we also use the "cwd" name to avoid wrong case for cwd. For example,
+            # if the cwd = '/Users/user/Project'
+            # then, dest = '/USERS/USER/PROJECT/a.txt'
+            # would be converted to '/Users/user/Project/a.txt' before path mapping
+            if os.path.samefile(dest[:len(cwd)], cwd):
+                dest = cwd + dest[len(cwd):]
+            matched = [k for k in self.path_map.keys() if os.path.samefile(dest[:len(k)], k)]
             if matched:
                 # pick the longest key that matches
                 k = max(matched, key=len)
@@ -241,9 +249,17 @@ class RemoteHost:
     # Interface functions
     #
     def _map_var(self, source):
+        cwd = os.getcwd()
         if isinstance(source, str):
             dest = os.path.abspath(os.path.expanduser(source))
-            matched = [k for k in self.path_map.keys() if dest.startswith(k) or (dest + '/').startswith(k)]
+            # we use samefile to avoid problems with case-insensitive file system #522
+            # we also use the "cwd" name to avoid wrong case for cwd. For example,
+            # if the cwd = '/Users/user/Project'
+            # then, dest = '/USERS/USER/PROJECT/a.txt'
+            # would be converted to '/Users/user/Project/a.txt' before path mapping
+            if os.path.samefile(dest[:len(cwd)], cwd):
+                dest = cwd + dest[len(cwd):]
+            matched = [k for k in self.path_map.keys() if os.path.samefile(dest[:len(k)], k)]
             if matched:
                 # pick the longest key that matches
                 k = max(matched, key=len)

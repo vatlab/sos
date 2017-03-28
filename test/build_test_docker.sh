@@ -74,7 +74,11 @@ hosts:
     me:
         description: localhost
         alias: localhost
+        paths:
+            home: $HOME
     docker:
         address: root@localhost
         port: ${PORT}
+        paths:
+            home: /root
 HERE

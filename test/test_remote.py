@@ -122,6 +122,7 @@ run:
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
 
     def testSendSymbolicLink(self):
+        '''Test to_host symbolic link or directories that contain symbolic link. #508'''
         # create a symbloc link
         subprocess.call('ln -s scripts ll', shell=True)
         script = SoS_Script('''
@@ -137,6 +138,34 @@ files = os.listdir('ll')
                 'default_queue': 'docker',
                 }).run()
         os.remove('ll')
+
+    @unittest.skipIf(not os.path.samefile(os.path.expanduser('~'), os.path.expanduser('~').upper()),
+            'Skip test for case sensitive file system')
+    def testCaseInsensitiveLocalPath(self):
+        '''Test path_map from a case insensitive file system.'''
+        FileTarget('test_remote.py.bak').remove('both')
+        script = SoS_Script('''
+[10]
+output: 'test_remote.py.bak'
+task: to_host='{}'
+run:
+    cat test_remote.py > ${{output}}
+'''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
+        wf = script.workflow()
+        env.verbosity = 3
+        Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                'sig_mode': 'force',
+                }).run()
+        self.assertTrue(FileTarget('test_remote.py.bak').exists('target'))
+        # the files should be the same
+        with open('test_remote.py') as ori, open('test_remote.py.bak') as bak:
+            self.assertEqual(ori.read(), bak.read())
+        FileTarget('test_remote.py.bak').remove('both')
+
 
 
 if __name__ == '__main__':
