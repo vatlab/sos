@@ -258,6 +258,17 @@ class RemoteHost:
         # we only copy files and directories, not other types of targets
         if not isinstance(items, str):
             items = [x for x in items if isinstance(x, str)]
+        else:
+            items = [items]
+        from .utils import find_symbolic_links
+        new_items = []
+        for item in items:
+            links = find_symbolic_links(item)
+            for link, realpath in links.items():
+                env.logger.info('Adding {} for symbolic link {}'.format(realpath, link))
+            new_items.extend(links.values())
+        items.extend(new_items)
+
         sending = self._map_path(items)
         for source in sorted(sending.keys()):
             if self.is_shared(source):

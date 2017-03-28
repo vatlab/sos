@@ -826,6 +826,20 @@ def expand_size(size):
         raise ValueError('Invalid size specified: {}'.format(size))
     return int(float(num) * s[unit])
 
+def find_symbolic_links(item):
+    item = os.path.expanduser(item)
+    if os.path.isfile(item):
+        return {}
+    elif os.path.islink(item):
+        if not os.path.exists(item):
+            env.logger.warning('Non-existent symbolic link {}'.format(item))
+        return {item: os.path.realpath(item)}
+    else:
+        result = {}
+        for x in os.listdir(item):
+            result.update(find_symbolic_links(os.path.join(item, x)))
+        return result
+
 class ActivityNotifier(threading.Thread):
     def __init__(self, msg, delay=5):
         threading.Thread.__init__(self)

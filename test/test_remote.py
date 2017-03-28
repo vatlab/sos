@@ -121,5 +121,23 @@ run:
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
 
+    def testSendSymbolicLink(self):
+        # create a symbloc link
+        subprocess.call('ln -s scripts ll', shell=True)
+        script = SoS_Script('''
+[10]
+task: to_host='ll'
+files = os.listdir('ll')
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                }).run()
+        os.remove('ll')
+
+
 if __name__ == '__main__':
     unittest.main()
