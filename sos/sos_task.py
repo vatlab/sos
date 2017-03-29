@@ -218,7 +218,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         sig.release()
     env.deregister_process(os.getpid())
     env.logger.info('{} ``completed``'.format(task_id))
-    return {'succ': 0, 'output': {x:FileTarget(x).signature() for x in env.sos_dict['_output'] if isinstance(x, str)}}
+    return {'succ': 0, 'output': {} if env.sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in env.sos_dict['_output'] if isinstance(x, str)}}
 
 
 def check_task(task):
