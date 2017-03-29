@@ -230,9 +230,9 @@ class RemoteHost:
             # if the cwd = '/Users/user/Project'
             # then, dest = '/USERS/USER/PROJECT/a.txt'
             # would be converted to '/Users/user/Project/a.txt' before path mapping
-            if os.path.samefile(dest[:len(cwd)], cwd):
+            if os.path.exists(dest[:len(cwd)]) and os.path.samefile(dest[:len(cwd)], cwd):
                 dest = cwd + dest[len(cwd):]
-            matched = [k for k in self.path_map.keys() if os.path.samefile(dest[:len(k)], k)]
+            matched = [k for k in self.path_map.keys() if os.path.exists(dest[:len(k)]) and os.path.samefile(dest[:len(k)], k)]
             if matched:
                 # pick the longest key that matches
                 k = max(matched, key=len)
@@ -257,9 +257,9 @@ class RemoteHost:
             # if the cwd = '/Users/user/Project'
             # then, dest = '/USERS/USER/PROJECT/a.txt'
             # would be converted to '/Users/user/Project/a.txt' before path mapping
-            if os.path.samefile(dest[:len(cwd)], cwd):
+            if os.path.exists(dest[:len(cwd)]) and os.path.samefile(dest[:len(cwd)], cwd):
                 dest = cwd + dest[len(cwd):]
-            matched = [k for k in self.path_map.keys() if os.path.samefile(dest[:len(k)], k)]
+            matched = [k for k in self.path_map.keys() if os.path.exists(dest[:len(k)]) and os.path.samefile(dest[:len(k)], k)]
             if matched:
                 # pick the longest key that matches
                 k = max(matched, key=len)

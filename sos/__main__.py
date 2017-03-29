@@ -423,6 +423,7 @@ def cmd_execute(args, workflow_args):
     import pickle
     from .sos_task import execute_task, check_task, monitor_interval, resource_monitor_interval
     from .monitor import summarizeExecution
+    from .utils import env
     if args.queue is None:
         for task in args.tasks:
             # this is for local execution, perhaps on a remote host, and
@@ -441,7 +442,7 @@ def cmd_execute(args, workflow_args):
                 # status from completed-old to completed
                 os.utime(res_file, None)
                 #if args.verbosity <= 1:
-                print(status)
+                env.logger.info('{} ``already completed``'.format(task))
                 #else:
                 #    print(summarizeExecution(task, status=status))
                 sys.exit(0)
