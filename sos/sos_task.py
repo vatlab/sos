@@ -251,7 +251,7 @@ def check_task(task):
                 res = pickle.load(result)
             if res['succ'] == 0:
                 if isinstance(res['output'], dict):
-                    if all(FileTarget(x).signature() == y for x,y in res['output'].items()):
+                    if all(FileTarget(x).exists() and FileTarget(x).signature() == y for x,y in res['output'].items()):
                         if new_res:
                             return 'completed'
                         else:
