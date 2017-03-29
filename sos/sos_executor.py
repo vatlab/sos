@@ -852,7 +852,7 @@ class Base_Executor:
                                 raise RuntimeError('{} completed, {} dead, {} failed, {} killed)'.format(
                                     len([x for x in res if x=='completed']), len([x for x in res if x=='dead']),
                                     len([x for x in res if x.startswith('failed')]), len([x for x in res if x=='killed'])))
-                        if any(x in  ('pending', 'running') or x.startswith('failed-old') for x in res):
+                        if any(x in  ('pending', 'running', 'complete-old') or x.startswith('failed-old') for x in res):
                             continue
                         elif all(x == 'completed' for x in res):
                             env.logger.debug('Put results for {}'.format(' '.join(proc[2]._pending_tasks)))
