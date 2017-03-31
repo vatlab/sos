@@ -838,21 +838,20 @@ class Base_Executor:
                         res = proc[2]._host.check_status(proc[2]._pending_tasks)
                         #env.logger.warning(proc[2]._pending_tasks)
                         #env.logger.warning(res)
-                        if any(x in ('killed', 'dead') or x.startswith('failed') for x in res):
+                        if any(x in ('killed', 'aborted', 'failed') for x in res):
                             for t, s in zip(proc[2]._pending_tasks, res):
-                                if (s in ('killed', 'dead') or s.startswith('failed')) and not (hasattr(proc[2], '_killed_tasks') and t in proc[2]._killed_tasks):
+                                if s in ('killed', 'dead', 'failed') and not (hasattr(proc[2], '_killed_tasks') and t in proc[2]._killed_tasks):
                                     env.logger.warning('{} ``{}``'.format(t, s))
                                     if not hasattr(proc[2], '_killed_tasks'):
                                         proc[2]._killed_tasks = {t}
                                     else:
                                         proc[2]._killed_tasks.add(t)
-                            if all(x in ('killed', 'completed', 'completed-old', 'dead') or x.startswith('failed') for x in res):
+                            if all(x in ('killed', 'completed', 'aborted', 'failed') for x in res):
                                 # we try to get .err .out etc even when jobs are failed.
                                 proc[2]._host.retrieve_results(proc[2]._pending_tasks)
-                                raise RuntimeError('{} completed, {} dead, {} failed, {} killed)'.format(
-                                    len([x for x in res if x=='completed']), len([x for x in res if x=='dead']),
-                                    len([x for x in res if x.startswith('failed')]), len([x for x in res if x=='killed'])))
-                        if any(x in  ('pending', 'running', 'completed-old') or x.startswith('failed-old') for x in res):
+                                raise RuntimeError('{} completed, {} failed, {} aborted'.format(
+                                    len([x for x in res if x=='completed']), len([x for x in res if x=='failed']), len([x for x in res if x=='aborted'])))
+                        if any(x in ('pending', 'running') for x in res):
                             continue
                         elif all(x == 'completed' for x in res):
                             env.logger.debug('Put results for {}'.format(' '.join(proc[2]._pending_tasks)))
