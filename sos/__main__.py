@@ -425,6 +425,7 @@ def cmd_execute(args, workflow_args):
     from .monitor import summarizeExecution
     from .utils import env
     if args.queue is None:
+        exit_code = []
         for task in args.tasks:
             # this is for local execution, perhaps on a remote host, and
             # there is no daemon process etc. It also does not handle job
@@ -436,8 +437,8 @@ def cmd_execute(args, workflow_args):
                     print(status)
                 else:
                     print(summarizeExecution(task, status=status))
-                sys.exit(1)
-            if status.startswith('completed') and args.__sig_mode__ != 'force':
+                exit_code.append(1)
+            if status == 'completed' and args.__sig_mode__ != 'force':
                 # touch the result file, this will effective change task
                 # status from completed-old to completed
                 os.utime(res_file, None)
@@ -445,7 +446,7 @@ def cmd_execute(args, workflow_args):
                 env.logger.info('{} ``already completed``'.format(task))
                 #else:
                 #    print(summarizeExecution(task, status=status))
-                sys.exit(0)
+                exit_code.append(0)
             #
             if os.path.isfile(res_file):
                 os.remove(res_file)
@@ -454,6 +455,8 @@ def cmd_execute(args, workflow_args):
                 monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
             with open(res_file, 'wb') as res_file:
                 pickle.dump(res, res_file)
+            exit_code.append(res['succ'])
+        sys.exit(sum(exit_code))
     elif args.queue == '':
         from .hosts import list_queues
         list_queues(args.config, args.verbosity)
