@@ -21,7 +21,7 @@ cp ~/.ssh/id_rsa.pub authorized_keys
 
 # create a docker file
 # 
-cat > Dockerfile << HERE
+cat > Dockerfile << 'HERE'
 FROM python:3.6
 
 RUN apt-get update && apt-get install -y openssh-server rsync task-spooler
@@ -41,7 +41,9 @@ ADD authorized_keys /root/.ssh/authorized_keys
 # install sos on the remote host
 RUN  pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
 RUN  pip install fasteners pygments ipython ptpython networkx pydotplus
-RUN  git clone http://github.com/vatlab/SOS sos
+
+ARG  SHA=LATEST
+RUN  SHA=$SHA git clone http://github.com/vatlab/SOS sos
 RUN  cd sos && python setup.py install
 
 RUN  echo "export TS_SLOTS=10" >> /root/.bash_profile
@@ -53,9 +55,11 @@ HERE
 #
 
 #
-# Build the docker image
+# Build the docker image, but we will force docker to use latest github commit
 #
-docker build -t eg_sshd .
+SHA=$(curl -s 'https://api.github.com/repos/vatlab/SOS/commits' | grep sha | head -1 | cut -d\" -f4)
+echo "COMMIT SHA $SHA"
+docker build --build-arg SHA=$SHA -t eg_sshd .
 
 #
 # start docker image
