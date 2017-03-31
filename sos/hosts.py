@@ -388,7 +388,7 @@ class RemoteHost:
 
     def send_task_file(self, task_file):
         job_file = os.path.join(self.task_dir, task_file)
-        send_cmd = 'ssh -q {1} -p {2} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks ]"; scp -q -P {2} {0} {1}:.sos/tasks/'.format(job_file,
+        send_cmd = 'ssh -q {1} -p {2} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks"; scp -q -P {2} {0} {1}:.sos/tasks/'.format(job_file,
                 self.address, self.port)
         # use scp for this simple case
         try:
