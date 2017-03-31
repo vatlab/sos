@@ -3,15 +3,15 @@
 #
 # Make sure we have local public key
 # 
-instance=$(docker ps | grep test_sshd)
+instance=$(docker ps | grep test_sos)
 if [ "${instance}" != "" ]
 then
     #echo "sshd is already running"
     #exit
-    docker stop test_sshd
+    docker stop test_sos
 fi
 
-docker rm test_sshd
+docker rm test_sos
 docker rmi eg_sshd
 
 # this will create ~/.ssh/id_rsa.pub and ~/.ssh/id_rsa
@@ -44,6 +44,8 @@ RUN  pip install fasteners pygments ipython ptpython networkx pydotplus
 RUN  git clone http://github.com/vatlab/SOS sos
 RUN  cd sos && python setup.py install
 
+RUN  echo "export TS_SLOTS=10" >> /root/.bash_profile
+
 EXPOSE 22
 CMD ["/usr/sbin/sshd", "-D"]
 HERE
@@ -57,10 +59,10 @@ docker build -t eg_sshd .
 
 #
 # start docker image
-docker run -d -P -e TS_SLOTS=10 --name test_sshd eg_sshd
+docker run -d -P --env TS_SLOTS=10 --name test_sos eg_sshd
 
 # get the port
-PORT=$(docker port test_sshd 22 | cut -f2 -d:)
+PORT=$(docker port test_sos 22 | cut -f2 -d:)
 
 # add the docker machine to known_hosts so that sos will not be
 # prompt with the message "are you sure you want to connect"?

@@ -288,7 +288,7 @@ def check_task(task):
         else:
             return 'aborted'
     # if there is no status file
-    if not os.path.isfile(job_file):
+    if os.path.isfile(job_file):
         return 'submitted'
     else:
         return 'pending'

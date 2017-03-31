@@ -851,7 +851,7 @@ class Base_Executor:
                                 proc[2]._host.retrieve_results(proc[2]._pending_tasks)
                                 raise RuntimeError('{} completed, {} failed, {} aborted'.format(
                                     len([x for x in res if x=='completed']), len([x for x in res if x=='failed']), len([x for x in res if x=='aborted'])))
-                        if any(x in ('pending', 'running') for x in res):
+                        if any(x in ('pending', 'submitted', 'running') for x in res):
                             continue
                         elif all(x == 'completed' for x in res):
                             env.logger.debug('Put results for {}'.format(' '.join(proc[2]._pending_tasks)))

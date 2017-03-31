@@ -32,11 +32,11 @@ from sos.hosts import Host
 import subprocess
 
 try:
-    subprocess.check_output('docker ps | grep test_sshd', shell=True).decode()
+    subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
 except subprocess.CalledProcessError:
     subprocess.call('sh build_test_docker.sh', shell=True)
     try:
-        subprocess.check_output('docker ps | grep test_sshd', shell=True).decode()
+        subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
     except subprocess.CalledProcessError:
         sys.exit('Failed to set up a docker machine with sos')
 
@@ -72,7 +72,8 @@ run:
         with open('result.txt') as res:
             self.assertEqual(res.read(), 'a\n')
 
-    def testStatus(self):
+    def testRemoteExecution(self):
+        subprocess.check_output('cd ~/.sos/tasks; rm -f *.res *.sh *.status', shell=True).decode()
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(5)}
@@ -96,8 +97,6 @@ run:
         time.sleep(2)
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
         self.assertGreater(out.count('running'), 1)
-        # local should all be pending but we might have results from before
-        subprocess.call('cd ~/.sos/tasks; rm -f {}'.format(' '.join(x+'.res' for x in res['pending_tasks'])), shell=True)
         # wait another 20 seconds?
         time.sleep(10)
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
@@ -119,6 +118,7 @@ run:
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
 
     def testTaskSpooler(self):
+        subprocess.check_output('cd ~/.sos/tasks; rm -f *.res *.sh *.status', shell=True).decode()
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(5)}
@@ -142,15 +142,13 @@ run:
         time.sleep(2)
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
         self.assertGreater(out.count('running'), 1)
-        # local should all be pending but we might have results from before
-        subprocess.call('cd ~/.sos/tasks; rm -f {}'.format(' '.join(x+'.res' for x in res['pending_tasks'])), shell=True)
         # wait another 20 seconds?
         time.sleep(10)
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
         # now, local status should still be pending
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
-        self.assertEqual(out.count('pending'), len(res['pending_tasks']))
+        self.assertEqual(out.count('submitted') + out.count('pending'), len(res['pending_tasks']))
         # until we run the workflow again
         #st = time.time()
         Base_Executor(wf, config={
