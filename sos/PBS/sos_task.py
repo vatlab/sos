@@ -162,8 +162,8 @@ class PBS_TaskEngine(TaskEngine):
             return result
 
     def query_tasks(self, tasks, verbosity=1):
-        if verbosity <= 1:
-            return super(PBS_TaskEngine, self).query_tasks(tasks, 1)
+        if verbosity <= 2:
+            return super(PBS_TaskEngine, self).query_tasks(tasks, verbosity)
         # for more verbose case, we will call pbs's status_cmd to get more accurate information
         status_lines = super(PBS_TaskEngine, self).query_tasks(tasks, 1)
         res = ''
