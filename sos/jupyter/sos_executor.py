@@ -81,7 +81,7 @@ class Interactive_Executor(Base_Executor):
         # set config to CONFIG
         FileTarget('config.yml').remove('both')
 
-    def run(self, targets=None, queue=None, mode='interactive'):
+    def run(self, targets=None, queue=None):
         '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer
         The code can be simple SoS/Python statements, one SoS step, or more
         or more SoS workflows with multiple steps. This executor,
@@ -98,7 +98,6 @@ class Interactive_Executor(Base_Executor):
         # last stement is an expression.
         last_res = None
 
-        env.config['run_mode'] = mode
 
         # process step of the pipelinp
         if isinstance(targets, str):
@@ -254,10 +253,6 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         list_queues(args.__config__, args.verbosity)
         return
     #
-    env.config['sig_mode'] = args.__sig_mode__
-    env.config['default_queue'] = args.__queue__
-    env.config['wait_for_task'] = args.__wait__
-
     if kernel is not None:
         def notify_kernel(task_status):
             global my_tasks;
@@ -267,7 +262,9 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                 'running': 'fa fa-2x fa-fw fa-spinner fa-pulse fa-spin',
                 'result-ready': 'fa fa-2x fa-fw fa-files-o',
                 'completed': 'fa fa-2x fa-fw fa-check-square-o',
-                'failed':  'fa fa-2x fa-fw fa-times-rectangle-o',
+                # window-close-o does not exist
+                #'failed':  'fa fa-2x fa-fw fa-window-close-o',
+                'failed':  'fa fa-2x fa-fw fa-times-circle-o',
                 'aborted':  'fa fa-2x fa-fw fa-frown-o',
                 'result-mismatch': 'fa fa-2x fa-fw fa-question-circle-o',
                 }
@@ -336,9 +333,13 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         executor = Interactive_Executor(workflow, args=workflow_args, config={
             'config_file': args.__config__,
             'output_dag': args.__dag__,
-            'report_output': args.__report__})
-
-        return executor.run(args.__targets__, mode='dryrun' if args.__dryrun__ else 'interactive')
+            'report_output': args.__report__,
+            'sig_mode': args.__sig_mode__,
+            'default_queue': args.__queue__,
+            'wait_for_task': args.__wait__,
+            'run_mode': 'dryrun' if args.__dryrun__ else 'interactive'
+        })
+        return executor.run(args.__targets__)
     except PendingTasks as e:
         raise
     except Exception:

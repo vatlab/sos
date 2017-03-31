@@ -236,7 +236,6 @@ def check_task(task):
     if os.path.isfile(res_file):
         try:
             from .target import FileTarget
-            new_res = os.path.getmtime(task_file) <= os.path.getmtime(res_file)
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
             if res['succ'] == 0:
@@ -245,6 +244,7 @@ def check_task(task):
                         if not FileTarget(x).exists() or FileTarget(x).signature() != y:
                             env.logger.debug('{} not found or signature mismatch'.format(x))
                             return 'result-mismatch'
+                            # otherwise, it can be submitted or pending...
                     # this is called "completed" remotely but will be
                     # translated to either completed or result-ready locally
                     return 'completed'
@@ -258,44 +258,40 @@ def check_task(task):
             env.logger.warning(e)
             time.sleep(1)
             return check_task(task)
-    try:
-        if not os.path.isfile(status_file) or os.path.getmtime(status_file) < os.path.getmtime(task_file):
-            if os.path.isfile(job_file) and os.path.getmtime(job_file) >= os.path.getmtime(task_file):
-                return 'submitted'
+    #
+    if os.path.isfile(status_file):
+        # dead?
+        # if the status file is readonly
+        if not os.access(status_file, os.W_OK):
+            return 'aborted'
+        start_stamp = os.stat(status_file).st_mtime
+        elapsed = time.time() - start_stamp
+        if elapsed < 0:
+            env.logger.warning('{} is created in the future. Your system time might be problematic'.format(status_file))
+        # if the file is within 5 seconds
+        if elapsed < monitor_interval:
+            return 'running'
+        elif elapsed > 2 * monitor_interval:
+            if os.path.isfile(res_file):
+                # result file appears during sos tatus run
+                return check_task(task)
             else:
-                return 'pending'
-    except Exception as e:
-        # there is a slight chance that the old status_file is removed
-        env.logger.warning(e)
-        time.sleep(1)
-        return check_task(task)
-    # dead?
-    # if the status file is readonly
-    if not os.access(status_file, os.W_OK):
-        return 'aborted'
-    start_stamp = os.stat(status_file).st_mtime
-    elapsed = time.time() - start_stamp
-    if elapsed < 0:
-        env.logger.warning('{} is created in the future. Your system time might be problematic'.format(status_file))
-    # if the file is within 5 seconds
-    if elapsed < monitor_interval:
-        return 'running'
-    elif elapsed > 2 * monitor_interval:
+                return 'aborted'
+        # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
+        time.sleep(2 * monitor_interval)
+        end_stamp = os.stat(status_file).st_mtime
+        # the process is still alive
         if os.path.isfile(res_file):
-            # result file appears
             return check_task(task)
+        elif start_stamp != end_stamp:
+            return 'running'
         else:
             return 'aborted'
-    # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
-    time.sleep(2 * monitor_interval)
-    end_stamp = os.stat(status_file).st_mtime
-    # the process is still alive
-    if os.path.isfile(res_file):
-        return check_task(task)
-    elif start_stamp != end_stamp:
-        return 'running'
+    # if there is no status file
+    if not os.path.isfile(job_file):
+        return 'submitted'
     else:
-        return 'aborted'
+        return 'pending'
 
 def check_tasks(tasks, verbosity=1):
     # verbose is ignored for now
@@ -394,6 +390,13 @@ def kill_task(task):
     status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
     from stat import S_IREAD, S_IRGRP, S_IROTH
     os.chmod(status_file, S_IREAD|S_IRGRP|S_IROTH)
+    # remove job file as well
+    job_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
+    if os.path.isfile(job_file):
+        try:
+            os.remove(job_file)
+        except:
+            pass
     return 'killed'
 
 

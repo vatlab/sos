@@ -228,36 +228,34 @@ define([
                     } else if (msg_type == 'task-status') {
                         // console.log(data);
                         var item = document.getElementById(data[0]);
-
             
                         if (!item)
                             return;
                         else
-                           
                             item.className = data[2];
-                        if (data[1] === "completed" || data[1] === "completed-old") {
+                        if (["completed", "failed", "aborted", "result-mismatch"].indexOf(data[1]) >= 0) {
                             /* if successful, let us re-run the cell to submt another task
                                or get the result */
-                           
                             for (cell in window.pending_cells) {
                                  /* remove task from pending_cells */
                                  var idx = window.pending_cells[cell].indexOf(data[0]);
                                   // $("#"+data[0]).css("background-color","#98FB98")
-                                 if (idx >= 0)
-                                     window.pending_cells[cell].splice(idx)
-                                 if (window.pending_cells[cell].length === 0) {
-                                     delete window.pending_cells[cell];
-                                     /* if the does not have any pending one, re-run it. */
-                                     var cells = IPython.notebook.get_cells();
-                                     var rerun = null;
-                                     for (var i = 0; i < cells.length; ++i ){
-                                         if (cells[i].cell_id == cell) {
-                                             rerun = cells[i];
-                                             break;
+                                 if (idx >= 0) {
+                                     window.pending_cells[cell].splice(idx, 1);
+                                     if (window.pending_cells[cell].length === 0) {
+                                         delete window.pending_cells[cell];
+                                         /* if the does not have any pending one, re-run it. */
+                                         var cells = IPython.notebook.get_cells();
+                                         var rerun = null;
+                                         for (var i = 0; i < cells.length; ++i ){
+                                             if (cells[i].cell_id == cell) {
+                                                 rerun = cells[i];
+                                                 break;
+                                             }
                                          }
+                                         if (rerun)
+                                             rerun.execute();
                                      }
-                                     if (rerun)
-                                         rerun.execute();
                                  }
                             }
                         } 
