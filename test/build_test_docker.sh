@@ -57,7 +57,7 @@ docker build -t eg_sshd .
 
 #
 # start docker image
-docker run -d -P --name test_sshd eg_sshd
+docker run -d -P -e TS_SLOTS=10 --name test_sshd eg_sshd
 
 # get the port
 PORT=$(docker port test_sshd 22 | cut -f2 -d:)
@@ -78,7 +78,27 @@ hosts:
             home: $HOME
     docker:
         address: root@localhost
-        port: ${PORT}
+        port: $PORT
         paths:
             home: /root
+    ts:
+        description: task spooler on the docker machine
+        address: root@localhost
+        port: $PORT
+HERE
+
+# this part is not interpolated
+cat >> docker.yml << 'HERE'
+        paths:
+            home: /root
+        queue_type: pbs
+        status_check_interval: 5
+        job_template: |
+            #!/bin/bash
+            cd ${cur_dir}
+            sos execute ${task} -v ${verbosity} -s ${sig_mode} ${'--dryrun' if run_mode == 'dryrun' else ''}
+        max_running_jobs: 100
+        submit_cmd: tsp -L ${task} sh ${job_file}
+        status_cmd: tsp -s ${job_id}
+        kill_cmd: tsp -w ${job_id}
 HERE

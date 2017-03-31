@@ -118,6 +118,53 @@ run:
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
 
+    def testTaskSpooler(self):
+        script = SoS_Script('''
+[10]
+input: for_each={'i': range(5)}
+task:
+
+run:
+    echo I am ${i}
+    sleep ${i*2}
+''')
+        wf = script.workflow()
+        res = Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': False,
+                'default_queue': 'ts',
+                'sig_mode': 'force',
+                }).run()
+        import time
+        # we should be able to get status
+        tasks = ' '.join(res['pending_tasks'])
+        time.sleep(2)
+        out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
+        self.assertGreater(out.count('running'), 1)
+        # local should all be pending but we might have results from before
+        subprocess.call('cd ~/.sos/tasks; rm -f {}'.format(' '.join(x+'.res' for x in res['pending_tasks'])), shell=True)
+        # wait another 20 seconds?
+        time.sleep(10)
+        out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
+        self.assertEqual(out.count('completed'), len(res['pending_tasks']))
+        # now, local status should still be pending
+        out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
+        self.assertEqual(out.count('pending'), len(res['pending_tasks']))
+        # until we run the workflow again
+        #st = time.time()
+        Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'ts',
+                }).run()
+        # should finish relatively fast?
+        #self.assertLess(time.time() - st, 5)
+        out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
+        self.assertEqual(out.count('completed'), len(res['pending_tasks']))
+
+
     def testSendSymbolicLink(self):
         '''Test to_host symbolic link or directories that contain symbolic link. #508'''
         # create a symbloc link
