@@ -262,15 +262,14 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         def notify_kernel(task_status):
             global my_tasks;
             status_class = {
-                'failed':  'fa fa-2x fa-fw fa-times-circle-o',
-                'killed':  'fa fa-2x fa-fw fa-times-circle-o',
-                'dead':  'fa fa-2x fa-fw fa-times-circle-o',
-                'failed-missing-output': 'fa fa-2x fa-fw fa-times-circle-o',
-                'failed-old-missing-output': 'fa fa-2x fa-fw fa-times-circle-o',
                 'pending': 'fa fa-2x fa-fw fa-square-o',
+                'submitted': 'fa fa-2x fa-fw fa-spinner',
                 'running': 'fa fa-2x fa-fw fa-spinner fa-pulse fa-spin',
+                'result-ready': 'fa fa-2x fa-fw fa-files-o',
                 'completed': 'fa fa-2x fa-fw fa-check-square-o',
-                'completed-old': 'fa fa-2x fa-fw fa-check-square-o',
+                'failed':  'fa fa-2x fa-fw fa-times-rectangle-o',
+                'aborted':  'fa fa-2x fa-fw fa-frown-o',
+                'result-mismatch': 'fa fa-2x fa-fw fa-question-circle-o',
                 }
 
             if task_status[0] == 'new-status':

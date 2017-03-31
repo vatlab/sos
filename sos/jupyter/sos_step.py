@@ -46,8 +46,8 @@ class Interactive_Step_Executor(Step_Executor):
             return
         if 'queue' in env.sos_dict['_runtime']:
             queue = env.sos_dict['_runtime']['queue']
-        elif env.__queue__:
-            queue = env.__queue__
+        elif env.config['default_queue']:
+            queue = env.config['default_queue']
         else:
             queue = 'localhost'
 
@@ -58,7 +58,7 @@ class Interactive_Step_Executor(Step_Executor):
             res = host.check_status(tasks)
             if all(x.startswith('completed') for x in res):
                return host.retrieve_results(tasks)
-            elif all(x == 'running' for x in res if not x.startswith('completed')) and not env.__wait__:
+            elif all(x in ('running', 'submitted') for x in res if not x.startswith('completed')) and not env.config['wait_for_task']:
                 raise PendingTasks(tasks)
             elif any(x in  ('pending', 'running', 'failed-old', 'failed-missing-output', 'failed-old-missing-output') for x in res):
                continue

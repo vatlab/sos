@@ -82,7 +82,7 @@ class PBS_TaskEngine(TaskEngine):
             runtime['nodes'] = 1
         if 'ppn' not in runtime:
             runtime['ppn'] = 1
-        runtime['job_file'] = '~/.sos/tasks/{}.pbs'.format(task_id)
+        runtime['job_file'] = '~/.sos/tasks/{}.sh'.format(task_id)
         runtime.update(self.config)
 
         # let us first prepare a task file
@@ -92,16 +92,16 @@ class PBS_TaskEngine(TaskEngine):
             raise ValueError('Failed to generate job file for task {}: {}'.format(task_id, e))
 
         # now we need to write a job file
-        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.pbs')
+        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.sh')
         with open(job_file, 'w') as job:
             job.write(job_text)
 
         # then copy the job file to remote host if necessary
-        self.agent.send_task_file(task_id + '.pbs')
+        self.agent.send_task_file(task_id + '.sh')
 
         if env.config['run_mode'] == 'dryrun':
             try:
-                cmd = 'bash ~/.sos/tasks/{}.pbs'.format(task_id)
+                cmd = 'bash ~/.sos/tasks/{}.sh'.format(task_id)
                 print(self.agent.check_output(cmd))
             except Exception as e:
                 raise RuntimeError('Failed to submit task {}: {}'.format(task_id, e))

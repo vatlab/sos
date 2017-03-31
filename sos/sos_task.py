@@ -223,56 +223,35 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
 
 def check_task(task):
     #
-    # status of the job, which can be
-    #
-    # completed-old: if there is an old result file with succ
-    # completed:     if there is a new result file with succ
-    # failed-mismatch: completed but signature mismatch
-    # failed-missing-output: completed from an old run but signature mismatch
-    # failed-old:    if there is an old result file with fail status
-    # failed:        if there is a new result file with fail status
-    # pending:       if there is no result file, without status file or with an old status file
-    #                   and result file, have not started running.
-    # running:       if with a status file that has just been updated
-    # dead:        if with a new status file that has not been updated
-    # 
+    # status of the job, please refer to https://github.com/vatlab/SOS/issues/529
+    # for details.
     #
     task_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.task')
     if not os.path.isfile(task_file):
         raise ValueError('Task does not exist: {}'.format(task))
     status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
     res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
+    job_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
 
     if os.path.isfile(res_file):
         try:
-            new_res = os.path.getmtime(task_file) <= os.path.getmtime(res_file)
             from .target import FileTarget
+            new_res = os.path.getmtime(task_file) <= os.path.getmtime(res_file)
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
             if res['succ'] == 0:
                 if isinstance(res['output'], dict):
-                    if all(FileTarget(x).exists() and FileTarget(x).signature() == y for x,y in res['output'].items()):
-                        if new_res:
-                            return 'completed'
-                        else:
-                            return 'completed-old'
-                    else:
-                        env.logger.debug('{} not found or signature mismatch'.format(res['output']))
-                        if new_res:
-                            return 'failed-missing-output'
-                        else:
-                            return 'failed-old-missing-output'
+                    for x,y in res['output'].items():
+                        if not FileTarget(x).exists() or FileTarget(x).signature() != y:
+                            env.logger.debug('{} not found or signature mismatch'.format(x))
+                            return 'result-mismatch'
+                    # this is called "completed" remotely but will be
+                    # translated to either completed or result-ready locally
+                    return 'completed'
                 else:
-                    if new_res:
-                        return 'completed'
-                    else:
-                        return 'completed-old'
+                    return 'completed'
             else:
-                if new_res:
-                    env.logger.debug(res['exception'])
-                    return 'failed'
-                else:
-                    return 'failed-old'
+                return 'failed'
         except Exception as e:
             # sometimes the resfile is changed while we are reading it
             # so we wait a bit and try again.
@@ -281,7 +260,10 @@ def check_task(task):
             return check_task(task)
     try:
         if not os.path.isfile(status_file) or os.path.getmtime(status_file) < os.path.getmtime(task_file):
-            return 'pending'
+            if os.path.isfile(job_file) and os.path.getmtime(job_file) >= os.path.getmtime(task_file):
+                return 'submitted'
+            else:
+                return 'pending'
     except Exception as e:
         # there is a slight chance that the old status_file is removed
         env.logger.warning(e)
@@ -290,7 +272,7 @@ def check_task(task):
     # dead?
     # if the status file is readonly
     if not os.access(status_file, os.W_OK):
-        return 'killed'
+        return 'aborted'
     start_stamp = os.stat(status_file).st_mtime
     elapsed = time.time() - start_stamp
     if elapsed < 0:
@@ -303,7 +285,7 @@ def check_task(task):
             # result file appears
             return check_task(task)
         else:
-            return 'dead'
+            return 'aborted'
     # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
     time.sleep(2 * monitor_interval)
     end_stamp = os.stat(status_file).st_mtime
@@ -313,7 +295,7 @@ def check_task(task):
     elif start_stamp != end_stamp:
         return 'running'
     else:
-        return 'dead'
+        return 'aborted'
 
 def check_tasks(tasks, verbosity=1):
     # verbose is ignored for now
