@@ -450,6 +450,14 @@ class TaskEngine(threading.Thread):
             self.pending_tasks = []
             self.task_status = {}
 
+    def remove_tasks(self, tasks):
+        with threading.Lock():
+            for task in tasks:
+                if task in self.task_status:
+                    self.task_status.pop(task)
+                if task in self.tasks:
+                    self.tasks.remove(task)
+
     def get_tasks(self):
         with threading.Lock():
             pending = copy.deepcopy(self.pending_tasks)

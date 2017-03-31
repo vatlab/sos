@@ -35,6 +35,7 @@ from sos.sos_syntax import SOS_SECTION_HEADER
 from sos.target import FileTarget, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_step import Interactive_Step_Executor, PendingTasks
 from IPython.core.display import HTML
+from sos.hosts import Host
 
 
 class Interactive_Executor(Base_Executor):
@@ -209,7 +210,6 @@ class Interactive_Executor(Base_Executor):
 #
 # function runfile that is used by spyder to execute complete script
 #
-my_tasks = {}
 
 def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
     # this has something to do with Prefix matching rule of parse_known_args
@@ -253,9 +253,10 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         list_queues(args.__config__, args.verbosity)
         return
     #
+    my_tasks = {}
     if kernel is not None:
         def notify_kernel(task_status):
-            global my_tasks;
+            nonlocal my_tasks;
             status_class = {
                 'pending': 'fa fa-2x fa-fw fa-square-o',
                 'submitted': 'fa fa-2x fa-fw fa-spinner',
@@ -339,6 +340,9 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
             'wait_for_task': args.__wait__,
             'run_mode': 'dryrun' if args.__dryrun__ else 'interactive'
         })
+        # remove tasks from the task engine so that it can be executed
+        # again if necessary.
+        Host.remove_tasks(my_tasks.keys())
         return executor.run(args.__targets__)
     except PendingTasks as e:
         raise
