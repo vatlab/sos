@@ -54,6 +54,7 @@ class Interactive_Step_Executor(Step_Executor):
         host = Host(queue)
         if all(x == 'completed' for x in host.check_status(tasks)):
             print('{} tasks completed.'.format(len(tasks)))
+            host._task_engine.remove_tasks(tasks)
             return host.retrieve_results(tasks)
         for task in tasks:
             host.submit_task(task)

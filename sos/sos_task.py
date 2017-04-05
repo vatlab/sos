@@ -573,6 +573,14 @@ class TaskEngine(threading.Thread):
             # job not yet submitted
             return 'pending'
 
+    def remove_tasks(self, tasks):
+        with threading.Lock():
+            for task in tasks:
+                if task in self.task_status:
+                    self.task_status.pop(task)
+                if task in self.tasks:
+                    self.tasks.remove(task)
+
     def pending_tasks(self):
         with threading.Lock():
             return self.pending_tasks
