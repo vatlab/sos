@@ -1032,7 +1032,10 @@ define([
             adjustPanel();
         });
         setTimeout(function() {
-                adjustPanel();
+            adjustPanel();
+            /* #524. syntax highlighting would be disabled after page reload. Note quite sure if this is
+               a correct fix but it seems to work. */
+            IPython.notebook.set_codemirror_mode('sos');
         }, 1000);
         
 
