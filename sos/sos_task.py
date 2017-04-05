@@ -420,6 +420,8 @@ class TaskEngine(threading.Thread):
         self.config = agent.config
         self.alias = self.config['alias']
 
+        self.engine_ready = threading.Event()
+
         self.tasks = []
         self.pending_tasks = []
 
@@ -473,6 +475,7 @@ class TaskEngine(threading.Thread):
                     self.task_status[tid] = tst
                 except Exception as e:
                     env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
+        self.engine_ready.set()
         while True:
             # if no new task, does not do anything.
             if self.tasks:
@@ -520,6 +523,9 @@ class TaskEngine(threading.Thread):
             time.sleep(self.status_check_interval)
 
     def submit_task(self, task_id):
+        # we wait for the engine to start
+        self.engine_ready.wait()
+
         # submit tasks simply add task_id to pending task list
         with threading.Lock():
             # if already in
@@ -527,14 +533,14 @@ class TaskEngine(threading.Thread):
                 env.logger.info('{} ``{}``'.format(task_id, self.task_status[task_id]))
                 if hasattr(env, '__task_notifier__'):
                     env.__task_notifier__(['new-status', task_id, self.task_status[task_id]])
-                return
+                return self.task_status[task_id]
             #
             if task_id in self.task_status and self.task_status[task_id]:
                 if self.task_status[task_id] == 'running':
                     env.logger.info('{} ``already runnng``'.format(task_id))
                     if hasattr(env, '__task_notifier__'):
                         env.__task_notifier__(['new-status', task_id, 'running'])
-                    return
+                    return 'running'
                 # there is a case when the job is already completed (complete-old), but
                 # because we do not know if the user asks to rerun (-s force), we have to
                 # resubmit the job. In the case of not-rerun, the task would be marked
@@ -542,13 +548,11 @@ class TaskEngine(threading.Thread):
                 elif self.task_status[task_id] == 'completed':
                     if env.config['sig_mode'] != 'force':
                         env.logger.info('{} ``already completed``'.format(task_id))
-                        if hasattr(env, '__task_notifier__'):
-                            env.__task_notifier__(['new-status', task_id, 'completed'])
-                        return
+                        #if hasattr(env, '__task_notifier__'):
+                        #    env.__task_notifier__(['new-status', task_id, 'completed'])
+                        return 'completed'
                     else:
                         env.logger.info('{} ``re-execute completed``'.format(task_id))
-                        if hasattr(env, '__task_notifier__'):
-                            env.__task_notifier__(['new-status', task_id, 'pending'])
 
             env.logger.info('{} ``queued``'.format(task_id))
             self.pending_tasks.append(task_id)
@@ -556,6 +560,7 @@ class TaskEngine(threading.Thread):
             self.task_status[task_id] = 'pending'
             if hasattr(env, '__task_notifier__'):
                 env.__task_notifier__(['new-status', task_id, 'pending'])
+            return 'pending'
 
     def summarize_status(self):
         from collections import Counter
@@ -576,10 +581,10 @@ class TaskEngine(threading.Thread):
             for task in tasks:
                 if hasattr(env, '__task_notifier__'):
                     env.__task_notifier__(['remove-task', task])
-                if task in self.task_status:
-                    self.task_status.pop(task)
-                if task in self.tasks:
-                    self.tasks.remove(task)
+                #if task in self.task_status:
+                #    self.task_status.pop(task)
+                #if task in self.tasks:
+                #    self.tasks.remove(task)
 
     def pending_tasks(self):
         with threading.Lock():
