@@ -498,20 +498,6 @@ a = fail()
         # shoulw return 1 in run mode
         self.assertEqual(env.sos_dict['a'], 1)
 
-    def testReadonlyVarsInGalobal(self):
-        '''Test vars defined in global section are readonly'''
-        script = SoS_Script(r"""
-
-a = 10
-
-[0]
-
-a += 1
-
-""")
-        wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
-
     def testReadOnlyStepVars(self):
         '''Test if the step variables can be changed.'''
         #

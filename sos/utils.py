@@ -170,23 +170,18 @@ class WorkflowDict(object):
     """
     def __init__(self, *args, **kwargs):
         self._dict = dict(*args, **kwargs)
-        self._readonly_vars = {}
 
     def set(self, key, value):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
-        self._check_readonly(key, value)
         self._dict[key] = value
 
     def quick_update(self, obj):
-        '''Update without readonly check etc. For fast internal update'''
+        '''Update without sanity check etc. For fast internal update'''
         self._dict.update(obj)
 
     def update(self, obj):
         '''Redefine update to trigger logging message'''
-        for k,v in obj.items():
-            self._check_readonly(k, v)
-        #
         self._dict.update(obj)
         for k, v in obj.items():
             if env.verbosity > 2:
@@ -213,48 +208,10 @@ class WorkflowDict(object):
             raise ValueError('Variable {} can only be set by SoS'.format(key))
         self.set(key, value)
 
-    def __cmp_values__(self, A, B):
-        C = A == B
-        if isinstance(C, bool):
-            return C
-        else:
-            return None
-
-    def check_readonly_vars(self):
-        for key in env.readonly_vars:
-            if key in self._readonly_vars:
-                cmp_res = self.__cmp_values__(self._dict[key], self._readonly_vars[key])
-                if not cmp_res:
-                    if env.config['run_mode'] != 'interactive':
-                        raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
-                            .format(key, short_repr(self._dict[key]), short_repr(self._readonly_vars[key])))
-            elif key in self._dict:
-                self._readonly_vars[key] = self._dict[key]
-
-    def _check_readonly(self, key, value):
-        if key in env.readonly_vars:
-            if key not in self._readonly_vars:
-                self._readonly_vars[key] = value
-            # if the key already exists
-            if key in self._dict:
-                cmp_res = self.__cmp_values__(self._dict[key], self._readonly_vars[key])
-                if not cmp_res:
-                    if env.config['run_mode'] != 'interactive':
-                        raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
-                            .format(key, short_repr(self._dict[key]), short_repr(self._readonly_vars[key])))
-                cmp_res = self.__cmp_values__(value, self._dict[key])
-                if not cmp_res:
-                    if env.config['run_mode'] != 'interactive':
-                        raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
-                            .format(key, short_repr(self._dict[key]), short_repr(value)))
-
     def _log(self, key, value):
         env.logger.debug('Set ``{}`` = ``{}``'.format(key, short_repr(value)))
 
     def _warn(self, key, value):
-        if key.isupper() and key in self._dict and self._dict[key] != value:
-            env.logger.warning('Changing readonly variable {} from {} to {}'
-                .format(key, self._dict[key], value))
         if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
             env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
@@ -313,8 +270,6 @@ class RuntimeEnvironments(object):
         # global dictionaries used by SoS during the
         # execution of SoS workflows
         self.sos_dict = WorkflowDict()
-        # variables that are defined in global and parameters sections and are readonly
-        self.readonly_vars = set()
         # parameters of the workflow, which will be handled differently
         self.parameter_vars = set()
         #
@@ -902,9 +857,7 @@ def sos_handle_parameter_(key, defvalue):
     NOTE: parmeters will not be handled if it is already defined in
     the environment. This makes the parameters variable.
     '''
-    if key in env.sos_dict._readonly_vars:
-        raise ValueError('Variable {} is readonly and cannot be defined as a parameter'.format(key))
-    elif key in env.sos_dict['sos_symbols_']:
+    if key in env.sos_dict['sos_symbols_']:
         env.logger.warning('Parameter {} overrides a SoS function.'.format(key))
 
     env.parameter_vars.add(key)
