@@ -78,6 +78,10 @@ class PBS_TaskEngine(TaskEngine):
         runtime['verbosity'] = env.verbosity
         runtime['sig_mode'] = env.config['sig_mode']
         runtime['run_mode'] = env.config['run_mode']
+        if 'name' in runtime:
+            runtime['job_name'] = interpolate(runtime['name'], '${ }', sos_dict)
+        else:
+            runtime['job_name'] = task_id
         if 'nodes' not in runtime:
             runtime['nodes'] = 1
         if 'ppn' not in runtime:
