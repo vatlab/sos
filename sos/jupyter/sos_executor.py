@@ -256,6 +256,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
     if kernel is not None:
         def notify_kernel(task_status):
             global my_tasks;
+            env.logger.warning(task_status)
             status_class = {
                 'pending': 'fa fa-2x fa-fw fa-square-o',
                 'submitted': 'fa fa-2x fa-fw fa-spinner',
