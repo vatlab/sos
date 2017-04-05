@@ -225,10 +225,12 @@ define([
                            can still locate the cell once its tasks are completed. */
                         var cell = IPython.notebook.get_cell(data[0]);
                         window.pending_cells[cell.cell_id] = data[1];
+                    } else if (msg_type == 'remove-task') {
+                        var item = document.getElementById("table_" + data);
+                        item.parentNode.removeChild(item);
                     } else if (msg_type == 'task-status') {
                         // console.log(data);
                         var item = document.getElementById(data[0]);
-            
                         if (!item)
                             return;
                         else

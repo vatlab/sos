@@ -476,14 +476,14 @@ class TaskEngine(threading.Thread):
         while True:
             # if no new task, does not do anything.
             if self.tasks:
-                status_output = self.query_tasks(self.tasks, verbosity=1)
+                status_output = self.query_tasks(self.tasks + self.pending_tasks, verbosity=1)
                 with threading.Lock():
                     for line in status_output.split('\n'):
                         if not line.strip():
                             continue
                         try:
                             tid, tst = line.split('\t')
-                            if hasattr(env, '__task_notifier__'):
+                            if hasattr(env, '__task_notifier__') and tst != 'non-exist':
                                 if tid in self.task_status and self.task_status[tid] == tst:
                                     env.__task_notifier__(['pulse-status', tid, tst])
                                 else:
@@ -506,6 +506,8 @@ class TaskEngine(threading.Thread):
                 for tid in to_run:
                     if self.task_status[tid] == 'running':
                         env.logger.info('{} ``runnng``'.format(tid))
+                    elif self.task_status[tid] == 'completed':
+                        env.logger.info('{} ``already completed``'.format(tid))
                     else:
                         self.execute_task(tid)
                 #
@@ -572,6 +574,8 @@ class TaskEngine(threading.Thread):
     def remove_tasks(self, tasks):
         with threading.Lock():
             for task in tasks:
+                if hasattr(env, '__task_notifier__'):
+                    env.__task_notifier__(['remove-task', task])
                 if task in self.task_status:
                     self.task_status.pop(task)
                 if task in self.tasks:

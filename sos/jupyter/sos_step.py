@@ -61,7 +61,8 @@ class Interactive_Step_Executor(Step_Executor):
         while True:
             res = host.check_status(tasks)
             if all(x in ('completed', 'failed', 'abored', 'result-mismatch') for x in res):
-               return host.retrieve_results(tasks)
+                host._task_engine.remove_tasks([task for task, status in zip(tasks, res) if status == 'completed'])
+                return host.retrieve_results(tasks)
             # no pending
             elif all(x != 'pending' for x in res) and not env.config['wait_for_task']:
                 raise PendingTasks([x for x,y in zip(tasks, res) if y == 'running'])
