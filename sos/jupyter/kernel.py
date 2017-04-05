@@ -183,7 +183,6 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_RERUN = re.compile('^%rerun(\s|$)')
     MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
     MAGIC_SANDBOX = re.compile('^%sandbox(\s|$)')
-    MAGIC_SKIP = re.compile('^%skip(\s|$)')
     MAGIC_DEBUG = re.compile('^%debug(\s|$)')
 
     def get_use_parser(self):
@@ -290,16 +289,6 @@ class SoS_Kernel(IPythonKernel):
                 Default to the SoS kernel.''')
         parser.add_argument('vars', nargs='*',
             help='''Names of SoS variables''')
-        parser.error = self._parse_error
-        return parser
-
-    def get_skip_parser(self):
-        parser = argparse.ArgumentParser(prog='%skip',
-            description='''Skip the current step''')
-        parser.add_argument('--if', dest='__cond__',
-            help='''Skip if yes/1/true/True, not otherwise''')
-        parser.add_argument('-e', '--exists', nargs='+',
-            help='''Turn on or off debugging''')
         parser.error = self._parse_error
         return parser
 
@@ -1441,29 +1430,6 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_cd(options)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-        elif self.MAGIC_SKIP.match(code):
-            options, remaining_code = self.get_magic_and_code(code, False)
-            parser = self.get_skip_parser()
-            options = self._interpolate_option(options, quiet=True)
-            args = parser.parse_args(options.split())
-            skip = True
-            if args.__cond__ is not None:
-                if args.__cond__.lower() in ['1', 'y', 'yes', 't', 'true']:
-                    skip = True
-                elif args.__cond__.lower() in ['0', 'n', 'no', 'f', 'false']:
-                    skip = False
-                else:
-                    raise ValueError('Invalid parameter for parameter --if: {}'.format(args.__cond__))
-            if args.exists:
-                for item in args.exists:
-                    if not os.path.exists(os.path.expanduser(item)):
-                        skip = False
-            if skip:
-                self.send_frontend_msg('restore-output-from-cache', self.cell_idx)
-                return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
-            else:
-                self.send_frontend_msg('purge-output-cache', self.cell_idx)
-                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_DEBUG.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_debug_parser()
