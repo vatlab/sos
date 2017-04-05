@@ -228,7 +228,7 @@ def check_task(task):
     #
     task_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.task')
     if not os.path.isfile(task_file):
-        raise ValueError('Task does not exist: {}'.format(task))
+        return 'non-exist'
     status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
     res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
     job_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
@@ -306,7 +306,7 @@ def check_tasks(tasks, verbosity=1):
             matched = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}*.task'.format(t)))
             matched = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in matched]
             if not matched:
-                env.logger.warning('{} does not match any existing task'.format(t))
+                all_tasks.append((t, None))
             else:
                 all_tasks.extend(matched)
     all_tasks = sorted(list(set(all_tasks)), key=lambda x: x[1])
@@ -324,14 +324,18 @@ def check_tasks(tasks, verbosity=1):
     elif verbosity == 2:
         from .utils import PrettyRelativeTime
         for s, (t, d) in zip(status, all_tasks):
-            print('{}\t{:>15} ago\t{}'.format(t, PrettyRelativeTime(time.time() - d), s))
+            if d is None:
+                print('{}\t{:>15}\t{}'.format(t, '', s))
+            else:
+                print('{}\t{:>15} ago\t{}'.format(t, PrettyRelativeTime(time.time() - d), s))
     elif verbosity > 2:
         from .utils import PrettyRelativeTime
         import pprint
         import glob
         for s, (t, d) in zip(status, all_tasks):
             print('{}\t{}\n'.format(t, s))
-            print('Started {} ago'.format(PrettyRelativeTime(time.time() - d)))
+            if d is not None:
+                print('Started {} ago'.format(PrettyRelativeTime(time.time() - d)))
             task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 continue
@@ -533,7 +537,7 @@ class TaskEngine(threading.Thread):
                 # because we do not know if the user asks to rerun (-s force), we have to
                 # resubmit the job. In the case of not-rerun, the task would be marked
                 # completed very soon.
-                elif self.task_status[task_id].startswith('completed'):
+                elif self.task_status[task_id] == 'completed':
                     if env.config['sig_mode'] != 'force':
                         env.logger.info('{} ``already completed``'.format(task_id))
                         if hasattr(env, '__task_notifier__'):
@@ -544,20 +548,12 @@ class TaskEngine(threading.Thread):
                         if hasattr(env, '__task_notifier__'):
                             env.__task_notifier__(['new-status', task_id, 'pending'])
 
-            active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
-            if len(active_tasks) < self.max_running_jobs:
-                self.tasks.append(task_id)
-                self.task_status[task_id] = 'running'
-                if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['new-status', task_id, 'running'])
-                self.execute_task(task_id)
-            else:
-                env.logger.info('{} ``queued``'.format(task_id))
-                self.pending_tasks.append(task_id)
-                # there is a change that the task_id already exists...
-                self.task_status[task_id] = 'pending'
-                if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['new-status', task_id, 'pending'])
+            env.logger.info('{} ``queued``'.format(task_id))
+            self.pending_tasks.append(task_id)
+            # there is a change that the task_id already exists...
+            self.task_status[task_id] = 'pending'
+            if hasattr(env, '__task_notifier__'):
+                env.__task_notifier__(['new-status', task_id, 'pending'])
 
     def summarize_status(self):
         from collections import Counter
