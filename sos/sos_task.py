@@ -228,7 +228,7 @@ def check_task(task):
     #
     task_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.task')
     if not os.path.isfile(task_file):
-        raise ValueError('Task does not exist: {}'.format(task))
+        return 'non-exist'
     status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
     res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
     job_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
@@ -306,7 +306,7 @@ def check_tasks(tasks, verbosity=1):
             matched = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}*.task'.format(t)))
             matched = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in matched]
             if not matched:
-                env.logger.warning('{} does not match any existing task'.format(t))
+                all_tasks.append((t, None))
             else:
                 all_tasks.extend(matched)
     all_tasks = sorted(list(set(all_tasks)), key=lambda x: x[1])
@@ -324,14 +324,18 @@ def check_tasks(tasks, verbosity=1):
     elif verbosity == 2:
         from .utils import PrettyRelativeTime
         for s, (t, d) in zip(status, all_tasks):
-            print('{}\t{:>15} ago\t{}'.format(t, PrettyRelativeTime(time.time() - d), s))
+            if d is None:
+                print('{}\t{:>15}\t{}'.format(t, '', s))
+            else:
+                print('{}\t{:>15} ago\t{}'.format(t, PrettyRelativeTime(time.time() - d), s))
     elif verbosity > 2:
         from .utils import PrettyRelativeTime
         import pprint
         import glob
         for s, (t, d) in zip(status, all_tasks):
             print('{}\t{}\n'.format(t, s))
-            print('Started {} ago'.format(PrettyRelativeTime(time.time() - d)))
+            if d is not None:
+                print('Started {} ago'.format(PrettyRelativeTime(time.time() - d)))
             task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 continue
@@ -416,6 +420,8 @@ class TaskEngine(threading.Thread):
         self.config = agent.config
         self.alias = self.config['alias']
 
+        self.engine_ready = threading.Event()
+
         self.tasks = []
         self.pending_tasks = []
 
@@ -477,17 +483,18 @@ class TaskEngine(threading.Thread):
                     self.task_status[tid] = tst
                 except Exception as e:
                     env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
+        self.engine_ready.set()
         while True:
             # if no new task, does not do anything.
             if self.tasks:
-                status_output = self.query_tasks(self.tasks, verbosity=1)
+                status_output = self.query_tasks(self.tasks + self.pending_tasks, verbosity=1)
                 with threading.Lock():
                     for line in status_output.split('\n'):
                         if not line.strip():
                             continue
                         try:
                             tid, tst = line.split('\t')
-                            if hasattr(env, '__task_notifier__'):
+                            if hasattr(env, '__task_notifier__') and tst != 'non-exist':
                                 if tid in self.task_status and self.task_status[tid] == tst:
                                     env.__task_notifier__(['pulse-status', tid, tst])
                                 else:
@@ -510,6 +517,8 @@ class TaskEngine(threading.Thread):
                 for tid in to_run:
                     if self.task_status[tid] == 'running':
                         env.logger.info('{} ``runnng``'.format(tid))
+                    elif self.task_status[tid] == 'completed':
+                        env.logger.info('{} ``already completed``'.format(tid))
                     else:
                         self.execute_task(tid)
                 #
@@ -522,6 +531,9 @@ class TaskEngine(threading.Thread):
             time.sleep(self.status_check_interval)
 
     def submit_task(self, task_id):
+        # we wait for the engine to start
+        self.engine_ready.wait()
+
         # submit tasks simply add task_id to pending task list
         with threading.Lock():
             # if already in
@@ -529,43 +541,34 @@ class TaskEngine(threading.Thread):
                 env.logger.info('{} ``{}``'.format(task_id, self.task_status[task_id]))
                 if hasattr(env, '__task_notifier__'):
                     env.__task_notifier__(['new-status', task_id, self.task_status[task_id]])
-                return
+                return self.task_status[task_id]
             #
             if task_id in self.task_status and self.task_status[task_id]:
                 if self.task_status[task_id] == 'running':
                     env.logger.info('{} ``already runnng``'.format(task_id))
                     if hasattr(env, '__task_notifier__'):
                         env.__task_notifier__(['new-status', task_id, 'running'])
-                    return
+                    return 'running'
                 # there is a case when the job is already completed (complete-old), but
                 # because we do not know if the user asks to rerun (-s force), we have to
                 # resubmit the job. In the case of not-rerun, the task would be marked
                 # completed very soon.
-                elif self.task_status[task_id].startswith('completed'):
+                elif self.task_status[task_id] == 'completed':
                     if env.config['sig_mode'] != 'force':
                         env.logger.info('{} ``already completed``'.format(task_id))
-                        if hasattr(env, '__task_notifier__'):
-                            env.__task_notifier__(['new-status', task_id, 'completed'])
-                        return
+                        #if hasattr(env, '__task_notifier__'):
+                        #    env.__task_notifier__(['new-status', task_id, 'completed'])
+                        return 'completed'
                     else:
                         env.logger.info('{} ``re-execute completed``'.format(task_id))
-                        if hasattr(env, '__task_notifier__'):
-                            env.__task_notifier__(['new-status', task_id, 'pending'])
 
-            active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
-            if len(active_tasks) < self.max_running_jobs:
-                self.tasks.append(task_id)
-                self.task_status[task_id] = 'running'
-                if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['new-status', task_id, 'running'])
-                self.execute_task(task_id)
-            else:
-                env.logger.info('{} ``queued``'.format(task_id))
-                self.pending_tasks.append(task_id)
-                # there is a change that the task_id already exists...
-                self.task_status[task_id] = 'pending'
-                if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['new-status', task_id, 'pending'])
+            env.logger.info('{} ``queued``'.format(task_id))
+            self.pending_tasks.append(task_id)
+            # there is a change that the task_id already exists...
+            self.task_status[task_id] = 'pending'
+            if hasattr(env, '__task_notifier__'):
+                env.__task_notifier__(['new-status', task_id, 'pending'])
+            return 'pending'
 
     def summarize_status(self):
         from collections import Counter
@@ -580,6 +583,16 @@ class TaskEngine(threading.Thread):
         except:
             # job not yet submitted
             return 'pending'
+
+    def remove_tasks(self, tasks):
+        with threading.Lock():
+            for task in tasks:
+                if hasattr(env, '__task_notifier__'):
+                    env.__task_notifier__(['remove-task', task])
+                #if task in self.task_status:
+                #    self.task_status.pop(task)
+                #if task in self.tasks:
+                #    self.tasks.remove(task)
 
     def pending_tasks(self):
         with threading.Lock():

@@ -276,7 +276,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                         'source': 'SoS',
                         'metadata': {},
                         'data': { 'text/html': 
-                            HTML('''<table style="border: 0px"><tr style="border: 0px">
+                            HTML('''<table id="table_{0}" style="border: 0px"><tr style="border: 0px">
                             <td style="border: 0px"><i id="{0}" class="{1}"></i> </td>
                             <td style="border: 0px"><pre>{0}</pre></td>
                             </tr></table>'''.format(task_status[1],
@@ -286,6 +286,9 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                 # keep tracks of my tasks to avoid updating status of
                 # tasks that does not belong to the notebook
                 my_tasks[task_status[1]] = time.time()
+            elif task_status[0] == 'remove-task':
+                if task_status[1] in my_tasks:
+                    kernel.send_frontend_msg('remove-task', task_status[1])
             elif task_status[0] == 'change-status':
                 if task_status[1] in my_tasks:
                     kernel.send_frontend_msg('task-status', [task_status[1], task_status[2], status_class[task_status[2]]])
