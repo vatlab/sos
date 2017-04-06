@@ -358,9 +358,10 @@ class Base_Step_Executor:
         elif isinstance(group_by, int) or group_by.isdigit():
             group_by = int(group_by)
             if len(ifiles) % group_by != 0:
-                raise ValueError('Size of group_by block has to be divisible by the number of input files: {} provided'
-                    .format(len(ifiles)))
-            group_by = max(1, group_by)
+                env.logger.warning('Number of samples ({}) is not a multiple of group_by ({}). The last group would have less files than the other groups.'
+                    .format(len(ifiles), group_by))
+            if group_by < 1:
+                raise ValueError('Value of paramter group_by should be a positive number.')
             return [ifiles[i:i + group_by] for i in range(0, len(ifiles), group_by)]
         else:
             raise ValueError('Unsupported group_by option ``{}``!'.format(group_by))
