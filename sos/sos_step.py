@@ -482,7 +482,7 @@ class Base_Step_Executor:
                 if not isinstance(values, Sequence):
                     try:
                         import pandas as pd
-                        if not isinstance(values, pd.DataFrame):
+                        if not isinstance(values, (pd.DataFrame, pd.Series, pd.Index)):
                             raise ValueError('Unacceptable for_each data type {}'.format(values.__class__.__name__))
                     except Exception as e:
                         raise ValueError('Cannot iterate through variable {}: {}'.format(name, e))
@@ -506,6 +506,8 @@ class Base_Step_Executor:
                             _tmp_vars[idx][var_name] = values[vidx]
                         elif isinstance(values, pd.DataFrame):
                             _tmp_vars[idx][var_name] = values.iloc[vidx]
+                        elif isinstance(values, (pd.Series, pd.Index)):
+                            _tmp_vars[idx][var_name] = values[vidx]
                         else:
                             raise ValueError('Failed to iterate through for_each variable {}'.format(short_repr(values)))
                 _vars.extend(copy.deepcopy(_tmp_vars))

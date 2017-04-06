@@ -316,6 +316,31 @@ output: "${data['A']}_${data['B']}_${data['C']}.txt"
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'], ['1_2_Hello.txt', '2_4_World.txt'])
+        # 
+        # support for pands Series and Index types
+        script = SoS_Script(r"""
+[0: shared={'res':'output'}]
+import pandas as pd
+data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
+input: for_each={'A': data['A']}
+output: "a_${A}.txt"
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['res'], ['a_1.txt', 'a_2.txt'])
+        #
+        script = SoS_Script(r"""
+[0: shared={'res':'output'}]
+import pandas as pd
+data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
+data.set_index('C', inplace=True)
+input: for_each={'A': data.index}
+output: "${A}.txt"
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['res'], ['Hello.txt', 'World.txt'])
+
 
 
     def testPairedWith(self):
