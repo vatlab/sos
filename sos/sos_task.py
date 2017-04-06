@@ -28,6 +28,7 @@ import threading
 from io import StringIO
 from tokenize import generate_tokens
 from collections.abc import Sequence
+import concurrent.futures
 
 from sos.utils import env, short_repr, get_traceback
 from sos.sos_eval import SoS_exec
@@ -423,7 +424,7 @@ class TaskEngine(threading.Thread):
         self.engine_ready = threading.Event()
 
         self.tasks = []
-        self.pending_tasks = []
+        self.pending_tasks = {}
 
         self.task_status = {}
         self.last_checked = None
@@ -453,12 +454,12 @@ class TaskEngine(threading.Thread):
     def reset(self):
         with threading.Lock():
             self.tasks = []
-            self.pending_tasks = []
+            self.pending_tasks = {}
             self.task_status = {}
 
     def get_tasks(self):
         with threading.Lock():
-            pending = copy.deepcopy(self.pending_tasks)
+            pending = copy.deepcopy(list(self.pending_tasks.keys()))
             running = copy.deepcopy(self.tasks)
         return pending, running
 
@@ -479,7 +480,7 @@ class TaskEngine(threading.Thread):
         while True:
             # if no new task, does not do anything.
             if self.tasks:
-                status_output = self.query_tasks(self.tasks + self.pending_tasks, verbosity=1)
+                status_output = self.query_tasks(self.tasks, verbosity=1)
                 with threading.Lock():
                     for line in status_output.split('\n'):
                         if not line.strip():
@@ -499,11 +500,20 @@ class TaskEngine(threading.Thread):
             if self.pending_tasks:
                 to_run = []
                 with threading.Lock():
+                    ready_tasks = []
+                    for k in self.pending_tasks:
+                        if not self.pending_tasks[k].running():
+                            if self.pending_tasks[k].result():
+                                ready_tasks.append(k)
+                            else:
+                                self.task_status[k] = 'failed'
+                    if not ready_tasks:
+                        continue
                     # check status
                     active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'killed') \
                             and not self.task_status[x].startswith('failed')]
                     if len(active_tasks) < self.max_running_jobs:
-                        to_run = self.pending_tasks[ : self.max_running_jobs - len(active_tasks)]
+                        to_run = ready_tasks[ : self.max_running_jobs - len(active_tasks)]
 
                 env.logger.debug('{} pending {} running'.format(len(self.pending_tasks), len(active_tasks)))
                 for tid in to_run:
@@ -517,7 +527,7 @@ class TaskEngine(threading.Thread):
                 with threading.Lock():
                     self.tasks.extend(to_run)
                     for tid in to_run:
-                        self.pending_tasks.remove(tid)
+                        self.pending_tasks.pop(tid)
                         self.task_status[tid] = 'pending'
 
             time.sleep(self.status_check_interval)
@@ -555,11 +565,12 @@ class TaskEngine(threading.Thread):
                         env.logger.info('{} ``re-execute completed``'.format(task_id))
 
             env.logger.info('{} ``queued``'.format(task_id))
-            self.pending_tasks.append(task_id)
             # there is a change that the task_id already exists...
             self.task_status[task_id] = 'pending'
             if hasattr(env, '__task_notifier__'):
                 env.__task_notifier__(['new-status', task_id, 'pending'])
+            t = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+            self.pending_tasks[task_id] = t.submit(self.agent.prepare_task, task_id)
             return 'pending'
 
     def summarize_status(self):
@@ -588,7 +599,7 @@ class TaskEngine(threading.Thread):
 
     def pending_tasks(self):
         with threading.Lock():
-            return self.pending_tasks
+            return self.pending_tasks.keys()
 
     def query_tasks(self, tasks=None, verbosity=1):
         return self.agent.check_output("sos status {} -v {}".format(
