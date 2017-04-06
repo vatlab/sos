@@ -116,10 +116,6 @@ class LocalHost:
     def prepare_task(self, task_id):
         return task_id
 
-    def send_task_file(self, task_file):
-        # on the same file system, no action is needed.
-        pass
-
     def check_output(self, cmd):
         # get the output of command
         try:
@@ -319,6 +315,14 @@ class RemoteHost:
     # Interface
     #
     def prepare_task(self, task_id):
+        try:
+            self._prepare_task(task_id)
+            return True
+        except Exception as e:
+            env.logger.error(e)
+            return False
+
+    def _prepare_task(self, task_id):
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
         with open(task_file, 'rb') as task:
             params = pickle.load(task)
@@ -386,8 +390,6 @@ class RemoteHost:
                 env.logger.warning(e)
                 raise
 
-    def send_task_file(self, task_file):
-        job_file = os.path.join(self.task_dir, task_file)
         send_cmd = 'ssh -q {1} -p {2} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks"; scp -q -P {2} {0} {1}:.sos/tasks/'.format(job_file,
                 self.address, self.port)
         # use scp for this simple case
@@ -627,12 +629,6 @@ class Host:
         return self._host_agent._map_var(vars)
 
     def submit_task(self, task_id):
-        #
-        # Here we need to prepare the task for execution.
-        #
-        self._host_agent.prepare_task(task_id)
-        #
-        self._host_agent.send_task_file(task_id + '.task')
         return self._task_engine.submit_task(task_id)
 
     def check_status(self, tasks):
