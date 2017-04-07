@@ -87,6 +87,32 @@ define([
 
     var my_execute = function(code, callbacks, options) {
         "use strict"
+        /* check if the code is a workflow call, which is marked by
+         * %run workflowname with options
+         */
+        var workflow = '';
+        if (code.startsWith('%run ') && code.split(' ')[1] != undefined && ! code.split(' ')[1].startsWith('-')) {
+            var cells = IPython.notebook.get_cells();
+            for (var i = 0 ; i < cells.length - 1; ++i) {
+                if (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'sos') {
+                    var first_line = cells[i].get_text().split('\n')[0].trim();
+                    if (first_line.startsWith('[') && first_line.endsWith(']'))
+                        workflow += "\n" + cells[i].get_text();
+                }
+            }
+
+            if (workflow != '') {
+                var cell = window.my_panel.cell;
+                cell.clear_input();
+                cell.set_text('%preview_workflow');
+                cell.clear_output();
+                cell.output_area.append_output( {
+                    'output_type': 'stream',
+                    'text': workflow,
+                    'name': 'stdout'
+                    });
+            }
+        }
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i) {
             // this is the cell that is being executed...
@@ -108,7 +134,7 @@ define([
                     (IPython.notebook.metadata['sos']['panel'].displayed ? " --use-panel" : "") +
                     " --default-kernel " + window.default_kernel +
                     " --cell-kernel " + cells[i].metadata.kernel +
-                    " --cell " + i.toString() + "\n" + code,
+                    " --cell " + i.toString() + "\n" + code + workflow,
                     callbacks, options)
             }
         }
@@ -118,7 +144,7 @@ define([
             (window.kernel_updated ? "" : " --list-kernel ") +
             " --default-kernel " + window.default_kernel +
             " --cell-kernel " + window.my_panel.cell.metadata.kernel +
-            " --cell -1 " + "\n" + code,
+            " --cell -1 " + "\n" + code + workflow,
             callbacks, {
                 'silent': false,
                 'store_history': false
@@ -319,8 +345,6 @@ define([
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i)
             cells[i].code_mirror.setOption('styleActiveLine', cells[i].selected);
-        var cell = param['cell'];
-        cell.metadata['output_cache'] = JSON.stringify(cell.output_area.toJSON());
         return true;
     }
 
