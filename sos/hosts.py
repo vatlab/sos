@@ -25,6 +25,7 @@ import sys
 import subprocess
 import multiprocessing as mp
 import pickle
+import shutil
 import pkg_resources
 from collections.abc import Sequence
 
@@ -114,7 +115,10 @@ class LocalHost:
         self.config = {'alias': 'localhost', 'status_check_interval': 2}
 
     def prepare_task(self, task_id):
-        return task_id
+        def_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
+        task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+        shutil.copyfile(def_file, task_file)
+        return True
 
     def send_task_file(self, task_file):
         # on the same file system, no action is needed.
@@ -327,8 +331,8 @@ class RemoteHost:
             return False
 
     def _prepare_task(self, task_id):
-        task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
-        with open(task_file, 'rb') as task:
+        def_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
+        with open(def_file, 'rb') as task:
             params = pickle.load(task)
             task_vars = params.data[1]
 
@@ -386,8 +390,8 @@ class RemoteHost:
                 params.data[2],
             )
         )
-        job_file = os.path.join(self.task_dir, task_id + '.task')
-        with open(job_file, 'wb') as jf:
+        task_file = os.path.join(self.task_dir, task_id + '.task')
+        with open(task_file, 'wb') as jf:
             try:
                 pickle.dump(new_param, jf)
             except Exception as e:

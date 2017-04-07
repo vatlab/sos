@@ -652,7 +652,7 @@ class Base_Step_Executor:
             task_vars['_output'], task_vars['_depends'],
             task_vars['__signature_vars__'], task_vars).sig_id
 
-        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
         with open(job_file, 'wb') as jf:
             try:
                 pickle.dump(param, jf)

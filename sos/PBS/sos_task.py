@@ -64,6 +64,9 @@ class PBS_TaskEngine(TaskEngine):
             self.kill_cmd = self.config['kill_cmd']
 
     def execute_task(self, task_id):
+        #
+        if not super(PBS_TaskEngine, self).execute_task(task_id):
+            return False
         # read the task file and look for runtime info
         # 
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.task')
@@ -151,6 +154,7 @@ class PBS_TaskEngine(TaskEngine):
                         job.write('job_id: {}\n'.format(job_id))
                 # output job id to stdout
                 env.logger.info('{} ``submitted`` to {} with job id {}'.format(task_id, self.alias, job_id))
+                return True
             except Exception as e:
                 raise RuntimeError('Failed to submit task {}: {}'.format(task_id, e))
 

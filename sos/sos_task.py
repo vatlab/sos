@@ -233,10 +233,21 @@ def check_task(task):
     pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
     if not os.path.isfile(pulse_file):
         pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
-    res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
-    job_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
+    
+    def has_pulse():
+        return os.path.isfile(pulse_file) and os.stat(pulse_file).st_mtime >= os.stat(task_file).st_mtime
 
-    if os.path.isfile(res_file):
+    res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
+
+    def has_res():
+        return os.path.isfile(res_file) and os.stat(res_file).st_mtime >= os.stat(task_file).st_mtime
+
+    job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
+
+    def has_job():
+        return os.path.isfile(job_file) and os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime
+
+    if has_res():
         try:
             from .target import FileTarget
             with open(res_file, 'rb') as result:
@@ -262,7 +273,7 @@ def check_task(task):
             time.sleep(1)
             return check_task(task)
     #
-    if os.path.isfile(pulse_file):
+    if has_pulse():
         # dead?
         # if the status file is readonly
         if not os.access(pulse_file, os.W_OK):
@@ -275,7 +286,7 @@ def check_task(task):
         if elapsed < monitor_interval:
             return 'running'
         elif elapsed > 2 * monitor_interval:
-            if os.path.isfile(res_file):
+            if has_res():
                 # result file appears during sos tatus run
                 return check_task(task)
             else:
@@ -284,14 +295,14 @@ def check_task(task):
         time.sleep(2 * monitor_interval)
         end_stamp = os.stat(pulse_file).st_mtime
         # the process is still alive
-        if os.path.isfile(res_file):
+        if has_res():
             return check_task(task)
         elif start_stamp != end_stamp:
             return 'running'
         else:
             return 'aborted'
     # if there is no status file
-    if os.path.isfile(job_file):
+    if has_job():
         return 'submitted'
     else:
         return 'pending'
@@ -430,7 +441,8 @@ class TaskEngine(threading.Thread):
         self.engine_ready = threading.Event()
 
         self.tasks = []
-        self.pending_tasks = {}
+        self.pending_tasks = []
+        self.submitting_tasks = {}
 
         self.task_status = {}
         self.last_checked = None
@@ -460,12 +472,13 @@ class TaskEngine(threading.Thread):
     def reset(self):
         with threading.Lock():
             self.tasks = []
-            self.pending_tasks = {}
+            self.pending_tasks = []
+            self.submitting_tasks = {}
             self.task_status = {}
 
     def get_tasks(self):
         with threading.Lock():
-            pending = copy.deepcopy(list(self.pending_tasks.keys()))
+            pending = copy.deepcopy(self.pending_tasks)
             running = copy.deepcopy(self.tasks)
         return pending, running
 
@@ -503,38 +516,40 @@ class TaskEngine(threading.Thread):
                             env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
                     self.summarize_status()
 
+            if self.submitting_tasks:
+                with threading.Lock():
+                    submitted = []
+                    for k in self.submitting_tasks:
+                        if not self.submitting_tasks[k].running():
+                            submitted.append(k)
+                            if self.submitting_tasks[k].result():
+                                self.tasks.append(k)
+                            else:
+                                if hasattr(env, '__task_notifier__'):
+                                    env.__task_notifier__(['change-status', k, 'failed'])
+                                self.task_status[k] = 'failed'
+                    for k in submitted:
+                        self.submitting_tasks.pop(k)
+
             if self.pending_tasks:
                 to_run = []
-                with threading.Lock():
-                    ready_tasks = []
-                    for k in self.pending_tasks:
-                        if not self.pending_tasks[k].running():
-                            if self.pending_tasks[k].result():
-                                ready_tasks.append(k)
-                            else:
-                                self.task_status[k] = 'failed'
-                    if not ready_tasks:
-                        continue
-                    # check status
-                    active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'killed') \
-                            and not self.task_status[x].startswith('failed')]
-                    if len(active_tasks) < self.max_running_jobs:
-                        to_run = ready_tasks[ : self.max_running_jobs - len(active_tasks)]
-
-                env.logger.debug('{} pending {} running'.format(len(self.pending_tasks), len(active_tasks)))
+                # check status
+                num_active_tasks = len([x for x in self.tasks if self.task_status[x] == 'running'])
+                if num_active_tasks < self.max_running_jobs:
+                    to_run = self.pending_tasks[ : self.max_running_jobs - num_active_tasks]
+                env.logger.debug('{} pending {} running'.format(len(self.pending_tasks), num_active_tasks))
                 for tid in to_run:
                     if self.task_status[tid] == 'running':
                         env.logger.info('{} ``runnng``'.format(tid))
-                    elif self.task_status[tid] == 'completed':
-                        env.logger.info('{} ``already completed``'.format(tid))
                     else:
-                        self.execute_task(tid)
+                        #env.logger.info('{} ``submitttt``'.format(tid))
+                        t = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                        self.submitting_tasks[tid] = t.submit(self.execute_task, tid)
+                        #self.execute_task(tid)
                 #
                 with threading.Lock():
-                    self.tasks.extend(to_run)
                     for tid in to_run:
-                        self.pending_tasks.pop(tid)
-                        self.task_status[tid] = 'pending'
+                        self.pending_tasks.remove(tid)
 
             time.sleep(self.status_check_interval)
 
@@ -545,11 +560,11 @@ class TaskEngine(threading.Thread):
         # submit tasks simply add task_id to pending task list
         with threading.Lock():
             # if already in
-            if task_id in self.tasks or task_id in self.pending_tasks:
-                env.logger.info('{} ``{}``'.format(task_id, self.task_status[task_id]))
-                if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['new-status', task_id, self.task_status[task_id]])
-                return self.task_status[task_id]
+            #if task_id in self.tasks or task_id in self.pending_tasks:
+            #    env.logger.info('{} ``{}``'.format(task_id, self.task_status[task_id]))
+            #    if hasattr(env, '__task_notifier__'):
+            #        env.__task_notifier__(['new-status', task_id, self.task_status[task_id]])
+            #    return self.task_status[task_id]
             #
             if task_id in self.task_status and self.task_status[task_id]:
                 if self.task_status[task_id] == 'running':
@@ -571,12 +586,10 @@ class TaskEngine(threading.Thread):
                         env.logger.info('{} ``re-execute completed``'.format(task_id))
 
             env.logger.info('{} ``queued``'.format(task_id))
-            # there is a change that the task_id already exists...
+            self.pending_tasks.append(task_id)
             self.task_status[task_id] = 'pending'
             if hasattr(env, '__task_notifier__'):
                 env.__task_notifier__(['new-status', task_id, 'pending'])
-            t = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-            self.pending_tasks[task_id] = t.submit(self.agent.prepare_task, task_id)
             return 'pending'
 
     def summarize_status(self):
@@ -605,7 +618,7 @@ class TaskEngine(threading.Thread):
 
     def pending_tasks(self):
         with threading.Lock():
-            return self.pending_tasks.keys()
+            return self.pending_tasks()
 
     def query_tasks(self, tasks=None, verbosity=1):
         return self.agent.check_output("sos status {} -v {}".format(
@@ -615,15 +628,21 @@ class TaskEngine(threading.Thread):
         return self.agent.check_output("sos kill {} {}".format(
             ' '.join(tasks), '-a' if all_tasks else ''))
 
+    def execute_task(self, task_id):
+        # this is base class
+        return self.agent.prepare_task(task_id)
+
 
 class BackgroundProcess_TaskEngine(TaskEngine):
     def __init__(self, agent):
         super(BackgroundProcess_TaskEngine, self).__init__(agent)
 
     def execute_task(self, task_id):
-        env.logger.info('{} ``submitted``'.format(task_id))
-        return self.agent.run_command("sos execute {0} -v {1} -s {2} {3}".format(
+        if not super(BackgroundProcess_TaskEngine, self).execute_task(task_id):
+            return False
+        self.agent.run_command("sos execute {0} -v {1} -s {2} {3}".format(
             task_id, env.verbosity, env.config['sig_mode'], '--dryrun' if env.config['run_mode'] == 'dryrun' else ''),
             wait_for_task = self.wait_for_task)
+        return True
 
 
