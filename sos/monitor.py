@@ -87,14 +87,16 @@ class ProcessMonitor(threading.Thread):
 def summarizeExecution(task_id, status='Unknown'):
     pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.pulse')
     if not os.path.isfile(pulse_file):
-        return
+        pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.status')
+        if not os.path.isfile(pulse_file):
+            return
     peak_cpu = 0
     accu_cpu = 0
     peak_mem = 0
     accu_mem = 0
     peak_nch = 0
-    start_time = 0
-    end_time = 0
+    start_time = None
+    end_time = None
     count = 0
     with open(pulse_file) as proc:
         for line in proc:
@@ -106,6 +108,7 @@ def summarizeExecution(task_id, status='Unknown'):
                 env.logger.warning('Unrecognized resource line "{}": {}'.format(line.strip(), e))
             if start_time is None:
                 start_time = float(t)
+                end_time = float(t)
             else:
                 end_time = float(t)
             accu_cpu += float(c) + float(cc)
@@ -131,9 +134,7 @@ def summarizeExecution(task_id, status='Unknown'):
         ('mem_peak', '{:.1f}Mb'.format(peak_mem/1024/1024)),
         ('mem_avg', '{:.1f}Mb'.format(accu_mem/1024/1024/count))
         ]
-    max_width = [max(len(x) for x in col) for col in result]
-    return ' '.join(s.ljust(l) for s,l in zip([x[0] for x in result], max_width)) + '\n' + \
-        ' '.join(s.ljust(l) for s,l in zip([x[1] for x in result], max_width))
+    return '\n'.join('{:20s} {}'.format(x,y) for x,y in result)
 
         
 

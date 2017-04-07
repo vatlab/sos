@@ -231,6 +231,8 @@ def check_task(task):
     if not os.path.isfile(task_file):
         return 'non-exist'
     pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
+    if not os.path.isfile(pulse_file):
+        pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
     res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
     job_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
 
@@ -359,7 +361,7 @@ def check_tasks(tasks, verbosity=1):
                 files = sorted([x for x in files if not x.endswith('.res') and not x.endswith('.task')])
                 for f in files:
                     print('{}:\n{}'.format(os.path.basename(f), '='*(len(os.path.basename(f))+1)))
-                    if f.endswith('.pulse'):
+                    if f.endswith('.pulse') or f.endswith('.status'):
                         print(summarizeExecution(t, status=s))
                     else:
                         with open(f) as fc:
