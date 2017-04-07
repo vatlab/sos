@@ -180,6 +180,7 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_PUT = re.compile('^%put(\s|$)')
     MAGIC_PASTE = re.compile('^%paste(\s|$)')
     MAGIC_RUN = re.compile('^%run(\s|$)')
+    MAGIC_RUNCELL = re.compile('^%runcell(\s|$)')
     MAGIC_RERUN = re.compile('^%rerun(\s|$)')
     MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
     MAGIC_SANDBOX = re.compile('^%sandbox(\s|$)')
@@ -253,10 +254,19 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
-    def get_run_parser(self):
-        parser = argparse.ArgumentParser(prog='%run',
+    def get_runcell_parser(self):
+        parser = argparse.ArgumentParser(prog='%runcell',
             description='''Execute the current cell with specified command line
             arguments. Arguments set by magic %set will be appended at the
+            end of command line''')
+        parser.error = self._parse_error
+        return parser
+
+    def get_run_parser(self):
+        parser = argparse.ArgumentParser(prog='%run',
+            description='''Execute the entire notebook with steps consisting of SoS
+            cells (cells with SoS kernel) with section header, with specified command
+            line arguments. Arguments set by magic %set will be appended at the
             end of command line''')
         parser.error = self._parse_error
         return parser
@@ -1353,7 +1363,9 @@ class SoS_Kernel(IPythonKernel):
                 return self._do_execute(code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.options = old_options
-        elif self.MAGIC_RUN.match(code):
+        elif self.MAGIC_RUN.match(code) or self.MAGIC_RUNCELL.match(code):
+            # the frontend will send different content to the kernel depending on
+            # the magic used.
             options, remaining_code = self.get_magic_and_code(code, False)
             old_options = self.options
             self.options = options + ' ' + self.options

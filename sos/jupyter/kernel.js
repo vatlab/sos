@@ -91,13 +91,41 @@ define([
          * %run workflowname with options
          */
         var workflow = '';
-        if (code.startsWith('%run ') && code.split(' ')[1] != undefined && ! code.split(' ')[1].startsWith('-')) {
+        var run_notebook = false;
+        var lines = code.split('\n');
+        for (var l = 0; l < lines.length - 1; ++l) {
+            if (lines[l].startsWith('#') || lines[l].trim() == '' || lines[l].startsWith('!'))
+                continue
+            // other magic
+            if (lines[l].startsWith('%')) {
+                console.log(lines[l]);
+                if (lines[l].startsWith('%run\n') || lines[l].startsWith('%run ')) {
+                    run_notebook = true;
+                    break;
+                } else
+                    continue
+            } else {
+                run_notebook = false
+                break;
+            }
+        }
+
+        if (run_notebook) {
             var cells = IPython.notebook.get_cells();
             for (var i = 0 ; i < cells.length - 1; ++i) {
                 if (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'sos') {
-                    var first_line = cells[i].get_text().split('\n')[0].trim();
-                    if (first_line.startsWith('[') && first_line.endsWith(']'))
-                        workflow += "\n" + cells[i].get_text();
+                    // ignore the current cell
+                    if (cells[i].input_prompt_number == '*' && code == cells[i].get_text())
+                        continue
+                    var lines = cells[i].get_text().split('\n');
+                    for (var l = 0; l < lines.length - 1; ++l) {
+                        if (lines[l].startsWith('#') || lines[l].startsWith('%') || lines[l].trim() == '' || lines[l].startsWith('!'))
+                            continue
+                        if (lines[l].startsWith('[') && lines[l].endsWith(']'))
+                            workflow += "\n\n" + lines.slice(l).join('\n');
+                        /* this is not a sos step cell, ignore. */
+                        break
+                    }
                 }
             }
 
