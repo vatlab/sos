@@ -512,6 +512,9 @@ class TaskEngine(threading.Thread):
                                 else:
                                     env.__task_notifier__(['change-status', tid, tst])
                             self.task_status[tid] = tst
+                            # terminal states, remove tasks from task list
+                            if tst in ('completed', 'failed', 'aborted'):
+                                self.tasks.remove(tid)
                         except Exception as e:
                             env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
                     self.summarize_status()
@@ -640,9 +643,9 @@ class BackgroundProcess_TaskEngine(TaskEngine):
     def execute_task(self, task_id):
         if not super(BackgroundProcess_TaskEngine, self).execute_task(task_id):
             return False
-        self.agent.run_command("sos execute {0} -v {1} -s {2} {3}".format(
-            task_id, env.verbosity, env.config['sig_mode'], '--dryrun' if env.config['run_mode'] == 'dryrun' else ''),
-            wait_for_task = self.wait_for_task)
+        cmd = "sos execute {0} -v {1} -s {2} {3}".format(
+            task_id, env.verbosity, env.config['sig_mode'], '--dryrun' if env.config['run_mode'] == 'dryrun' else '')
+        self.agent.run_command(cmd, wait_for_task = self.wait_for_task)
         return True
 
 
