@@ -164,6 +164,12 @@ var = 1
         #
         # no duplicated section header
         SoS_Script('''[a_1]\n[a_3]\n[b*_1]''')
+        #
+        # global section
+        self.assertRaises(ParsingError, SoS_Script,
+        '''[global: skip]''')
+        self.assertRaises(ParsingError, SoS_Script,
+        '''[global, step_10]''')
 
     def testGlobalVariables(self):
         '''Test definition of variables'''
@@ -197,6 +203,16 @@ string """
         #
         SoS_Script(filename='scripts/section1.sos')
         # not the default value of 1.0
+        #
+        script = SoS_Script('''
+[global]
+a = 1
+
+[b]
+print(a)
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
 
     def testParameters(self):
         '''Test parameters section'''

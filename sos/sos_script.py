@@ -854,6 +854,8 @@ for __n, __v in {}.items():
                     mo = SOS_SECTION_NAME.match(name)
                     if mo:
                         n, i, di, al = mo.group('name', 'index', 'default_index', 'alias')
+                        if n == 'global' and i is not None:
+                            parsing_errors.append(lineno, line, 'Invalid global section definition')
                         if n:
                             if i is None and '*' in n:
                                 parsing_errors.append(lineno, line, 'Unindexed section name cannot contain wildcard character (*).')
@@ -862,6 +864,8 @@ for __n, __v in {}.items():
                             step_names.append(['default', di, al])
                     else:
                         parsing_errors.append(lineno, line, 'Invalid section name')
+                if 'global' in [x[0] for x in step_names] and len(step_names) > 1:
+                    parsing_errors.append(lineno, line, 'Global section cannot be shared with another step')
                 if section_option is not None:
                     # this does not work directly because list parameter can have ,
                     # without having to really evaluate all complex expressions, we
@@ -936,7 +940,12 @@ for __n, __v in {}.items():
                         if len(set(prev_names) & set(names)):
                             parsing_errors.append(lineno, line, 'Duplicate section names')
                 all_step_names.extend(step_names)
-                self.sections.append(SoS_Step(self.content, step_names, step_options, global_sigil=self.global_sigil))
+                if 'global' in [x[0] for x in step_names]:
+                    if step_options:
+                        parsing_errors.append(lineno, line, 'Global section does not accept any option')
+                    self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
+                else:
+                    self.sections.append(SoS_Step(self.content, step_names, step_options, global_sigil=self.global_sigil))
                 cursect = self.sections[-1]
                 if self.transcript:
                     self.transcript.write('SECTION\t{}\t{}'.format(lineno, line))
