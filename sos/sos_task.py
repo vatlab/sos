@@ -355,17 +355,16 @@ def check_tasks(tasks, verbosity=1):
                 v = job_vars[k]
                 print('{:22}{}'.format(k, short_repr(v) if verbosity == 3 else pprint.pformat(v)))
             print()
+            print('EXECUTION STATS:\n================')
+            print(summarizeExecution(t, status=s))
             if verbosity == 4:
                 # if there are other files such as job file, print them.
                 files = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
-                files = sorted([x for x in files if not x.endswith('.res') and not x.endswith('.task')])
-                for f in files:
+                for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.res',
+                    '.task', '.pulse', '.status')]):
                     print('{}:\n{}'.format(os.path.basename(f), '='*(len(os.path.basename(f))+1)))
-                    if f.endswith('.pulse') or f.endswith('.status'):
-                        print(summarizeExecution(t, status=s))
-                    else:
-                        with open(f) as fc:
-                            print(fc.read())
+                    with open(f) as fc:
+                        print(fc.read())
 
 def kill_tasks(tasks):
     #
