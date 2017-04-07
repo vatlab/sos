@@ -938,11 +938,17 @@ for __n, __v in {}.items():
                         else:
                             prev_names = [prev_name[0]]
                         if len(set(prev_names) & set(names)):
-                            parsing_errors.append(lineno, line, 'Duplicate section names')
+                            parsing_errors.append(lineno, line, 'Duplicate section name {}'.format(names))
                 all_step_names.extend(step_names)
                 if 'global' in [x[0] for x in step_names]:
                     if step_options:
                         parsing_errors.append(lineno, line, 'Global section does not accept any option')
+                    global_section = [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]
+                    if global_section:
+                        if global_section[0][1].statements:
+                            parsing_errors.append(lineno, line, 'Cannot define a global section with a non-empty implicit global section')
+                        # if there is already an global section???
+                        self.sections.pop(global_section[0][0])
                     self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
                 else:
                     self.sections.append(SoS_Step(self.content, step_names, step_options, global_sigil=self.global_sigil))
