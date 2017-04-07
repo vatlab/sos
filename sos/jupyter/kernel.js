@@ -93,7 +93,7 @@ define([
         var workflow = '';
         var run_notebook = false;
         var lines = code.split('\n');
-        for (var l = 0; l < lines.length - 1; ++l) {
+        for (var l = 0; l < lines.length; ++l) {
             if (lines[l].startsWith('#') || lines[l].trim() == '' || lines[l].startsWith('!'))
                 continue
             // other magic
@@ -112,13 +112,13 @@ define([
 
         if (run_notebook) {
             var cells = IPython.notebook.get_cells();
-            for (var i = 0 ; i < cells.length - 1; ++i) {
+            for (var i = 0 ; i < cells.length; ++i) {
                 if (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'sos') {
                     // ignore the current cell
                     if (cells[i].input_prompt_number == '*' && code == cells[i].get_text())
                         continue
                     var lines = cells[i].get_text().split('\n');
-                    for (var l = 0; l < lines.length - 1; ++l) {
+                    for (var l = 0; l < lines.length; ++l) {
                         if (lines[l].startsWith('#') || lines[l].startsWith('%') || lines[l].trim() == '' || lines[l].startsWith('!'))
                             continue
                         if (lines[l].startsWith('[') && lines[l].endsWith(']'))
