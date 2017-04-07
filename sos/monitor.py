@@ -35,13 +35,13 @@ class ProcessMonitor(threading.Thread):
         self.monitor_interval = monitor_interval
         self.resource_monitor_interval = max(resource_monitor_interval // monitor_interval, 1)
         self.daemon = True
-        self.status_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.status')
+        self.pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.pulse')
         # remove previous status file, which could be readonly if the job is killed
-        if os.path.isfile(self.status_file):
-            if not os.access(self.status_file, os.W_OK):
-                os.chmod(self.status_file, stat.S_IREAD | stat.S_IWRITE)
-            os.remove(self.status_file)
-        with open(self.status_file, 'w') as pd:
+        if os.path.isfile(self.pulse_file):
+            if not os.access(self.pulse_file, os.W_OK):
+                os.chmod(self.pulse_file, stat.S_IREAD | stat.S_IWRITE)
+            os.remove(self.pulse_file)
+        with open(self.pulse_file, 'w') as pd:
             pd.write('#task: {}\n'.format(task_id))
             pd.write('#started at {}\n#\n'.format(datetime.now().strftime("%A, %d. %B %Y %I:%M%p")))
             pd.write('#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n')
@@ -63,16 +63,16 @@ class ProcessMonitor(threading.Thread):
         counter = 0
         while True:
             try:
-                if not os.access(self.status_file, os.W_OK):
+                if not os.access(self.pulse_file, os.W_OK):
                     # the job should be killed
                     p = psutil.Process(self.pid)
                     p.kill()
                 # most of the time we only update 
                 if counter % self.resource_monitor_interval:
-                    os.utime(self.status_file, None)
+                    os.utime(self.pulse_file, None)
                 else:
                     cpu, mem, nch, ch_cpu, ch_mem = self._check()
-                    with open(self.status_file, 'a') as pd:
+                    with open(self.pulse_file, 'a') as pd:
                         pd.write('{}\t{:.2f}\t{}\t{}\t{}\t{}\n'.format(time.time(), cpu, mem, nch, ch_cpu, ch_mem))
                 time.sleep(self.monitor_interval)
                 counter += 1
@@ -85,8 +85,8 @@ class ProcessMonitor(threading.Thread):
                 break
 
 def summarizeExecution(task_id, status='Unknown'):
-    status_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.status')
-    if not os.path.isfile(status_file):
+    pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.pulse')
+    if not os.path.isfile(pulse_file):
         return
     peak_cpu = 0
     accu_cpu = 0
@@ -96,7 +96,7 @@ def summarizeExecution(task_id, status='Unknown'):
     start_time = 0
     end_time = 0
     count = 0
-    with open(status_file) as proc:
+    with open(pulse_file) as proc:
         for line in proc:
             if line.startswith('#'):
                 continue

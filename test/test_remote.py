@@ -73,7 +73,7 @@ run:
             self.assertEqual(res.read(), 'a\n')
 
     def testRemoteExecution(self):
-        subprocess.check_output('cd ~/.sos/tasks; rm -f *.res *.sh *.status', shell=True).decode()
+        subprocess.check_output('cd ~/.sos/tasks; rm -f *.res *.sh *.pulse', shell=True).decode()
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(5)}
@@ -118,7 +118,7 @@ run:
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
 
     def testTaskSpooler(self):
-        subprocess.check_output('cd ~/.sos/tasks; rm -f *.res *.sh *.status', shell=True).decode()
+        subprocess.check_output('cd ~/.sos/tasks; rm -f *.res *.sh *.pulse', shell=True).decode()
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(5)}

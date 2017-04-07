@@ -39,8 +39,8 @@ from .monitor import ProcessMonitor
 from collections import OrderedDict
 
 
-monitor_interval = 3
-resource_monitor_interval = 15
+monitor_interval = 5
+resource_monitor_interval = 60
 
 class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
@@ -230,7 +230,7 @@ def check_task(task):
     task_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.task')
     if not os.path.isfile(task_file):
         return 'non-exist'
-    status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
+    pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
     res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
     job_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
 
@@ -260,15 +260,15 @@ def check_task(task):
             time.sleep(1)
             return check_task(task)
     #
-    if os.path.isfile(status_file):
+    if os.path.isfile(pulse_file):
         # dead?
         # if the status file is readonly
-        if not os.access(status_file, os.W_OK):
+        if not os.access(pulse_file, os.W_OK):
             return 'aborted'
-        start_stamp = os.stat(status_file).st_mtime
+        start_stamp = os.stat(pulse_file).st_mtime
         elapsed = time.time() - start_stamp
         if elapsed < 0:
-            env.logger.warning('{} is created in the future. Your system time might be problematic'.format(status_file))
+            env.logger.warning('{} is created in the future. Your system time might be problematic'.format(pulse_file))
         # if the file is within 5 seconds
         if elapsed < monitor_interval:
             return 'running'
@@ -280,7 +280,7 @@ def check_task(task):
                 return 'aborted'
         # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
         time.sleep(2 * monitor_interval)
-        end_stamp = os.stat(status_file).st_mtime
+        end_stamp = os.stat(pulse_file).st_mtime
         # the process is still alive
         if os.path.isfile(res_file):
             return check_task(task)
@@ -333,6 +333,8 @@ def check_tasks(tasks, verbosity=1):
         from .utils import PrettyRelativeTime
         import pprint
         import glob
+        from .monitor import summarizeExecution
+
         for s, (t, d) in zip(status, all_tasks):
             print('{}\t{}\n'.format(t, s))
             if d is not None:
@@ -357,8 +359,11 @@ def check_tasks(tasks, verbosity=1):
                 files = sorted([x for x in files if not x.endswith('.res') and not x.endswith('.task')])
                 for f in files:
                     print('{}:\n{}'.format(os.path.basename(f), '='*(len(os.path.basename(f))+1)))
-                    with open(f) as fc:
-                        print(fc.read())
+                    if f.endswith('.pulse'):
+                        print(summarizeExecution(t, status=s))
+                    else:
+                        with open(f) as fc:
+                            print(fc.read())
 
 def kill_tasks(tasks):
     #
@@ -392,9 +397,9 @@ def kill_task(task):
     elif status != 'running':
         return status
     # job is running
-    status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
+    pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
     from stat import S_IREAD, S_IRGRP, S_IROTH
-    os.chmod(status_file, S_IREAD|S_IRGRP|S_IROTH)
+    os.chmod(pulse_file, S_IREAD|S_IRGRP|S_IROTH)
     # remove job file as well
     job_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
     if os.path.isfile(job_file):
