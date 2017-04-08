@@ -66,9 +66,10 @@ from .sos_task import BackgroundProcess_TaskEngine, TaskParams
 #
 
 class DaemonizedProcess(mp.Process):
-    def __init__(self, cmd, *args, **kwargs):
+    def __init__(self, cmd, dup_stdout=True, *args, **kwargs):
         super(DaemonizedProcess, self).__init__(*args, **kwargs)
         self.cmd = cmd
+        self._dup_stdout = dup_stdout
 
     def run(self):
         try:
@@ -95,12 +96,13 @@ class DaemonizedProcess(mp.Process):
         # redirect standard file descriptors
         sys.stdout.flush()
         sys.stderr.flush()
-        si = open(os.devnull, 'r')
-        so = open(os.devnull, 'w')
-        se = open(os.devnull, 'w')
-        os.dup2(si.fileno(), sys.stdin.fileno())
-        os.dup2(so.fileno(), sys.stdout.fileno())
-        os.dup2(se.fileno(), sys.stderr.fileno())
+        if self._dup_stdout:
+            si = open(os.devnull, 'r')
+            so = open(os.devnull, 'w')
+            se = open(os.devnull, 'w')
+            os.dup2(si.fileno(), sys.stdin.fileno())
+            os.dup2(so.fileno(), sys.stdout.fileno())
+            os.dup2(se.fileno(), sys.stderr.fileno())
 
         # fork a new process
         subprocess.Popen(self.cmd, shell=True, close_fds=True)
@@ -138,7 +140,7 @@ class LocalHost:
         if wait_for_task:
             subprocess.Popen(cmd, shell=True)
         else:
-            p = DaemonizedProcess(cmd)
+            p = DaemonizedProcess(cmd, self._has_proper_stdout)
             p.start()
             p.join()
 
@@ -437,7 +439,7 @@ class RemoteHost:
         if wait_for_task:
             subprocess.Popen(cmd, shell=True)
         else:
-            p = DaemonizedProcess(cmd)
+            p = DaemonizedProcess(cmd, self._has_proper_stdout)
             p.start()
             p.join()
 
@@ -493,9 +495,12 @@ class RemoteHost:
 class Host:
     host_instances = {}
 
-    def __init__(self, alias='', start_engine=True):
+    def __init__(self, alias='', start_engine=True, has_proper_stdout=True):
+        # a host started from Jupyter notebook might not have proper stdout
+        # (a StringIO) and cannot be used for DaemonizedFork).
         self._get_config(alias)
         self._get_host_agent(start_engine)
+        self._host_agent._has_proper_stdout = has_proper_stdout
 
     # for test purpose
     @classmethod
