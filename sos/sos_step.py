@@ -40,6 +40,10 @@ from .sos_task import TaskParams
 
 __all__ = []
 
+class PendingTasks(Exception):
+    def __init__(self, tasks, *args, **kwargs):
+        super(PendingTasks, self).__init__(*args, **kwargs)
+        self.tasks = tasks
 
 def analyze_section(section, default_input=None):
     '''Analyze a section for how it uses input and output, what variables

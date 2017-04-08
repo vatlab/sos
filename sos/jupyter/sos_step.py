@@ -21,16 +21,10 @@
 #
 
 
-from sos.sos_step import Step_Executor, Base_Step_Executor
+from sos.sos_step import Step_Executor, Base_Step_Executor, PendingTasks
 from sos.hosts import Host
 from sos.utils import env
 import time
-
-
-class PendingTasks(Exception):
-    def __init__(self, tasks, *args, **kwargs):
-        super(PendingTasks, self).__init__(*args, **kwargs)
-        self.tasks = tasks
 
 class Interactive_Step_Executor(Step_Executor):
     def __init__(self, step):
