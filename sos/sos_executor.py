@@ -30,7 +30,7 @@ import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
 from io import StringIO
 from ._version import __version__
-from .sos_step import Step_Executor, analyze_section
+from .sos_step import Step_Executor, analyze_section, PendingTasks
 from .utils import env, Error, WorkflowDict, get_traceback, frozendict, short_repr, pickleable, \
     load_config_files
 from .sos_eval import SoS_exec, get_default_global_sigil
@@ -224,8 +224,8 @@ class Base_Executor:
         if env.config['sig_mode'] is None:
             env.config['sig_mode'] = 'default'
         # interactive mode does not pass workflow
+        self.md5 = self.create_signature()
         if env.config['sig_mode'] != 'ignore' and self.workflow:
-            self.md5 = self.create_signature()
             # remove old workflow file.
             with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'a') as sig:
                 sig.write('# workflow: {}\n'.format(self.workflow.name))
@@ -237,6 +237,15 @@ class Base_Executor:
                 sig.write('# runtime signatures\n')
         else:
             self.md5 = None
+        #
+        env.config['resumed_tasks'] = set()
+        wf_status = os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status')
+        if os.path.isfile(wf_status):
+            with open(wf_status) as status:
+                for line in status:
+                    env.config['resumed_tasks'].add(line.split()[0])
+        #
+        # if this is a resumed task?
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
 
@@ -257,6 +266,13 @@ class Base_Executor:
                 dag_name = '{}_{}.dot'.format(self.config['output_dag'][:-4] if self.config['output_dag'].endswith('.dot') else self.config['output_dag'], self.dag_count)
         #
         dag.write_dot(dag_name)
+
+    def record_quit_status(self, tasks):
+        if not self.md5:
+            return
+        with open(os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status'), 'a') as status:
+            for task in tasks:
+                status.write('{}\t{}\n'.format(task, 'pending'))
 
     def create_signature(self):
         with StringIO() as sig:
@@ -976,14 +992,16 @@ class Base_Executor:
                         p, r = n._host._task_engine.get_tasks()
                         pending_tasks.extend(p)
                         running_tasks.extend(r)
-                    if not pending_tasks:
-                        wf_result['pending_tasks'] = running_tasks
-                        env.logger.info('SoS exists with {} running tasks'.format(len(running_tasks)))
-                        for task in running_tasks:
-                            env.logger.info(task)
-                        break
+                    if not pending_tasks and running_tasks:
+                        raise PendingTasks(running_tasks)
                 else:
                     time.sleep(0.1)
+        except PendingTasks as e:
+            self.record_quit_status(e.tasks)
+            wf_result['pending_tasks'] = running_tasks
+            env.logger.info('SoS exists with {} running tasks'.format(len(e.tasks)))
+            for task in e.tasks:
+                env.logger.info(task)
             # close all processes
         except Exception as e:
             for p, _, _ in procs + pool:
@@ -999,6 +1017,15 @@ class Base_Executor:
                         p[0].terminate()
                         p[0].join()
             prog.close()
+        #
+        if 'pending_tasks' not in wf_result or not wf_result['pending_tasks']:
+            # remove task pending status if the workflow is completed normally
+            try:
+                wf_status = os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status')
+                if os.path.isfile(wf_status):
+                    os.remove(wf_status)
+            except Exception as e:
+                env.logger.warning('Failed to clear workflow status file: {}'.format(e))
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
             if failed_steps:

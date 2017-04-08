@@ -33,9 +33,10 @@ from sos.sos_syntax import SOS_KEYWORDS
 from sos.sos_executor import Base_Executor, __null_func__
 from sos.sos_syntax import SOS_SECTION_HEADER
 from sos.target import FileTarget, UnknownTarget, RemovedTarget, UnavailableLock
-from .sos_step import Interactive_Step_Executor, PendingTasks
+from sos.sos_step import PendingTasks
 from IPython.core.display import HTML
 from sos.hosts import Host
+from .sos_step import Interactive_Step_Executor
 
 
 class Interactive_Executor(Base_Executor):
@@ -46,8 +47,8 @@ class Interactive_Executor(Base_Executor):
         if env.config['sig_mode'] is None:
             env.config['sig_mode'] = 'ignore'
         Base_Executor.__init__(self, workflow=workflow, args=args, shared={}, config=config)
+        self.md5 = self.create_signature()
         if env.config['sig_mode'] != 'ignore':
-            self.md5 = self.create_signature()
             # We append to existing workflow files because some files are ignored and we
             # still wants their information.
             with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'a') as sig:
@@ -198,6 +199,9 @@ class Interactive_Executor(Base_Executor):
                 runnable._status = 'pending'
                 runnable._signature = (e.output, e.sig_file)
                 env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
+            except PendingTasks as e:
+                self.record_quit_status(e.tasks)
+                raise
             # if the job is failed
             except Exception as e:
                 runnable._status = 'failed'
