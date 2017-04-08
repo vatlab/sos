@@ -91,15 +91,16 @@ class DaemonizedProcess(mp.Process):
         except OSError as err:
             env.logger.error('_Fork #2 failed: {0}\n'.format(err))
             sys.exit(1)
+        # the following is also need to properly daemonize the process
         # redirect standard file descriptors
-        #sys.stdout.flush()
-        #sys.stderr.flush()
-        #si = open(os.devnull, 'r')
-        #so = open(os.devnull, 'w')
-        #se = open(os.devnull, 'w')
-        #os.dup2(si.fileno(), sys.stdin.fileno())
-        #os.dup2(so.fileno(), sys.stdout.fileno())
-        #os.dup2(se.fileno(), sys.stderr.fileno())
+        sys.stdout.flush()
+        sys.stderr.flush()
+        si = open(os.devnull, 'r')
+        so = open(os.devnull, 'w')
+        se = open(os.devnull, 'w')
+        os.dup2(si.fileno(), sys.stdin.fileno())
+        os.dup2(so.fileno(), sys.stdout.fileno())
+        os.dup2(se.fileno(), sys.stderr.fileno())
 
         # fork a new process
         subprocess.Popen(self.cmd, shell=True, close_fds=True)
