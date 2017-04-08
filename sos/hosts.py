@@ -445,7 +445,8 @@ class RemoteHost:
         # for filetype in ('res', 'status', 'out', 'err'):
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
         # we need to move away task file to avoid it being overwritten
-        os.rename(os.path.join(sys_task_dir, task_id + '.task'), os.path.join(sys_task_dir, 'old_' + task_id + '.task'))
+        if os.path.isfile(os.path.join(sys_task_dir, task_id + '.task')):
+            os.rename(os.path.join(sys_task_dir, task_id + '.task'), os.path.join(sys_task_dir, 'old_' + task_id + '.task'))
         try:
             receive_cmd = "scp -P {0} -q {1}:.sos/tasks/{2}.* {3}".format(self.port, self.address, task_id, sys_task_dir)
             env.logger.debug(receive_cmd)
@@ -454,7 +455,8 @@ class RemoteHost:
                 raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
         finally:
             # restore task file
-            os.rename(os.path.join(sys_task_dir, 'old_' + task_id + '.task'), os.path.join(sys_task_dir, task_id + '.task'))
+            if os.path.isfile(os.path.join(sys_task_dir, 'old_' + task_id + '.task')):
+                os.rename(os.path.join(sys_task_dir, 'old_' + task_id + '.task'), os.path.join(sys_task_dir, task_id + '.task'))
         # show results? Not sure if this is a good idea but helps debugging at this point
         if env.verbosity >= 2:
             out_file = os.path.join(sys_task_dir, task_id + '.out')

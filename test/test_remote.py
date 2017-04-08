@@ -141,7 +141,7 @@ run:
         tasks = ' '.join(res['pending_tasks'])
         time.sleep(2)
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
-        self.assertGreater(out.count('running'), 1)
+        self.assertGreaterEqual(out.count('running'), 1)
         # wait another 20 seconds?
         time.sleep(10)
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
@@ -159,6 +159,55 @@ run:
                 }).run()
         # should finish relatively fast?
         #self.assertLess(time.time() - st, 5)
+        out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
+        self.assertEqual(out.count('completed'), len(res['pending_tasks']))
+
+    def testTaskSpoolerWithForceSigMode(self):
+        subprocess.check_output('cd ~/.sos/tasks; rm -f *.res *.sh *.pulse', shell=True).decode()
+        script = SoS_Script('''
+[10]
+input: for_each={'i': range(5)}
+task:
+
+run:
+    echo I am ${i}
+    sleep ${i*2}
+''')
+        wf = script.workflow()
+        res = Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': False,
+                'default_queue': 'ts',
+                'sig_mode': 'force',
+                }).run()
+        import time
+        # we should be able to get status
+        tasks = ' '.join(res['pending_tasks'])
+        time.sleep(2)
+        out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
+        self.assertGreaterEqual(out.count('running'), 1)
+        # wait another 20 seconds?
+        time.sleep(10)
+        out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
+        self.assertEqual(out.count('completed'), len(res['pending_tasks']))
+        # now, local status should still be pending
+        out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
+        self.assertEqual(out.count('submitted') + out.count('pending'), len(res['pending_tasks']))
+        # until we run the workflow again
+        st = time.time()
+        Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'ts',
+                #
+                # This is the only difference, because running with -s force would still 
+                # skip some of the completed task.
+                'sig_mode': 'force',
+                }).run()
+        # should finish relatively fast?
+        self.assertLess(time.time() - st, 9)
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
 
