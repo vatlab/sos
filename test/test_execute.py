@@ -1007,6 +1007,18 @@ sh:
         self.assertTrue(FileTarget('a.txt').exists())
         FileTarget('a.txt').remove('all')
 
+    def testConcurrentWorker(self):
+        '''Test the starting of multiple workers #493 '''
+        with open('test_script.sos', 'w') as script:
+            script.write('''
+[10]
+input: for_each={'i': range(1)}
+
+[20]
+input: for_each={'i': range(2)}
+''')
+        subprocess.call('sos run test_script', shell=True)
+        os.remove('test_script.sos')
 
 if __name__ == '__main__':
     unittest.main()
