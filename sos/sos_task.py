@@ -498,6 +498,7 @@ class TaskEngine(threading.Thread):
         self.engine_ready.set()
         while True:
             # if no new task, does not do anything.
+            env.logger.trace('processing {}'.format(self.tasks))
             if self.tasks:
                 status_output = self.query_tasks(self.tasks, verbosity=1)
                 with threading.Lock():
@@ -506,6 +507,7 @@ class TaskEngine(threading.Thread):
                             continue
                         try:
                             tid, tst = line.split('\t')
+                            env.logger.trace('STATUS {}\t{}\n'.format(tid, tst))
                             if hasattr(env, '__task_notifier__') and tst != 'non-exist':
                                 if tid in self.task_status and self.task_status[tid] == tst:
                                     env.__task_notifier__(['pulse-status', tid, tst])
@@ -513,12 +515,13 @@ class TaskEngine(threading.Thread):
                                     env.__task_notifier__(['change-status', tid, tst])
                             self.task_status[tid] = tst
                             # terminal states, remove tasks from task list
-                            if tst in ('completed', 'failed', 'aborted'):
+                            if tst in ('completed', 'failed', 'aborted', 'result-mismatch'):
                                 self.tasks.remove(tid)
                         except Exception as e:
                             env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
                     self.summarize_status()
 
+            env.logger.trace('submitting {}'.format(self.submitting_tasks))
             if self.submitting_tasks:
                 with threading.Lock():
                     submitted = []
@@ -534,6 +537,7 @@ class TaskEngine(threading.Thread):
                     for k in submitted:
                         self.submitting_tasks.pop(k)
 
+            env.logger.trace('pending {}'.format(self.pending_tasks))
             if self.pending_tasks:
                 to_run = []
                 # check status
@@ -546,9 +550,9 @@ class TaskEngine(threading.Thread):
                         env.logger.info('{} ``runnng``'.format(tid))
                     else:
                         #env.logger.info('{} ``submitttt``'.format(tid))
-                        t = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                        self.submitting_tasks[tid] = t.submit(self.execute_task, tid)
-                        #self.execute_task(tid)
+                        #t = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                        #self.submitting_tasks[tid] = t.submit(self.execute_task, tid)
+                        self.execute_task(tid)
                 #
                 with threading.Lock():
                     for tid in to_run:
@@ -648,9 +652,11 @@ class BackgroundProcess_TaskEngine(TaskEngine):
 
     def execute_task(self, task_id):
         if not super(BackgroundProcess_TaskEngine, self).execute_task(task_id):
+            env.logger.trace('Failed to prepare task {}'.format(task_id))
             return False
         cmd = "sos execute {0} -v {1} -s {2} {3}".format(
             task_id, env.verbosity, env.config['sig_mode'], '--dryrun' if env.config['run_mode'] == 'dryrun' else '')
+        env.logger.trace('Execute "{}" (waiting={})'.format(cmd, self.wait_for_task))
         self.agent.run_command(cmd, wait_for_task = self.wait_for_task)
         return True
 

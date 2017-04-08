@@ -209,6 +209,13 @@ class Interactive_Executor(Base_Executor):
         if self.md5:
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
+        # remove task pending status if the workflow is completed normally
+        try:
+            wf_status = os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status')
+            if os.path.isfile(wf_status):
+                os.remove(wf_status)
+        except Exception as e:
+            env.logger.warning('Failed to clear workflow status file: {}'.format(e))
         return last_res
 
 #
