@@ -549,10 +549,8 @@ class TaskEngine(threading.Thread):
                     if self.task_status[tid] == 'running':
                         env.logger.info('{} ``runnng``'.format(tid))
                     else:
-                        #env.logger.info('{} ``submitttt``'.format(tid))
-                        #t = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                        #self.submitting_tasks[tid] = t.submit(self.execute_task, tid)
-                        self.execute_task(tid)
+                        t = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                        self.submitting_tasks[tid] = t.submit(self.execute_task, tid)
                 #
                 with threading.Lock():
                     for tid in to_run:
