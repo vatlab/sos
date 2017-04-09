@@ -1245,7 +1245,7 @@ class SoS_Kernel(IPythonKernel):
                 args = parser.parse_args(options.split())
                 self.cell_idx = args.cell_idx
                 # for panel cell, we return a non-informative execution count
-                if int(self.cell_idx) < 0:
+                if self.cell_idx is None or int(self.cell_idx) < 0:
                     self._execution_count = '-'
             except Exception as e:
                 self.warn('Invalid option "{}": {}\n'.format(options, e))
