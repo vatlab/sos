@@ -507,6 +507,9 @@ class TaskEngine(threading.Thread):
                             continue
                         try:
                             tid, tst = line.split('\t')
+                            if tid not in self.running_tasks:
+                                env.logger.trace('Task {} removed since status check.'.format(tid))
+                                continue
                             env.logger.trace('STATUS {}\t{}\n'.format(tid, tst))
                             if hasattr(env, '__task_notifier__') and tst != 'non-exist':
                                 if tid in self.task_status and self.task_status[tid] == tst:
