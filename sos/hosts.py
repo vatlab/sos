@@ -370,10 +370,14 @@ class RemoteHost:
                 task_vars[var]['home_dir'] = self._map_var(task_vars[var]['home_dir'])
                 if 'workdir' in task_vars[var]:
                     task_vars[var]['workdir'] = self._map_var(task_vars[var]['workdir'])
-            elif var in task_vars and pickleable(task_vars[var], var):
+            elif var in task_vars:
+                if isinstance(task_vars[var], (type(None), int)) or not pickleable(task_vars[var], var):
+                    continue
                 try:
                     old_var = task_vars[var]
                     task_vars[var] = self._map_var(task_vars[var])
+                    if not task_vars[var]:
+                        continue
                     # looks a bit suspicious
                     if isinstance(old_var, str) and old_var != task_vars[var] and not os.path.exists(os.path.expanduser(old_var)) \
                             and os.sep not in old_var:
@@ -381,7 +385,7 @@ class RemoteHost:
                     else:
                         env.logger.info('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
                 except Exception as e:
-                    env.logger.debug(e)
+                    env.logger.debug('Failed to map variable {}: {}'.format(var, e))
             else:
                 env.logger.debug('Variable {} not in env.'.format(var))
 

@@ -701,6 +701,7 @@ class Base_Executor:
                             for task in runnable._pending_tasks:
                                 runnable._host.submit_task(task)
                             runnable._status = 'task_pending'
+                            env.logger.trace('Step becomes task_pending')
                             continue
                         elif res.startswith('step'):
                             # step sent from nested workflow
@@ -850,21 +851,21 @@ class Base_Executor:
                     # if a job is pending, check if it is done.
                     if proc[2]._status == 'task_pending':
                         res = proc[2]._host.check_status(proc[2]._pending_tasks)
-                        #env.logger.warning(proc[2]._pending_tasks)
                         #env.logger.warning(res)
-                        if any(x in ('killed', 'aborted', 'failed') for x in res):
+                        if any(x in ('aborted', 'failed', 'result-mismatch') for x in res):
                             for t, s in zip(proc[2]._pending_tasks, res):
-                                if s in ('killed', 'dead', 'failed') and not (hasattr(proc[2], '_killed_tasks') and t in proc[2]._killed_tasks):
+                                if s in ('aborted', 'failed', 'result-mismatch') and not (hasattr(proc[2], '_killed_tasks') and t in proc[2]._killed_tasks):
                                     env.logger.warning('{} ``{}``'.format(t, s))
                                     if not hasattr(proc[2], '_killed_tasks'):
                                         proc[2]._killed_tasks = {t}
                                     else:
                                         proc[2]._killed_tasks.add(t)
-                            if all(x in ('killed', 'completed', 'aborted', 'failed') for x in res):
+                            if all(x in ('completed', 'aborted', 'failed', 'result-mismatch') for x in res):
                                 # we try to get .err .out etc even when jobs are failed.
                                 proc[2]._host.retrieve_results(proc[2]._pending_tasks)
-                                raise RuntimeError('{} completed, {} failed, {} aborted'.format(
-                                    len([x for x in res if x=='completed']), len([x for x in res if x=='failed']), len([x for x in res if x=='aborted'])))
+                                raise RuntimeError('{} completed, {} failed, {} aborted, {} mismatch'.format(
+                                    len([x for x in res if x=='completed']), len([x for x in res if x=='failed']),
+                                    len([x for x in res if x=='aborted']), len([x for x in res if x=='result-mismatch']) ))
                         if any(x in ('pending', 'submitted', 'running') for x in res):
                             continue
                         elif all(x == 'completed' for x in res):
@@ -991,13 +992,14 @@ class Base_Executor:
                         pending_tasks.extend(p)
                         running_tasks.extend(r)
                     if not pending_tasks and running_tasks:
+                        env.logger.trace('Exit with {} running tasks: '.format(len(running_tasks), running_tasks))
                         raise PendingTasks(running_tasks)
                 else:
                     time.sleep(0.1)
         except PendingTasks as e:
             self.record_quit_status(e.tasks)
             wf_result['pending_tasks'] = running_tasks
-            env.logger.info('SoS exists with {} running tasks'.format(len(e.tasks)))
+            env.logger.info('Workflow {} (ID={}) exits with {} running tasks'.format(self.workflow.name, self.md5, len(e.tasks)))
             for task in e.tasks:
                 env.logger.info(task)
             # close all processes
@@ -1016,14 +1018,6 @@ class Base_Executor:
                         p[0].join()
             prog.close()
         #
-        if 'pending_tasks' not in wf_result or not wf_result['pending_tasks']:
-            # remove task pending status if the workflow is completed normally
-            try:
-                wf_status = os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status')
-                if os.path.isfile(wf_status):
-                    os.remove(wf_status)
-            except Exception as e:
-                env.logger.warning('Failed to clear workflow status file: {}'.format(e))
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
             if failed_steps:
@@ -1041,9 +1035,19 @@ class Base_Executor:
                 return wf_result
             else:
                 raise exec_error
-        else:
+        elif 'pending_tasks' not in wf_result or not wf_result['pending_tasks']:
+            # remove task pending status if the workflow is completed normally
+            try:
+                wf_status = os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status')
+                if os.path.isfile(wf_status):
+                    os.remove(wf_status)
+            except Exception as e:
+                env.logger.warning('Failed to clear workflow status file: {}'.format(e))
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
+        else:
+            # exit with pending tasks
+            pass
         wf_result['shared'] = {x:env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict}
         if parent_pipe:
             parent_pipe.send(wf_result)

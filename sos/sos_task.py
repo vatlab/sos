@@ -323,7 +323,7 @@ def check_tasks(tasks, verbosity=1):
                 all_tasks.append((t, None))
             else:
                 all_tasks.extend(matched)
-    all_tasks = sorted(list(set(all_tasks)), key=lambda x: x[1])
+    all_tasks = sorted(list(set(all_tasks)), key=lambda x: 0 if x[1] is None else x[1])
     if not all_tasks:
         env.logger.warning('No matching tasks')
         return
@@ -440,7 +440,7 @@ class TaskEngine(threading.Thread):
 
         self.engine_ready = threading.Event()
 
-        self.tasks = []
+        self.running_tasks = []
         self.pending_tasks = []
         self.submitting_tasks = {}
 
@@ -471,15 +471,15 @@ class TaskEngine(threading.Thread):
 
     def reset(self):
         with threading.Lock():
-            self.tasks = []
+            self.running_tasks = []
             self.pending_tasks = []
             self.submitting_tasks = {}
             self.task_status = {}
 
     def get_tasks(self):
         with threading.Lock():
-            pending = copy.deepcopy(self.pending_tasks)
-            running = copy.deepcopy(self.tasks)
+            pending = copy.deepcopy(self.pending_tasks + list(self.submitting_tasks.keys()))
+            running = copy.deepcopy(self.running_tasks)
         return pending, running
 
     def run(self):
@@ -498,9 +498,9 @@ class TaskEngine(threading.Thread):
         self.engine_ready.set()
         while True:
             # if no new task, does not do anything.
-            env.logger.trace('processing {}'.format(self.tasks))
-            if self.tasks:
-                status_output = self.query_tasks(self.tasks, verbosity=1)
+            env.logger.trace('{} running tasks: {}'.format(len(self.running_tasks), self.running_tasks))
+            if self.running_tasks:
+                status_output = self.query_tasks(self.running_tasks, verbosity=1)
                 with threading.Lock():
                     for line in status_output.split('\n'):
                         if not line.strip():
@@ -516,41 +516,46 @@ class TaskEngine(threading.Thread):
                             self.task_status[tid] = tst
                             # terminal states, remove tasks from task list
                             if tst in ('completed', 'failed', 'aborted', 'result-mismatch'):
-                                self.tasks.remove(tid)
+                                self.running_tasks.remove(tid)
                         except Exception as e:
                             env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
                     self.summarize_status()
 
-            env.logger.trace('submitting {}'.format(self.submitting_tasks))
+            env.logger.trace('{} submitting tasks: {}'.format(len(self.submitting_tasks), self.submitting_tasks.keys()))
             if self.submitting_tasks:
                 with threading.Lock():
                     submitted = []
                     for k in self.submitting_tasks:
-                        if not self.submitting_tasks[k].running():
+                        if not self.submitting_tasks[k][1].running():
                             submitted.append(k)
-                            if self.submitting_tasks[k].result():
-                                self.tasks.append(k)
+                            if self.submitting_tasks[k][1].result():
+                                self.running_tasks.append(k)
+                                if hasattr(env, '__task_notifier__'):
+                                    env.__task_notifier__(['change-status', k, 'submitted'])
                             else:
                                 if hasattr(env, '__task_notifier__'):
                                     env.__task_notifier__(['change-status', k, 'failed'])
                                 self.task_status[k] = 'failed'
+                            self.submitting_tasks[k][0].shutdown()
+                        else:
+                            env.logger.trace('{} is still being submitted.'.format(k))
                     for k in submitted:
                         self.submitting_tasks.pop(k)
 
-            env.logger.trace('pending {}'.format(self.pending_tasks))
+            env.logger.trace('{} pending tasks: {}'.format(len(self.pending_tasks), self.pending_tasks))
             if self.pending_tasks:
                 to_run = []
                 # check status
-                num_active_tasks = len([x for x in self.tasks if self.task_status[x] == 'running'])
+                num_active_tasks = len([x for x in self.running_tasks if self.task_status[x] == 'running'])
                 if num_active_tasks < self.max_running_jobs:
                     to_run = self.pending_tasks[ : self.max_running_jobs - num_active_tasks]
-                env.logger.debug('{} pending {} running'.format(len(self.pending_tasks), num_active_tasks))
                 for tid in to_run:
                     if self.task_status[tid] == 'running':
                         env.logger.info('{} ``runnng``'.format(tid))
                     else:
+                        env.logger.trace('Start submitting {} (status: {})'.format(tid, self.task_status.get(tid, 'unknown')))
                         t = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                        self.submitting_tasks[tid] = t.submit(self.execute_task, tid)
+                        self.submitting_tasks[tid] = (t, t.submit(self.execute_task, tid))
                 #
                 with threading.Lock():
                     for tid in to_run:
@@ -565,7 +570,7 @@ class TaskEngine(threading.Thread):
         # submit tasks simply add task_id to pending task list
         with threading.Lock():
             # if already in
-            #if task_id in self.tasks or task_id in self.pending_tasks:
+            #if task_id in self.running_tasks or task_id in self.pending_tasks:
             #    env.logger.info('{} ``{}``'.format(task_id, self.task_status[task_id]))
             #    if hasattr(env, '__task_notifier__'):
             #        env.__task_notifier__(['new-status', task_id, self.task_status[task_id]])
@@ -582,14 +587,17 @@ class TaskEngine(threading.Thread):
                 # resubmit the job. In the case of not-rerun, the task would be marked
                 # completed very soon.
                 elif self.task_status[task_id] == 'completed':
-                    if env.config['sig_mode'] != 'force' or task_id in env.config['resumed_tasks']:
+                    if env.config['sig_mode'] != 'force':
+                        env.logger.info('{} ``already completed``'.format(task_id))
+                        return 'completed'
+                    elif task_id in env.config['resumed_tasks']:
                         # force re-execution, but it is possible that this task has been
                         # executed but quit in no-wait mode (or canceled by user). More
                         # importantly, the Jupyter notebook would re-run complted workflow
                         # even if it has "-s force" signature.
-                        env.logger.info('{} ``already completed``'.format(task_id))
                         #if hasattr(env, '__task_notifier__'):
                         #    env.__task_notifier__(['new-status', task_id, 'completed'])
+                        env.logger.info('{} ``resume with completed``'.format(task_id))
                         return 'completed'
                     else:
                         env.logger.info('{} ``re-execute completed``'.format(task_id))
@@ -624,8 +632,8 @@ class TaskEngine(threading.Thread):
                     env.__task_notifier__(['remove-task', task])
                 #if task in self.task_status:
                 #    self.task_status.pop(task)
-                #if task in self.tasks:
-                #    self.tasks.remove(task)
+                #if task in self.running_tasks:
+                #    self.running_tasks.remove(task)
 
     def pending_tasks(self):
         with threading.Lock():
