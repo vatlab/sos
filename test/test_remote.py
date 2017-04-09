@@ -100,9 +100,6 @@ run:
         time.sleep(20)
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
-        # now, local status should still be pending
-        out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
-        self.assertEqual(out.count('pending'), len(res['pending_tasks']))
 
         Host.reset()
         # until we run the workflow again
