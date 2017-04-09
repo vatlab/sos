@@ -71,12 +71,11 @@ class TestKernel(unittest.TestCase):
 
     def testForceTask(self):
         '''Test the execution of tasks with -s force'''
-        FileTarget('result.txt').remove('both')
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # the cell will actually be executed several times
             # with automatic-reexecution
-            msg_id, content = long_execute(kc=kc, code="""
+            code = """
 %set -v1 -s force
 [10]
 input: for_each={'i': range(1)}
@@ -92,12 +91,10 @@ run:
    echo this aa is "${i}"
    sleep ${i}
 
-[30]
-run:
-   touch "result.txt"
-""")
-            self.assertTrue(FileTarget('result.txt').exists())
-            FileTarget('result.txt').remove()
+"""
+            # these should be automatically rerun by the frontend
+            long_execute(kc=kc, code=code)
+            wait_for_idle(kc)
 
 if __name__ == '__main__':
     unittest.main()

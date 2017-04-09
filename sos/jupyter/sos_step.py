@@ -45,7 +45,7 @@ class Interactive_Step_Executor(Step_Executor):
         else:
             queue = 'localhost'
 
-        host = Host(queue, has_proper_stdout=False)
+        host = Host(queue)
         res = [host.submit_task(task) for task in tasks]
         if all(x == 'completed' for x in host.check_status(tasks)):
             print('{} task{} completed.'.format(len(tasks), 's' if len(tasks) > 1 else ''))
