@@ -77,7 +77,7 @@ with open('test/result.txt', 'w') as res:
             self.assertTrue('test_execute.py' in content)
         os.remove('result.txt')
 
-    def testSequencial(self):
+    def testSequential(self):
         '''Test concurrency option for runtime environment'''
         env.max_jobs = 5
         env.config['sig_mode'] = 'force'
