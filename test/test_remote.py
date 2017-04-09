@@ -81,7 +81,7 @@ task:
 
 run:
     echo I am ${i}
-    sleep ${5+i*2}
+    sleep ${10+i*2}
 ''')
         wf = script.workflow()
         res = Base_Executor(wf, config={
@@ -95,7 +95,7 @@ run:
         # we should be able to get status
         tasks = ' '.join(res['pending_tasks'])
         # wait another 20 seconds?
-        time.sleep(10)
+        time.sleep(20)
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
         # now, local status should still be pending
