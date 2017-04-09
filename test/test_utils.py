@@ -21,6 +21,7 @@
 #
 
 import os
+import sys
 import unittest
 import cProfile
 import timeit
@@ -150,7 +151,7 @@ class TestUtils(unittest.TestCase):
                 ('''{0}'a"b'!r{1}''', "'a\"b'", False, []),
                 #
                 # !q conversion (added by SoS)
-                ('{0}file_ws[0]!q{1}', "'d i r/f .txt'", False, []),
+                ('{0}file_ws[0]!q{1}', '"d i r/f .txt"' if sys.platform == 'win32' else "'d i r/f .txt'", False, []),
                 ('{0}file_ws[0]!e{1}', "d\\ i\\ r/f\\ .txt", False, []),
                 #
                 # !, joined by ,
@@ -168,7 +169,7 @@ class TestUtils(unittest.TestCase):
                 ('{0}"a/b/c/test_utils.py"!ddb{1}', 'b', False, []),
                 ('{0}"a/b/c/test_utils.py"!n{1}', 'a/b/c/test_utils', False, []),
                 ('{0}"a/b/c/test_utils.py"!bn{1}', 'test_utils', False, []),
-                ('{0}"~/test_utils.py"!a{1}', os.path.expanduser('~/test_utils.py'), False, []),
+                ('{0}"~/test_utils.py"!a{1}', os.path.abspath(os.path.expanduser('~/test_utils.py')), False, []),
                 ('{0}"~/test_utils.py"!u{1}', os.path.expanduser('~/test_utils.py'), False, []),
                 ('{0}"test/test_utils.py"!b{1}', "test_utils.py", False, []),
                 # preceded by \
@@ -181,10 +182,12 @@ class TestUtils(unittest.TestCase):
                 if sigil in exclude:
                     continue
                 if isinstance(result, str):
-                    self.assertEqual(interpolate(expr.format(l, r), sigil=sigil), result, 'Failed to interpolate {} with sigil {}'.format(expr, sigil))
+                    self.assertEqual(interpolate(expr.format(l, r), sigil=sigil), result,
+                            'Failed to interpolate {} with sigil {} and expected result {}'.format(expr, sigil, result))
                 else:
                     # for cases when the order of output is not guaranteed
-                    self.assertTrue(interpolate(expr.format(l, r), sigil=sigil) in result, 'Failed to interpolate {} with sigil {}'.format(expr, sigil))
+                    self.assertTrue(interpolate(expr.format(l, r), sigil=sigil) in result,
+                            'Failed to interpolate {} with sigil {} and expected result {}'.format(expr, sigil, result))
         #
         # locals should be the one passed to the expression
         self.assertTrue('file_ws' in interpolate('${globals().keys()}', '${ }'))
@@ -208,14 +211,16 @@ class TestUtils(unittest.TestCase):
             ('''"${d}"''', ['a b', 'b a']),
             ('''"${d}"*2''', ['a ba b', 'b ab a']),
             ('''"${d['a']}"''', 'file1'),
-            ('''"${b!q}"''', "'file name'"),
+            ('''"${b!q}"''', '"file name"' if sys.platform == "win32" else "'file name'"),
             ('''"${b!r}"''', "'file name'"),
-            ('''"${c!q}"''', "file1 file2 'file 3'"),
+            ('''"${c!q}"''', 'file1 file2 "file 3"' if sys.platform == 'win32' else "file1 file2 'file 3'"),
             ]:
             if isinstance(result, str):
-                self.assertEqual(SoS_eval(expression, '${ }'), result)
+                self.assertEqual(SoS_eval(expression, '${ }'), result,
+                        "Test {} with expected result {}".format(expression, result))
             else:
-                self.assertTrue(SoS_eval(expression, '${ }') in result)
+                self.assertTrue(SoS_eval(expression, '${ }') in result,
+                        "Test {} with expected result {}".format(expression, result))
         #
         # interpolation will only happen in string
         self.assertRaises(SyntaxError, SoS_eval, '''${a}''', '${ }')
