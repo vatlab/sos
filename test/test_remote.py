@@ -161,7 +161,7 @@ run:
         subprocess.check_output('cd ~/.sos/tasks; rm -f *.res *.sh *.pulse', shell=True).decode()
         script = SoS_Script('''
 [10]
-input: for_each={'i': range(5)}
+input: for_each={'i': range(3)}
 task:
 
 run:
