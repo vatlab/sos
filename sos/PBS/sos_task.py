@@ -45,8 +45,9 @@ class PBS_TaskEngine(TaskEngine):
             else:
                 with open(os.path.expanduser(self.config['template_file'])) as tmpl:
                     self.job_template = tmpl.read()
+                env.logger.warning('Option template_file is deprecated and will be removed from next formal release of SoS.')
         else:
-            raise ValueError('Missing configuration job_template or template_file for queue {}'.format(self.alias))
+            raise ValueError('A job_template is required for queue {}'.format(self.alias))
 
         if 'submit_cmd' not in self.config:
             raise ValueError('Missing configuration submit_cmd for queue {}'.format(self.alias))
