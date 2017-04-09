@@ -75,9 +75,9 @@ class PBS_TaskEngine(TaskEngine):
             params = pickle.load(task)
             task, sos_dict, sigil = params.data
 
-        # for this task, we will need walltime, nodes, ppn, mem
+        # for this task, we will need walltime, nodes, procs, mem
         # however, these could be fixed in the job template and we do not need to have them all in the runtime
-        runtime = {x:sos_dict['_runtime'][x] for x in ('nodes', 'ppn', 'mem', 'walltime', 'cur_dir', 'home_dir') if x in sos_dict['_runtime']}
+        runtime = {x:sos_dict['_runtime'][x] for x in ('nodes', 'procs', 'ppn', 'mem', 'walltime', 'cur_dir', 'home_dir') if x in sos_dict['_runtime']}
         runtime['task'] = task_id
         runtime['verbosity'] = env.verbosity
         runtime['sig_mode'] = env.config['sig_mode']
@@ -88,8 +88,14 @@ class PBS_TaskEngine(TaskEngine):
             runtime['job_name'] = task_id
         if 'nodes' not in runtime:
             runtime['nodes'] = 1
-        if 'ppn' not in runtime:
-            runtime['ppn'] = 1
+        if 'procs' not in runtime:
+            if 'ppn' in runtime:
+                env.logger.warning('Option ppn is deprecated and will be removed from a formal release of SoS')
+                runtime['procs'] = runtime['ppn']
+            else:
+                runtime['procs'] = 1
+        # for backward compatibility
+        runtime['ppn'] = runtime['procs']
         runtime['job_file'] = '~/.sos/tasks/{}.sh'.format(task_id)
         runtime.update(self.config)
 
