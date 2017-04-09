@@ -854,6 +854,8 @@ for __n, __v in {}.items():
                     mo = SOS_SECTION_NAME.match(name)
                     if mo:
                         n, i, di, al = mo.group('name', 'index', 'default_index', 'alias')
+                        if n == 'global' and i is not None:
+                            parsing_errors.append(lineno, line, 'Invalid global section definition')
                         if n:
                             if i is None and '*' in n:
                                 parsing_errors.append(lineno, line, 'Unindexed section name cannot contain wildcard character (*).')
@@ -862,6 +864,8 @@ for __n, __v in {}.items():
                             step_names.append(['default', di, al])
                     else:
                         parsing_errors.append(lineno, line, 'Invalid section name')
+                if 'global' in [x[0] for x in step_names] and len(step_names) > 1:
+                    parsing_errors.append(lineno, line, 'Global section cannot be shared with another step')
                 if section_option is not None:
                     # this does not work directly because list parameter can have ,
                     # without having to really evaluate all complex expressions, we
@@ -934,9 +938,20 @@ for __n, __v in {}.items():
                         else:
                             prev_names = [prev_name[0]]
                         if len(set(prev_names) & set(names)):
-                            parsing_errors.append(lineno, line, 'Duplicate section names')
+                            parsing_errors.append(lineno, line, 'Duplicate section name {}'.format(names))
                 all_step_names.extend(step_names)
-                self.sections.append(SoS_Step(self.content, step_names, step_options, global_sigil=self.global_sigil))
+                if 'global' in [x[0] for x in step_names]:
+                    if step_options:
+                        parsing_errors.append(lineno, line, 'Global section does not accept any option')
+                    global_section = [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]
+                    if global_section:
+                        if global_section[0][1].statements:
+                            parsing_errors.append(lineno, line, 'Cannot define a global section with a non-empty implicit global section')
+                        # if there is already an global section???
+                        self.sections.pop(global_section[0][0])
+                    self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
+                else:
+                    self.sections.append(SoS_Step(self.content, step_names, step_options, global_sigil=self.global_sigil))
                 cursect = self.sections[-1]
                 if self.transcript:
                     self.transcript.write('SECTION\t{}\t{}'.format(lineno, line))
@@ -1082,7 +1097,6 @@ for __n, __v in {}.items():
             for statement in global_section[0][1].statements:
                 if statement[0] == '=':
                     self.global_def += '{} = {}\n'.format(statement[1], statement[2])
-                    env.readonly_vars.add(statement[1].strip())
                 else:
                     self.global_def += statement[1]
             # remove the global section after inserting it to each step of the process

@@ -33,8 +33,10 @@ from sos.sos_syntax import SOS_KEYWORDS
 from sos.sos_executor import Base_Executor, __null_func__
 from sos.sos_syntax import SOS_SECTION_HEADER
 from sos.target import FileTarget, UnknownTarget, RemovedTarget, UnavailableLock
-from .sos_step import Interactive_Step_Executor, PendingTasks
+from sos.sos_step import PendingTasks
 from IPython.core.display import HTML
+from sos.hosts import Host
+from .sos_step import Interactive_Step_Executor
 
 
 class Interactive_Executor(Base_Executor):
@@ -42,11 +44,11 @@ class Interactive_Executor(Base_Executor):
     def __init__(self, workflow=None, args=[], shared={}, config={}):
         # we actually do not have our own workflow, everything is passed from ipython
         # by nested = True we actually mean no new dictionary
-        if env.sig_mode is None:
-            env.sig_mode = 'ignore'
+        if env.config['sig_mode'] is None:
+            env.config['sig_mode'] = 'ignore'
         Base_Executor.__init__(self, workflow=workflow, args=args, shared={}, config=config)
-        if env.sig_mode != 'ignore':
-            self.md5 = self.create_signature()
+        self.md5 = self.create_signature()
+        if env.config['sig_mode'] != 'ignore':
             # We append to existing workflow files because some files are ignored and we
             # still wants their information.
             with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'a') as sig:
@@ -65,7 +67,6 @@ class Interactive_Executor(Base_Executor):
         env.sos_dict.set('__null_func__', __null_func__)
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__args__', self.args)
-        env.sos_dict.set('__config_file__', self.config['config_file'])
         if self.md5:
             env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
         if self.config['report_output']:
@@ -82,7 +83,7 @@ class Interactive_Executor(Base_Executor):
         # set config to CONFIG
         FileTarget('config.yml').remove('both')
 
-    def run(self, targets=None, queue=None, mode='interactive'):
+    def run(self, targets=None, queue=None):
         '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer
         The code can be simple SoS/Python statements, one SoS step, or more
         or more SoS workflows with multiple steps. This executor,
@@ -99,7 +100,6 @@ class Interactive_Executor(Base_Executor):
         # last stement is an expression.
         last_res = None
 
-        env.run_mode = mode
 
         # process step of the pipelinp
         if isinstance(targets, str):
@@ -199,6 +199,9 @@ class Interactive_Executor(Base_Executor):
                 runnable._status = 'pending'
                 runnable._signature = (e.output, e.sig_file)
                 env.logger.info('Waiting on another process for step {}'.format(section.step_name()))
+            except PendingTasks as e:
+                self.record_quit_status(e.tasks)
+                raise
             # if the job is failed
             except Exception as e:
                 runnable._status = 'failed'
@@ -206,12 +209,18 @@ class Interactive_Executor(Base_Executor):
         if self.md5:
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
+        # remove task pending status if the workflow is completed normally
+        try:
+            wf_status = os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status')
+            if os.path.isfile(wf_status):
+                os.remove(wf_status)
+        except Exception as e:
+            env.logger.warning('Failed to clear workflow status file: {}'.format(e))
         return last_res
 
 #
 # function runfile that is used by spyder to execute complete script
 #
-my_tasks = {}
 
 def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
     # this has something to do with Prefix matching rule of parse_known_args
@@ -255,22 +264,21 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         list_queues(args.__config__, args.verbosity)
         return
     #
-    env.sig_mode = args.__sigmode__
-    env.__queue__ = args.__queue__
-    env.__wait__ = args.__wait__
-
+    my_tasks = {}
     if kernel is not None:
         def notify_kernel(task_status):
-            global my_tasks;
+            nonlocal my_tasks;
             status_class = {
-                'failed':  'fa fa-2x fa-fw fa-times-circle-o',
-                'killed':  'fa fa-2x fa-fw fa-times-circle-o',
-                'failed-missing-output': 'fa fa-2x fa-fw fa-times-circle-o',
-                'failed-old-missing-output': 'fa fa-2x fa-fw fa-times-circle-o',
                 'pending': 'fa fa-2x fa-fw fa-square-o',
+                'submitted': 'fa fa-2x fa-fw fa-spinner',
                 'running': 'fa fa-2x fa-fw fa-spinner fa-pulse fa-spin',
+                'result-ready': 'fa fa-2x fa-fw fa-files-o',
                 'completed': 'fa fa-2x fa-fw fa-check-square-o',
-                'completed-old': 'fa fa-2x fa-fw fa-check-square-o',
+                # window-close-o does not exist
+                #'failed':  'fa fa-2x fa-fw fa-window-close-o',
+                'failed':  'fa fa-2x fa-fw fa-times-circle-o',
+                'aborted':  'fa fa-2x fa-fw fa-frown-o',
+                'result-mismatch': 'fa fa-2x fa-fw fa-question-circle-o',
                 }
 
             if task_status[0] == 'new-status':
@@ -279,7 +287,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                         'source': 'SoS',
                         'metadata': {},
                         'data': { 'text/html': 
-                            HTML('''<table style="border: 0px"><tr style="border: 0px">
+                            HTML('''<table id="table_{0}" style="border: 0px"><tr style="border: 0px">
                             <td style="border: 0px"><i id="{0}" class="{1}"></i> </td>
                             <td style="border: 0px"><pre>{0}</pre></td>
                             </tr></table>'''.format(task_status[1],
@@ -289,6 +297,9 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                 # keep tracks of my tasks to avoid updating status of
                 # tasks that does not belong to the notebook
                 my_tasks[task_status[1]] = time.time()
+            elif task_status[0] == 'remove-task':
+                if task_status[1] in my_tasks:
+                    kernel.send_frontend_msg('remove-task', task_status[1])
             elif task_status[0] == 'change-status':
                 if task_status[1] in my_tasks:
                     kernel.send_frontend_msg('task-status', [task_status[1], task_status[2], status_class[task_status[2]]])
@@ -337,9 +348,16 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         executor = Interactive_Executor(workflow, args=workflow_args, config={
             'config_file': args.__config__,
             'output_dag': args.__dag__,
-            'report_output': args.__report__})
-
-        return executor.run(args.__targets__, mode='dryrun' if args.__dryrun__ else 'interactive')
+            'report_output': args.__report__,
+            'sig_mode': args.__sig_mode__,
+            'default_queue': args.__queue__,
+            'wait_for_task': args.__wait__,
+            'run_mode': 'dryrun' if args.__dryrun__ else 'interactive'
+        })
+        # remove tasks from the task engine so that it can be executed
+        # again if necessary.
+        Host.remove_tasks(my_tasks.keys())
+        return executor.run(args.__targets__)
     except PendingTasks as e:
         raise
     except Exception:
@@ -347,6 +365,6 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
             sys.stderr.write(get_traceback())
         raise
     finally:
-        env.sig_mode = 'default'
+        env.config['sig_mode'] = 'default'
         env.verbosity = 1
 

@@ -77,20 +77,20 @@ def SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['*']):
                     if key not in acceptable_args and key not in SOS_ACTION_OPTIONS:
                         raise ValueError('Unrecognized option "{}" for action {}'.format(key, func))
             # docker files will be downloaded in run or prepare mode
-            if 'docker_file' in kwargs and env.run_mode in ['run', 'interactive']:
-                from .docker.client import DockerClient
-                docker = DockerClient()
-                docker.import_image(kwargs['docker_file'])
+            if 'docker_file' in kwargs and env.config['run_mode'] in ['run', 'interactive']:
+                from .docker.client import SoS_DockerClient
+                docker = SoS_DockerClient()
+                docker.load_image(kwargs['docker_file'])
             # handle image
             if 'docker_image' in kwargs:
-                from .docker.client import DockerClient
-                docker = DockerClient()
+                from .docker.client import SoS_DockerClient
+                docker = SoS_DockerClient()
                 docker.pull(kwargs['docker_image'])
-            if env.run_mode not in run_mode:
+            if env.config['run_mode'] not in run_mode:
                 # return dynamic expression when not in run mode, that is to say
                 # the script logic cannot rely on the result of the action
                 return Undetermined(func.__name__)
-            if env.run_mode == 'interactive':
+            if env.config['run_mode'] == 'interactive':
                 for k,v in kwargs.items():
                     if k in SOS_RUNTIME_OPTIONS and k not in SOS_ACTION_OPTIONS:
                         env.logger.warning('Passing runtime option "{0}" to action is deprecated. Please use "task: {0}={1}" before action instead.'.format(k, v))
@@ -176,22 +176,7 @@ def SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['*']):
 class SoS_ExecuteScript:
     def __init__(self, script, interpreter, suffix, args=''):
         self.script = script
-        if isinstance(interpreter, str):
-            if interpreter and not shutil.which(shlex.split(interpreter)[0]):
-                raise RuntimeError('Failed to locate interpreter {}'.format(interpreter))
-            self.interpreter = interpreter
-        elif isinstance(interpreter, Sequence):
-            found = False
-            for ip in interpreter:
-                if shutil.which(shlex.split(ip)[0]):
-                    self.interpreter = ip
-                    found = True
-                    break
-            if not found:
-                raise RuntimeError('Failed to locate any of the interpreters {}'
-                    .format(', '.join(interpreter)))
-        else:
-            raise RuntimeError('Unacceptable interpreter {}'.format(interpreter))
+        self.interpreter = interpreter
         self.args = args
         if suffix:
             self.suffix = suffix
@@ -201,22 +186,39 @@ class SoS_ExecuteScript:
             self.suffix = '.sh'
 
     def run(self, **kwargs):
-        transcribe(self.script, action=self.interpreter)
-        debug_script_file = os.path.join(env.exec_dir, '.sos', '{}_{}_{}{}'.format(env.sos_dict['step_name'],
-            env.sos_dict['_index'], str(uuid.uuid4())[:8], self.suffix))
-        env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
-        with open(debug_script_file, 'w') as sfile:
-            sfile.write(self.script)
-        env.logger.trace(self.script)
         if 'docker_image' in kwargs:
-            if env.run_mode == 'dryrun':
+            if env.config['run_mode'] == 'dryrun':
                 print('In docker image {}\n{}:\n{}\n'.format(kwargs['docker_image'], self.interpreter, self.script))
                 return None
-            from .docker.client import DockerClient
-            docker = DockerClient()
+            from .docker.client import SoS_DockerClient
+            docker = SoS_DockerClient()
             docker.run(kwargs['docker_image'], self.script, self.interpreter, self.args, self.suffix,
                 **kwargs)
         else:
+            if isinstance(self.interpreter, str):
+                if self.interpreter and not shutil.which(shlex.split(self.interpreter)[0]):
+                    raise RuntimeError('Failed to locate interpreter {}'.format(self.interpreter))
+            elif isinstance(self.interpreter, Sequence):
+                found = False
+                for ip in self.interpreter:
+                    if shutil.which(shlex.split(ip)[0]):
+                        self.interpreter = ip
+                        found = True
+                        break
+                if not found:
+                    raise RuntimeError('Failed to locate any of the interpreters {}'
+                        .format(', '.join(self.interpreter)))
+            else:
+                raise RuntimeError('Unacceptable interpreter {}'.format(self.interpreter))
+
+            transcribe(self.script, action=self.interpreter)
+            debug_script_file = os.path.join(env.exec_dir, '.sos', '{}_{}_{}{}'.format(env.sos_dict['step_name'],
+                env.sos_dict['_index'], str(uuid.uuid4())[:8], self.suffix))
+            env.logger.debug('Script for step {} is saved to {}'.format(env.sos_dict['step_name'], debug_script_file))
+            with open(debug_script_file, 'w') as sfile:
+                sfile.write(self.script)
+            env.logger.trace(self.script)
+
             try:
                 p = None
                 script_file = tempfile.NamedTemporaryFile(mode='w+t', suffix=self.suffix, delete=False).name
@@ -242,14 +244,14 @@ class SoS_ExecuteScript:
                         else:
                             self.interpreter = '/bin/bash'
                             if not self.args:
-                                self.args = '${filename!q}'
+                                self.args = '-e ${filename!q}'
                 #
-                if env.run_mode == 'dryrun':
+                if env.config['run_mode'] == 'dryrun':
                     print('{}:\n{}\n'.format(self.interpreter, self.script))
                     return None
                 cmd = interpolate('{} {}'.format(self.interpreter, self.args), '${ }', {'filename': script_file, 'script': self.script})
                 #
-                if env.run_mode == 'interactive':
+                if env.config['run_mode'] == 'interactive':
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
                     p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
                     env.register_process(p.pid, 'Runing {}'.format(script_file))
@@ -315,10 +317,9 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
             # within a task, and we can just use an executor to execute it.
             #         # tell the master process to receive a workflow
             shared = {x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
-            if env.run_mode == 'run':
+            if env.config['run_mode'] == 'run':
                 from sos.sos_executor import Base_Executor
-                executor = Base_Executor(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__'],
-                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
+                executor = Base_Executor(wf, args=args, shared=shared, config=env.config)
                 if shared:
                     q = mp.Pipe()
                 else:
@@ -329,15 +330,13 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                     res = q[0].recv()
                     if isinstance(res, Exception):
                         raise res
-                    env.sos_dict.quick_update(res)
+                    env.sos_dict.quick_update(res['shared'])
                 else:
                     res = None
                 p.join()
             else:
                 from sos.jupyter.sos_executor import Interactive_Executor
-                executor = Interactive_Executor(wf, args=args, shared=shared, config={'config_file': env.sos_dict['__config_file__'],
-                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity})
-                # interactive mode
+                executor = Interactive_Executor(wf, args=args, shared=shared, config=env.config)
                 res = executor.run(targets=targets)
             return res
         
@@ -346,13 +345,12 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
             env.__pipe__.send('workflow {}'.format(uuid.uuid4()))
             # really send the workflow
             shared = {x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
-            env.__pipe__.send((wf, targets, args, shared, {'config_file': env.sos_dict['__config_file__'],
-                    'sig_mode': env.sig_mode, 'verbosity': env.verbosity}))
+            env.__pipe__.send((wf, targets, args, shared, env.config))
             res = env.__pipe__.recv()
             if isinstance(res, Exception):
                 raise res
             else:
-                env.sos_dict.quick_update(res)
+                env.sos_dict.quick_update(res['shared'])
                 return res
     finally:
         # restore step_name in case the subworkflow re-defines it
@@ -361,7 +359,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'interpreter', 'suffix', 'args'])
 def execute_script(script, interpreter, suffix, args='', **kwargs):
     '''Execute specified script using specified interpreter.'''
-    if env.run_mode == 'dryrun':
+    if env.config['run_mode'] == 'dryrun':
         print('{}:\n{}\n'.format(interpreter, script))
         return None
     return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
@@ -412,7 +410,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
         if os.path.isfile(dest):
             prog = ProgressBar(desc=message + ': \033[32m validating\033[0m', disable=env.verbosity <= 1,
                 position=index, leave=True, bar_format='{desc}', total=10000000)
-            if env.sig_mode == 'build':
+            if env.config['sig_mode'] == 'build':
                 if decompress:
                     prog.set_description(message + ': \033[32m scanning decompressed files\033[0m')
                     prog.update()
@@ -453,7 +451,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 prog.update()
                 prog.close()
                 return True
-            elif env.sig_mode == 'ignore':
+            elif env.config['sig_mode'] == 'ignore':
                 prog.set_description(message + ': \033[32m use existing\033[0m')
                 prog.update()
                 prog.close()
@@ -618,7 +616,7 @@ def download(URLs, dest_dir='.', dest_file=None, decompress=False):
     validate downloaded `filename`. Unless otherwise specified, compressed
     files are decompressed.
     '''
-    if env.run_mode == 'dryrun':
+    if env.config['run_mode'] == 'dryrun':
         print('download\n{}\n'.format(URLs))
         return None
     if isinstance(URLs, str):
@@ -735,7 +733,7 @@ def report(script=None, input=None, output=None, **kwargs):
     function will be called with the content. If output is unspecified, the content
     will be written to standard output or appended to a file specified with command
     line option `-r`. '''
-    if env.run_mode == 'dryrun':
+    if env.config['run_mode'] == 'dryrun':
         print('report:\n{}'.format('' if script is None else script))
         if input is not None:
             for ifile in input:
@@ -753,8 +751,8 @@ def report(script=None, input=None, output=None, **kwargs):
             writer = file_handle.write
     elif hasattr(output, 'write'):
         writer = output.write
-    elif '__report_output__' in env.sos_dict:
-        filename = interpolate(env.sos_dict['__report_output__'].lstrip('>'), '${ }')
+    elif 'report_output' in env.config and env.config['report_output']:
+        filename = interpolate(env.config['report_output'].lstrip('>'), '${ }')
         env.logger.debug('Writing report to {}'.format(filename))
         file_handle = open(filename, 'a')
         writer = file_handle.write
@@ -856,7 +854,7 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
         p = None
         cmd = interpolate('pandoc {}'.format(args), '${ }', {'input': input_file, 'output': output_file})
         env.logger.trace('Running command "{}"'.format(cmd))
-        if env.run_mode == 'interactive':
+        if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             pid = p.pid

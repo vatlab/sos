@@ -28,18 +28,19 @@ import threading
 from io import StringIO
 from tokenize import generate_tokens
 from collections.abc import Sequence
+import concurrent.futures
 
 from sos.utils import env, short_repr, get_traceback
 from sos.sos_eval import SoS_exec
 
-from .target import textMD5, RuntimeInfo, Undetermined
+from .target import textMD5, RuntimeInfo, Undetermined, FileTarget
 from .monitor import ProcessMonitor
 
 from collections import OrderedDict
 
 
-monitor_interval = 3
-resource_monitor_interval = 15
+monitor_interval = 5
+resource_monitor_interval = 60
 
 class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
@@ -72,8 +73,8 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     if verbosity is not None:
         env.verbosity = verbosity
     if sigmode is not None:
-        env.sig_mode = sigmode
-    env.run_mode = runmode
+        env.config['sig_mode'] = sigmode
+    env.config['run_mode'] = runmode
     env.register_process(os.getpid(), 'spawned_job with {} {}'
         .format(sos_dict['_input'], sos_dict['_output']))
 
@@ -81,7 +82,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     env.sos_dict.quick_update(sos_dict)
 
     skipped = False
-    if env.sig_mode == 'ignore' or env.sos_dict['_output'] is None:
+    if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'] is None:
         sig = None
     else:
         tokens = [x[1] for x in generate_tokens(StringIO(task).readline)]
@@ -92,7 +93,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         sig.lock()
 
         idx = env.sos_dict['_index']
-        if env.sig_mode == 'default':
+        if env.config['sig_mode'] == 'default':
             matched = sig.validate()
             if isinstance(matched, dict):
                 # in this case, an Undetermined output can get real output files
@@ -107,7 +108,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 env.sos_dict.update(matched['vars'])
                 env.logger.info('Task ``{}`` (index={}) is ``ignored`` due to saved signature'.format(env.sos_dict['step_name'], idx))
                 skipped = True
-        elif env.sig_mode == 'assert':
+        elif env.config['sig_mode'] == 'assert':
             matched = sig.validate()
             if isinstance(matched, str):
                 raise RuntimeError('Signature mismatch: {}'.format(matched))
@@ -122,7 +123,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 env.sos_dict.update(matched['vars'])
                 env.logger.info('Step ``{}`` (index={}) is ``ignored`` with matching signature'.format(env.sos_dict['step_name'], idx))
                 skipped = True
-        elif env.sig_mode == 'build':
+        elif env.config['sig_mode'] == 'build':
             # build signature require existence of files
             if sig.write(
                 env.sos_dict['_local_input_{}'.format(idx)],
@@ -132,10 +133,10 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 skipped = True
             else:
                 env.logger.info('Task ``{}`` (index={}) is ``executed`` with failed signature constructed'.format(env.sos_dict['step_name'], idx))
-        elif env.sig_mode == 'force':
+        elif env.config['sig_mode'] == 'force':
             skipped = False
         else:
-            raise RuntimeError('Unrecognized signature mode {}'.format(env.sig_mode))
+            raise RuntimeError('Unrecognized signature mode {}'.format(env.config['sig_mode']))
 
     if skipped:
         env.logger.info('{} ``skipped``'.format(task_id))
@@ -207,8 +208,8 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
         return {'succ': 1, 'exception': e, 'path': os.environ['PATH']}
     except KeyboardInterrupt:
-        env.logger.info('{} ``interrupted`'.format(task_id))
-        raise RuntimeError('KeyboardInterrupt from {}'.format(os.getpid()))
+        env.logger.error('{} ``interrupted``'.format(task_id))
+        raise
     finally:
         env.sos_dict.set('__step_sig__', None)
 
@@ -218,102 +219,93 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         sig.release()
     env.deregister_process(os.getpid())
     env.logger.info('{} ``completed``'.format(task_id))
-    return {'succ': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
+    return {'succ': 0, 'output': {} if env.sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in env.sos_dict['_output'] if isinstance(x, str)}}
 
 
 def check_task(task):
     #
-    # status of the job, which can be
-    #
-    # completed-old: if there is an old result file with succ
-    # completed:     if there is a new result file with succ
-    # failed-mismatch: completed but signature mismatch
-    # failed-missing-output: completed from an old run but signature mismatch
-    # failed-old:    if there is an old result file with fail status
-    # failed:        if there is a new result file with fail status
-    # pending:       if there is no result file, without status file or with an old status file
-    #                   and result file, have not started running.
-    # running:       if with a status file that has just been updated
-    # dead:        if with a new status file that has not been updated
-    # 
+    # status of the job, please refer to https://github.com/vatlab/SOS/issues/529
+    # for details.
     #
     task_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.task')
     if not os.path.isfile(task_file):
-        raise ValueError('Task does not exist: {}'.format(task))
-    status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
-    res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
+        return 'non-exist'
+    pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
+    if not os.path.isfile(pulse_file):
+        pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
+    
+    def has_pulse():
+        return os.path.isfile(pulse_file) and os.stat(pulse_file).st_mtime >= os.stat(task_file).st_mtime
 
-    if os.path.isfile(res_file):
+    res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
+
+    def has_res():
+        return os.path.isfile(res_file) and os.stat(res_file).st_mtime >= os.stat(task_file).st_mtime
+
+    job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
+
+    def has_job():
+        return os.path.isfile(job_file) and os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime
+
+    if has_res():
         try:
-            new_res = os.path.getmtime(task_file) <= os.path.getmtime(res_file)
             from .target import FileTarget
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
             if res['succ'] == 0:
-                if isinstance(res['output'], list):
-                    if all(FileTarget(x).exists('any') for x in res['output'] if isinstance(x, str) and '(' not in x):
-                        if new_res:
-                            return 'completed'
-                        else:
-                            return 'completed-old'
-                    else:
-                        env.logger.debug('{} not found'.format(res['output']))
-                        if new_res:
-                            return 'failed-missing-output'
-                        else:
-                            return 'failed-old-missing-output'
+                if isinstance(res['output'], dict):
+                    for x,y in res['output'].items():
+                        if not FileTarget(x).exists() or FileTarget(x).signature() != y:
+                            env.logger.debug('{} not found or signature mismatch'.format(x))
+                            return 'result-mismatch'
+                            # otherwise, it can be submitted or pending...
+                    # this is called "completed" remotely but will be
+                    # translated to either completed or result-ready locally
+                    return 'completed'
                 else:
-                    if new_res:
-                        return 'completed'
-                    else:
-                        return 'completed-old'
+                    return 'completed'
             else:
-                if new_res:
-                    env.logger.debug(res['exception'])
-                    return 'failed'
-                else:
-                    return 'failed-old'
+                return 'failed'
         except Exception as e:
             # sometimes the resfile is changed while we are reading it
             # so we wait a bit and try again.
             env.logger.warning(e)
             time.sleep(1)
             return check_task(task)
-    try:
-        if not os.path.isfile(status_file) or os.path.getmtime(status_file) < os.path.getmtime(task_file):
-            return 'pending'
-    except Exception as e:
-        # there is a slight chance that the old status_file is removed
-        env.logger.warning(e)
-        time.sleep(1)
-        return check_task(task)
-    # dead?
-    # if the status file is readonly
-    if not os.access(status_file, os.W_OK):
-        return 'killed'
-    start_stamp = os.stat(status_file).st_mtime
-    elapsed = time.time() - start_stamp
-    if elapsed < 0:
-        env.logger.warning('{} is created in the future. Your system time might be problematic'.format(status_file))
-    # if the file is within 5 seconds
-    if elapsed < monitor_interval:
-        return 'running'
-    elif elapsed > 2 * monitor_interval:
-        if os.path.isfile(res_file):
-            # result file appears
+    #
+    if has_pulse():
+        # dead?
+        # if the status file is readonly
+        if not os.access(pulse_file, os.W_OK):
+            return 'aborted'
+        start_stamp = os.stat(pulse_file).st_mtime
+        elapsed = time.time() - start_stamp
+        if elapsed < 0:
+            env.logger.warning('{} is created in the future. Your system time might be problematic'.format(pulse_file))
+        # if the file is within 5 seconds
+        if elapsed < monitor_interval:
+            return 'running'
+        elif elapsed > 2 * monitor_interval:
+            if has_res():
+                # result file appears during sos tatus run
+                return check_task(task)
+            else:
+                return 'aborted'
+        # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
+        time.sleep(2 * monitor_interval)
+        end_stamp = os.stat(pulse_file).st_mtime
+        # the process is still alive
+        if has_res():
             return check_task(task)
+        elif start_stamp != end_stamp:
+            return 'running'
         else:
-            return 'dead'
-    # otherwise, let us be patient ... perhaps there is some problem with the filesystem etc
-    time.sleep(2 * monitor_interval)
-    end_stamp = os.stat(status_file).st_mtime
-    # the process is still alive
-    if os.path.isfile(res_file):
-        return check_task(task)
-    elif start_stamp != end_stamp:
-        return 'running'
+            return 'aborted'
+    # if there is no status file
+    if has_job():
+        return 'submitted'
     else:
-        return 'dead'
+        return 'pending'
 
 def check_tasks(tasks, verbosity=1):
     # verbose is ignored for now
@@ -321,33 +313,45 @@ def check_tasks(tasks, verbosity=1):
     from multiprocessing.pool import ThreadPool as Pool
     if not tasks:
         tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
-        all_tasks = [os.path.basename(x)[:-5] for x in tasks]
+        all_tasks = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in tasks]
     else:
         all_tasks = []
         for t in tasks:
             matched = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}*.task'.format(t)))
-            matched = [os.path.basename(x)[:-5] for x in matched]
+            matched = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in matched]
             if not matched:
-                env.logger.warning('{} does not match any existing task'.format(t))
+                all_tasks.append((t, None))
             else:
                 all_tasks.extend(matched)
-    all_tasks = sorted(list(set(all_tasks)))
+    all_tasks = sorted(list(set(all_tasks)), key=lambda x: 0 if x[1] is None else x[1])
     if not all_tasks:
         env.logger.warning('No matching tasks')
         return
     # at most 20 threads
     p = Pool(min(20, len(all_tasks)))
-    status = p.map(check_task, all_tasks)
+    status = p.map(check_task, [x[0] for x in all_tasks])
     if verbosity == 0:
         print('\n'.join(status))
-    elif verbosity in (1, 2):
-        for s, t in zip(status, all_tasks):
+    elif verbosity == 1:
+        for s, (t, d) in zip(status, all_tasks):
             print('{}\t{}'.format(t, s))
+    elif verbosity == 2:
+        from .utils import PrettyRelativeTime
+        for s, (t, d) in zip(status, all_tasks):
+            if d is None:
+                print('{}\t{:>15}\t{}'.format(t, '', s))
+            else:
+                print('{}\t{:>15} ago\t{}'.format(t, PrettyRelativeTime(time.time() - d), s))
     elif verbosity > 2:
+        from .utils import PrettyRelativeTime
         import pprint
         import glob
-        for s, t in zip(status, all_tasks):
+        from .monitor import summarizeExecution
+
+        for s, (t, d) in zip(status, all_tasks):
             print('{}\t{}\n'.format(t, s))
+            if d is not None:
+                print('Started {} ago'.format(PrettyRelativeTime(time.time() - d)))
             task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 continue
@@ -362,11 +366,13 @@ def check_tasks(tasks, verbosity=1):
                 v = job_vars[k]
                 print('{:22}{}'.format(k, short_repr(v) if verbosity == 3 else pprint.pformat(v)))
             print()
+            print('EXECUTION STATS:\n================')
+            print(summarizeExecution(t, status=s))
             if verbosity == 4:
                 # if there are other files such as job file, print them.
                 files = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
-                files = sorted([x for x in files if not x.endswith('.res') and not x.endswith('.task')])
-                for f in files:
+                for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.res',
+                    '.task', '.pulse', '.status')]):
                     print('{}:\n{}'.format(os.path.basename(f), '='*(len(os.path.basename(f))+1)))
                     with open(f) as fc:
                         print(fc.read())
@@ -403,9 +409,16 @@ def kill_task(task):
     elif status != 'running':
         return status
     # job is running
-    status_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
+    pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
     from stat import S_IREAD, S_IRGRP, S_IROTH
-    os.chmod(status_file, S_IREAD|S_IRGRP|S_IROTH)
+    os.chmod(pulse_file, S_IREAD|S_IRGRP|S_IROTH)
+    # remove job file as well
+    job_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
+    if os.path.isfile(job_file):
+        try:
+            os.remove(job_file)
+        except:
+            pass
     return 'killed'
 
 
@@ -425,8 +438,11 @@ class TaskEngine(threading.Thread):
         self.config = agent.config
         self.alias = self.config['alias']
 
-        self.tasks = []
+        self.engine_ready = threading.Event()
+
+        self.running_tasks = []
         self.pending_tasks = []
+        self.submitting_tasks = {}
 
         self.task_status = {}
         self.last_checked = None
@@ -435,21 +451,35 @@ class TaskEngine(threading.Thread):
         else:
             self.status_check_interval = self.config['status_check_interval']
         #
-        if 'max_running_jobs' not in self.config:
-            self.max_running_jobs = 10
-        else:
+        if env.config['max_running_jobs'] is not None:
+            # override from command line
+            self.max_running_jobs = env.config['max_running_jobs']
+        elif 'max_running_jobs' in self.config:
+            # queue setting
             self.max_running_jobs = self.config['max_running_jobs']
+        else:
+            # default
+            self.max_running_jobs = 10
+        #
+        if env.config['wait_for_task'] is not None:
+            self.wait_for_task = env.config['wait_for_task']
+        elif 'wait_for_task' in self.config:
+            self.wait_for_task = self.config['wait_for_task']
+        else:
+            # default
+            self.wait_for_task = True
 
     def reset(self):
         with threading.Lock():
-            self.tasks = []
+            self.running_tasks = []
             self.pending_tasks = []
+            self.submitting_tasks = {}
             self.task_status = {}
 
     def get_tasks(self):
         with threading.Lock():
-            pending = copy.deepcopy(self.pending_tasks)
-            running = copy.deepcopy(self.tasks)
+            pending = copy.deepcopy(self.pending_tasks + list(self.submitting_tasks.keys()))
+            running = copy.deepcopy(self.running_tasks)
         return pending, running
 
     def run(self):
@@ -464,87 +494,125 @@ class TaskEngine(threading.Thread):
                     tid, tst = line.split('\t')
                     self.task_status[tid] = tst
                 except Exception as e:
-                    env.logger.warning('Unrecognized response {}: {}'.format(line, e))
+                    env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
+        self.engine_ready.set()
         while True:
             # if no new task, does not do anything.
-            if self.tasks:
-                status_output = self.query_tasks(self.tasks, verbosity=1)
+            env.logger.trace('{} running tasks: {}'.format(len(self.running_tasks), self.running_tasks))
+            if self.running_tasks:
+                status_output = self.query_tasks(self.running_tasks, verbosity=1)
                 with threading.Lock():
                     for line in status_output.split('\n'):
                         if not line.strip():
                             continue
                         try:
                             tid, tst = line.split('\t')
-                            if hasattr(env, '__task_notifier__'):
-                                if self.task_status[tid] == tst:
+                            if tid not in self.running_tasks:
+                                env.logger.trace('Task {} removed since status check.'.format(tid))
+                                continue
+                            env.logger.trace('STATUS {}\t{}\n'.format(tid, tst))
+                            if hasattr(env, '__task_notifier__') and tst != 'non-exist':
+                                if tid in self.task_status and self.task_status[tid] == tst:
                                     env.__task_notifier__(['pulse-status', tid, tst])
                                 else:
                                     env.__task_notifier__(['change-status', tid, tst])
                             self.task_status[tid] = tst
+                            # terminal states, remove tasks from task list
+                            if tst in ('completed', 'failed', 'aborted', 'result-mismatch'):
+                                self.running_tasks.remove(tid)
                         except Exception as e:
-                            env.logger.warning('Unrecognized response {} (): {}'.format(line, e.__class__.__name__, e))
+                            env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
                     self.summarize_status()
 
+            env.logger.trace('{} submitting tasks: {}'.format(len(self.submitting_tasks), self.submitting_tasks.keys()))
+            if self.submitting_tasks:
+                with threading.Lock():
+                    submitted = []
+                    for k in self.submitting_tasks:
+                        if not self.submitting_tasks[k][1].running():
+                            submitted.append(k)
+                            if self.submitting_tasks[k][1].result():
+                                self.running_tasks.append(k)
+                                if hasattr(env, '__task_notifier__'):
+                                    env.__task_notifier__(['change-status', k, 'submitted'])
+                            else:
+                                if hasattr(env, '__task_notifier__'):
+                                    env.__task_notifier__(['change-status', k, 'failed'])
+                                self.task_status[k] = 'failed'
+                            self.submitting_tasks[k][0].shutdown()
+                        else:
+                            env.logger.trace('{} is still being submitted.'.format(k))
+                    for k in submitted:
+                        self.submitting_tasks.pop(k)
+
+            env.logger.trace('{} pending tasks: {}'.format(len(self.pending_tasks), self.pending_tasks))
             if self.pending_tasks:
                 to_run = []
-                with threading.Lock():
-                    # check status
-                    active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'killed') \
-                            and not self.task_status[x].startswith('failed')]
-                    if len(active_tasks) < self.max_running_jobs:
-                        to_run = self.pending_tasks[ : self.max_running_jobs - len(active_tasks)]
-
-                env.logger.debug('{} pending {} running'.format(len(self.pending_tasks), len(active_tasks)))
+                # check status
+                num_active_tasks = len([x for x in self.running_tasks if self.task_status[x] == 'running'])
+                if num_active_tasks < self.max_running_jobs:
+                    to_run = self.pending_tasks[ : self.max_running_jobs - num_active_tasks]
                 for tid in to_run:
                     if self.task_status[tid] == 'running':
                         env.logger.info('{} ``runnng``'.format(tid))
                     else:
-                        self.execute_task(tid)
+                        env.logger.trace('Start submitting {} (status: {})'.format(tid, self.task_status.get(tid, 'unknown')))
+                        t = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                        self.submitting_tasks[tid] = (t, t.submit(self.execute_task, tid))
                 #
                 with threading.Lock():
-                    self.tasks.extend(to_run)
                     for tid in to_run:
                         self.pending_tasks.remove(tid)
-                        self.task_status[tid] = 'pending'
 
             time.sleep(self.status_check_interval)
 
     def submit_task(self, task_id):
+        # we wait for the engine to start
+        self.engine_ready.wait()
+
         # submit tasks simply add task_id to pending task list
         with threading.Lock():
             # if already in
-            if task_id in self.tasks or task_id in self.pending_tasks:
-                env.logger.info('{} ``{}``'.format(task_id, self.task_status[task_id]))
-                if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['new-status', task_id, self.task_status[task_id]])
-                return
+            #if task_id in self.running_tasks or task_id in self.pending_tasks:
+            #    env.logger.info('{} ``{}``'.format(task_id, self.task_status[task_id]))
+            #    if hasattr(env, '__task_notifier__'):
+            #        env.__task_notifier__(['new-status', task_id, self.task_status[task_id]])
+            #    return self.task_status[task_id]
             #
             if task_id in self.task_status and self.task_status[task_id]:
                 if self.task_status[task_id] == 'running':
                     env.logger.info('{} ``already runnng``'.format(task_id))
                     if hasattr(env, '__task_notifier__'):
                         env.__task_notifier__(['new-status', task_id, 'running'])
-                    return
-                elif self.task_status[task_id].startswith('completed'):
-                    env.logger.info('{} ``already completed``'.format(task_id))
-                    if hasattr(env, '__task_notifier__'):
-                        env.__task_notifier__(['new-status', task_id, 'completed'])
-                    return
+                    return 'running'
+                # there is a case when the job is already completed (complete-old), but
+                # because we do not know if the user asks to rerun (-s force), we have to
+                # resubmit the job. In the case of not-rerun, the task would be marked
+                # completed very soon.
+                elif self.task_status[task_id] == 'completed':
+                    if env.config['sig_mode'] != 'force':
+                        env.logger.info('{} ``already completed``'.format(task_id))
+                        return 'completed'
+                    elif task_id in env.config['resumed_tasks']:
+                        # force re-execution, but it is possible that this task has been
+                        # executed but quit in no-wait mode (or canceled by user). More
+                        # importantly, the Jupyter notebook would re-run complted workflow
+                        # even if it has "-s force" signature.
+                        #if hasattr(env, '__task_notifier__'):
+                        #    env.__task_notifier__(['new-status', task_id, 'completed'])
+                        env.logger.info('{} ``resume with completed``'.format(task_id))
+                        return 'completed'
+                    else:
+                        env.logger.info('{} ``re-execute completed``'.format(task_id))
+                else:
+                    env.logger.info('{} ``restart`` from status ``{}``'.format(task_id, self.task_status[task_id]))
 
-            active_tasks = [x for x in self.tasks if self.task_status[x] not in ('completed', 'failed')]
-            if len(active_tasks) < self.max_running_jobs:
-                self.tasks.append(task_id)
-                self.task_status[task_id] = 'running'
-                if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['new-status', task_id, 'running'])
-                self.execute_task(task_id)
-            else:
-                env.logger.info('{} ``queued``'.format(task_id))
-                self.pending_tasks.append(task_id)
-                # there is a change that the task_id already exists...
-                self.task_status[task_id] = 'pending'
-                if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['new-status', task_id, 'pending'])
+            env.logger.info('{} ``queued``'.format(task_id))
+            self.pending_tasks.append(task_id)
+            self.task_status[task_id] = 'pending'
+            if hasattr(env, '__task_notifier__'):
+                env.__task_notifier__(['new-status', task_id, 'pending'])
+            return 'pending'
 
     def summarize_status(self):
         from collections import Counter
@@ -560,9 +628,19 @@ class TaskEngine(threading.Thread):
             # job not yet submitted
             return 'pending'
 
+    def remove_tasks(self, tasks):
+        with threading.Lock():
+            for task in tasks:
+                if hasattr(env, '__task_notifier__'):
+                    env.__task_notifier__(['remove-task', task])
+                #if task in self.task_status:
+                #    self.task_status.pop(task)
+                #if task in self.running_tasks:
+                #    self.running_tasks.remove(task)
+
     def pending_tasks(self):
         with threading.Lock():
-            return self.pending_tasks
+            return self.pending_tasks()
 
     def query_tasks(self, tasks=None, verbosity=1):
         return self.agent.check_output("sos status {} -v {}".format(
@@ -572,14 +650,23 @@ class TaskEngine(threading.Thread):
         return self.agent.check_output("sos kill {} {}".format(
             ' '.join(tasks), '-a' if all_tasks else ''))
 
+    def execute_task(self, task_id):
+        # this is base class
+        return self.agent.prepare_task(task_id)
+
 
 class BackgroundProcess_TaskEngine(TaskEngine):
     def __init__(self, agent):
         super(BackgroundProcess_TaskEngine, self).__init__(agent)
 
     def execute_task(self, task_id):
-        env.logger.info('{} ``submitted``'.format(task_id))
-        return self.agent.run_command("sos execute {0} -v {1} -s {2} {3}".format(
-            task_id, env.verbosity, env.sig_mode, '--dryrun' if env.run_mode == 'dryrun' else ''))
+        if not super(BackgroundProcess_TaskEngine, self).execute_task(task_id):
+            env.logger.trace('Failed to prepare task {}'.format(task_id))
+            return False
+        cmd = "sos execute {0} -v {1} -s {2} {3}".format(
+            task_id, env.verbosity, env.config['sig_mode'], '--dryrun' if env.config['run_mode'] == 'dryrun' else '')
+        env.logger.trace('Execute "{}" (waiting={})'.format(cmd, self.wait_for_task))
+        self.agent.run_command(cmd, wait_for_task = self.wait_for_task)
+        return True
 
 

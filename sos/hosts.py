@@ -25,6 +25,7 @@ import sys
 import subprocess
 import multiprocessing as mp
 import pickle
+import shutil
 import pkg_resources
 from collections.abc import Sequence
 
@@ -90,15 +91,20 @@ class DaemonizedProcess(mp.Process):
         except OSError as err:
             env.logger.error('_Fork #2 failed: {0}\n'.format(err))
             sys.exit(1)
+        # the following is also need to properly daemonize the process
         # redirect standard file descriptors
-        #sys.stdout.flush()
-        #sys.stderr.flush()
-        #si = open(os.devnull, 'r')
-        #so = open(os.devnull, 'w')
-        #se = open(os.devnull, 'w')
-        #os.dup2(si.fileno(), sys.stdin.fileno())
-        #os.dup2(so.fileno(), sys.stdout.fileno())
-        #os.dup2(se.fileno(), sys.stderr.fileno())
+        sys.stdout.flush()
+        sys.stderr.flush()
+        try:
+            si = open(os.devnull, 'r')
+            so = open(os.devnull, 'w')
+            se = open(os.devnull, 'w')
+            os.dup2(si.fileno(), sys.stdin.fileno())
+            os.dup2(so.fileno(), sys.stdout.fileno())
+            os.dup2(se.fileno(), sys.stderr.fileno())
+        except:
+            # #493
+            pass
 
         # fork a new process
         subprocess.Popen(self.cmd, shell=True, close_fds=True)
@@ -114,7 +120,10 @@ class LocalHost:
         self.config = {'alias': 'localhost', 'status_check_interval': 2}
 
     def prepare_task(self, task_id):
-        return task_id
+        def_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
+        task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+        shutil.copyfile(def_file, task_file)
+        return True
 
     def send_task_file(self, task_file):
         # on the same file system, no action is needed.
@@ -128,9 +137,9 @@ class LocalHost:
             env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
             return ''
 
-    def run_command(self, cmd):
+    def run_command(self, cmd, wait_for_task):
         # run command but does not wait for result.
-        if env.run_mode == 'dryrun':
+        if wait_for_task:
             subprocess.Popen(cmd, shell=True)
         else:
             p = DaemonizedProcess(cmd)
@@ -139,8 +148,11 @@ class LocalHost:
 
     def receive_result(self, task_id):
         res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.res')
-        with open(res_file, 'rb') as result:
-            res = pickle.load(result)
+        try:
+            with open(res_file, 'rb') as result:
+                res = pickle.load(result)
+        except Exception as e:
+            raise RuntimeError('Failed to receive result for task {}: {}'.format(task_id, e))
         return res
 
 
@@ -151,6 +163,7 @@ class RemoteHost:
         self.alias = self.config['alias']
         #
         self.address = self.config['address']
+        self.port = self.config.get('port', 22)
         self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map()
         self.send_cmd = self._get_send_cmd()
@@ -195,19 +208,19 @@ class RemoteHost:
 
     def _get_send_cmd(self):
         return self.config.get('send_cmd',
-            '''ssh -q ${host} "mkdir -p ${dest!dq}"; rsync -av ${source!ae} "${host}:${dest!de}"''')
+            '''ssh -q ${host} -p ${port} "mkdir -p ${dest!dq}"; rsync -av -e 'ssh -p ${port}' ${source!ae} "${host}:${dest!de}"''')
 
     def _get_receive_cmd(self):
         return self.config.get('receive_cmd',
-            'mkdir -p ${dest!dq}; rsync -av ${host}:${source!ae} "${dest!de}"')
+            '''mkdir -p ${dest!adq}; rsync -av -e 'ssh -p ${port}' ${host}:${source!ae} "${dest!ade}"''')
 
     def _get_execute_cmd(self):
         return self.config.get('execute_cmd',
-            '''ssh -q ${host} "bash --login -c '${cmd}'" ''')
+            '''ssh -q ${host} -p ${port} "bash --login -c '${cmd}'" ''')
 
     def _get_query_cmd(self):
         return self.config.get('query_cmd',
-            '''ssh -q ${host} "bash --login -c 'sos status ${task} -v 0'" ''')
+            '''ssh -q ${host} -p ${port} "bash --login -c 'sos status ${task} -v 0'" ''')
 
     def is_shared(self, path):
         fullpath = os.path.abspath(os.path.expanduser(path))
@@ -218,9 +231,17 @@ class RemoteHost:
 
     def _map_path(self, source):
         result = {}
+        cwd = os.getcwd()
         if isinstance(source, str):
             dest = os.path.abspath(os.path.expanduser(source))
-            matched = [k for k in self.path_map.keys() if dest.startswith(k)]
+            # we use samefile to avoid problems with case-insensitive file system #522
+            # we also use the "cwd" name to avoid wrong case for cwd. For example,
+            # if the cwd = '/Users/user/Project'
+            # then, dest = '/USERS/USER/PROJECT/a.txt'
+            # would be converted to '/Users/user/Project/a.txt' before path mapping
+            if os.path.exists(dest[:len(cwd)]) and os.path.samefile(dest[:len(cwd)], cwd):
+                dest = cwd + dest[len(cwd):]
+            matched = [k for k in self.path_map.keys() if os.path.exists(dest[:len(k)]) and os.path.samefile(dest[:len(k)], k)]
             if matched:
                 # pick the longest key that matches
                 k = max(matched, key=len)
@@ -237,9 +258,17 @@ class RemoteHost:
     # Interface functions
     #
     def _map_var(self, source):
+        cwd = os.getcwd()
         if isinstance(source, str):
             dest = os.path.abspath(os.path.expanduser(source))
-            matched = [k for k in self.path_map.keys() if dest.startswith(k) or (dest + '/').startswith(k)]
+            # we use samefile to avoid problems with case-insensitive file system #522
+            # we also use the "cwd" name to avoid wrong case for cwd. For example,
+            # if the cwd = '/Users/user/Project'
+            # then, dest = '/USERS/USER/PROJECT/a.txt'
+            # would be converted to '/Users/user/Project/a.txt' before path mapping
+            if os.path.exists(dest[:len(cwd)]) and os.path.samefile(dest[:len(cwd)], cwd):
+                dest = cwd + dest[len(cwd):]
+            matched = [k for k in self.path_map.keys() if os.path.exists(dest[:len(k)]) and os.path.samefile(dest[:len(k)], k)]
             if matched:
                 # pick the longest key that matches
                 k = max(matched, key=len)
@@ -254,6 +283,17 @@ class RemoteHost:
         # we only copy files and directories, not other types of targets
         if not isinstance(items, str):
             items = [x for x in items if isinstance(x, str)]
+        else:
+            items = [items]
+        from .utils import find_symbolic_links
+        new_items = []
+        for item in items:
+            links = find_symbolic_links(item)
+            for link, realpath in links.items():
+                env.logger.info('Adding {} for symbolic link {}'.format(realpath, link))
+            new_items.extend(links.values())
+        items.extend(new_items)
+
         sending = self._map_path(items)
         for source in sorted(sending.keys()):
             if self.is_shared(source):
@@ -261,7 +301,7 @@ class RemoteHost:
             else:
                 dest = sending[source]
                 env.logger.info('Sending ``{}`` to {}:{}'.format(source, self.alias, dest))
-                cmd = interpolate(self.send_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
+                cmd = interpolate(self.send_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address, 'port': self.port})
                 env.logger.debug(cmd)
                 ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 if (ret != 0):
@@ -275,7 +315,8 @@ class RemoteHost:
             if self.is_shared(dest):
                 env.logger.debug('Skip retrieving ``{}`` from shared file system'.format(dest))
             else:
-                cmd = interpolate(self.receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address})
+                cmd = interpolate(self.receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address, 'port': self.port})
+                env.logger.debug(cmd)
                 try:
                     ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                     if (ret != 0):
@@ -287,8 +328,16 @@ class RemoteHost:
     # Interface
     #
     def prepare_task(self, task_id):
-        task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
-        with open(task_file, 'rb') as task:
+        try:
+            self._prepare_task(task_id)
+            return True
+        except Exception as e:
+            env.logger.error(e)
+            return False
+
+    def _prepare_task(self, task_id):
+        def_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
+        with open(def_file, 'rb') as task:
             params = pickle.load(task)
             task_vars = params.data[1]
 
@@ -303,7 +352,7 @@ class RemoteHost:
             env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_runtime']['to_host'])))
 
         # map variables
-        vars = ['_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__', '_runtime',
+        vars = ['_input', '_output', '_depends', 'input', 'output', 'depends', '_runtime',
             '_local_input_{}'.format(task_vars['_index']),
             '_local_output_{}'.format(task_vars['_index'])] + list(task_vars['__signature_vars__'])
         preserved = set()
@@ -323,10 +372,14 @@ class RemoteHost:
                 task_vars[var]['home_dir'] = self._map_var(task_vars[var]['home_dir'])
                 if 'workdir' in task_vars[var]:
                     task_vars[var]['workdir'] = self._map_var(task_vars[var]['workdir'])
-            elif var in task_vars and pickleable(task_vars[var], var):
+            elif var in task_vars:
+                if isinstance(task_vars[var], (type(None), int)) or not pickleable(task_vars[var], var):
+                    continue
                 try:
                     old_var = task_vars[var]
                     task_vars[var] = self._map_var(task_vars[var])
+                    if not task_vars[var]:
+                        continue
                     # looks a bit suspicious
                     if isinstance(old_var, str) and old_var != task_vars[var] and not os.path.exists(os.path.expanduser(old_var)) \
                             and os.sep not in old_var:
@@ -334,7 +387,7 @@ class RemoteHost:
                     else:
                         env.logger.info('On {}: ``{}`` = {}'.format(self.alias, var, short_repr(task_vars[var])))
                 except Exception as e:
-                    env.logger.debug(e)
+                    env.logger.debug('Failed to map variable {}: {}'.format(var, e))
             else:
                 env.logger.debug('Variable {} not in env.'.format(var))
 
@@ -346,17 +399,20 @@ class RemoteHost:
                 params.data[2],
             )
         )
-        job_file = os.path.join(self.task_dir, task_id + '.task')
-        with open(job_file, 'wb') as jf:
+        task_file = os.path.join(self.task_dir, task_id + '.task')
+        with open(task_file, 'wb') as jf:
             try:
                 pickle.dump(new_param, jf)
             except Exception as e:
                 env.logger.warning(e)
                 raise
 
+        self.send_task_file(task_id + '.task')
+
     def send_task_file(self, task_file):
         job_file = os.path.join(self.task_dir, task_file)
-        send_cmd = 'ssh -q {1} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks ]"; scp -q {0} {1}:.sos/tasks/'.format(job_file, self.address)
+        send_cmd = 'ssh -q {1} -p {2} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks"; scp -q -P {2} {0} {1}:.sos/tasks/'.format(job_file,
+                self.address, self.port)
         # use scp for this simple case
         try:
             subprocess.check_output(send_cmd, shell=True)
@@ -366,7 +422,7 @@ class RemoteHost:
     def check_output(self, cmd):
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
-                'host': self.address,
+                'host': self.address, 'port': self.port,
                 'cmd': cmd})
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
@@ -377,16 +433,16 @@ class RemoteHost:
             env.logger.debug('Check output of {} failed: {}'.format(cmd, e))
             return ''
 
-    def run_command(self, cmd):
+    def run_command(self, cmd, wait_for_task):
         try:
             cmd = interpolate(self.execute_cmd, '${ }', {
-                'host': self.address,
+                'host': self.address, 'port': self.port,
                 'cmd': cmd})
         except Exception as e:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
 
-        if env.run_mode == 'dryrun':
+        if wait_for_task:
             subprocess.Popen(cmd, shell=True)
         else:
             p = DaemonizedProcess(cmd)
@@ -395,15 +451,17 @@ class RemoteHost:
 
     def receive_result(self, task_id):
         # for filetype in ('res', 'status', 'out', 'err'):
-        receive_cmd = "scp -q {}:.sos/tasks/{}.* {}".format(self.address, task_id, self.task_dir)
+        sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
+        # use -p to preserve modification times so that we can keep the job status locally.
+        receive_cmd = "scp -P {0} -p -q {1}:.sos/tasks/{2}.* {3}".format(self.port, self.address, task_id, sys_task_dir)
         env.logger.debug(receive_cmd)
         ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
-            raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
+             raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
         # show results? Not sure if this is a good idea but helps debugging at this point
         if env.verbosity >= 2:
-            out_file = os.path.join(self.task_dir, task_id + '.out')
-            err_file = os.path.join(self.task_dir, task_id + '.err')
+            out_file = os.path.join(sys_task_dir, task_id + '.out')
+            err_file = os.path.join(sys_task_dir, task_id + '.err')
             if os.path.isfile(out_file):
                 env.logger.info('{}.out:'.format(task_id))
                 with open(out_file) as out:
@@ -413,7 +471,7 @@ class RemoteHost:
                 with open(err_file) as err:
                     print(err.read())
 
-        res_file = os.path.join(self.task_dir, task_id + '.res')
+        res_file = os.path.join(sys_task_dir, task_id + '.res')
         with open(res_file, 'rb') as result:
             res = pickle.load(result)
 
@@ -422,7 +480,7 @@ class RemoteHost:
         else:
             # do we need to copy files? We need to consult original task file
             # not the converted one
-            task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+            task_file = os.path.join(sys_task_dir, task_id + '.def')
             with open(task_file, 'rb') as task:
                 params = pickle.load(task)
                 job_dict = params.data[1]
@@ -445,6 +503,8 @@ class Host:
     host_instances = {}
 
     def __init__(self, alias='', start_engine=True):
+        # a host started from Jupyter notebook might not have proper stdout
+        # (a StringIO) and cannot be used for DaemonizedFork).
         self._get_config(alias)
         self._get_host_agent(start_engine)
 
@@ -454,58 +514,86 @@ class Host:
         for host in cls.host_instances.values():
             host._task_engine.reset()
 
+    @classmethod
+    def remove_tasks(cls, tasks):
+        for host in cls.host_instances.values():
+            host._task_engine.remove_tasks(tasks)
+
+    @classmethod
+    def not_wait_for_tasks(cls):
+        return all(host._task_engine.wait_for_task is False for host in cls.host_instances.values())
+
     def _get_config(self, alias):
-        if not alias:
-            self.alias = 'localhost'
-            if 'hosts' not in env.sos_dict['CONFIG'] or 'localhost' not in env.sos_dict['CONFIG']:
-                self.config = {'alias': 'localhost', 'address': 'localhost'}
-        else:
-            self.alias = alias
-        #
-        # check config
-        if not isinstance(alias, str):
-            raise ValueError('An alias or host address is expected. {} provided.'.format(alias))
-
-        if 'hosts' not in env.sos_dict['CONFIG'] or alias not in env.sos_dict['CONFIG']['hosts']:
-            self.config = { 'address': alias, 'alias': alias }
-        else:
+        if not alias or alias == 'localhost':
+            # if no alias is specified, we are using localhost -> localhost
             if 'localhost' not in env.sos_dict['CONFIG']:
-                raise ValueError('localhost undefined in sos configuration file.')
-            if 'hosts' not in env.sos_dict['CONFIG']:
-                raise ValueError('No hosts definitions')
+                # true default ... we are running localhost -> localhost without definition
+                self.alias = 'localhost'
+                LOCAL = 'localhost'
+            else:
+                # use local host ... it is possible that localhost is a queue system
+                self.alias = env.sos_dict['CONFIG']['localhost']
+                LOCAL = self.alias
+        elif not isinstance(alias, str):
+            raise ValueError('An alias or host address is expected. {} provided.'.format(self.alias))
+        else:
+            # specified "remote" host.
+            # but then we would require a definition for localhost
+            if 'localhost' not in env.sos_dict['CONFIG']:
+                raise ValueError('localhost undefined in sos configuration file when a remote host {} is specified.'.format(alias))
+            self.alias = alias
+            LOCAL = env.sos_dict['CONFIG']['localhost']
 
-            localhost = env.sos_dict['CONFIG']['localhost']
+        # just to make it clear that alias refers to remote_host
+        REMOTE = self.alias
+        # now we need to find definition for local and remote host
+        if 'hosts' not in env.sos_dict['CONFIG']:
+            if LOCAL == 'localhost' and REMOTE == 'localhost':
+                self.config = {
+                        'address': 'localhost',
+                        'alias': 'localhost',
+                }
+            else:
+                raise ValueError('No hosts definitions for local and remote hosts {} and {}'.format(LOCAL, REMOTE))
+        else:
+            if LOCAL not in env.sos_dict['CONFIG']['hosts']:
+                raise ValueError('No hosts definition for local host {}'.format(LOCAL))
+            if REMOTE not in env.sos_dict['CONFIG']['hosts']:
+                raise ValueError('No hosts definition for remote host {}'.format(REMOTE))
+
+            # now we have definition for local and remote hosts
             cfg = env.sos_dict['CONFIG']['hosts']
-            if localhost not in cfg:
-                raise ValueError('No definition for localhost {}'.format(localhost))
-            if alias not in cfg:
-                raise ValueError('No definition for host {}'.format(alias))
-            # copy all definitions except for shared and paths
-            self.config = {x:y for x,y in cfg[alias].items() if x not in ('paths', 'shared')}
-            if localhost != alias:
+            self.config = {x:y for x,y in cfg[self.alias].items() if x not in ('paths', 'shared')}
+            # if local and remote hosts are the same
+            if LOCAL == REMOTE:
+                # there would be no path map
+                self.config['path_map'] = []
+                self.config['shared'] = ['/']
+                # override address setting to use localhost
+                self.config['address'] = 'localhost'
+            else:
+                if 'address' not in env.sos_dict['CONFIG']['hosts'][REMOTE]:
+                    raise ValueError('No address defined for remote host {}'.format(REMOTE))
                 self.config['path_map'] = []
                 def append_slash(x):
                     return x if x.endswith(os.sep) else (x + os.sep)
-                if 'shared' in cfg[localhost] and 'shared' in cfg[alias]:
-                    common = set(cfg[localhost]['shared'].keys()) & set(cfg[alias]['shared'].keys())
+                if 'shared' in cfg[LOCAL] and 'shared' in cfg[REMOTE]:
+                    common = set(cfg[LOCAL]['shared'].keys()) & set(cfg[REMOTE]['shared'].keys())
                     if common:
-                        self.config['shared'] = [append_slash(cfg[localhost]['shared'][x]) for x in common]
-                        self.config['path_map'] = ['{}:{}'.format(append_slash(cfg[localhost]['shared'][x]), append_slash(cfg[alias]['shared'][x])) \
-                            for x in common if append_slash(cfg[localhost]['shared'][x]) != append_slash(cfg[alias]['shared'][x])]
-                if ('paths' in cfg[localhost] and cfg[localhost]['paths']) or ('paths' in cfg[alias] and cfg[alias]['paths']):
-                    if 'paths' not in cfg[localhost] or 'paths' not in cfg[alias] or not cfg[localhost]['paths'] or not cfg[alias]['paths'] or \
-                        any(k not in cfg[alias]['paths'] for k in cfg[localhost]['paths'].keys()) or \
-                        any(k not in cfg[localhost]['paths'] for k in cfg[alias]['paths'].keys()):
+                        self.config['shared'] = [append_slash(cfg[LOCAL]['shared'][x]) for x in common]
+                        self.config['path_map'] = ['{}:{}'.format(append_slash(cfg[LOCAL]['shared'][x]), append_slash(cfg[REMOTE]['shared'][x])) \
+                            for x in common if append_slash(cfg[LOCAL]['shared'][x]) != append_slash(cfg[REMOTE]['shared'][x])]
+                if ('paths' in cfg[LOCAL] and cfg[LOCAL]['paths']) or ('paths' in cfg[REMOTE] and cfg[REMOTE]['paths']):
+                    if 'paths' not in cfg[LOCAL] or 'paths' not in cfg[REMOTE] or not cfg[LOCAL]['paths'] or not cfg[REMOTE]['paths'] or \
+                        any(k not in cfg[REMOTE]['paths'] for k in cfg[LOCAL]['paths'].keys()) or \
+                        any(k not in cfg[LOCAL]['paths'] for k in cfg[REMOTE]['paths'].keys()):
                         raise ValueError('Unmatched paths definition between {} ({}) and {} ({})'.format(
-                            localhost, ','.join(cfg[localhost]['paths'].keys()), alias, ','.join(cfg[alias]['paths'].keys())))
+                            LOCAL, ','.join(cfg[LOCAL]['paths'].keys()), REMOTE, ','.join(cfg[REMOTE]['paths'].keys())))
                     # 
-                    self.config['path_map'].extend(['{}:{}'.format(append_slash(cfg[localhost]['paths'][x]), append_slash(cfg[alias]['paths'][x])) \
-                        for x in cfg[alias]['paths'].keys() if append_slash(cfg[localhost]['paths'][x]) != append_slash(cfg[alias]['paths'][x])])
-                if 'address' not in self.config:
-                    self.config['address'] = ''
-            else:
-                self.config['address'] = 'localhost'
-        self.config['alias'] = alias
+                    self.config['path_map'].extend(['{}:{}'.format(append_slash(cfg[LOCAL]['paths'][x]), append_slash(cfg[REMOTE]['paths'][x])) \
+                        for x in cfg[REMOTE]['paths'].keys() if append_slash(cfg[LOCAL]['paths'][x]) != append_slash(cfg[REMOTE]['paths'][x])])
+        #
+        self.config['alias'] = self.alias
         self.description = self.config.get('description', '')
 
     def _get_host_agent(self, start_engine):
@@ -544,15 +632,6 @@ class Host:
         self._host_agent = self.host_instances[self.alias]
         # for convenience
         self._task_engine = self._host_agent._task_engine
-        #
-        # task engine can be unavailable because of time need to start it
-        #
-        #if not self._task_engine.is_alive():
-        #    # wait a bit
-        #    time.sleep(1)
-        #    if not self._task_engine.is_alive():
-        #        env.logger.warning('Restart non-working task engine')
-        #        self._task_engine.start()
 
     # public interface
     #
@@ -568,12 +647,6 @@ class Host:
         return self._host_agent._map_var(vars)
 
     def submit_task(self, task_id):
-        #
-        # Here we need to prepare the task for execution.
-        #
-        self._host_agent.prepare_task(task_id)
-        #
-        self._host_agent.send_task_file(task_id + '.task')
         return self._task_engine.submit_task(task_id)
 
     def check_status(self, tasks):

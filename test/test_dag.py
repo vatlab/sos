@@ -868,7 +868,7 @@ A_4 -> A_5;
         env.max_jobs = 3
         st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 5)
+        self.assertLess(time.time() - st, 8)
         for f in ['A1.txt']:
             self.assertTrue(FileTarget(f).exists())
             FileTarget(f).remove('both')

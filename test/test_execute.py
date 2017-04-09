@@ -316,11 +316,90 @@ output: "${data['A']}_${data['B']}_${data['C']}.txt"
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'], ['1_2_Hello.txt', '2_4_World.txt'])
+        # 
+        # support for pands Series and Index types
+        script = SoS_Script(r"""
+[0: shared={'res':'output'}]
+import pandas as pd
+data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
+input: for_each={'A': data['A']}
+output: "a_${A}.txt"
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['res'], ['a_1.txt', 'a_2.txt'])
+        #
+        script = SoS_Script(r"""
+[0: shared={'res':'output'}]
+import pandas as pd
+data = pd.DataFrame([(1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
+data.set_index('C', inplace=True)
+input: for_each={'A': data.index}
+output: "${A}.txt"
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['res'], ['Hello.txt', 'World.txt'])
+
 
 
     def testPairedWith(self):
         '''Test option paired_with '''
-        pass
+        self.touch(['a.txt', 'b.txt'])
+        for ofile in ['a.txt1', 'b.txt2']:
+            FileTarget(ofile).remove('both')
+        #
+        # string input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+vars = [1, 2]
+
+input: files, paired_with='vars', group_by=1
+output: "${_input}${_vars}"
+run:
+    touch ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1', 'b.txt2']:
+            self.assertTrue(FileTarget(ofile).exists('target'))
+            FileTarget(ofile).remove('both')
+        #
+        # list input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+vars = [1, 2]
+vars2 = ['a', 'b']
+
+input: files, paired_with=('vars', 'vars2'), group_by=1
+output: "${_input}${_vars}"
+run:
+    touch ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1', 'b.txt2']:
+            self.assertTrue(FileTarget(ofile).exists('target'))
+            FileTarget(ofile).remove('both')
+        #
+        # dict input
+        script = SoS_Script(r'''
+[0]
+files = ['a.txt', 'b.txt']
+input: files, paired_with={'var': [1,2], 'var2': ['a', 'b']}, group_by=1
+output: "${_input}${var}"
+run:
+    touch ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for ofile in ['a.txt1', 'b.txt2']:
+            self.assertTrue(FileTarget(ofile).exists('target'))
+            FileTarget(ofile).remove('both')
+
+
 
     def testInputPattern(self):
         '''Test option pattern of step input '''
@@ -444,20 +523,6 @@ a = fail()
         # shoulw return 1 in run mode
         self.assertEqual(env.sos_dict['a'], 1)
 
-    def testReadonlyVarsInGalobal(self):
-        '''Test vars defined in global section are readonly'''
-        script = SoS_Script(r"""
-
-a = 10
-
-[0]
-
-a += 1
-
-""")
-        wf = script.workflow()
-        self.assertRaises(ExecuteError, Base_Executor(wf).run)
-
     def testReadOnlyStepVars(self):
         '''Test if the step variables can be changed.'''
         #
@@ -481,7 +546,7 @@ _output = ['b.txt']
 
 """)
         wf = script.workflow()
-        env.run_mode = 'dryrun'
+        env.config['run_mode'] = 'dryrun'
         # I would like to disallow setting _output directly, but this is
         # not the case now.
         self.assertRaises(Exception, Base_Executor(wf).run, mode="dryrun")
@@ -642,7 +707,7 @@ touch <_input>.bak
             shutil.rmtree('temp')
         os.mkdir('temp')
         #
-        env.sig_mode = 'ignore'
+        env.config['sig_mode'] = 'ignore'
         script = SoS_Script('''
 %set_options sigil='%( )'
 [1]
@@ -667,7 +732,7 @@ touch temp/%(ff)
         if os.path.isdir('temp'):
             shutil.rmtree('temp')
         os.mkdir('temp')
-        env.sig_mode = 'ignore'
+        env.config['sig_mode'] = 'ignore'
         script = SoS_Script('''
 [1: shared={'res':'output'}]
 import random
@@ -739,7 +804,7 @@ with open('temp/{}.depends'.format(len([${depends!r,}])), 'w') as f: f.write('')
         if os.path.isdir('temp'):
             shutil.rmtree('temp')
         os.mkdir('temp')
-        env.sig_mode = 'ignore'
+        env.config['sig_mode'] = 'ignore'
         script = SoS_Script('''
 [default]
 s = [x for x in range(5)]
@@ -774,7 +839,7 @@ echo ${output} >> temp/out.log
 touch ${output}
         ''')
         wf = script.workflow()
-        env.sig_mode = 'ignore'
+        env.config['sig_mode'] = 'ignore'
         Base_Executor(wf).run()
         with open('temp/out.log') as out:
             self.assertEqual(len(out.read().split()), 15)
@@ -942,6 +1007,18 @@ sh:
         self.assertTrue(FileTarget('a.txt').exists())
         FileTarget('a.txt').remove('all')
 
+    def testConcurrentWorker(self):
+        '''Test the starting of multiple workers #493 '''
+        with open('test_script.sos', 'w') as script:
+            script.write('''
+[10]
+input: for_each={'i': range(1)}
+
+[20]
+input: for_each={'i': range(2)}
+''')
+        subprocess.call('sos run test_script', shell=True)
+        os.remove('test_script.sos')
 
 if __name__ == '__main__':
     unittest.main()

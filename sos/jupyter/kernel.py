@@ -180,10 +180,10 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_PUT = re.compile('^%put(\s|$)')
     MAGIC_PASTE = re.compile('^%paste(\s|$)')
     MAGIC_RUN = re.compile('^%run(\s|$)')
+    MAGIC_RUNCELL = re.compile('^%runcell(\s|$)')
     MAGIC_RERUN = re.compile('^%rerun(\s|$)')
     MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
     MAGIC_SANDBOX = re.compile('^%sandbox(\s|$)')
-    MAGIC_SKIP = re.compile('^%skip(\s|$)')
     MAGIC_DEBUG = re.compile('^%debug(\s|$)')
 
     def get_use_parser(self):
@@ -254,10 +254,19 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
-    def get_run_parser(self):
-        parser = argparse.ArgumentParser(prog='%run',
+    def get_runcell_parser(self):
+        parser = argparse.ArgumentParser(prog='%runcell',
             description='''Execute the current cell with specified command line
             arguments. Arguments set by magic %set will be appended at the
+            end of command line''')
+        parser.error = self._parse_error
+        return parser
+
+    def get_run_parser(self):
+        parser = argparse.ArgumentParser(prog='%run',
+            description='''Execute the entire notebook with steps consisting of SoS
+            cells (cells with SoS kernel) with section header, with specified command
+            line arguments. Arguments set by magic %set will be appended at the
             end of command line''')
         parser.error = self._parse_error
         return parser
@@ -290,16 +299,6 @@ class SoS_Kernel(IPythonKernel):
                 Default to the SoS kernel.''')
         parser.add_argument('vars', nargs='*',
             help='''Names of SoS variables''')
-        parser.error = self._parse_error
-        return parser
-
-    def get_skip_parser(self):
-        parser = argparse.ArgumentParser(prog='%skip',
-            description='''Skip the current step''')
-        parser.add_argument('--if', dest='__cond__',
-            help='''Skip if yes/1/true/True, not otherwise''')
-        parser.add_argument('-e', '--exists', nargs='+',
-            help='''Turn on or off debugging''')
         parser.error = self._parse_error
         return parser
 
@@ -357,7 +356,6 @@ class SoS_Kernel(IPythonKernel):
         super(SoS_Kernel, self).__init__(**kwargs)
         self.options = ''
         self.kernel = 'sos'
-        self.banner = self.banner + '\nConnection file {}'.format(os.path.basename(find_connection_file()))
         # FIXME: this should in theory be a MultiKernelManager...
         self.kernels = {}
         #self.shell = InteractiveShell.instance()
@@ -725,7 +723,7 @@ class SoS_Kernel(IPythonKernel):
                             self.warn('Variable {} is passed from SoS to kernel {} as {}'
                                 .format(item, self.kernel, new_name))
                         # first thing is wait for any side effects (output, stdin, etc.)
-                        self.KC.execute(py_repr, silent=True, store_history=False)
+                        self.KC.execute(py_repr, silent=False, store_history=False)
                         _execution_state = "busy"
                         while _execution_state != 'idle':
                             # display intermediate print statements, etc.
@@ -735,9 +733,11 @@ class SoS_Kernel(IPythonKernel):
                                 if msg_type == 'status':
                                     _execution_state = sub_msg["content"]["execution_state"]
                                 elif msg_type == 'error':
-                                    self.warn('Transferring variable {} of type {} to kernel {} is not supported'.format(item, type(env.sos_dict[item]), self.kernel))
+                                    self.warn('Failed to transferring variable {} of type {} to kernel {}'.format(item, env.sos_dict[item].__class__.__name__, self.kernel))
                                     if self._debug_mode:
                                         self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
+                                elif msg_type == 'stream' and sub_msg['content']['name'] == 'stderr':
+                                    self.warn(sub_msg['content']['text'])
                 except Exception as e:
                     self.warn('Failed to get variable: {}\n'.format(e))
                     return
@@ -1257,6 +1257,13 @@ class SoS_Kernel(IPythonKernel):
                    }
             self._use_panel = args.use_panel is True
             if args.list_kernel:
+                # https://github.com/jupyter/help/issues/153#issuecomment-289026056
+                #
+                # when the frontend is refreshed, cached comm would be lost and
+                # communication would be discontinued. However, a kernel-list
+                # request would be sent by the new-connection so we reset the
+                # frontend_comm to re-connect to the frontend.
+                self.frontend_comm = None
                 self.send_frontend_msg('kernel-list', self.get_kernel_list())
             # args.default_kernel should be valid
             if self.kernel_name(args.default_kernel) != self.kernel_name(self.kernel):
@@ -1356,7 +1363,9 @@ class SoS_Kernel(IPythonKernel):
                 return self._do_execute(code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.options = old_options
-        elif self.MAGIC_RUN.match(code):
+        elif self.MAGIC_RUN.match(code) or self.MAGIC_RUNCELL.match(code):
+            # the frontend will send different content to the kernel depending on
+            # the magic used.
             options, remaining_code = self.get_magic_and_code(code, False)
             old_options = self.options
             self.options = options + ' ' + self.options
@@ -1433,29 +1442,6 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_cd(options)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-        elif self.MAGIC_SKIP.match(code):
-            options, remaining_code = self.get_magic_and_code(code, False)
-            parser = self.get_skip_parser()
-            options = self._interpolate_option(options, quiet=True)
-            args = parser.parse_args(options.split())
-            skip = True
-            if args.__cond__ is not None:
-                if args.__cond__.lower() in ['1', 'y', 'yes', 't', 'true']:
-                    skip = True
-                elif args.__cond__.lower() in ['0', 'n', 'no', 'f', 'false']:
-                    skip = False
-                else:
-                    raise ValueError('Invalid parameter for parameter --if: {}'.format(args.__cond__))
-            if args.exists:
-                for item in args.exists:
-                    if not os.path.exists(os.path.expanduser(item)):
-                        skip = False
-            if skip:
-                self.send_frontend_msg('restore-output-from-cache', self.cell_idx)
-                return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
-            else:
-                self.send_frontend_msg('purge-output-cache', self.cell_idx)
-                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_DEBUG.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_debug_parser()

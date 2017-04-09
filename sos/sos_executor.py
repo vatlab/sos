@@ -30,7 +30,7 @@ import multiprocessing as mp
 from tqdm import tqdm as ProgressBar
 from io import StringIO
 from ._version import __version__
-from .sos_step import Step_Executor, analyze_section
+from .sos_step import Step_Executor, analyze_section, PendingTasks
 from .utils import env, Error, WorkflowDict, get_traceback, frozendict, short_repr, pickleable, \
     load_config_files
 from .sos_eval import SoS_exec, get_default_global_sigil
@@ -43,9 +43,8 @@ from .hosts import Host
 __all__ = []
 
 class ExecuteError(Error):
-    """Raised when there are errors in dryrun mode. Such errors are not raised
-    immediately, but will be collected and raised at the end """
-
+    """An exception to collect exceptions raised during run time so that
+    other branches of the DAG would continue if some nodes fail to execute."""
     def __init__(self, workflow):
         Error.__init__(self, 'Failed to execute workflow %s' % workflow)
         self.workflow = workflow
@@ -74,30 +73,46 @@ def __null_func__(*args, **kwargs):
     return args, kwargs
 
 class SoS_Worker(mp.Process):
-    def __init__(self, queue, config={}, args=[], **kwargs):
+    '''
+    Worker process to process SoS step or workflow in separate process.
+    '''
+    __worker_id__ = 0
+
+    def __init__(self, cmd_queue, config={}, args=[], **kwargs):
+        '''
+        cmd_queue: a single direction queue for the master process to push
+            items to the worker.
+
+        config:
+            values for command line options
+
+            config_file: -c
+            output_dag: -d
+            report_output: -r
+
+        args:
+            command line argument passed to workflow. However, if a dictionary is passed,
+            then it is assumed to be a nested workflow where parameters are made
+            immediately available.
+        '''
         # the worker process knows configuration file, command line argument etc
         super(SoS_Worker, self).__init__(**kwargs)
         #
-        # This queue is a single direction queue for the master process to push
-        # items to the worker.
-        #
-        self.queue = queue
+        self.cmd_queue = cmd_queue
         self.config = config
-        for key in ('config_file', 'output_dag', 'report_output'):
-            if key not in self.config:
-                self.config[key] = None
         self.args = args
+        self.__worker_id__ += 1
+
+    def worker_id(self):
+        return self.__worker_id__
 
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
+        env.config.update(self.config)
 
-        if self.config['report_output']:
-            env.sos_dict.set('__report_output__', self.config['report_output'])
         env.sos_dict.set('__null_func__', __null_func__)
-        env.sos_dict.set('__config_file__', self.config['config_file'])
         env.sos_dict.set('__args__', self.args)
-        env.sos_dict.set('__unknown_args__', self.args)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__step_output__', [])
@@ -118,19 +133,21 @@ class SoS_Worker(mp.Process):
 
     def run(self):
         # wait to handle jobs
-        #
         while True:
-            work = self.queue.get()
+            work = self.cmd_queue.get()
             if work is None:
                 break
 
-            env.logger.debug('Worker receive request {}'.format(work[0]))
-            if work[0] == 'step':
-                # this is a step ...
-                self.run_step(*work[1:])
-            else:
-                self.run_workflow(*work[1:])
-            env.logger.debug('Worker complete request {}'.format(work[0]))
+            env.logger.debug('Worker {} receives request {}'.format(self.worker_id(), work[0]))
+            try:
+                if work[0] == 'step':
+                    # this is a step ...
+                    self.run_step(*work[1:])
+                else:
+                    self.run_workflow(*work[1:])
+                env.logger.debug('Worker {} completes request {}'.format(self.worker_id(), work[0]))
+            except KeyboardInterrupt:
+                break
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config, pipe):
         #
@@ -149,8 +166,8 @@ class SoS_Worker(mp.Process):
 
     def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity, pipe):
         env.logger.debug('Worker working on a step with args {}'.format(args))
-        env.run_mode = run_mode
-        env.sig_mode = sig_mode
+        env.config['run_mode'] = run_mode
+        env.config['sig_mode'] = sig_mode
         env.verbosity = verbosity
         #
         self.args = args
@@ -173,10 +190,13 @@ class SoS_Worker(mp.Process):
             if k in env.sos_dict:
                 env.sos_dict.pop(k)
         # if the step has its own context
-        env.sos_dict.quick_update(context)
         env.sos_dict.quick_update(shared)
+        # context should be updated after shared because context would contain the
+        # correct __step_output__ of the step, whereas shared might contain
+        # __step_output__ from auxiliary steps. #526
+        env.sos_dict.quick_update(context)
 
-        executor = Step_Executor(section, pipe, mode=env.run_mode)
+        executor = Step_Executor(section, pipe, mode=env.config['run_mode'])
         executor.run()
 
 class dummy_node:
@@ -193,6 +213,7 @@ class Base_Executor:
         self.args = args
         self.shared = shared
         self.config = config
+        env.config.update(config)
         for key in ('config_file', 'output_dag', 'report_output'):
             if key not in self.config:
                 self.config[key] = None
@@ -200,11 +221,11 @@ class Base_Executor:
             self.config['config_file'] = os.path.abspath(os.path.expanduser(self.config['config_file']))
         #
         # if the executor is not called from command line, without sigmode setting
-        if env.sig_mode is None:
-            env.sig_mode = 'default'
+        if env.config['sig_mode'] is None:
+            env.config['sig_mode'] = 'default'
         # interactive mode does not pass workflow
-        if env.sig_mode != 'ignore' and self.workflow:
-            self.md5 = self.create_signature()
+        self.md5 = self.create_signature()
+        if env.config['sig_mode'] != 'ignore' and self.workflow:
             # remove old workflow file.
             with open(os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)), 'a') as sig:
                 sig.write('# workflow: {}\n'.format(self.workflow.name))
@@ -214,8 +235,15 @@ class Base_Executor:
                 sig.write('# start time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
                 sig.write(self.sig_content)
                 sig.write('# runtime signatures\n')
-        else:
-            self.md5 = None
+        #
+        env.config['resumed_tasks'] = set()
+        wf_status = os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status')
+        if os.path.isfile(wf_status):
+            with open(wf_status) as status:
+                for line in status:
+                    env.config['resumed_tasks'].add(line.split()[0])
+        #
+        # if this is a resumed task?
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
 
@@ -237,6 +265,13 @@ class Base_Executor:
         #
         dag.write_dot(dag_name)
 
+    def record_quit_status(self, tasks):
+        if not self.md5:
+            return
+        with open(os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status'), 'a') as status:
+            for task in tasks:
+                status.write('{}\t{}\n'.format(task, 'pending'))
+
     def create_signature(self):
         with StringIO() as sig:
             sig.write('# Sections\n')
@@ -250,16 +285,13 @@ class Base_Executor:
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
         env.parameter_vars.clear()
+        env.config.update(self.config)
 
         # inject a few things
         if self.md5:
             env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
-        if self.config['report_output']:
-            env.sos_dict.set('__report_output__', self.config['report_output'])
         env.sos_dict.set('__null_func__', __null_func__)
-        env.sos_dict.set('__config_file__', self.config['config_file'])
         env.sos_dict.set('__args__', self.args)
-        env.sos_dict.set('__unknown_args__', self.args)
         # initial values
         env.sos_dict.set('SOS_VERSION', __version__)
         env.sos_dict.set('__step_output__', [])
@@ -591,15 +623,15 @@ class Base_Executor:
         #
         # if the exexcutor is started from sos_run, these should also be passed
         if 'sig_mode' in self.config:
-            env.sig_mode = self.config['sig_mode']
+            env.config['sig_mode'] = self.config['sig_mode']
         if 'verbosity' in self.config:
             env.verbosity = self.config['verbosity']
 
         self.reset_dict()
-        env.run_mode = mode
+        env.config['run_mode'] = mode
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
-        env.sos_dict.set('run_mode', env.run_mode)
+        env.sos_dict.set('run_mode', env.config['run_mode'])
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
 
@@ -628,6 +660,8 @@ class Base_Executor:
         #
         # process pool that is used to pool temporarily unused processed.
         pool = []
+        #
+        wf_result = {'__workflow_id__': my_workflow_id, 'shared': {}}
         #
         # steps sent and queued from the nested workflow
         # they will be executed in random but at a higher priority than the steps
@@ -658,8 +692,8 @@ class Base_Executor:
                             env.logger.debug('{} receives task reqiest {}'.format(i_am(), res))
                             host = res.split(' ')[1]
                             if host == '__default__':
-                                if env.__queue__:
-                                    host = env.__queue__
+                                if 'default_queue' in env.config:
+                                    host = env.config['default_queue']
                                 else:
                                     host = 'localhost'
                             runnable._host = Host(host)
@@ -667,6 +701,7 @@ class Base_Executor:
                             for task in runnable._pending_tasks:
                                 runnable._host.submit_task(task)
                             runnable._status = 'task_pending'
+                            env.logger.trace('Step becomes task_pending')
                             continue
                         elif res.startswith('step'):
                             # step sent from nested workflow
@@ -688,7 +723,7 @@ class Base_Executor:
                             # if pool is empty, create a new process
                             if not pool:
                                 worker_queue = mp.Queue()
-                                worker = SoS_Worker(queue=worker_queue, config=config, args=args)
+                                worker = SoS_Worker(cmd_queue=worker_queue, config=config, args=args)
                                 worker.start()
                             else:
                                 # get worker, q and runnable is not needed any more
@@ -816,25 +851,24 @@ class Base_Executor:
                     # if a job is pending, check if it is done.
                     if proc[2]._status == 'task_pending':
                         res = proc[2]._host.check_status(proc[2]._pending_tasks)
-                        #env.logger.warning(proc[2]._pending_tasks)
                         #env.logger.warning(res)
-                        if any(x in ('killed', 'dead') or x.startswith('failed') for x in res):
+                        if any(x in ('aborted', 'failed', 'result-mismatch') for x in res):
                             for t, s in zip(proc[2]._pending_tasks, res):
-                                if (s in ('killed', 'dead') or s.startswith('failed')) and not (hasattr(proc[2], '_killed_tasks') and t in proc[2]._killed_tasks):
+                                if s in ('aborted', 'failed', 'result-mismatch') and not (hasattr(proc[2], '_killed_tasks') and t in proc[2]._killed_tasks):
                                     env.logger.warning('{} ``{}``'.format(t, s))
                                     if not hasattr(proc[2], '_killed_tasks'):
                                         proc[2]._killed_tasks = {t}
                                     else:
                                         proc[2]._killed_tasks.add(t)
-                            if all(x in ('killed', 'completed', 'completed-old', 'dead') or x.startswith('failed') for x in res):
+                            if all(x in ('completed', 'aborted', 'failed', 'result-mismatch') for x in res):
                                 # we try to get .err .out etc even when jobs are failed.
                                 proc[2]._host.retrieve_results(proc[2]._pending_tasks)
-                                raise RuntimeError('{} completed, {} dead, {} failed, {} killed)'.format(
-                                    len([x for x in res if x=='completed']), len([x for x in res if x=='dead']),
-                                    len([x for x in res if x.startswith('failed')]), len([x for x in res if x=='killed'])))
-                        if any(x in  ('pending', 'running') or x.startswith('failed-old') for x in res):
+                                raise RuntimeError('{} completed, {} failed, {} aborted, {} mismatch'.format(
+                                    len([x for x in res if x=='completed']), len([x for x in res if x=='failed']),
+                                    len([x for x in res if x=='aborted']), len([x for x in res if x=='result-mismatch']) ))
+                        if any(x in ('pending', 'submitted', 'running') for x in res):
                             continue
-                        elif all(x.startswith('completed') for x in res):
+                        elif all(x == 'completed' for x in res):
                             env.logger.debug('Put results for {}'.format(' '.join(proc[2]._pending_tasks)))
                             res = proc[2]._host.retrieve_results(proc[2]._pending_tasks)
                             proc[1].send(res)
@@ -846,7 +880,7 @@ class Base_Executor:
                 while True:
                     #env.logger.error('{} {}'.format(i_am(), [x[2]._status for x in procs]))
                     num_running = len([x for x in procs if not x[2]._status.endswith('_pending')])
-                    if num_running >= env.max_jobs:
+                    if num_running >= env.config['max_procs']:
                         break
                     #
                     # if steps from child nested workflow?
@@ -858,7 +892,7 @@ class Base_Executor:
                         # if pool is empty, create a new process
                         if not pool:
                             worker_queue = mp.Queue()
-                            worker = SoS_Worker(queue=worker_queue, config=self.config, args=self.args)
+                            worker = SoS_Worker(cmd_queue=worker_queue, config=self.config, args=self.args)
                             worker.start()
                         else:
                             # get worker, q and runnable is not needed any more
@@ -919,7 +953,7 @@ class Base_Executor:
                         # if pool is empty, create a new process
                         if not pool:
                             worker_queue = mp.Queue()
-                            worker = SoS_Worker(queue=worker_queue, config=self.config, args=self.args)
+                            worker = SoS_Worker(cmd_queue=worker_queue, config=self.config, args=self.args)
                             worker.start()
                         else:
                             # get worker, q and runnable is not needed any more
@@ -928,7 +962,7 @@ class Base_Executor:
                             worker_queue = p[1]
 
                         env.logger.debug('{} execute {} from DAG'.format(i_am(), section.md5))
-                        worker_queue.put(('step', section, runnable._context, shared, self.args, env.run_mode, env.sig_mode, env.verbosity, q[1]))
+                        worker_queue.put(('step', section, runnable._context, shared, self.args, env.config['run_mode'], env.config['sig_mode'], env.verbosity, q[1]))
                         procs.append( [[worker, worker_queue], q[0], runnable])
                     else:
                         # send the step to the parent
@@ -936,7 +970,7 @@ class Base_Executor:
                         env.logger.debug('{} send step {} to master with args {}'.format(i_am(), step_id, self.args))
                         parent_pipe.send('step {}'.format(step_id))
                         q = mp.Pipe()
-                        parent_pipe.send((section, runnable._context, shared, self.args, env.run_mode, env.sig_mode, env.verbosity, q[1]))
+                        parent_pipe.send((section, runnable._context, shared, self.args, env.config['run_mode'], env.config['sig_mode'], env.verbosity, q[1]))
                         # this is a real step
                         runnable._status = 'step_pending'
                         procs.append([None, q[0], runnable])
@@ -946,7 +980,10 @@ class Base_Executor:
 
                 if not procs or all(x[2]._status == 'failed' for x in procs):
                     break
-                elif not env.__wait__ and all(x[2]._status == 'task_pending' for x in procs):
+                # if -W is specified, or all task queues are not wait
+                elif all(x[2]._status == 'task_pending' for x in procs) and \
+                        (env.config['wait_for_task'] is False or \
+                        (env.config['wait_for_task'] is None and Host.not_wait_for_tasks())):
                     # if all jobs are pending, let us check if all jbos have been submitted.
                     pending_tasks = []
                     running_tasks = []
@@ -954,13 +991,17 @@ class Base_Executor:
                         p, r = n._host._task_engine.get_tasks()
                         pending_tasks.extend(p)
                         running_tasks.extend(r)
-                    if not pending_tasks:
-                        env.logger.info('SoS exists with {} running tasks'.format(len(running_tasks)))
-                        for task in running_tasks:
-                            env.logger.info(task)
-                        break
+                    if not pending_tasks and running_tasks:
+                        env.logger.trace('Exit with {} running tasks: '.format(len(running_tasks), running_tasks))
+                        raise PendingTasks(running_tasks)
                 else:
                     time.sleep(0.1)
+        except PendingTasks as e:
+            self.record_quit_status(e.tasks)
+            wf_result['pending_tasks'] = running_tasks
+            env.logger.info('Workflow {} (ID={}) exits with {} running tasks'.format(self.workflow.name, self.md5, len(e.tasks)))
+            for task in e.tasks:
+                env.logger.info(task)
             # close all processes
         except Exception as e:
             for p, _, _ in procs + pool:
@@ -976,6 +1017,7 @@ class Base_Executor:
                         p[0].terminate()
                         p[0].join()
             prog.close()
+        #
         if exec_error.errors:
             failed_steps, pending_steps = dag.pending()
             if failed_steps:
@@ -990,15 +1032,24 @@ class Base_Executor:
                         's' if len(sections) > 1 else '', ', '.join(sections))))
             if parent_pipe is not None:
                 parent_pipe.send(exec_error)
-                return {}
+                return wf_result
             else:
                 raise exec_error
-        else:
+        elif 'pending_tasks' not in wf_result or not wf_result['pending_tasks']:
+            # remove task pending status if the workflow is completed normally
+            try:
+                wf_status = os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status')
+                if os.path.isfile(wf_status):
+                    os.remove(wf_status)
+            except Exception as e:
+                env.logger.warning('Failed to clear workflow status file: {}'.format(e))
             self.save_workflow_signature(dag)
             env.logger.info('Workflow {} (ID={}) is executed successfully.'.format(self.workflow.name, self.md5))
-        if parent_pipe:
-            res = {x:env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict}
-            res['__workflow_id__'] = my_workflow_id
-            parent_pipe.send(res)
         else:
-            return {x:env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict}
+            # exit with pending tasks
+            pass
+        wf_result['shared'] = {x:env.sos_dict[x] for x in self.shared.keys() if x in env.sos_dict}
+        if parent_pipe:
+            parent_pipe.send(wf_result)
+        else:
+            return wf_result

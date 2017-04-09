@@ -87,6 +87,60 @@ define([
 
     var my_execute = function(code, callbacks, options) {
         "use strict"
+        /* check if the code is a workflow call, which is marked by
+         * %run workflowname with options
+         */
+        var workflow = '';
+        var run_notebook = false;
+        var lines = code.split('\n');
+        for (var l = 0; l < lines.length; ++l) {
+            if (lines[l].startsWith('#') || lines[l].trim() == '' || lines[l].startsWith('!'))
+                continue
+            // other magic
+            if (lines[l].startsWith('%')) {
+                console.log(lines[l]);
+                if (lines[l].startsWith('%run\n') || lines[l].startsWith('%run ')) {
+                    run_notebook = true;
+                    break;
+                } else
+                    continue
+            } else {
+                run_notebook = false
+                break;
+            }
+        }
+
+        if (run_notebook) {
+            var cells = IPython.notebook.get_cells();
+            for (var i = 0 ; i < cells.length; ++i) {
+                if (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'sos') {
+                    // ignore the current cell
+                    if (cells[i].input_prompt_number == '*' && code == cells[i].get_text())
+                        continue
+                    var lines = cells[i].get_text().split('\n');
+                    for (var l = 0; l < lines.length; ++l) {
+                        if (lines[l].startsWith('#') || lines[l].startsWith('%') || lines[l].trim() == '' || lines[l].startsWith('!'))
+                            continue
+                        if (lines[l].startsWith('[') && lines[l].endsWith(']'))
+                            workflow += "\n\n" + lines.slice(l).join('\n');
+                        /* this is not a sos step cell, ignore. */
+                        break
+                    }
+                }
+            }
+
+            if (workflow != '') {
+                var cell = window.my_panel.cell;
+                cell.clear_input();
+                cell.set_text('%preview_workflow');
+                cell.clear_output();
+                cell.output_area.append_output( {
+                    'output_type': 'stream',
+                    'text': workflow,
+                    'name': 'stdout'
+                    });
+            }
+        }
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i) {
             // this is the cell that is being executed...
@@ -108,7 +162,7 @@ define([
                     (IPython.notebook.metadata['sos']['panel'].displayed ? " --use-panel" : "") +
                     " --default-kernel " + window.default_kernel +
                     " --cell-kernel " + cells[i].metadata.kernel +
-                    " --cell " + i.toString() + "\n" + code,
+                    " --cell " + i.toString() + "\n" + code + workflow,
                     callbacks, options)
             }
         }
@@ -118,7 +172,7 @@ define([
             (window.kernel_updated ? "" : " --list-kernel ") +
             " --default-kernel " + window.default_kernel +
             " --cell-kernel " + window.my_panel.cell.metadata.kernel +
-            " --cell -1 " + "\n" + code,
+            " --cell -1 " + "\n" + code + workflow,
             callbacks, {
                 'silent': false,
                 'store_history': false
@@ -197,19 +251,6 @@ define([
                             // set meta information
                             changeStyleOnKernel(cell, data[1])
                         }
-                    } else if (msg_type == 'restore-output-from-cache') {
-                        if (data == -1)
-                            var cell = window.my_panel.cell;
-                        else
-                            var cell = IPython.notebook.get_cell(data);
-                        cell.output_area.fromJSON(cell.output_area.cached);
-                        delete cell.output_area.cached;
-                    } else if (msg_type == 'purge-output-cache') {
-                        if (data == -1)
-                            var cell = window.my_panel.cell;
-                        else
-                            var cell = IPython.notebook.get_cell(data);
-                        delete cell.output_area.cached;
                     } else if (msg_type == 'preview-input') {
                         cell = window.my_panel.cell;
                         cell.clear_input();
@@ -225,39 +266,39 @@ define([
                            can still locate the cell once its tasks are completed. */
                         var cell = IPython.notebook.get_cell(data[0]);
                         window.pending_cells[cell.cell_id] = data[1];
+                    } else if (msg_type == 'remove-task') {
+                        var item = document.getElementById("table_" + data);
+                        item.parentNode.removeChild(item);
                     } else if (msg_type == 'task-status') {
                         // console.log(data);
                         var item = document.getElementById(data[0]);
-
-            
                         if (!item)
                             return;
                         else
-                           
                             item.className = data[2];
-                        if (data[1] === "completed" || data[1] === "completed-old") {
+                        if (["completed", "failed", "aborted", "result-mismatch"].indexOf(data[1]) >= 0) {
                             /* if successful, let us re-run the cell to submt another task
                                or get the result */
-                           
                             for (cell in window.pending_cells) {
                                  /* remove task from pending_cells */
                                  var idx = window.pending_cells[cell].indexOf(data[0]);
                                   // $("#"+data[0]).css("background-color","#98FB98")
-                                 if (idx >= 0)
-                                     window.pending_cells[cell].splice(idx)
-                                 if (window.pending_cells[cell].length === 0) {
-                                     delete window.pending_cells[cell];
-                                     /* if the does not have any pending one, re-run it. */
-                                     var cells = IPython.notebook.get_cells();
-                                     var rerun = null;
-                                     for (var i = 0; i < cells.length; ++i ){
-                                         if (cells[i].cell_id == cell) {
-                                             rerun = cells[i];
-                                             break;
+                                 if (idx >= 0) {
+                                     window.pending_cells[cell].splice(idx, 1);
+                                     if (window.pending_cells[cell].length === 0) {
+                                         delete window.pending_cells[cell];
+                                         /* if the does not have any pending one, re-run it. */
+                                         var cells = IPython.notebook.get_cells();
+                                         var rerun = null;
+                                         for (var i = 0; i < cells.length; ++i ){
+                                             if (cells[i].cell_id == cell) {
+                                                 rerun = cells[i];
+                                                 break;
+                                             }
                                          }
+                                         if (rerun)
+                                             rerun.execute();
                                      }
-                                     if (rerun)
-                                         rerun.execute();
                                  }
                             }
                         } 
@@ -296,24 +337,8 @@ define([
         }
     }
 
-    var my_clear_output = function(wait, ignore) {
-        //console.log('clear output');
-        this.cached = this.toJSON();
-        return this.orig_clear_output(wait, ignore);
-    }
-
-    function wrap_output_area(cell) {
-        if (!cell.output_area)
-            return true;
-
-        if (cell.output_area.orig_clear_output === undefined) {
-            cell.output_area.orig_clear_output = cell.output_area.clear_output;
-            cell.output_area.clear_output = my_clear_output;
-        }
-    }
 
     function changeStyleOnKernel(cell, type) {
-        wrap_output_area(cell);
         var sel = cell.element[0].getElementsByTagName('select')[0]
         var opts = sel.options;
         for (var opt, j = 0; opt = opts[j]; j++) {
@@ -348,8 +373,6 @@ define([
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i)
             cells[i].code_mirror.setOption('styleActiveLine', cells[i].selected);
-        var cell = param['cell'];
-        cell.metadata['output_cache'] = JSON.stringify(cell.output_area.toJSON());
         return true;
     }
 
@@ -738,7 +761,7 @@ define([
             changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
         }
         // if in sos mode and is single line, enable automatic preview
-        if (cell.metadata.kernel == 'sos' && text.indexOf('\n') == -1 && text.indexOf('%') !== 0) {
+        if ((cell.metadata.kernel == 'sos' || cell.metadata.kernel === undefined) && text.indexOf('\n') == -1 && text.indexOf('%') !== 0) {
             // if it is expression without space
             if (text.indexOf('=') == -1) {
                 if (text.indexOf(' ') == -1)
@@ -969,7 +992,7 @@ define([
              console.log("remove "+extension)
              $(extension).remove()
           }else{
-             window.setTimeout(function (){
+             setTimeout(function (){
                 console.log("Wait 5 sec and remove"+extension)
                 $(extension).remove(); }, 5000);
           }        
@@ -990,13 +1013,17 @@ define([
         // setting up frontend using existing metadata (without executing anything)
         load_select_kernel();
         changeCellStyle();
-        // if we reload the page, the kernel will exist but
-        // cannot connect to new frontend comm channel, we therefore
-        // need to restart the kernel.
-        if (IPython.notebook.kernel)
-            IPython.notebook.kernel.restart();
+        // if we reload the page, the cached sos_comm will be removed so we will
+        // have to re-register sos_comm. In addition, we will need to notify the
+        // kernel that the frontend has been refreshed so that it will create
+        // another Comm object. This is done by sending another --list-kernel
+        // option.
+        if (IPython.notebook.kernel) {
+            register_sos_comm();
+            window.kernel_updated = false;
+        }
         events.on('kernel_connected.Kernel', register_sos_comm);
-        events.on('kernel_connected.CodeCell', wrap_execute);
+        events.on('kernel_connected.Kernel', wrap_execute);
         events.on('kernel_ready.Kernel', request_kernel_list);
         events.on('select.Cell', set_codemirror_option);
 
@@ -1028,10 +1055,13 @@ define([
         }
         $("#to_markdown").click(function(){
             adjustPanel();
-        })
+        });
         setTimeout(function() {
-                adjustPanel();
-        }, 1000)
+            adjustPanel();
+            /* #524. syntax highlighting would be disabled after page reload. Note quite sure if this is
+               a correct fix but it seems to work. */
+            IPython.notebook.set_codemirror_mode('sos');
+        }, 1000);
         
 
         // define SOS CodeMirror syntax highlighter

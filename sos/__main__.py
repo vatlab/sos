@@ -169,12 +169,16 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             help=workflow_spec)
     if not interactive:
         parser.add_argument('-j', type=int, metavar='JOBS',
-        default=1 if sys.platform == 'win32' else 4, dest='__max_jobs__',
-        help='''Number of concurrent process allowed. A workflow is by default
-            executed sequentially (-j 1). If a greater than 1 number is specified
-            SoS will execute the workflow in parallel mode and execute up to
-            specified processes concurrently. These include looped processes
-            within a step and steps with non-missing required files.''')
+        default=4, dest='__max_procs__',
+        help='''Maximum number of worker processes for the execution of the
+            workflow if the workflow can be executed in parallel (namely
+            having multiple starting points or execution branches).''')
+    parser.add_argument('-J', type=int, metavar='EXTERNAL_JOBS',
+        dest='__max_running_jobs__',
+        help='''Maximum number of externally running tasks. This option
+            overrides option "max_running_jobs" of a task queue (option -q)
+            so that you can, for example, submit one job at a time (with
+            -J 1) to test the task queue.''')
     parser.add_argument('-c', dest='__config__', metavar='CONFIG_FILE',
         help='''A configuration file in the format of YAML/JSON. The content
             of the configuration file will be available as a dictionary
@@ -194,12 +198,12 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             is found. SoS will list all configured queues (with details varying
             by option -v) if this option is specified without value.''')
     parser.add_argument('-w', dest='__wait__', action='store_true',
-        help='''Whether or not wait for the completion of external jobs. By
-            default, a sos step will return immediately after submitting a task,
-            and the master process would exit after all tasks have been submitted
-            and there is no more step to execute. Specifying option "-w" will make
-            SoS wait for the completion of all tasks. -w is the default mode
-            in dryrun mode.''')
+        help='''Wait for the completion of external tasks regardless of the
+            setting of individual task queue.''')
+    parser.add_argument('-W', dest='__no_wait__', action='store_true',
+        help='''Do not wait for the completion of external tasks and quit SoS
+            if all tasks are being executed by external task queues. This option
+            overrides the default wait setting of task queues.''')
     parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', nargs='?',
          help='''Default output of action report, which is by default the
             standard output but you can redirect it to another file with this
@@ -215,7 +219,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         sos dryrun for details of the dryrun mode.''')
     runmode.add_argument('-s', choices=['default', 'ignore', 'force', 'build', 'assert'],
         default='ignore' if interactive else 'default', metavar='SIGMODE',
-        dest='__sigmode__',
+        dest='__sig_mode__',
         help='''How runtime signature would be handled, which can be "default"
             (save and use signature, default mode in batch mode), "ignore"
             (ignore runtime signature, default mode in interactive mode),
@@ -242,12 +246,11 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
     return parser
 
 def cmd_run(args, workflow_args):
-    #import multiprocessing as mp
+    import multiprocessing as mp
     # this setting makes sure that subprocesses are spawned in the way that is the same on windows
-    # and unix, making sos much portable. The cost is that spawn is performance, which can hopefully
-    # be addressed by the use of Pool (because processes do not need to be started and closed very
-    # often (for each step)).
-    #mp.set_start_method('spawn')
+    # and unix, making sos much portable. The cost is that spawn has worse performance than fork,
+    # which is not a huge problem by the reuse of SoS_Workers.
+    mp.set_start_method('spawn')
 
     import atexit
     from .utils import env, get_traceback
@@ -258,24 +261,20 @@ def cmd_run(args, workflow_args):
         list_queues(args.__config__, args.verbosity)
         return
 
+    if args.__wait__ and args.__no_wait__:
+        sys.exit('Please specify only one of -w (wait) or -W (no-wait)')
+
     # '' means no -d
     if args.__dag__ is None:
         args.__dag__ = '-'
     elif args.__dag__ == '':
         args.__dag__ = None
-    env.max_jobs = args.__max_jobs__
     env.verbosity = args.verbosity
-    env.__queue__ = args.__queue__
-    env.__wait__ = args.__wait__
-    if args.__dryrun__:
-        env.__wait__ = True
 
     from .sos_executor import Base_Executor
 
     # kill all remainging processes when the master process is killed.
     atexit.register(env.cleanup)
-    #
-    env.sig_mode = args.__sigmode__
 
     if args.__bin_dirs__:
         import fasteners
@@ -296,7 +295,15 @@ def cmd_run(args, workflow_args):
         executor = Base_Executor(workflow, args=workflow_args, config={
                 'config_file': args.__config__,
                 'output_dag': args.__dag__,
-                'report_output': args.__report__})
+                'report_output': args.__report__,
+                # wait if -w or in dryrun mode, not wait if -W, otherwise use queue default
+                'wait_for_task': True if args.__wait__ is True or args.__dryrun__ else (False if args.__no_wait__ else None),
+                'default_queue': '' if args.__queue__ is None else args.__queue__,
+                'max_procs': args.__max_procs__,
+                'max_running_jobs': args.__max_running_jobs__,
+                'sig_mode': args.__sig_mode__,
+                'run_mode': 'dryrun' if args.__dryrun__ else 'run',
+                })
         executor.run(args.__targets__, mode='dryrun' if args.__dryrun__ else 'run')
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
@@ -355,11 +362,13 @@ def get_dryrun_parser(desc_only=False):
     return parser
 
 def cmd_dryrun(args, workflow_args):
-    args.__sigmode__ = 'ignore'
-    args.__max_jobs__ = 1
+    args.__sig_mode__ = 'ignore'
+    args.__max_procs__ = 1
+    args.__max_running_jobs__ = 1
     args.__report__ = None
     args.__dryrun__ = True
     args.__wait__ = True
+    args.__no_wait__ = False
     args.__bin_dirs__ = []
     cmd_run(args, workflow_args)
 
@@ -374,7 +383,7 @@ def get_execute_parser(desc_only=False):
     parser.add_argument('tasks', nargs='+', help='''IDs of the task.''')
     parser.add_argument('-s', choices=['default', 'ignore', 'force', 'build', 'assert'],
         default='default', metavar='SIGMODE',
-        dest='__sigmode__',
+        dest='__sig_mode__',
         help='''How runtime signature would be handled, which can be "default"
             (save and use signature, default mode in batch mode), "ignore"
             (ignore runtime signature, default mode in interactive mode),
@@ -413,7 +422,9 @@ def cmd_execute(args, workflow_args):
     import pickle
     from .sos_task import execute_task, check_task, monitor_interval, resource_monitor_interval
     from .monitor import summarizeExecution
+    from .utils import env
     if args.queue is None:
+        exit_code = []
         for task in args.tasks:
             # this is for local execution, perhaps on a remote host, and
             # there is no daemon process etc. It also does not handle job
@@ -425,23 +436,26 @@ def cmd_execute(args, workflow_args):
                     print(status)
                 else:
                     print(summarizeExecution(task, status=status))
-                sys.exit(1)
-            if status.startswith('completed') and args.__sigmode__ != 'force':
-                # touch the result file
+                exit_code.append(1)
+            if status == 'completed' and args.__sig_mode__ != 'force':
+                # touch the result file, this will effective change task
+                # status from completed-old to completed
                 os.utime(res_file, None)
                 #if args.verbosity <= 1:
-                #    print(status)
+                env.logger.info('{} ``already completed``'.format(task))
                 #else:
                 #    print(summarizeExecution(task, status=status))
-                sys.exit(0)
+                exit_code.append(0)
             #
             if os.path.isfile(res_file):
                 os.remove(res_file)
             res = execute_task(task, verbosity=args.verbosity, runmode='dryrun' if args.__dryrun__ else 'run',
-                sigmode=args.__sigmode__,
+                sigmode=args.__sig_mode__,
                 monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
             with open(res_file, 'wb') as res_file:
                 pickle.dump(res, res_file)
+            exit_code.append(res['succ'])
+        sys.exit(sum(exit_code))
     elif args.queue == '':
         from .hosts import list_queues
         list_queues(args.config, args.verbosity)
@@ -455,8 +469,8 @@ def cmd_execute(args, workflow_args):
         cfg = load_config_files(args.config)
         env.sos_dict.set('CONFIG', cfg)
         env.verbosity = args.verbosity
-        env.sig_mode = args.__sigmode__
-        env.run_mode = 'dryrun' if args.__dryrun__ else 'run'
+        env.config['sig_mode'] = args.__sig_mode__
+        env.config['run_mode'] = 'dryrun' if args.__dryrun__ else 'run'
         host = Host(args.queue)
         for task in args.tasks:
             host.submit_task(task)
@@ -506,7 +520,7 @@ def get_status_parser(desc_only=False):
     parser.add_argument('-c', '--config', help='''A configuration file with host
         definitions, in case the definitions are not defined in global or local
         sos config.yml files.''')
-    parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=1,
+    parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
     parser.set_defaults(func=cmd_status)
@@ -1458,76 +1472,85 @@ def main():
         epilog='''Use 'sos cmd -h' for details about each subcommand. Please
             contact Bo Peng (bpeng at mdanderson.org) if you have any question.''')
 
-    master_parser.add_argument('--version', action='version',
-        version='%(prog)s {}'.format(SOS_FULL_VERSION))
-    subparsers = master_parser.add_subparsers(title='subcommands')
-    #
-    # command run
-    add_sub_parser(subparsers, get_run_parser(desc_only='run'!=subcommand))
-    #
-    # command dryrun
-    add_sub_parser(subparsers, get_dryrun_parser(desc_only='dryrun'!=subcommand))
-    #
-    # command execute
-    add_sub_parser(subparsers, get_execute_parser(desc_only='execute'!=subcommand))
-    #
-    # command status
-    add_sub_parser(subparsers, get_status_parser(desc_only='status'!=subcommand))
-    #
-    # command kill
-    add_sub_parser(subparsers, get_kill_parser(desc_only='kill'!=subcommand))
-    #
-    # command convert
-    add_sub_parser(subparsers, get_convert_parser(desc_only='convert'!=subcommand))
-    #
-    # command remove
-    add_sub_parser(subparsers, get_remove_parser(desc_only='remove'!=subcommand))
-    #
-    # command config
-    add_sub_parser(subparsers, get_config_parser(desc_only='config'!=subcommand))
-    #
-    # command pack
-    add_sub_parser(subparsers, get_pack_parser(desc_only='pack'!=subcommand))
-    #
-    # command unpack
-    add_sub_parser(subparsers, get_unpack_parser(desc_only='unpack'!=subcommand))
-    #
-    # addon packages
-    if subcommand is None or subcommand not in ['run', 'dryrun', 'convert',
-            'remove', 'config', 'pack', 'unpack']:
-        for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
-            if entrypoint.name.strip().endswith('.parser'):
-                name = entrypoint.name.rsplit('.', 1)[0]
-                func = entrypoint.load()
-                parser = add_sub_parser(subparsers, func(), name=name)
-                parser.add_argument('--addon-name', help=argparse.SUPPRESS,
-                        default=name)
-                parser.set_defaults(func=handle_addon)
-    #
-    if len(sys.argv) == 1 or sys.argv[1] == '-h':
-        master_parser.print_help()
-        sys.exit(0)
-    if '-h' in sys.argv:
-        if len(sys.argv) > 3 and sys.argv[1] == 'run' and not sys.argv[2].startswith('-'):
-            try:
-                from .sos_script import SoS_Script
-                script = SoS_Script(filename=sys.argv[2])
-                script.print_help()
-                sys.exit(0)
-            except Exception as e:
-                sys.exit('No help information is available for script {}: {}'.format(sys.argv[1], e))
-        if len(sys.argv) > 3 and sys.argv[1] == 'convert':
-            print_converter_help()
-    elif sys.argv[1] == 'convert':
-        # this command has to be processed separately because I hat to use
-        # sos convert sos-html FROM TO etc
-        from_format, to_format = get_converter_formats(sys.argv[2:])
-        if from_format is None or to_format is None:
-            sys.exit('Cannot determine from or to format')
-        sys.argv.insert(2, '{}-{}'.format(from_format, to_format))
-    args, workflow_args = master_parser.parse_known_args()
-    # calling the associated functions
-    args.func(args, workflow_args)
+    try:
+        master_parser.add_argument('--version', action='version',
+            version='%(prog)s {}'.format(SOS_FULL_VERSION))
+        subparsers = master_parser.add_subparsers(title='subcommands')
+        #
+        # command run
+        add_sub_parser(subparsers, get_run_parser(desc_only='run'!=subcommand))
+        #
+        # command dryrun
+        add_sub_parser(subparsers, get_dryrun_parser(desc_only='dryrun'!=subcommand))
+        #
+        # command execute
+        add_sub_parser(subparsers, get_execute_parser(desc_only='execute'!=subcommand))
+        #
+        # command status
+        add_sub_parser(subparsers, get_status_parser(desc_only='status'!=subcommand))
+        #
+        # command kill
+        add_sub_parser(subparsers, get_kill_parser(desc_only='kill'!=subcommand))
+        #
+        # command convert
+        add_sub_parser(subparsers, get_convert_parser(desc_only='convert'!=subcommand))
+        #
+        # command remove
+        add_sub_parser(subparsers, get_remove_parser(desc_only='remove'!=subcommand))
+        #
+        # command config
+        add_sub_parser(subparsers, get_config_parser(desc_only='config'!=subcommand))
+        #
+        # command pack
+        add_sub_parser(subparsers, get_pack_parser(desc_only='pack'!=subcommand))
+        #
+        # command unpack
+        add_sub_parser(subparsers, get_unpack_parser(desc_only='unpack'!=subcommand))
+        #
+        # addon packages
+        if subcommand is None or subcommand not in ['run', 'dryrun', 'convert',
+                'remove', 'config', 'pack', 'unpack']:
+            for entrypoint in pkg_resources.iter_entry_points(group='sos_addons'):
+                if entrypoint.name.strip().endswith('.parser'):
+                    name = entrypoint.name.rsplit('.', 1)[0]
+                    func = entrypoint.load()
+                    parser = add_sub_parser(subparsers, func(), name=name)
+                    parser.add_argument('--addon-name', help=argparse.SUPPRESS,
+                            default=name)
+                    parser.set_defaults(func=handle_addon)
+        #
+        if len(sys.argv) == 1 or sys.argv[1] == '-h':
+            master_parser.print_help()
+            sys.exit(0)
+        if '-h' in sys.argv:
+            if len(sys.argv) > 3 and sys.argv[1] == 'run' and not sys.argv[2].startswith('-'):
+                try:
+                    from .sos_script import SoS_Script
+                    script = SoS_Script(filename=sys.argv[2])
+                    script.print_help()
+                    sys.exit(0)
+                except Exception as e:
+                    sys.exit('No help information is available for script {}: {}'.format(sys.argv[1], e))
+            if len(sys.argv) > 3 and sys.argv[1] == 'convert':
+                print_converter_help()
+        elif sys.argv[1] == 'convert':
+            # this command has to be processed separately because I hat to use
+            # sos convert sos-html FROM TO etc
+            from_format, to_format = get_converter_formats(sys.argv[2:])
+            if from_format is None or to_format is None:
+                sys.exit('Cannot determine from or to format')
+            sys.argv.insert(2, '{}-{}'.format(from_format, to_format))
+        args, workflow_args = master_parser.parse_known_args()
+        # calling the associated functions
+        args.func(args, workflow_args)
+    except KeyboardInterrupt:
+        sys.exit('KeyboardInterrupt')
+    except Exception as e:
+        from .utils import env, get_traceback
+        if env.verbosity and env.verbosity > 2:
+            sys.stderr.write(get_traceback())
+        env.logger.error(e)
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()

@@ -40,6 +40,10 @@ from .sos_task import TaskParams
 
 __all__ = []
 
+class PendingTasks(Exception):
+    def __init__(self, tasks, *args, **kwargs):
+        super(PendingTasks, self).__init__(*args, **kwargs)
+        self.tasks = tasks
 
 def analyze_section(section, default_input=None):
     '''Analyze a section for how it uses input and output, what variables
@@ -158,6 +162,9 @@ def analyze_section(section, default_input=None):
                     environ_vars.add(pw)
                 elif isinstance(pw, Iterable):
                     environ_vars |= set(pw)
+                elif isinstance(pw, Iterable):
+                    # value supplied, no environ var
+                    environ_vars |= set()
                 else:
                     raise ValueError('Unacceptable value for parameter paired_with: {}'.format(pw))
             if 'for_each' in kwargs:
@@ -322,7 +329,7 @@ class Base_Step_Executor:
         lead to the invalidation of the signature, which will then cause the
         re-execution of the step for any result from the step. '''
         #
-        if env.sig_mode == 'ignore' or env.run_mode != 'run':
+        if env.config['sig_mode'] == 'ignore' or env.config['run_mode'] != 'run':
             return None
         env_vars = []
         for var in sorted(env.sos_dict['__signature_vars__']):
@@ -355,9 +362,10 @@ class Base_Step_Executor:
         elif isinstance(group_by, int) or group_by.isdigit():
             group_by = int(group_by)
             if len(ifiles) % group_by != 0:
-                raise ValueError('Size of group_by block has to be divisible by the number of input files: {} provided'
-                    .format(len(ifiles)))
-            group_by = max(1, group_by)
+                env.logger.warning('Number of samples ({}) is not a multiple of group_by ({}). The last group would have less files than the other groups.'
+                    .format(len(ifiles), group_by))
+            if group_by < 1:
+                raise ValueError('Value of paramter group_by should be a positive number.')
             return [ifiles[i:i + group_by] for i in range(0, len(ifiles), group_by)]
         else:
             raise ValueError('Unsupported group_by option ``{}``!'.format(group_by))
@@ -366,31 +374,41 @@ class Base_Step_Executor:
     def handle_paired_with(paired_with, ifiles, _groups, _vars):
         '''Handle input option paired_with'''
         if paired_with is None or not paired_with:
-            paired_with = []
+            var_name = []
+            var_value = []
         elif isinstance(paired_with, str):
-            paired_with = [paired_with]
+            var_name = ['_' + paired_with]
+            if paired_with not in env.sos_dict:
+                raise ValueError('Variable {} does not exist.'.format(paired_with))
+            var_value = [env.sos_dict[paired_with]]
+        elif isinstance(paired_with, dict):
+            var_name = []
+            var_value = []
+            for k,v in paired_with.items():
+                var_name.append(k)
+                var_value.append(v)
         elif isinstance(paired_with, Iterable):
-            paired_with = list(paired_with)
+            try:
+                var_name = ['_'+x for x in paired_with]
+            except Exception as e:
+                raise ValueError('Invalud value for option paired_with {}'.format(paired_with))
+            var_value = []
+            for vn in var_name:
+                if vn[1:] not in env.sos_dict:
+                    raise ValueError('Variable {} does not exist.'.format(vn[1:]))
+                var_value.append(env.sos_dict[vn[1:]])
         else:
             raise ValueError('Unacceptable value for parameter paired_with: {}'.format(paired_with))
         #
-        for wv in paired_with:
-            if '.' in wv:
-                if wv.split('.')[0] not in env.sos_dict:
-                    raise ValueError('Variable {} does not exist.'.format(wv))
-                values = getattr(env.sos_dict[wv.split('.')[0]], wv.split('.', 1)[-1])
-            else:
-                if wv not in env.sos_dict:
-                    raise ValueError('Variable {} does not exist.'.format(wv))
-                values = env.sos_dict[wv]
-            if isinstance(values, str) or not isinstance(values, Iterable):
-                raise ValueError('with_var variable {} is not a sequence ("{}")'.format(wv, values))
-            if len(values) != len(ifiles):
+        for vn, vv in zip(var_name, var_value):
+            if isinstance(vv, str) or not isinstance(vv, Iterable):
+                raise ValueError('paired_with variable {} is not a sequence ("{}")'.format(vn, vv))
+            if len(vv) != len(ifiles):
                 raise ValueError('Length of variable {} (length {}) should match the number of input files (length {}).'
-                    .format(wv, len(values), len(ifiles)))
-            file_map = {x:y for x,y in zip(ifiles, values)}
+                    .format(vn, len(vv), len(ifiles)))
+            file_map = {x:y for x,y in zip(ifiles, vv)}
             for idx, grp in enumerate(_groups):
-                _vars[idx]['_' + wv.split('.')[0]] = [file_map[x] for x in grp]
+                _vars[idx][vn] = [file_map[x] for x in grp]
 
     @staticmethod
     def handle_extract_pattern(pattern, ifiles, _groups, _vars):
@@ -468,7 +486,7 @@ class Base_Step_Executor:
                 if not isinstance(values, Sequence):
                     try:
                         import pandas as pd
-                        if not isinstance(values, pd.DataFrame):
+                        if not isinstance(values, (pd.DataFrame, pd.Series, pd.Index)):
                             raise ValueError('Unacceptable for_each data type {}'.format(values.__class__.__name__))
                     except Exception as e:
                         raise ValueError('Cannot iterate through variable {}: {}'.format(name, e))
@@ -492,6 +510,8 @@ class Base_Step_Executor:
                             _tmp_vars[idx][var_name] = values[vidx]
                         elif isinstance(values, pd.DataFrame):
                             _tmp_vars[idx][var_name] = values.iloc[vidx]
+                        elif isinstance(values, (pd.Series, pd.Index)):
+                            _tmp_vars[idx][var_name] = values[vidx]
                         else:
                             raise ValueError('Failed to iterate through for_each variable {}'.format(short_repr(values)))
                 _vars.extend(copy.deepcopy(_tmp_vars))
@@ -614,11 +634,11 @@ class Base_Step_Executor:
                 raise RuntimeError('Failed to create workdir {}'.format(env.sos_dict['_runtime']['workdir']))
 
         task_vars = env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \
-                    | {'_input', '_output', '_depends', 'input', 'output', 'depends', '__report_output__',
+                    | {'_input', '_output', '_depends', 'input', 'output', 'depends',
                     '_local_input_{}'.format(env.sos_dict['_index']),
                     '_local_output_{}'.format(env.sos_dict['_index']),
                     '_index', '__args__', 'step_name', '_runtime',
-                    'CONFIG', '__signature_vars__', '__step_context__', '__config_file__'
+                    'CONFIG', '__signature_vars__', '__step_context__', 
                     })
 
         # save task to a file
@@ -636,16 +656,13 @@ class Base_Step_Executor:
             task_vars['_output'], task_vars['_depends'],
             task_vars['__signature_vars__'], task_vars).sig_id
 
-        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
         with open(job_file, 'wb') as jf:
             try:
                 pickle.dump(param, jf)
             except Exception as e:
                 env.logger.warning(e)
                 raise
-        status_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.status')
-        if env.sig_mode == 'force' and os.path.isfile(status_file):
-            os.remove(status_file)
 
         return task_id
 
@@ -667,6 +684,9 @@ class Base_Step_Executor:
         elif stage == '_input':
             if env.sos_dict['_input'] is not None:
                 env.logger.debug('_input: ``{}``'.format(short_repr(env.sos_dict['_input'])))
+        elif stage == '_depends':
+            if env.sos_dict['_depends'] is not None:
+                env.logger.info('_depends: ``{}``'.format(short_repr(env.sos_dict['_depends'])))
         elif stage == 'input':
             if env.sos_dict['input'] is not None:
                 env.logger.info('input:    ``{}``'.format(short_repr(env.sos_dict['input'])))
@@ -919,7 +939,7 @@ class Base_Step_Executor:
                                         env.sos_dict['_output'], env.sos_dict['_depends'],
                                         env.sos_dict['__signature_vars__'])
                                     signatures[idx].lock()
-                                    if env.sig_mode == 'default':
+                                    if env.config['sig_mode'] == 'default':
                                         matched = signatures[idx].validate()
                                         if isinstance(matched, dict):
                                             # in this case, an Undetermined output can get real output files
@@ -936,7 +956,7 @@ class Base_Step_Executor:
                                             skip_index = True
                                         else:
                                             env.logger.debug('Signature mismatch: {}'.format(matched))
-                                    elif env.sig_mode == 'assert':
+                                    elif env.config['sig_mode'] == 'assert':
                                         matched = signatures[idx].validate()
                                         if isinstance(matched, str):
                                             raise RuntimeError('Signature mismatch: {}'.format(matched))
@@ -951,7 +971,7 @@ class Base_Step_Executor:
                                             env.sos_dict.update(matched['vars'])
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` with matching signature'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
-                                    elif env.sig_mode == 'build':
+                                    elif env.config['sig_mode'] == 'build':
                                         # build signature require existence of files
                                         if signatures[idx].write(
                                             env.sos_dict['_local_input_{}'.format(idx)],
@@ -959,16 +979,21 @@ class Base_Step_Executor:
                                             rebuild=True):
                                             env.logger.info('Step ``{}`` (index={}) is ``ignored`` with signature constructed'.format(env.sos_dict['step_name'], idx))
                                             skip_index = True
-                                    elif env.sig_mode == 'force':
+                                    elif env.config['sig_mode'] == 'force':
                                         skip_index = False
                                     else:
-                                        raise RuntimeError('Unrecognized signature mode {}'.format(env.sig_mode))
+                                        raise RuntimeError('Unrecognized signature mode {}'.format(env.config['sig_mode']))
                                 if skip_index:
                                     break
                             elif key == 'depends':
-                                dfiles = self.expand_depends_files(*args)
-                                # dfiles can be Undetermined
-                                self.process_depends_args(dfiles, **kwargs)
+                                try:
+                                    dfiles = self.expand_depends_files(*args)
+                                    # dfiles can be Undetermined
+                                    self.process_depends_args(dfiles, **kwargs)
+                                    self.log('_depends')
+                                except Exception as e:
+                                    env.logger.info(e)
+                                    raise
                             elif key == 'task':
                                 self.process_task_args(*args, **kwargs)
                             else:
@@ -1062,7 +1087,7 @@ class Base_Step_Executor:
             # NOTE: dynamic output is evaluated at last, so it sets output,
             # not _output. For the same reason, signatures can be wrong if it has
             # Undetermined output.
-            if env.run_mode in ('run', 'interactive'):
+            if env.config['run_mode'] in ('run', 'interactive'):
                 if isinstance(env.sos_dict['output'], Undetermined):
                     self.reevaluate_output()
                     # if output is no longer Undetermined, set it to output
@@ -1165,7 +1190,7 @@ class Step_Executor(Base_Step_Executor):
     '''Single process step executor'''
     def __init__(self, step, pipe, mode='run'):
         self.run_mode = mode
-        env.run_mode = mode
+        env.config['run_mode'] = mode
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
         super(Step_Executor, self).__init__(step)

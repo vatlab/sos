@@ -45,8 +45,9 @@ class PBS_TaskEngine(TaskEngine):
             else:
                 with open(os.path.expanduser(self.config['template_file'])) as tmpl:
                     self.job_template = tmpl.read()
+                env.logger.warning('Option template_file is deprecated and will be removed from next formal release of SoS.')
         else:
-            raise ValueError('Missing configuration job_template or template_file for queue {}'.format(self.alias))
+            raise ValueError('A job_template is required for queue {}'.format(self.alias))
 
         if 'submit_cmd' not in self.config:
             raise ValueError('Missing configuration submit_cmd for queue {}'.format(self.alias))
@@ -64,6 +65,9 @@ class PBS_TaskEngine(TaskEngine):
             self.kill_cmd = self.config['kill_cmd']
 
     def execute_task(self, task_id):
+        #
+        if not super(PBS_TaskEngine, self).execute_task(task_id):
+            return False
         # read the task file and look for runtime info
         # 
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.task')
@@ -71,18 +75,28 @@ class PBS_TaskEngine(TaskEngine):
             params = pickle.load(task)
             task, sos_dict, sigil = params.data
 
-        # for this task, we will need walltime, nodes, ppn, mem
+        # for this task, we will need walltime, nodes, procs, mem
         # however, these could be fixed in the job template and we do not need to have them all in the runtime
-        runtime = {x:sos_dict['_runtime'][x] for x in ('nodes', 'ppn', 'mem', 'walltime', 'cur_dir', 'home_dir') if x in sos_dict['_runtime']}
+        runtime = {x:sos_dict['_runtime'][x] for x in ('nodes', 'procs', 'ppn', 'mem', 'walltime', 'cur_dir', 'home_dir') if x in sos_dict['_runtime']}
         runtime['task'] = task_id
         runtime['verbosity'] = env.verbosity
-        runtime['sig_mode'] = env.sig_mode
-        runtime['run_mode'] = env.run_mode
+        runtime['sig_mode'] = env.config['sig_mode']
+        runtime['run_mode'] = env.config['run_mode']
+        if 'name' in runtime:
+            runtime['job_name'] = interpolate(runtime['name'], '${ }', sos_dict)
+        else:
+            runtime['job_name'] = task_id
         if 'nodes' not in runtime:
             runtime['nodes'] = 1
-        if 'ppn' not in runtime:
-            runtime['ppn'] = 1
-        runtime['job_file'] = '~/.sos/tasks/{}.pbs'.format(task_id)
+        if 'procs' not in runtime:
+            if 'ppn' in runtime:
+                env.logger.warning('Option ppn is deprecated and will be removed from a formal release of SoS')
+                runtime['procs'] = runtime['ppn']
+            else:
+                runtime['procs'] = 1
+        # for backward compatibility
+        runtime['ppn'] = runtime['procs']
+        runtime['job_file'] = '~/.sos/tasks/{}.sh'.format(task_id)
         runtime.update(self.config)
 
         # let us first prepare a task file
@@ -92,16 +106,16 @@ class PBS_TaskEngine(TaskEngine):
             raise ValueError('Failed to generate job file for task {}: {}'.format(task_id, e))
 
         # now we need to write a job file
-        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.pbs')
+        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.sh')
         with open(job_file, 'w') as job:
             job.write(job_text)
 
         # then copy the job file to remote host if necessary
-        self.agent.send_task_file(task_id + '.pbs')
+        self.agent.send_task_file(task_id + '.sh')
 
-        if env.run_mode == 'dryrun':
+        if env.config['run_mode'] == 'dryrun':
             try:
-                cmd = 'bash ~/.sos/tasks/{}.pbs'.format(task_id)
+                cmd = 'bash ~/.sos/tasks/{}.sh'.format(task_id)
                 print(self.agent.check_output(cmd))
             except Exception as e:
                 raise RuntimeError('Failed to submit task {}: {}'.format(task_id, e))
@@ -147,6 +161,7 @@ class PBS_TaskEngine(TaskEngine):
                         job.write('job_id: {}\n'.format(job_id))
                 # output job id to stdout
                 env.logger.info('{} ``submitted`` to {} with job id {}'.format(task_id, self.alias, job_id))
+                return True
             except Exception as e:
                 raise RuntimeError('Failed to submit task {}: {}'.format(task_id, e))
 
@@ -162,8 +177,8 @@ class PBS_TaskEngine(TaskEngine):
             return result
 
     def query_tasks(self, tasks, verbosity=1):
-        if verbosity <= 1:
-            return super(PBS_TaskEngine, self).query_tasks(tasks, 1)
+        if verbosity <= 2:
+            return super(PBS_TaskEngine, self).query_tasks(tasks, verbosity)
         # for more verbose case, we will call pbs's status_cmd to get more accurate information
         status_lines = super(PBS_TaskEngine, self).query_tasks(tasks, 1)
         res = ''

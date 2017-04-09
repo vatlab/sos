@@ -170,23 +170,18 @@ class WorkflowDict(object):
     """
     def __init__(self, *args, **kwargs):
         self._dict = dict(*args, **kwargs)
-        self._readonly_vars = {}
 
     def set(self, key, value):
         '''A short cut to set value to key without triggering any logging
         or warning message.'''
-        self._check_readonly(key, value)
         self._dict[key] = value
 
     def quick_update(self, obj):
-        '''Update without readonly check etc. For fast internal update'''
+        '''Update without sanity check etc. For fast internal update'''
         self._dict.update(obj)
 
     def update(self, obj):
         '''Redefine update to trigger logging message'''
-        for k,v in obj.items():
-            self._check_readonly(k, v)
-        #
         self._dict.update(obj)
         for k, v in obj.items():
             if env.verbosity > 2:
@@ -207,54 +202,16 @@ class WorkflowDict(object):
         '''Set value to key, trigger logging and warning messages if needed'''
         if env.verbosity > 2:
             self._log(key, value)
-        if env.run_mode == 'prepare':
+        if env.config['run_mode'] == 'prepare':
             self._warn(key, value)
         if key in ('input', 'output', 'depends', '_input', '_output', '_depends', '_runtime'):
             raise ValueError('Variable {} can only be set by SoS'.format(key))
         self.set(key, value)
 
-    def __cmp_values__(self, A, B):
-        C = A == B
-        if isinstance(C, bool):
-            return C
-        else:
-            return None
-
-    def check_readonly_vars(self):
-        for key in env.readonly_vars:
-            if key in self._readonly_vars:
-                cmp_res = self.__cmp_values__(self._dict[key], self._readonly_vars[key])
-                if not cmp_res:
-                    if env.run_mode != 'interactive':
-                        raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
-                            .format(key, short_repr(self._dict[key]), short_repr(self._readonly_vars[key])))
-            elif key in self._dict:
-                self._readonly_vars[key] = self._dict[key]
-
-    def _check_readonly(self, key, value):
-        if key in env.readonly_vars:
-            if key not in self._readonly_vars:
-                self._readonly_vars[key] = value
-            # if the key already exists
-            if key in self._dict:
-                cmp_res = self.__cmp_values__(self._dict[key], self._readonly_vars[key])
-                if not cmp_res:
-                    if env.run_mode != 'interactive':
-                        raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
-                            .format(key, short_repr(self._dict[key]), short_repr(self._readonly_vars[key])))
-                cmp_res = self.__cmp_values__(value, self._dict[key])
-                if not cmp_res:
-                    if env.run_mode != 'interactive':
-                        raise RuntimeError('Variable {} is readonly and cannot be changed from {} to {}.'
-                            .format(key, short_repr(self._dict[key]), short_repr(value)))
-
     def _log(self, key, value):
         env.logger.debug('Set ``{}`` = ``{}``'.format(key, short_repr(value)))
 
     def _warn(self, key, value):
-        if key.isupper() and key in self._dict and self._dict[key] != value:
-            env.logger.warning('Changing readonly variable {} from {} to {}'
-                .format(key, self._dict[key], value))
         if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
             env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
@@ -297,28 +254,26 @@ class RuntimeEnvironments(object):
         #
         # run mode, this mode controls how SoS actions behave
         #
-        self.run_mode = 'run'
-        #
-        # signature mode can be
-        #
-        # default              (save signature, skip if signature match)
-        # ignore               (ignore existing signature but still saves signature)
-        # assert               (verify existing signature and fail if signature mismatch)
-        # construct            (reconstruct signature from existing output files)
-        self.sig_mode = None
+        self.config = {
+            'config_file': None,
+            'output_dag': None,
+            'report_output': None,
+            'wait_for_task': None,
+            'default_queue': '',
+            'max_procs': 4,
+            'max_running_jobs': None,
+            'sig_mode': 'default',
+            'run_mode': 'run',
+        }
+
         #
         # global dictionaries used by SoS during the
         # execution of SoS workflows
         self.sos_dict = WorkflowDict()
-        # variables that are defined in global and parameters sections and are readonly
-        self.readonly_vars = set()
         # parameters of the workflow, which will be handled differently
         self.parameter_vars = set()
         #
-        self.__queue__ = None
-        self.__wait__ = False
         # maximum number of concurrent jobs
-        self.max_jobs = 1
         self.running_jobs = 0
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
@@ -545,8 +500,13 @@ def get_traceback():
     #print "*** print_tb:"
     traceback.print_tb(exc_traceback, limit=1, file=output)
     #print "*** print_exception:"
-    traceback.print_exception(exc_type, exc_value, exc_traceback,
+    try:
+        traceback.print_exception(exc_type, exc_value, exc_traceback,
                               limit=5, file=output)
+    except:
+        # the above function call can fail under Python 3.4 for some
+        # exception but we do not really care if that happens
+        pass
     result = output.getvalue()
     output.close()
     return result
@@ -781,6 +741,23 @@ def dict_merge(dct, merge_dct):
         else:
             dct[k] = merge_dct[k]
 
+def PrettyRelativeTime(time_diff_secs):
+    # Each tuple in the sequence gives the name of a unit, and the number of
+    # previous units which go into it.
+    weeks_per_month = 365.242 / 12 / 7
+    intervals = [('minute', 60), ('hour', 60), ('day', 24), ('week', 7),
+                 ('month', weeks_per_month), ('year', 12)]
+
+    unit, number = 'second', abs(time_diff_secs)
+    for new_unit, ratio in intervals:
+        new_number = float(number) / ratio
+        # If the new number is too small, don't go to the next unit.
+        if new_number < 2:
+            break
+        unit, number = new_unit, new_number
+    shown_num = int(number)
+    return '{} {}'.format(shown_num, unit + ('' if shown_num == 1 else 's'))
+
 # display file size in K, M, G etc automatically. Code copied from
 # http://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
 # for its compact size
@@ -803,6 +780,20 @@ def expand_size(size):
     if unit not in s:
         raise ValueError('Invalid size specified: {}'.format(size))
     return int(float(num) * s[unit])
+
+def find_symbolic_links(item):
+    item = os.path.expanduser(item)
+    if os.path.isfile(item):
+        return {}
+    elif os.path.islink(item):
+        if not os.path.exists(item):
+            env.logger.warning('Non-existent symbolic link {}'.format(item))
+        return {item: os.path.realpath(item)}
+    else:
+        result = {}
+        for x in os.listdir(item):
+            result.update(find_symbolic_links(os.path.join(item, x)))
+        return result
 
 class ActivityNotifier(threading.Thread):
     def __init__(self, msg, delay=5):
@@ -866,9 +857,7 @@ def sos_handle_parameter_(key, defvalue):
     NOTE: parmeters will not be handled if it is already defined in
     the environment. This makes the parameters variable.
     '''
-    if key in env.sos_dict._readonly_vars:
-        raise ValueError('Variable {} is readonly and cannot be defined as a parameter'.format(key))
-    elif key in env.sos_dict['sos_symbols_']:
+    if key in env.sos_dict['sos_symbols_']:
         env.logger.warning('Parameter {} overrides a SoS function.'.format(key))
 
     env.parameter_vars.add(key)
@@ -943,10 +932,6 @@ def sos_handle_parameter_(key, defvalue):
     #
     parser.error = _parse_error
     parsed, unknown = parser.parse_known_args(env.sos_dict['__args__']['__args__'] if isinstance(env.sos_dict['__args__'], dict) else env.sos_dict['__args__'])
-    if '__unknown_args__' not in env.sos_dict:
-        env.sos_dict.set('__unknown_args__', unknown)
-    else:
-        env.sos_dict.set('__unknown_args__', [x for x in env.sos_dict['__unknown_args__'] if x in unknown])
     return vars(parsed)[key]
 
 

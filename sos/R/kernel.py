@@ -76,7 +76,7 @@ def _R_repr(obj):
                     'See https://github.com/wesm/feather/tree/master/python for details.')
             feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
             feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
-            return 'data.matrix(read_feather("{}"))'.format(feather_tmp_)
+            return 'data.matrix(..read.feather("{}"))'.format(feather_tmp_)
         elif isinstance(obj, numpy.ndarray):
             return 'c(' + ','.join(_R_repr(x) for x in obj) + ')'
         elif isinstance(obj, pandas.DataFrame):
@@ -209,9 +209,12 @@ R_init_statements = r'''
     }
 }
 ..read.feather <- function(filename, index=NULL) {
-    if (!require("feather"))
-        install.packages('feather', repos='http://cran.stat.ucla.edu/')
-    library(feather)
+    if (! suppressMessages(suppressWarnings(require("feather", quietly = TRUE)))) {
+        try(install.packages('feather', repos='http://cran.stat.ucla.edu/'), silent=TRUE)
+        if (!suppressMessages(suppressWarnings(require("feather"))))
+            stop('Failed to install feather library')
+    }
+    suppressPackageStartupMessages(library(feather, quietly = TRUE))
     data = as.data.frame(read_feather(filename))
     if (!is.null(index))
         rownames(data) <- index

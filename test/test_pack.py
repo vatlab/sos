@@ -43,7 +43,6 @@ sh:
 
 [1: sigil='[ ]']
 output:  't_d1/t_f2'
-task:
 sh:
     dd if=/dev/urandom of=[output] count=50000
     dd if=/dev/urandom of=t_d1/ut_f4 count=500
@@ -126,7 +125,10 @@ a = 1
 
     def tearDown(self):
         os.chdir('..')
-        shutil.rmtree('temp')
+        try:
+            shutil.rmtree('temp')
+        except:
+            pass
 
 if __name__ == '__main__':
     unittest.main()

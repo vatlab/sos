@@ -21,16 +21,10 @@
 #
 
 
-from sos.sos_step import Step_Executor, Base_Step_Executor
+from sos.sos_step import Step_Executor, Base_Step_Executor, PendingTasks
 from sos.hosts import Host
 from sos.utils import env
 import time
-
-
-class PendingTasks(Exception):
-    def __init__(self, tasks, *args, **kwargs):
-        super(PendingTasks, self).__init__(*args, **kwargs)
-        self.tasks = tasks
 
 class Interactive_Step_Executor(Step_Executor):
     def __init__(self, step):
@@ -46,22 +40,26 @@ class Interactive_Step_Executor(Step_Executor):
             return
         if 'queue' in env.sos_dict['_runtime']:
             queue = env.sos_dict['_runtime']['queue']
-        elif env.__queue__:
-            queue = env.__queue__
+        elif env.config['default_queue']:
+            queue = env.config['default_queue']
         else:
             queue = 'localhost'
 
         host = Host(queue)
-        for task in tasks:
-            host.submit_task(task)
+        res = [host.submit_task(task) for task in tasks]
+        if all(x == 'completed' for x in host.check_status(tasks)):
+            print('{} task{} completed.'.format(len(tasks), 's' if len(tasks) > 1 else ''))
+            host._task_engine.remove_tasks(tasks)
+            return host.retrieve_results(tasks)
         while True:
             res = host.check_status(tasks)
-            if all(x.startswith('completed') for x in res):
-               return host.retrieve_results(tasks)
-            elif all(x == 'running' for x in res if not x.startswith('completed')) and not env.__wait__:
-                raise PendingTasks(tasks)
-            elif any(x in  ('pending', 'running', 'failed-old', 'failed-missing-output', 'failed-old-missing-output') for x in res):
-               continue
+            if all(x not in ('pending', 'running') for x in res):
+                completed = [task for task, status in zip(tasks, res) if status == 'completed']
+                host._task_engine.remove_tasks(completed)
+                return host.retrieve_results(completed)
+            # no pending
+            elif all(x != 'pending' for x in res) and not env.config['wait_for_task']:
+                raise PendingTasks([x for x,y in zip(tasks, res) if y == 'running'])
             time.sleep(1)
 
 

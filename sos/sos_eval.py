@@ -480,7 +480,7 @@ def SoS_exec(stmts, sigil, _dict=None):
         if not stmts.strip():
             continue
         try:
-            if env.run_mode == 'interactive':
+            if env.config['run_mode'] == 'interactive':
                 act = DelayedAction(env.logger.info, 'Running {}'.format(short_repr(code)))
             else:
                 act = None
@@ -491,8 +491,6 @@ def SoS_exec(stmts, sigil, _dict=None):
         finally:
             del act
         executed += stmts + '\n'
-        # check if the statement has altered any readonly variables
-        env.sos_dict.check_readonly_vars()
     return res
 
 #

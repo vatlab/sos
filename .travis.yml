@@ -1,0 +1,67 @@
+os:
+    - linux
+    # travis does not support python on osx yet (https://github.com/travis-ci/travis-ci/issues/4729)
+language: python
+python:
+    #- "3.3" test stops at installing spyder notebook etc
+    - "3.4"
+    - "3.5"
+    - "3.6"
+before_install:
+    - sudo apt-get update
+    # upgrade docker so that it has same API version as client https://docs.travis-ci.com/user/docker/ 
+    - sudo apt-get update
+    - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-engine
+    # install anaconda Python 3
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
+    #- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then wget  https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
+    - bash miniconda.sh -b -p $HOME/miniconda
+    - export PATH="$HOME/miniconda/bin:$PATH"
+    - hash -r
+    - conda config --set always_yes yes --set changeps1 no
+    - conda update -q conda
+    # Useful for debugging any issues with conda
+    - conda info -a
+    # install python 2.x kernel
+    - conda create -n ipykernel_py2 python=2 ipykernel
+    - source activate ipykernel_py2
+    - python -m ipykernel install --user
+    - source deactivate ipykernel_py2
+    # 
+    # downgrade python if needed
+    - conda create -n python_test python=$TRAVIS_PYTHON_VERSION anaconda
+    - source activate python_test
+    # add docker
+    - pip install docker
+    # packages required by SoS
+    - pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
+    - pip install fasteners pygments ipython ptpython networkx pydotplus
+    # for testing purposes
+    - pip install nose
+    - pip install sklearn scipy
+    # install r kernel
+    - conda install -c r r-essentials r-feather
+    - conda install -c conda-forge feather-format
+    # install bash kernel
+    - pip install bash_kernel
+    - python -m bash_kernel.install
+sudo: required
+services:
+    - docker
+install: "python setup.py install"
+before_script: cd test
+script:
+    - ./run_tests ../test
+    - ./run_tests ../sos/docker/test
+    - ./run_tests ../sos/Bash/test
+    - ./run_tests ../sos/Python2/test
+    - ./run_tests ../sos/Python3/test
+    - ./run_tests ../sos/R/test
+    - ./run_tests ../sos/jupyter/test 
+    #- ./run_tests ../sos/rq/test
+notifications:
+    email:
+        recipients:
+            - ben.bob@gmail.com
+        on_success: never
+        on_failure: always
