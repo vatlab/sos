@@ -452,7 +452,8 @@ class RemoteHost:
     def receive_result(self, task_id):
         # for filetype in ('res', 'status', 'out', 'err'):
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
-        receive_cmd = "scp -P {0} -q {1}:.sos/tasks/{2}.* {3}".format(self.port, self.address, task_id, sys_task_dir)
+        # use -p to preserve modification times so that we can keep the job status locally.
+        receive_cmd = "scp -P {0} -p -q {1}:.sos/tasks/{2}.* {3}".format(self.port, self.address, task_id, sys_task_dir)
         env.logger.debug(receive_cmd)
         ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
