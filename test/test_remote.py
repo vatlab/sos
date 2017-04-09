@@ -46,6 +46,8 @@ class TestRemote(unittest.TestCase):
         #self.resetDir('~/.sos')
         self.temp_files = []
         Host.reset()
+        # remove .status file left by failed workflows.
+        subprocess.call('rm -f ~/.sos/*.status', shell=True)
 
     def tearDown(self):
         for f in self.temp_files:
