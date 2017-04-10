@@ -157,7 +157,8 @@ class SoS_Worker(mp.Process):
         self.args = args
         self.reset_dict()
         # we are in a separate process and need to set verbosity from workflow config
-        env.verbosity = config['verbosity']
+        # but some tests do not provide verbosity
+        env.verbosity = config.get('verbosity', 2)
         env.logger.debug('Worker working on a workflow {} with args {}'.format(workflow_id, args))
         executer = Base_Executor(wf, args=args, shared=shared, config=config)
         # we send the pipe to subworkflow, which would send
