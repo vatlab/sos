@@ -753,6 +753,8 @@ define([
                 }
             }
         }
+        if (!IPython.notebook.metadata['sos']['panel'].displayed)
+            toggle_panel();
         //
         var panel_cell = window.my_panel.cell;
         // set the kernel of the panel cell as the sending cell
