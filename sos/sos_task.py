@@ -140,7 +140,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
 
     if skipped:
         env.logger.info('{} ``skipped``'.format(task_id))
-        return {'succ': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
+        return {'ret_code': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
 
     try:
         # go to 'cur_dir'
@@ -206,7 +206,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         if env.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
-        return {'succ': 1, 'exception': e, 'path': os.environ['PATH']}
+        return {'ret_code': 1, 'exception': e, 'path': os.environ['PATH']}
     except KeyboardInterrupt:
         env.logger.error('{} ``interrupted``'.format(task_id))
         raise
@@ -219,7 +219,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         sig.release()
     env.deregister_process(os.getpid())
     env.logger.info('{} ``completed``'.format(task_id))
-    return {'succ': 0, 'output': {} if env.sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in env.sos_dict['_output'] if isinstance(x, str)}}
+    return {'ret_code': 0, 'output': {} if env.sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in env.sos_dict['_output'] if isinstance(x, str)}}
 
 
 def check_task(task):
@@ -252,7 +252,7 @@ def check_task(task):
             from .target import FileTarget
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
-            if res['succ'] == 0:
+            if ('ret_code' in res and res['ret_code'] == 0) or ('succ' in res and res['succ'] == 0):
                 if isinstance(res['output'], dict):
                     for x,y in res['output'].items():
                         if not FileTarget(x).exists() or FileTarget(x).signature() != y:

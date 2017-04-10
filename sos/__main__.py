@@ -430,7 +430,7 @@ def cmd_execute(args, workflow_args):
             # there is no daemon process etc. It also does not handle job
             # preparation.
             status = check_task(task)
-            res_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
+            res_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.res')
             if status == 'running':
                 if args.verbosity <= 1:
                     print(status)
@@ -454,6 +454,10 @@ def cmd_execute(args, workflow_args):
                 monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
             with open(res_file, 'wb') as res_file:
                 pickle.dump(res, res_file)
+            if res['ret_code'] != 0 and 'exception' in res:
+                with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.err'), 'a') as err:
+                    err.write('sos execute quit with code {} and exception {}: {}\n'.format(
+                        res['ret_code'], res['exception'].__class__.__name__, repr(res['exception'])))
             exit_code.append(res['succ'])
         sys.exit(sum(exit_code))
     elif args.queue == '':
@@ -479,16 +483,16 @@ def cmd_execute(args, workflow_args):
         failed_tasks = set()
         while True:
             res = host.check_status(args.tasks)
-            if any(x in ('killed', 'dead') or x.startswith('failed') for x in res):
+            if any(x in ('failed', 'aborted', 'result-mismatch') for x in res):
                 for t, s in zip(args.tasks, res):
-                    if (s in ('killed', 'dead') or s.startswith('failed')) and t not in failed_tasks:
+                    if s in ('failed', 'aborted', 'result-mismatch') and t not in failed_tasks:
                         env.logger.warning('{} ``{}``'.format(t, s))
                         failed_tasks.add(t)
-                if all(x in ('killed', 'completed', 'dead') or x.startswith('failed') for x in res):
-                    raise RuntimeError('{} completed, {} dead, {} failed, {} killed)'.format(
-                        len([x for x in res if x=='completed']), len([x for x in res if x=='dead']),
-                        len([x for x in res if x.startswith('failed')]), len([x for x in res if x=='killed'])))
-            if any(x in ('pending', 'running', 'completed-old') or x.startswith('failed-old') for x in res):
+                if all(x in ('completed', 'failed', 'aborted', 'result-mismatch') for x in res):
+                    raise RuntimeError('{} completed, {} failed, {} aborted, {} result-mismatch)'.format(
+                        len([x for x in res if x == 'completed']), len([x for x in res if x=='failed']),
+                        len([x for x in res if x.startswith('aborted')]), len([x for x in res if x=='result-mismatch'])))
+            if any(x in ('pending', 'running', 'submitted') for x in res):
                 continue
             elif all(x == 'completed' for x in res):
                 env.logger.debug('Put results for {}'.format(args.tasks))
