@@ -269,7 +269,11 @@ class SoS_ExecuteScript:
                 if ret != 0:
                     with open(debug_script_file, 'w') as sfile:
                         sfile.write(self.script)
-                    cmd = interpolate('{} {}'.format(self.interpreter, self.args), '${ }', {'filename': debug_script_file, 'script': self.script})
+                    if self.interpreter == '/bin/bash' and self.args == '-ev ${filename!q}':
+                        debug_args = '${filename!q}'
+                    else:
+                        debug_args = self.args
+                    cmd = interpolate('{} {}'.format(self.interpreter, debug_args), '${ }', {'filename': debug_script_file, 'script': self.script})
                     raise RuntimeError('Failed to execute script (ret={}).\nPlease use command\n\t``{}``\nunder "{}" to test it.'
                         .format(ret, ' \\\n\t  '.join(cmd.split()), os.getcwd()))
             except RuntimeError:
