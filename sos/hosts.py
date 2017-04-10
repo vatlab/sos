@@ -475,7 +475,7 @@ class RemoteHost:
         with open(res_file, 'rb') as result:
             res = pickle.load(result)
 
-        if res['succ'] != 0:
+        if ('ret_code' in res and res['ret_code'] != 0) or ('succ' in res and res['succ'] != 0):
             env.logger.info('Ignore remote results for failed job {}'.format(task_id))
         else:
             # do we need to copy files? We need to consult original task file
