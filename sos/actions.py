@@ -244,7 +244,7 @@ class SoS_ExecuteScript:
                         else:
                             self.interpreter = '/bin/bash'
                             if not self.args:
-                                self.args = '-e ${filename!q}'
+                                self.args = '-ev ${filename!q}'
                 #
                 if env.config['run_mode'] == 'dryrun':
                     print('{}:\n{}\n'.format(self.interpreter, self.script))
