@@ -1024,7 +1024,9 @@ define([
         }
         events.on('kernel_connected.Kernel', register_sos_comm);
         events.on('kernel_connected.Kernel', wrap_execute);
-        events.on('kernel_ready.Kernel', request_kernel_list);
+        /* 
+		 * events.on('kernel_ready.Kernel', request_kernel_list); 
+		 */
         events.on('select.Cell', set_codemirror_option);
 
         load_panel();
