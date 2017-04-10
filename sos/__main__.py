@@ -303,6 +303,7 @@ def cmd_run(args, workflow_args):
                 'max_running_jobs': args.__max_running_jobs__,
                 'sig_mode': args.__sig_mode__,
                 'run_mode': 'dryrun' if args.__dryrun__ else 'run',
+                'verbosity': args.verbosity,
                 })
         executor.run(args.__targets__, mode='dryrun' if args.__dryrun__ else 'run')
     except Exception as e:
