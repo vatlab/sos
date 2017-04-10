@@ -374,6 +374,8 @@ class SoS_Kernel(IPythonKernel):
         # special communication channel to sos frontend
         self.frontend_comm = None
         self.cell_idx = None
+        # cache kernel list
+        self.get_kernel_list()
 
     def send_frontend_msg(self, msg_type, msg):
         if self.frontend_comm is None:
@@ -1135,24 +1137,25 @@ class SoS_Kernel(IPythonKernel):
                 'metadata': md_dict})
 
     def get_kernel_list(self):
-        from jupyter_client.kernelspec import KernelSpecManager
-        km = KernelSpecManager()
-        specs = km.find_kernel_specs()
-        # get supported languages
-        name_map = []
-        lan_map = {self.supported_languages[x].kernel_name:(x, self.supported_languages[x].background_color) for x in self.supported_languages.keys()
-                if x != self.supported_languages[x].kernel_name}
-        for spec in specs.keys():
-            if spec == 'sos':
-                # the SoS kernel will be default theme color.
-                name_map.append(['sos', 'SoS', ''])
-            elif spec in lan_map:
-                # e.g. ir ==> R
-                name_map.append([spec, lan_map[spec][0], lan_map[spec][1]])
-            else:
-                # undefined language also use default theme color
-                name_map.append([spec, spec, ''])
-        return name_map
+        if not hasattr(self, '_kernel_list'):
+            from jupyter_client.kernelspec import KernelSpecManager
+            km = KernelSpecManager()
+            specs = km.find_kernel_specs()
+            # get supported languages
+            self._kernel_list = []
+            lan_map = {self.supported_languages[x].kernel_name:(x, self.supported_languages[x].background_color) for x in self.supported_languages.keys()
+                    if x != self.supported_languages[x].kernel_name}
+            for spec in specs.keys():
+                if spec == 'sos':
+                    # the SoS kernel will be default theme color.
+                    self._kernel_list.append(['sos', 'SoS', ''])
+                elif spec in lan_map:
+                    # e.g. ir ==> R
+                    self._kernel_list.append([spec, lan_map[spec][0], lan_map[spec][1]])
+                else:
+                    # undefined language also use default theme color
+                    self._kernel_list.append([spec, spec, ''])
+        return self._kernel_list
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
