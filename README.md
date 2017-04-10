@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/vatlab/SOS.svg?branch=master)](https://travis-ci.org/vatlab/SOS)
+
+
 **Script of Scripts (SoS)** is a **file format** for the inclusion of
 scripts in multiple languages into a single executable script, an
 **interactive environment** and **notebook tool** for working with different scripts, and
