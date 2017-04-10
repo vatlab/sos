@@ -456,9 +456,9 @@ def cmd_execute(args, workflow_args):
                 pickle.dump(res, res_file)
             if res['ret_code'] != 0 and 'exception' in res:
                 with open(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.err'), 'a') as err:
-                    err.write('sos execute quit with code {} and exception {}: {}\n'.format(
+                    err.write('sos execute quits with code {} and exception {}: {}\n'.format(
                         res['ret_code'], res['exception'].__class__.__name__, repr(res['exception'])))
-            exit_code.append(res['succ'])
+            exit_code.append(res['ret_code'])
         sys.exit(sum(exit_code))
     elif args.queue == '':
         from .hosts import list_queues

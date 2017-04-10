@@ -1072,7 +1072,7 @@ class Base_Step_Executor:
             self.wait_for_results()
             for idx,res in enumerate(self.proc_results):
                 if signatures[idx] is not None:
-                    if res['succ'] == 0:
+                    if res['ret_code'] == 0:
                         signatures[idx].write(
                             env.sos_dict['_local_input_{}'.format(idx)],
                             env.sos_dict['_local_output_{}'.format(idx)])
@@ -1080,7 +1080,7 @@ class Base_Step_Executor:
                     signatures[idx] = None
             # check results
             for x in self.proc_results:
-                if x['succ'] != 0:
+                if x['ret_code'] != 0:
                     raise x['exception']
             # if output is Undetermined, re-evalulate it
             #
