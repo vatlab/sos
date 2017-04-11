@@ -88,7 +88,7 @@ define([
     var my_execute = function(code, callbacks, options) {
         "use strict"
         /* check if the code is a workflow call, which is marked by
-         * %run workflowname with options
+         * %sosrun or %sossave workflowname with options
          */
         var workflow = '';
         var run_notebook = false;
@@ -99,7 +99,7 @@ define([
             // other magic
             if (lines[l].startsWith('%')) {
                 console.log(lines[l]);
-                if (lines[l].startsWith('%run\n') || lines[l].startsWith('%run ')) {
+                if (lines[l].match(/(^%sosrun|^%sossave)($|\s)/)) {
                     run_notebook = true;
                     break;
                 } else
@@ -129,17 +129,15 @@ define([
                 }
             }
 
-            if (workflow != '') {
-                var cell = window.my_panel.cell;
-                cell.clear_input();
-                cell.set_text('%preview_workflow');
-                cell.clear_output();
-                cell.output_area.append_output( {
-                    'output_type': 'stream',
-                    'text': workflow,
-                    'name': 'stdout'
-                    });
-            }
+			var cell = window.my_panel.cell;
+			cell.clear_input();
+			cell.set_text('%preview_workflow');
+			cell.clear_output();
+			cell.output_area.append_output( {
+				'output_type': 'stream',
+				'text': workflow,
+				'name': 'stdout'
+				});
         }
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i) {
