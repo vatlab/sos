@@ -99,7 +99,7 @@ define([
             // other magic
             if (lines[l].startsWith('%')) {
                 console.log(lines[l]);
-                if (lines[l].match(/(^%sosrun|^%sossave)($|\s)/)) {
+                if (lines[l].match(/^%sosrun($|\s)|^%sossave($|\s)|^%preview\s.*--workflow.*$/)) {
                     run_notebook = true;
                     break;
                 } else
@@ -122,22 +122,12 @@ define([
                         if (lines[l].startsWith('#') || lines[l].startsWith('%') || lines[l].trim() == '' || lines[l].startsWith('!'))
                             continue
                         if (lines[l].startsWith('[') && lines[l].endsWith(']'))
-                            workflow += "\n\n" + lines.slice(l).join('\n');
+                            workflow += lines.slice(l).join('\n') + '\n\n';
                         /* this is not a sos step cell, ignore. */
                         break
                     }
                 }
             }
-
-			var cell = window.my_panel.cell;
-			cell.clear_input();
-			cell.set_text('%preview_workflow');
-			cell.clear_output();
-			cell.output_area.append_output( {
-				'output_type': 'stream',
-				'text': workflow,
-				'name': 'stdout'
-				});
         }
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i) {
@@ -160,7 +150,9 @@ define([
                     (IPython.notebook.metadata['sos']['panel'].displayed ? " --use-panel" : "") +
                     " --default-kernel " + window.default_kernel +
                     " --cell-kernel " + cells[i].metadata.kernel +
-                    " --cell " + i.toString() + "\n" + code + workflow,
+					(run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'"  : '') + 
+					(run_notebook ? " --workflow " + btoa(workflow) : '') +
+                    " --cell " + i.toString() + "\n" + code,
                     callbacks, options)
             }
         }
@@ -256,6 +248,16 @@ define([
                         cell.clear_output();
                     } else if (msg_type == 'preview-kernel') {
                         changeStyleOnKernel(window.my_panel.cell, data);
+					} else if (msg_type == 'preview-workflow') {
+						var cell = window.my_panel.cell;
+						cell.clear_input();
+						cell.set_text('%preview --workflow');
+						cell.clear_output();
+						cell.output_area.append_output( {
+							'output_type': 'stream',
+							'text': data,
+							'name': 'stdout'
+							});
                     } else if (msg_type == 'tasks-pending') {
                         // console.log(data);
                         /* we record the pending tasks of cells so that we could

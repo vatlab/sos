@@ -23,6 +23,8 @@
 import os
 import sys
 import re
+import base64
+import shlex
 import fnmatch
 import contextlib
 import subprocess
@@ -233,6 +235,10 @@ class SoS_Kernel(IPythonKernel):
         # the command. Use to set metadata of cell through frontend message
         parser.add_argument('--cell', dest='cell_idx',
             help='Index of cell')
+        parser.add_argument('--workflow',
+            help='Workflow defined in the notebook')
+        parser.add_argument('--filename',
+            help='filename of the current notebook')
         parser.error = self._parse_error
         return parser
 
@@ -244,6 +250,8 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('--kernel',
             help='''kernel in which variables will be previewed. By default
             the variable will be previewed in the current kernel of the cell.''')
+        parser.add_argument('--workflow', action='store_true',
+            help='''Preview notebook workflow''')
         parser.add_argument('--off', action='store_true',
             help='''Turn off file preview''')
         parser.error = self._parse_error
@@ -255,20 +263,33 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
-    def get_runcell_parser(self):
-        parser = argparse.ArgumentParser(prog='%runcell',
+    def get_run_parser(self):
+        parser = argparse.ArgumentParser(prog='%run',
             description='''Execute the current cell with specified command line
             arguments. Arguments set by magic %set will be appended at the
             end of command line''')
         parser.error = self._parse_error
         return parser
 
-    def get_run_parser(self):
-        parser = argparse.ArgumentParser(prog='%run',
+    def get_sosrun_parser(self):
+        parser = argparse.ArgumentParser(prog='%sosrun',
             description='''Execute the entire notebook with steps consisting of SoS
             cells (cells with SoS kernel) with section header, with specified command
             line arguments. Arguments set by magic %set will be appended at the
             end of command line''')
+        parser.error = self._parse_error
+        return parser
+
+    def get_sossave_parser(self):
+        parser = argparse.ArgumentParser(prog='%sossave',
+            description='''Save the workflow (consisting of all sos steps defined
+            in cells starting with section header) to specified file.''')
+        parser.add_argument('filename', nargs='?',
+            help='''filename of saved sos script. An extension .sos will be automatically
+            added if the specified filename does not have an extension. Default to
+            notebookname + .sos''')
+        parser.add_argument('-f', '--force', action='store_true',
+            help='''If destination file already exists, overwrite it.''')
         parser.error = self._parse_error
         return parser
 
@@ -653,7 +674,6 @@ class SoS_Kernel(IPythonKernel):
     def handle_magic_dict(self, line):
         'Magic that displays content of the dictionary'
         # do not return __builtins__ beacuse it is too long...
-        import shlex
         parser = self.get_dict_parser()
         args = parser.parse_args(shlex.split(line))
 
@@ -1246,11 +1266,15 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
                 parser = self.get_frontend_parser()
-                args = parser.parse_args(options.split())
+                args = parser.parse_args(shlex.split(options))
                 self.cell_idx = args.cell_idx
                 # for panel cell, we return a non-informative execution count
                 if self.cell_idx is None or int(self.cell_idx) < 0:
                     self._execution_count = '-'
+                self._notebook_name = args.filename
+                if args.workflow:
+                    self._workflow = '#!/usr/bin/env sos-runner\n#fileformat=SOS1.0\n\n' + \
+                        base64.b64decode(args.workflow).decode()
             except Exception as e:
                 self.warn('Invalid option "{}": {}\n'.format(options, e))
                 return {'status': 'error',
@@ -1367,7 +1391,7 @@ class SoS_Kernel(IPythonKernel):
                 return self._do_execute(code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.options = old_options
-        elif self.MAGIC_RUN.match(code) or self.MAGIC_SOSRUN.match(code):
+        elif self.MAGIC_RUN.match(code):
             # the frontend will send different content to the kernel depending on
             # the magic used.
             options, remaining_code = self.get_magic_and_code(code, False)
@@ -1377,19 +1401,36 @@ class SoS_Kernel(IPythonKernel):
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.options = old_options
+        elif self.MAGIC_SOSRUN.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            old_options = self.options
+            self.options = options + ' ' + self.options
+            try:
+                self._do_execute(self._workflow, silent, store_history, user_expressions, allow_stdin)
+                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            finally:
+                self.options = old_options
         elif self.MAGIC_SOSSAVE.match(code):
             # get the saved filename
-            options, remaing_code = self.get_magic_and_code(code, False)
-            filename = self._interpolate_option(options, quiet=False).strip()
-            if not filename.endswith('.sos'):
-                filename += '.sos'
+            options, remaining_code = self.get_magic_and_code(code, False)
             try:
+                parser = self.get_sossave_parser()
+                args = parser.parse_args(shlex.split(options))
+                if args.filename:
+                    filename = self._interpolate_option(options, quiet=False).strip()
+                else:
+                    filename = self._notebook_name
+                if not filename.endswith('.sos'):
+                    filename += '.sos'
+                if os.path.isfile(filename) and not args.force:
+                    raise ValueError('Cannot overwrite existing output file {}'.format(filename))
+                self.send_frontend_msg('preview-workflow', self._workflow)
                 with open(filename, 'w') as script:
-                    script.write('#!/usr/bin/env sos-runner\n#fileformat=SOS1.0\n\n' + code)
+                    script.write(self._workflow)
                 self.send_response(self.iopub_socket, 'stream',
                   {'name': 'stdout', 'text': 'Workflow saved to {}\n'.format(filename)})
             except Exception as e:
-                self.warning('Failed to save workflow to {}: {}'.format(filename, e))
+                self.warn('Failed to save workflow: {}'.format(e))
                 return {'status': 'error',
                     'ename': e.__class__.__name__,
                     'evalue': str(e),
@@ -1411,7 +1452,6 @@ class SoS_Kernel(IPythonKernel):
         elif self.MAGIC_SANDBOX.match(code):
             import tempfile
             import shutil
-            import shlex
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_sandbox_parser()
             args = parser.parse_args(shlex.split(options))
@@ -1449,7 +1489,6 @@ class SoS_Kernel(IPythonKernel):
                 #env.exec_dir = old_dir
         elif self.MAGIC_PREVIEW.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
-            import shlex
             options = self._interpolate_option(options, quiet=True)
             parser = self.get_preview_parser()
             args = parser.parse_args(shlex.split(options, posix=False))
@@ -1457,6 +1496,9 @@ class SoS_Kernel(IPythonKernel):
                 self.preview_output = False
             else:
                 self.preview_output = True
+            # preview workflow
+            if args.workflow:
+                self.send_frontend_msg('preview-workflow', self._workflow)
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
