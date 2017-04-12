@@ -28,13 +28,16 @@ import stat
 from .utils import env
 
 class ProcessMonitor(threading.Thread):
-    def __init__(self, task_id, monitor_interval, resource_monitor_interval):
+    def __init__(self, task_id, monitor_interval, resource_monitor_interval, max_walltime=None, max_mem=None, max_procs=None):
         threading.Thread.__init__(self)
         self.task_id = task_id
         self.pid = os.getpid()
         self.monitor_interval = monitor_interval
         self.resource_monitor_interval = max(resource_monitor_interval // monitor_interval, 1)
         self.daemon = True
+        self.max_walltime = max_walltime
+        self.max_mem = max_mem
+        self.max_procs = max_procs
         self.pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.pulse')
         # remove previous status file, which could be readonly if the job is killed
         if os.path.isfile(self.pulse_file):
@@ -59,8 +62,17 @@ class ProcessMonitor(threading.Thread):
             ch_mem += child.memory_info()[0]
         return par_cpu, par_mem, n_children, ch_cpu, ch_mem
 
+    def _exceed_resource(self, msg):
+        err_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.task_id + '.err')
+        with open(err_file, 'a') as err:
+            err.write(msg + '\n')
+        # kill the task
+        from stat import S_IREAD, S_IRGRP, S_IROTH
+        os.chmod(self.pulse_file, S_IREAD|S_IRGRP|S_IROTH)
+
     def run(self):
         counter = 0
+        start_time = time.time()
         while True:
             try:
                 if not os.access(self.pulse_file, os.W_OK):
@@ -74,6 +86,16 @@ class ProcessMonitor(threading.Thread):
                     cpu, mem, nch, ch_cpu, ch_mem = self._check()
                     with open(self.pulse_file, 'a') as pd:
                         pd.write('{}\t{:.2f}\t{}\t{}\t{}\t{}\n'.format(time.time(), cpu, mem, nch, ch_cpu, ch_mem))
+                    if self.max_procs is not None and cpu > self.max_procs:
+                        self._exceed_resource('Task {} exits because of excessive use of procs (used {}, limit {})'.format(
+                            self.task_id, cpu, self.max_procs))
+                    elapsed = time.time() - start_time
+                    if self.max_walltime is not None and elapsed > self.max_walltime:
+                        self._exceed_resource('Task {} exits because of excessive run time (used {}, limit {})'.format(
+                            self.task_id, elapsed, self.max_walltime))
+                    if self.max_mem is not None and mem < self.max_mem:
+                        self._exceed_resource('Task {} exits because of excessive use of max_mem (used {}, limit {})'.format(
+                            self.task_id, mem, self.max_mem))
                 time.sleep(self.monitor_interval)
                 counter += 1
             except Exception as e:

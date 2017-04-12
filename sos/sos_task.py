@@ -61,15 +61,22 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     process or remotely on a different machine.'''
     # start a monitoring file, which would be killed after the job
     # is done (killed etc)
-    m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
-        resource_monitor_interval=resource_monitor_interval)
-    m.start()
 
     task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
     with open(task_file, 'rb') as task:
         params = pickle.load(task)
-
     task, sos_dict, sigil = params.data
+
+    if '_runtime' not in sos_dict:
+        sos_dict['_runtime'] = {}
+
+    m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
+        resource_monitor_interval=resource_monitor_interval,
+        max_walltime=sos_dict['_runtime'].get('max_walltime', None),
+        max_mem=sos_dict['_runtime'].get('max_mem', None),
+        max_procs=sos_dict['_runtime'].get('max_procs', None))
+
+    m.start()
     if verbosity is not None:
         env.verbosity = verbosity
     if sigmode is not None:

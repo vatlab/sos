@@ -122,7 +122,32 @@ class LocalHost:
     def prepare_task(self, task_id):
         def_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
-        shutil.copyfile(def_file, task_file)
+        if 'max_mem' not in self.config and 'max_procs' not in self.config and 'max_walltime' not in self.config:
+            shutil.copyfile(def_file, task_file)
+        else:
+            # add server restriction on task file
+            with open(def_file, 'rb') as task:
+                params = pickle.load(task)
+                task_vars = params.data[1]
+
+            task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
+            task_vars['_runtime']['max_procs'] = self.config.get('max_procs', None)
+            task_vars['_runtime']['max_walltime'] = self.config.get('max_walltime', None)
+
+            new_param = TaskParams(
+                name = params.name,
+                data = (
+                    params.data[0],
+                    task_vars,
+                    params.data[2],
+                )
+            )
+            with open(task_file, 'wb') as jf:
+                try:
+                    pickle.dump(new_param, jf)
+                except Exception as e:
+                    env.logger.warning(e)
+                    raise
         return True
 
     def send_task_file(self, task_file):
@@ -390,6 +415,11 @@ class RemoteHost:
                     env.logger.debug('Failed to map variable {}: {}'.format(var, e))
             else:
                 env.logger.debug('Variable {} not in env.'.format(var))
+
+        # server restrictions #488
+        task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
+        task_vars['_runtime']['max_procs'] = self.config.get('max_procs', None)
+        task_vars['_runtime']['max_walltime'] = self.config.get('max_walltime', None)
 
         new_param = TaskParams(
             name = params.name,
