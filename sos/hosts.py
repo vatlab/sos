@@ -139,7 +139,7 @@ class LocalHost:
                 raise ValueError('Task {} requested more mem ({}) than allowed max_mem ({})'.format(
                     task_id, task_vars['_runtime']['mem'], task_vars['_runtime']['max_mem']))
             if task_vars['_runtime'].get('max_procs', None) is not None and task_vars['_runtime'].get('procs', None) is not None \
-                    and task_vars['_runtime']['max_procs'] < task_vars['_runtime'].get('procs']:
+                    and task_vars['_runtime']['max_procs'] < task_vars['_runtime']['procs']:
                 raise ValueError('Task {} requested more procs ({}) than allowed max_procs ({})'.format(
                     task_id, task_vars['_runtime']['procs'], task_vars['_runtime']['max_procs']))
             if task_vars['_runtime'].get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
@@ -384,7 +384,7 @@ class RemoteHost:
             raise ValueError('Task {} requested more mem ({}) than allowed max_mem ({})'.format(
                 task_id, task_vars['_runtime']['mem'], task_vars['_runtime']['max_mem']))
         if task_vars['_runtime'].get('max_procs', None) is not None and task_vars['_runtime'].get('procs', None) is not None \
-                and task_vars['_runtime']['max_procs'] < task_vars['_runtime'].get('procs']:
+                and task_vars['_runtime']['max_procs'] < task_vars['_runtime']['procs']:
             raise ValueError('Task {} requested more procs ({}) than allowed max_procs ({})'.format(
                 task_id, task_vars['_runtime']['procs'], task_vars['_runtime']['max_procs']))
         if task_vars['_runtime'].get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \

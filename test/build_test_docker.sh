@@ -87,6 +87,14 @@ hosts:
         port: $PORT
         paths:
             home: /root
+    docker_limited:
+        address: root@localhost
+        port: $PORT
+        max_mem: 1G
+        max_procs: 1
+        max_walltime: 10
+        paths:
+            home: /root            
     ts:
         description: task spooler on the docker machine
         address: root@localhost
