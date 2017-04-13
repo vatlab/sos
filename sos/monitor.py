@@ -69,6 +69,8 @@ class ProcessMonitor(threading.Thread):
         # kill the task
         from stat import S_IREAD, S_IRGRP, S_IROTH
         os.chmod(self.pulse_file, S_IREAD|S_IRGRP|S_IROTH)
+        p = psutil.Process(self.pid)
+        p.kill()
 
     def run(self):
         counter = 0
