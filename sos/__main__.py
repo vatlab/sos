@@ -25,11 +25,13 @@ import sys
 import argparse
 import pkg_resources
 
-script_help = '''A SoS script that defines one or more workflows. The
-    script can be a filename or a URL from which the content of a SoS will
-    be read. If a valid file cannot be located or downloaded, SoS will
-    search for the script in a search path specified by variable `sos_path`
-    defined in the global SoS configuration file (~/.sos/config.yml).'''
+script_help = '''A SoS script that defines one or more workflows, in format
+    .sos or .ipynb. The script can be a filename or a URL from which the
+    content of a SoS will be read. If a valid file cannot be located or
+    downloaded, SoS will search for the script, with specified name, and
+    with added extension .sos and .ipynb, in a search path specified by
+    variable `sos_path` defined in the global SoS configuration file
+    (~/.sos/config.yml).'''
 workflow_spec =  '''Name of the workflow to execute. This option can be
     ignored if the script defines a default workflow (with no name or with
     name `default`) or defines only a single workflow. A subworkflow or a
