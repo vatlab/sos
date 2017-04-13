@@ -504,12 +504,30 @@ class SoS_Script:
             try:
                 content, self.sos_script = locate_script(filename, start='.')
             except:
+                # try to add .sos extension?
                 if not filename.endswith('.sos'):
-                    filename = filename + '.sos'
-                    content, self.sos_script = locate_script(filename, start='.')
-                else:
-                    raise
-            self.content = SoS_ScriptContent(content, self.sos_script)
+                    try:
+                        content, self.sos_script = locate_script(filename + '.sos', start='.')
+                    except:
+                        if not filename.endswith('.ipynb'):
+                            try:
+                                content, self.sos_script = locate_script(filename + '.ipynb', start='.')
+                            except Exception as e:
+                                env.logger.debug(e)
+                                env.logger.error('Failed to locate {0}, {0}.sos, or {0}.ipynb'.format(filename))
+                                sys.exit(1)
+            # Is this script in sos or ipynb format?
+            ext = os.path.splitext(self.sos_script)[-1]
+            if ext == '.ipynb':
+                # convert ipynb to sos
+                from sos.jupyter.converter import notebook_to_script
+                with StringIO() as script:
+                    notebook_to_script(self.sos_script, script)
+                    content = script.getvalue()
+                self.sos_script = '<string>'
+                self.content = SoS_ScriptContent(content, None)
+            else:
+                self.content = SoS_ScriptContent(content, self.sos_script)
         else:
             self.sos_script = '<string>'
             self.content = SoS_ScriptContent(content, None)

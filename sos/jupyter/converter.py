@@ -122,10 +122,12 @@ def notebook_to_script(notebook_file, sos_file, args=None, unknown_args=[]):
     output, resource = exporter.from_notebook_node(notebook, {})
     if not sos_file:
         sys.stdout.write(output)
-    else:
+    elif isinstance(sos_file, str):
         with open(sos_file, 'w') as sos:
             sos.write(output)
         env.logger.info('SoS script saved to {}'.format(sos_file))
+    else:
+        sos_file.write(output)
 
 #
 # Converter to Notebook
