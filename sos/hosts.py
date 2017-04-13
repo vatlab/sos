@@ -729,7 +729,10 @@ def list_queues(config_file, verbosity = 1):
     host_description = [['Alias', 'Address', 'Queue Type', 'Description'],
                         ['-----', '-------', '----------', '-----------']]
     for host in sorted(hosts):
-        h = Host(host, start_engine=False)
+        try:
+            h = Host(host, start_engine=False)
+        except Exception as e:
+            env.logger.warning('Invalid host {} from localhost: {}'.format(host, e))
         if verbosity == 0:
             print(h.alias)
         elif verbosity in (1, 2):
