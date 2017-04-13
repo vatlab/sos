@@ -134,6 +134,19 @@ class LocalHost:
             task_vars['_runtime']['max_procs'] = self.config.get('max_procs', None)
             task_vars['_runtime']['max_walltime'] = self.config.get('max_walltime', None)
 
+            if task_vars['_runtime'].get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
+                    and task_vars['_runtime']['max_mem'] < task_vars['_runtime']['mem']:
+                raise ValueError('Task {} requested more mem ({}) than allowed max_mem ({})'.format(
+                    task_id, task_vars['_runtime']['mem'], task_vars['_runtime']['max_mem']))
+            if task_vars['_runtime'].get('max_procs', None) is not None and task_vars['_runtime'].get('procs', None) is not None \
+                    and task_vars['_runtime']['max_procs'] < task_vars['_runtime'].get('procs']:
+                raise ValueError('Task {} requested more procs ({}) than allowed max_procs ({})'.format(
+                    task_id, task_vars['_runtime']['procs'], task_vars['_runtime']['max_procs']))
+            if task_vars['_runtime'].get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
+                    and task_vars['_runtime']['max_walltime'] < task_vars['_runtime']['walltime']:
+                raise ValueError('Task {} requested more walltime ({}) than allowed max_walltime ({})'.format(
+                    task_id, task_vars['_runtime']['walltime'], task_vars['_runtime']['max_walltime']))
+
             new_param = TaskParams(
                 name = params.name,
                 data = (
@@ -365,6 +378,19 @@ class RemoteHost:
         with open(def_file, 'rb') as task:
             params = pickle.load(task)
             task_vars = params.data[1]
+
+        if task_vars['_runtime'].get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
+                and task_vars['_runtime']['max_mem'] < task_vars['_runtime']['mem']:
+            raise ValueError('Task {} requested more mem ({}) than allowed max_mem ({})'.format(
+                task_id, task_vars['_runtime']['mem'], task_vars['_runtime']['max_mem']))
+        if task_vars['_runtime'].get('max_procs', None) is not None and task_vars['_runtime'].get('procs', None) is not None \
+                and task_vars['_runtime']['max_procs'] < task_vars['_runtime'].get('procs']:
+            raise ValueError('Task {} requested more procs ({}) than allowed max_procs ({})'.format(
+                task_id, task_vars['_runtime']['procs'], task_vars['_runtime']['max_procs']))
+        if task_vars['_runtime'].get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
+                and task_vars['_runtime']['max_walltime'] < task_vars['_runtime']['walltime']:
+            raise ValueError('Task {} requested more walltime ({}) than allowed max_walltime ({})'.format(
+                task_id, task_vars['_runtime']['walltime'], task_vars['_runtime']['max_walltime']))
 
         if task_vars['_input'] and not isinstance(task_vars['_input'], Undetermined):
             self._send_to_host(task_vars['_input'])
