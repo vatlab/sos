@@ -89,13 +89,14 @@ class ProcessMonitor(threading.Thread):
                     if self.max_procs is not None and cpu > self.max_procs:
                         self._exceed_resource('Task {} exits because of excessive use of procs (used {}, limit {})'.format(
                             self.task_id, cpu, self.max_procs))
-                    elapsed = time.time() - start_time
-                    if self.max_walltime is not None and elapsed > self.max_walltime:
-                        self._exceed_resource('Task {} exits because of excessive run time (used {}, limit {})'.format(
-                            self.task_id, elapsed, self.max_walltime))
-                    if self.max_mem is not None and mem < self.max_mem:
+                    if self.max_mem is not None and mem > self.max_mem:
                         self._exceed_resource('Task {} exits because of excessive use of max_mem (used {}, limit {})'.format(
                             self.task_id, mem, self.max_mem))
+                # walltime can be checked more frequently and does not have to wait for resource option
+                elapsed = time.time() - start_time
+                if self.max_walltime is not None and elapsed > self.max_walltime:
+                    self._exceed_resource('Task {} exits because of excessive run time (used {}, limit {})'.format(
+                        self.task_id, elapsed, self.max_walltime))
                 time.sleep(self.monitor_interval)
                 counter += 1
             except Exception as e:

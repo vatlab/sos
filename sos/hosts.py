@@ -21,11 +21,13 @@
 #
 import os
 import sys
+import stat
 
 import subprocess
 import multiprocessing as mp
 import pickle
 import shutil
+import glob
 import pkg_resources
 from collections.abc import Sequence
 
@@ -134,18 +136,18 @@ class LocalHost:
             task_vars['_runtime']['max_procs'] = self.config.get('max_procs', None)
             task_vars['_runtime']['max_walltime'] = self.config.get('max_walltime', None)
 
-            if task_vars['_runtime'].get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
-                    and task_vars['_runtime']['max_mem'] < task_vars['_runtime']['mem']:
+            if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
+                    and self.config['max_mem'] < task_vars['_runtime']['mem']:
                 raise ValueError('Task {} requested more mem ({}) than allowed max_mem ({})'.format(
-                    task_id, task_vars['_runtime']['mem'], task_vars['_runtime']['max_mem']))
-            if task_vars['_runtime'].get('max_procs', None) is not None and task_vars['_runtime'].get('procs', None) is not None \
-                    and task_vars['_runtime']['max_procs'] < task_vars['_runtime']['procs']:
+                    task_id, task_vars['_runtime']['mem'], self.config['max_mem']))
+            if self.config.get('max_procs', None) is not None and task_vars['_runtime'].get('procs', None) is not None \
+                    and self.config['max_procs'] < task_vars['_runtime']['procs']:
                 raise ValueError('Task {} requested more procs ({}) than allowed max_procs ({})'.format(
-                    task_id, task_vars['_runtime']['procs'], task_vars['_runtime']['max_procs']))
-            if task_vars['_runtime'].get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
-                    and task_vars['_runtime']['max_walltime'] < task_vars['_runtime']['walltime']:
+                    task_id, task_vars['_runtime']['procs'], self.config['max_procs']))
+            if self.config.get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
+                    and self.config['max_walltime'] < task_vars['_runtime']['walltime']:
                 raise ValueError('Task {} requested more walltime ({}) than allowed max_walltime ({})'.format(
-                    task_id, task_vars['_runtime']['walltime'], task_vars['_runtime']['max_walltime']))
+                    task_id, task_vars['_runtime']['walltime'], self.config['max_walltime']))
 
             new_param = TaskParams(
                 name = params.name,
@@ -379,18 +381,18 @@ class RemoteHost:
             params = pickle.load(task)
             task_vars = params.data[1]
 
-        if task_vars['_runtime'].get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
-                and task_vars['_runtime']['max_mem'] < task_vars['_runtime']['mem']:
+        if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
+                and self.config['max_mem'] < task_vars['_runtime']['mem']:
             raise ValueError('Task {} requested more mem ({}) than allowed max_mem ({})'.format(
-                task_id, task_vars['_runtime']['mem'], task_vars['_runtime']['max_mem']))
-        if task_vars['_runtime'].get('max_procs', None) is not None and task_vars['_runtime'].get('procs', None) is not None \
-                and task_vars['_runtime']['max_procs'] < task_vars['_runtime']['procs']:
+                task_id, task_vars['_runtime']['mem'], self.config['max_mem']))
+        if self.config.get('max_procs', None) is not None and task_vars['_runtime'].get('procs', None) is not None \
+                and self.config['max_procs'] < task_vars['_runtime']['procs']:
             raise ValueError('Task {} requested more procs ({}) than allowed max_procs ({})'.format(
-                task_id, task_vars['_runtime']['procs'], task_vars['_runtime']['max_procs']))
-        if task_vars['_runtime'].get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
-                and task_vars['_runtime']['max_walltime'] < task_vars['_runtime']['walltime']:
+                task_id, task_vars['_runtime']['procs'], self.config['max_procs']))
+        if self.config.get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
+                and self.config['max_walltime'] < task_vars['_runtime']['walltime']:
             raise ValueError('Task {} requested more walltime ({}) than allowed max_walltime ({})'.format(
-                task_id, task_vars['_runtime']['walltime'], task_vars['_runtime']['max_walltime']))
+                task_id, task_vars['_runtime']['walltime'], self.config['max_walltime']))
 
         if task_vars['_input'] and not isinstance(task_vars['_input'], Undetermined):
             self._send_to_host(task_vars['_input'])
@@ -510,10 +512,22 @@ class RemoteHost:
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
         # use -p to preserve modification times so that we can keep the job status locally.
         receive_cmd = "scp -P {0} -p -q {1}:.sos/tasks/{2}.* {3}".format(self.port, self.address, task_id, sys_task_dir)
+        # it is possible that local files are readonly (e.g. a pluse file) so we first need to
+        # make sure the files are readable and remove them. Also, we do not want any file that is
+        # obsolete to appear as new after copying
+        for lfile in glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.*')):
+            if os.path.splitext(lfile)[-1] == '.def':
+                continue
+            if not os.access(lfile, os.W_OK):
+                os.chmod(lfile, stat.S_IREAD | stat.S_IWRITE)
+            os.remove(lfile)
         env.logger.debug(receive_cmd)
         ret = subprocess.call(receive_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if (ret != 0):
-             raise RuntimeError('Failed to retrieve result of job {} from {}'.format(task_id, self.alias))
+            # this time try to get error message
+            ret = subprocess.call(receive_cmd, shell=True)
+            if (ret != 0):
+                raise RuntimeError('Failed to retrieve result of job {} from {} with cmd\n{}'.format(task_id, self.alias, receive_cmd))
         # show results? Not sure if this is a good idea but helps debugging at this point
         if env.verbosity >= 2:
             out_file = os.path.join(sys_task_dir, task_id + '.out')

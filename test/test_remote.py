@@ -248,5 +248,71 @@ run:
             self.assertEqual(ori.read(), bak.read())
         FileTarget('test_remote.py.bak').remove('both')
 
+    def testMaxMem(self):
+        '''Test server restriction max_mem'''
+        script = SoS_Script('''
+[10]
+task: mem='2G'
+print('a')
+'''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker_limited',
+                'sig_mode': 'force',
+                }).run)
+
+    def testRuntimeMaxWalltime(self):
+        '''Test server max_walltime option'''
+        script = SoS_Script('''
+[10]
+task:
+import time
+time.sleep(15)
+'''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker_limited',
+                'sig_mode': 'force',
+                }).run)
+
+    def testMaxProcs(self):
+        '''Test server restriction max_procs'''
+        script = SoS_Script('''
+[10]
+task: procs=8
+print('a')
+'''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker_limited',
+                'sig_mode': 'force',
+                }).run)
+
+    def testMaxWalltime(self):
+        '''Test server restriction max_walltime'''
+        script = SoS_Script('''
+[10]
+task: walltime='1:00:00'
+print('a')
+'''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
+        wf = script.workflow()
+        self.assertRaises(Exception, Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker_limited',
+                'sig_mode': 'force',
+                }).run)
+
+
 if __name__ == '__main__':
     unittest.main()
