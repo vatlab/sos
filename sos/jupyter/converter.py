@@ -32,7 +32,6 @@ from nbconvert.exporters import Exporter
 from sos.utils import env
 from sos.sos_syntax import SOS_SECTION_HEADER, SOS_CELL_LINE
 
-
 #
 # Converter from Notebook
 #
@@ -43,81 +42,64 @@ def get_notebook_to_script_parser():
         .sos file. The cells are presented in the .sos file as
         cell structure lines, which will be ignored if executed
         in batch mode ''')
-    parser.add_argument('--reorder', action='store_true',
-        help='''Reorder cells according to execution count''')
-    parser.add_argument('--reset-index', action='store_true',
-        help='''Reset index to 1, 2, 3, ... regardless of existing
-            execution counts''')
-    parser.add_argument('--add-header', action='store_true',
-        help='''Add default section headers to cells without
-            headers, which would help running the converted
-            script in batch mode''')
-    parser.add_argument('--no-index', action='store_true',
-        help='''Do not output any index''')
-    parser.add_argument('--no-metadata', action='store_true',
-        help='''Do not output any metadata''')
-    parser.add_argument('--remove-magic', action='store_true',
-        help='''Remove magic lines from the output''')
+    parser.add_argument('-a', '--all', action='store_true', dest='__all__',
+        help='''By default sos only export workflows from an .ipynb file, which consists
+        of only cells that starts with section headers (ignoring comments and magics before
+        them). Option `-a` allows you to export cell separator, meta data, execution count,
+        and all cells in a sos-like format although the resulting .sos file might not be
+        able to be executed in batch mode.''')
     return parser
 
 
 # This class cannot be defined in .kernel because it would cause some
 # weird problem with unittesting not able to resolve __main__
 class SoS_Exporter(Exporter):
-    def __init__(self, config=None, reorder=False, reset_index=False, add_header=False,
-            no_index=False, no_metadata=False, remove_magic=False, 
-            **kwargs):
-        self.reorder = reorder
-        self.reset_index = reset_index
-        self.add_header = add_header
-        self.no_index = no_index
-        self.no_metadata = no_metadata
-        self.remove_magic = remove_magic
+    def __init__(self, config=None, export_all=False, **kwargs):
         self.output_extension = '.sos'
         self.output_mimetype = 'text/x-sos'
+        self.export_all = export_all
         Exporter.__init__(self, config, **kwargs)
 
     def from_notebook_cell(self, cell, fh, idx = 0):
-        if self.no_metadata:
-            meta = ''
-        else:
+        if self.export_all:
             meta = ' '.join('{}={}'.format(x,y) for x,y in cell.metadata.items())
-        if not hasattr(cell, 'execution_count') or cell.execution_count is None or self.no_index:
-            fh.write('\n%cell {} {}\n'.format(cell.cell_type, meta))
+            if not hasattr(cell, 'execution_count') or cell.execution_count is None:
+                fh.write('%cell {} {}\n'.format(cell.cell_type, meta))
+            else:
+                idx += 1
+                fh.write('%cell {} {} {}\n'.format(cell.cell_type, cell.execution_count, meta))
+            if cell.cell_type == 'code':
+                fh.write(cell.source.strip() + '\n')
+            elif cell.cell_type == "markdown":
+                fh.write('\n'.join('#! ' + x for x in cell.source.split('\n')) + '\n')
+            fh.write('\n')
         else:
-            idx += 1
-            fh.write('\n%cell {} {} {}\n'.format(cell.cell_type,
-                                              idx if self.reset_index else cell.execution_count, meta))
-        if cell.cell_type == 'code':
-            if any(cell.source.startswith(x) for x in ('%run', '%restart', '%dict', '%get', '%use', '%with', '%set', '%paste', '%matplotlib', '%edit')):
-                if self.remove_magic:
-                    cell.source = '\n'.join(cell.source.split('\n')[1:])
-            if self.add_header and not any([SOS_SECTION_HEADER.match(x) for x in cell.source.split('\n')]):
-                cell.source = '[{}]\n'.format(idx if self.reset_index else cell.execution_count) + cell.source
-            fh.write(cell.source.strip() + '\n')
-        elif cell.cell_type == "markdown":
-            fh.write('\n'.join('#! ' + x for x in cell.source.split('\n')) + '\n')
+            if cell.cell_type == 'markdown':
+                fh.write('\n'.join('#! ' + x for x in cell.source.split('\n')) + '\n\n')
+            elif cell.cell_type == 'code':
+                # ignore cells with other kernel
+                if 'kernel' in cell.metadata and cell.metadata['kernel'] not in ('sos', None):
+                    return
+                lines = cell.source.split('\n')
+                valid_cell = False
+                for line in lines:
+                    if valid_cell:
+                        fh.write(line + '\n')
+                    elif line.startswith('#') or line.startswith('!') or line.startswith('%') or not line.strip():
+                        continue
+                    elif SOS_SECTION_HEADER.match(line):
+                        valid_cell = True
+                        fh.write(line + '\n')
+                if valid_cell:
+                    fh.write('\n')
         return idx
 
     def from_notebook_node(self, nb, resources, **kwargs):
         #
-        if self.reorder:
-            unnumbered_cells = {x: y for x, y in enumerate(nb.cells)
-                              if not hasattr(y, 'execution_count') or y.execution_count is None}
-            numbered_cells = [y for y in nb.cells
-                              if hasattr(y, 'execution_count') and y.execution_count is not None]
-            numbered_cells = sorted(numbered_cells, key = lambda x: x.execution_count)
-            cells = []
-            for idx in range(len(nb.cells)):
-                if idx in unnumbered_cells:
-                    cells.append(unnumbered_cells[idx])
-                else:
-                    cells.append(numbered_cells.pop(0))
-        else:
-            cells = nb.cells
+        cells = nb.cells
         with StringIO() as fh:
             fh.write('#!/usr/bin/env sos-runner\n')
-            fh.write('#fileformat=SOS1.0\n')
+            fh.write('#fileformat=SOS1.0\n\n')
             idx = 0
             for cell in cells:
                 idx = self.from_notebook_cell(cell, fh, idx)
@@ -128,18 +110,12 @@ class SoS_Exporter(Exporter):
 
 def notebook_to_script(notebook_file, sos_file, args=None, unknown_args=[]):
     '''
-    Convert a ipython notebook to sos format. This converter accepts options
-    --reorder to reorder cells according to executing order, --reset-index
-    to reset executing counts, --add-header to add a SoS header, --no-index
-    to ignore indexes, --remove-magic to remove ipynb-only magics, and 
-    --md-to-report to convert markdown cells to sos report actions.
+    Convert a ipython notebook to sos format.
     '''
     if unknown_args:
         raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
     if args:
-        exporter = SoS_Exporter(reorder=args.reorder, reset_index=args.reset_index,
-                            add_header=args.add_header, no_index=args.no_index,
-                            no_metadata=args.no_metadata, remove_magic=args.remove_magic)
+        exporter = SoS_Exporter(export_all=args.__all__)
     else:
         exporter = SoS_Exporter()
     notebook = nbformat.read(notebook_file, nbformat.NO_CONVERT)
@@ -215,6 +191,9 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
     content = []
 
     with open(script_file) as script:
+        split_step = '%cell ' not in script.read()
+
+    with open(script_file) as script:
         first_block = True
         for line in script:
             if line.startswith('#') and first_block:
@@ -260,8 +239,42 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
                     metainfo = {}
                 content = []
                 continue
-            else:
-                content.append(line)
+
+            if split_step:
+                mo = SOS_SECTION_HEADER.match(line)
+                if mo:
+                    # get ride of empty content
+                    if not any(x.strip() for x in content):
+                        content = []
+
+                    if content:
+                        add_cell(cells, content, cell_type, cell_count, metainfo)
+
+                    cell_type = 'code'
+                    cell_count += 1
+                    metainfo = {'kernel': 'sos'}
+                    content = [line]
+                    continue
+
+                if line.startswith('#!'):
+                    if cell_type == 'markdown':
+                        content.append(line)
+                        continue
+                    else:
+                        # get ride of empty content
+                        if not any(x.strip() for x in content):
+                            content = []
+
+                        if content:
+                            add_cell(cells, content, cell_type, cell_count, metainfo)
+
+                        cell_type = 'markdown'
+                        cell_count += 1
+                        content = [line]
+                        continue
+
+            # other cases
+            content.append(line)
     #
     if content and any(x.strip() for x in content):
         add_cell(cells, content, cell_type, cell_count, metainfo)
