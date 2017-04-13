@@ -976,3 +976,15 @@ def load_config_files(filename=None):
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(filename, e))
     return cfg
  
+def expand_time(v):
+    # expand walltime from '00:00:00' format to second
+    if isinstance(v, str):
+        try:
+            h, m, s = map(int, v.split(':'))
+        except Exception as e:
+            raise ValueError('Input of option walltime should be an integer (seconds) or a string in the format of HH:MM:SS. {} specified: {}'.format(v, e))
+        return h * 60 * 60 + m * 60 + s
+    elif isinstance(v, int):
+        return v
+    else:
+         raise ValueError('Input of option walltime should be an integer (seconds) or a string in the format of HH:MM:SS. {} specified.'.format(v))

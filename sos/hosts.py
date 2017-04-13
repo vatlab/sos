@@ -29,7 +29,7 @@ import shutil
 import pkg_resources
 from collections.abc import Sequence
 
-from .utils import env, pickleable, short_repr, load_config_files
+from .utils import env, pickleable, short_repr, load_config_files, expand_size, expand_time
 from .sos_eval import interpolate, Undetermined
 from .sos_task import BackgroundProcess_TaskEngine, TaskParams
 
@@ -625,6 +625,15 @@ class Host:
         #
         self.config['alias'] = self.alias
         self.description = self.config.get('description', '')
+
+        # standardize parameters max_walltime, max_procs, and max_mem for the host
+        if 'max_walltime' in self.config:
+            self.config['max_walltime'] = expand_time(self.config['max_walltime'])
+        if 'max_procs' in self.config:
+            if not isinstance(self.config['max_procs'], int):
+                raise ValueError('An integer is expected for max_procs')
+        if 'max_mem' in self.config:
+            self.config['max_mem'] = expand_size(self.config['max_mem'])
 
     def _get_host_agent(self, start_engine):
         if self.alias not in self.host_instances:
