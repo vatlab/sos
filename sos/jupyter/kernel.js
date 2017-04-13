@@ -489,8 +489,6 @@ define([
         }
     }
 
-    var container_width = $('#site').width();
-
     var create_panel_div = function() {
         var panel_wrapper = $('<div id="panel-wrapper"/>')
             .append(
@@ -950,11 +948,10 @@ define([
     };
 
     function adjustPanel() {
-        
         if ($('#panel-wrapper').css('display')!="none" || $('#toc-wrapper').css('display')!="none") {
             
             $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30);
-            $('#notebook-container').css('width', container_width - $('#panel-wrapper').width() - 30);
+            $('#notebook-container').css('width', $('#site').width() - $('#panel-wrapper').width() - 30);
             $('.celltoolbar label').css('margin-left', 0);
             $('.celltoolbar label').css('margin-right', 0);
         } 
