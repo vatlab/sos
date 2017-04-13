@@ -369,6 +369,10 @@ define([
         }
     }
 
+	function kill_task(task_id) {
+		console.log('kill ' + task_id);
+	}
+
     function set_codemirror_option(evt, param) {
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i)

@@ -290,6 +290,9 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                             HTML('''<table id="table_{0}" style="border: 0px"><tr style="border: 0px">
                             <td style="border: 0px"><i id="{0}" class="{1}"></i> </td>
                             <td style="border: 0px"><pre>{0}</pre></td>
+                            <td>&nbsp;</td><td>
+                            <i class="fa fa-times" onclick="kill_task('{0}')"></i>
+                            </td>
                             </tr></table>'''.format(task_status[1],
                                 status_class[task_status[2]])).data
                             }
