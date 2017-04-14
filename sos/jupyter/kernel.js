@@ -152,8 +152,8 @@ define([
                     (IPython.notebook.metadata['sos']['panel'].displayed ? " --use-panel" : "") +
                     " --default-kernel " + window.default_kernel +
                     " --cell-kernel " + cells[i].metadata.kernel +
-					(run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'"  : '') + 
-					(run_notebook ? " --workflow " + btoa(workflow) : '') +
+                    (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'"  : '') + 
+                    (run_notebook ? " --workflow " + btoa(workflow) : '') +
                     " --cell " + i.toString() + "\n" + code,
                     callbacks, options)
             }
@@ -250,16 +250,16 @@ define([
                         cell.clear_output();
                     } else if (msg_type == 'preview-kernel') {
                         changeStyleOnKernel(window.my_panel.cell, data);
-					} else if (msg_type == 'preview-workflow') {
-						var cell = window.my_panel.cell;
-						cell.clear_input();
-						cell.set_text('%preview --workflow');
-						cell.clear_output();
-						cell.output_area.append_output( {
-							'output_type': 'stream',
-							'text': data,
-							'name': 'stdout'
-							});
+                    } else if (msg_type == 'preview-workflow') {
+                        var cell = window.my_panel.cell;
+                        cell.clear_input();
+                        cell.set_text('%preview --workflow');
+                        cell.clear_output();
+                        cell.output_area.append_output( {
+                            'output_type': 'stream',
+                            'text': data,
+                            'name': 'stdout'
+                            });
                     } else if (msg_type == 'tasks-pending') {
                         // console.log(data);
                         /* we record the pending tasks of cells so that we could
@@ -318,13 +318,15 @@ define([
         console.log('sos comm registered');
     }
 
+    /*
     funcion send_kernel_msg(msg) {
-	if (window.sos_comm === null) {
-		window.sos_comm = Jupyter.notebook.kernel.comm_manager.new_comm("sos_comm", {});
-	}
-	    console.log("TRY to send message");
-	window.sos_comm.send(msg);
+        if (window.sos_comm === null) {
+            window.sos_comm = Jupyter.notebook.kernel.comm_manager.new_comm("sos_comm", {});
+        }
+            console.log("TRY to send message");
+        window.sos_comm.send(msg);
     }
+    */
 
     function request_kernel_list() {
         if (!window.kernel_updated) {
@@ -379,12 +381,11 @@ define([
         }
     }
 
-	function kill_task(task_id) {
-		console.log('kill ' + task_id);
-	}
+    function kill_task(task_id) {
+        console.log('kill ' + task_id);
+    }
 
     function set_codemirror_option(evt, param) {
-	    send_kernel_msg({"ddd": "ddd"});
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i)
             cells[i].code_mirror.setOption('styleActiveLine', cells[i].selected);
