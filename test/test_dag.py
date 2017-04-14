@@ -769,7 +769,8 @@ A_2;
         st = time.time()
         #env.verbosity = 4
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 4)
+        # the process is slower after switching to spawn mode
+        self.assertLess(time.time() - st, 7)
         for f in ['A1.txt', 'B2.txt', 'A2.txt']:
             FileTarget(f).remove('both')
 
