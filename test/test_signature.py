@@ -327,7 +327,7 @@ python:
         st = time.time()
         FileTarget('largefile.txt').remove('signature')
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 0.5)
+        self.assertLess(time.time() - st, 2)
         #
         # now if we touch the file, it needs to be regenerated
         st = time.time()
