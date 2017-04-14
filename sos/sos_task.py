@@ -450,6 +450,7 @@ class TaskEngine(threading.Thread):
         self.running_tasks = []
         self.pending_tasks = []
         self.submitting_tasks = {}
+        self.canceled_tasks = []
 
         self.task_status = {}
         self.last_checked = None
@@ -482,6 +483,7 @@ class TaskEngine(threading.Thread):
             self.pending_tasks = []
             self.submitting_tasks = {}
             self.task_status = {}
+            self.canceled_tasks = []
 
     def get_tasks(self):
         with threading.Lock():
@@ -539,9 +541,15 @@ class TaskEngine(threading.Thread):
                         if not self.submitting_tasks[k][1].running():
                             submitted.append(k)
                             if self.submitting_tasks[k][1].result():
-                                self.running_tasks.append(k)
-                                if hasattr(env, '__task_notifier__'):
-                                    env.__task_notifier__(['change-status', k, 'submitted'])
+                                if k in self.canceled_tasks:
+                                    # task is canceled while being prepared
+                                    if hasattr(env, '__task_notifier__'):
+                                        env.__task_notifier__(['change-status', k, 'aborted'])
+                                    self.canceled_tasks.remove(k)
+                                else:
+                                    self.running_tasks.append(k)
+                                    if hasattr(env, '__task_notifier__'):
+                                        env.__task_notifier__(['change-status', k, 'submitted'])
                             else:
                                 if hasattr(env, '__task_notifier__'):
                                     env.__task_notifier__(['change-status', k, 'failed'])
@@ -654,8 +662,29 @@ class TaskEngine(threading.Thread):
                 ' '.join(tasks), verbosity))
 
     def kill_tasks(self, tasks, all_tasks=False):
-        return self.agent.check_output("sos kill {} {}".format(
-            ' '.join(tasks), '-a' if all_tasks else ''))
+        with threading.Lock():
+            to_be_killed = []
+            for task in tasks:
+                self.task_status[task] = 'aborted'
+                if hasattr(env, '__task_notifier__'):
+                    env.__task_notifier__(['change-status', task, 'aborted'])
+            for task in tasks:
+                if task in self.pending_tasks:
+                    self.pending_tasks.remove(task)
+                    env.logger.debug('Cancel pending task {}'.format(task))
+                elif task in self.submitting_tasks:
+                    # this is more troublesome because the task is being
+                    # submitted at a new thread.
+                    self.canceled_tasks.append(task)
+                    env.logger.debug('Cancel submission of task {}'.format(task))
+                elif task in self.running_tasks:
+                    to_be_killed.append(task)
+                    env.logger.debug('Killing running task {}'.format(task))
+        if to_be_killed or all_tasks:
+            cmd = "sos kill {} {}".format(' '.join(to_be_killed), '-a' if all_tasks else '')
+            ret = self.agent.check_output(cmd)
+            env.logger.debug('"{}" executed with response "{}"'.format(cmd, ret))
+            return ret
 
     def execute_task(self, task_id):
         # this is base class

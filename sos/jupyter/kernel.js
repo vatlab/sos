@@ -278,7 +278,7 @@ define([
                             return;
                         else
                             item.className = data[2];
-                        if (["completed", "failed", "aborted", "result-mismatch"].indexOf(data[1]) >= 0) {
+                        if (data[1] === "completed") {
                             /* if successful, let us re-run the cell to submt another task
                                or get the result */
                             for (cell in window.pending_cells) {

@@ -590,10 +590,10 @@ class Host:
             host._task_engine.remove_tasks(tasks)
 
     @classmethod
-    def kill_task(cls, task):
+    def kill_tasks(cls, task):
         # kill a task from all engines
         for host in cls.host_instances.values():
-            host._task_engine.kill_tasks([task])
+            host._task_engine.kill_tasks(task)
 
     @classmethod
     def not_wait_for_tasks(cls):

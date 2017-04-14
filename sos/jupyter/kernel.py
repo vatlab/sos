@@ -412,7 +412,7 @@ class SoS_Kernel(IPythonKernel):
                 elif k == 'kill-task':
                     # kill specified task
                     from sos.hosts import Host
-                    Host.kill_task(v)
+                    Host.kill_tasks([v])
                 else:
                     # this somehow does not work
                     self.warn('Unknown message {}: {}'.format(k, v))
