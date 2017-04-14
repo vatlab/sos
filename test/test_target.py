@@ -222,7 +222,7 @@ sh:
         # test validation
         st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 1)
+        self.assertLess(time.time() - st, 2)
         # now if we change var, it should be rerun
         os.environ['AA'] = 'A2'
         st = time.time()
