@@ -190,6 +190,7 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
     MAGIC_SANDBOX = re.compile('^%sandbox(\s|$)')
     MAGIC_DEBUG = re.compile('^%debug(\s|$)')
+    MAGIC_TASKINFO = re.compile('^%taskinfo(\s|$)')
 
     def get_use_parser(self):
         parser = argparse.ArgumentParser(prog='%use',
@@ -334,6 +335,16 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
+    def get_taskinfo_parser(self):
+        parser = argparse.ArgumentParser(prog='%taskinfo',
+            description='''Get information on specified task''')
+        parser.add_argument('task', help='ID of task')
+        parser.add_argument('-v', '--verbosity', type=int,
+            choices=range(5), default=3,
+            help='Verbosity of returned task status')
+        parser.error = self._parse_error
+        return parser
+
     def kernel_name(self, name):
         if name in self.supported_languages:
             return self.supported_languages[name].kernel_name
@@ -413,6 +424,11 @@ class SoS_Kernel(IPythonKernel):
                     # kill specified task
                     from sos.hosts import Host
                     Host.kill_tasks([v])
+                elif k == 'task-info':
+                    # requesting information on task
+                    from sos.hosts import Host
+                    result = Host.task_info(v, 3)
+                    self.send_frontend_msg('task-info', [v, 3, result])
                 else:
                     # this somehow does not work
                     self.warn('Unknown message {}: {}'.format(k, v))
@@ -1532,6 +1548,15 @@ class SoS_Kernel(IPythonKernel):
             parser = self.get_debug_parser()
             args = parser.parse_args(options.split())
             self._debug_mode = args.status == 'on'
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+        elif self.MAGIC_TASKINFO.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            parser = self.get_taskinfo_parser()
+            args = parser.parse_args(options.split())
+            # requesting information on task
+            from sos.hosts import Host
+            result = Host.task_info(args.task, args.verbosity)
+            self.send_frontend_msg('task-info', [args.task, args.verbosity, result])
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)

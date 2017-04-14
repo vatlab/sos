@@ -304,6 +304,16 @@ define([
                                  }
                             }
                         } 
+                    } else if (msg_type == 'task-info') {
+                        var cell = window.my_panel.cell;
+                        cell.clear_input();
+                        cell.set_text('%taskinfo -v' + data[1].toString() + ' ' + data[0]);
+                        cell.clear_output();
+                        cell.output_area.append_output({
+                            'output_type': 'stream',
+                            'text': data[2],
+                            'name': 'stdout'
+                            });
                     } else {
                         // this is preview output
                         var cell = window.my_panel.cell;
@@ -385,6 +395,11 @@ define([
     window.kill_task = function(task_id) {
         console.log('kill ' + task_id);
         send_kernel_msg({'kill-task': task_id});
+    }
+
+    window.task_info = function(task_id) {
+        console.log('Request info on ' + task_id);
+        send_kernel_msg({'task-info': task_id});
     }
 
     function set_codemirror_option(evt, param) {
