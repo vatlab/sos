@@ -62,6 +62,8 @@ Rmarkdown(output=_output[0])
         self.assertTrue(os.path.isfile('myreport.html'))
         #
         FileTarget('myreport.html').remove('both')
+
+    def testRmarkdownWithInput(self):
         # Rmarkdown with specified input.
         script = SoS_Script(r'''
 [10]
@@ -80,8 +82,10 @@ Rmarkdown(input='a.md', output=_output[0])
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('myreport.html'))
         FileTarget('myreport.html').remove()
-        #
-        # another case is no output
+
+    def SKIPPED_testRmarkdownWithNoOutput(self):
+        # another case is no output, so output goes to standard output
+        # this cannot be tested in travis because of limit on log file.
         script = SoS_Script(r'''
 [10]
 report: output='a.md'
@@ -96,7 +100,8 @@ Rmarkdown(input='a.md')
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        #
+
+    def testRmarkdownWithActionOutput(self):
         script = SoS_Script(r'''
 [10]
 report: output='default_10.md'

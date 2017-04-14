@@ -381,7 +381,7 @@ define([
         }
     }
 
-    function kill_task(task_id) {
+    window.kill_task = function(task_id) {
         console.log('kill ' + task_id);
     }
 
