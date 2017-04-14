@@ -358,7 +358,7 @@ class FileTarget(BaseTarget):
 
     def is_external(self):
         try:
-            return os.path.relpath(self.fullname(), '.').startswith('..')
+            return os.path.relpath(self.fullname(), env.exec_dir).startswith('..')
         except:
             # under windows the file might be on different volume
             return True
@@ -454,10 +454,12 @@ class RuntimeInfo:
         else:
             raise RuntimeError('Dependent files must be a list of filenames or Undetermined for runtime signature.')
 
+        external_output = False
         if output_files is None:
             self.output_files = []
         elif isinstance(output_files, list):
             self.output_files = [FileTarget(x) if isinstance(x, str) else x for x in output_files]
+            external_output = self.output_files and isinstance(self.output_files[0], FileTarget) and self.output_files[0].is_external()
         elif isinstance(output_files, Undetermined):
             self.output_files = output_files
         else:
@@ -472,7 +474,11 @@ class RuntimeInfo:
         self.sig_id = textMD5('{} {} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files,
             '\n'.join('{}:{}'.format(x, stable_repr(sdict[x])) for x in sig_vars)))
 
-        self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(self.sig_id))
+        if external_output:
+            # global signature
+            self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(self.sig_id))
+        else:
+            self.proc_info = os.path.join(env.exec_dir, '.sos', '.runtime', '{}.exe_info'.format(self.sig_id))
 
     def __getstate__(self):
         return {'step_md5': self.step_md5,

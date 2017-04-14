@@ -485,7 +485,7 @@ run:
 ''')
         # the workflow should call step K for step C_2, but not C_3
         wf = script.workflow()
-        env.verbosity = 4
+        #env.verbosity = 4
         dag = Base_Executor(wf).initialize_dag()
         self.assertDAG(dag,
 '''
@@ -514,7 +514,7 @@ A_1 -> A_2;
         Base_Executor(wf).run()
         for f in ['A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt']:
             t = FileTarget(f)
-            self.assertTrue(t.exists())
+            self.assertTrue(t.exists(), f + ' should exist')
             t.remove('both')
 
     def testTarget(self):
