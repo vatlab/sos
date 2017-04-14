@@ -460,7 +460,7 @@ python:
         wf = script.workflow()
         Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 2.5)
-        self.assertLess(time.time() - st, 5)
+        self.assertLess(time.time() - st, 7)
         #
         # run it again, neither needs to be rerun
         st = time.time()
