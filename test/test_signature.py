@@ -157,7 +157,7 @@ print(a)
         # rerun
         st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 1)
+        self.assertLess(time.time() - st, 2)
         FileTarget('a.txt').remove('both')
 
     def testSignatureWithoutOutput(self):

@@ -43,6 +43,8 @@ define([
     window.my_panel = null;
     window.pending_cells = {};
 
+    window.sos_comm = null;
+
     // initialize BackgroundColor etc from cell meta data
     if (!('sos' in IPython.notebook.metadata))
         IPython.notebook.metadata['sos'] = {
@@ -316,6 +318,14 @@ define([
         console.log('sos comm registered');
     }
 
+    funcion send_kernel_msg(msg) {
+	if (window.sos_comm === null) {
+		window.sos_comm = Jupyter.notebook.kernel.comm_manager.new_comm("sos_comm", {});
+	}
+	    console.log("TRY to send message");
+	window.sos_comm.send(msg);
+    }
+
     function request_kernel_list() {
         if (!window.kernel_updated) {
             IPython.notebook.kernel.execute('%frontend --list-kernel', [], {
@@ -374,6 +384,7 @@ define([
 	}
 
     function set_codemirror_option(evt, param) {
+	    send_kernel_msg({"ddd": "ddd"});
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i)
             cells[i].code_mirror.setOption('styleActiveLine', cells[i].selected);
