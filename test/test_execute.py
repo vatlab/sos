@@ -901,25 +901,25 @@ sh:
         # rerun should be faster
         st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 1)
+        self.assertLess(time.time() - st, 2)
         # if we remove the middle result, it should not matter
         os.remove('a.txt')
         st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 1)
+        self.assertLess(time.time() - st, 2)
         #
         # if we remove the final result, it will be rebuilt
         os.remove('aa.txt')
         st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 1.5)
+        self.assertGreater(time.time() - st, 2.5)
         #
         # now we request the generation of target
         FileTarget('a.txt').remove('target')
         FileTarget('aa.txt').remove('both')
         st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 3.5)
+        self.assertGreater(time.time() - st, 4.5)
         #
         FileTarget('a.txt').remove('both')
         FileTarget('aa.txt').remove('both')
