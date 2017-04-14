@@ -138,14 +138,7 @@ def get_previewers():
     result.sort(key=lambda x: -x[2])
     return result
 
-# method to get message from frontend
-#def frontend_func(comm, msg):
-#    @on_msg
-#    def _recv(msg):
-#        # do something
-#        print(msg)
 
-#get_ipython().kernel.comm_manager.register_target("kernel_comm", frontend_func)
 
 class SoS_Kernel(IPythonKernel):
     implementation = 'SOS'
@@ -404,13 +397,29 @@ class SoS_Kernel(IPythonKernel):
 
         # special communication channel to sos frontend
         self.frontend_comm = None
+        self.comm_manager.register_target('sos_frontend_to_kernel_comm', self.sos_frontend_to_kernel_func)
         self.cell_idx = None
         # cache kernel list
         self.get_kernel_list()
 
+    def sos_frontend_to_kernel_func(self, comm, msg):
+        @comm.on_msg
+        def _recv(msg):
+            content = msg['content']['data']
+            for k,v in content.items():
+                if k == 'list-kernel':
+                    self.send_frontend_msg('kernel-list', self.get_kernel_list())
+                elif k == 'kill-task':
+                    # kill specified task
+                    from sos.hosts import Host
+                    Host.kill_task(v)
+                else:
+                    # this somehow does not work
+                    self.warn('Unknown message {}: {}'.format(k, v))
+
     def send_frontend_msg(self, msg_type, msg):
         if self.frontend_comm is None:
-            self.frontend_comm = Comm(target_name="sos_comm", data={})
+            self.frontend_comm = Comm(target_name="sos_kernel_to_frontend_comm", data={})
             self.frontend_comm.on_msg(self.handle_frontend_msg)
         if not self._use_panel and msg_type in ('display_data', 'stream', 'preview-input'):
             if msg_type in ('display_data', 'stream'):

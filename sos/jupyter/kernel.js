@@ -43,7 +43,7 @@ define([
     window.my_panel = null;
     window.pending_cells = {};
 
-    window.sos_comm = null;
+    window.sos_frontend_to_kernel_comm = null;
 
     // initialize BackgroundColor etc from cell meta data
     if (!('sos' in IPython.notebook.metadata))
@@ -173,7 +173,7 @@ define([
 
     function register_sos_comm() {
         // comm message sent from the kernel
-        Jupyter.notebook.kernel.comm_manager.register_target('sos_comm',
+        Jupyter.notebook.kernel.comm_manager.register_target('sos_kernel_to_frontend_comm',
             function(comm, msg) {
                 comm.on_msg(function(msg) {
                     // when the notebook starts it should receive a message in the format of
@@ -318,22 +318,23 @@ define([
         console.log('sos comm registered');
     }
 
-    /*
-    funcion send_kernel_msg(msg) {
-        if (window.sos_comm === null) {
-            window.sos_comm = Jupyter.notebook.kernel.comm_manager.new_comm("sos_comm", {});
-        }
-            console.log("TRY to send message");
-        window.sos_comm.send(msg);
+    function send_kernel_msg(msg) {
+        if (window.sos_frontend_to_kernel_comm === null)
+            window.sos_frontend_to_kernel_comm = Jupyter.notebook.kernel.comm_manager.new_comm("sos_frontend_to_kernel_comm",
+                {});
+        window.sos_frontend_to_kernel_comm.send(msg);
     }
-    */
 
     function request_kernel_list() {
         if (!window.kernel_updated) {
-            IPython.notebook.kernel.execute('%frontend --list-kernel', [], {
-                'silent': true,
-                'store_history': false
-            });
+            // Use comm communication to request kernel list, instead of sending
+            // an evaluation request.
+            //
+            // IPython.notebook.kernel.execute('%frontend --list-kernel', [], {
+            //    'silent': true,
+            //    'store_history': false
+            // });
+            send_kernel_msg({'list-kernel': true});
             console.log('kernel list requested');
         }
     }
@@ -383,6 +384,7 @@ define([
 
     window.kill_task = function(task_id) {
         console.log('kill ' + task_id);
+        send_kernel_msg({'kill-task': task_id});
     }
 
     function set_codemirror_option(evt, param) {
