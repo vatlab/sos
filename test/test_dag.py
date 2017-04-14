@@ -32,6 +32,11 @@ from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
 
 import subprocess
+import multiprocessing as mp
+try:
+    mp.set_start_method('spawn')
+except:
+    pass
 
 class TestDAG(unittest.TestCase):
     def setUp(self):
@@ -446,6 +451,7 @@ run:
 
 [A_2]
 depends:  'B2.txt'
+output: 'A2.txt'
 run:
     touch A2.txt
 
