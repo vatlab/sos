@@ -220,7 +220,7 @@ cp ${_input} ${_dest}
         env.config['sig_mode'] = 'build'
         Base_Executor(wf).run()
 
-        self.assertLess(time.time() - start, 1.5)
+        self.assertLess(time.time() - start, 2)
         #
         self.assertTrue(os.path.isfile('temp/c.txt'))
         self.assertTrue(os.path.isfile('temp/d.txt'))
@@ -239,7 +239,7 @@ cp ${_input} ${_dest}
         env.config['sig_mode'] = 'default'
         Base_Executor(wf).run()
         
-        self.assertLess(time.time() - start, 1.5)
+        self.assertLess(time.time() - start, 2)
         #
         # change script a little bit
         script = SoS_Script('# comment\n' + text)
