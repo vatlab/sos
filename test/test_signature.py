@@ -157,7 +157,7 @@ print(a)
         # rerun
         st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 1)
+        self.assertLess(time.time() - st, 3)
         FileTarget('a.txt').remove('both')
 
     def testSignatureWithoutOutput(self):
@@ -219,7 +219,6 @@ cp ${_input} ${_dest}
         start = time.time()
         env.config['sig_mode'] = 'build'
         Base_Executor(wf).run()
-
         self.assertLess(time.time() - start, 3)
         #
         self.assertTrue(os.path.isfile('temp/c.txt'))
@@ -278,7 +277,7 @@ run("touch ${output}")
         start = time.time()
         Base_Executor(wf).run()
         # rerun takes less than 1 second
-        self.assertLess(time.time() - start, 1)
+        self.assertLess(time.time() - start, 2)
         #
         # force rerun mode
         start = time.time()
@@ -327,7 +326,7 @@ python:
         st = time.time()
         FileTarget('largefile.txt').remove('signature')
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 0.5)
+        self.assertLess(time.time() - st, 2)
         #
         # now if we touch the file, it needs to be regenerated
         st = time.time()

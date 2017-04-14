@@ -21,6 +21,7 @@
 #
 import os
 import re
+import sys
 import copy
 import collections
 from itertools import chain
@@ -67,7 +68,8 @@ def glob_wildcards(pattern, files=None):
     Glob the values of the wildcards by matching the given pattern to the filesystem.
     Returns a named tuple with a list of values for each wildcard.
     """
-    pattern = os.path.normpath(pattern)
+    if sys.platform != 'win32':
+        pattern = os.path.normpath(pattern)
     first_wildcard = re.search("{[^{]", pattern)
     dirname = os.path.dirname(pattern[:first_wildcard.start(
     )]) if first_wildcard else os.path.dirname(pattern)

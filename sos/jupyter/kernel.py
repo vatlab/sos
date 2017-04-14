@@ -138,6 +138,15 @@ def get_previewers():
     result.sort(key=lambda x: -x[2])
     return result
 
+# method to get message from frontend
+#def frontend_func(comm, msg):
+#    @on_msg
+#    def _recv(msg):
+#        # do something
+#        print(msg)
+
+#get_ipython().kernel.comm_manager.register_target("kernel_comm", frontend_func)
+
 class SoS_Kernel(IPythonKernel):
     implementation = 'SOS'
     implementation_version = __version__
@@ -419,6 +428,7 @@ class SoS_Kernel(IPythonKernel):
     def handle_frontend_msg(self, msg):
         # this function should receive message from frontend, not tested yet
         self.frontend_response = msg['content']['data']
+        self.warn(self.frontend_response)
 
     def _reset_dict(self):
         env.sos_dict = WorkflowDict()
