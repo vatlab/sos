@@ -429,7 +429,6 @@ class SoS_Kernel(IPythonKernel):
                     # requesting information on task
                     from sos.hosts import Host
                     result = Host.task_info(v)
-                    self.send_frontend_msg('task-info', v)
                     self.send_frontend_msg('display_data',
                         {'metadata': {},
                          'data': {'text/plain': result,
@@ -1562,7 +1561,6 @@ class SoS_Kernel(IPythonKernel):
             # requesting information on task
             from sos.hosts import Host
             result = Host.task_info(args.task)
-            self.send_frontend_msg('task-info', args.task)
             self.send_frontend_msg('display_data',
                     {'metadata': {},
                      'data': {'text/plain': result,

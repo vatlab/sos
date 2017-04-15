@@ -308,11 +308,6 @@ define([
                                  }
                             }
                         } 
-                    } else if (msg_type == 'task-info') {
-                        var cell = window.my_panel.cell;
-                        cell.clear_input();
-                        cell.set_text('%taskinfo ' + data);
-                        cell.clear_output();
                     } else {
                         // this is preview output
                         var cell = window.my_panel.cell;
@@ -404,6 +399,10 @@ define([
     window.task_info = function(task_id) {
         console.log('Request info on ' + task_id);
         send_kernel_msg({'task-info': task_id});
+		var cell = window.my_panel.cell;
+		cell.clear_input();
+		cell.set_text('%taskinfo ' + task_id);
+		cell.clear_output();
     }
 
     function set_codemirror_option(evt, param) {
