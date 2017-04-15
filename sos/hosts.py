@@ -602,12 +602,12 @@ class Host:
             host._task_engine.resume_task(task)
 
     @classmethod
-    def task_info(cls, task, verbosity=3):
+    def task_info(cls, task):
         # request information of task
         result = ''
         for host in cls.host_instances.values():
             env.logger.debug('Checking info of task {}'.format(task))
-            result += host._task_engine.query_tasks([task], verbosity=verbosity)
+            result += host._task_engine.query_tasks([task], verbosity=2, html=True)
         return result
     
     @classmethod

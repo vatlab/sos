@@ -530,6 +530,10 @@ def get_status_parser(desc_only=False):
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
+    parser.add_argument('--html', action='store_true',
+        help='''Output results in HTML format. This option will override option
+            verbosity and output detailed status information in HTML tables and
+            figures.''')
     parser.set_defaults(func=cmd_status)
     return parser
 
@@ -544,13 +548,13 @@ def cmd_status(args, workflow_args):
             from .hosts import list_queues
             list_queues(args.config, args.verbosity)
         elif not args.queue:
-            check_tasks(args.tasks, args.verbosity)
+            check_tasks(args.tasks, args.verbosity, args.html)
         else:
             # remote host?
             cfg = load_config_files(args.config)
             env.sos_dict.set('CONFIG', cfg)
             host = Host(args.queue)
-            print(host._task_engine.query_tasks(args.tasks, args.verbosity))
+            print(host._task_engine.query_tasks(args.tasks, args.verbosity, args.html))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())

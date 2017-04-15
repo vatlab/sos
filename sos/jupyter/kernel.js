@@ -311,13 +311,8 @@ define([
                     } else if (msg_type == 'task-info') {
                         var cell = window.my_panel.cell;
                         cell.clear_input();
-                        cell.set_text('%taskinfo -v' + data[1].toString() + ' ' + data[0]);
+                        cell.set_text('%taskinfo ' + data);
                         cell.clear_output();
-                        cell.output_area.append_output({
-                            'output_type': 'stream',
-                            'text': data[2],
-                            'name': 'stdout'
-                            });
                     } else {
                         // this is preview output
                         var cell = window.my_panel.cell;

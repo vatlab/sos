@@ -339,9 +339,6 @@ class SoS_Kernel(IPythonKernel):
         parser = argparse.ArgumentParser(prog='%taskinfo',
             description='''Get information on specified task''')
         parser.add_argument('task', help='ID of task')
-        parser.add_argument('-v', '--verbosity', type=int,
-            choices=range(5), default=3,
-            help='Verbosity of returned task status')
         parser.error = self._parse_error
         return parser
 
@@ -431,8 +428,13 @@ class SoS_Kernel(IPythonKernel):
                 elif k == 'task-info':
                     # requesting information on task
                     from sos.hosts import Host
-                    result = Host.task_info(v, 3)
-                    self.send_frontend_msg('task-info', [v, 3, result])
+                    result = Host.task_info(v)
+                    self.send_frontend_msg('task-info', v)
+                    self.send_frontend_msg('display_data',
+                        {'metadata': {},
+                         'data': {'text/plain': result,
+                               'text/html': HTML(result).data
+                             }})
                 else:
                     # this somehow does not work
                     self.warn('Unknown message {}: {}'.format(k, v))
@@ -1559,8 +1561,13 @@ class SoS_Kernel(IPythonKernel):
             args = parser.parse_args(options.split())
             # requesting information on task
             from sos.hosts import Host
-            result = Host.task_info(args.task, args.verbosity)
-            self.send_frontend_msg('task-info', [args.task, args.verbosity, result])
+            result = Host.task_info(args.task)
+            self.send_frontend_msg('task-info', args.task)
+            self.send_frontend_msg('display_data',
+                    {'metadata': {},
+                     'data': {'text/plain': result,
+                               'text/html': HTML(result).data
+                             }})
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)

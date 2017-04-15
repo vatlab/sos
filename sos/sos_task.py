@@ -314,7 +314,7 @@ def check_task(task):
     else:
         return 'pending'
 
-def check_tasks(tasks, verbosity=1):
+def check_tasks(tasks, verbosity=1, html=False):
     # verbose is ignored for now
     import glob
     from multiprocessing.pool import ThreadPool as Pool
@@ -337,6 +337,9 @@ def check_tasks(tasks, verbosity=1):
     # at most 20 threads
     p = Pool(min(20, len(all_tasks)))
     status = p.map(check_task, [x[0] for x in all_tasks])
+    #
+    if html:
+        verbosity = -1
     if verbosity == 0:
         print('\n'.join(status))
     elif verbosity == 1:
@@ -383,6 +386,57 @@ def check_tasks(tasks, verbosity=1):
                     print('{}:\n{}'.format(os.path.basename(f), '='*(len(os.path.basename(f))+1)))
                     with open(f) as fc:
                         print(fc.read())
+    else:
+        # HTML output
+        from .utils import PrettyRelativeTime
+        from .monitor import summarizeExecution
+        import pprint
+        import glob
+        print('<table>')
+        def row(th=None, td=None):
+            if td is None:
+                print('<tr><th align="right">{}</th><td><td></tr>'.format(th))
+            elif th is None:
+                print('<tr><td colspan="2" align="left">{}</td></tr>'.format(td))
+            else:
+                print('<tr><th align="right">{}</th><td align="left">{}</td></tr>'.format(th, td))
+        for s, (t, d) in zip(status, all_tasks):
+            row('ID', t)
+            row('Status', s)
+            if d is not None:
+                row('Start', '{:>15} ago'.format(PrettyRelativeTime(time.time() - d)))
+            task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
+            if not os.path.isfile(task_file):
+                continue
+            with open(task_file, 'rb') as task:
+                params = pickle.load(task)
+            row('Task')
+            row(td='<pre>{}</pre>'.format(params.data[0]))
+            row('Environment')
+            job_vars = params.data[1]
+            for k in sorted(job_vars.keys()):
+                v = job_vars[k]
+                if not k.startswith('__') and not k == 'CONFIG' and v:
+                    if k == '_runtime':
+                        for _k, _v in v.items():
+                            row(_k, _v)
+                    else:
+                        row(k, '<pre>{}</pre>'.format(pprint.pformat(v)))
+            row('Execution')
+            for line in summarizeExecution(t, status=s).split('\n'):
+                fields = line.split(None, 1)
+                row(fields[0], fields[1])
+            #
+            files = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
+            for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.def', '.res', '.task', '.pulse', '.status')]):
+                row(os.path.basename(f))
+                try:
+                    with open(f) as fc:
+                        row(td='<pre>{}</pre>'.format(fc.read()))
+                except:
+                    row(td='<pre>ignored.</pre>')
+        print('</table>')
+
 
 def kill_tasks(tasks):
     #
@@ -656,9 +710,9 @@ class TaskEngine(threading.Thread):
         with threading.Lock():
             return self.pending_tasks()
 
-    def query_tasks(self, tasks=None, verbosity=1):
-        return self.agent.check_output("sos status {} -v {}".format(
-                ' '.join(tasks), verbosity))
+    def query_tasks(self, tasks=None, verbosity=1, html=False):
+        return self.agent.check_output("sos status {} -v {} {}".format(
+                ' '.join(tasks), verbosity, '--html' if html else ''))
 
     def kill_tasks(self, tasks, all_tasks=False):
         with threading.Lock():
