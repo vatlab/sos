@@ -576,6 +576,9 @@ class TaskEngine(threading.Thread):
                                 env.logger.trace('Task {} removed since status check.'.format(tid))
                                 continue
                             env.logger.trace('STATUS {}\t{}\n'.format(tid, tst))
+                            if tid in self.canceled_tasks and tst != 'aborted':
+                                env.logger.debug('Task {} is still not killed (status {})'.format(tid, tst))
+                                tst = 'aborted'
                             if hasattr(env, '__task_notifier__') and tst != 'non-exist':
                                 if tid in self.task_status and self.task_status[tid] == tst:
                                     env.__task_notifier__(['pulse-status', tid, tst])

@@ -301,8 +301,8 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                 'result-mismatch': 'resume_task',
             }
 
-            tty, tid, tst = task_status
-            if tty == 'new-status':
+            if task_status[0] == 'new-status':
+                tid, tst = task_status[1:]
                 kernel.send_response(kernel.iopub_socket, 'display_data',
                     {
                         'source': 'SoS',
@@ -323,14 +323,17 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                 # keep tracks of my tasks to avoid updating status of
                 # tasks that does not belong to the notebook
                 my_tasks[task_status[1]] = time.time()
-            elif tty == 'remove-task':
+            elif task_status[0] == 'remove-task':
+                tid = task_status[1]
                 if tid in my_tasks:
-                    kernel.send_frontend_msg('remove-task', task_status[1])
-            elif tty == 'change-status':
+                    kernel.send_frontend_msg('remove-task', tid)
+            elif task_status[0] == 'change-status':
+                tid, tst = task_status[1:]
                 if tid in my_tasks:
                     kernel.send_frontend_msg('task-status', [tid, tst, status_class[tst], action_class[tst], action_func[tst]])
                     my_tasks[tid] = time.time()
-            elif tty == 'pulse-status':
+            elif task_status[0] == 'pulse-status':
+                tid, tst = task_status[1:]
                 if tid in my_tasks:
                     if time.time() - my_tasks[tid] < 20:
                         # if it has been within the first 20 seconds of new or updated message
