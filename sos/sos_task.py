@@ -392,14 +392,14 @@ def check_tasks(tasks, verbosity=1, html=False):
         from .monitor import summarizeExecution
         import pprint
         import glob
-        print('<table>')
+        print('<table width="100%">')
         def row(th=None, td=None):
             if td is None:
-                print('<tr><th align="right">{}</th><td><td></tr>'.format(th))
+                print('<tr><th align="right" width="30%"><font color="blue">{}</font></th><td></td></tr>'.format(th))
             elif th is None:
-                print('<tr><td colspan="2" align="left">{}</td></tr>'.format(td))
+                print('<tr><td colspan="2" align="left"  width="30%">{}</td></tr>'.format(td))
             else:
-                print('<tr><th align="right">{}</th><td align="left">{}</td></tr>'.format(th, td))
+                print('<tr><th align="right"  width="30%">{}</th><td align="left">{}</td></tr>'.format(th, td))
         for s, (t, d) in zip(status, all_tasks):
             row('ID', t)
             row('Status', s)
@@ -425,6 +425,8 @@ def check_tasks(tasks, verbosity=1, html=False):
             row('Execution')
             for line in summarizeExecution(t, status=s).split('\n'):
                 fields = line.split(None, 1)
+                if fields[0] == 'task':
+                    continue
                 row(fields[0], fields[1])
             #
             files = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
