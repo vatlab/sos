@@ -273,13 +273,14 @@ define([
                         item.parentNode.removeChild(item);
                     } else if (msg_type == 'task-status') {
                         // console.log(data);
-                        var item = document.getElementById(data[0]);
+                        var item = document.getElementById("status_" + data[0]);
                         if (!item)
                             return;
                         else {
-                            item.className = data[2];
-							item = document.getElementById("action_" + data[0]);
-							item.className = data[3];
+                            // id, status, status_class, action_class, action_func
+                            item.className = "fa fa-fw fa-2x " + data[2];
+							item.setAttribute('onmouseover', "$('#status_" + data[0] + "').addClass('" + data[3] + "').removeClass('" + data[2] + "')");
+							item.setAttribute('onmouseleave', "$('#status_" + data[0] + "').addClass('" + data[2] + "').removeClass('" + data[3] + "')");
 							item.setAttribute("onClick", data[4] + '("' + data[0] + '")');
 						}
                         if (data[1] === "completed") {

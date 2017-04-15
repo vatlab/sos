@@ -269,62 +269,74 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         def notify_kernel(task_status):
             nonlocal my_tasks;
             status_class = {
-                'pending': 'fa fa-2x fa-fw fa-square-o',
-                'submitted': 'fa fa-2x fa-fw fa-spinner',
-                'running': 'fa fa-2x fa-fw fa-spinner fa-pulse fa-spin',
-                'result-ready': 'fa fa-2x fa-fw fa-files-o',
-                'completed': 'fa fa-2x fa-fw fa-check-square-o',
-                # window-close-o does not exist
-                #'failed':  'fa fa-2x fa-fw fa-window-close-o',
-                'failed':  'fa fa-2x fa-fw fa-times-circle-o',
-                'aborted':  'fa fa-2x fa-fw fa-frown-o',
-                'result-mismatch': 'fa fa-2x fa-fw fa-question-circle-o',
+                'pending': 'fa-square-o',
+                'submitted': 'fa-spinner',
+                'running': 'fa-spinner fa-pulse fa-spin',
+                'result-ready': 'fa-files-o',
+                'completed': 'fa-check-square-o',
+                'failed':  'fa-times-circle-o',
+                'aborted':  'fa-frown-o',
+                'result-mismatch': 'fa-question-circle-o',
                 }
 
             action_class = {
-                'cancel': 'fa fa-stop',
-                'start': 'fa fa-play',
+                'pending': 'fa-stop',
+                'submitted': 'fa-stop',
+                'running': 'fa-stop',
+                'result-ready': 'fa-play',
+                'completed': 'fa-play',
+                'failed':  'fa-play',
+                'aborted':  'fa-play',
+                'result-mismatch': 'fa-play',
             }
 
-            if task_status[0] == 'new-status':
+            action_func = {
+                'pending': 'kill_task',
+                'submitted': 'kill_task',
+                'running': 'kill_task',
+                'result-ready': 'resume_task',
+                'completed': 'resume_task',
+                'failed':  'resume_task',
+                'aborted':  'resume_task',
+                'result-mismatch': 'resume_task',
+            }
+
+            tty, tid, tst = task_status
+            if tty == 'new-status':
                 kernel.send_response(kernel.iopub_socket, 'display_data',
                     {
                         'source': 'SoS',
                         'metadata': {},
                         'data': { 'text/html': 
                             HTML('''<table id="table_{0}" style="border: 0px"><tr style="border: 0px">
-                            <td style="border: 0px"><i id="{0}" class="{1}"></i> </td>
+                            <td style="border: 0px">
+                            <i id="status_{0}"
+                                class="fa fa-2x fa-fw {1}" 
+                                onmouseover="$('#status_{0}').addClass('{2}').removeClass('{1}')"
+                                onmouseleave="$('#status_{0}').addClass('{1}').removeClass('{2}')"
+                                onclick="{3}('{0}')"
+                            ></i> </td>
                             <td style="border: 0px"><a onclick="task_info('{0}')"><pre>{0}</pre></a></td>
-                            <td>&nbsp;</td><td>
-                            <i class="fa fa-stop" id="action_{0}" onclick="kill_task('{0}')"></i>
-                            </td>
-                            </tr></table>'''.format(task_status[1],
-                                status_class[task_status[2]])).data
+                            </tr></table>'''.format(tid, status_class[tst], action_class[tst], action_func[tst])).data
                             }
                     })
                 # keep tracks of my tasks to avoid updating status of
                 # tasks that does not belong to the notebook
                 my_tasks[task_status[1]] = time.time()
-            elif task_status[0] == 'remove-task':
-                if task_status[1] in my_tasks:
+            elif tty == 'remove-task':
+                if tid in my_tasks:
                     kernel.send_frontend_msg('remove-task', task_status[1])
-            elif task_status[0] == 'change-status':
-                if task_status[1] in my_tasks:
-                    kernel.send_frontend_msg('task-status', [task_status[1], task_status[2], status_class[task_status[2]],
-                        action_class['cancel' if task_status[2] in ('pending', 'submitted', 'running') else 'start'],
-                        'kill_task' if task_status[2] in ('pending', 'submitted', 'running') else 'resume_task'
-                        ])
-                    my_tasks[task_status[1]] = time.time()
-            elif task_status[0] == 'pulse-status':
-                if task_status[1] in my_tasks:
-                    if time.time() - my_tasks[task_status[1]] < 20:
+            elif tty == 'change-status':
+                if tid in my_tasks:
+                    kernel.send_frontend_msg('task-status', [tid, tst, status_class[tst], action_class[tst], action_func[tst]])
+                    my_tasks[tid] = time.time()
+            elif tty == 'pulse-status':
+                if tid in my_tasks:
+                    if time.time() - my_tasks[tid] < 20:
                         # if it has been within the first 20 seconds of new or updated message
                         # can confirm to verify it has been successfully delivered. Otherwise
                         # ignore such message
-                        kernel.send_frontend_msg('task-status', [task_status[1], task_status[2], status_class[task_status[2]],
-                            action_class['cancel' if task_status[2] in ('pending', 'submitted', 'running') else 'start'],
-                            'kill_task' if task_status[2] in ('pending', 'submitted', 'running') else 'resume_task'
-                            ])
+                        kernel.send_frontend_msg('task-status', [tid, tst, status_class[tst], action_class[tst], action_func[tst]])
             else:
                 raise RuntimeError('Unrecognized status change message {}'.format(task_status))
 
