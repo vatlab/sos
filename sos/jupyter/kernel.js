@@ -276,8 +276,12 @@ define([
                         var item = document.getElementById(data[0]);
                         if (!item)
                             return;
-                        else
+                        else {
                             item.className = data[2];
+							item = document.getElementById("action_" + data[0]);
+							item.className = data[3];
+							item.setAttribute("onClick", data[4] + '("' + data[0] + '")');
+						}
                         if (data[1] === "completed") {
                             /* if successful, let us re-run the cell to submt another task
                                or get the result */
@@ -393,8 +397,13 @@ define([
     }
 
     window.kill_task = function(task_id) {
-        console.log('kill ' + task_id);
+        console.log('Kill ' + task_id);
         send_kernel_msg({'kill-task': task_id});
+    }
+
+    window.resume_task = function(task_id) {
+        console.log('Resume ' + task_id);
+        send_kernel_msg({'resume-task': task_id});
     }
 
     window.task_info = function(task_id) {

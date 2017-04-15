@@ -281,6 +281,11 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                 'result-mismatch': 'fa fa-2x fa-fw fa-question-circle-o',
                 }
 
+            action_class = {
+                'cancel': 'fa fa-stop',
+                'start': 'fa fa-play',
+            }
+
             if task_status[0] == 'new-status':
                 kernel.send_response(kernel.iopub_socket, 'display_data',
                     {
@@ -291,7 +296,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                             <td style="border: 0px"><i id="{0}" class="{1}"></i> </td>
                             <td style="border: 0px"><a onclick="task_info('{0}')"><pre>{0}</pre></a></td>
                             <td>&nbsp;</td><td>
-                            <i class="fa fa-times" onclick="kill_task('{0}')"></i>
+                            <i class="fa fa-stop" id="action_{0}" onclick="kill_task('{0}')"></i>
                             </td>
                             </tr></table>'''.format(task_status[1],
                                 status_class[task_status[2]])).data
@@ -305,7 +310,10 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                     kernel.send_frontend_msg('remove-task', task_status[1])
             elif task_status[0] == 'change-status':
                 if task_status[1] in my_tasks:
-                    kernel.send_frontend_msg('task-status', [task_status[1], task_status[2], status_class[task_status[2]]])
+                    kernel.send_frontend_msg('task-status', [task_status[1], task_status[2], status_class[task_status[2]],
+                        action_class['cancel' if task_status[2] in ('pending', 'submitted', 'running') else 'start'],
+                        'kill_task' if task_status[2] in ('pending', 'submitted', 'running') else 'resume_task'
+                        ])
                     my_tasks[task_status[1]] = time.time()
             elif task_status[0] == 'pulse-status':
                 if task_status[1] in my_tasks:
@@ -313,7 +321,10 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                         # if it has been within the first 20 seconds of new or updated message
                         # can confirm to verify it has been successfully delivered. Otherwise
                         # ignore such message
-                        kernel.send_frontend_msg('task-status', [task_status[1], task_status[2], status_class[task_status[2]]])
+                        kernel.send_frontend_msg('task-status', [task_status[1], task_status[2], status_class[task_status[2]],
+                            action_class['cancel' if task_status[2] in ('pending', 'submitted', 'running') else 'start'],
+                            'kill_task' if task_status[2] in ('pending', 'submitted', 'running') else 'resume_task'
+                            ])
             else:
                 raise RuntimeError('Unrecognized status change message {}'.format(task_status))
 

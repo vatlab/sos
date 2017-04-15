@@ -596,6 +596,12 @@ class Host:
             host._task_engine.kill_tasks(tasks)
 
     @classmethod
+    def resume_task(cls, task):
+        # kill a task from all engines
+        for host in cls.host_instances.values():
+            host._task_engine.resume_task(task)
+
+    @classmethod
     def task_info(cls, task, verbosity=3):
         # request information of task
         result = ''

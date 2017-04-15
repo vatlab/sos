@@ -424,6 +424,10 @@ class SoS_Kernel(IPythonKernel):
                     # kill specified task
                     from sos.hosts import Host
                     Host.kill_tasks([v])
+                elif k == 'resume-task':
+                    # kill specified task
+                    from sos.hosts import Host
+                    Host.resume_task(v)
                 elif k == 'task-info':
                     # requesting information on task
                     from sos.hosts import Host

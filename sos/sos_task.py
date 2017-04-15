@@ -545,7 +545,6 @@ class TaskEngine(threading.Thread):
                                     # task is canceled while being prepared
                                     if hasattr(env, '__task_notifier__'):
                                         env.__task_notifier__(['change-status', k, 'aborted'])
-                                    self.canceled_tasks.remove(k)
                                 else:
                                     self.running_tasks.append(k)
                                     if hasattr(env, '__task_notifier__'):
@@ -675,16 +674,28 @@ class TaskEngine(threading.Thread):
                 elif task in self.submitting_tasks:
                     # this is more troublesome because the task is being
                     # submitted at a new thread.
-                    self.canceled_tasks.append(task)
                     env.logger.debug('Cancel submission of task {}'.format(task))
                 elif task in self.running_tasks:
                     to_be_killed.append(task)
                     env.logger.debug('Killing running task {}'.format(task))
+            self.canceled_tasks.extend(tasks)
         if to_be_killed or all_tasks:
             cmd = "sos kill {} {}".format(' '.join(to_be_killed), '-a' if all_tasks else '')
             ret = self.agent.check_output(cmd)
             env.logger.debug('"{}" executed with response "{}"'.format(cmd, ret))
             return ret
+
+    def resume_task(self, task):
+        with threading.Lock():
+            if not (task in self.canceled_tasks or (task in self.task_status and \
+                    self.task_status[task] in ('completed', 'failed', 'result-mismatch', 'aborted'))):
+                env.logger.warning('Resume task called for non-canceled or non-completed/failed task {}'.format(task))
+                return
+            self.canceled_tasks.remove(task)
+            self.pending_tasks.append(task)
+            self.task_status[task] = 'pending'
+            if hasattr(env, '__task_notifier__'):
+                env.__task_notifier__(['change-status', task, 'pending'])
 
     def execute_task(self, task_id):
         # this is base class
