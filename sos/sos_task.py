@@ -637,9 +637,11 @@ class TaskEngine(threading.Thread):
             if self.pending_tasks:
                 to_run = []
                 # check status
-                num_active_tasks = len([x for x in self.running_tasks if self.task_status[x] == 'running'])
-                if num_active_tasks < self.max_running_jobs:
-                    to_run = self.pending_tasks[ : self.max_running_jobs - num_active_tasks]
+                num_active_tasks = len(self.submitting_tasks) + len(self.running_tasks)
+                if num_active_tasks >= self.max_running_jobs:
+                    continue
+
+                to_run = self.pending_tasks[ : self.max_running_jobs - num_active_tasks]
                 for tid in to_run:
                     if self.task_status[tid] == 'running':
                         env.logger.info('{} ``runnng``'.format(tid))
