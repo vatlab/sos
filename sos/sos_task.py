@@ -685,6 +685,8 @@ class TaskEngine(threading.Thread):
 
             env.logger.info('{} ``queued``'.format(task_id))
             self.pending_tasks.append(task_id)
+            if task_id in self.canceled_tasks:
+                self.canceled_tasks.remove(task_id)
             self.task_status[task_id] = 'pending'
             if hasattr(env, '__task_notifier__'):
                 env.__task_notifier__(['new-status', task_id, 'pending'])
