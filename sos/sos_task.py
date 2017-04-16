@@ -628,6 +628,9 @@ class TaskEngine(threading.Thread):
                 for tid in to_run:
                     if self.task_status[tid] == 'running':
                         env.logger.info('{} ``runnng``'.format(tid))
+                    elif tid in self.canceled_tasks:
+                        # the job is canceled while being prepared to run
+                        env.logger.info('{} ``canceled``'.format(tid))
                     else:
                         env.logger.trace('Start submitting {} (status: {})'.format(tid, self.task_status.get(tid, 'unknown')))
                         t = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -720,13 +723,14 @@ class TaskEngine(threading.Thread):
                 ' '.join(tasks), verbosity, '--html' if html else ''))
 
     def kill_tasks(self, tasks, all_tasks=False):
-        with threading.Lock():
-            to_be_killed = []
-            for task in tasks:
+        to_be_killed = []
+        for task in tasks:
+            with threading.Lock():
                 self.task_status[task] = 'aborted'
-                if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['change-status', task, 'aborted'])
-            for task in tasks:
+            if hasattr(env, '__task_notifier__'):
+                env.__task_notifier__(['change-status', task, 'aborted'])
+        for task in tasks:
+            with threading.Lock():
                 if task in self.pending_tasks:
                     self.pending_tasks.remove(task)
                     env.logger.debug('Cancel pending task {}'.format(task))
@@ -737,7 +741,7 @@ class TaskEngine(threading.Thread):
                 elif task in self.running_tasks:
                     to_be_killed.append(task)
                     env.logger.debug('Killing running task {}'.format(task))
-            self.canceled_tasks.extend(tasks)
+        self.canceled_tasks.extend(tasks)
         if to_be_killed or all_tasks:
             cmd = "sos kill {} {}".format(' '.join(to_be_killed), '-a' if all_tasks else '')
             ret = self.agent.check_output(cmd)
