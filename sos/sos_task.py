@@ -277,7 +277,7 @@ def check_task(task):
             # sometimes the resfile is changed while we are reading it
             # so we wait a bit and try again.
             env.logger.warning(e)
-            time.sleep(1)
+            time.sleep(.5)
             return check_task(task)
     #
     if has_pulse():
@@ -560,11 +560,11 @@ class TaskEngine(threading.Thread):
                     self.task_status[tid] = tst
                 except Exception as e:
                     env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
+        self._last_status_check = time.time()
         self.engine_ready.set()
         while True:
             # if no new task, does not do anything.
-            env.logger.trace('{} running tasks: {}'.format(len(self.running_tasks), self.running_tasks))
-            if self.running_tasks:
+            if self.running_tasks and time.time() - self._last_status_check > self.status_check_interval:
                 status_output = self.query_tasks(self.running_tasks, verbosity=1)
                 with threading.Lock():
                     for line in status_output.split('\n'):
@@ -591,8 +591,12 @@ class TaskEngine(threading.Thread):
                         except Exception as e:
                             env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
                     self.summarize_status()
+                self._last_status_check = time.time()
+            else:
+                # if nothing to do, sleep to avoid empty loop. This will reduce CPU usage from 100% to 0.3%
+                # sleeping longer will slightly reduce CPU usage but decrease responsiveness by a bit
+                time.sleep(0.01)
 
-            env.logger.trace('{} submitting tasks: {}'.format(len(self.submitting_tasks), self.submitting_tasks.keys()))
             if self.submitting_tasks:
                 with threading.Lock():
                     submitted = []
@@ -618,7 +622,6 @@ class TaskEngine(threading.Thread):
                     for k in submitted:
                         self.submitting_tasks.pop(k)
 
-            env.logger.trace('{} pending tasks: {}'.format(len(self.pending_tasks), self.pending_tasks))
             if self.pending_tasks:
                 to_run = []
                 # check status
@@ -639,8 +642,6 @@ class TaskEngine(threading.Thread):
                 with threading.Lock():
                     for tid in to_run:
                         self.pending_tasks.remove(tid)
-
-            time.sleep(self.status_check_interval)
 
     def submit_task(self, task_id):
         # we wait for the engine to start
