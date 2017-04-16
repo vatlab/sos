@@ -58,7 +58,7 @@ class Interactive_Step_Executor(Step_Executor):
                 host._task_engine.remove_tasks(tasks)
                 return host.retrieve_results(tasks)
             # no pending
-            elif all(x != 'pending' for x in res) and not env.config['wait_for_task']:
+            elif not env.config['wait_for_task']:
                 raise PendingTasks([x for x,y in zip(tasks, res) if y == 'running'])
             time.sleep(1)
 
