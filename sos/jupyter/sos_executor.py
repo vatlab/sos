@@ -376,6 +376,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
             'sig_mode': args.__sig_mode__,
             'default_queue': args.__queue__,
             'wait_for_task': args.__wait__,
+            'resume_mode': args.__resume__,
             'run_mode': 'dryrun' if args.__dryrun__ else 'interactive'
         })
         # remove tasks from the task engine so that it can be executed

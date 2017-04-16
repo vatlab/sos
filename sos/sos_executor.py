@@ -239,11 +239,12 @@ class Base_Executor:
                 sig.write('# runtime signatures\n')
         #
         env.config['resumed_tasks'] = set()
-        wf_status = os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status')
-        if os.path.isfile(wf_status):
-            with open(wf_status) as status:
-                for line in status:
-                    env.config['resumed_tasks'].add(line.split()[0])
+        if env.config['resume_mode']:
+            wf_status = os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status')
+            if os.path.isfile(wf_status):
+                with open(wf_status) as status:
+                    for line in status:
+                        env.config['resumed_tasks'].add(line.split()[0])
         #
         # if this is a resumed task?
         if hasattr(env, 'accessed_vars'):

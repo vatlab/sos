@@ -258,6 +258,7 @@ class RuntimeEnvironments(object):
             'config_file': None,
             'output_dag': None,
             'wait_for_task': None,
+            'resume_mode': False,
             'default_queue': '',
             'max_procs': 4,
             'max_running_jobs': None,

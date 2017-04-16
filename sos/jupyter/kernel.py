@@ -405,6 +405,7 @@ class SoS_Kernel(IPythonKernel):
         self._execution_count = 1
         self._debug_mode = False
         self._use_panel = False
+        self._frontend_options = ''
 
         # special communication channel to sos frontend
         self.frontend_comm = None
@@ -1027,7 +1028,12 @@ class SoS_Kernel(IPythonKernel):
         with self.redirect_sos_io():
             try:
                 # record input and output
-                res = runfile(code=code, args=self.options, kernel=self)
+                fopt = ''
+                if self._frontend_options:
+                    for opt in shlex.split(self._frontend_options):
+                        if opt not in shlex.split(self.options):
+                            fopt += ' ' + opt
+                res = runfile(code=code, args=self.options + fopt, kernel=self)
                 self.send_result(res, silent)
             except PendingTasks as e:
                 # send cell index and task IDs to frontend
@@ -1347,8 +1353,11 @@ class SoS_Kernel(IPythonKernel):
             if self.kernel_name(args.cell_kernel) != self.kernel_name(self.kernel):
                 self.switch_kernel(args.cell_kernel)
             try:
+                if args.resume:
+                    self._frontend_options = '-r'
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
+                self._frontend_options = ''
                 if not self.hard_switch_kernel:
                     self.switch_kernel(original_kernel)
         elif self.MAGIC_WITH.match(code):
