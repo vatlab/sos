@@ -139,6 +139,11 @@ define([
             // being finished, we should start from reverse and check actual code
             if (cells[i].input_prompt_number == '*' && code == cells[i].get_text()) {
                 // use cell kernel if meta exists, otherwise use window.default_kernel
+                if (window._auto_resume) {
+                    rerun_option = '--resume';
+                    window._auto_resume = false;
+                } else
+                    rerun_option = '';
                 return this.orig_execute(
                     // passing to kernel
                     // 1. the default kernel (might have been changed from menu bar
@@ -153,7 +158,7 @@ define([
                     " --default-kernel " + window.default_kernel +
                     " --cell-kernel " + cells[i].metadata.kernel +
                     (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'"  : '') + 
-                    (run_notebook ? " --workflow " + btoa(workflow) : '') +
+                    (run_notebook ? " --workflow " + btoa(workflow) : '') + rerun_option +
                     " --cell " + i.toString() + "\n" + code,
                     callbacks, options)
             }
@@ -303,8 +308,10 @@ define([
                                                  break;
                                              }
                                          }
-                                         if (rerun)
+                                         if (rerun) {
+                                             window._auto_resume = true;
                                              rerun.execute();
+                                        }
                                      }
                                  }
                             }

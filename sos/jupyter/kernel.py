@@ -236,6 +236,9 @@ class SoS_Kernel(IPythonKernel):
             help='If panel is open')
         # pass cell index from notebook so that we know which cell fired
         # the command. Use to set metadata of cell through frontend message
+        parser.add_argument('--resume', action='store_true',
+            help='''If the cell is automatically reresumed by frontend, in which
+            case -s force should be handled differently.'''),
         parser.add_argument('--cell', dest='cell_idx',
             help='Index of cell')
         parser.add_argument('--workflow',
