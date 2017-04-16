@@ -508,6 +508,7 @@ class TaskEngine(threading.Thread):
         self.submitting_tasks = {}
         self.canceled_tasks = []
 
+
         self.task_status = {}
         self.last_checked = None
         if 'status_check_interval' not in self.config:
@@ -524,6 +525,10 @@ class TaskEngine(threading.Thread):
         else:
             # default
             self.max_running_jobs = 10
+        #
+        # multiple threads for job submission and status checking
+        self._thread_workers = concurrent.futures.ThreadPoolExecutor(max_workers=self.max_running_jobs + 1)
+        self._status_checker = None
         #
         if env.config['wait_for_task'] is not None:
             self.wait_for_task = env.config['wait_for_task']
@@ -565,7 +570,15 @@ class TaskEngine(threading.Thread):
         while True:
             # if no new task, does not do anything.
             if self.running_tasks and time.time() - self._last_status_check > self.status_check_interval:
-                status_output = self.query_tasks(self.running_tasks, verbosity=1)
+                if self._status_checker is None:
+                    self._status_checker = self._thread_workers.submit(self.query_tasks, self.running_tasks, 1)
+                    continue
+                elif self._status_checker.running():
+                    time.sleep(0.01)
+                    continue
+                else:
+                    status_output = self._status_checker.result()
+                    self._status_checker = None
                 with threading.Lock():
                     for line in status_output.split('\n'):
                         if not line.strip():
@@ -601,9 +614,9 @@ class TaskEngine(threading.Thread):
                 with threading.Lock():
                     submitted = []
                     for k in self.submitting_tasks:
-                        if not self.submitting_tasks[k][1].running():
+                        if not self.submitting_tasks[k].running():
                             submitted.append(k)
-                            if self.submitting_tasks[k][1].result():
+                            if self.submitting_tasks[k].result():
                                 if k in self.canceled_tasks:
                                     # task is canceled while being prepared
                                     if hasattr(env, '__task_notifier__'):
@@ -616,7 +629,6 @@ class TaskEngine(threading.Thread):
                                 if hasattr(env, '__task_notifier__'):
                                     env.__task_notifier__(['change-status', k, 'failed'])
                                 self.task_status[k] = 'failed'
-                            self.submitting_tasks[k][0].shutdown()
                         else:
                             env.logger.trace('{} is still being submitted.'.format(k))
                     for k in submitted:
@@ -636,8 +648,7 @@ class TaskEngine(threading.Thread):
                         env.logger.info('{} ``canceled``'.format(tid))
                     else:
                         env.logger.trace('Start submitting {} (status: {})'.format(tid, self.task_status.get(tid, 'unknown')))
-                        t = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                        self.submitting_tasks[tid] = (t, t.submit(self.execute_task, tid))
+                        self.submitting_tasks[tid] = self._thread_workers.submit(self.execute_task, tid)
                 #
                 with threading.Lock():
                     for tid in to_run:
