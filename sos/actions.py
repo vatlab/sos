@@ -755,11 +755,6 @@ def report(script=None, input=None, output=None, **kwargs):
             writer = file_handle.write
     elif hasattr(output, 'write'):
         writer = output.write
-    elif 'report_output' in env.config and env.config['report_output']:
-        filename = interpolate(env.config['report_output'].lstrip('>'), '${ }')
-        env.logger.debug('Writing report to {}'.format(filename))
-        file_handle = open(filename, 'a')
-        writer = file_handle.write
     elif output is None or output == '':
         writer = sys.stdout.write
     else:

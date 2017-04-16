@@ -69,10 +69,6 @@ class Interactive_Executor(Base_Executor):
         env.sos_dict.set('__args__', self.args)
         if self.md5:
             env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
-        if self.config['report_output']:
-            env.sos_dict.set('__report_output__', self.config['report_output'])
-        elif'__report_output__' in env.sos_dict:
-            env.sos_dict.pop('__report_output_')
         
         self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
         self._base_symbols -= {'dynamic'}
@@ -377,7 +373,6 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         executor = Interactive_Executor(workflow, args=workflow_args, config={
             'config_file': args.__config__,
             'output_dag': args.__dag__,
-            'report_output': args.__report__,
             'sig_mode': args.__sig_mode__,
             'default_queue': args.__queue__,
             'wait_for_task': args.__wait__,

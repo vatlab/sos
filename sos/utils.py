@@ -257,7 +257,6 @@ class RuntimeEnvironments(object):
         self.config = {
             'config_file': None,
             'output_dag': None,
-            'report_output': None,
             'wait_for_task': None,
             'default_queue': '',
             'max_procs': 4,

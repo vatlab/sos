@@ -88,7 +88,6 @@ class SoS_Worker(mp.Process):
 
             config_file: -c
             output_dag: -d
-            report_output: -r
 
         args:
             command line argument passed to workflow. However, if a dictionary is passed,
@@ -217,7 +216,7 @@ class Base_Executor:
         self.shared = shared
         self.config = config
         env.config.update(config)
-        for key in ('config_file', 'output_dag', 'report_output'):
+        for key in ('config_file', 'output_dag'):
             if key not in self.config:
                 self.config[key] = None
         if self.config['config_file'] is not None:

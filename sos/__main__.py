@@ -206,12 +206,6 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         help='''Do not wait for the completion of external tasks and quit SoS
             if all tasks are being executed by external task queues. This option
             overrides the default wait setting of task queues.''')
-    parser.add_argument('-r', dest='__report__', metavar='REPORT_FILE', nargs='?',
-         help='''Default output of action report, which is by default the
-            standard output but you can redirect it to another file with this
-            option. Files specified by this option will be interpolated so you
-            can use names such as 'out_${step_name}.md' to out to step-depedent
-            files.''')
     #parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
@@ -297,7 +291,6 @@ def cmd_run(args, workflow_args):
         executor = Base_Executor(workflow, args=workflow_args, config={
                 'config_file': args.__config__,
                 'output_dag': args.__dag__,
-                'report_output': args.__report__,
                 # wait if -w or in dryrun mode, not wait if -W, otherwise use queue default
                 'wait_for_task': True if args.__wait__ is True or args.__dryrun__ else (False if args.__no_wait__ else None),
                 'default_queue': '' if args.__queue__ is None else args.__queue__,
@@ -368,7 +361,6 @@ def cmd_dryrun(args, workflow_args):
     args.__sig_mode__ = 'ignore'
     args.__max_procs__ = 1
     args.__max_running_jobs__ = 1
-    args.__report__ = None
     args.__dryrun__ = True
     args.__wait__ = True
     args.__no_wait__ = False
