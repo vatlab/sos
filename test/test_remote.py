@@ -109,6 +109,7 @@ run:
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'docker',
+                'resume_mode': True,
                 }).run()
         # should finish relatively fast?
         #self.assertLess(time.time() - st, 5)
@@ -151,6 +152,7 @@ run:
                 # do not wait for jobs
                 'wait_for_task': True,
                 'default_queue': 'ts',
+                'resume_mode': True,
                 }).run()
         # should finish relatively fast?
         #self.assertLess(time.time() - st, 5)
@@ -197,6 +199,7 @@ run:
                 # This is the only difference, because running with -s force would still 
                 # skip some of the completed task.
                 'sig_mode': 'force',
+                'resume_mode': True,
                 }).run()
         # should finish relatively fast?
         self.assertLess(time.time() - st, 9)
