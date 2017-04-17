@@ -120,6 +120,7 @@ class LocalHost:
         self.address = 'localhost'
         # we checkk local jobs more aggressively
         self.config = {'alias': 'localhost', 'status_check_interval': 2}
+        self._procs = []
 
     def prepare_task(self, task_id):
         def_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
@@ -180,7 +181,7 @@ class LocalHost:
     def run_command(self, cmd, wait_for_task):
         # run command but does not wait for result.
         if wait_for_task:
-            subprocess.Popen(cmd, shell=True)
+            self._procs.append(subprocess.Popen(cmd, shell=True))
         else:
             p = DaemonizedProcess(cmd)
             p.start()
@@ -209,6 +210,7 @@ class RemoteHost:
         self.send_cmd = self._get_send_cmd()
         self.receive_cmd = self._get_receive_cmd()
         self.execute_cmd = self._get_execute_cmd()
+        self._procs = []
 
         self.task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias)
         if not os.path.isdir(self.task_dir):
@@ -501,7 +503,8 @@ class RemoteHost:
         env.logger.debug('Executing command ``{}``'.format(cmd))
 
         if wait_for_task:
-            subprocess.Popen(cmd, shell=True)
+            # keep proc persistent to avoid a subprocess is still running warning.
+            self._procs.append(subprocess.Popen(cmd, shell=True))
         else:
             p = DaemonizedProcess(cmd)
             p.start()
