@@ -582,7 +582,8 @@ class Host:
     @classmethod
     def reset(cls):
         for host in cls.host_instances.values():
-            host._task_engine.reset()
+            del host._task_engine
+        cls.host_instances = {}
 
     @classmethod
     def remove_tasks(cls, tasks):

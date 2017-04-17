@@ -83,7 +83,7 @@ task:
 
 run:
     echo I am ${i}
-    sleep ${10+i*2}
+    sleep ${5+i*2}
 ''')
         wf = script.workflow()
         res = Base_Executor(wf, config={
@@ -97,9 +97,9 @@ run:
         # we should be able to get status
         tasks = ' '.join(res['pending_tasks'])
         # wait another 20 seconds?
-        time.sleep(20)
+        time.sleep(15)
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
-        self.assertEqual(out.count('completed'), len(res['pending_tasks']))
+        self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
 
         Host.reset()
         # until we run the workflow again
@@ -114,7 +114,7 @@ run:
         # should finish relatively fast?
         #self.assertLess(time.time() - st, 5)
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
-        self.assertEqual(out.count('completed'), len(res['pending_tasks']))
+        self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
 
     def testTaskSpooler(self):
         subprocess.check_output('cd ~/.sos/tasks; rm -f *.res *.sh *.pulse', shell=True).decode()
@@ -125,7 +125,7 @@ task:
 
 run:
     echo I am task spooler ${i}
-    sleep ${10+i*2}
+    sleep ${5+i*2}
 ''')
         wf = script.workflow()
         res = Base_Executor(wf, config={
@@ -140,9 +140,9 @@ run:
         tasks = ' '.join(res['pending_tasks'])
         time.sleep(2)
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
-        self.assertGreaterEqual(out.count('running'), 1)
+        self.assertGreaterEqual(out.count('running'), 1, 'Expect at least one running job: ' + out)
         # wait another 20 seconds?
-        time.sleep(20)
+        time.sleep(15)
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
         # until we run the workflow again
@@ -157,7 +157,7 @@ run:
         # should finish relatively fast?
         #self.assertLess(time.time() - st, 5)
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
-        self.assertEqual(out.count('completed'), len(res['pending_tasks']))
+        self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
 
     def testTaskSpoolerWithForceSigMode(self):
         subprocess.check_output('cd ~/.sos/tasks; rm -f *.res *.sh *.pulse', shell=True).decode()
@@ -183,11 +183,11 @@ run:
         tasks = ' '.join(res['pending_tasks'])
         time.sleep(2)
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
-        self.assertGreaterEqual(out.count('running'), 1)
+        self.assertGreaterEqual(out.count('running'), 1, 'Expect at least one running jobs: ' + out)
         # wait another 20 seconds?
         time.sleep(20)
         out = subprocess.check_output('sos status {} -c docker.yml -q docker'.format(tasks), shell=True).decode()
-        self.assertEqual(out.count('completed'), len(res['pending_tasks']))
+        self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
         # until we run the workflow again
         st = time.time()
         Base_Executor(wf, config={

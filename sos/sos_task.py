@@ -538,14 +538,6 @@ class TaskEngine(threading.Thread):
             # default
             self.wait_for_task = True
 
-    def reset(self):
-        with threading.Lock():
-            self.running_tasks = []
-            self.pending_tasks = []
-            self.submitting_tasks = {}
-            self.task_status = {}
-            self.canceled_tasks = []
-
     def get_tasks(self):
         with threading.Lock():
             pending = copy.deepcopy(self.pending_tasks + list(self.submitting_tasks.keys()))
