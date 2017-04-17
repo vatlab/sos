@@ -128,8 +128,8 @@ parameter: msg = "Update website"
 
 run: workdir='..'
 	git add --all docs/doc/documentation docs/doc/tutorials docs/doc/examples docs/doc/media docs/js/docs.js docs/*.html
-	git commit docs/*.html docs/doc/* --no-verify -m '${msg}'
-	git push --no-verify
+	git commit docs/*.html docs/doc/* --no-verify -m '${msg}' || true
+	git push --no-verify || true
 
 [check-doc]
 # check if examples in the documentation can be run successfully
