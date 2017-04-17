@@ -277,7 +277,7 @@ run("touch ${output}")
         start = time.time()
         Base_Executor(wf).run()
         # rerun takes less than 1 second
-        self.assertLess(time.time() - start, 2)
+        self.assertLess(time.time() - start, 3)
         #
         # force rerun mode
         start = time.time()
