@@ -408,44 +408,38 @@ class SoS_Kernel(IPythonKernel):
         self._frontend_options = ''
 
         # special communication channel to sos frontend
-        self.frontend_comm = None
-        self.comm_manager.register_target('sos_frontend_to_kernel_comm', self.sos_frontend_to_kernel_func)
-        self.cell_idx = None
-        # cache kernel list
-        self.get_kernel_list()
+        self.frontend_comm = Comm(target_name="sos_comm", data={'kernel-list': self.get_kernel_list()})
+        self.frontend_comm.on_msg(self.handle_frontend_msg)
 
-    def sos_frontend_to_kernel_func(self, comm, msg):
-        @comm.on_msg
-        def _recv(msg):
-            content = msg['content']['data']
-            for k,v in content.items():
-                if k == 'list-kernel':
-                    self.send_frontend_msg('kernel-list', self.get_kernel_list())
-                elif k == 'kill-task':
-                    # kill specified task
-                    from sos.hosts import Host
-                    Host.kill_tasks([v])
-                elif k == 'resume-task':
-                    # kill specified task
-                    from sos.hosts import Host
-                    Host.resume_task(v)
-                elif k == 'task-info':
-                    # requesting information on task
-                    from sos.hosts import Host
-                    result = Host.task_info(v)
-                    self.send_frontend_msg('display_data',
-                        {'metadata': {},
-                         'data': {'text/plain': result,
-                               'text/html': HTML(result).data
-                             }})
-                else:
-                    # this somehow does not work
-                    self.warn('Unknown message {}: {}'.format(k, v))
+        self.cell_idx = None
+
+    def handle_frontend_msg(self, msg):
+        content = msg['content']['data']
+        for k,v in content.items():
+            if k == 'list-kernel':
+                self.send_frontend_msg('kernel-list', self.get_kernel_list())
+            elif k == 'kill-task':
+                # kill specified task
+                from sos.hosts import Host
+                Host.kill_tasks([v])
+            elif k == 'resume-task':
+                # kill specified task
+                from sos.hosts import Host
+                Host.resume_task(v)
+            elif k == 'task-info':
+                # requesting information on task
+                from sos.hosts import Host
+                result = Host.task_info(v)
+                self.send_frontend_msg('display_data',
+                    {'metadata': {},
+                     'data': {'text/plain': result,
+                           'text/html': HTML(result).data
+                         }})
+            else:
+                # this somehow does not work
+                self.warn('Unknown message {}: {}'.format(k, v))
 
     def send_frontend_msg(self, msg_type, msg):
-        if self.frontend_comm is None:
-            self.frontend_comm = Comm(target_name="sos_kernel_to_frontend_comm", data={})
-            self.frontend_comm.on_msg(self.handle_frontend_msg)
         if not self._use_panel and msg_type in ('display_data', 'stream', 'preview-input'):
             if msg_type in ('display_data', 'stream'):
                 self.send_response(self.iopub_socket, msg_type, msg)
@@ -458,11 +452,6 @@ class SoS_Kernel(IPythonKernel):
                     })
         else:
             self.frontend_comm.send(msg, {'msg_type': msg_type})
-
-    def handle_frontend_msg(self, msg):
-        # this function should receive message from frontend, not tested yet
-        self.frontend_response = msg['content']['data']
-        self.warn(self.frontend_response)
 
     def _reset_dict(self):
         env.sos_dict = WorkflowDict()
@@ -1341,7 +1330,8 @@ class SoS_Kernel(IPythonKernel):
                 # request would be sent by the new-connection so we reset the
                 # frontend_comm to re-connect to the frontend.
                 self.frontend_comm = None
-                self.send_frontend_msg('kernel-list', self.get_kernel_list())
+                self.frontend_comm = Comm(target_name="sos_comm", data={'kernel-list': self.get_kernel_list()})
+                self.frontend_comm.on_msg(self.handle_frontend_msg)
             # args.default_kernel should be valid
             if self.kernel_name(args.default_kernel) != self.kernel_name(self.kernel):
                 self.switch_kernel(args.default_kernel)

@@ -43,7 +43,7 @@ define([
     window.my_panel = null;
     window.pending_cells = {};
 
-    window.sos_frontend_to_kernel_comm = null;
+    window.sos_comm = null;
 
     // initialize BackgroundColor etc from cell meta data
     if (!('sos' in IPython.notebook.metadata))
@@ -325,16 +325,14 @@ define([
                     }
                     adjustPanel();
                 });
+                window.sos_comm = comm;
             }
         );
         console.log('sos comm registered');
     }
 
     function send_kernel_msg(msg) {
-        if (window.sos_frontend_to_kernel_comm === null)
-            window.sos_frontend_to_kernel_comm = Jupyter.notebook.kernel.comm_manager.new_comm("sos_frontend_to_kernel_comm",
-                {});
-        window.sos_frontend_to_kernel_comm.send(msg);
+        window.sos_comm.send(msg);
     }
 
     function request_kernel_list() {
@@ -1069,7 +1067,7 @@ define([
         events.on('kernel_connected.Kernel', wrap_execute);
         // #550
         // kernel_ready.Kernel
-        events.on('kernel_connected.Kernel', request_kernel_list);
+        //events.on('kernel_connected.Kernel', request_kernel_list);
         events.on('select.Cell', set_codemirror_option);
 
         load_panel();
