@@ -46,7 +46,6 @@ from IPython.core.error import UsageError
 from IPython.core.display import HTML
 from IPython.utils.tokenutil import line_at_cursor, token_at_cursor
 from jupyter_client import manager, find_connection_file
-from ipykernel.comm import Comm
 
 from textwrap import dedent
 from io import StringIO
@@ -56,6 +55,12 @@ from .inspector import SoS_Inspector
 
 from .sos_executor import runfile
 from .sos_step import PendingTasks
+
+# I have not figured out how to log message to console so I have to use a file
+# to send debug message.
+def log_to_file(msg):
+    with open(os.path.join(os.path.expanduser('~'), 'jupyter_debug.txt'), 'a') as log:
+        log.write('{}\n'.format(msg))
 
 class FlushableStringIO(StringIO):
     '''This is a string buffer for output, but it will only
@@ -407,37 +412,40 @@ class SoS_Kernel(IPythonKernel):
         self._use_panel = False
         self._frontend_options = ''
 
-        # special communication channel to sos frontend
-        self.frontend_comm = Comm(target_name="sos_comm", data={'kernel-list': self.get_kernel_list()})
-        self.frontend_comm.on_msg(self.handle_frontend_msg)
-
+        self.comm_manager.register_target('sos_comm', self.sos_comm)
         self.cell_idx = None
 
-    def handle_frontend_msg(self, msg):
-        content = msg['content']['data']
-        for k,v in content.items():
-            if k == 'list-kernel':
-                self.send_frontend_msg('kernel-list', self.get_kernel_list())
-            elif k == 'kill-task':
-                # kill specified task
-                from sos.hosts import Host
-                Host.kill_tasks([v])
-            elif k == 'resume-task':
-                # kill specified task
-                from sos.hosts import Host
-                Host.resume_task(v)
-            elif k == 'task-info':
-                # requesting information on task
-                from sos.hosts import Host
-                result = Host.task_info(v)
-                self.send_frontend_msg('display_data',
-                    {'metadata': {},
-                     'data': {'text/plain': result,
-                           'text/html': HTML(result).data
-                         }})
-            else:
-                # this somehow does not work
-                self.warn('Unknown message {}: {}'.format(k, v))
+    def sos_comm(self, comm, msg):
+        # record frontend_comm to send messages
+        self.frontend_comm = comm
+
+        @comm.on_msg
+        def handle_frontend_msg(msg):
+            content = msg['content']['data']
+            #log_to_file(msg)
+            for k,v in content.items():
+                if k == 'list-kernel':
+                    self.send_frontend_msg('kernel-list', self.get_kernel_list())
+                elif k == 'kill-task':
+                    # kill specified task
+                    from sos.hosts import Host
+                    Host.kill_tasks([v])
+                elif k == 'resume-task':
+                    # kill specified task
+                    from sos.hosts import Host
+                    Host.resume_task(v)
+                elif k == 'task-info':
+                    # requesting information on task
+                    from sos.hosts import Host
+                    result = Host.task_info(v)
+                    self.send_frontend_msg('display_data',
+                        {'metadata': {},
+                         'data': {'text/plain': result,
+                               'text/html': HTML(result).data
+                             }})
+                else:
+                    # this somehow does not work
+                    self.warn('Unknown message {}: {}'.format(k, v))
 
     def send_frontend_msg(self, msg_type, msg):
         if not self._use_panel and msg_type in ('display_data', 'stream', 'preview-input'):
@@ -1329,9 +1337,8 @@ class SoS_Kernel(IPythonKernel):
                 # communication would be discontinued. However, a kernel-list
                 # request would be sent by the new-connection so we reset the
                 # frontend_comm to re-connect to the frontend.
-                self.frontend_comm = None
-                self.frontend_comm = Comm(target_name="sos_comm", data={'kernel-list': self.get_kernel_list()})
-                self.frontend_comm.on_msg(self.handle_frontend_msg)
+                self.comm_manager.register_target('sos_comm', self.sos_comm)
+
             # args.default_kernel should be valid
             if self.kernel_name(args.default_kernel) != self.kernel_name(self.kernel):
                 self.switch_kernel(args.default_kernel)
