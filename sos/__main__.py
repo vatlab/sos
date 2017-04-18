@@ -252,7 +252,8 @@ def cmd_run(args, workflow_args):
     # this setting makes sure that subprocesses are spawned in the way that is the same on windows
     # and unix, making sos much portable. The cost is that spawn has worse performance than fork,
     # which is not a huge problem by the reuse of SoS_Workers.
-    mp.set_start_method('spawn')
+    if sys.platform != 'win32':
+        mp.set_start_method('forkserver')
 
     import atexit
     from .utils import env, get_traceback
