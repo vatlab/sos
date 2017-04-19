@@ -412,6 +412,7 @@ class SoS_Kernel(IPythonKernel):
         self._use_panel = False
         self._frontend_options = ''
 
+        self.frontend_comm = None
         self.comm_manager.register_target('sos_comm', self.sos_comm)
         self.cell_idx = None
 
@@ -448,6 +449,9 @@ class SoS_Kernel(IPythonKernel):
                     self.warn('Unknown message {}: {}'.format(k, v))
 
     def send_frontend_msg(self, msg_type, msg):
+        # if comm is never created by frontend, the kernel is in test mode without frontend
+        if not self.frontend_comm:
+            return
         if not self._use_panel and msg_type in ('display_data', 'stream', 'preview-input'):
             if msg_type in ('display_data', 'stream'):
                 self.send_response(self.iopub_socket, msg_type, msg)
