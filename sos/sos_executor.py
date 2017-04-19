@@ -726,7 +726,7 @@ class Base_Executor:
                             # if pool is empty, create a new process
                             if not pool:
                                 q1, q2 = mp.Pipe()
-                                worker = SoS_Worker(result_pipe=q2, config=config, args=args)
+                                worker = SoS_Worker(pipe=q2, config=config, args=args)
                                 worker.start()
                             else:
                                 # get worker, q and runnable is not needed any more
@@ -891,7 +891,7 @@ class Base_Executor:
                         # if pool is empty, create a new process
                         if not pool:
                             q1, q2 = mp.Pipe()
-                            worker = SoS_Worker(result_pipe=q2, config=self.config, args=self.args)
+                            worker = SoS_Worker(pipe=q2, config=self.config, args=self.args)
                             worker.start()
                         else:
                             # get worker, q and runnable is not needed any more
@@ -949,7 +949,7 @@ class Base_Executor:
                         # if pool is empty, create a new process
                         if not pool:
                             q1, q2 = mp.Pipe()
-                            worker = SoS_Worker(result_pipe=q2, config=self.config, args=self.args)
+                            worker = SoS_Worker(pipe=q2, config=self.config, args=self.args)
                             worker.start()
                         else:
                             # get worker, q and runnable is not needed any more
