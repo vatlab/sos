@@ -78,7 +78,7 @@ class SoS_Worker(mp.Process):
     '''
     __worker_id__ = 0
 
-    def __init__(self, cmd_queue, config={}, args=[], **kwargs):
+    def __init__(self,  pipe, config={}, args=[], **kwargs):
         '''
         cmd_queue: a single direction queue for the master process to push
             items to the worker.
@@ -97,7 +97,7 @@ class SoS_Worker(mp.Process):
         # the worker process knows configuration file, command line argument etc
         super(SoS_Worker, self).__init__(**kwargs)
         #
-        self.cmd_queue = cmd_queue
+        self.pipe = pipe
         self.config = config
         self.args = args
         self.__worker_id__ += 1
@@ -133,7 +133,7 @@ class SoS_Worker(mp.Process):
     def run(self):
         # wait to handle jobs
         while True:
-            work = self.cmd_queue.get()
+            work = self.pipe.recv()
             if work is None:
                 break
 
@@ -148,7 +148,7 @@ class SoS_Worker(mp.Process):
             except KeyboardInterrupt:
                 break
 
-    def run_workflow(self, workflow_id, wf, targets, args, shared, config, pipe):
+    def run_workflow(self, workflow_id, wf, targets, args, shared, config):
         #
         # The pipe is the way to communicate with the master process.
         #
@@ -163,10 +163,10 @@ class SoS_Worker(mp.Process):
         # we send the pipe to subworkflow, which would send
         # everything directly to the master process, so we do not
         # have to collect result here
-        executer.run(targets=targets, parent_pipe=pipe, my_workflow_id=workflow_id)
+        executer.run(targets=targets, parent_pipe=self.pipe, my_workflow_id=workflow_id)
 
 
-    def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity, pipe):
+    def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity):
         env.logger.debug('Worker working on a step with args {}'.format(args))
         env.config['run_mode'] = run_mode
         env.config['sig_mode'] = sig_mode
@@ -198,7 +198,7 @@ class SoS_Worker(mp.Process):
         # __step_output__ from auxiliary steps. #526
         env.sos_dict.quick_update(context)
 
-        executor = Step_Executor(section, pipe, mode=env.config['run_mode'])
+        executor = Step_Executor(section, self.pipe, mode=env.config['run_mode'])
         executor.run()
 
 class dummy_node:
@@ -725,14 +725,12 @@ class Base_Executor:
 
                             # if pool is empty, create a new process
                             if not pool:
-                                worker_queue = mp.Queue()
-                                worker = SoS_Worker(cmd_queue=worker_queue, config=config, args=args)
+                                q1, q2 = mp.Pipe()
+                                worker = SoS_Worker(pipe=q2, config=config, args=args)
                                 worker.start()
                             else:
                                 # get worker, q and runnable is not needed any more
-                                p, _, _ = pool.pop(0)
-                                worker = p[0]
-                                worker_queue = p[1]
+                                worker, q1, _ = pool.pop(0)
 
                             # now we would like to find a worker and
                             runnable._pending_workflow = workflow_id
@@ -743,9 +741,8 @@ class Base_Executor:
                             wfrunnable._status = 'workflow_running_pending'
                             wfrunnable._pending_workflow = workflow_id
                             #
-                            q = mp.Pipe()
-                            worker_queue.put(('workflow', workflow_id, wf, targets, args, shared, config, q[1]))
-                            procs.append([[worker, worker_queue], q[0], wfrunnable])
+                            q1.send(('workflow', workflow_id, wf, targets, args, shared, config))
+                            procs.append([worker, q1, wfrunnable])
                             #
                             continue
                         else:
@@ -891,17 +888,14 @@ class Base_Executor:
                         step_id, step_param = self.step_queue.popitem()
                         section, context, shared, args, run_mode, sig_mode, verbosity, pipe = step_param
                         # run it!
-                        q = mp.Pipe()
                         # if pool is empty, create a new process
                         if not pool:
-                            worker_queue = mp.Queue()
-                            worker = SoS_Worker(cmd_queue=worker_queue, config=self.config, args=self.args)
+                            q1, q2 = mp.Pipe()
+                            worker = SoS_Worker(pipe=q2, config=self.config, args=self.args)
                             worker.start()
                         else:
                             # get worker, q and runnable is not needed any more
-                            p, _, _ = pool.pop(0)
-                            worker = p[0]
-                            worker_queue = p[1]
+                            worker, q1, _ = pool.pop(0)
 
                         runnable = dummy_node()
                         runnable._node_id = step_id
@@ -910,8 +904,8 @@ class Base_Executor:
                         runnable._child_pipe = pipe
 
                         env.logger.debug('{} execute {} from step queue with args {}'.format(i_am(), step_id, args))
-                        worker_queue.put(('step', section, context, shared, args, run_mode, sig_mode, verbosity, q[1]))
-                        procs.append( [[worker, worker_queue], q[0], runnable])
+                        q1.send(('step', section, context, shared, args, run_mode, sig_mode, verbosity))
+                        procs.append( [worker, q1, runnable])
                         continue
 
                     # find any step that can be executed and run it, and update the DAT
@@ -951,22 +945,19 @@ class Base_Executor:
                         runnable._context['__workflow_sig__'] = env.sos_dict['__workflow_sig__']
 
                     if not nested:
-                        q = mp.Pipe()
 
                         # if pool is empty, create a new process
                         if not pool:
-                            worker_queue = mp.Queue()
-                            worker = SoS_Worker(cmd_queue=worker_queue, config=self.config, args=self.args)
+                            q1, q2 = mp.Pipe()
+                            worker = SoS_Worker(pipe=q2, config=self.config, args=self.args)
                             worker.start()
                         else:
                             # get worker, q and runnable is not needed any more
-                            p, _, _ = pool.pop(0)
-                            worker = p[0]
-                            worker_queue = p[1]
+                            worker, q1, _ = pool.pop(0)
 
                         env.logger.debug('{} execute {} from DAG'.format(i_am(), section.md5))
-                        worker_queue.put(('step', section, runnable._context, shared, self.args, env.config['run_mode'], env.config['sig_mode'], env.verbosity, q[1]))
-                        procs.append( [[worker, worker_queue], q[0], runnable])
+                        q1.send(('step', section, runnable._context, shared, self.args, env.config['run_mode'], env.config['sig_mode'], env.verbosity))
+                        procs.append( [worker, q1, runnable])
                     else:
                         # send the step to the parent
                         step_id = uuid.uuid4()
@@ -1012,13 +1003,13 @@ class Base_Executor:
             raise e
         finally:
             if not nested:
-                for p, _, _ in procs + pool:
-                    p[1].put(None)
+                for _, p, _ in procs + pool:
+                    p.send(None)
                 time.sleep(0.1)
-                for p, _, _ in procs + pool:
-                    if p[0].is_alive():
-                        p[0].terminate()
-                        p[0].join()
+                for w, _, _ in procs + pool:
+                    if w.is_alive():
+                        w.terminate()
+                        w.join()
             prog.close()
         #
         if exec_error.errors:
