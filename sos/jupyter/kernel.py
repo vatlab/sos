@@ -444,6 +444,26 @@ class SoS_Kernel(IPythonKernel):
                          'data': {'text/plain': result,
                                'text/html': HTML(result).data
                              }})
+                    pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', v + '.pulse')
+                    if os.path.isfile(pulse_file):
+                        # read the pulse file and plot it
+                        #time   proc_cpu        proc_mem        children        children_cpu    children_mem
+                        try:
+                            etime = []
+                            cpu = []
+                            mem = []
+                            with open(pulse_file) as pulse:
+                                for line in pulse:
+                                    if line.startswith('#'):
+                                        continue
+                                    fields = line.split()
+                                    etime.append(float(fields[0]))
+                                    cpu.append(int(float(fields[1])) + int(float(fields[4])))
+                                    mem.append(int(float(fields[2]) / 1e6) + int(float(fields[5]) / 1e6))
+                            if etime:
+                                self.send_frontend_msg('resource-plot', ["res_" + v, etime, cpu, mem])
+                        except Exception as e:
+                            self.warn('Failed to generate resource plot: {}'.format(e))
                 else:
                     # this somehow does not work
                     self.warn('Unknown message {}: {}'.format(k, v))

@@ -315,6 +315,77 @@ define([
                         }
                     }
                 }
+            } else if (msg_type == 'resource-plot') {
+                // get the item
+                console.log('Update ' + data[0]);
+                // parent element is a table cell, needs enlarge
+                document.getElementById(data[0]).parentElement.setAttribute("height", "300px;");
+                $('#' + data[0]).css("height", "300px");
+                $('#' + data[0]).css("width", "100%");
+                $('#' + data[0]).css("min-height", "300px");
+
+                var cpu = [];
+                var mem = [];
+                for (var i = 0; i < data[1].length; i++) {
+                    // python time * 1000 equals JS milliseconds
+                    cpu.push([data[1][i] * 1000, data[2][i]]);
+                    mem.push([data[1][i] * 1000, data[3][i]]);
+                }
+
+                function loadFiles(files, fn) {
+                    if (!files.length) {
+                        files = [];
+                    }
+                    var head = document.head || document.getElementsByTagName('head')[0];
+
+                    function loadFile(index) {
+                        if (files.length > index) {
+                            var fileref = document.createElement('script');
+                            fileref.setAttribute("type", "text/javascript");
+                            fileref.setAttribute("src", files[index]);
+                            head.appendChild(fileref);
+                            index = index + 1;
+                            // Used to call a callback function
+                            fileref.onload = function() {
+                                loadFile(index);
+                            }
+                        } else if (fn) {
+                            fn();
+                        }
+                    }
+                    loadFile(0);
+                }
+
+                //$.getScript("http://www.flotcharts.org/flot/jquery.flot.js", function() {
+                loadFiles(["http://www.flotcharts.org/flot/jquery.flot.js",
+                    "http://www.flotcharts.org/flot/jquery.flot.time.js"
+                ], function() {
+                    $.plot('#' + data[0], [{
+                            data: cpu,
+                            label: "#procs"
+                        },
+                        {
+                            data: mem,
+                            label: "mem (M)",
+                            yaxis: 2
+                        }
+                    ], {
+                        xaxes: [{
+                            mode: "time"
+                        }],
+                        yaxes: [{
+                            min: 0
+                        }, {
+                            position: "right",
+                            tickFormatter: function(v, axis) {
+                                return v.toString() + 'M';
+                            }
+                        }],
+                        legend: {
+                            position: "nw"
+                        }
+                    });
+                });
             } else {
                 // this is preview output
                 var cell = window.my_panel.cell;
