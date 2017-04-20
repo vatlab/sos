@@ -69,6 +69,7 @@ run:
                 'config_file': 'docker.yml',
                 'wait_for_task': True,
                 'default_queue': 'docker',
+                'sig_mode': 'force',
                 }).run()
         self.assertTrue(FileTarget('result.txt').exists())
         with open('result.txt') as res:

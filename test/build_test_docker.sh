@@ -39,7 +39,7 @@ RUN [ -d /root/.ssh ] || mkdir -p /root/.ssh
 ADD authorized_keys /root/.ssh/authorized_keys
 
 # install sos on the remote host
-RUN  pip install spyder notebook nbconvert nbformat pyyaml psutil tqdm
+RUN  pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm
 RUN  pip install fasteners pygments ipython ptpython networkx pydotplus
 
 ARG  SHA=LATEST
