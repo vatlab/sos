@@ -180,7 +180,7 @@ class LocalHost:
 
     def run_command(self, cmd, wait_for_task):
         # run command but does not wait for result.
-        if wait_for_task:
+        if wait_for_task or sys.platform == 'win32':
             self._procs.append(subprocess.Popen(cmd, shell=True))
         else:
             p = DaemonizedProcess(cmd)
@@ -502,7 +502,7 @@ class RemoteHost:
             raise ValueError('Failed to run command {}: {}'.format(cmd, e))
         env.logger.debug('Executing command ``{}``'.format(cmd))
 
-        if wait_for_task:
+        if wait_for_task or sys.platform == 'win32':
             # keep proc persistent to avoid a subprocess is still running warning.
             self._procs.append(subprocess.Popen(cmd, shell=True))
         else:
