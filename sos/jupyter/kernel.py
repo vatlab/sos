@@ -478,7 +478,7 @@ class SoS_Kernel(IPythonKernel):
                     from sos.hosts import Host
                     Host(v[1])._task_engine.resume_task(v[0])
                 elif k == 'task-info':
-                    self.handle_taskinfo(v[0], v[1], side_penal=True)
+                    self.handle_taskinfo(v[0], v[1], side_panel=True)
                 else:
                     # this somehow does not work
                     self.warn('Unknown message {}: {}'.format(k, v))
