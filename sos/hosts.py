@@ -125,7 +125,7 @@ class LocalHost:
     def prepare_task(self, task_id):
         def_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
-        if 'max_mem' not in self.config and 'max_procs' not in self.config and 'max_walltime' not in self.config:
+        if 'max_mem' not in self.config and 'max_cores' not in self.config and 'max_walltime' not in self.config:
             shutil.copyfile(def_file, task_file)
         else:
             # add server restriction on task file
@@ -134,17 +134,17 @@ class LocalHost:
                 task_vars = params.data[1]
 
             task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
-            task_vars['_runtime']['max_procs'] = self.config.get('max_procs', None)
+            task_vars['_runtime']['max_cores'] = self.config.get('max_cores', None)
             task_vars['_runtime']['max_walltime'] = self.config.get('max_walltime', None)
 
             if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
                     and self.config['max_mem'] < task_vars['_runtime']['mem']:
                 raise ValueError('Task {} requested more mem ({}) than allowed max_mem ({})'.format(
                     task_id, task_vars['_runtime']['mem'], self.config['max_mem']))
-            if self.config.get('max_procs', None) is not None and task_vars['_runtime'].get('procs', None) is not None \
-                    and self.config['max_procs'] < task_vars['_runtime']['procs']:
-                raise ValueError('Task {} requested more procs ({}) than allowed max_procs ({})'.format(
-                    task_id, task_vars['_runtime']['procs'], self.config['max_procs']))
+            if self.config.get('max_cores', None) is not None and task_vars['_runtime'].get('cores', None) is not None \
+                    and self.config['max_cores'] < task_vars['_runtime']['cores']:
+                raise ValueError('Task {} requested more cores ({}) than allowed max_cores ({})'.format(
+                    task_id, task_vars['_runtime']['cores'], self.config['max_cores']))
             if self.config.get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
                     and self.config['max_walltime'] < task_vars['_runtime']['walltime']:
                 raise ValueError('Task {} requested more walltime ({}) than allowed max_walltime ({})'.format(
@@ -387,10 +387,10 @@ class RemoteHost:
                 and self.config['max_mem'] < task_vars['_runtime']['mem']:
             raise ValueError('Task {} requested more mem ({}) than allowed max_mem ({})'.format(
                 task_id, task_vars['_runtime']['mem'], self.config['max_mem']))
-        if self.config.get('max_procs', None) is not None and task_vars['_runtime'].get('procs', None) is not None \
-                and self.config['max_procs'] < task_vars['_runtime']['procs']:
-            raise ValueError('Task {} requested more procs ({}) than allowed max_procs ({})'.format(
-                task_id, task_vars['_runtime']['procs'], self.config['max_procs']))
+        if self.config.get('max_cores', None) is not None and task_vars['_runtime'].get('cores', None) is not None \
+                and self.config['max_cores'] < task_vars['_runtime']['cores']:
+            raise ValueError('Task {} requested more cores ({}) than allowed max_cores ({})'.format(
+                task_id, task_vars['_runtime']['cores'], self.config['max_cores']))
         if self.config.get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
                 and self.config['max_walltime'] < task_vars['_runtime']['walltime']:
             raise ValueError('Task {} requested more walltime ({}) than allowed max_walltime ({})'.format(
@@ -448,7 +448,7 @@ class RemoteHost:
 
         # server restrictions #488
         task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
-        task_vars['_runtime']['max_procs'] = self.config.get('max_procs', None)
+        task_vars['_runtime']['max_cores'] = self.config.get('max_cores', None)
         task_vars['_runtime']['max_walltime'] = self.config.get('max_walltime', None)
 
         new_param = TaskParams(
@@ -669,12 +669,12 @@ class Host:
         self.config['alias'] = self.alias
         self.description = self.config.get('description', '')
 
-        # standardize parameters max_walltime, max_procs, and max_mem for the host
+        # standardize parameters max_walltime, max_cores, and max_mem for the host
         if 'max_walltime' in self.config:
             self.config['max_walltime'] = expand_time(self.config['max_walltime'])
-        if 'max_procs' in self.config:
-            if not isinstance(self.config['max_procs'], int):
-                raise ValueError('An integer is expected for max_procs')
+        if 'max_cores' in self.config:
+            if not isinstance(self.config['max_cores'], int):
+                raise ValueError('An integer is expected for max_cores')
         if 'max_mem' in self.config:
             self.config['max_mem'] = expand_size(self.config['max_mem'])
 
