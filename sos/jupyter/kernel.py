@@ -455,7 +455,7 @@ class SoS_Kernel(IPythonKernel):
                 cpu = []
                 mem = []
                 for line in pulse.split('\n'):
-                    if line.startswith('#'):
+                    if line.startswith('#') or not line.strip():
                         continue
                     fields = line.split()
                     etime.append(float(fields[0]))

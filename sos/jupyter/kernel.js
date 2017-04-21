@@ -362,7 +362,7 @@ define([
                 ], function() {
                     $.plot('#' + data[0], [{
                             data: cpu,
-                            label: "procs"
+                            label: "CPU (%)"
                         },
                         {
                             data: mem,
