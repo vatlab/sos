@@ -329,7 +329,7 @@ define([
                 for (var i = 0; i < data[1].length; i++) {
                     // python time * 1000 equals JS milliseconds
                     cpu.push([data[1][i] * 1000, data[2][i]]);
-                    mem.push([data[1][i] * 1000, Math.floor(data[3][i])]);
+                    mem.push([data[1][i] * 1000, data[3][i]]);
                 }
 
                 function loadFiles(files, fn) {
@@ -378,7 +378,7 @@ define([
                         }, {
                             position: "right",
                             tickFormatter: function(v, axis) {
-                                return v.toString() + 'M';
+                                return v.toFixed(1) + 'M';
                             }
                         }],
                         legend: {

@@ -421,6 +421,43 @@ class SoS_Kernel(IPythonKernel):
         self.comm_manager.register_target('sos_comm', self.sos_comm)
         self.cell_idx = None
 
+    def handle_taskinfo(self, task_id, task_queue, side_panel=None):
+        # requesting information on task
+        from sos.hosts import Host
+        result = Host(task_queue)._task_engine.query_tasks([task_id], verbosity=2, html=True)
+        if side_panel is True:
+            self.send_frontend_msg('display_data',
+                {'metadata': {},
+                 'data': {'text/plain': result,
+                   'text/html': HTML(result).data
+                 }})
+        else:
+            self.send_response(self.iopub_socket, 'display_data',
+                {'metadata': {},
+                 'data': {'text/plain': result,
+                   'text/html': HTML(result).data
+                 }})
+        pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.pulse')
+        if os.path.isfile(pulse_file):
+            # read the pulse file and plot it
+            #time   proc_cpu        proc_mem        children        children_cpu    children_mem
+            try:
+                etime = []
+                cpu = []
+                mem = []
+                with open(pulse_file) as pulse:
+                    for line in pulse:
+                        if line.startswith('#'):
+                            continue
+                        fields = line.split()
+                        etime.append(float(fields[0]))
+                        cpu.append(float(fields[1]) + float(fields[4]))
+                        mem.append(float(fields[2]) / 1e6 + float(fields[5]) / 1e6)
+                if etime:
+                    self.send_frontend_msg('resource-plot', ["res_" + task_id, etime, cpu, mem])
+            except Exception as e:
+                self.warn('Failed to generate resource plot: {}'.format(e))
+
     def sos_comm(self, comm, msg):
         # record frontend_comm to send messages
         self.frontend_comm = comm
@@ -441,34 +478,7 @@ class SoS_Kernel(IPythonKernel):
                     from sos.hosts import Host
                     Host(v[1])._task_engine.resume_task(v[0])
                 elif k == 'task-info':
-                    # requesting information on task
-                    from sos.hosts import Host
-                    result = Host(v[1])._task_engine.query_tasks([v[0]], verbosity=2, html=True)
-                    self.send_frontend_msg('display_data',
-                        {'metadata': {},
-                         'data': {'text/plain': result,
-                               'text/html': HTML(result).data
-                             }})
-                    pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', v[0] + '.pulse')
-                    if os.path.isfile(pulse_file):
-                        # read the pulse file and plot it
-                        #time   proc_cpu        proc_mem        children        children_cpu    children_mem
-                        try:
-                            etime = []
-                            cpu = []
-                            mem = []
-                            with open(pulse_file) as pulse:
-                                for line in pulse:
-                                    if line.startswith('#'):
-                                        continue
-                                    fields = line.split()
-                                    etime.append(float(fields[0]))
-                                    cpu.append(float(fields[1]) + float(fields[4]))
-                                    mem.append(float(fields[2]) / 1e6 + float(fields[5]) / 1e6)
-                            if etime:
-                                self.send_frontend_msg('resource-plot', ["res_" + v[0], etime, cpu, mem])
-                        except Exception as e:
-                            self.warn('Failed to generate resource plot: {}'.format(e))
+                    self.handle_taskinfo(v[0], v[1], side_penal=True)
                 else:
                     # this somehow does not work
                     self.warn('Unknown message {}: {}'.format(k, v))
@@ -1596,17 +1606,7 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_taskinfo_parser()
             args = parser.parse_args(options.split())
-            # requesting information on task
-            from sos.hosts import Host
-            try:
-                result = Host(args.queue).task_info(args.task)
-                self.send_frontend_msg('display_data',
-                    {'metadata': {},
-                     'data': {'text/plain': result,
-                               'text/html': HTML(result).data
-                             }})
-            except Exception as e:
-                self.warn('Failed to retrieve info on task {}'.format(args.task))
+            self.handle_taskinfo(args.task, args.queue)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)

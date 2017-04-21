@@ -594,10 +594,11 @@ class Host:
         return all(host._task_engine.wait_for_task is False for host in cls.host_instances.values())
 
     def _get_config(self, alias):
+        if 'CONFIG' not in env.sos_dict:
+            from .utils import load_config_files
+            env.sos_dict.set('CONFIG', load_config_files())
         if not alias or alias == 'localhost':
             # if no alias is specified, we are using localhost -> localhost
-            if 'CONFIG' not in env.sos_dict:
-                env.sos_dict['CONFIG'] = {}
             if 'localhost' not in env.sos_dict['CONFIG']:
                 # true default ... we are running localhost -> localhost without definition
                 self.alias = 'localhost'
