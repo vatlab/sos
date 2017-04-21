@@ -741,7 +741,6 @@ class TaskEngine(threading.Thread):
         # we wait for the engine to start
         self.engine_ready.wait()
 
-        to_be_killed = []
         for task in tasks:
             with threading.Lock():
                 self.task_status[task] = 'aborted'
@@ -755,7 +754,6 @@ class TaskEngine(threading.Thread):
                     # submitted at a new thread.
                     env.logger.debug('Cancel submission of task {}'.format(task))
                 elif task in self.running_tasks:
-                    to_be_killed.append(task)
                     env.logger.debug('Killing running task {}'.format(task))
                 else:
                     # it is not in the system, so we need to know what the 
@@ -763,11 +761,11 @@ class TaskEngine(threading.Thread):
                     pass
 
         self.canceled_tasks.extend(tasks)
-        if to_be_killed or all_tasks:
-            cmd = "sos kill {} {}".format(' '.join(to_be_killed), '-a' if all_tasks else '')
-            ret = self.agent.check_output(cmd)
-            env.logger.debug('"{}" executed with response "{}"'.format(cmd, ret))
-            return ret
+        #
+        cmd = "sos kill {} {}".format(' '.join(tasks), '-a' if all_tasks else '')
+        ret = self.agent.check_output(cmd)
+        env.logger.debug('"{}" executed with response "{}"'.format(cmd, ret))
+        return ret
 
     def resume_task(self, task):
         # we wait for the engine to start

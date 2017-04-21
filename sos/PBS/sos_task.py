@@ -77,7 +77,7 @@ class PBS_TaskEngine(TaskEngine):
 
         # for this task, we will need walltime, nodes, cores, mem
         # however, these could be fixed in the job template and we do not need to have them all in the runtime
-        runtime = {x:sos_dict['_runtime'][x] for x in ('nodes', 'cores', 'ppn', 'mem', 'walltime', 'cur_dir', 'home_dir') if x in sos_dict['_runtime']}
+        runtime = {x:sos_dict['_runtime'][x] for x in ('nodes', 'cores', 'ppn', 'mem', 'walltime', 'cur_dir', 'home_dir', 'name') if x in sos_dict['_runtime']}
         runtime['task'] = task_id
         runtime['verbosity'] = env.verbosity
         runtime['sig_mode'] = env.config['sig_mode']
@@ -211,14 +211,16 @@ class PBS_TaskEngine(TaskEngine):
             if not line.strip():
                 continue
             task_id, status = line.split('\t')
-            res += '{}\t{}\n'.format(line, status)
+            res += '{}\t{} (old status)\t'.format(task_id, status)
 
             job_id = self._get_job_id(task_id)
             if not job_id:
+                env.logger.debug('No job_id for task {}'.format(task_id))
                 continue
             try:
                 job_id.update({'task': task_id})
                 cmd = interpolate(self.kill_cmd, '${ }', job_id)
+                env.logger.debug('Running {}'.format(cmd))
                 res += self.agent.check_output(cmd) + '\n'
             except Exception as e:
                 env.logger.debug('Failed to kill job {} (job_id: {}) from template "{}": {}'.format(
