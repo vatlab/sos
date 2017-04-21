@@ -442,7 +442,15 @@ def check_tasks(tasks, verbosity=1, html=False):
                         row(td='<pre style="text-align:left">{}</pre>'.format(fc.read()))
                 except:
                     row(td='<pre style="text-align:left">ignored.</pre>')
-        print('</table>')
+            print('</table>')
+            #
+            print('\nTASK PULSE\n')
+            # supplement run time information
+            pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
+            if os.path.isfile(pulse_file):
+                with open(pulse_file) as pulse:
+                    print(pulse.read())
+
 
 
 def kill_tasks(tasks):
