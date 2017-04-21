@@ -733,6 +733,9 @@ class TaskEngine(threading.Thread):
                 ' '.join(tasks), verbosity, '--html' if html else ''))
 
     def kill_tasks(self, tasks, all_tasks=False):
+        # we wait for the engine to start
+        self.engine_ready.wait()
+
         to_be_killed = []
         for task in tasks:
             with threading.Lock():
