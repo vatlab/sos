@@ -248,7 +248,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
     return parser
 
 def cmd_run(args, workflow_args):
-    import multiprocessing as mp
+    #import multiprocessing as mp
     # #562, #558, #493
     #
     #if sys.platform != 'win32':
@@ -481,8 +481,6 @@ def cmd_execute(args, workflow_args):
         host = Host(args.queue)
         for task in args.tasks:
             host.submit_task(task)
-        if not args.wait:
-            return
         failed_tasks = set()
         while True:
             res = host.check_status(args.tasks)
@@ -495,15 +493,17 @@ def cmd_execute(args, workflow_args):
                     raise RuntimeError('{} completed, {} failed, {} aborted, {} result-mismatch)'.format(
                         len([x for x in res if x == 'completed']), len([x for x in res if x=='failed']),
                         len([x for x in res if x.startswith('aborted')]), len([x for x in res if x=='result-mismatch'])))
-            if any(x in ('pending', 'running', 'submitted') for x in res):
-                continue
-            elif all(x == 'completed' for x in res):
+            if all(x == 'completed' for x in res):
                 env.logger.debug('Put results for {}'.format(args.tasks))
                 res = host.retrieve_results(args.tasks)
                 return
+            elif all(x != 'pending' for x in res) and not args.wait:
+                return
+            elif any(x in ('pending', 'running', 'submitted') for x in res):
+                continue
             else:
                 raise RuntimeError('Job returned with status {}'.format(res))
-            time.sleep(0.5)
+            time.sleep(0.01)
 
 #
 # command status

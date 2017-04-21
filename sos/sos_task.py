@@ -521,7 +521,6 @@ class TaskEngine(threading.Thread):
         self.submitting_tasks = {}
         self.canceled_tasks = []
 
-
         self.task_status = {}
         self.last_checked = None
         if 'status_check_interval' not in self.config:
@@ -550,6 +549,23 @@ class TaskEngine(threading.Thread):
         else:
             # default
             self.wait_for_task = True
+
+    def monitor_tasks(self, tasks=[], exclude=[]):
+        '''Start monitoring specified or all tasks'''
+        self.engine_ready.wait()
+
+        if not tasks:
+            tasks = self.task_status.keys()
+        else:
+            tasks = [x for x in tasks if x in self.task_status]
+
+        # we only monitor running tasks
+        for task in tasks:
+            if self.task_status[task] in ('submitted', 'running') and not task in self.running_tasks:
+                # these tasks will be actively monitored
+                self.running_tasks.append(task)
+        #
+        return {x: self.task_status[x] for x in tasks if self.task_status[x] not in exclude}
 
     def get_tasks(self):
         with threading.Lock():

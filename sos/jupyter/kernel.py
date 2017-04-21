@@ -197,6 +197,7 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_SANDBOX = re.compile('^%sandbox(\s|$)')
     MAGIC_DEBUG = re.compile('^%debug(\s|$)')
     MAGIC_TASKINFO = re.compile('^%taskinfo(\s|$)')
+    MAGIC_TASKS = re.compile('^%tasks(\s|$)')
 
     def get_use_parser(self):
         parser = argparse.ArgumentParser(prog='%use',
@@ -356,6 +357,17 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
+    def get_tasks_parser(self):
+        parser = argparse.ArgumentParser(prog='%tasks',
+            description='''Show a list of tasks from specified queue''')
+        parser.add_argument('tasks', nargs='*', help='ID of tasks')
+        parser.add_argument('-e', '--exclude', nargs='*', default=['completed'],
+            help='''Exclude tasks of specified status'''),
+        parser.add_argument('-q', '--queue',
+            help='''Task queue on which the tasks are retrived.''')
+        parser.error = self._parse_error
+        return parser
+
     def kernel_name(self, name):
         if name in self.supported_languages:
             return self.supported_languages[name].kernel_name
@@ -465,6 +477,16 @@ class SoS_Kernel(IPythonKernel):
                     self.send_frontend_msg('resource-plot', ["res_" + task_id, etime, cpu, mem])
             except Exception as e:
                 self.warn('Failed to generate resource plot: {}'.format(e))
+
+    def handle_tasks(self, tasks, queue='localhost', exclude=[]):
+        from sos.hosts import Host
+        try:
+            host = Host(queue)
+        except Exception as e:
+            self.warn('Invalid task queu {}: {}'.format(queue, e))
+        # get all tasks
+        for tid, tst in host._task_engine.monitor_tasks(tasks, exclude=exclude).items():
+            self.notify_task_status(['new-status', queue, tid, tst])
 
     def sos_comm(self, comm, msg):
         # record frontend_comm to send messages
@@ -1713,6 +1735,12 @@ class SoS_Kernel(IPythonKernel):
             parser = self.get_taskinfo_parser()
             args = parser.parse_args(options.split())
             self.handle_taskinfo(args.task, args.queue)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+        elif self.MAGIC_TASKS.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            parser = self.get_tasks_parser()
+            args = parser.parse_args(options.split())
+            self.handle_tasks(args.tasks, args.queue, args.exclude)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)
