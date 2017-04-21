@@ -411,7 +411,7 @@ def check_tasks(tasks, verbosity=1, html=False):
             with open(task_file, 'rb') as task:
                 params = pickle.load(task)
             row('Task')
-            row(td='<pre>{}</pre>'.format(params.data[0]))
+            row(td='<pre style="text-align:left">{}</pre>'.format(params.data[0]))
             row('Environment')
             job_vars = params.data[1]
             for k in sorted(job_vars.keys()):
@@ -421,7 +421,7 @@ def check_tasks(tasks, verbosity=1, html=False):
                         for _k, _v in v.items():
                             row(_k, _v)
                     else:
-                        row(k, '<pre>{}</pre>'.format(pprint.pformat(v)))
+                        row(k, '<pre style="text-align:left">{}</pre>'.format(pprint.pformat(v)))
             summary = summarizeExecution(t, status=s)
             if summary:
                 row('Execution')
@@ -438,9 +438,9 @@ def check_tasks(tasks, verbosity=1, html=False):
                 row(os.path.basename(f))
                 try:
                     with open(f) as fc:
-                        row(td='<pre>{}</pre>'.format(fc.read()))
+                        row(td='<pre style="text-align:left">{}</pre>'.format(fc.read()))
                 except:
-                    row(td='<pre>ignored.</pre>')
+                    row(td='<pre style="text-align:left">ignored.</pre>')
         print('</table>')
 
 
