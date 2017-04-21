@@ -419,7 +419,8 @@ def check_tasks(tasks, verbosity=1, html=False):
                 if not k.startswith('__') and not k == 'CONFIG' and v:
                     if k == '_runtime':
                         for _k, _v in v.items():
-                            row(_k, _v)
+                            if _v:
+                                row(_k, _v)
                     else:
                         row(k, '<pre style="text-align:left">{}</pre>'.format(pprint.pformat(v)))
             summary = summarizeExecution(t, status=s)
@@ -429,7 +430,7 @@ def check_tasks(tasks, verbosity=1, html=False):
                     fields = line.split(None, 1)
                     if fields[0] == 'task':
                         continue
-                    row(fields[0], fields[1])
+                    row(fields[0], '' if fields[1] is None else fields[1])
                 # this is a placeholder for the frontend to draw figure
                 row(td='<div id="res_{}"></div>'.format(t))
             #
