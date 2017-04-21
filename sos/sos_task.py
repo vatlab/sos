@@ -706,13 +706,15 @@ class TaskEngine(threading.Thread):
         env.logger.debug(
             ' '.join('{}: {}'.format(x, y) for x, y in statuses.items()))
 
-    def check_task_status(self, task_id):
+    def check_task_status(self, task_id, unknown='pending'):
+        # we wait for the engine to start
+        self.engine_ready.wait()
         try:
             with threading.Lock():
                 return self.task_status[task_id]
         except:
             # job not yet submitted
-            return 'pending'
+            return unknown
 
     def remove_tasks(self, tasks):
         with threading.Lock():
@@ -740,8 +742,6 @@ class TaskEngine(threading.Thread):
         for task in tasks:
             with threading.Lock():
                 self.task_status[task] = 'aborted'
-            if hasattr(env, '__task_notifier__'):
-                env.__task_notifier__(['change-status', self.agent.alias, task, 'aborted'])
         for task in tasks:
             with threading.Lock():
                 if task in self.pending_tasks:
@@ -767,9 +767,12 @@ class TaskEngine(threading.Thread):
             return ret
 
     def resume_task(self, task):
+        # we wait for the engine to start
+        self.engine_ready.wait()
         with threading.Lock():
-            if not (task in self.canceled_tasks or (task in self.task_status and \
-                    self.task_status[task] in ('completed', 'failed', 'result-mismatch', 'aborted'))):
+            # it is possible that a task is aborted from an opened notebook with aborted status
+            if task not in self.task_status or \
+                    self.task_status[task] not in ('completed', 'failed', 'result-mismatch', 'aborted'):
                 env.logger.warning('Resume task called for non-canceled or non-completed/failed task {}'.format(task))
                 return
             # the function might have been used multiple times (frontend multiple clicks)
@@ -778,10 +781,10 @@ class TaskEngine(threading.Thread):
             if task not in self.pending_tasks:
                 self.pending_tasks.append(task)
             self.task_status[task] = 'pending'
-            if hasattr(env, '__task_notifier__'):
-                env.__task_notifier__(['change-status', self.agent.alias, task, 'pending'])
 
     def execute_task(self, task_id):
+        # we wait for the engine to start
+        self.engine_ready.wait()
         # this is base class
         return self.agent.prepare_task(task_id)
 

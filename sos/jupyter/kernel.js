@@ -283,8 +283,8 @@ define([
                 else {
                     // id, status, status_class, action_class, action_func
                     item.className = "fa fa-fw fa-2x " + data[3];
-                    item.setAttribute('onmouseover', "$('#status_" + data[0] + "').addClass('" + data[4] + "').removeClass('" + data[3] + "')");
-                    item.setAttribute('onmouseleave', "$('#status_" + data[0] + "').addClass('" + data[3] + "').removeClass('" + data[4] + "')");
+                    item.setAttribute('onmouseover', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[4] + "').removeClass('" + data[3] + "')");
+                    item.setAttribute('onmouseleave', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[3] + "').removeClass('" + data[4] + "')");
                     item.setAttribute("onClick", data[5] + '("' + data[1] + '", "' + data[0] + '")');
                 }
                 if (data[2] === "completed") {
@@ -395,7 +395,8 @@ define([
             adjustPanel();
         });
         window.sos_comm.send({
-            'list-kernel': true
+            'list-kernel': true,
+            'update-task-status': window.unknown_tasks,
         })
         console.log('sos comm registered');
     }
@@ -414,7 +415,7 @@ define([
             //    'store_history': false
             // });
             send_kernel_msg({
-                'list-kernel': true
+                'list-kernel': true,
             });
             console.log('kernel list requested');
         }
@@ -605,6 +606,13 @@ define([
             if (cells[i].cell_type == 'code') {
                 changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
             }
+        }
+        $('[id^=status_]').removeAttr('onClick').removeAttr('onmouseover').removeAttr('onmouseleave');
+        var tasks = $('[id^=status_]');
+        window.unknown_tasks = [];
+        for (var i = 0; i < tasks.length; ++i) {
+            tasks[i].className = 'fa fa-fw fa-2x fa-refresh fa-spin';
+            window.unknown_tasks.push(tasks[i].id);
         }
     }
 

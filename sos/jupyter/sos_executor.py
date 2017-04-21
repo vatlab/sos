@@ -259,86 +259,6 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         from sos.hosts import list_queues
         list_queues(args.__config__, args.verbosity)
         return
-    #
-    my_tasks = {}
-    if kernel is not None:
-        def notify_kernel(task_status):
-            nonlocal my_tasks;
-            status_class = {
-                'pending': 'fa-square-o',
-                'submitted': 'fa-spinner',
-                'running': 'fa-spinner fa-pulse fa-spin',
-                'result-ready': 'fa-files-o',
-                'completed': 'fa-check-square-o',
-                'failed': 'fa-times-circle-o',
-                'aborted': 'fa-frown-o',
-                'result-mismatch': 'fa-question-circle-o',
-                }
-
-            action_class = {
-                'pending': 'fa-stop',
-                'submitted': 'fa-stop',
-                'running': 'fa-stop',
-                'result-ready': 'fa-play',
-                'completed': 'fa-play',
-                'failed':  'fa-play',
-                'aborted':  'fa-play',
-                'result-mismatch': 'fa-play',
-            }
-
-            action_func = {
-                'pending': 'kill_task',
-                'submitted': 'kill_task',
-                'running': 'kill_task',
-                'result-ready': 'resume_task',
-                'completed': 'resume_task',
-                'failed':  'resume_task',
-                'aborted':  'resume_task',
-                'result-mismatch': 'resume_task',
-            }
-
-            if task_status[0] == 'new-status':
-                tqu, tid, tst = task_status[1:]
-                kernel.send_response(kernel.iopub_socket, 'display_data',
-                    {
-                        'source': 'SoS',
-                        'metadata': {},
-                        'data': { 'text/html': 
-                            HTML('''<table id="table_{0}_{1}" style="border: 0px"><tr style="border: 0px">
-                            <td style="border: 0px">
-                            <i id="status_{0}_{1}"
-                                class="fa fa-2x fa-fw {2}" 
-                                onmouseover="$('#status_{0}_{1}').addClass('{3}').removeClass('{2}')"
-                                onmouseleave="$('#status_{0}_{1}').addClass('{2}').removeClass('{3}')"
-                                onclick="{4}('{1}', '{0}')"
-                            ></i> </td>
-                            <td style="border: 0px"><a onclick="task_info('{1}', '{0}')"><pre>{1}</pre></a></td>
-                            </tr></table>'''.format(tqu, tid, status_class[tst], action_class[tst], action_func[tst])).data
-                            }
-                    })
-                # keep tracks of my tasks to avoid updating status of
-                # tasks that does not belong to the notebook
-                my_tasks[(tqu, tid)] = time.time()
-            elif task_status[0] == 'remove-task':
-                tqu, tid = task_status[1:]
-                if (tqu, tid) in my_tasks:
-                    kernel.send_frontend_msg('remove-task', tqu, tid)
-            elif task_status[0] == 'change-status':
-                tqu, tid, tst = task_status[1:]
-                kernel.send_frontend_msg('task-status', [tqu, tid, tst, status_class[tst], action_class[tst], action_func[tst]])
-                my_tasks[(tqu, tid)] = time.time()
-            elif task_status[0] == 'pulse-status':
-                tqu, tid, tst = task_status[1:]
-                if (tqu, tid) in my_tasks:
-                    if time.time() - my_tasks[(tqu, tid)] < 20:
-                        # if it has been within the first 20 seconds of new or updated message
-                        # can confirm to verify it has been successfully delivered. Otherwise
-                        # ignore such message
-                        kernel.send_frontend_msg('task-status', [tqu, tid, tst, status_class[tst], action_class[tst], action_func[tst]])
-            else:
-                raise RuntimeError('Unrecognized status change message {}'.format(task_status))
-
-        env.__task_notifier__ = notify_kernel
 
     if args.__bin_dirs__:
         import fasteners
@@ -378,10 +298,6 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
             'resume_mode': args.__resume__,
             'run_mode': 'dryrun' if args.__dryrun__ else 'interactive'
         })
-        # remove tasks from the task engine so that it can be executed
-        # again if necessary.
-        for tqu, tid in my_tasks.keys():
-            Host(tqu).remove_tasks([tid])
         return executor.run(args.__targets__)
     except PendingTasks as e:
         raise

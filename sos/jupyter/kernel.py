@@ -23,6 +23,7 @@
 import os
 import sys
 import re
+import time
 import base64
 import shlex
 import fnmatch
@@ -33,7 +34,7 @@ import pkg_resources
 import pydoc
 
 from ipykernel.ipkernel import IPythonKernel
-from collections.abc import Sized
+from collections import Sized, defaultdict
 
 from types import ModuleType
 from sos.utils import env, WorkflowDict, short_repr, pretty_size
@@ -420,6 +421,9 @@ class SoS_Kernel(IPythonKernel):
         self.frontend_comm = None
         self.comm_manager.register_target('sos_comm', self.sos_comm)
         self.cell_idx = None
+        self.my_tasks = {}
+        #
+        env.__task_notifier__ = self.notify_task_status
 
     def handle_taskinfo(self, task_id, task_queue, side_panel=None):
         # requesting information on task
@@ -473,15 +477,113 @@ class SoS_Kernel(IPythonKernel):
                     # kill specified task
                     from sos.hosts import Host
                     Host(v[1])._task_engine.kill_tasks([v[0]])
+                    self.notify_task_status(['change-status', v[1], v[0], 'aborted'])
                 elif k == 'resume-task':
                     # kill specified task
                     from sos.hosts import Host
                     Host(v[1])._task_engine.resume_task(v[0])
+                    self.notify_task_status(['change-status', v[1], v[0], 'pending'])
                 elif k == 'task-info':
                     self.handle_taskinfo(v[0], v[1], side_panel=True)
+                elif k == 'update-task-status':
+                    if not isinstance(v, list):
+                        continue
+                    # split by host ...
+                    host_status = defaultdict(list)
+                    for name in v:
+                        if not name.startswith('status_'):
+                            continue
+                        tqu, tid = name[7:].rsplit('_', 1)
+                        host_status[tqu].append(tid)
+                    log_to_file(host_status)
+                    #
+                    from sos.hosts import Host
+                    for tqu, tids in host_status.items():
+                        h = Host(tqu)
+                        for tid in tids:
+                            tst = h._task_engine.check_task_status(tid, unknown='unknown')
+                            self.notify_task_status(['change-status', tqu, tid, tst])
                 else:
                     # this somehow does not work
                     self.warn('Unknown message {}: {}'.format(k, v))
+
+    def notify_task_status(self, task_status):
+        status_class = {
+            'pending': 'fa-square-o',
+            'submitted': 'fa-spinner',
+            'running': 'fa-spinner fa-pulse fa-spin',
+            'result-ready': 'fa-files-o',
+            'completed': 'fa-check-square-o',
+            'failed': 'fa-times-circle-o',
+            'aborted': 'fa-frown-o',
+            'result-mismatch': 'fa-question-circle-o',
+            'unknown': 'fa-question',
+            }
+
+        action_class = {
+            'pending': 'fa-stop',
+            'submitted': 'fa-stop',
+            'running': 'fa-stop',
+            'result-ready': 'fa-play',
+            'completed': 'fa-play',
+            'failed':  'fa-play',
+            'aborted':  'fa-play',
+            'result-mismatch': 'fa-play',
+            'unknown': 'fa-question',
+        }
+
+        action_func = {
+            'pending': 'kill_task',
+            'submitted': 'kill_task',
+            'running': 'kill_task',
+            'result-ready': 'resume_task',
+            'completed': 'resume_task',
+            'failed':  'resume_task',
+            'aborted':  'resume_task',
+            'result-mismatch': 'resume_task',
+            'unknown': 'function(){}',
+        }
+
+        if task_status[0] == 'new-status':
+            tqu, tid, tst = task_status[1:]
+            self.send_response(self.iopub_socket, 'display_data',
+                {
+                    'source': 'SoS',
+                    'metadata': {},
+                    'data': { 'text/html': 
+                        HTML('''<table id="table_{0}_{1}" style="border: 0px"><tr style="border: 0px">
+                        <td style="border: 0px">
+                        <i id="status_{0}_{1}"
+                            class="fa fa-2x fa-fw {2}" 
+                            onmouseover="$('#status_{0}_{1}').addClass('{3}').removeClass('{2}')"
+                            onmouseleave="$('#status_{0}_{1}').addClass('{2}').removeClass('{3}')"
+                            onclick="{4}('{1}', '{0}')"
+                        ></i> </td>
+                        <td style="border: 0px"><a onclick="task_info('{1}', '{0}')"><pre>{1}</pre></a></td>
+                        </tr></table>'''.format(tqu, tid, status_class[tst], action_class[tst], action_func[tst])).data
+                        }
+                })
+            # keep tracks of my tasks to avoid updating status of
+            # tasks that does not belong to the notebook
+            self.my_tasks[(tqu, tid)] = time.time()
+        elif task_status[0] == 'remove-task':
+            tqu, tid = task_status[1:]
+            if (tqu, tid) in self.my_tasks:
+                self.send_frontend_msg('remove-task', [tqu, tid])
+        elif task_status[0] == 'change-status':
+            tqu, tid, tst = task_status[1:]
+            self.send_frontend_msg('task-status', [tqu, tid, tst, status_class[tst], action_class[tst], action_func[tst]])
+            self.my_tasks[(tqu, tid)] = time.time()
+        elif task_status[0] == 'pulse-status':
+            tqu, tid, tst = task_status[1:]
+            if (tqu, tid) in self.my_tasks:
+                if time.time() - self.my_tasks[(tqu, tid)] < 20:
+                    # if it has been within the first 20 seconds of new or updated message
+                    # can confirm to verify it has been successfully delivered. Otherwise
+                    # ignore such message
+                    self.send_frontend_msg('task-status', [tqu, tid, tst, status_class[tst], action_class[tst], action_func[tst]])
+        else:
+            raise RuntimeError('Unrecognized status change message {}'.format(task_status))
 
     def send_frontend_msg(self, msg_type, msg):
         # if comm is never created by frontend, the kernel is in test mode without frontend
