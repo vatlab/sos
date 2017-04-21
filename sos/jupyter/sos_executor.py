@@ -270,8 +270,8 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                 'running': 'fa-spinner fa-pulse fa-spin',
                 'result-ready': 'fa-files-o',
                 'completed': 'fa-check-square-o',
-                'failed':  'fa-times-circle-o',
-                'aborted':  'fa-frown-o',
+                'failed': 'fa-times-circle-o',
+                'aborted': 'fa-frown-o',
                 'result-mismatch': 'fa-question-circle-o',
                 }
 
@@ -298,44 +298,43 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
             }
 
             if task_status[0] == 'new-status':
-                tid, tst = task_status[1:]
+                tqu, tid, tst = task_status[1:]
                 kernel.send_response(kernel.iopub_socket, 'display_data',
                     {
                         'source': 'SoS',
                         'metadata': {},
                         'data': { 'text/html': 
-                            HTML('''<table id="table_{0}" style="border: 0px"><tr style="border: 0px">
+                            HTML('''<table id="table_{0}_{1}" style="border: 0px"><tr style="border: 0px">
                             <td style="border: 0px">
-                            <i id="status_{0}"
-                                class="fa fa-2x fa-fw {1}" 
-                                onmouseover="$('#status_{0}').addClass('{2}').removeClass('{1}')"
-                                onmouseleave="$('#status_{0}').addClass('{1}').removeClass('{2}')"
-                                onclick="{3}('{0}')"
+                            <i id="status_{0}_{1}"
+                                class="fa fa-2x fa-fw {2}" 
+                                onmouseover="$('#status_{0}_{1}').addClass('{3}').removeClass('{2}')"
+                                onmouseleave="$('#status_{0}_{1}').addClass('{2}').removeClass('{3}')"
+                                onclick="{4}('{1}', '{0}')"
                             ></i> </td>
-                            <td style="border: 0px"><a onclick="task_info('{0}')"><pre>{0}</pre></a></td>
-                            </tr></table>'''.format(tid, status_class[tst], action_class[tst], action_func[tst])).data
+                            <td style="border: 0px"><a onclick="task_info('{1}', '{0}')"><pre>{1}</pre></a></td>
+                            </tr></table>'''.format(tqu, tid, status_class[tst], action_class[tst], action_func[tst])).data
                             }
                     })
                 # keep tracks of my tasks to avoid updating status of
                 # tasks that does not belong to the notebook
-                my_tasks[task_status[1]] = time.time()
+                my_tasks[(tqu, tid)] = time.time()
             elif task_status[0] == 'remove-task':
-                tid = task_status[1]
-                if tid in my_tasks:
-                    kernel.send_frontend_msg('remove-task', tid)
+                tqu, tid = task_status[1:]
+                if (tqu, tid) in my_tasks:
+                    kernel.send_frontend_msg('remove-task', tqu, tid)
             elif task_status[0] == 'change-status':
-                tid, tst = task_status[1:]
-                if tid in my_tasks:
-                    kernel.send_frontend_msg('task-status', [tid, tst, status_class[tst], action_class[tst], action_func[tst]])
-                    my_tasks[tid] = time.time()
+                tqu, tid, tst = task_status[1:]
+                kernel.send_frontend_msg('task-status', [tqu, tid, tst, status_class[tst], action_class[tst], action_func[tst]])
+                my_tasks[(tqu, tid)] = time.time()
             elif task_status[0] == 'pulse-status':
-                tid, tst = task_status[1:]
-                if tid in my_tasks:
-                    if time.time() - my_tasks[tid] < 20:
+                tqu, tid, tst = task_status[1:]
+                if (tqu, tid) in my_tasks:
+                    if time.time() - my_tasks[(tqu, tid)] < 20:
                         # if it has been within the first 20 seconds of new or updated message
                         # can confirm to verify it has been successfully delivered. Otherwise
                         # ignore such message
-                        kernel.send_frontend_msg('task-status', [tid, tst, status_class[tst], action_class[tst], action_func[tst]])
+                        kernel.send_frontend_msg('task-status', [tqu, tid, tst, status_class[tst], action_class[tst], action_func[tst]])
             else:
                 raise RuntimeError('Unrecognized status change message {}'.format(task_status))
 
@@ -381,7 +380,8 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         })
         # remove tasks from the task engine so that it can be executed
         # again if necessary.
-        Host.remove_tasks(my_tasks.keys())
+        for tqu, tid in my_tasks.keys():
+            Host(tqu).remove_tasks([tid])
         return executor.run(args.__targets__)
     except PendingTasks as e:
         raise

@@ -588,31 +588,6 @@ class Host:
             del host._task_engine
         cls.host_instances = {}
 
-    @classmethod
-    def remove_tasks(cls, tasks):
-        for host in cls.host_instances.values():
-            host._task_engine.remove_tasks(tasks)
-
-    @classmethod
-    def kill_tasks(cls, tasks):
-        # kill a task from all engines
-        for host in cls.host_instances.values():
-            host._task_engine.kill_tasks(tasks)
-
-    @classmethod
-    def resume_task(cls, task):
-        # kill a task from all engines
-        for host in cls.host_instances.values():
-            host._task_engine.resume_task(task)
-
-    @classmethod
-    def task_info(cls, task):
-        # request information of task
-        result = ''
-        for host in cls.host_instances.values():
-            env.logger.debug('Checking info of task {}'.format(task))
-            result += host._task_engine.query_tasks([task], verbosity=2, html=True)
-        return result
     
     @classmethod
     def not_wait_for_tasks(cls):
@@ -621,6 +596,8 @@ class Host:
     def _get_config(self, alias):
         if not alias or alias == 'localhost':
             # if no alias is specified, we are using localhost -> localhost
+            if 'CONFIG' not in env.sos_dict:
+                env.sos_dict['CONFIG'] = {}
             if 'localhost' not in env.sos_dict['CONFIG']:
                 # true default ... we are running localhost -> localhost without definition
                 self.alias = 'localhost'

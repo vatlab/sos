@@ -345,8 +345,13 @@ class SoS_Kernel(IPythonKernel):
 
     def get_taskinfo_parser(self):
         parser = argparse.ArgumentParser(prog='%taskinfo',
-            description='''Get information on specified task''')
+            description='''Get information on specified task. By default
+            sos would query against all running task queues but it would
+            start a task queue and query status if option -q is specified.
+            ''')
         parser.add_argument('task', help='ID of task')
+        parser.add_argument('-q', '--queue',
+            help='''Task queue on which the task is executed.''')
         parser.error = self._parse_error
         return parser
 
@@ -409,7 +414,7 @@ class SoS_Kernel(IPythonKernel):
         self._real_execution_count = 1
         self._execution_count = 1
         self._debug_mode = False
-        self._use_panel = False
+        self._use_panel = None
         self._frontend_options = ''
 
         self.frontend_comm = None
@@ -430,21 +435,21 @@ class SoS_Kernel(IPythonKernel):
                 elif k == 'kill-task':
                     # kill specified task
                     from sos.hosts import Host
-                    Host.kill_tasks([v])
+                    Host(v[1])._task_engine.kill_tasks([v[0]])
                 elif k == 'resume-task':
                     # kill specified task
                     from sos.hosts import Host
-                    Host.resume_task(v)
+                    Host(v[1])._task_engine.resume_task(v[0])
                 elif k == 'task-info':
                     # requesting information on task
                     from sos.hosts import Host
-                    result = Host.task_info(v)
+                    result = Host(v[1])._task_engine.query_tasks([v[0]], verbosity=2, html=True)
                     self.send_frontend_msg('display_data',
                         {'metadata': {},
                          'data': {'text/plain': result,
                                'text/html': HTML(result).data
                              }})
-                    pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', v + '.pulse')
+                    pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', v[0] + '.pulse')
                     if os.path.isfile(pulse_file):
                         # read the pulse file and plot it
                         #time   proc_cpu        proc_mem        children        children_cpu    children_mem
@@ -458,10 +463,10 @@ class SoS_Kernel(IPythonKernel):
                                         continue
                                     fields = line.split()
                                     etime.append(float(fields[0]))
-                                    cpu.append(int(float(fields[1])) + int(float(fields[4])))
-                                    mem.append(int(float(fields[2]) / 1e6) + int(float(fields[5]) / 1e6))
+                                    cpu.append(float(fields[1]) + float(fields[4]))
+                                    mem.append(float(fields[2]) / 1e6 + float(fields[5]) / 1e6)
                             if etime:
-                                self.send_frontend_msg('resource-plot', ["res_" + v, etime, cpu, mem])
+                                self.send_frontend_msg('resource-plot', ["res_" + v[0], etime, cpu, mem])
                         except Exception as e:
                             self.warn('Failed to generate resource plot: {}'.format(e))
                 else:
@@ -472,7 +477,7 @@ class SoS_Kernel(IPythonKernel):
         # if comm is never created by frontend, the kernel is in test mode without frontend
         if not self.frontend_comm:
             return
-        if not self._use_panel and msg_type in ('display_data', 'stream', 'preview-input'):
+        if self._use_panel is False and msg_type in ('display_data', 'stream', 'preview-input'):
             if msg_type in ('display_data', 'stream'):
                 self.send_response(self.iopub_socket, msg_type, msg)
             elif msg_type == 'preview-input':
@@ -1593,12 +1598,15 @@ class SoS_Kernel(IPythonKernel):
             args = parser.parse_args(options.split())
             # requesting information on task
             from sos.hosts import Host
-            result = Host.task_info(args.task)
-            self.send_frontend_msg('display_data',
+            try:
+                result = Host(args.queue).task_info(args.task)
+                self.send_frontend_msg('display_data',
                     {'metadata': {},
                      'data': {'text/plain': result,
                                'text/html': HTML(result).data
                              }})
+            except Exception as e:
+                self.warn('Failed to retrieve info on task {}'.format(args.task))
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)

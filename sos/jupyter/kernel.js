@@ -273,26 +273,26 @@ define([
                 var cell = IPython.notebook.get_cell(data[0]);
                 window.pending_cells[cell.cell_id] = data[1];
             } else if (msg_type == 'remove-task') {
-                var item = document.getElementById("table_" + data);
+                var item = document.getElementById("table_" + data[0] + "_" + data[1]);
                 item.parentNode.removeChild(item);
             } else if (msg_type == 'task-status') {
                 // console.log(data);
-                var item = document.getElementById("status_" + data[0]);
+                var item = document.getElementById("status_" + data[0] + "_" + data[1]);
                 if (!item)
                     return;
                 else {
                     // id, status, status_class, action_class, action_func
-                    item.className = "fa fa-fw fa-2x " + data[2];
-                    item.setAttribute('onmouseover', "$('#status_" + data[0] + "').addClass('" + data[3] + "').removeClass('" + data[2] + "')");
-                    item.setAttribute('onmouseleave', "$('#status_" + data[0] + "').addClass('" + data[2] + "').removeClass('" + data[3] + "')");
-                    item.setAttribute("onClick", data[4] + '("' + data[0] + '")');
+                    item.className = "fa fa-fw fa-2x " + data[3];
+                    item.setAttribute('onmouseover', "$('#status_" + data[0] + "').addClass('" + data[4] + "').removeClass('" + data[3] + "')");
+                    item.setAttribute('onmouseleave', "$('#status_" + data[0] + "').addClass('" + data[3] + "').removeClass('" + data[4] + "')");
+                    item.setAttribute("onClick", data[5] + '("' + data[1] + '", "' + data[0] + '")');
                 }
-                if (data[1] === "completed") {
+                if (data[2] === "completed") {
                     /* if successful, let us re-run the cell to submt another task
                        or get the result */
                     for (cell in window.pending_cells) {
                         /* remove task from pending_cells */
-                        var idx = window.pending_cells[cell].indexOf(data[0]);
+                        var idx = window.pending_cells[cell].indexOf(data[1]);
                         // $("#"+data[0]).css("background-color","#98FB98")
                         if (idx >= 0) {
                             window.pending_cells[cell].splice(idx, 1);
@@ -329,7 +329,7 @@ define([
                 for (var i = 0; i < data[1].length; i++) {
                     // python time * 1000 equals JS milliseconds
                     cpu.push([data[1][i] * 1000, data[2][i]]);
-                    mem.push([data[1][i] * 1000, data[3][i]]);
+                    mem.push([data[1][i] * 1000, Math.floor(data[3][i])]);
                 }
 
                 function loadFiles(files, fn) {
@@ -362,7 +362,7 @@ define([
                 ], function() {
                     $.plot('#' + data[0], [{
                             data: cpu,
-                            label: "#procs"
+                            label: "procs"
                         },
                         {
                             data: mem,
@@ -463,28 +463,28 @@ define([
         }
     }
 
-    window.kill_task = function(task_id) {
+    window.kill_task = function(task_id, task_queue) {
         console.log('Kill ' + task_id);
         send_kernel_msg({
-            'kill-task': task_id
+            'kill-task': [task_id, task_queue],
         });
     }
 
-    window.resume_task = function(task_id) {
+    window.resume_task = function(task_id, task_queue) {
         console.log('Resume ' + task_id);
         send_kernel_msg({
-            'resume-task': task_id
+            'resume-task': [task_id, task_queue],
         });
     }
 
-    window.task_info = function(task_id) {
+    window.task_info = function(task_id, task_queue) {
         console.log('Request info on ' + task_id);
         send_kernel_msg({
-            'task-info': task_id
+            'task-info': [task_id, task_queue],
         });
         var cell = window.my_panel.cell;
         cell.clear_input();
-        cell.set_text('%taskinfo ' + task_id);
+        cell.set_text('%taskinfo ' + task_id + ' -q ' + task_queue);
         cell.clear_output();
     }
 

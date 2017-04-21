@@ -588,9 +588,9 @@ class TaskEngine(threading.Thread):
                                 tst = 'aborted'
                             if hasattr(env, '__task_notifier__') and tst != 'non-exist':
                                 if tid in self.task_status and self.task_status[tid] == tst:
-                                    env.__task_notifier__(['pulse-status', tid, tst])
+                                    env.__task_notifier__(['pulse-status', self.agent.alias, tid, tst])
                                 else:
-                                    env.__task_notifier__(['change-status', tid, tst])
+                                    env.__task_notifier__(['change-status', self.agent.alias, tid, tst])
                             self.task_status[tid] = tst
                             # terminal states, remove tasks from task list
                             if tst in ('completed', 'failed', 'aborted', 'result-mismatch'):
@@ -614,14 +614,14 @@ class TaskEngine(threading.Thread):
                                 if k in self.canceled_tasks:
                                     # task is canceled while being prepared
                                     if hasattr(env, '__task_notifier__'):
-                                        env.__task_notifier__(['change-status', k, 'aborted'])
+                                        env.__task_notifier__(['change-status', self.agent.alias, k, 'aborted'])
                                 else:
                                     self.running_tasks.append(k)
                                     if hasattr(env, '__task_notifier__'):
-                                        env.__task_notifier__(['change-status', k, 'submitted'])
+                                        env.__task_notifier__(['change-status', self.agent.alias, k, 'submitted'])
                             else:
                                 if hasattr(env, '__task_notifier__'):
-                                    env.__task_notifier__(['change-status', k, 'failed'])
+                                    env.__task_notifier__(['change-status', self.agent.alias, k, 'failed'])
                                 self.task_status[k] = 'failed'
                         else:
                             env.logger.trace('{} is still being submitted.'.format(k))
@@ -667,7 +667,7 @@ class TaskEngine(threading.Thread):
                 if self.task_status[task_id] == 'running':
                     env.logger.info('{} ``already runnng``'.format(task_id))
                     if hasattr(env, '__task_notifier__'):
-                        env.__task_notifier__(['new-status', task_id, 'running'])
+                        env.__task_notifier__(['new-status', self.agent.alias, task_id, 'running'])
                     return 'running'
                 # there is a case when the job is already completed (complete-old), but
                 # because we do not know if the user asks to rerun (-s force), we have to
@@ -697,7 +697,7 @@ class TaskEngine(threading.Thread):
                 self.canceled_tasks.remove(task_id)
             self.task_status[task_id] = 'pending'
             if hasattr(env, '__task_notifier__'):
-                env.__task_notifier__(['new-status', task_id, 'pending'])
+                env.__task_notifier__(['new-status', self.agent.alias, task_id, 'pending'])
             return 'pending'
 
     def summarize_status(self):
@@ -718,7 +718,7 @@ class TaskEngine(threading.Thread):
         with threading.Lock():
             for task in tasks:
                 if hasattr(env, '__task_notifier__'):
-                    env.__task_notifier__(['remove-task', task])
+                    env.__task_notifier__(['remove-task', self.agent.alias, task])
                 #if task in self.task_status:
                 #    self.task_status.pop(task)
                 #if task in self.running_tasks:
@@ -738,7 +738,7 @@ class TaskEngine(threading.Thread):
             with threading.Lock():
                 self.task_status[task] = 'aborted'
             if hasattr(env, '__task_notifier__'):
-                env.__task_notifier__(['change-status', task, 'aborted'])
+                env.__task_notifier__(['change-status', self.agent.alias, task, 'aborted'])
         for task in tasks:
             with threading.Lock():
                 if task in self.pending_tasks:
@@ -751,6 +751,11 @@ class TaskEngine(threading.Thread):
                 elif task in self.running_tasks:
                     to_be_killed.append(task)
                     env.logger.debug('Killing running task {}'.format(task))
+                else:
+                    # it is not in the system, so we need to know what the 
+                    # status of the task before we do anything...
+                    pass
+
         self.canceled_tasks.extend(tasks)
         if to_be_killed or all_tasks:
             cmd = "sos kill {} {}".format(' '.join(to_be_killed), '-a' if all_tasks else '')
@@ -764,11 +769,14 @@ class TaskEngine(threading.Thread):
                     self.task_status[task] in ('completed', 'failed', 'result-mismatch', 'aborted'))):
                 env.logger.warning('Resume task called for non-canceled or non-completed/failed task {}'.format(task))
                 return
-            self.canceled_tasks.remove(task)
-            self.pending_tasks.append(task)
+            # the function might have been used multiple times (frontend multiple clicks)
+            if task in self.canceled_tasks:
+                self.canceled_tasks.remove(task)
+            if task not in self.pending_tasks:
+                self.pending_tasks.append(task)
             self.task_status[task] = 'pending'
             if hasattr(env, '__task_notifier__'):
-                env.__task_notifier__(['change-status', task, 'pending'])
+                env.__task_notifier__(['change-status', self.agent.alias, task, 'pending'])
 
     def execute_task(self, task_id):
         # this is base class
