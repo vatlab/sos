@@ -422,14 +422,16 @@ def check_tasks(tasks, verbosity=1, html=False):
                             row(_k, _v)
                     else:
                         row(k, '<pre>{}</pre>'.format(pprint.pformat(v)))
-            row('Execution')
-            for line in summarizeExecution(t, status=s).split('\n'):
-                fields = line.split(None, 1)
-                if fields[0] == 'task':
-                    continue
-                row(fields[0], fields[1])
-            # this is a placeholder for the frontend to draw figure
-            row(td='<div id="res_{}"></div>'.format(t))
+            summary = summarizeExecution(t, status=s)
+            if summary:
+                row('Execution')
+                for line in summary.split('\n'):
+                    fields = line.split(None, 1)
+                    if fields[0] == 'task':
+                        continue
+                    row(fields[0], fields[1])
+                # this is a placeholder for the frontend to draw figure
+                row(td='<div id="res_{}"></div>'.format(t))
             #
             files = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
             for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.def', '.res', '.task', '.pulse', '.status')]):
