@@ -33,10 +33,6 @@ from sos.target import FileTarget
 
 import subprocess
 import multiprocessing as mp
-try:
-    mp.set_start_method('spawn')
-except:
-    pass
 
 class TestDAG(unittest.TestCase):
     def setUp(self):

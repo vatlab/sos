@@ -305,14 +305,15 @@ run:
         st = time.time()
         env.config['sig_mode'] = 'force'
         env.config['wait_for_task'] = False
-        Base_Executor(wf).run()
+        ret = Base_Executor(wf).run()
         # sos should quit
-        self.assertLess(time.time() - st, 10)
+        self.assertGreater(len(ret['pending_tasks']), 0)
         #
         time.sleep(18)
         print('RESTART')
         env.config['sig_mode'] = 'default'
         env.config['wait_for_task'] = True
+        env.config['resume_mode'] = True
         st = time.time()
         Base_Executor(wf).run()
         # sos should wait till everything exists
