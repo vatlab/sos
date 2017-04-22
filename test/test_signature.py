@@ -485,7 +485,7 @@ python:
         st = time.time()
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 2)
+        self.assertLess(time.time() - st, 3)
         #
         for t in range(10, 12):
             with open('myfile_{}.txt'.format(t)) as tmp:
