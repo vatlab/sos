@@ -499,21 +499,25 @@ define([
 
     window.durationFormatter = function(start_date) {
         var ms = new Date() - start_date;
+        var res = []
         var seconds = parseInt(ms / 1000);
         var day = Math.floor(seconds / 86400);
-        var hh = Math.floor((seconds - (86400 * day)) / 3600);
-        var mm = Math.floor((seconds - (86400 * day) - (hh * 3600)) / 60);
-        var ss = seconds - (86400 * day) - (hh * 3600) - (mm * 60);
-  
-        if (hh < 10) {hh = '0' + hh}
-        if (mm < 10) {mm = '0' + mm}
-        if (ss < 10) {ss = '0' + ss}
-  
-        if (day > 0) {
-            return day + ' day ' + hh + ':' + mm + ':' + ss;
-        } else {
-            return hh + ':' + mm + ':' + ss;
-        }
+        if (day > 0)
+            res.push(day + ' day');
+        var hh = Math.floor((seconds % 86400) / 3600);
+        if (hh > 0)
+            res.push(hh + ' hr');
+        var mm = Math.floor((seconds % 3600) / 60);
+        if (mm > 0)
+            res.push(mm + ' min');
+        var ss = seconds % 60;
+        if (ss > 0)
+            res.push(ss + ' sec');
+        res = res.join(' ');
+        if (res === '')
+            return '0 sec'
+        else
+            return res;
     };
 
     function set_codemirror_option(evt, param) {
