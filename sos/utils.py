@@ -742,21 +742,12 @@ def dict_merge(dct, merge_dct):
             dct[k] = merge_dct[k]
 
 def PrettyRelativeTime(time_diff_secs):
-    # Each tuple in the sequence gives the name of a unit, and the number of
-    # previous units which go into it.
-    weeks_per_month = 365.242 / 12 / 7
-    intervals = [('minute', 60), ('hour', 60), ('day', 24), ('week', 7),
-                 ('month', weeks_per_month), ('year', 12)]
-
-    unit, number = 'second', abs(time_diff_secs)
-    for new_unit, ratio in intervals:
-        new_number = float(number) / ratio
-        # If the new number is too small, don't go to the next unit.
-        if new_number < 2:
-            break
-        unit, number = new_unit, new_number
-    shown_num = int(number)
-    return '{} {}'.format(shown_num, unit + ('' if shown_num == 1 else 's'))
+    secs = int(time_diff_secs)
+    day = secs // (3600*24)
+    hh = secs % (3600*24) // 3600
+    mm = secs % 3600 // 60
+    ss = secs % 60
+    return '{}{:02d}:{:02d}:{:02d}'.format('{} day{} '.format(day, 's' if day > 1 else '') if day > 0 else '', hh, mm, ss)
 
 # display file size in K, M, G etc automatically. Code copied from
 # http://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size

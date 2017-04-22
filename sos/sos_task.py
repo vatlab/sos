@@ -314,7 +314,7 @@ def check_task(task):
     else:
         return 'pending'
 
-def check_tasks(tasks, verbosity=1, html=False):
+def check_tasks(tasks, verbosity=1, html=False, start_time=False):
     # verbose is ignored for now
     import glob
     from multiprocessing.pool import ThreadPool as Pool
@@ -348,10 +348,16 @@ def check_tasks(tasks, verbosity=1, html=False):
     elif verbosity == 2:
         from .utils import PrettyRelativeTime
         for s, (t, d) in zip(status, all_tasks):
-            if d is None:
-                print('{}\t{:>15}\t{}'.format(t, '', s))
+            if start_time:
+                if d is None:
+                    print('{}\t{}\t{}'.format(t, time.time(), s))
+                else:
+                    print('{}\t{}\t{}'.format(t, d, s))
             else:
-                print('{}\t{:>15} ago\t{}'.format(t, PrettyRelativeTime(time.time() - d), s))
+                if d is None:
+                    print('{}\t{:>15}\t{}'.format(t, '', s))
+                else:
+                    print('{}\t{:>15} ago\t{}'.format(t, PrettyRelativeTime(time.time() - d), s))
     elif verbosity > 2:
         from .utils import PrettyRelativeTime
         import pprint
@@ -416,7 +422,7 @@ def check_tasks(tasks, verbosity=1, html=False):
             job_vars = params.data[1]
             for k in sorted(job_vars.keys()):
                 v = job_vars[k]
-                if not k.startswith('__') and not k == 'CONFIG' and v:
+                if not k.startswith('__') and not k == 'CONFIG':
                     if k == '_runtime':
                         for _k, _v in v.items():
                             if _v:
@@ -521,7 +527,8 @@ class TaskEngine(threading.Thread):
         self.submitting_tasks = {}
         self.canceled_tasks = []
 
-        self.task_status = {}
+        self.task_status = OrderedDict()
+        self.task_date = {}
         self.last_checked = None
         if 'status_check_interval' not in self.config:
             self.status_check_interval = 10
@@ -565,7 +572,8 @@ class TaskEngine(threading.Thread):
                 # these tasks will be actively monitored
                 self.running_tasks.append(task)
         #
-        return {x: self.task_status[x] for x in tasks if self.task_status[x] not in exclude}
+        return sorted([(x, self.task_status[x], self.task_date.get(x, time.time())) for x in tasks if self.task_status[x] not in exclude],
+                key=lambda x: -x[2])
 
     def get_tasks(self):
         with threading.Lock():
@@ -576,14 +584,15 @@ class TaskEngine(threading.Thread):
     def run(self):
         # get all system tasks that might have been running ...
         # this will be run only once when the task engine starts
-        status_output = self.query_tasks([], verbosity=1)
+        status_output = self.query_tasks([], verbosity=2, start_time=True)
         with threading.Lock():
             for line in status_output.split('\n'):
                 if not line.strip():
                     continue
                 try:
-                    tid, tst = line.split('\t')
+                    tid, ttm, tst = line.split('\t')
                     self.task_status[tid] = tst
+                    self.task_date[tid] = float(ttm)
                 except Exception as e:
                     env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
         self._last_status_check = time.time()
@@ -694,7 +703,8 @@ class TaskEngine(threading.Thread):
                 if self.task_status[task_id] == 'running':
                     env.logger.info('{} ``already runnng``'.format(task_id))
                     if hasattr(env, '__task_notifier__'):
-                        env.__task_notifier__(['new-status', self.agent.alias, task_id, 'running'])
+                        env.__task_notifier__(['new-status', self.agent.alias, task_id, 'running', 
+                            self.task_date.get(task_id, time.time())])
                     return 'running'
                 # there is a case when the job is already completed (complete-old), but
                 # because we do not know if the user asks to rerun (-s force), we have to
@@ -724,7 +734,8 @@ class TaskEngine(threading.Thread):
                 self.canceled_tasks.remove(task_id)
             self.task_status[task_id] = 'pending'
             if hasattr(env, '__task_notifier__'):
-                env.__task_notifier__(['new-status', self.agent.alias, task_id, 'pending'])
+                env.__task_notifier__(['new-status', self.agent.alias, task_id, 'pending',
+                    self.task_date.get(task_id, time.time())])
             return 'pending'
 
     def summarize_status(self):
@@ -757,9 +768,10 @@ class TaskEngine(threading.Thread):
         with threading.Lock():
             return self.pending_tasks()
 
-    def query_tasks(self, tasks=None, verbosity=1, html=False):
-        return self.agent.check_output("sos status {} -v {} {}".format(
-                ' '.join(tasks), verbosity, '--html' if html else ''))
+    def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=False):
+        return self.agent.check_output("sos status {} -v {} {} {}".format(
+                ' '.join(tasks), verbosity, '--html' if html else '',
+                '--start-time' if start_time else ''))
 
     def kill_tasks(self, tasks, all_tasks=False):
         # we wait for the engine to start

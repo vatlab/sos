@@ -275,6 +275,14 @@ define([
             } else if (msg_type == 'remove-task') {
                 var item = document.getElementById("table_" + data[0] + "_" + data[1]);
                 item.parentNode.removeChild(item);
+            } else if (msg_type == 'update-duration') {
+                if (window._duration_updater === undefined) {
+                    window._duration_updater = window.setInterval(function() {
+                        $('[id^=duration_]').text(function() {
+                            return durationFormatter($(this).attr('datetime'));
+                        })
+                    }, 5000);
+                }
             } else if (msg_type == 'task-status') {
                 // console.log(data);
                 var item = document.getElementById("status_" + data[0] + "_" + data[1]);
@@ -488,6 +496,25 @@ define([
         cell.set_text('%taskinfo ' + task_id + ' -q ' + task_queue);
         cell.clear_output();
     }
+
+    window.durationFormatter = function(start_date) {
+        var ms = new Date() - start_date;
+        var seconds = parseInt(ms / 1000);
+        var day = Math.floor(seconds / 86400);
+        var hh = Math.floor((seconds - (86400 * day)) / 3600);
+        var mm = Math.floor((seconds - (86400 * day) - (hh * 3600)) / 60);
+        var ss = seconds - (86400 * day) - (hh * 3600) - (mm * 60);
+  
+        if (hh < 10) {hh = '0' + hh}
+        if (mm < 10) {mm = '0' + mm}
+        if (ss < 10) {ss = '0' + ss}
+  
+        if (day > 0) {
+            return day + ' day ' + hh + ':' + mm + ':' + ss;
+        } else {
+            return hh + ':' + mm + ':' + ss;
+        }
+    };
 
     function set_codemirror_option(evt, param) {
         var cells = IPython.notebook.get_cells();

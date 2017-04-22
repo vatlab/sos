@@ -37,7 +37,7 @@ from ipykernel.ipkernel import IPythonKernel
 from collections import Sized, defaultdict
 
 from types import ModuleType
-from sos.utils import env, WorkflowDict, short_repr, pretty_size
+from sos.utils import env, WorkflowDict, short_repr, pretty_size, PrettyRelativeTime
 from sos._version import __sos_version__, __version__
 from sos.sos_eval import SoS_exec, SoS_eval, interpolate, get_default_global_sigil
 from sos.sos_syntax import SOS_SECTION_HEADER
@@ -485,8 +485,8 @@ class SoS_Kernel(IPythonKernel):
         except Exception as e:
             self.warn('Invalid task queu {}: {}'.format(queue, e))
         # get all tasks
-        for tid, tst in host._task_engine.monitor_tasks(tasks, exclude=exclude).items():
-            self.notify_task_status(['new-status', queue, tid, tst])
+        for tid, tst, tdt in host._task_engine.monitor_tasks(tasks, exclude=exclude):
+            self.notify_task_status(['new-status', queue, tid, tst, tdt])
 
     def sos_comm(self, comm, msg):
         # record frontend_comm to send messages
@@ -571,7 +571,7 @@ class SoS_Kernel(IPythonKernel):
         }
 
         if task_status[0] == 'new-status':
-            tqu, tid, tst = task_status[1:]
+            tqu, tid, tst, tdt = task_status[1:]
             self.send_response(self.iopub_socket, 'display_data',
                 {
                     'source': 'SoS',
@@ -586,12 +586,18 @@ class SoS_Kernel(IPythonKernel):
                             onclick="{4}('{1}', '{0}')"
                         ></i> </td>
                         <td style="border: 0px"><a onclick="task_info('{1}', '{0}')"><pre>{1}</pre></a></td>
-                        </tr></table>'''.format(tqu, tid, status_class[tst], action_class[tst], action_func[tst])).data
+                        <td>&nbsp;<td>
+                        <td style="border:0px;text-align=right;">
+                        <pre><time id="duration_{0}_{1}" datetime="{5}">{6}</time></pre></td>
+                        </tr>
+                        </table>'''.format(tqu, tid, status_class[tst], action_class[tst], action_func[tst], tdt*1000,
+                            PrettyRelativeTime(time.time() - tdt))).data
                         }
                 })
             # keep tracks of my tasks to avoid updating status of
             # tasks that does not belong to the notebook
             self.my_tasks[(tqu, tid)] = time.time()
+            self.send_frontend_msg('update-duration', {})
         elif task_status[0] == 'remove-task':
             tqu, tid = task_status[1:]
             if (tqu, tid) in self.my_tasks:
@@ -1740,7 +1746,7 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_tasks_parser()
             args = parser.parse_args(options.split())
-            self.handle_tasks(args.tasks, args.queue, args.exclude)
+            self.handle_tasks(args.tasks, args.queue if args.queue else 'localhost', args.exclude)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)

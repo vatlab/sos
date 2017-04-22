@@ -534,6 +534,8 @@ def get_status_parser(desc_only=False):
         help='''Output results in HTML format. This option will override option
             verbosity and output detailed status information in HTML tables and
             figures.''')
+    parser.add_argument('--start-time', action='store_true',
+        help=argparse.SUPPRESS)
     parser.set_defaults(func=cmd_status)
     return parser
 
@@ -548,13 +550,13 @@ def cmd_status(args, workflow_args):
             from .hosts import list_queues
             list_queues(args.config, args.verbosity)
         elif not args.queue:
-            check_tasks(args.tasks, args.verbosity, args.html)
+            check_tasks(args.tasks, args.verbosity, args.html, args.start_time)
         else:
             # remote host?
             cfg = load_config_files(args.config)
             env.sos_dict.set('CONFIG', cfg)
             host = Host(args.queue)
-            print(host._task_engine.query_tasks(args.tasks, args.verbosity, args.html))
+            print(host._task_engine.query_tasks(args.tasks, args.verbosity, args.html, args.start_time))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
