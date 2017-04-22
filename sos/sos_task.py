@@ -444,8 +444,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False):
             for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.def', '.res', '.task', '.pulse', '.status')]):
                 row(os.path.basename(f), 'last 200 lines')
                 try:
-                    with open(f) as fc:
-                        row(td='<pre style="text-align:left">{}</pre>'.format(tail_of_file(200)))
+                    row(td='<pre style="text-align:left">{}</pre>'.format(tail_of_file(f, 200)))
                 except:
                     row(td='<pre style="text-align:left">ignored.</pre>')
             print('</table>')
