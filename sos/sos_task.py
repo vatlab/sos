@@ -82,8 +82,6 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     if sigmode is not None:
         env.config['sig_mode'] = sigmode
     env.config['run_mode'] = runmode
-    env.register_process(os.getpid(), 'spawned_job with {} {}'
-        .format(sos_dict['_input'], sos_dict['_output']))
 
     env.logger.info('{} ``started``'.format(task_id))
     env.sos_dict.quick_update(sos_dict)
@@ -224,7 +222,6 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         sig.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
             env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
         sig.release()
-    env.deregister_process(os.getpid())
     env.logger.info('{} ``completed``'.format(task_id))
     return {'ret_code': 0, 'output': {} if env.sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in env.sos_dict['_output'] if isinstance(x, str)}}
 

@@ -254,7 +254,6 @@ class SoS_ExecuteScript:
                 if env.config['run_mode'] == 'interactive':
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
                     p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                    env.register_process(p.pid, 'Runing {}'.format(script_file))
                     out, err = p.communicate()
                     sys.stdout.write(out.decode())
                     sys.stderr.write(err.decode())
@@ -282,8 +281,6 @@ class SoS_ExecuteScript:
                 env.logger.error('Failed to execute script: {}'.format(e))
                 raise
             finally:
-                if p:
-                    env.deregister_process(p.pid)
                 os.remove(script_file)
 
 
@@ -857,7 +854,6 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             pid = p.pid
-            env.register_process(p.pid, 'Runing {}'.format(input_file))
             out, err = p.communicate()
             sys.stdout.write(out.decode())
             sys.stderr.write(err.decode())
@@ -865,13 +861,9 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
         else:
             p = subprocess.Popen(cmd, shell=True)
             pid = p.pid
-            env.register_process(pid, 'Runing {}'.format(input_file))
             ret = p.wait()
     except Exception as e:
         env.logger.error(e)
-    finally:
-        if p:
-            env.deregister_process(p.pid)
     if ret != 0:
         temp_file = os.path.join('.sos', '{}_{}.md'.format('pandoc', os.getpid()))
         shutil.copyfile(input_file, temp_file)

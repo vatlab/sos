@@ -286,36 +286,6 @@ class RuntimeEnvironments(object):
                 if not os.path.isdir(os.path.join(os.path.expanduser('~'), '.sos', '.runtime')):
                     os.makedirs(os.path.join(os.path.expanduser('~'), '.sos', '.runtime'))
 
-    def register_process(self, pid, msg=''):
-        '''Register a process used by this SoS instance. It will also be
-        used to check resource used.'''
-        proc_file = os.path.join(self.exec_dir, '.sos', 'proc_{}'.format(pid))
-        self.logger.trace('Register {} {}'.format(pid, msg))
-        with open(proc_file, 'w') as p:
-            p.write(msg)
-
-    def deregister_process(self, pid):
-        proc_file = os.path.join(self.exec_dir, '.sos', 'proc_{}'.format(pid))
-        self.logger.trace('Deregister {} at {}'.format(pid, proc_file))
-        if os.path.isfile(proc_file):
-            os.remove(proc_file)
-
-    def cleanup(self):
-        '''Clean up all running processes'''
-        import psutil
-        for p in glob.glob(os.path.join(self.exec_dir, '.sos', 'proc_*')):
-            pid = int(os.path.basename(p)[5:])
-            try:
-                env.logger.trace('Killing {} and all its children'.format(pid))
-                # psutil might not exist if SoS is not properly installed
-                # but we are not acting like the end of world here
-                parent = psutil.Process(pid)
-                for child in parent.children(recursive=True):
-                    child.kill()
-            except Exception as e:
-                env.logger.debug('Failed to clean up running process: {}'.format(e))
-            os.remove(p)
-
     #
     # attribute logger
     #

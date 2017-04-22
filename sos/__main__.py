@@ -254,7 +254,6 @@ def cmd_run(args, workflow_args):
     #if sys.platform != 'win32':
     #    mp.set_start_method('forkserver')
 
-    import atexit
     from .utils import env, get_traceback
     from .sos_script import SoS_Script
 
@@ -274,9 +273,6 @@ def cmd_run(args, workflow_args):
     env.verbosity = args.verbosity
 
     from .sos_executor import Base_Executor
-
-    # kill all remainging processes when the master process is killed.
-    atexit.register(env.cleanup)
 
     if args.__bin_dirs__:
         import fasteners
