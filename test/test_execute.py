@@ -897,16 +897,16 @@ sh:
         st = time.time()
         Base_Executor(wf).run()
         self.assertTrue(FileTarget('aa.txt').exists())
-        self.assertGreater(time.time() - st, 3.5)
+        elapsed = time.time() - st
         # rerun should be faster
         st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 2)
+        self.assertLess(time.time() - st, elapsed)
         # if we remove the middle result, it should not matter
         os.remove('a.txt')
         st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 2)
+        self.assertLess(time.time() - st, elapsed)
         #
         # if we remove the final result, it will be rebuilt
         os.remove('aa.txt')
@@ -919,7 +919,7 @@ sh:
         FileTarget('aa.txt').remove('both')
         st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 4.5)
+        self.assertGreater(time.time() - st, elapsed - 1)
         #
         FileTarget('a.txt').remove('both')
         FileTarget('aa.txt').remove('both')
