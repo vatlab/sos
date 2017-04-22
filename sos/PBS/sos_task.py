@@ -176,9 +176,9 @@ class PBS_TaskEngine(TaskEngine):
                 result[k.strip()] = v.strip()
             return result
 
-    def query_tasks(self, tasks, verbosity=1, html=False):
+    def query_tasks(self, tasks, verbosity=1, html=False, start_time=True):
         if verbosity <= 2:
-            return super(PBS_TaskEngine, self).query_tasks(tasks, verbosity, html)
+            return super(PBS_TaskEngine, self).query_tasks(tasks, verbosity, html, start_time)
         # for more verbose case, we will call pbs's status_cmd to get more accurate information
         status_lines = super(PBS_TaskEngine, self).query_tasks(tasks, 1)
         res = ''
