@@ -743,11 +743,13 @@ def dict_merge(dct, merge_dct):
 
 def PrettyRelativeTime(time_diff_secs):
     secs = int(time_diff_secs)
-    day = secs // (3600*24)
-    hh = secs % (3600*24) // 3600
-    mm = secs % 3600 // 60
-    ss = secs % 60
-    return '{}{:02d}:{:02d}:{:02d}'.format('{} day{} '.format(day, 's' if day > 1 else '') if day > 0 else '', hh, mm, ss)
+    rec = [
+        (secs // (3600*24), 'day'), 
+        (secs % (3600*24) // 3600, 'hr'),
+        (secs % 3600 // 60, 'min'),
+        (secs % 60, 'sec')]
+    txt = ' '.join(['{} {}'.format(x,y) for x,y in rec if x > 0])
+    return txt if txt else '0 sec'
 
 # display file size in K, M, G etc automatically. Code copied from
 # http://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
