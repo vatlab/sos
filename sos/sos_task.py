@@ -30,7 +30,7 @@ from tokenize import generate_tokens
 from collections.abc import Sequence
 import concurrent.futures
 
-from sos.utils import env, short_repr, get_traceback
+from sos.utils import env, short_repr, get_traceback, sample_of_file, tail_of_file
 from sos.sos_eval import SoS_exec
 
 from .target import textMD5, RuntimeInfo, Undetermined, FileTarget
@@ -442,10 +442,10 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False):
             #
             files = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
             for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.def', '.res', '.task', '.pulse', '.status')]):
-                row(os.path.basename(f))
+                row(os.path.basename(f), 'last 200 lines')
                 try:
                     with open(f) as fc:
-                        row(td='<pre style="text-align:left">{}</pre>'.format(fc.read()))
+                        row(td='<pre style="text-align:left">{}</pre>'.format(tail_of_file(200)))
                 except:
                     row(td='<pre style="text-align:left">ignored.</pre>')
             print('</table>')
@@ -454,8 +454,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False):
             # supplement run time information
             pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
             if os.path.isfile(pulse_file):
-                with open(pulse_file) as pulse:
-                    print(pulse.read())
+                # A sample of 400 point should be enough to show the change of resources
+                print(sample_of_file(pulse_file, 400))
 
 
 
