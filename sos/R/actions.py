@@ -91,7 +91,6 @@ def Rmarkdown(script=None, input=None, output=None, args='${input!r}, output_fil
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             pid = p.pid
-            env.register_process(p.pid, 'Runing {}'.format(input_file))
             out, err = p.communicate()
             sys.stdout.write(out.decode())
             sys.stderr.write(err.decode())
@@ -99,12 +98,9 @@ def Rmarkdown(script=None, input=None, output=None, args='${input!r}, output_fil
         else:
             p = subprocess.Popen(cmd, shell=True)
             pid = p.pid
-            env.register_process(pid, 'Runing {}'.format(input_file))
             ret = p.wait()
     except Exception as e:
         env.logger.error(e)
-    finally:
-        env.deregister_process(p.pid)
     if ret != 0:
         temp_file = os.path.join('.sos', '{}_{}.md'.format('Rmarkdown', os.getpid()))
         shutil.copyfile(input_file, temp_file)
