@@ -862,7 +862,9 @@ class Base_Executor:
                                         proc[2]._killed_tasks.add(t)
                             if all(x in ('completed', 'aborted', 'failed', 'result-mismatch') for x in res):
                                 # we try to get .err .out etc even when jobs are failed.
-                                proc[2]._host.retrieve_results(proc[2]._pending_tasks)
+                                task_status = proc[2]._host.retrieve_results(proc[2]._pending_tasks)
+                                proc[1].send(task_status)
+                                proc[2]._status == 'failed'
                                 raise RuntimeError('{} completed, {} failed, {} aborted, {} mismatch'.format(
                                     len([x for x in res if x=='completed']), len([x for x in res if x=='failed']),
                                     len([x for x in res if x=='aborted']), len([x for x in res if x=='result-mismatch']) ))
@@ -999,7 +1001,7 @@ class Base_Executor:
             # close all processes
         except Exception as e:
             for p, _, _ in procs + pool:
-                p[0].terminate()
+                p.terminate()
             raise e
         finally:
             if not nested:
