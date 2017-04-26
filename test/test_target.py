@@ -216,18 +216,19 @@ sh:
         os.environ['AA'] = 'A1'
         st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 1.5)
+        elapsed = time.time() - st
         with open('a.txt') as at:
             self.assertEqual(at.read(), 'A1\n')
         # test validation
         st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 2)
+        self.assertLess(time.time() - st, elapsed)
         # now if we change var, it should be rerun
         os.environ['AA'] = 'A2'
         st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 1.5)
+        # allow one second variation
+        self.assertGreater(time.time() - st, elapsed - 1)
         with open('a.txt') as at:
             self.assertEqual(at.read(), 'A2\n')
         FileTarget('a.txt').remove('both')
