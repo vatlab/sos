@@ -437,10 +437,10 @@ python:
     with open(${_output!r}, 'w') as tmp:
         tmp.write('${_tt}')
 ''')
-        st = time.time()
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 2.5)
+        ts = os.path.getmtime('myfile_10.txt')
+        #
         # now we modify the script 
         script = SoS_Script(r'''
 parameter: gvar = 10
@@ -456,16 +456,16 @@ python:
     with open(${_output!r}, 'w') as tmp:
         tmp.write('${_tt}')
 ''')
-        st = time.time()
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 2.5)
-        self.assertLess(time.time() - st, 7)
+        # this file is not regenerated
+        self.assertEqual(ts, os.path.getmtime('myfile_10.txt'))
+        ts1 = os.path.getmtime('myfile_11.txt')
         #
         # run it again, neither needs to be rerun
-        st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 2)
+        self.assertEqual(ts, os.path.getmtime('myfile_10.txt'))
+        self.assertEqual(ts1, os.path.getmtime('myfile_11.txt'))
         #
         # change again, the second one is already there.
         script = SoS_Script(r'''
@@ -482,10 +482,9 @@ python:
     with open(${_output!r}, 'w') as tmp:
         tmp.write('${_tt}')
 ''')
-        st = time.time()
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 3)
+        self.assertEqual(ts1, os.path.getmtime('myfile_11.txt'))
         #
         for t in range(10, 12):
             with open('myfile_{}.txt'.format(t)) as tmp:
