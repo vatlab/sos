@@ -565,7 +565,6 @@ sh:
     def testSignatureWithVars(self):
         '''Test revaluation with variable change'''
         self.touch(('a1.out', 'a2.out'))
-        st = time.time()
         script = SoS_Script('''
 parameter: DB = {'input': ['a1.out'], 'output': ['b2.out']}
 parameter: input_file = DB['input']
@@ -580,9 +579,8 @@ run:
   ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 2)
+        ts = os.path.getmtime('b2.out')
         #
-        st = time.time()
         script = SoS_Script('''
 parameter: DB = {'input': ['a1.out', 'a2.out'], 'output': ['b2.out', 'b1.out']}
 parameter: input_file = DB['input']
@@ -597,8 +595,7 @@ run:
   ''')
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 4)
-        self.assertGreater(time.time() - st, 2)
+        self.assertEqual(ts,  os.path.getmtime('b2.out'))
 
 if __name__ == '__main__':
     unittest.main()
