@@ -192,12 +192,12 @@ sh:
         env.config['sig_mode'] = 'force'
         st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 2)
+        elapsed = time.time() - st
         # test validation
         env.config['sig_mode'] = 'default'
         st = time.time()
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 2)
+        self.assertLess(time.time() - st, elapsed)
         FileTarget('lls').remove('both')
 
 
