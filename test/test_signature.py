@@ -312,13 +312,13 @@ python:
         wf = script.workflow()
         st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 3)
+        elapsed = time.time() - st
         # rerun, because this is the final target, it has to be
         # re-generated
         os.remove('largefile.txt')
         st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 3)
+        self.assertGreater(time.time() - st, elapsed - 1)
         # 
         self.assertTrue(os.path.isfile('largefile.txt'))
         # we discard just the signature, the step will be ignored
@@ -326,14 +326,14 @@ python:
         st = time.time()
         FileTarget('largefile.txt').remove('signature')
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, 2)
+        self.assertLess(time.time() - st, elapsed)
         #
         # now if we touch the file, it needs to be regenerated
         st = time.time()
         with open('largefile.txt', 'a') as lf:
             lf.write('something')
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 3)
+        self.assertGreater(time.time() - st, elapsed - 1)
         FileTarget('largefile.txt').remove('both')
 
     def testSignatureWithParameter(self):
