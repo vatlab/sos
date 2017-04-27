@@ -56,6 +56,7 @@ class TestKernel(unittest.TestCase):
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testGetPythonDataFrameFromR(self):
+        # Python -> R
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
@@ -77,6 +78,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
             self.assertEqual(res, '[1] 1000   10')
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
+            #
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testGetPythonDataFromR(self):
@@ -119,6 +121,7 @@ mat_var = numpy.matrix([[1,2],[3,4]])
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testPutRDataFrameToPython(self):
+        # R -> Python
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
@@ -133,8 +136,9 @@ mat_var = numpy.matrix([[1,2],[3,4]])
             msg_id, content = execute(kc=kc, code="mtcars.shape")
             res = get_result(iopub)
             self.assertEqual(res, (32, 11))
-            msg_id, content = execute(kc=kc, code="%use sos")
-            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="mtcars.index[0]")
+            res = get_result(iopub)
+            self.assertEqual(res, 'Mazda RX4')
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testPutRDataToPython(self):
