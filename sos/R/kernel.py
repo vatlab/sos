@@ -142,6 +142,9 @@ R_init_statements = r'''
     options(useFancyQuotes=FALSE)
     dQuote(obj)
 }
+..has.row.names <- function(df) {
+  !all(row.names(df)==seq(1, nrow(df)))
+}
 ..py.repr.dataframe <- function(obj) {
     if (!require("feather")) {
         install.packages('feather', repos='http://cran.stat.ucla.edu/')
@@ -149,7 +152,11 @@ R_init_statements = r'''
     library(feather)
     tf = tempfile('feather')
     write_feather(obj, tf)
-    paste0("read_dataframe('", tf, "')")
+    if (..has.row.names(obj)) {
+        paste0("read_dataframe('", tf, "').set_index([", ..py.repr(row.names(obj)),"])")
+    } else {
+        paste0("read_dataframe('", tf, "')")
+    }
 }
 ..py.repr.matrix <- function(obj) {
     if (!require("feather")) {
@@ -158,7 +165,11 @@ R_init_statements = r'''
     library(feather)
     tf = tempfile('feather')
     write_feather(as.data.frame(obj), tf)
-    paste0("read_dataframe('", tf, "').as_matrix()")
+    if (..has.row.names(obj)) {
+       paste0("read_dataframe('", tf, "').set_index([", ..py.repr(row.names(obj)),"]).as_matrix()")
+    } else {
+       paste0("read_dataframe('", tf, "').as_matrix()")
+    }
 }
 ..py.repr.n <- function(obj) {
     paste("[",
@@ -176,17 +187,17 @@ R_init_statements = r'''
         if (length(obj) == 1)
             ..py.repr.integer.1(obj)
         else
-            ..py.repr.n(obj)
+            paste("[", paste(obj, collapse=','), "]")
     } else if (is.double(obj)){
         if (length(obj) == 1)
             ..py.repr.double.1(obj)
         else
-            ..py.repr.n(obj)
+            paste("[", paste(obj, collapse=','), "]")
     } else if (is.character(obj)) {
         if (length(obj) == 1)
             ..py.repr.character.1(obj)
         else
-            ..py.repr.n(obj)
+            paste("[", paste(sapply(obj, dQuote), collapse=','), "]")
     } else if (is.logical(obj)) {
         if (length(obj) == 1)
             ..py.repr.logical.1(obj)
