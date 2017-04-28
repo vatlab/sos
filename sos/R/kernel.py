@@ -139,8 +139,7 @@ R_init_statements = r'''
     as.character(obj)
 }
 ..py.repr.character.1 <- function(obj) {
-    options(useFancyQuotes=FALSE)
-    dQuote(obj)
+    shQuote(obj)
 }
 ..has.row.names <- function(df) {
   !all(row.names(df)==seq(1, nrow(df)))
@@ -197,8 +196,7 @@ R_init_statements = r'''
         if (length(obj) == 1)
             ..py.repr.character.1(obj)
         else {
-            options(useFancyQuotes=FALSE)
-            paste("[", paste(sapply(obj, dQuote), collapse=','), "]")
+            paste("[", paste(sapply(obj, shQuote), collapse=','), "]")
         }
     } else if (is.logical(obj)) {
         if (length(obj) == 1)
@@ -210,10 +208,9 @@ R_init_statements = r'''
         if (is.null(names(obj)))
             ..py.repr.n(obj)
         else {
-            options(useFancyQuotes=FALSE)
             paste("{",
                   paste(sapply(names(obj), function (x)
-                      paste(dQuote(gsub("\\.", "_", as.character(x))), ":", ..py.repr(obj[[x]]))),
+                      paste(shQuote(gsub("\\.", "_", as.character(x))), ":", ..py.repr(obj[[x]]))),
                       collapse=','),
                   "}")
         }

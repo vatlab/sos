@@ -91,7 +91,7 @@ import numpy
 num_arr_var = numpy.array([1, 2, 3])
 logic_var = True
 logic_arr_var = [True, False, True]
-char_var = '123'
+char_var = '1"23'
 char_arr_var = ['1', '2', '3']
 list_var = [1, 2, '3']
 dict_var = dict(a=1, b=2, c='3')
@@ -113,7 +113,7 @@ mat_var = numpy.matrix([[1,2],[3,4]])
             self.assertEqual(res['num_arr_var'], [1,2,3])
             self.assertEqual(res['logic_var'], True)
             self.assertEqual(res['logic_arr_var'], [True, False, True])
-            self.assertEqual(res['char_var'], '123')
+            self.assertEqual(res['char_var'], '1"23')
             self.assertEqual(res['char_arr_var'], ['1', '2', '3'])
             self.assertEqual(res['list_var'], [1,2,'3'])
             self.assertEqual(res['dict_var'], {'a': 1, 'b': 2, 'c': '3'})
@@ -157,7 +157,7 @@ mat_var = numpy.matrix([[1,2],[3,4]])
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="logic_arr_var = c(TRUE, FALSE, TRUE)")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="char_var = '123'")
+            msg_id, content = execute(kc=kc, code="char_var = '1\"23'")
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="char_arr_var = c(1, 2, '3')")
             wait_for_idle(kc)
@@ -176,7 +176,7 @@ mat_var = numpy.matrix([[1,2],[3,4]])
             self.assertEqual(res['num_arr_var'], [1,2,3])
             self.assertEqual(res['logic_var'], True)
             self.assertEqual(res['logic_arr_var'], [True, False, True])
-            self.assertEqual(res['char_var'], '123')
+            self.assertEqual(res['char_var'], '1"23')
             self.assertEqual(res['char_arr_var'], ['1', '2', '3'])
             self.assertEqual(res['list_var'], [1,2,'3'])
             self.assertEqual(res['named_list_var'], {'a': 1, 'b': 2, 'c': '3'})
