@@ -123,9 +123,13 @@ define([
                     for (var l = 0; l < lines.length; ++l) {
                         if (lines[l].startsWith('#') || lines[l].startsWith('%') || lines[l].trim() == '' || lines[l].startsWith('!'))
                             continue
-                        if (lines[l].startsWith('[') && lines[l].endsWith(']'))
+                        if (lines[l].startsWith('[') && lines[l].endsWith(']')) {
                             workflow += lines.slice(l).join('\n') + '\n\n';
-                        /* this is not a sos step cell, ignore. */
+                            cells[i].metadata.workflow_cell = true;
+                            var ip = cells[i].element[0].getElementsByClassName('input_prompt');
+                            ip[0].style.backgroundColor = '#87CEFA';
+                        }
+                        cells[i].metadata.workflow_cell = false;
                         break
                     }
                 }
@@ -394,6 +398,22 @@ define([
                         }
                     });
                 });
+            } else if (msg_type == 'mark-workflow-cell') {
+                // get cell from passed cell index, which was sent through the
+                // %frontend magic
+                if (data[0] == -1) {
+                    var cell = window.my_panel.cell;
+                    cell.clear_output();
+                    cell.output_area.append_output({
+                        'output_type': 'stream',
+                        'text': 'workflow cell not executed',
+                        'name': 'stdout'
+                    });
+                } else {
+                    var cell = IPython.notebook.get_cell(data[0]);
+                    cell.metadata.workflow_cell = true;
+                    cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = '#87CEFA';
+                }
             } else {
                 // this is preview output
                 var cell = window.my_panel.cell;
@@ -465,6 +485,9 @@ define([
         if (BackgroundColor[type]) {
             ip[0].style.backgroundColor = BackgroundColor[type];
             op[0].style.backgroundColor = BackgroundColor[type];
+        } else if (cell.metadata.workflow_cell) {
+            ip[0].style.backgroundColor = '#87CEFA';
+            op[0].style.backgroundColor = '#87CEFA';
         } else {
             // Use '' to remove background-color?
             ip[0].style.backgroundColor = '';

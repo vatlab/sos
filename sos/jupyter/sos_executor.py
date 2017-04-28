@@ -297,6 +297,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                         # it contains workflow
                         #kernel.send_response(kernel.iopub_socket, 'stream',
                         # {'name': 'stdout', 'text': 'Workflow cell not executed.'})
+                        kernel.send_frontend_msg('mark-workflow-cell', kernel.cell_idx)
                         return
         else:
             script = SoS_Script(filename=script, global_sigil=get_default_global_sigil())
