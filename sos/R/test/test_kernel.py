@@ -97,15 +97,16 @@ list_var = [1, 2, '3']
 dict_var = dict(a=1, b=2, c='3')
 set_var = {1, 2, '3'}
 mat_var = numpy.matrix([[1,2],[3,4]])
+recursive_var = {'a': {'b': 123}, 'c': True}
 ''')
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code='''
 %use R
-%get null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var
+%get null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var recursive_var
 %dict -r
-%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var
+%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var recursive_var
 %use sos
-%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var
+%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var recursive_var
 ''')
             res = get_result(iopub)
             self.assertEqual(res['null_var'], None)
@@ -118,6 +119,7 @@ mat_var = numpy.matrix([[1,2],[3,4]])
             self.assertEqual(res['list_var'], [1,2,'3'])
             self.assertEqual(res['dict_var'], {'a': 1, 'b': 2, 'c': '3'})
             self.assertEqual(res['mat_var'].shape, (2,2))
+            self.assertEqual(res['recursive_var'],  {'a': {'b': 123}, 'c': True})
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
     def testPutRDataFrameToPython(self):
@@ -167,9 +169,11 @@ mat_var = numpy.matrix([[1,2],[3,4]])
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="mat_var = matrix(c(1,2,3,4), nrow=2)")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var named_list_var")
+            msg_id, content = execute(kc=kc, code="recursive_var = list(a=1, b=list(c=3, d='whatever'))")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var named_list_var")
+            msg_id, content = execute(kc=kc, code="%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var named_list_var recursive_var")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var named_list_var recursive_var")
             res = get_result(iopub)
             self.assertEqual(res['null_var'], None)
             self.assertEqual(res['num_var'], 123)
@@ -181,6 +185,7 @@ mat_var = numpy.matrix([[1,2],[3,4]])
             self.assertEqual(res['list_var'], [1,2,'3'])
             self.assertEqual(res['named_list_var'], {'a': 1, 'b': 2, 'c': '3'})
             self.assertEqual(res['mat_var'].shape, (2,2))
+            self.assertEqual(res['recursive_var'], {'a': 1, 'b': {'c': 3, 'd': 'whatever'}})
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 
