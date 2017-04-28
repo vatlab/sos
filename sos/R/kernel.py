@@ -196,8 +196,10 @@ R_init_statements = r'''
     } else if (is.character(obj)) {
         if (length(obj) == 1)
             ..py.repr.character.1(obj)
-        else
+        else {
+            options(useFancyQuotes=FALSE)
             paste("[", paste(sapply(obj, dQuote), collapse=','), "]")
+        }
     } else if (is.logical(obj)) {
         if (length(obj) == 1)
             ..py.repr.logical.1(obj)
