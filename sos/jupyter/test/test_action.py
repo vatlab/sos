@@ -50,6 +50,7 @@ class TestAction(unittest.TestCase):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             msg_id, content = execute(kc=kc, code='''
+%run
 [a]
 b=10
 
