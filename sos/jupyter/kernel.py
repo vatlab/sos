@@ -442,6 +442,7 @@ class SoS_Kernel(IPythonKernel):
         self.cell_idx = None
         self.my_tasks = {}
         #
+        self._workflow_mode = False
         env.__task_notifier__ = self.notify_task_status
 
     def handle_taskinfo(self, task_id, task_queue, side_panel=None):
@@ -1200,8 +1201,6 @@ class SoS_Kernel(IPythonKernel):
 
     def run_sos_code(self, code, silent):
         code = dedent(code)
-        if os.path.isfile('.sos/report.md'):
-            os.remove('.sos/report.md')
         with self.redirect_sos_io():
             try:
                 # record input and output
@@ -1623,24 +1622,27 @@ class SoS_Kernel(IPythonKernel):
             finally:
                 self.options = old_options
         elif self.MAGIC_RUN.match(code):
-            # the frontend will send different content to the kernel depending on
-            # the magic used.
             options, remaining_code = self.get_magic_and_code(code, False)
             old_options = self.options
             self.options = options + ' ' + self.options
             try:
+                self._workflow_mode = True
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
+                self._workflow_mode = False
                 self.options = old_options
         elif self.MAGIC_SOSRUN.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             old_options = self.options
             self.options = options + ' ' + self.options
             try:
+                self._workflow_mode = True
+                self.send_frontend_msg('preview-workflow', self._workflow)
                 self._do_execute(self._workflow, silent, store_history, user_expressions, allow_stdin)
-                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
+                self._workflow_mode = False
                 self.options = old_options
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_SOSSAVE.match(code):
             # get the saved filename
             options, remaining_code = self.get_magic_and_code(code, False)

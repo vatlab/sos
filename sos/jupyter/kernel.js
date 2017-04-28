@@ -117,8 +117,8 @@ define([
             for (var i = 0; i < cells.length; ++i) {
                 if (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'sos') {
                     // ignore the current cell
-                    if (cells[i].input_prompt_number == '*' && code == cells[i].get_text())
-                        continue
+                    //if (cells[i].input_prompt_number == '*' && code == cells[i].get_text())
+                    //    continue
                     var lines = cells[i].get_text().split('\n');
                     for (var l = 0; l < lines.length; ++l) {
                         if (lines[l].startsWith('#') || lines[l].startsWith('%') || lines[l].trim() == '' || lines[l].startsWith('!'))

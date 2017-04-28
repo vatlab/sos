@@ -34,8 +34,6 @@ from sos.sos_executor import Base_Executor, __null_func__
 from sos.sos_syntax import SOS_SECTION_HEADER
 from sos.target import FileTarget, UnknownTarget, RemovedTarget, UnavailableLock
 from sos.sos_step import PendingTasks
-from IPython.core.display import HTML
-from sos.hosts import Host
 from .sos_step import Interactive_Step_Executor
 
 
@@ -281,11 +279,25 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         if script is None:
             if not code.strip():
                 return
-            # if there is no section header, add a header so that the block
-            # appears to be a SoS script with one section
-            if not any([SOS_SECTION_HEADER.match(line) for line in code.splitlines()]):
-                code = '[interactive_0]\n' + code
-            script = SoS_Script(content=code, global_sigil=get_default_global_sigil())
+            if kernel is None:
+                script = SoS_Script(content=code, global_sigil=get_default_global_sigil())
+            else:
+                if kernel._workflow_mode:
+                    # in workflow mode, the content is sent by magics %run and %sosrun
+                    script = SoS_Script(content=code, global_sigil=get_default_global_sigil())
+                else:
+                    # this is a scratch step...
+                    # if there is no section header, add a header so that the block
+                    # appears to be a SoS script with one section
+                    if not any([SOS_SECTION_HEADER.match(line) for line in code.splitlines()]):
+                        code = '[scratch_0]\n' + code
+                        script = SoS_Script(content=code, global_sigil=get_default_global_sigil())
+                    else:
+                        # if not in workflow mode, the code would be silently ignored if
+                        # it contains workflow
+                        #kernel.send_response(kernel.iopub_socket, 'stream',
+                        # {'name': 'stdout', 'text': 'Workflow cell not executed.'})
+                        return
         else:
             script = SoS_Script(filename=script, global_sigil=get_default_global_sigil())
         workflow = script.workflow(args.workflow)
