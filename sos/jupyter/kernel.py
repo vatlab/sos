@@ -198,6 +198,7 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_DEBUG = re.compile('^%debug(\s|$)')
     MAGIC_TASKINFO = re.compile('^%taskinfo(\s|$)')
     MAGIC_TASKS = re.compile('^%tasks(\s|$)')
+    MAGIC_SKIP = re.compile('^%skip(\s|$)')
 
     def get_use_parser(self):
         parser = argparse.ArgumentParser(prog='%use',
@@ -365,6 +366,12 @@ class SoS_Kernel(IPythonKernel):
             help='''Exclude tasks of specified status'''),
         parser.add_argument('-q', '--queue',
             help='''Task queue on which the tasks are retrived.''')
+        parser.error = self._parse_error
+        return parser
+
+    def get_skip_parser(self):
+        parser = argparse.ArgumentParser(prog='%skip',
+            description='''Skip the rest of the cell content and return''')
         parser.error = self._parse_error
         return parser
 
@@ -1451,7 +1458,9 @@ class SoS_Kernel(IPythonKernel):
             # this is a special probing command from vim-ipython. Let us handle it specially
             # so that vim-python can get the pid.
             return
-        if self.MAGIC_DICT.match(code):
+        if self.MAGIC_SKIP.match(code):
+            return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
+        elif self.MAGIC_DICT.match(code):
             # %dict should be the last magic
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_dict(options)
