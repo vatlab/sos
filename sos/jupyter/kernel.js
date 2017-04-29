@@ -115,7 +115,7 @@ define([
         if (run_notebook) {
             var cells = IPython.notebook.get_cells();
             for (var i = 0; i < cells.length; ++i) {
-                if (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'sos') {
+                if (cells[i].cell_type == 'code' && (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'sos')) {
                     // ignore the current cell
                     //if (cells[i].input_prompt_number == '*' && code == cells[i].get_text())
                     //    continue
