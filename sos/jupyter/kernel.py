@@ -818,7 +818,7 @@ class SoS_Kernel(IPythonKernel):
                 # start a new kernel
                 try:
                     self.kernels[kernel] = manager.start_new_kernel(
-                            startup_timeout=60, kernel_name=kernel)
+                            startup_timeout=60, kernel_name=kernel, cwd=os.getcwd())
                 except Exception as e:
                     self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}'.format(kernel, e))
                     return
@@ -833,7 +833,8 @@ class SoS_Kernel(IPythonKernel):
             self.handle_magic_get(in_vars)
 
     def restart_kernel(self, kernel):
-        if kernel in ('sos', 'SoS'):
+        kernel = self.kernel_name(kernel)
+        if kernel == 'sos':
             # cannot restart myself ...
             self.warn('Cannot restart sos kernel from within sos.')
         elif kernel:
@@ -844,7 +845,8 @@ class SoS_Kernel(IPythonKernel):
                     self.warn('Failed to shutdown kernel {}: {}\n'.format(kernel, e))
             #
             try:
-                self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel)
+                self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel,
+                        cwd=os.getcwd())
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Kernel {} {}started\n'.format(kernel, 're' if kernel in self.kernels else '')})
                 #self.send_response(self.iopub_socket, 'stream',
