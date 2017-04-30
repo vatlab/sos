@@ -678,6 +678,7 @@ run:
     touch A1.txt
 
 [A_2]
+output: 'A2.txt'
 run:
     touch A2.txt
 
@@ -716,7 +717,7 @@ A_1 -> A_2;
         Base_Executor(wf).run()
         for f in ['A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p']:
             t = FileTarget(f)
-            self.assertTrue(t.exists())
+            self.assertTrue(t.exists(), '{} should exist'.format(f))
             t.remove('both')
 
 
@@ -1006,7 +1007,7 @@ run:
         # test 1, we only need to generate target 'B1.txt'
         Base_Executor(wf, config={'output_dag':'test'}).initialize_dag(targets=['B1.txt'])
         # note that A2 is no longer mentioned
-        self.assertDAG('test_2.dot',
+        self.assertDAG('test.dot',
 '''
 strict digraph "" {
 "B3 ['B3.txt']";
@@ -1028,7 +1029,7 @@ strict digraph "" {
         # test 2, we would like to generate two files
         Base_Executor(wf, config={'output_dag':'test'}).initialize_dag(targets=['B2.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
-        self.assertDAG('test_2.dot',
+        self.assertDAG('test.dot',
 '''
 strict digraph "" {
 "C4 ['C4.txt']";
@@ -1049,7 +1050,7 @@ strict digraph "" {
         #
         Base_Executor(wf, config={'output_dag':'test'}).initialize_dag(targets=['B3.txt', 'C2.txt'])
         # note that A2 is no longer mentioned
-        self.assertDAG('test_2.dot',
+        self.assertDAG('test.dot',
 '''
 strict digraph "" {
 "B3 ['B3.txt']";

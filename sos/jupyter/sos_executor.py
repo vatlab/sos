@@ -99,7 +99,6 @@ class Interactive_Executor(Base_Executor):
         if isinstance(targets, str):
             targets = [targets]
         dag = self.initialize_dag(targets=targets)
-        self.save_dag(dag)
         #
         # if targets are specified and there are only signatures for them, we need
         # to remove the signature and really generate them

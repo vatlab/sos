@@ -598,6 +598,7 @@ class Base_Executor:
         if cycle:
             raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
 
+        self.save_dag(dag)
         return dag
 
     def save_workflow_signature(self, dag):
@@ -641,7 +642,6 @@ class Base_Executor:
         env.sos_dict.set('run_mode', env.config['run_mode'])
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
-        self.save_dag(dag)
 
         # if targets are specified and there are only signatures for them, we need
         # to remove the signature and really generate them
