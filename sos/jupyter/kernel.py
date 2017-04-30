@@ -1678,12 +1678,14 @@ class SoS_Kernel(IPythonKernel):
             old_options = self.options
             self.options = options + ' ' + self.options
             try:
-                if not hasattr(self, 'last_executed_code'):
+                self._workflow_mode = True
+                if not hasattr(self, 'last_executed_code') or not self.last_executed_code:
                     self.warn('No saved script')
                     self.last_executed_code = ''
                 return self._do_execute(self.last_executed_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self.options = old_options
+                self._workflow_mode = False
         elif self.MAGIC_SANDBOX.match(code):
             import tempfile
             import shutil
