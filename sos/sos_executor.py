@@ -254,19 +254,25 @@ class Base_Executor:
         if self.config['output_dag'] is None:
             return
         if not hasattr(self, 'dag_count'):
-            self.dag_count = 0
-        self.dag_count += 1
+            self.dag_count = 1
+            self.last_dag = None
         #
+        out = dag.to_string()
+        if self.last_dag == out:
+            return
+        else:
+            self.last_dag = out
         # output file name
         if self.config['output_dag'] == '-':
-            dag_name = sys.stdout
+            sys.stdout.write(out)
         else:
             if self.dag_count == 1:
                 dag_name = self.config['output_dag'] if self.config['output_dag'].endswith('.dot') else self.config['output_dag'] + '.dot'
             else:
                 dag_name = '{}_{}.dot'.format(self.config['output_dag'][:-4] if self.config['output_dag'].endswith('.dot') else self.config['output_dag'], self.dag_count)
         #
-        dag.write_dot(dag_name)
+        with open(dag_name, 'w') as dfile:
+            dfile.write(out)
 
     def record_quit_status(self, tasks):
         if not self.md5:
@@ -584,7 +590,6 @@ class Base_Executor:
         #dag.show_nodes()
         # trim the DAG if targets are specified
         if targets:
-            self.save_dag(dag)
             dag = dag.subgraph_from(targets)
         # write DAG for debugging purposes
         #dag.write_dot(os.path.join(env.exec_dir, '.sos', '{}.dot'.format(self.workflow.name)))
@@ -593,7 +598,6 @@ class Base_Executor:
         if cycle:
             raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
 
-        self.save_dag(dag)
         return dag
 
     def save_workflow_signature(self, dag):
@@ -637,6 +641,7 @@ class Base_Executor:
         env.sos_dict.set('run_mode', env.config['run_mode'])
         # process step of the pipelinp
         dag = self.initialize_dag(targets=targets)
+        self.save_dag(dag)
 
         # if targets are specified and there are only signatures for them, we need
         # to remove the signature and really generate them

@@ -99,6 +99,7 @@ class Interactive_Executor(Base_Executor):
         if isinstance(targets, str):
             targets = [targets]
         dag = self.initialize_dag(targets=targets)
+        self.save_dag(dag)
         #
         # if targets are specified and there are only signatures for them, we need
         # to remove the signature and really generate them
@@ -174,6 +175,7 @@ class Interactive_Executor(Base_Executor):
                 cycle = dag.circular_dependencies()
                 if cycle:
                     raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
+                self.save_dag(dag)
             except RemovedTarget as e:
                 runnable._status = None
                 target = e.target
