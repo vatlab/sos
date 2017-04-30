@@ -1131,8 +1131,9 @@ define([
     function adjustPanel() {
         if ($('#panel-wrapper').css('display') != "none" || $('#toc-wrapper').css('display') != "none") {
 
-            $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30);
-            $('#notebook-container').css('width', $('#site').width() - $('#panel-wrapper').width() - 30);
+            var panel_width = IPython.notebook.metadata['sos']['panel'].style == 'side' ?  $('#panel-wrapper').width() : 0;
+            $('#notebook-container').css('margin-left', panel_width + 30);
+            $('#notebook-container').css('width', $('#site').width() - panel_width - 30);
             $('.celltoolbar label').css('margin-left', 0);
             $('.celltoolbar label').css('margin-right', 0);
         }
