@@ -1113,6 +1113,14 @@ class SoS_Kernel(IPythonKernel):
                     handled[idx] = True
                     self.preview_file(item)
                     continue
+                else:
+                    import glob
+                    files = glob.glob(item)
+                    if files:
+                        for pfile in files:
+                            self.preview_file(pfile)
+                        handled[idx] = True
+                        continue
             except Exception as e:
                 self.warn('\n> Failed to preview file {}: {}'.format(item, e))
                 continue
