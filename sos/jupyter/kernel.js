@@ -682,7 +682,6 @@ define([
             if (IPython.notebook.metadata['sos']['panel'].style === 'side') {
                 $('#panel-wrapper').css('top', liveNotebook ? $('#header').height() : 0)
                 $('#panel-wrapper').css('height', $('#site').height());
-                $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ )
             }
         });
         $([Jupyter.events]).on("toggle-all-headers", function() {
@@ -690,7 +689,6 @@ define([
                 var headerVisibleHeight = $('#header').is(':visible') ? $('#header').height() : 0
                 $('#panel-wrapper').css('top', liveNotebook ? headerVisibleHeight : 0)
                 $('#panel-wrapper').css('height', $('#site').height());
-                $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ )
             }
         });
 
@@ -709,7 +707,6 @@ define([
                     ui.position.top = $('#header').height();
                     ui.position.left = 0;
                     $('#panel-wrapper').css('height', $('#site').height());
-                    $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ );
                 }
                 if (ui.position.left <= 0) {
                     ui.position.left = 0;
@@ -723,7 +720,6 @@ define([
                     panel_wrapper.removeClass('sidebar-wrapper').addClass('float-wrapper');
                     $('#notebook-container').css('margin-left', 30);
                     $('#notebook-container').css('width', $('#notebook').width() - 30);
-                    $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ ); //redraw at begin of of drag (after resizing height)
                 }
 
             }, //end of drag function
@@ -744,19 +740,12 @@ define([
                 if (IPython.notebook.metadata['sos']['panel'].style === 'side') {
                     $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
                     $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
-                } else {
-                    $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ );
                 }
             },
             start: function(event, ui) {
                 $(this).width($(this).width());
                 //$(this).css('position', 'fixed');
             },
-            stop: function(event, ui) {
-                $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ )
-                // Ensure position is fixed (again)
-                //$(this).css('position', 'fixed');
-            }
         })
 
         // Ensure position is fixed
@@ -780,7 +769,6 @@ define([
             }, 500)
             setTimeout(function() {
                 $('#panel-wrapper').css('height', $('#site').height());
-                $('#panel').css('height', $('#panel-wrapper').height() /* - $('#panel-header').height() */ )
             }, 500)
             setTimeout(function() {
                 $('#panel-wrapper').css('top', $('#header').height());
@@ -1013,6 +1001,7 @@ define([
                 '  color: #333333;' +
                 '  white-space: nowrap;' +
                 '  overflow-x: auto;' +
+                '  height: 100%;' +
                 '} ' +
                 '' +
                 '.float-wrapper {' +
@@ -1022,7 +1011,8 @@ define([
                 '  right: 20px;' +
                 '  border: thin solid rgba(0, 0, 0, 0.38);' +
                 '  border-radius: 5px;' +
-                '  padding:10px;' +
+                '  padding:5px;' +
+                '  padding-top:10px;' +
                 '  background-color: #F8F5E1;' +
                 '  opacity: .8;' +
                 '  z-index: 100;' +
@@ -1032,7 +1022,8 @@ define([
                 '.sidebar-wrapper {' +
                 '    height: 100%;' +
                 '    left: 5px;' +
-                '    padding: 10px;' +
+                '    padding: 5px;' +
+                '    padding-top: 10px;' +
                 '    position: fixed !important;' +
                 '    width: 25%;' +
                 '    max-width: 50%;' +
@@ -1094,6 +1085,15 @@ define([
                 '    margin-left: 5pt;' +
                 '    margin-top: 0.5em;' +
                 '    text-align: left;' +
+                '}' +
+                '' +
+                '#panel-wrapper .prompt.input_prompt {' +
+                '    padding: 0pt;' +
+                '    padding-top: 0.5em;' +
+                '}' +
+                '' +
+                '#panel-wrapper .cell {' +
+                '    padding: 0pt;' +
                 '}' +
                 '' +
                 '#panel-wrapper .panel-item-num {' +
