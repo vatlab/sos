@@ -260,7 +260,8 @@ class SoS_Kernel(IPythonKernel):
         parser = argparse.ArgumentParser(prog='%preview',
             description='''Preview files, sos variables, or expressions''')
         parser.add_argument('items', nargs='*',
-            help='''filename, variable name, or expression''')
+            help='''Filename, variable name, or expression. Wildcard characters
+                such as '*' and '?' are allowed for filenames.''')
         parser.add_argument('--kernel',
             help='''kernel in which variables will be previewed. By default
             the variable will be previewed in the current kernel of the cell.''')
