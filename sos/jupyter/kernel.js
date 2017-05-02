@@ -127,7 +127,7 @@ define([
                             workflow += lines.slice(l).join('\n') + '\n\n';
                             cells[i].metadata.workflow_cell = true;
                             var ip = cells[i].element[0].getElementsByClassName('input_prompt');
-                            ip[0].style.backgroundColor = '#87CEFA';
+                            ip[0].style.backgroundColor = '#F0F0F0';
                         }
                         cells[i].metadata.workflow_cell = false;
                         break
@@ -173,6 +173,8 @@ define([
             (window.kernel_updated ? "" : " --list-kernel ") +
             " --default-kernel " + window.default_kernel +
             " --cell-kernel " + window.my_panel.cell.metadata.kernel +
+            (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'" : '') +
+            (run_notebook ? " --workflow " + btoa(workflow) : '') + rerun_option +
             " --cell -1 " + "\n" + code + workflow,
             callbacks, {
                 'silent': false,
@@ -412,7 +414,7 @@ define([
                 } else {
                     var cell = IPython.notebook.get_cell(data[0]);
                     cell.metadata.workflow_cell = true;
-                    cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = '#87CEFA';
+                    cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = '#F0F0F0';
                 }
             } else {
                 // this is preview output
@@ -486,8 +488,8 @@ define([
             ip[0].style.backgroundColor = BackgroundColor[type];
             op[0].style.backgroundColor = BackgroundColor[type];
         } else if (cell.metadata.workflow_cell) {
-            ip[0].style.backgroundColor = '#87CEFA';
-            op[0].style.backgroundColor = '#87CEFA';
+            ip[0].style.backgroundColor = '#F0F0F0';
+            op[0].style.backgroundColor = '#F0F0F0';
         } else {
             // Use '' to remove background-color?
             ip[0].style.backgroundColor = '';
