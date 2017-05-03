@@ -247,7 +247,7 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('--resume', action='store_true',
             help='''If the cell is automatically reresumed by frontend, in which
             case -s force should be handled differently.'''),
-        parser.add_argument('--cell', dest='cell_idx',
+        parser.add_argument('--cell', dest='cell_idx', type=int,
             help='Index of cell')
         parser.add_argument('--workflow', const='', nargs='?',
             help='Workflow defined in the notebook')
@@ -1530,7 +1530,7 @@ class SoS_Kernel(IPythonKernel):
                     return
                 self.cell_idx = args.cell_idx
                 # for panel cell, we return a non-informative execution count
-                if self.cell_idx is None or int(self.cell_idx) < 0:
+                if self.cell_idx is None or self.cell_idx < 0:
                     self._execution_count = '-'
                 self._notebook_name = args.filename
                 if args.workflow is not None:
@@ -1791,7 +1791,7 @@ class SoS_Kernel(IPythonKernel):
             finally:
                 # preview workflow
                 if args.workflow:
-                    self.send_response(self.iopub_socket, 'stream',
+                    self.send_frontend_msg('stream',
                         {'name': 'stdout', 'text': self._workflow})
                 if not args.off and args.items:
                     self.handle_magic_preview(args.items, args.kernel)

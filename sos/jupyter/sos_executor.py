@@ -294,11 +294,9 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
                         code = '[scratch_0]\n' + code
                         script = SoS_Script(content=code, global_sigil=get_default_global_sigil())
                     else:
-                        # if not in workflow mode, the code would be silently ignored if
-                        # it contains workflow
-                        #kernel.send_response(kernel.iopub_socket, 'stream',
-                        # {'name': 'stdout', 'text': 'Workflow cell not executed.'})
-                        kernel.send_frontend_msg('mark-workflow-cell', kernel.cell_idx)
+                        if kernel.cell_idx == -1:
+                            kernel.send_frontend_msg('stream',
+                                {'name': 'stdout', 'text': 'Workflow can only be executed with magic %run or %sosrun.'})
                         return
         else:
             script = SoS_Script(filename=script, global_sigil=get_default_global_sigil())

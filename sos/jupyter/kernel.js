@@ -101,7 +101,7 @@ define([
             // other magic
             if (lines[l].startsWith('%')) {
                 console.log(lines[l]);
-                if (lines[l].match(/^%sosrun($|\s)|^%sossave($|\s)|^%preview\s.*--workflow.*$/)) {
+                if (lines[l].match(/^%sosrun($|\s)|^%sossave($|\s)|^%preview\s.*(-w|--workflow).*$/)) {
                     run_notebook = true;
                     break;
                 } else
@@ -116,22 +116,7 @@ define([
             var cells = IPython.notebook.get_cells();
             for (var i = 0; i < cells.length; ++i) {
                 if (cells[i].cell_type == 'code' && (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'sos')) {
-                    // ignore the current cell
-                    //if (cells[i].input_prompt_number == '*' && code == cells[i].get_text())
-                    //    continue
-                    var lines = cells[i].get_text().split('\n');
-                    for (var l = 0; l < lines.length; ++l) {
-                        if (lines[l].startsWith('#') || lines[l].startsWith('%') || lines[l].trim() == '' || lines[l].startsWith('!'))
-                            continue
-                        if (lines[l].startsWith('[') && lines[l].endsWith(']')) {
-                            workflow += lines.slice(l).join('\n') + '\n\n';
-                            cells[i].metadata.workflow_cell = true;
-                            var ip = cells[i].element[0].getElementsByClassName('input_prompt');
-                            ip[0].style.backgroundColor = '#F0F0F0';
-                        }
-                        cells[i].metadata.workflow_cell = false;
-                        break
-                    }
+                    workflow += get_workflow_from_cell(cells[i])
                 }
             }
         }
@@ -400,22 +385,6 @@ define([
                         }
                     });
                 });
-            } else if (msg_type == 'mark-workflow-cell') {
-                // get cell from passed cell index, which was sent through the
-                // %frontend magic
-                if (data[0] == -1) {
-                    var cell = window.my_panel.cell;
-                    cell.clear_output();
-                    cell.output_area.append_output({
-                        'output_type': 'stream',
-                        'text': 'workflow cell not executed',
-                        'name': 'stdout'
-                    });
-                } else {
-                    var cell = IPython.notebook.get_cell(data[0]);
-                    cell.metadata.workflow_cell = true;
-                    cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor = '#F0F0F0';
-                }
             } else {
                 // this is preview output
                 var cell = window.my_panel.cell;
@@ -463,6 +432,19 @@ define([
     }
 
 
+    function get_workflow_from_cell(cell) {
+        var lines = cell.get_text().split('\n');
+        var workflow = '';
+        for (var l = 0; l < lines.length; ++l) {
+            if (lines[l].startsWith('#') || lines[l].startsWith('%') || lines[l].trim() == '' || lines[l].startsWith('!'))
+                continue
+            if (lines[l].startsWith('[') && lines[l].endsWith(']'))
+                workflow += lines.slice(l).join('\n') + '\n\n';
+            break
+        }
+        return workflow;
+    }
+
     function changeStyleOnKernel(cell, type) {
         var sel = cell.element[0].getElementsByTagName('select')[0]
         var opts = sel.options;
@@ -484,12 +466,12 @@ define([
         var ip = cell.element[0].getElementsByClassName('input_prompt');
         var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
 
-        if (BackgroundColor[type]) {
-            ip[0].style.backgroundColor = BackgroundColor[type];
-            op[0].style.backgroundColor = BackgroundColor[type];
-        } else if (cell.metadata.workflow_cell) {
+        if (type == 'sos' && get_workflow_from_cell(cell)) {
             ip[0].style.backgroundColor = '#F0F0F0';
             op[0].style.backgroundColor = '#F0F0F0';
+        } else if (BackgroundColor[type]) {
+            ip[0].style.backgroundColor = BackgroundColor[type];
+            op[0].style.backgroundColor = BackgroundColor[type];
         } else {
             // Use '' to remove background-color?
             ip[0].style.backgroundColor = '';
