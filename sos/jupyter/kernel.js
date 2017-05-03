@@ -135,6 +135,7 @@ define([
                 }
             }
         }
+        var rerun_option = '';
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i) {
             // this is the cell that is being executed...
@@ -143,7 +144,6 @@ define([
             // being finished, we should start from reverse and check actual code
             if (cells[i].input_prompt_number == '*' && code == cells[i].get_text()) {
                 // use cell kernel if meta exists, otherwise use window.default_kernel
-                var rerun_option = '';
                 if (window._auto_resume) {
                     rerun_option = ' --resume ';
                     window._auto_resume = false;
@@ -175,7 +175,7 @@ define([
             " --cell-kernel " + window.my_panel.cell.metadata.kernel +
             (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'" : '') +
             (run_notebook ? " --workflow " + btoa(workflow) : '') + rerun_option +
-            " --cell -1 " + "\n" + code + workflow,
+            " --cell -1 " + "\n" + code,
             callbacks, {
                 'silent': false,
                 'store_history': false
