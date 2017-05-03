@@ -249,7 +249,7 @@ class SoS_Kernel(IPythonKernel):
             case -s force should be handled differently.'''),
         parser.add_argument('--cell', dest='cell_idx',
             help='Index of cell')
-        parser.add_argument('--workflow',
+        parser.add_argument('--workflow', const='', nargs='?',
             help='Workflow defined in the notebook')
         parser.add_argument('--filename',
             help='filename of the current notebook')
@@ -275,6 +275,14 @@ class SoS_Kernel(IPythonKernel):
     def get_set_parser(self):
         parser = argparse.ArgumentParser(prog='%set',
             description='''Set persistent command line options for SoS runs.''')
+        parser.error = self._parse_error
+        return parser
+
+    def get_restart_parser(self):
+        parser = argparse.ArgumentParser(prog='%restart',
+            description='''Restart specified subkernel''')
+        parser.add_argument('kernel',
+            help='''Name of the kernel to be restarted.''')
         parser.error = self._parse_error
         return parser
 
@@ -900,7 +908,10 @@ class SoS_Kernel(IPythonKernel):
         'Magic that displays content of the dictionary'
         # do not return __builtins__ beacuse it is too long...
         parser = self.get_dict_parser()
-        args = parser.parse_args(shlex.split(line))
+        try:
+            args = parser.parse_args(shlex.split(line))
+        except SystemExit:
+            return
 
         for x in args.vars:
             if not x in env.sos_dict:
@@ -1423,6 +1434,10 @@ class SoS_Kernel(IPythonKernel):
         # evaluate user expression
         ret = self._do_execute(code=code, silent=silent, store_history=store_history,
             user_expressions=user_expressions, allow_stdin=allow_stdin)
+        if ret is None:
+            ret = {'status': 'ok',
+                   'payload': [], 'user_expressions': {},
+                   'execution_count': self._execution_count}
 
         out = {}
         for key, expr in (user_expressions or {}).items():
@@ -1498,19 +1513,27 @@ class SoS_Kernel(IPythonKernel):
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_RESTART.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
-            self.restart_kernel(options)
+            parser = get_restart_parser()
+            try:
+                args = parser.parse_args(shlex.split(options))
+            except SystemExit:
+                return
+            self.restart_kernel(args.kernel)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_FRONTEND.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
                 parser = self.get_frontend_parser()
-                args = parser.parse_args(shlex.split(options))
+                try:
+                    args = parser.parse_args(shlex.split(options))
+                except SystemExit:
+                    return
                 self.cell_idx = args.cell_idx
                 # for panel cell, we return a non-informative execution count
                 if self.cell_idx is None or int(self.cell_idx) < 0:
                     self._execution_count = '-'
                 self._notebook_name = args.filename
-                if args.workflow:
+                if args.workflow is not None:
                     self._workflow = '#!/usr/bin/env sos-runner\n#fileformat=SOS1.0\n\n' + \
                         base64.b64decode(args.workflow).decode()
             except Exception as e:
@@ -1553,7 +1576,10 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
                 parser = self.get_with_parser()
-                args = parser.parse_args(options.split())
+                try:
+                    args = parser.parse_args(options.split())
+                except SystemExit:
+                    return
             except Exception as e:
                 self.warn('Invalid option "{}": {}\n'.format(options, e))
                 return {'status': 'error',
@@ -1572,7 +1598,10 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
                 parser = self.get_use_parser()
-                args = parser.parse_args(options.split())
+                try:
+                    args = parser.parse_args(options.split())
+                except SystemExit:
+                    return
             except Exception as e:
                 self.warn('Invalid option "{}": {}\n'.format(options, e))
                 return {'status': 'abort',
@@ -1588,7 +1617,10 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
                 parser = self.get_get_parser()
-                args = parser.parse_args(options.split())
+                try:
+                    args = parser.parse_args(options.split())
+                except SystemExit:
+                    return
             except Exception as e:
                 self.warn('Invalid option "{}": {}\n'.format(options, e))
                 return {'status': 'error',
@@ -1603,7 +1635,10 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
                 parser = self.get_put_parser()
-                args = parser.parse_args(options.split())
+                try:
+                    args = parser.parse_args(options.split())
+                except SystemExit:
+                    return
             except Exception as e:
                 self.warn('Invalid option "{}": {}\n'.format(options, e))
                 return {'status': 'error',
@@ -1659,7 +1694,10 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
                 parser = self.get_sossave_parser()
-                args = parser.parse_args(shlex.split(options))
+                try:
+                    args = parser.parse_args(shlex.split(options))
+                except SystemExit:
+                    return
                 if args.filename:
                     filename = self._interpolate_option(options, quiet=False).strip()
                 else:
@@ -1700,7 +1738,10 @@ class SoS_Kernel(IPythonKernel):
             import shutil
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_sandbox_parser()
-            args = parser.parse_args(shlex.split(options))
+            try:
+                args = parser.parse_args(shlex.split(options))
+            except SystemExit:
+                return
             self.in_sandbox = True
             try:
                 old_dir = os.getcwd()
@@ -1737,7 +1778,10 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             options = self._interpolate_option(options, quiet=True)
             parser = self.get_preview_parser()
-            args = parser.parse_args(shlex.split(options, posix=False))
+            try:
+                args = parser.parse_args(shlex.split(options, posix=False))
+            except SystemExit:
+                return
             if args.off:
                 self.preview_output = False
             else:
@@ -1758,19 +1802,28 @@ class SoS_Kernel(IPythonKernel):
         elif self.MAGIC_DEBUG.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_debug_parser()
-            args = parser.parse_args(options.split())
+            try:
+                args = parser.parse_args(options.split())
+            except SystemExit:
+                return
             self._debug_mode = args.status == 'on'
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_TASKINFO.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_taskinfo_parser()
-            args = parser.parse_args(options.split())
+            try:
+                args = parser.parse_args(options.split())
+            except SystemExit:
+                return
             self.handle_taskinfo(args.task, args.queue)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_TASKS.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_tasks_parser()
-            args = parser.parse_args(options.split())
+            try:
+                args = parser.parse_args(options.split())
+            except SystemExit:
+                return
             self.handle_tasks(args.tasks, args.queue if args.queue else 'localhost', args.exclude)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):
