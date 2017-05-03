@@ -1648,7 +1648,7 @@ class SoS_Kernel(IPythonKernel):
             self.options = options + ' ' + self.options
             try:
                 self._workflow_mode = True
-                self.send_frontend_msg('preview-workflow', self._workflow)
+                #self.send_frontend_msg('preview-workflow', self._workflow)
                 self._do_execute(self._workflow, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self._workflow_mode = False
@@ -1668,7 +1668,7 @@ class SoS_Kernel(IPythonKernel):
                     filename += '.sos'
                 if os.path.isfile(filename) and not args.force:
                     raise ValueError('Cannot overwrite existing output file {}'.format(filename))
-                self.send_frontend_msg('preview-workflow', self._workflow)
+                #self.send_frontend_msg('preview-workflow', self._workflow)
                 with open(filename, 'w') as script:
                     script.write(self._workflow)
                 self.send_response(self.iopub_socket, 'stream',
@@ -1742,12 +1742,13 @@ class SoS_Kernel(IPythonKernel):
                 self.preview_output = False
             else:
                 self.preview_output = True
-            # preview workflow
-            if args.workflow:
-                self.send_frontend_msg('preview-workflow', self._workflow)
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
+                # preview workflow
+                if args.workflow:
+                    self.send_response(self.iopub_socket, 'stream',
+                        {'name': 'stdout', 'text': self._workflow})
                 if not args.off and args.items:
                     self.handle_magic_preview(args.items, args.kernel)
         elif self.MAGIC_CD.match(code):
