@@ -262,10 +262,10 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('items', nargs='*',
             help='''Filename, variable name, or expression. Wildcard characters
                 such as '*' and '?' are allowed for filenames.''')
-        parser.add_argument('--kernel',
+        parser.add_argument('-k', '--kernel',
             help='''kernel in which variables will be previewed. By default
             the variable will be previewed in the current kernel of the cell.''')
-        parser.add_argument('--workflow', action='store_true',
+        parser.add_argument('-w', '--workflow', action='store_true',
             help='''Preview notebook workflow''')
         parser.add_argument('--off', action='store_true',
             help='''Turn off file preview''')
@@ -1513,7 +1513,7 @@ class SoS_Kernel(IPythonKernel):
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_RESTART.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
-            parser = get_restart_parser()
+            parser = self.get_restart_parser()
             try:
                 args = parser.parse_args(shlex.split(options))
             except SystemExit:
