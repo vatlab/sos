@@ -984,3 +984,17 @@ def sample_of_file(filename, n):
         else:
             m = len(lines)
             return ''.join([lines[x*m//n + m//(2*n)] for x in range(n)])
+
+
+def linecount_of_file(filename):
+    f = open(filename, 'rb')
+    lines = 0
+    buf_size = 1024 * 1024
+    read_f = f.raw.read
+
+    buf = read_f(buf_size)
+    while buf:
+        lines += buf.count(b'\n')
+        buf = read_f(buf_size)
+
+    return lines

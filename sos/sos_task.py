@@ -30,7 +30,7 @@ from tokenize import generate_tokens
 from collections.abc import Sequence
 import concurrent.futures
 
-from sos.utils import env, short_repr, get_traceback, sample_of_file, tail_of_file
+from sos.utils import env, short_repr, get_traceback, sample_of_file, tail_of_file, linecount_of_file
 from sos.sos_eval import SoS_exec
 
 from .target import textMD5, RuntimeInfo, Undetermined, FileTarget
@@ -425,7 +425,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False):
                 if not k.startswith('__') and not k == 'CONFIG':
                     if k == '_runtime':
                         for _k, _v in v.items():
-                            if _v:
+                            if _v not in (None, ''):
                                 row(_k, _v)
                     else:
                         row(k, '<pre style="text-align:left">{}</pre>'.format(pprint.pformat(v)))
@@ -442,7 +442,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False):
             #
             files = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
             for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.def', '.res', '.task', '.pulse', '.status')]):
-                row(os.path.basename(f), 'last 200 lines')
+                numLines = linecount_of_file(f)
+                row(os.path.basename(f), '(empty)' if numLines == 0 else '{} lines{}'.format(numLines, '' if numLines < 200 else ' (showing last 200)'))
                 try:
                     row(td='<pre style="text-align:left">{}</pre>'.format(tail_of_file(f, 200)))
                 except:
