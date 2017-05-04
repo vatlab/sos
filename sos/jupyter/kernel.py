@@ -504,6 +504,7 @@ class SoS_Kernel(IPythonKernel):
         # get all tasks
         for tid, tst, tdt in host._task_engine.monitor_tasks(tasks, exclude=exclude):
             self.notify_task_status(['new-status', queue, tid, tst, tdt])
+        self.send_frontend_msg('update-duration', {})
 
     def sos_comm(self, comm, msg):
         # record frontend_comm to send messages
@@ -546,6 +547,7 @@ class SoS_Kernel(IPythonKernel):
                         for tid in tids:
                             tst = h._task_engine.check_task_status(tid, unknown='unknown')
                             self.notify_task_status(['change-status', tqu, tid, tst])
+                    self.send_frontend_msg('update-duration', {})
                 else:
                     # this somehow does not work
                     self.warn('Unknown message {}: {}'.format(k, v))
@@ -614,7 +616,6 @@ class SoS_Kernel(IPythonKernel):
             # keep tracks of my tasks to avoid updating status of
             # tasks that does not belong to the notebook
             self.my_tasks[(tqu, tid)] = time.time()
-            self.send_frontend_msg('update-duration', {})
         elif task_status[0] == 'remove-task':
             tqu, tid = task_status[1:]
             if (tqu, tid) in self.my_tasks:
