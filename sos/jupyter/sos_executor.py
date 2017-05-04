@@ -44,7 +44,7 @@ class Interactive_Executor(Base_Executor):
         # by nested = True we actually mean no new dictionary
         if env.config['sig_mode'] is None:
             env.config['sig_mode'] = 'ignore'
-        Base_Executor.__init__(self, workflow=workflow, args=args, shared={}, config=config)
+        Base_Executor.__init__(self, workflow=workflow, args=args, shared=shared, config=config)
         self.md5 = self.create_signature()
         if env.config['sig_mode'] != 'ignore':
             # We append to existing workflow files because some files are ignored and we
@@ -77,6 +77,18 @@ class Interactive_Executor(Base_Executor):
         # set config to CONFIG
         FileTarget('config.yml').remove('both')
 
+        # remove some variables because they would interfere with step analysis
+        for key in ('_input', 'input'):
+            if key in env.sos_dict:
+                env.sos_dict.pop(key)
+
+        env.sos_dict.quick_update(self.shared)
+
+        if isinstance(self.args, dict):
+            for key, value in self.args.items():
+                if not key.startswith('__'):
+                    env.sos_dict.set(key, value)
+
     def run(self, targets=None, queue=None):
         '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer
         The code can be simple SoS/Python statements, one SoS step, or more
@@ -94,7 +106,6 @@ class Interactive_Executor(Base_Executor):
         # last stement is an expression.
         last_res = None
 
-
         # process step of the pipelinp
         if isinstance(targets, str):
             targets = [targets]
@@ -104,10 +115,12 @@ class Interactive_Executor(Base_Executor):
         # to remove the signature and really generate them
         if targets:
             for t in targets:
-                if not FileTarget(t).exists('target'):
+                if not FileTarget(t).exists('target') and FileTarget(t).exists('signature'):
+                    env.logger.info('Re-generating {}'.format(t))
                     FileTarget(t).remove('signature')
+                else:
+                    env.logger.info('Target {} already exists'.format(t))
         #
-        self.reset_dict()
         while True:
             # find any step that can be executed and run it, and update the DAT
             # with status.
@@ -158,27 +171,19 @@ class Interactive_Executor(Base_Executor):
                             | {'_input', '__step_output__', '__default_output__', '__args__'}))
                     node._context['__completed__'].append(res['__step_name__'])
                 runnable._status = 'completed'
-            except UnknownTarget as e:
+            except (UnknownTarget, RemovedTarget) as e:
                 runnable._status = None
-                target = e.target
-                if self.resolve_dangling_targets(dag, [target]) == 0:
-                    raise RuntimeError('Failed to resolve {}{}.'
-                        .format(target, dag.steps_depending_on(target, self.workflow)))
-                # now, there should be no dangling targets, let us connect nodes
-                # this can be done more efficiently
-                runnable._depends_targets.append(target)
-                dag._all_dependent_files[target].append(runnable)
-                #
-                dag.build(self.workflow.auxiliary_sections)
-                #dag.show_nodes()
-                cycle = dag.circular_dependencies()
-                if cycle:
-                    raise RuntimeError('Circular dependency detected {}. It is likely a later step produces input of a previous step.'.format(cycle))
-                self.save_dag(dag)
-            except RemovedTarget as e:
-                runnable._status = None
-                target = e.target
-                if not dag.regenerate_target(target):
+                target = res.target
+                if dag.regenerate_target(target):
+                    #runnable._depends_targets.append(target)
+                    #dag._all_dependent_files[target].append(runnable)
+                    dag.build(self.workflow.auxiliary_sections)
+                    #
+                    cycle = dag.circular_dependencies()
+                    if cycle:
+                        raise RuntimeError('Circular dependency detected {} after regeneration. It is likely a later step produces input of a previous step.'.format(cycle))
+
+                else:
                     if self.resolve_dangling_targets(dag, [target]) == 0:
                         raise RuntimeError('Failed to regenerate or resolve {}{}.'
                             .format(target, dag.steps_depending_on(target, self.workflow)))
