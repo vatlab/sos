@@ -84,6 +84,8 @@ sh:
 
     def testRemoveAllSignatures(self):
         '''test removal of signatures'''
+        from sos.utils import env
+        env.exec_dir = '.'
         for f in ('t_f1', 't_d1/t_f2', 't_d2/t_d3/t_f3'):
             self.assertTrue(FileTarget(f).exists('signature'), '{} has signature'.format(f))
         subprocess.call('sos remove -s', shell=True)
