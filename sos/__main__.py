@@ -1396,7 +1396,7 @@ def cmd_unpack(args, unknown_args):
                         dest = os.path.join(args.dest, '.sos')
                     else:
                         # this goes to global signature directory
-                        dest = os.path.expanduser('~/.sos/.runtime')
+                        dest = '.sos/.runtime'
                     f.name = f.name[8:]
                 elif f.name.startswith('scripts/'):
                     if not args.script:
