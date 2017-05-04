@@ -436,11 +436,15 @@ define([
         var lines = cell.get_text().split('\n');
         var workflow = '';
         for (var l = 0; l < lines.length; ++l) {
-            if (lines[l].startsWith('#') || lines[l].startsWith('%') || lines[l].trim() == '' || lines[l].startsWith('!'))
+            if (lines[l].startsWith('%include') || lines[l].startsWith('%from')) {
+                workflow += lines[l] + '\n';
                 continue
-            if (lines[l].startsWith('[') && lines[l].endsWith(']'))
+            } else if (lines[l].startsWith('#') || lines[l].startsWith('%') || lines[l].trim() == '' || lines[l].startsWith('!')) {
+                continue
+            } else if (lines[l].startsWith('[') && lines[l].endsWith(']')) {
                 workflow += lines.slice(l).join('\n') + '\n\n';
-            break
+            }
+            break;
         }
         return workflow;
     }
