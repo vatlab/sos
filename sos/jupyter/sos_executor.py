@@ -173,7 +173,7 @@ class Interactive_Executor(Base_Executor):
                 runnable._status = 'completed'
             except (UnknownTarget, RemovedTarget) as e:
                 runnable._status = None
-                target = res.target
+                target = e.target
                 if dag.regenerate_target(target):
                     #runnable._depends_targets.append(target)
                     #dag._all_dependent_files[target].append(runnable)
