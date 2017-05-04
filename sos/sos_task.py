@@ -385,10 +385,13 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False):
                 # if there are other files such as job file, print them.
                 files = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.*'))
                 for f in sorted([x for x in files if os.path.splitext(x)[-1] not in ('.res',
-                    '.task', '.pulse', '.status')]):
+                    '.task', '.pulse', '.status', '.def')]):
                     print('{}:\n{}'.format(os.path.basename(f), '='*(len(os.path.basename(f))+1)))
-                    with open(f) as fc:
-                        print(fc.read())
+                    try:
+                        with open(f) as fc:
+                            print(fc.read())
+                    except:
+                        print('Binary file')
     else:
         # HTML output
         from .utils import PrettyRelativeTime
