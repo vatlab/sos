@@ -158,9 +158,9 @@ def summarizeExecution(task_id, status='Unknown'):
         ('duration', ('' if second_elapsed < 86400 else '{} day{} '.format(int(second_elapsed/86400), 's' if second_elapsed > 172800 else '')) + \
                 time.strftime('%H:%M:%S', time.gmtime(second_elapsed))),
         ('cpu_peak', '{:.1f}'.format(peak_cpu)),
-        ('cpu_avg', '{:.1f}'.format(accu_cpu/count)),
+        ('cpu_avg', '{:.1f}'.format(0 if count == 0 else accu_cpu/count)),
         ('mem_peak', '{:.1f}Mb'.format(peak_mem/1024/1024)),
-        ('mem_avg', '{:.1f}Mb'.format(accu_mem/1024/1024/count))
+        ('mem_avg', '{:.1f}Mb'.format(0 if count == 0 else accu_mem/1024/1024/count))
         ]
     return '\n'.join('{:20s} {}'.format(x,y) for x,y in result)
 
