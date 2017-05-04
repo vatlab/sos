@@ -425,9 +425,9 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False):
                 if not k.startswith('__') and not k == 'CONFIG':
                     if k == '_runtime':
                         for _k, _v in v.items():
-                            if _v not in (None, ''):
+                            if _v not in (None, '', [], (), {}):
                                 row(_k, _v)
-                    else:
+                    elif v not in (None, '', [], (), {}):
                         row(k, '<pre style="text-align:left">{}</pre>'.format(pprint.pformat(v)))
             summary = summarizeExecution(t, status=s)
             if summary:
