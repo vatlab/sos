@@ -710,7 +710,7 @@ class Base_Step_Executor:
             if env.sos_dict['__local_output__']:
                 env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])].extend(env.sos_dict['__local_output__'])
                 env.sos_dict['local_output'].extend(env.sos_dict['__local_output__'])
-        except (AbortExecution, UnknownTarget, RemovedTarget, UnavailableLock):
+        except (AbortExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
             raise
         except Exception as e:
             raise RuntimeError('Failed to process statement {} ({}): {}'.format(short_repr(stmt), e.__class__.__name__, e))
