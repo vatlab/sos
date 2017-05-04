@@ -122,7 +122,7 @@ class SoS_Worker(mp.Process):
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
-        self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
+        self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(keyword.kwlist)
         self._base_symbols -= {'dynamic'}
 
         if isinstance(self.args, dict):
@@ -311,7 +311,7 @@ class Base_Executor:
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
-        self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
+        self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(keyword.kwlist)
         self._base_symbols -= {'dynamic'}
 
         # excute global definition to get some basic setup
