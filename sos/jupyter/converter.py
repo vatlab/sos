@@ -83,7 +83,7 @@ class SoS_Exporter(Exporter):
                 lines = cell.source.split('\n')
                 valid_cell = False
                 for line in lines:
-                    if valid_cell:
+                    if valid_cell or (line.startswith('%include') or line.startswith('%from')):
                         fh.write(line + '\n')
                     elif line.startswith('#') or line.startswith('!') or line.startswith('%') or not line.strip():
                         continue
