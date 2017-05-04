@@ -1157,7 +1157,10 @@ def _expand_file_list(ignore_unknown, *args):
                 tmp.append(ifile)
             else:
                 raise UnknownTarget(ifile)
-        elif FileTarget(ifile).exists():
+        elif FileTarget(ifile).exists('target'):
+            tmp.append(ifile)
+        elif FileTarget(ifile).exists('signature'):
+            env.logger.debug('``{}`` exists in signature form (actual target has been removed).'.format(ifile))
             tmp.append(ifile)
         else:
             expanded = sorted(glob.glob(os.path.expanduser(ifile)))
