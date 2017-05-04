@@ -468,7 +468,7 @@ class SoS_ScriptContent:
                 cnt = script.read()
         # additional files
         for script in self.included:
-            cnt += script
+            cnt += script[0]
         #
         return textMD5(cnt)
 
@@ -476,8 +476,8 @@ class SoS_ScriptContent:
         if filename and not content:
             with open(filename) as script:
                 content = script.read()
-        if content not in self.included:
-            self.included.append(content)
+        if filename not in [x[1] for x in self.included]:
+            self.included.append((content, filename))
             self.md5 = self.calc_md5()
 
 
@@ -500,7 +500,7 @@ class SoS_Script:
             Among other things, section.names
         '''
         self.global_sigil = global_sigil
-        if filename:
+        if not content:
             try:
                 content, self.sos_script = locate_script(filename, start='.')
             except:
@@ -583,7 +583,6 @@ class SoS_Script:
                 with StringIO() as script:
                     notebook_to_script(script_file, script)
                     content = script.getvalue()
-                script_file = None 
         except Exception as e:
             raise RuntimeError('Source file for nested workflow {} with extension .sos or .ipynb does not exist'.format(sos_file))
 
