@@ -1679,6 +1679,7 @@ class SoS_Kernel(IPythonKernel):
                 self.options = old_options
         elif self.MAGIC_SOSRUN.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
+            options = self._interpolate_option(options, quiet=False)
             old_options = self.options
             self.options = options + ' ' + self.options
             try:
