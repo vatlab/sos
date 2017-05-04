@@ -467,17 +467,17 @@ class SoS_ScriptContent:
             with open(self.filename) as script:
                 cnt = script.read()
         # additional files
-        for filename in self.included:
-            with open(filename) as script:
-                cnt += script.read()
+        for script in self.included:
+            cnt += script
         #
         return textMD5(cnt)
 
     def add(self, content='', filename=None):
-        if content:
-            raise RuntimeError('Include can only add file, not script')
-        if filename not in self.included:
-            self.included.append(filename)
+        if filename and not content:
+            with open(filename) as script:
+                content = script.read()
+        if content not in self.included:
+            self.included.append(content)
             self.md5 = self.calc_md5()
 
 
@@ -566,16 +566,33 @@ class SoS_Script:
             if section.is_global:
                 section.names = self.workflows
 
-    def _include_namespace(self, sos_file, alias):
+    def _find_include_file(self, sos_file):
+        # we could almost use SoS_script directly but we need to be able to start searching
+        # from path of the master file.
         try:
             if self.sos_script and self.sos_script != '<string>':
-                content = locate_script(sos_file + '.sos', start=os.path.split(self.sos_script)[0])
+                start_path = os.path.split(self.sos_script)[0]
             else:
-                content = locate_script(sos_file + '.sos')
+                start_path = ''
+            try:
+                content, script_file = locate_script(sos_file + '.sos', start=start_path)
+            except:
+                content, script_file = locate_script(sos_file + '.ipynb', start=start_path)
+                # convert ipynb to sos
+                from sos.jupyter.converter import notebook_to_script
+                with StringIO() as script:
+                    notebook_to_script(script_file, script)
+                    content = script.getvalue()
+                script_file = None 
         except Exception as e:
-            raise RuntimeError('Source file for nested workflow {} does not exist: {}'.format(sos_file, e))
-        self.content.add(*content)
-        script = SoS_Script(*content)
+            raise RuntimeError('Source file for nested workflow {} with extension .sos or .ipynb does not exist'.format(sos_file))
+
+        return content, script_file
+
+    def _include_namespace(self, sos_file, alias):
+        content, script_file = self._find_include_file(sos_file)
+        self.content.add(content, script_file)
+        script = SoS_Script(content, script_file)
         if not alias:
             alias = sos_file
         # section names are changed from A to sos_file.A
@@ -589,15 +606,10 @@ class SoS_Script:
             script.global_sigil)
 
     def _include_content(self, sos_file, name_map):
-        try:
-            if self.sos_script and self.sos_script != '<string>':
-                content = locate_script(sos_file + '.sos', start=os.path.split(self.sos_script)[0])
-            else:
-                content = locate_script(sos_file + '.sos')
-        except Exception as e:
-            raise RuntimeError('Source file for nested workflow {} does not exist: {}'.format(sos_file, e))
-        self.content.add(*content)
-        script = SoS_Script(*content)
+        content, script_file = self._find_include_file(sos_file)
+        #
+        self.content.add(content, script_file)
+        script = SoS_Script(content, script_file)
         if not name_map:
             self.sections.extend(script.sections)
             self.global_def += script.global_def
