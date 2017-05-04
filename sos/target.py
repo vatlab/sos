@@ -324,7 +324,10 @@ class FileTarget(BaseTarget):
         fullname = os.path.abspath(self.name())
         name_md5 = textMD5(fullname)
 
-        self._sigfile = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', name_md5 + '.file_info')
+        if self.is_external():
+            self._sigfile = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', name_md5 + '.file_info')
+        else:
+            self._sigfile = os.path.join(env.exec_dir, '.sos', '.runtime', name_md5 + '.file_info')
         return self._sigfile
 
     def signature(self, mode='any'):

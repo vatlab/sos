@@ -671,7 +671,7 @@ def get_tracked_files(sig_file):
                 if t.exists('signature'):
                     runtime_files.append(t.sig_file())
             elif line.startswith('EXE_SIG'):
-                runtime_files.append(os.path.expanduser('~/.sos/.runtime/{}.exe_info'.format(line.split('session=', 1)[1].strip())))
+                runtime_files.append('.sos/.runtime/{}.exe_info'.format(line.split('session=', 1)[1].strip()))
             elif line.startswith('# script:'):
                 script_files.append(line.split(':', 1)[1].strip())
             elif line.startswith('# included:'):
@@ -1396,7 +1396,7 @@ def cmd_unpack(args, unknown_args):
                         dest = os.path.join(args.dest, '.sos')
                     else:
                         # this goes to global signature directory
-                        dest = os.path.expanduser('~/.sos/.runtime')
+                        dest = '.sos/.runtime'
                     f.name = f.name[8:]
                 elif f.name.startswith('scripts/'):
                     if not args.script:

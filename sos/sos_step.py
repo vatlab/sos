@@ -710,7 +710,7 @@ class Base_Step_Executor:
             if env.sos_dict['__local_output__']:
                 env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])].extend(env.sos_dict['__local_output__'])
                 env.sos_dict['local_output'].extend(env.sos_dict['__local_output__'])
-        except (AbortExecution, UnknownTarget, RemovedTarget, UnavailableLock):
+        except (AbortExecution, UnknownTarget, RemovedTarget, UnavailableLock, PendingTasks):
             raise
         except Exception as e:
             raise RuntimeError('Failed to process statement {} ({}): {}'.format(short_repr(stmt), e.__class__.__name__, e))
@@ -1157,7 +1157,10 @@ def _expand_file_list(ignore_unknown, *args):
                 tmp.append(ifile)
             else:
                 raise UnknownTarget(ifile)
-        elif FileTarget(ifile).exists():
+        elif FileTarget(ifile).exists('target'):
+            tmp.append(ifile)
+        elif FileTarget(ifile).exists('signature'):
+            env.logger.debug('``{}`` exists in signature form (actual target has been removed).'.format(ifile))
             tmp.append(ifile)
         else:
             expanded = sorted(glob.glob(os.path.expanduser(ifile)))
