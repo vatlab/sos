@@ -145,7 +145,10 @@ def summarizeExecution(task_id, status='Unknown'):
                 peak_mem = float(m) + float(cm)
             if int(nch) > peak_nch:
                 peak_nch = int(nch)
-    second_elapsed = end_time - start_time
+    try:
+        second_elapsed = end_time - start_time
+    except:
+        second_elapsed = 0
     result = [
         ('status', status),
         ('task', task_id),
