@@ -750,6 +750,7 @@ def list_queues(config_file, verbosity = 1):
             h = Host(host, start_engine=False)
         except Exception as e:
             env.logger.warning('Invalid host {} from localhost: {}'.format(host, e))
+            continue
         if verbosity == 0:
             print(h.alias)
         elif verbosity in (1, 2):
