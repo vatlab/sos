@@ -501,6 +501,7 @@ class SoS_Kernel(IPythonKernel):
             host = Host(queue)
         except Exception as e:
             self.warn('Invalid task queu {}: {}'.format(queue, e))
+            return
         # get all tasks
         for tid, tst, tdt in host._task_engine.monitor_tasks(tasks, exclude=exclude):
             self.notify_task_status(['new-status', queue, tid, tst, tdt])
@@ -604,8 +605,8 @@ class SoS_Kernel(IPythonKernel):
                             onmouseleave="$('#status_{0}_{1}').addClass('{2}').removeClass('{3}')"
                             onclick="{4}('{1}', '{0}')"
                         ></i> </td>
-                        <td style="border: 0px"><a onclick="task_info('{1}', '{0}')"><pre>{1}</pre></a></td>
-                        <td>&nbsp;<td>
+                        <td style="border:0px"><a onclick="task_info('{1}', '{0}')"><pre>{1}</pre></a></td>
+                        <td style="border:0px">&nbsp;</td>
                         <td style="border:0px;text-align=right;">
                         <pre><time id="duration_{0}_{1}" datetime="{5}">{6}</time></pre></td>
                         </tr>
