@@ -236,11 +236,11 @@ class RemoteHost:
             path_map = [path_map]
         if isinstance(path_map, Sequence):
             for v in path_map:
-                if ':' not in v:
-                    raise ValueError('Path map should be separated as from:to, {} specified'.format(v))
-                elif v.count(':') > 1:
-                    raise ValueError('Path map should be separated as from:to, {} specified'.format(v))
-                res[v.split(':')[0]] = v.split(':')[1]
+                if ' -> ' not in v:
+                    raise ValueError('Path map should be separated as from -> to, {} specified'.format(v))
+                elif v.count(' -> ') > 1:
+                    raise ValueError('Path map should be separated as from -> to, {} specified'.format(v))
+                res[v.split(' -> ')[0]] = v.split(' -> ')[1]
         elif isinstance(path_map, dict):
             for k,v in path_map.items():
                 res[k] = v
@@ -598,9 +598,9 @@ class Host:
             from .utils import load_config_files
             env.sos_dict.set('CONFIG', load_config_files())
         if not alias or alias == 'localhost':
-            # if no alias is specified, we are using localhost -> localhost
+            # if no alias is specified, we are using localhost  ->  localhost
             if 'localhost' not in env.sos_dict['CONFIG']:
-                # true default ... we are running localhost -> localhost without definition
+                # true default ... we are running localhost  ->  localhost without definition
                 self.alias = 'localhost'
                 LOCAL = 'localhost'
             else:
@@ -654,7 +654,7 @@ class Host:
                     common = set(cfg[LOCAL]['shared'].keys()) & set(cfg[REMOTE]['shared'].keys())
                     if common:
                         self.config['shared'] = [append_slash(cfg[LOCAL]['shared'][x]) for x in common]
-                        self.config['path_map'] = ['{}:{}'.format(append_slash(cfg[LOCAL]['shared'][x]), append_slash(cfg[REMOTE]['shared'][x])) \
+                        self.config['path_map'] = ['{} -> {}'.format(append_slash(cfg[LOCAL]['shared'][x]), append_slash(cfg[REMOTE]['shared'][x])) \
                             for x in common if append_slash(cfg[LOCAL]['shared'][x]) != append_slash(cfg[REMOTE]['shared'][x])]
                 if ('paths' in cfg[LOCAL] and cfg[LOCAL]['paths']) or ('paths' in cfg[REMOTE] and cfg[REMOTE]['paths']):
                     if 'paths' not in cfg[LOCAL] or 'paths' not in cfg[REMOTE] or not cfg[LOCAL]['paths'] or not cfg[REMOTE]['paths'] or \
@@ -663,7 +663,7 @@ class Host:
                         raise ValueError('Unmatched paths definition between {} ({}) and {} ({})'.format(
                             LOCAL, ','.join(cfg[LOCAL]['paths'].keys()), REMOTE, ','.join(cfg[REMOTE]['paths'].keys())))
                     # 
-                    self.config['path_map'].extend(['{}:{}'.format(append_slash(cfg[LOCAL]['paths'][x]), append_slash(cfg[REMOTE]['paths'][x])) \
+                    self.config['path_map'].extend(['{} -> {}'.format(append_slash(cfg[LOCAL]['paths'][x]), append_slash(cfg[REMOTE]['paths'][x])) \
                         for x in cfg[REMOTE]['paths'].keys() if append_slash(cfg[LOCAL]['paths'][x]) != append_slash(cfg[REMOTE]['paths'][x])])
         #
         self.config['alias'] = self.alias
@@ -751,7 +751,7 @@ def list_queues(config_file, verbosity = 1):
         try:
             h = Host(host, start_engine=False)
         except Exception as e:
-            env.logger.warning('Invalid host {} from localhost: {}'.format(host, e))
+            env.logger.warning('Invalid remote host {} from localhost: {}'.format(host, e))
             continue
         if verbosity == 0:
             print(h.alias)
