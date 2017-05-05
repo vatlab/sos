@@ -743,6 +743,8 @@ def list_queues(config_file, verbosity = 1):
     cfg = load_config_files(config_file)
     env.sos_dict.set('CONFIG', cfg)
     hosts = cfg.get('hosts', [])
+    if not hosts:
+        sys.exit("No hosts is defined.")
     host_description = [['Alias', 'Address', 'Queue Type', 'Description'],
                         ['-----', '-------', '----------', '-----------']]
     for host in sorted(hosts):

@@ -909,6 +909,8 @@ def load_config_files(filename=None):
                     cfg = yaml.safe_load(config)
             except Exception as e:
                 raise RuntimeError('Failed to parse global sos hosts file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+    else:
+        env.logger.debug("{} does not exist".format(sos_config_file))
     # global config file
     sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
     if os.path.isfile(sos_config_file):
@@ -918,6 +920,8 @@ def load_config_files(filename=None):
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse global sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+    else:
+        env.logger.debug("{} does not exist".format(sos_config_file))
     # local config file
     sos_config_file = 'config.yml'
     if os.path.isfile(sos_config_file):
@@ -927,6 +931,8 @@ def load_config_files(filename=None):
                     dict_merge(cfg, yaml.safe_load(config))
             except Exception as e:
                 raise RuntimeError('Failed to parse local sos config file {}, is it in YAML/JSON format? ({})'.format(sos_config_file, e))
+    else:
+        env.logger.debug("{} does not exist".format(sos_config_file))
     # user-specified configuration file.
     if filename is not None:
         if not os.path.isfile(filename):
