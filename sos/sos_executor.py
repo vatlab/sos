@@ -137,7 +137,7 @@ class SoS_Worker(mp.Process):
             if work is None:
                 break
 
-            env.logger.debug('Worker {} receives request {}'.format(self.worker_id(), work[0]))
+            env.logger.debug('Worker {} receives request {}'.format(self.worker_id(), work))
             try:
                 if work[0] == 'step':
                     # this is a step ...
