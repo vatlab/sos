@@ -516,6 +516,10 @@ class SoS_Script:
                                 env.logger.debug(e)
                                 env.logger.error('Failed to locate {0}, {0}.sos, or {0}.ipynb'.format(filename))
                                 sys.exit(1)
+                        else:
+                            raise
+                else:
+                    raise
             # Is this script in sos or ipynb format?
             ext = os.path.splitext(self.sos_script)[-1]
             if ext == '.ipynb':
