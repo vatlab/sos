@@ -232,24 +232,24 @@ mean(nums)
         wf = script.workflow()
         Base_Executor(wf).run()
 
-    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
-    def testDockerBuild(self):
-        '''Test action docker build'''
-        script = SoS_Script(r'''
-[0]
-docker_build:  tag='test/docker_build'
+#    @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
+#    def testDockerBuild(self):
+#        '''Test action docker build'''
+#        script = SoS_Script(r'''
+#[0]
+#docker_build:  tag='test/docker_build'
+##
+## Super simple example of a Dockerfile
+##
+#FROM ubuntu:latest
+#MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
 #
-# Super simple example of a Dockerfile
+#RUN apt-get update
 #
-FROM ubuntu:latest
-MAINTAINER Andrew Odewahn "odewahn@oreilly.com"
-
-RUN apt-get update
-
-WORKDIR /home
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
+#WORKDIR /home
+#''')
+#        wf = script.workflow()
+#        Base_Executor(wf).run()
 
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testDockerImage(self):
