@@ -457,7 +457,8 @@ class SoS_Kernel(IPythonKernel):
     def handle_taskinfo(self, task_id, task_queue, side_panel=None):
         # requesting information on task
         from sos.hosts import Host
-        result = Host(task_queue)._task_engine.query_tasks([task_id], verbosity=2, html=True)
+        host = Host(task_queue)
+        result = host._task_engine.query_tasks([task_id], verbosity=2, html=True)
         try:
             table, pulse = result.split('\nTASK PULSE\n')
         except Exception as e:
@@ -494,6 +495,15 @@ class SoS_Kernel(IPythonKernel):
                     self.send_frontend_msg('resource-plot', ["res_" + task_id, etime, cpu, mem])
             except Exception as e:
                 self.warn('Failed to generate resource plot: {}'.format(e))
+        #
+        # now, there is a possibility that the status of the task is different from what
+        # task engine knows (e.g. a task is rerun outside of jupyter). In this case, since we
+        # already get the status, we should update the task engine...
+        #
+        # <tr><th align="right"  width="30%">Status</th><td align="left">completed</td></tr>
+        status = result.split('>Status<', 1)[-1].split('</td',1)[0].split('>')[-1]
+        host._task_engine.update_task_status(task_id, status)
+
 
     def handle_tasks(self, tasks, queue='localhost', exclude=[]):
         from sos.hosts import Host
@@ -540,7 +550,7 @@ class SoS_Kernel(IPythonKernel):
                             continue
                         tqu, tid = name[7:].rsplit('_', 1)
                         host_status[tqu].append(tid)
-                    log_to_file(host_status)
+                    #log_to_file(host_status)
                     #
                     from sos.hosts import Host
                     for tqu, tids in host_status.items():
@@ -562,7 +572,7 @@ class SoS_Kernel(IPythonKernel):
             'completed': 'fa-check-square-o',
             'failed': 'fa-times-circle-o',
             'aborted': 'fa-frown-o',
-            'result-mismatch': 'fa-question-circle-o',
+            'result-mismatch': 'fa-question',
             'unknown': 'fa-question',
             }
 

@@ -610,31 +610,20 @@ class TaskEngine(threading.Thread):
                 else:
                     status_output = self._status_checker.result()
                     self._status_checker = None
-                with threading.Lock():
-                    for line in status_output.split('\n'):
-                        if not line.strip():
+                #
+                for line in status_output.split('\n'):
+                    if not line.strip():
+                        continue
+                    try:
+                        tid, tst = line.split('\t')
+                        if tid not in self.running_tasks:
+                            env.logger.trace('Task {} removed since status check.'.format(tid))
                             continue
-                        try:
-                            tid, tst = line.split('\t')
-                            if tid not in self.running_tasks:
-                                env.logger.trace('Task {} removed since status check.'.format(tid))
-                                continue
-                            env.logger.trace('STATUS {}\t{}\n'.format(tid, tst))
-                            if tid in self.canceled_tasks and tst != 'aborted':
-                                env.logger.debug('Task {} is still not killed (status {})'.format(tid, tst))
-                                tst = 'aborted'
-                            if hasattr(env, '__task_notifier__') and tst != 'non-exist':
-                                if tid in self.task_status and self.task_status[tid] == tst:
-                                    env.__task_notifier__(['pulse-status', self.agent.alias, tid, tst])
-                                else:
-                                    env.__task_notifier__(['change-status', self.agent.alias, tid, tst])
-                            self.task_status[tid] = tst
-                            # terminal states, remove tasks from task list
-                            if tst in ('completed', 'failed', 'aborted', 'result-mismatch'):
-                                self.running_tasks.remove(tid)
-                        except Exception as e:
-                            env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
-                    self.summarize_status()
+                        self.update_task_status(tid, tst)
+
+                    except Exception as e:
+                        env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
+                self.summarize_status()
                 self._last_status_check = time.time()
             else:
                 # if nothing to do, sleep to avoid empty loop. This will reduce CPU usage from 100% to 0.3%
@@ -754,6 +743,28 @@ class TaskEngine(threading.Thread):
         except:
             # job not yet submitted
             return unknown
+
+    def update_task_status(self, task_id, status):
+        #
+        env.logger.trace('STATUS {}\t{}\n'.format(task_id, status))
+        #
+        with threading.Lock():
+            if task_id in self.canceled_tasks and status != 'aborted':
+                env.logger.debug('Task {} is still not killed (status {})'.format(task_id, status))
+                status = 'aborted'
+            if hasattr(env, '__task_notifier__') and status != 'non-exist':
+                if task_id in self.task_status and self.task_status[task_id] == status:
+                    env.__task_notifier__(['pulse-status', self.agent.alias, task_id, status])
+                else:
+                    env.__task_notifier__(['change-status', self.agent.alias, task_id, status])
+            self.task_status[task_id] = status
+            if status == 'pening' and task_id not in self.pending_tasks:
+                self.pending_tasks.append(task_id)
+            if status == 'running' and task_id not in self.running_tasks:
+                self.running_tasks.append(task_id)
+            # terminal states, remove tasks from task list
+            if status in ('completed', 'failed', 'aborted', 'result-mismatch') and task_id in self.running_tasks:
+                self.running_tasks.remove(tid)
 
     def remove_tasks(self, tasks):
         with threading.Lock():
