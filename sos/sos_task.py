@@ -526,6 +526,7 @@ class TaskEngine(threading.Thread):
         self.pending_tasks = []
         self.submitting_tasks = {}
         self.canceled_tasks = []
+        self.resuming_tasks = set()
 
         self.task_status = OrderedDict()
         self.task_date = {}
@@ -817,14 +818,27 @@ class TaskEngine(threading.Thread):
                 self.canceled_tasks.remove(task)
             if task not in self.pending_tasks:
                 self.pending_tasks.append(task)
+            # tells the engine that preparation of task can fail
+            self.resuming_tasks.add(task)
             self.task_status[task] = 'pending'
 
     def execute_task(self, task_id):
         # we wait for the engine to start
         self.engine_ready.wait()
         # this is base class
-        return self.agent.prepare_task(task_id)
 
+        # if the task is being resumed, perhaps from another local host,
+        # the preparation process can fail (e.g. no def file), but this
+        # does not really matter. #587
+        if task_id in self.resuming_tasks:
+            self.resuming_tasks.remove(task_id)
+            try:
+                self.agent.prepare_task(task_id)
+            except:
+                pass
+            return True
+        else:
+            return self.agent.prepare_task(task_id)
 
 class BackgroundProcess_TaskEngine(TaskEngine):
     def __init__(self, agent):
