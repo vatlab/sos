@@ -764,7 +764,7 @@ class TaskEngine(threading.Thread):
                 self.running_tasks.append(task_id)
             # terminal states, remove tasks from task list
             if status in ('completed', 'failed', 'aborted', 'result-mismatch') and task_id in self.running_tasks:
-                self.running_tasks.remove(tid)
+                self.running_tasks.remove(task_id)
 
     def remove_tasks(self, tasks):
         with threading.Lock():
