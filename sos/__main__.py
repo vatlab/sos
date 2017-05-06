@@ -422,9 +422,23 @@ def cmd_execute(args, workflow_args):
     from .sos_task import execute_task, check_task, monitor_interval, resource_monitor_interval
     from .monitor import summarizeExecution
     from .utils import env
+    import glob
     if args.queue is None:
+        # local machine ...
         exit_code = []
         for task in args.tasks:
+            #
+            matched = [os.path.basename(x)[:-5] for x in glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '*.task'))]
+            if not matched:
+                env.logger.error('{} does not match any existing task'.format(task))
+                exit_code.append(1)
+                continue
+            elif len(matched) > 1:
+                env.logger.error('"{}" matches more than one task ID {}'.format(task, ', '.join(matched)))
+                exit_code.append(1)
+                continue
+            else:
+                task = matched[0]
             # this is for local execution, perhaps on a remote host, and
             # there is no daemon process etc. It also does not handle job
             # preparation.
@@ -436,6 +450,7 @@ def cmd_execute(args, workflow_args):
                 else:
                     print(summarizeExecution(task, status=status))
                 exit_code.append(1)
+                continue
             if status == 'completed' and args.__sig_mode__ != 'force':
                 # touch the result file, this will effective change task
                 # status from completed-old to completed
@@ -445,6 +460,7 @@ def cmd_execute(args, workflow_args):
                 #else:
                 #    print(summarizeExecution(task, status=status))
                 exit_code.append(0)
+                continue
             #
             if os.path.isfile(res_file):
                 os.remove(res_file)
