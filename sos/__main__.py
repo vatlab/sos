@@ -918,10 +918,10 @@ def get_config_parser(desc_only=False):
         automatically loaded by SoS but can be specified using option `-c`''')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--get', nargs='*', metavar='OPTION', dest='__get_config__',
-        help='''Display values of specified configuration. The arguments of this
-        option can be a single configuration option or a list of option. Wildcard
-        characters are allowed to match more options (e.g. '*timeout', quotation
-        is needed to avoid shell expansion). If no option is given, all options
+        help='''Display values of specified configuration from all configuration files.
+        The arguments of this option can be a single configuration option or a list of
+        option. Wildcard characters are allowed to match more options (e.g. '*timeout',
+        quotation is needed to avoid shell expansion). If no option is given, all options
         will be outputted.''')
     group.add_argument('--unset', nargs='+', metavar='OPTION',  dest='__unset_config__',
         help='''Unset (remove) settings for specified options. The arguments of this
@@ -943,7 +943,7 @@ def get_config_parser(desc_only=False):
 def cmd_config(args, workflow_args):
     import fnmatch
     import yaml
-    from .utils import env, dict_merge
+    from .utils import env, dict_merge, load_config_files
     from .sos_syntax import CONFIG_NAME
     if workflow_args:
         raise RuntimeError('Unrecognized arguments {}'.format(' '.join(workflow_args)))
@@ -957,19 +957,16 @@ def cmd_config(args, workflow_args):
     else:
         config_file = 'config.yml'
     if args.__get_config__ is not None:
-        if os.path.isfile(config_file):
-            try:
-                with open(config_file) as config:
-                    cfg = yaml.safe_load(config)
-                if cfg is None:
-                    cfg = {}
-            except Exception as e:
-                env.logger.error('Failed to parse sos config file {}, is it in YAML/JSON format? ({}}'.format(config_file, e))
-                sys.exit(1)
-            for option in (args.__get_config__ if args.__get_config__ else ['*']):
-                for k, v in cfg.items():
-                    if fnmatch.fnmatch(k, option):
-                        print('{}\t{!r}'.format(k, v))
+        cfg = load_config_files(args.__config_file__)
+        def disp_matched(obj, option, prefix=''):
+            for k, v in obj.items():
+                if fnmatch.fnmatch(k, option):
+                    print('{}{}\t{!r}'.format(prefix + '.', k, v))
+                if isinstance(v, dict):
+                    disp_matched(v, option, k)
+
+        for option in (args.__get_config__ if args.__get_config__ else ['*']):
+            disp_matched(cfg, option)
     elif args.__unset_config__:
         if os.path.isfile(config_file):
             try:
