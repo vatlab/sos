@@ -159,7 +159,7 @@ class SoS_Worker(mp.Process):
         # we are in a separate process and need to set verbosity from workflow config
         # but some tests do not provide verbosity
         env.verbosity = config.get('verbosity', 2)
-        env.logger.debug('Worker working on a workflow {} with args {}'.format(workflow_id, args))
+        env.logger.debug('Worker {} working on a workflow {} with args {}'.format(self.__worker_id__, workflow_id, args))
         executer = Base_Executor(wf, args=args, shared=shared, config=config)
         # we send the pipe to subworkflow, which would send
         # everything directly to the master process, so we do not
@@ -168,7 +168,7 @@ class SoS_Worker(mp.Process):
 
 
     def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity):
-        env.logger.debug('Worker working on a step with args {}'.format(args))
+        env.logger.debug('Worker {} working on a step with args {}'.format(self.__worker_id__, args))
         env.config['run_mode'] = run_mode
         env.config['sig_mode'] = sig_mode
         env.verbosity = verbosity
@@ -698,7 +698,7 @@ class Base_Executor:
                         if nested:
                             raise RuntimeError('Nested workflow is not supposed to receive task, workflow, or step requests. {} received.'.format(res))
                         if res.startswith('task'):
-                            env.logger.debug('{} receives task reqiest {}'.format(i_am(), res))
+                            env.logger.debug('{} receives task request {}'.format(i_am(), res))
                             host = res.split(' ')[1]
                             if host == '__default__':
                                 if 'default_queue' in env.config:
@@ -853,7 +853,7 @@ class Base_Executor:
                 procs = [x for x in procs if x is not None]
 
                 # step 2: check if some jobs are done
-                for proc in procs:
+                for proc_idx, proc in enumerate(procs):
                     # if a job is pending, check if it is done.
                     if proc[2]._status == 'task_pending':
                         res = proc[2]._host.check_status(proc[2]._pending_tasks)
@@ -871,13 +871,13 @@ class Base_Executor:
                                 task_status = proc[2]._host.retrieve_results(proc[2]._pending_tasks)
                                 proc[1].send(task_status)
                                 proc[2]._status == 'failed'
-                                raise RuntimeError('{} completed, {} failed, {} aborted, {} mismatch'.format(
+                                raise RuntimeError('Proc {}: {} completed, {} failed, {} aborted, {} mismatch'.format(proc_idx,
                                     len([x for x in res if x=='completed']), len([x for x in res if x=='failed']),
                                     len([x for x in res if x=='aborted']), len([x for x in res if x=='result-mismatch']) ))
                         if any(x in ('pending', 'submitted', 'running') for x in res):
                             continue
                         elif all(x == 'completed' for x in res):
-                            env.logger.debug('Put results for {}'.format(' '.join(proc[2]._pending_tasks)))
+                            env.logger.debug('Proc {} puts results for {} from step {}'.format(proc_idx, ' '.join(proc[2]._pending_tasks), proc[2]._node_id))
                             res = proc[2]._host.retrieve_results(proc[2]._pending_tasks)
                             proc[1].send(res)
                             proc[2]._status == 'running'
@@ -911,7 +911,7 @@ class Base_Executor:
                         runnable._from_nested = True
                         runnable._child_pipe = pipe
 
-                        env.logger.debug('{} execute {} from step queue with args {}'.format(i_am(), step_id, args))
+                        env.logger.debug('{} sends {} from step queue with args {}'.format(i_am(), step_id, args))
                         q1.send(('step', section, context, shared, args, run_mode, sig_mode, verbosity))
                         procs.append( [worker, q1, runnable])
                         continue
