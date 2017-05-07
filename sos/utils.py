@@ -958,6 +958,25 @@ def expand_time(v):
     else:
          raise ValueError('Input of option walltime should be an integer (seconds) or a string in the format of HH:MM:SS. {} specified.'.format(v))
 
+def convert_age(t):
+    '''Ticket #582: age format being +/- #h #d #s #m
+    '''
+    if t.startswith('+'):
+        sign = 1
+        t = t[1:]
+    else:
+        sign = -1
+    #
+    try:
+        unit = {'s': 1, 'm': 60, 'h': 3600, 'd': 3600*24}[t[-1]]
+        t = t[:-1]
+    except:
+        unit = 3600*24
+    #
+    try:
+        return sign * unit * int(t)
+    except:
+        raise ValueError('Unacceptable time for parameter age, expecting [+/-] num [s|m|h|d] (e.g. +5h)')
 
 def tail_of_file(filename, n, offset=None):
     """Reads a n lines from f with an offset of offset lines.  The return

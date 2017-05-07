@@ -311,7 +311,7 @@ def check_task(task):
     else:
         return 'pending'
 
-def check_tasks(tasks, verbosity=1, html=False, start_time=False):
+def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
     # verbose is ignored for now
     import glob
     from multiprocessing.pool import ThreadPool as Pool
@@ -327,6 +327,14 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False):
                 all_tasks.append((t, None))
             else:
                 all_tasks.extend(matched)
+    if age:
+        from sos.utils import convert_age
+        age = convert_age(age)
+        if age > 0:
+            all_tasks = [x for x in all_tasks if time.time() - x[1] >= age]
+        else:
+            all_tasks = [x for x in all_tasks if time.time() - x[1] <= -age]
+
     all_tasks = sorted(list(set(all_tasks)), key=lambda x: 0 if x[1] is None else x[1])
     if not all_tasks:
         env.logger.warning('No matching tasks')
@@ -780,10 +788,10 @@ class TaskEngine(threading.Thread):
         with threading.Lock():
             return self.pending_tasks()
 
-    def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=False):
-        return self.agent.check_output("sos status {} -v {} {} {}".format(
+    def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=False, age=None):
+        return self.agent.check_output("sos status {} -v {} {} {} {}".format(
                 ' '.join(tasks), verbosity, '--html' if html else '',
-                '--start-time' if start_time else ''))
+                '--start-time' if start_time else '', '--age {}'.format(age) if age else ''))
 
     def kill_tasks(self, tasks, all_tasks=False):
         # we wait for the engine to start
