@@ -145,7 +145,7 @@ class SoS_Worker(mp.Process):
                     self.run_step(*work[1:])
                 else:
                     self.run_workflow(*work[1:])
-                env.logger.debug('Worker {} completes request {}'.format(self.worker_id(), work[0]))
+                env.logger.debug('Worker {} completes request {}'.format(self.worker_id(), work))
             except KeyboardInterrupt:
                 break
 
