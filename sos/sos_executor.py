@@ -28,6 +28,7 @@ from collections.abc import Sequence
 import multiprocessing as mp
 
 from tqdm import tqdm as ProgressBar
+from itertools import count
 from io import StringIO
 from ._version import __version__
 from .sos_step import Step_Executor, analyze_section, PendingTasks
@@ -76,7 +77,7 @@ class SoS_Worker(mp.Process):
     '''
     Worker process to process SoS step or workflow in separate process.
     '''
-    __worker_id__ = 0
+    _worker_ids = count(0)
 
     def __init__(self,  pipe, config={}, args=[], **kwargs):
         '''
@@ -100,7 +101,7 @@ class SoS_Worker(mp.Process):
         self.pipe = pipe
         self.config = config
         self.args = args
-        self.__worker_id__ += 1
+        self.__worker_id__ = self._worker_ids.__next__()
 
     def worker_id(self):
         return self.__worker_id__
