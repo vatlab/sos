@@ -371,10 +371,14 @@ class SoS_Kernel(IPythonKernel):
         parser = argparse.ArgumentParser(prog='%tasks',
             description='''Show a list of tasks from specified queue''')
         parser.add_argument('tasks', nargs='*', help='ID of tasks')
-        parser.add_argument('-e', '--exclude', nargs='*', default=['completed'],
-            help='''Exclude tasks of specified status'''),
+        parser.add_argument('-s', '--status', nargs='*',
+            help='''Display tasks of specified status. Default to all.'''),
         parser.add_argument('-q', '--queue',
             help='''Task queue on which the tasks are retrived.''')
+        parser.add_argument('-t', '--time', help='''Limit to tasks that is created within
+            (default) or beyond specified age. Value of this parameter can be in units
+            s (second), m (minute), h (hour), or d (day, default), with optional
+            prefix + for older than specified time.''')
         parser.error = self._parse_error
         return parser
 
@@ -505,7 +509,7 @@ class SoS_Kernel(IPythonKernel):
         host._task_engine.update_task_status(task_id, status)
 
 
-    def handle_tasks(self, tasks, queue='localhost', exclude=[]):
+    def handle_tasks(self, tasks, queue='localhost', status=None, age=None):
         from sos.hosts import Host
         try:
             host = Host(queue)
@@ -513,7 +517,7 @@ class SoS_Kernel(IPythonKernel):
             self.warn('Invalid task queu {}: {}'.format(queue, e))
             return
         # get all tasks
-        for tid, tst, tdt in host._task_engine.monitor_tasks(tasks, exclude=exclude):
+        for tid, tst, tdt in host._task_engine.monitor_tasks(tasks, status=None, age=age):
             self.notify_task_status(['new-status', queue, tid, tst, tdt])
         self.send_frontend_msg('update-duration', {})
 
@@ -1837,7 +1841,7 @@ class SoS_Kernel(IPythonKernel):
                 args = parser.parse_args(options.split())
             except SystemExit:
                 return
-            self.handle_tasks(args.tasks, args.queue if args.queue else 'localhost', args.exclude)
+            self.handle_tasks(args.tasks, args.queue if args.queue else 'localhost', args.status, args.time)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)

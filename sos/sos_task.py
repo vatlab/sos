@@ -327,7 +327,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                 all_tasks.append((t, None))
             else:
                 all_tasks.extend(matched)
-    if age:
+    if age is not None:
         from sos.utils import convert_age
         age = convert_age(age)
         if age > 0:
@@ -566,7 +566,7 @@ class TaskEngine(threading.Thread):
             # default
             self.wait_for_task = True
 
-    def monitor_tasks(self, tasks=[], exclude=[]):
+    def monitor_tasks(self, tasks=[], status=None, age=None):
         '''Start monitoring specified or all tasks'''
         self.engine_ready.wait()
 
@@ -576,12 +576,19 @@ class TaskEngine(threading.Thread):
             tasks = [x for x in tasks if x in self.task_status]
 
         # we only monitor running tasks
-        for task in tasks:
-            if self.task_status[task] in ('submitted', 'running') and not task in self.running_tasks:
-                # these tasks will be actively monitored
-                self.running_tasks.append(task)
+        with threading.Lock():
+            for task in tasks:
+                if self.task_status[task] in ('submitted', 'running') and not task in self.running_tasks:
+                    # these tasks will be actively monitored
+                    self.running_tasks.append(task)
         #
-        return sorted([(x, self.task_status[x], self.task_date.get(x, time.time())) for x in tasks if self.task_status[x] not in exclude],
+        if age is not None:
+            from sos.utils import convert_age
+            age = convert_age(age)
+        return sorted([(x, self.task_status[x], self.task_date.get(x, time.time())) for x in tasks \
+            if (status is None or self.task_status[x] in status) and (age is None or \
+                ((age > 0 and time.time() - self.task_date.get(x, time.time()) > age) 
+                  or (age < 0 and time.time() - self.task_date.get(x, time.time()) < -age)))],
                 key=lambda x: -x[2])
 
     def get_tasks(self):
@@ -791,7 +798,7 @@ class TaskEngine(threading.Thread):
     def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=False, age=None):
         return self.agent.check_output("sos status {} -v {} {} {} {}".format(
                 ' '.join(tasks), verbosity, '--html' if html else '',
-                '--start-time' if start_time else '', '--age {}'.format(age) if age else ''))
+                '--start-time' if start_time else '', '--time {}'.format(age) if age else ''))
 
     def kill_tasks(self, tasks, all_tasks=False):
         # we wait for the engine to start
