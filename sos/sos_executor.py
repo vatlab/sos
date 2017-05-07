@@ -28,7 +28,6 @@ from collections.abc import Sequence
 import multiprocessing as mp
 
 from tqdm import tqdm as ProgressBar
-from itertools import count
 from io import StringIO
 from ._version import __version__
 from .sos_step import Step_Executor, analyze_section, PendingTasks
@@ -77,8 +76,6 @@ class SoS_Worker(mp.Process):
     '''
     Worker process to process SoS step or workflow in separate process.
     '''
-    _worker_ids = count(0)
-
     def __init__(self,  pipe, config={}, args=[], **kwargs):
         '''
         cmd_queue: a single direction queue for the master process to push
@@ -101,10 +98,6 @@ class SoS_Worker(mp.Process):
         self.pipe = pipe
         self.config = config
         self.args = args
-        self.__worker_id__ = self._worker_ids.__next__()
-
-    def worker_id(self):
-        return self.__worker_id__
 
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
@@ -138,14 +131,14 @@ class SoS_Worker(mp.Process):
             if work is None:
                 break
 
-            env.logger.debug('Worker {} receives request {}'.format(self.worker_id(), work))
+            env.logger.debug('Worker {} receives request {}'.format(self.name, work))
             try:
                 if work[0] == 'step':
                     # this is a step ...
                     self.run_step(*work[1:])
                 else:
                     self.run_workflow(*work[1:])
-                env.logger.debug('Worker {} completes request {}'.format(self.worker_id(), work))
+                env.logger.debug('Worker {} completes request {}'.format(self.name, work))
             except KeyboardInterrupt:
                 break
 
@@ -159,7 +152,7 @@ class SoS_Worker(mp.Process):
         # we are in a separate process and need to set verbosity from workflow config
         # but some tests do not provide verbosity
         env.verbosity = config.get('verbosity', 2)
-        env.logger.debug('Worker {} working on a workflow {} with args {}'.format(self.__worker_id__, workflow_id, args))
+        env.logger.debug('Worker {} working on a workflow {} with args {}'.format(self.name, workflow_id, args))
         executer = Base_Executor(wf, args=args, shared=shared, config=config)
         # we send the pipe to subworkflow, which would send
         # everything directly to the master process, so we do not
@@ -168,7 +161,7 @@ class SoS_Worker(mp.Process):
 
 
     def run_step(self, section, context, shared, args, run_mode, sig_mode, verbosity):
-        env.logger.debug('Worker {} working on a step with args {}'.format(self.__worker_id__, args))
+        env.logger.debug('Worker {} working on a step with args {}'.format(self.name, args))
         env.config['run_mode'] = run_mode
         env.config['sig_mode'] = sig_mode
         env.verbosity = verbosity
@@ -880,7 +873,7 @@ class Base_Executor:
                             env.logger.debug('Proc {} puts results for {} from step {}'.format(proc_idx, ' '.join(proc[2]._pending_tasks), proc[2]._node_id))
                             res = proc[2]._host.retrieve_results(proc[2]._pending_tasks)
                             proc[1].send(res)
-                            proc[2]._status == 'running'
+                            proc[2]._status = 'running'
                         else:
                             raise RuntimeError('Job returned with status {}'.format(res))
 
