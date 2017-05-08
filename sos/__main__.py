@@ -543,10 +543,10 @@ def get_status_parser(desc_only=False):
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
-    parser.add_argument('-a', '--age', help='''Limit to tasks that is created within
-        (default) or beyond specified age. Value of this parameter can be in units
+    parser.add_argument('--age', help='''Limit to tasks that is created more than
+        (default) or within specified age. Value of this parameter can be in units
         s (second), m (minute), h (hour), or d (day, default), with optional
-        prefix + for older than specified time.''')
+        prefix + for older (default) and - for newer than specified age.''')
     parser.add_argument('--html', action='store_true',
         help='''Output results in HTML format. This option will override option
             verbosity and output detailed status information in HTML tables and
@@ -589,11 +589,18 @@ def get_purge_parser(desc_only=False):
         description='''Remove local or remote tasks''')
     if desc_only:
         return parser
-    parser.add_argument('tasks', nargs='*', help='''ID of the task. There is
-        no need to specify compelete task IDs because SoS will match specified name
-        with tasks starting with these names.''')
+    parser.add_argument('tasks', nargs='*', help='''ID of the tasks to be removed.  
+        There is no need to specify compelete task IDs because SoS will match specified
+        name with tasks starting with these names.''')
     parser.add_argument('-a', '--all', action='store_true',
-        help='''Remove all tasks in local or specified remote task queue''')
+        help='''Kill all tasks in local or specified remote task queue''')
+    parser.add_argument('--age', help='''Limit to tasks that is created more than
+        (default) or within specified age. Value of this parameter can be in units
+        s (second), m (minute), h (hour), or d (day, default), with optional
+        prefix + for older (default) and - for younder than specified age.''')
+    parser.add_argument('-s', '--status', nargs='+', help='''Only remove tasks with
+        specified status, which can be pending, submitted, running, completed, failed,
+        aborted, and result-mismatch. One of more status can be specified.''')
     parser.add_argument('-q', '--queue', nargs='?', const='',
         help='''Remove tasks on specified tasks queue or remote host
         if the tasks . The queue can be defined in global or local sos
@@ -607,10 +614,6 @@ def get_purge_parser(desc_only=False):
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
-    parser.add_argument('--age', help='''Limit to tasks that is created within
-        (default) or beyond specified age. Value of this parameter can be in units
-        s (second), m (minute), h (hour), or d (day, default), with optional
-        prefix + for older than specified time.''')
     parser.set_defaults(func=cmd_purge)
     return parser
 
@@ -626,20 +629,27 @@ def cmd_purge(args, workflow_args):
             from .hosts import list_queues
             list_queues(args.config, args.verbosity)
         elif not args.queue:
-            purge_tasks(args.tasks, args.all, args.verbosity, args.age)
+            if args.all:
+                if args.tasks:
+                    env.logger.warning('Task ids "{}" are ignored with option --all'.format(' '.join(args.tasks)))
+                purge_tasks([], args.age, args.status, args.verbosity)
+            elif args.tasks:
+                purge_tasks(args.tasks, args.age, args.status, args.verbosity)
+            elif args.status or args.age:
+                purge_tasks([], args.age, args.status, args.verbosity)
+            else:
+                env.logger.warning('Please specify a task id or option --all to kill all tasks')
         else:
             # remote host?
             cfg = load_config_files(args.config)
             env.sos_dict.set('CONFIG', cfg)
             host = Host(args.queue)
-            print(host._task_engine.purge_tasks(args.tasks, args.all, args.verbosity, args.age))
+            print(host._task_engine.purge_tasks(args.tasks, args.age, args.status, args.verbosity))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error(e)
         sys.exit(1)
-
-
 
 #
 # command kill

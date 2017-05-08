@@ -375,10 +375,10 @@ class SoS_Kernel(IPythonKernel):
             help='''Display tasks of specified status. Default to all.'''),
         parser.add_argument('-q', '--queue',
             help='''Task queue on which the tasks are retrived.''')
-        parser.add_argument('-a', '--age', help='''Limit to tasks that is created within
-            (default) or beyond specified age. Value of this parameter can be in units
+        parser.add_argument('--age', help='''Limit to tasks that is created more than
+            (default) or within specified age. Value of this parameter can be in units
             s (second), m (minute), h (hour), or d (day, default), with optional
-            prefix + for older than specified time.''')
+            prefix + for older (default) and - for younder than specified age.''')
         parser.error = self._parse_error
         return parser
 

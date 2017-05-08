@@ -512,6 +512,56 @@ def kill_task(task):
     return 'killed'
 
 
+def purge_tasks(tasks, age=None, status=None, verbosity=2):
+    # verbose is ignored for now
+    import glob
+    if not tasks:
+        tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
+        all_tasks = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in tasks]
+    else:
+        all_tasks = []
+        for t in tasks:
+            matched = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}*.task'.format(t)))
+            matched = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in matched]
+            all_tasks.extend(matched)
+    if age is not None:
+        from sos.utils import convert_age
+        age = convert_age(age)
+        if age > 0:
+            all_tasks = [x for x in all_tasks if time.time() - x[1] >= age]
+        else:
+            all_tasks = [x for x in all_tasks if time.time() - x[1] <= -age]
+    if status:
+        # at most 20 threads
+        from multiprocessing.pool import ThreadPool as Pool
+        p = Pool(min(20, len(all_tasks)))
+        task_status = p.map(check_task, [x[0] for x in all_tasks])
+        all_tasks = [x for x,s in zip(all_tasks, task_status) if s in status]
+    #
+    # remoe all task files
+    all_tasks = set([x[0] for x in all_tasks])
+    if not all_tasks:
+        env.logger.warning('No matching tasks')
+        return
+    #
+    # find all related files, including those in nested directories
+    from collections import defaultdict
+    to_be_removed = defaultdict(list)
+    for dirname, dirlist, filelist in os.walk(os.path.join(os.path.expanduser('~'), '.sos', 'tasks')):
+        for f in filelist:
+            ID = os.path.basename(f)[:32]
+            if ID in all_tasks:
+                to_be_removed[ID].append(os.path.join(dirname, f))
+    #
+    for task in all_tasks:
+        for f in to_be_removed[task]:
+            try:
+                env.logger.trace('Remove {}'.format(f))
+                os.remove(f)
+            except Exception as e:
+                env.logger.warning('Failed to purge task {}'.format(task[0]))
+        env.logger.info('Task ``{}`` removed.'.format(task))
+
 class TaskEngine(threading.Thread):
     def __init__(self, agent):
         threading.Thread.__init__(self)
