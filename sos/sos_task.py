@@ -848,7 +848,7 @@ class TaskEngine(threading.Thread):
     def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=False, age=None):
         return self.agent.check_output("sos status {} -v {} {} {} {}".format(
                 ' '.join(tasks), verbosity, '--html' if html else '',
-                '--start-time' if start_time else '', '--time {}'.format(age) if age else ''))
+                '--start-time' if start_time else '', '--age {}'.format(age) if age else ''))
 
     def kill_tasks(self, tasks, all_tasks=False):
         # we wait for the engine to start
