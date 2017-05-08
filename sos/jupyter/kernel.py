@@ -375,7 +375,7 @@ class SoS_Kernel(IPythonKernel):
             help='''Display tasks of specified status. Default to all.'''),
         parser.add_argument('-q', '--queue',
             help='''Task queue on which the tasks are retrived.''')
-        parser.add_argument('-t', '--time', help='''Limit to tasks that is created within
+        parser.add_argument('-a', '--age', help='''Limit to tasks that is created within
             (default) or beyond specified age. Value of this parameter can be in units
             s (second), m (minute), h (hour), or d (day, default), with optional
             prefix + for older than specified time.''')
@@ -1841,7 +1841,7 @@ class SoS_Kernel(IPythonKernel):
                 args = parser.parse_args(options.split())
             except SystemExit:
                 return
-            self.handle_tasks(args.tasks, args.queue if args.queue else 'localhost', args.status, args.time)
+            self.handle_tasks(args.tasks, args.queue if args.queue else 'localhost', args.status, args.age)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif code.startswith('!'):
             options, remaining_code = self.get_magic_and_code(code, False)

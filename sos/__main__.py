@@ -542,7 +542,7 @@ def get_status_parser(desc_only=False):
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
-    parser.add_argument('-t', '--time', help='''Limit to tasks that is created within
+    parser.add_argument('-a', '--age', help='''Limit to tasks that is created within
         (default) or beyond specified age. Value of this parameter can be in units
         s (second), m (minute), h (hour), or d (day, default), with optional
         prefix + for older than specified time.''')
@@ -567,13 +567,13 @@ def cmd_status(args, workflow_args):
             from .hosts import list_queues
             list_queues(args.config, args.verbosity)
         elif not args.queue:
-            check_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.time)
+            check_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.age)
         else:
             # remote host?
             cfg = load_config_files(args.config)
             env.sos_dict.set('CONFIG', cfg)
             host = Host(args.queue)
-            print(host._task_engine.query_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.time))
+            print(host._task_engine.query_tasks(args.tasks, args.verbosity, args.html, args.start_time, args.age))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
