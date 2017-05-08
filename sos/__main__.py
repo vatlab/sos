@@ -629,16 +629,7 @@ def cmd_purge(args, workflow_args):
             from .hosts import list_queues
             list_queues(args.config, args.verbosity)
         elif not args.queue:
-            if args.all:
-                if args.tasks:
-                    env.logger.warning('Task ids "{}" are ignored with option --all'.format(' '.join(args.tasks)))
-                purge_tasks([], args.all, args.age, args.status, args.verbosity)
-            elif args.tasks:
-                purge_tasks(args.tasks, args.all, args.age, args.status, args.verbosity)
-            elif args.status or args.age:
-                purge_tasks([], args.all, args.age, args.status, args.verbosity)
-            else:
-                env.logger.warning('Please specify a task id or option --all to kill all tasks')
+            purge_tasks(args.tasks, args.all, args.age, args.status, args.verbosity)
         else:
             # remote host?
             cfg = load_config_files(args.config)

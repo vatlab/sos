@@ -515,15 +515,17 @@ def kill_task(task):
 def purge_tasks(tasks, purge_all=False, age=None, status=None, verbosity=2):
     # verbose is ignored for now
     import glob
-    if purge_all:
-        tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
-        all_tasks = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in tasks]
-    else:
+    if tasks:
         all_tasks = []
         for t in tasks:
             matched = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '{}*.task'.format(t)))
             matched = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in matched]
             all_tasks.extend(matched)
+    elif purge_all or age or status:
+        tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
+        all_tasks = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in tasks]
+    else:
+        sys.exit('Please specify a list of tasks and/or option -all, --age, or --status')
     if age is not None:
         from sos.utils import convert_age
         age = convert_age(age)
