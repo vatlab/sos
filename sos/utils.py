@@ -26,7 +26,6 @@ import re
 import copy
 import types
 import logging
-import glob
 import math
 import collections
 import traceback
@@ -961,11 +960,12 @@ def expand_time(v):
 def convert_age(t):
     '''Ticket #582: age format being +/- #h #d #s #m
     '''
-    if t.startswith('+'):
-        sign = 1
+    try:
+        sign = {'+': 1, '-': -1}[t[1]]
         t = t[1:]
-    else:
-        sign = -1
+    except:
+        # if there is no sign, assume +
+        sign = 1
     #
     try:
         unit = {'s': 1, 'm': 60, 'h': 3600, 'd': 3600*24}[t[-1]]
