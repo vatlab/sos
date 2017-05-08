@@ -512,10 +512,10 @@ def kill_task(task):
     return 'killed'
 
 
-def purge_tasks(tasks, age=None, status=None, verbosity=2):
+def purge_tasks(tasks, purge_all=False, age=None, status=None, verbosity=2):
     # verbose is ignored for now
     import glob
-    if not tasks:
+    if purge_all:
         tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
         all_tasks = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in tasks]
     else:
@@ -915,6 +915,14 @@ class TaskEngine(threading.Thread):
             return True
         else:
             return self.agent.prepare_task(task_id)
+
+    def purge_tasks(self, tasks, purge_all=False, age=None, status=None, verbosity=2):
+        return self.agent.check_output("sos purge {} {} {} {} -v {}".format(
+                ' '.join(tasks), '--all' if purge_all else '',
+                '--age {}'.format(age) if age is not None else '',
+                '--status {}'.format(' '.join(status)) if status is not None else '',
+                verbosity))
+
 
 class BackgroundProcess_TaskEngine(TaskEngine):
     def __init__(self, agent):

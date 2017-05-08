@@ -632,11 +632,11 @@ def cmd_purge(args, workflow_args):
             if args.all:
                 if args.tasks:
                     env.logger.warning('Task ids "{}" are ignored with option --all'.format(' '.join(args.tasks)))
-                purge_tasks([], args.age, args.status, args.verbosity)
+                purge_tasks([], args.all, args.age, args.status, args.verbosity)
             elif args.tasks:
-                purge_tasks(args.tasks, args.age, args.status, args.verbosity)
+                purge_tasks(args.tasks, args.all, args.age, args.status, args.verbosity)
             elif args.status or args.age:
-                purge_tasks([], args.age, args.status, args.verbosity)
+                purge_tasks([], args.all, args.age, args.status, args.verbosity)
             else:
                 env.logger.warning('Please specify a task id or option --all to kill all tasks')
         else:
@@ -644,7 +644,7 @@ def cmd_purge(args, workflow_args):
             cfg = load_config_files(args.config)
             env.sos_dict.set('CONFIG', cfg)
             host = Host(args.queue)
-            print(host._task_engine.purge_tasks(args.tasks, args.age, args.status, args.verbosity))
+            print(host._task_engine.purge_tasks(args.tasks, args.all, args.age, args.status, args.verbosity))
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
