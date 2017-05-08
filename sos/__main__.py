@@ -371,6 +371,7 @@ def cmd_dryrun(args, workflow_args):
     args.__bin_dirs__ = []
     cmd_run(args, workflow_args)
 
+
 #
 # subcommand execute
 #
@@ -526,7 +527,7 @@ def get_status_parser(desc_only=False):
     if desc_only:
         return parser
     parser.add_argument('tasks', nargs='*', help='''ID of the task. All tasks
-        will be checked if unspecified. There is no need to specify compelte
+        will be checked if unspecified. There is no need to specify compelete
         task IDs because SoS will match specified name with tasks starting with
         these names.''')
     parser.add_argument('-q', '--queue', nargs='?', const='',
@@ -581,6 +582,66 @@ def cmd_status(args, workflow_args):
         sys.exit(1)
 
 #
+# command purge
+#
+def get_purge_parser(desc_only=False):
+    parser = argparse.ArgumentParser('purge',
+        description='''Remove local or remote tasks''')
+    if desc_only:
+        return parser
+    parser.add_argument('tasks', nargs='*', help='''ID of the task. There is
+        no need to specify compelete task IDs because SoS will match specified name
+        with tasks starting with these names.''')
+    parser.add_argument('-a', '--all', action='store_true',
+        help='''Remove all tasks in local or specified remote task queue''')
+    parser.add_argument('-q', '--queue', nargs='?', const='',
+        help='''Remove tasks on specified tasks queue or remote host
+        if the tasks . The queue can be defined in global or local sos
+        configuration file, or a file specified by option  --config. A host is
+        assumed to be a remote machine with process type if no configuration
+        is found. SoS will list all configured queues (with details varying
+        by option -v) if this option is specified without value.''')
+    parser.add_argument('-c', '--config', help='''A configuration file with host
+        definitions, in case the definitions are not defined in global or local
+        sos config.yml files.''')
+    parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
+        help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
+            information to standard output (default to 2).''')
+    parser.add_argument('--age', help='''Limit to tasks that is created within
+        (default) or beyond specified age. Value of this parameter can be in units
+        s (second), m (minute), h (hour), or d (day, default), with optional
+        prefix + for older than specified time.''')
+    parser.set_defaults(func=cmd_purge)
+    return parser
+
+
+def cmd_purge(args, workflow_args):
+    from .sos_task import purge_tasks
+    from .utils import env, load_config_files, get_traceback
+    from .hosts import Host
+    #from .monitor import summarizeExecution
+    env.verbosity = args.verbosity
+    try:
+        if args.queue == '':
+            from .hosts import list_queues
+            list_queues(args.config, args.verbosity)
+        elif not args.queue:
+            purge_tasks(args.tasks, args.all, args.verbosity, args.age)
+        else:
+            # remote host?
+            cfg = load_config_files(args.config)
+            env.sos_dict.set('CONFIG', cfg)
+            host = Host(args.queue)
+            print(host._task_engine.purge_tasks(args.tasks, args.all, args.verbosity, args.age))
+    except Exception as e:
+        if args.verbosity and args.verbosity > 2:
+            sys.stderr.write(get_traceback())
+        env.logger.error(e)
+        sys.exit(1)
+
+
+
+#
 # command kill
 #
 #
@@ -590,7 +651,7 @@ def get_kill_parser(desc_only=False):
     if desc_only:
         return parser
     parser.add_argument('tasks', nargs='*', help='''IDs of the tasks
-        that will be killed. There is no need to specify compelte task IDs because
+        that will be killed. There is no need to specify compelete task IDs because
         SoS will match specified name with tasks starting with these names.''')
     parser.add_argument('-a', '--all', action='store_true',
         help='''Kill all tasks in local or specified remote task queue''')
@@ -1518,6 +1579,10 @@ def main():
         #
         # command kill
         add_sub_parser(subparsers, get_kill_parser(desc_only='kill'!=subcommand))
+        #
+        # command purge
+        add_sub_parser(subparsers, get_purge_parser(desc_only='purge'!=subcommand))
+        #
         #
         # command convert
         add_sub_parser(subparsers, get_convert_parser(desc_only='convert'!=subcommand))
