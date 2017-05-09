@@ -1718,7 +1718,7 @@ class SoS_Kernel(IPythonKernel):
                 if args.filename:
                     filename = self._interpolate_option(args.filename, quiet=False).strip()
                 else:
-                    filename = self._notebook_name
+                    filename = self._notebook_name + '.sos'
                 if os.path.isfile(filename) and not args.force:
                     raise ValueError('Cannot overwrite existing output file {}'.format(filename))
                 #self.send_frontend_msg('preview-workflow', self._workflow)
