@@ -702,12 +702,12 @@ def cmd_kill(args, workflow_args):
 #
 def get_remove_parser(desc_only=False):
     parser = argparse.ArgumentParser('remove',
-        description='''Remove specified files and directories and/or their
-            signatures.''')
+        description='''Remove specified files and/or their signatures.''')
     if desc_only:
         return parser
     parser.add_argument('targets', nargs='*', metavar='FILE_OR_DIR',
-        help='''Files and directories to be removed.''')
+        help='''Files and directories to be removed. Directories will be
+        scanned for files to removed but no directory will be removed.''')
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument('-t', '--tracked', action='store_true', default=False,
         help='''Limit files to only files tracked by SoS, namely files that are
@@ -866,17 +866,13 @@ def cmd_remove(args, unknown_args):
                     (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
                     env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
                     return False
-            if get_response('{} signature of {}'.format('Would remove' if args.dryrun else 'Remove', filename),
-                    always_yes = args.dryrun):
-                if not args.dryrun:
-                    env.logger.debug('Remove {}'.format(s))
-                    try:
-                        os.remove(target.sig_file())
-                    except Exception as e:
-                        env.logger.warning('Failed to remove signature of {}: {}'.format(filename, e))
-                    return True
-            else:
-                env.logger.debug('No signature exists for tracked file {}'.format(filename))
+            if not args.dryrun:
+                env.logger.debug('Remove {}'.format(s))
+                try:
+                    os.remove(target.sig_file())
+                except Exception as e:
+                    env.logger.warning('Failed to remove signature of {}: {}'.format(filename, e))
+                return True
             return False
     elif args.tracked:
         def func(filename):

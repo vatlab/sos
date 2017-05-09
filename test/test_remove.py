@@ -78,7 +78,7 @@ sh:
         '''test list files'''
         subprocess.call('sos remove . -t -y', shell=True)
         self.assertExists(['ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_f1', 'ut_d1/ut_f2', 'ut_d2/ut_d3/ut_f3'])
-        self.assertNonExists(['t_d1/t_f2', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2'])
+        self.assertNonExists(['t_d1/t_f2', 't_d2/t_d3/t_f3'])
         # this is the tricky part, directory containing untracked file should remain
         self.assertExists(['t_d1', 't_f1',  't_d1/ut_f4'])
 
@@ -96,6 +96,8 @@ sh:
 
     def testRemoveSpecifiedSignatures(self):
         '''test removal of signatures'''
+        from sos.utils import env
+        env.exec_dir = '.'
         for f in ('t_f1', 't_d1/t_f2', 't_d2/t_d3/t_f3'):
             self.assertTrue(FileTarget(f).exists('signature'), '{} has signature'.format(f))
         subprocess.call('sos remove t_f1 t_d2/t_d3/t_f3 -s', shell=True)
@@ -106,26 +108,17 @@ sh:
         self.assertTrue(FileTarget('t_d1/t_f2').exists('signature'))
         self.assertTrue(FileTarget('t_d1/t_f2').exists('target'))
 
-    def testRemoveTrackedSignatures(self):
-        '''test removal of signatures'''
-        for f in ('t_f1', 't_d1/t_f2', 't_d2/t_d3/t_f3'):
-            self.assertTrue(FileTarget(f).exists('signature'), '{} has signature'.format(f))
-        subprocess.call('sos remove -t -s', shell=True)
-        # create some other files and directory
-        for f in ('t_d1/t_f2', 't_d2/t_d3/t_f3'):
-            self.assertFalse(FileTarget(f).exists('signature'), 'Signature of {} should be removed'.format(f))
-            self.assertTrue(FileTarget(f).exists('target'), 'Target {} should exist'.format(f))
 
     def testRemoveSpecificTracked(self):
         # note the t_f1, which is under current directory and has to be remove specifically.
         subprocess.call('sos remove t_f1 ut_f1 t_d2 ut_d2 -t -y', shell=True)
         self.assertExists(['ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_f1', 'ut_d1/ut_f2', 'ut_d2/ut_d3/ut_f3', 't_d1/t_f2', 't_d1', 't_d1/ut_f4'])
-        self.assertNonExists(['t_f1', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2'])
+        self.assertNonExists(['t_f1', 't_d2/t_d3/t_f3'])
 
     def testRemoveAllUntracked(self):
         '''test remove all untracked files'''
         subprocess.call('sos remove . -u -y', shell=True)
-        self.assertNonExists(['ut_d1', 'ut_d2', 'ut_d2/ut_d3', 'ut_d1/ut_f2', 't_d1/ut_f4', 'ut_d2/ut_d3/ut_f3'])
+        self.assertNonExists([ 'ut_d1/ut_f2', 't_d1/ut_f4', 'ut_d2/ut_d3/ut_f3'])
         self.assertExists(['t_d1/t_f2', 't_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2', 't_d1', 't_f1'])
         # this is the tricky part, files under the current directory are not removed
         self.assertExists(['ut_f1'])
@@ -140,7 +133,6 @@ sh:
     def testRemoveAll(self):
         '''Test remove all specified files'''
         subprocess.call('sos remove ut_d1 t_d1 ut_d2/ut_d3 -y', shell=True)
-        self.assertNonExists(['ut_d1', 't_d1', 'ut_d2/ut_d3'])
         self.assertExists(['t_d2/t_d3/t_f3', 't_d2/t_d3', 't_d2', 't_f1'])
 
     def tearDown(self):
