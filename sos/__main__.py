@@ -216,7 +216,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
         description='''Control how sos scirpt is executed.''')
-    runmode.add_argument('-n', action='store_true', dest='__dryrun__',
+    runmode.add_argument('-n', action='store_true', dest='dryrun',
         help='''Execute a workflow in dryrun mode. Please check command
         sos dryrun for details of the dryrun mode.''')
     runmode.add_argument('-s', choices=['default', 'ignore', 'force', 'build', 'assert'],
@@ -294,16 +294,16 @@ def cmd_run(args, workflow_args):
                 'config_file': args.__config__,
                 'output_dag': args.__dag__,
                 # wait if -w or in dryrun mode, not wait if -W, otherwise use queue default
-                'wait_for_task': True if args.__wait__ is True or args.__dryrun__ else (False if args.__no_wait__ else None),
+                'wait_for_task': True if args.__wait__ is True or args.dryrun else (False if args.__no_wait__ else None),
                 'default_queue': '' if args.__queue__ is None else args.__queue__,
                 'max_procs': args.__max_procs__,
                 'max_running_jobs': args.__max_running_jobs__,
                 'sig_mode': args.__sig_mode__,
-                'run_mode': 'dryrun' if args.__dryrun__ else 'run',
+                'run_mode': 'dryrun' if args.dryrun else 'run',
                 'resume_mode': args.__resume__,
                 'verbosity': args.verbosity,
                 })
-        executor.run(args.__targets__, mode='dryrun' if args.__dryrun__ else 'run')
+        executor.run(args.__targets__, mode='dryrun' if args.dryrun else 'run')
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -365,7 +365,7 @@ def cmd_dryrun(args, workflow_args):
     args.__max_procs__ = 1
     args.__resume__ = False
     args.__max_running_jobs__ = 1
-    args.__dryrun__ = True
+    args.dryrun = True
     args.__wait__ = True
     args.__no_wait__ = False
     args.__bin_dirs__ = []
@@ -397,7 +397,7 @@ def get_execute_parser(desc_only=False):
         default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
-    parser.add_argument('-n', '--dryrun', action='store_true', dest='__dryrun__',
+    parser.add_argument('-n', '--dryrun', action='store_true', dest='dryrun',
         help='''Dryrun mode, which will cause actions to print scripts instead
             of executing them.''')
     parser.add_argument('-q', '--queue', nargs='?', const='',
@@ -465,7 +465,7 @@ def cmd_execute(args, workflow_args):
             #
             if os.path.isfile(res_file):
                 os.remove(res_file)
-            res = execute_task(task, verbosity=args.verbosity, runmode='dryrun' if args.__dryrun__ else 'run',
+            res = execute_task(task, verbosity=args.verbosity, runmode='dryrun' if args.dryrun else 'run',
                 sigmode=args.__sig_mode__,
                 monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
             with open(res_file, 'wb') as res_file:
@@ -490,7 +490,7 @@ def cmd_execute(args, workflow_args):
         env.sos_dict.set('CONFIG', cfg)
         env.verbosity = args.verbosity
         env.config['sig_mode'] = args.__sig_mode__
-        env.config['run_mode'] = 'dryrun' if args.__dryrun__ else 'run'
+        env.config['run_mode'] = 'dryrun' if args.dryrun else 'run'
         host = Host(args.queue)
         for task in args.tasks:
             host.submit_task(task)
@@ -543,7 +543,7 @@ def get_status_parser(desc_only=False):
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
-    parser.add_argument('--age', help='''Limit to tasks that is created more than
+    parser.add_argument('--age', help='''Limit to tasks that are created more than
         (default) or within specified age. Value of this parameter can be in units
         s (second), m (minute), h (hour), or d (day, default), with optional
         prefix + for older (default) and - for newer than specified age.''')
@@ -594,7 +594,7 @@ def get_purge_parser(desc_only=False):
         name with tasks starting with these names.''')
     parser.add_argument('-a', '--all', action='store_true',
         help='''Kill all tasks in local or specified remote task queue''')
-    parser.add_argument('--age', help='''Limit to tasks that is created more than
+    parser.add_argument('--age', help='''Limit to tasks that are created more than
         (default) or within specified age. Value of this parameter can be in units
         s (second), m (minute), h (hour), or d (day, default), with optional
         prefix + for older (default) and - for younder than specified age.''')
@@ -702,33 +702,43 @@ def cmd_kill(args, workflow_args):
 #
 def get_remove_parser(desc_only=False):
     parser = argparse.ArgumentParser('remove',
-        description='''Remove specified files and directories and their
-            signatures (if available). Optionally, you can remove only
-            tracked files (input, output and intermediate files of executed
-            workflows) or untracked file from specified files and/or
-            directories.''')
+        description='''Remove specified files and/or their signatures.''')
     if desc_only:
         return parser
     parser.add_argument('targets', nargs='*', metavar='FILE_OR_DIR',
-        help='''Files and directories to be removed, which should be under the
-            current directory (default). All, tracked, or untracked files
-            will be removed depending on other options ('-t' or '-u').
-            For safety reasons, files under the current directory have to be
-            listed (not as files under .) to be removed. Signatures related
-            to these files will be removed unless if option '-s' ('--signature')
-            is specified, in which case only the signatures of these files
-            will be removed.''')
+        help='''Files and directories to be removed. Directories will be
+        scanned for files to removed but no directory will be removed.''')
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument('-t', '--tracked', action='store_true', default=False,
-        help='''Remove tracked files and their signatures from specified files
-            and directories.''')
+        help='''Limit files to only files tracked by SoS, namely files that are
+            input, output, or dependent files of steps.''')
     group.add_argument('-u', '--untracked', action='store_true', default=False,
-        help='''Remove untracked files from specified files and directories.''')
-    parser.add_argument('-s', '--signature', action='store_true', default=False,
-        help='''Remove signatures of specified files (not files themselves) or
-            all runtime signatures of executed workflows under the current
-            directory.''')
-    parser.add_argument('-n', '--dryrun', action='store_true', dest='__dryrun__',
+        help='''Limit files to untracked files, namely files that are not
+            tracked by SoS steps.''')
+    group.add_argument('-s', '--signature', action='store_true', default=False,
+        help='''Remove signatures of specified files (not files themselves).
+        As a special case, all local signatures will be removed if this option
+        is specified without target.''')
+    group.add_argument('-z', '--zap', action='store_true', default=False,
+        help='''Replace files with their signatures. The file will not be
+        regenerated by SoS unless is it actually needed by other steps. This
+        option is usually used to remove large intermediate files from
+        completed workflows while allowing relevant steps to be skipped
+        during re-execution of the workflow.''')
+    parser.add_argument('-e', '--external', action='store_true', default=False,
+        help='''By default the remove command will only remove files and
+        signatures under the current project directory. This option allows
+        sos to remove files and/or signature of external files.''')
+    parser.add_argument('--size',
+        help='''Limit to files that exceed or smaller than specified size.
+        Value of option should be in unit K, M, KB, MB, MiB, GB, etc, with
+        optional prefix + for larger than (default), or - for smaller than
+        specified size.''')
+    parser.add_argument('--age', help='''Limit to files that are modified more than
+        (default) or within specified age. Value of this parameter can be in units
+        s (second), m (minute), h (hour), or d (day, default), with optional
+        prefix + for older (default) and - for newer than specified age.''')
+    parser.add_argument('-n', '--dryrun', action='store_true', 
         help='''List files or directories to be removed, without actually
             removing them.''')
     parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
@@ -761,6 +771,7 @@ def get_tracked_files(sig_file):
                 script_files.extend(line.split(':', 1)[-1].strip().split(','))
     return set([x for x in script_files if x.strip()]), set(tracked_files), set(runtime_files)
 
+
 def cmd_remove(args, unknown_args):
     import glob
     from .utils import env
@@ -769,109 +780,37 @@ def cmd_remove(args, unknown_args):
     from .target import FileTarget
     env.verbosity = args.verbosity
 
+    # what about global signature?
     sig_files = glob.glob('.sos/*.sig')
-    if not sig_files:
-        env.logger.info('No executed workflow is identified. Nothing to remove.')
-        return
     tracked_files = set()
     runtime_files = set()
     for sig_file in sig_files:
         s, t, r = get_tracked_files(sig_file)
         tracked_files |= t
         runtime_files |= r
-    # a special case where all file and runtime signatures are removed.
-    # no other options are allowed.
-    if not args.tracked and not args.untracked and not args.targets and args.signature:
+    #
+    if args.signature and not args.targets:
+        # a special case where all file and runtime signatures are removed.
+        # no other options are allowed.
         removed_cnt = 0
-        for s in runtime_files:
-            #if s.endswith('.sig'):
-            #    continue
+        for s in glob.glob(os.path.join('.sos', '.runtime', '*.file_info')):
             try:
-                if args.__dryrun__:
+                if args.dryrun:
                     print('Would remove {}'.format(os.path.basename(s)))
                 else:
+                    env.logger.debug('Remove {}'.format(s))
                     os.remove(s)
                 removed_cnt += 1
             except Exception as e:
-                env.logger.debug('Failed to remove signature {}: {}'.format(os.path.basename(s), e))
-        if removed_cnt and not args.__dryrun__:
+                env.logger.warning('Failed to remove signature {}: {}'.format(s, e))
+        if args.dryrun:
+            env.logger.info('Would remove {} runtime signatures'.format(removed_cnt))
+        elif removed_cnt:
             env.logger.info('{} runtime signatures removed'.format(removed_cnt))
-        if not args.tracked and not args.untracked and not args.targets:
-            return
-    tracked_files = {os.path.abspath(os.path.expanduser(x)) for x in tracked_files}
-    tracked_dirs = set()
-    # need to get all directories along the path
-    for x in tracked_files:
-        if FileTarget(x).is_external():
-            # we do not care about tracked files outside of current directory
-            continue
-        # add all path to tracked file as tracked directories
-        tmp = os.path.relpath(x, '.')
-        while os.sep in tmp:
-            tmp = os.path.dirname(tmp)
-            tracked_dirs.add(os.path.abspath(tmp))
-
-    if tracked_files:
-        env.logger.info('{} tracked files from {} run{} are identified.'
-                .format(len(tracked_files), len(sig_files), 's' if len(sig_files) > 1 else ''))
-    else:
-        env.logger.info('No tracked file from {} run{} are identified.'
-                .format(len(sig_files), 's' if len(sig_files) > 1 else ''))
+        else:
+            env.logger.info('No runtime signatures removed')
+        return
     #
-    specified_tracked_files = []
-    specified_tracked_dirs = []
-    specified_untracked_files = []
-    specified_untracked_dirs = []
-    #
-    if not args.targets:
-        args.targets = ['.']
-    #
-    for target in args.targets:
-        target = os.path.expanduser(target)
-        if FileTarget(target).is_external():
-            # we do not care about tracked files outside of current directory
-            sys.exit('Only subdirectories of the current directory can be removed. {} specified.'.format(target))
-        # file
-        if os.path.abspath(target) in tracked_files:
-            specified_tracked_files.append(target)
-        elif os.path.isfile(target):
-            specified_untracked_files.append(target)
-        # we will not remove . itself
-        elif os.path.isdir(target) and os.path.abspath(target) != os.path.abspath('.'):
-            if os.path.abspath(target) in tracked_dirs:
-                specified_tracked_dirs.append(target)
-            else:
-                specified_untracked_dirs.append(target)
-        # directory
-        for dirname, dirlist, filelist in os.walk(target):
-            # we do not remove files under the current directory
-            if dirname != '.':
-                for x in filelist:
-                    # ignore hidden file
-                    if x.startswith('.'):
-                        continue
-                    if os.path.abspath(os.path.join(dirname, x)) in tracked_files:
-                        specified_tracked_files.append(os.path.join(dirname, x))
-                    else:
-                        specified_untracked_files.append(os.path.join(dirname, x))
-            # we do not track dot directories
-            dir_with_tracked_files = []
-            for x in dirlist:
-                # ignore hidden directories such as .git
-                if x.startswith('.'):
-                    continue
-                if any(y.startswith(os.path.abspath(os.path.join(dirname, x))) for y in tracked_dirs):
-                    dir_with_tracked_files.append(x)
-                    specified_tracked_dirs.append(os.path.join(dirname, x))
-                else:
-                    specified_untracked_dirs.append(os.path.join(dirname, x))
-            # do not scan the directory if it does not contain any tracked files because
-            # they will be handled as a total directory
-            dirlist[:] = dir_with_tracked_files
-    #
-    def dedup(_list):
-        return OrderedDict((item, None) for item in _list).keys()
-
     def get_response(msg, always_yes = False):
         if always_yes:
             return True
@@ -888,80 +827,187 @@ def cmd_remove(args, unknown_args):
             elif res == 'n':
                 return False
 
-    def remove_all(path, sig):
-        for dirname, dirlist, filelist in os.walk(path):
-            for f in filelist:
-                if get_response('Remove {}'.format(f), always_yes = sig):
-                    if sig:
-                        FileTarget(f).remove('signature')
-                    else:
-                        FileTarget(f).remove('both')
-        if os.path.isdir(path):
-            shutil.rmtree(path)
-        else:
-            os.unlink(path)
-    # in case of tracked or all, we need to remove signature
-    if args.tracked:
-        for f in specified_tracked_files:
-            if args.__dryrun__:
-                if args.tracked:
-                    if args.signature:
-                        print('Would remove signature of tracked file {}'.format(f))
-                    else:
-                        print('Would remove tracked file {} and its signature'.format(f))
-            else:
-                if args.signature:
-                    print('Remove signature of {}'.format(f))
-                    FileTarget(f).remove('signature')
-                else:
-                    if get_response('Remove tracked file {} and its signature'.format(f)):
-                        FileTarget(f).remove('both')
-        for d in sorted(specified_tracked_dirs, key=len, reverse=True):
-            if args.__dryrun__:
-                if args.tracked:
-                    if args.signature:
-                        print('Would remove signatures of tracked files under {}'.format(d))
-                    else:
-                        print('Would remove {} with tracked files if empty'.format(d))
-            elif not os.listdir(d):
-                remove_all(d, args.signature)
-            else:
-                print('Ignore non-empty directory {}'.format(d))
+    tracked_files = {os.path.abspath(os.path.expanduser(x)) for x in tracked_files}
 
+    if tracked_files:
+        env.logger.info('{} tracked files from {} run{} are identified.'
+                .format(len(tracked_files), len(sig_files), 's' if len(sig_files) > 1 else ''))
+    else:
+        env.logger.info('No tracked file from {} run{} are identified.'
+                .format(len(sig_files), 's' if len(sig_files) > 1 else ''))
+    #
+    if not args.targets:
+        args.targets = ['.']
+    #
+    if args.size:
+        from sos.utils import expand_size
+        args.size = expand_size(args.size)
+    if args.age:
+        import time
+        from sos.utils import convert_age
+        args.age = convert_age(args.age)
+    if args.signature:
+        def func(filename):
+            if os.path.abspath(filename) not in tracked_files:
+                return False
+            target = FileTarget(filename)
+            if target.is_external() and not args.external():
+                env.logger.debug('Ignore external file {}'.format(filename))
+                return False
+            if not target.exists('signature'):
+                return False
+            if args.size:
+                if (args.size > 0 and os.path.getsize(filename) < args.size) or \
+                    (args.size < 0 and os.path.getsize(filename) > -args.size):
+                    env.logger.debug('{} ignored due to size limit {}'.format(filename, args.size))
+                    return False
+            if args.age:
+                if (args.age > 0 and time.time() - os.path.getmtime(filename) < args.age) or \
+                    (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
+                    env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
+                    return False
+            if not args.dryrun:
+                env.logger.debug('Remove {}'.format(s))
+                try:
+                    os.remove(target.sig_file())
+                except Exception as e:
+                    env.logger.warning('Failed to remove signature of {}: {}'.format(filename, e))
+                return True
+            return False
+    elif args.tracked:
+        def func(filename):
+            if os.path.abspath(filename) not in tracked_files:
+                return False
+            target = FileTarget(filename)
+            if target.is_external() and not args.external():
+                env.logger.debug('Ignore external file {}'.format(filename))
+                return False
+            if args.size:
+                if (args.size > 0 and os.path.getsize(filename) < args.size) or \
+                    (args.size < 0 and os.path.getsize(filename) > -args.size):
+                    env.logger.debug('{} ignored due to size limit {}'.format(filename, args.size))
+                    return False
+            if args.age:
+                if (args.age > 0 and time.time() - os.path.getmtime(filename) < args.age) or \
+                    (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
+                    env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
+                    return False
+            if get_response('{} tracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename),
+                    always_yes = args.dryrun):
+                if not args.dryrun:
+                    env.logger.debug('Remove {}'.format(s))
+                    try:
+                        target.remove('both')
+                    except Exception as e:
+                        env.logger.warning('Failed to remove {}: {}'.format(filename, e))
+                    return True
+            else:
+                env.logger.debug('No signature exists for tracked file {}'.format(filename))
+            return False
     elif args.untracked:
-        for f in specified_untracked_files:
-            if args.__dryrun__:
-                print('Would remove untracked file {}'.format(f))
+        def func(filename):
+            if os.path.abspath(filename) in tracked_files:
+                return False
+            target = FileTarget(filename)
+            if target.is_external() and not args.external():
+                env.logger.debug('Ignore external file {}'.format(filename))
+                return False
+            if args.size:
+                if (args.size > 0 and os.path.getsize(filename) < args.size) or \
+                    (args.size < 0 and os.path.getsize(filename) > -args.size):
+                    env.logger.debug('{} ignored due to size limit {}'.format(filename, args.size))
+                    return False
+            if args.age:
+                if (args.age > 0 and time.time() - os.path.getmtime(filename) < args.age) or \
+                    (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
+                    env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
+                    return False
+            if get_response('{} untracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename),
+                    always_yes = args.dryrun):
+                if not args.dryrun:
+                    env.logger.debug('Remove {}'.format(s))
+                    try:
+                        target.remove('both')
+                    except Exception as e:
+                        env.logger.warning('Failed to remove {}: {}'.format(filename, e))
+                    return True
             else:
-                if get_response('Remove untracked file {}'.format(f)):
-                    os.remove(f)
-        # note: signatures of tracked files under
-        # these directories should have been removed.
-        for d in specified_untracked_dirs:
-            if args.__dryrun__:
-                print('Would remove untracked directory {}'.format(d))
+                env.logger.debug('No signature exists for tracked file {}'.format(filename))
+            return False
+    elif args.zap:
+        def func(filename):
+            if os.path.abspath(filename) not in tracked_files:
+                return False
+            target = FileTarget(filename)
+            if target.is_external() and not args.external():
+                env.logger.debug('Ignore external file {}'.format(filename))
+                return False
+            if args.size:
+                if (args.size > 0 and os.path.getsize(filename) < args.size) or \
+                    (args.size < 0 and os.path.getsize(filename) > -args.size):
+                    env.logger.debug('{} ignored due to size limit {}'.format(filename, args.size))
+                    return False
+            if args.age:
+                if (args.age > 0 and time.time() - os.path.getmtime(filename) < args.age) or \
+                    (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
+                    env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
+                    return False
+            if get_response('{} tracked file {}'.format('Would zap' if args.dryrun else 'Zap', filename),
+                    always_yes = args.dryrun):
+                if not args.dryrun:
+                    env.logger.debug('Zap {}'.format(s))
+                    try:
+                        target.write_sig()
+                        shutil.copy(target.sig_file(), filename + '.file_info')
+                        os.remove(filename)
+                    except Exception as e:
+                        env.logger.warning('Failed to zap {}: {}'.format(filename, e))
+                    return True
             else:
-                remove_all(d, args.signature)
+                env.logger.debug('No signature exists for tracked file {}'.format(filename))
+            return False        
+    else:
+        # default behavior
+        def func(filename):
+            target = FileTarget(filename)
+            if target.is_external() and not args.external():
+                env.logger.debug('Ignore external file {}'.format(filename))
+                return False
+            if get_response('{} untracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename),
+                    always_yes = args.dryrun):
+                if not args.dryrun:
+                    env.logger.debug('Remove {}'.format(s))
+                    try:
+                        target.remove('both')
+                    except Exception as e:
+                        env.logger.warning('Failed to remove {}: {}'.format(filename, e))
+                    return True
+            else:
+                env.logger.debug('No signature exists for tracked file {}'.format(filename))
+            return False
 
-    if not args.tracked and not args.untracked:
-        # in case of all, we need to remove everything
-        for target in args.targets:
-            target = os.path.expanduser(target)
-            if args.__dryrun__:
-                if args.signature:
-                    print('Would remove signatures of {}'.format(target))
-                else:
-                    print('Would remove {}'.format(target))
-            elif os.path.exists(target) and target != '.':
-                if get_response('Remove {}'.format(target), always_yes = args.signature):
-                    if os.path.isfile(target):
-                        if args.signature:
-                            FileTarget(target).remove('signature')
-                        else:
-                            FileTarget(target).remove('both')
-                    else:
-                        if os.path.abspath(target) != os.path.abspath('.'):
-                            remove_all(target, args.signature)
+    removed = 0
+    for target in args.targets:
+        target = os.path.expanduser(target)
+        if FileTarget(target).is_external():
+            if os.path.isdir(target):
+                sys.exit('Canot remove external directory {}'.format(target))
+            elif not args.external:
+                sys.exit('Only subdirectories of the current directory can be removed unless option --external is specified. {} specified.'.format(target))
+        if os.path.isfile(target):
+            removed += func(target)
+            continue
+        # directory
+        for dirname, dirlist, filelist in os.walk(target):
+            # we do not remove files under the current directory
+            if dirname != '.':
+                for x in filelist:
+                    # ignore hidden file
+                    if x.startswith('.'):
+                        continue
+                    removed += func(os.path.join(dirname, x))
+            dirlist[:] = [x for x in dirlist if not x.startswith('.')]
+    env.logger.info('{} files {}'.format(removed, 'zapped' if args.zap else 'removed'))
 
 #
 # subcommand config
@@ -1161,7 +1207,7 @@ def get_pack_parser(desc_only=False):
         help='''A short message to be included into the archive. Because the
         message would be lost during unpacking, it is highly recommended that
         you create a README file and include it with option --include.''')
-    parser.add_argument('-n', '--dryrun', action='store_true', dest='__dryrun__',
+    parser.add_argument('-n', '--dryrun', action='store_true', 
         help='''List files to be included and total file size without actually
         archiving them''')
     parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
@@ -1299,7 +1345,7 @@ def cmd_pack(args, unknown_args):
                 manifest.write('RUNTIME\t{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.signature()))
     prog.close()
     #
-    if args.__dryrun__:
+    if args.dryrun:
         print('A total of {} files ({}) with additional scripts and runtime files would be archived.'.
             format(len(tracked_files), pretty_size(total_size)))
         sys.exit(0)

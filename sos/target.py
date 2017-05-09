@@ -305,7 +305,9 @@ class FileTarget(BaseTarget):
     def exists(self, mode='any'):
         if mode in ('any', 'target') and os.path.isfile(self.fullname()):
             return True
-        if mode in ('any', 'signature') and os.path.isfile(self.sig_file()):
+        elif mode == 'any' and os.path.isfile(self.fullname() + '.sig'):
+            return True
+        elif mode == 'signature' and os.path.isfile(self.sig_file()):
             return True
         return False
 

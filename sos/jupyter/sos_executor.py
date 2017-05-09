@@ -313,7 +313,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
             'default_queue': args.__queue__,
             'wait_for_task': args.__wait__,
             'resume_mode': args.__resume__,
-            'run_mode': 'dryrun' if args.__dryrun__ else 'interactive'
+            'run_mode': 'dryrun' if args.dryrun else 'interactive'
         })
         return executor.run(args.__targets__)
     except PendingTasks as e:

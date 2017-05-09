@@ -277,13 +277,16 @@ class RuntimeEnvironments(object):
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
         #
-        if not os.path.isdir(os.path.join(os.path.expanduser('~'), '.sos', 'tasks')):
+        if not os.path.isdir(os.path.join(os.path.expanduser('~'), '.sos', 'tasks')) or \
+            not os.path.isdir(os.path.join('.sos', '.runtime')):
             with fasteners.InterProcessLock('/tmp/sos_runtime_lock'):
                 # the directory might haver been created during waiting
                 if not os.path.isdir(os.path.join(os.path.expanduser('~'), '.sos', 'tasks')):
                     os.makedirs(os.path.join(os.path.expanduser('~'), '.sos', 'tasks'))
                 if not os.path.isdir(os.path.join(os.path.expanduser('~'), '.sos', '.runtime')):
                     os.makedirs(os.path.join(os.path.expanduser('~'), '.sos', '.runtime'))
+                if not os.path.isdir(os.path.join('.sos', '.runtime')):
+                    os.makedirs(os.path.join('.sos', '.runtime'))
 
     #
     # attribute logger
@@ -728,12 +731,13 @@ def pretty_size(n,pow=0,b=1024,u='B',pre=['']+[p+'i'for p in'KMGTPEZY']):
     return "%%.%if %%s%%s"%abs(pow%(-pow-1))%(n/b**float(pow),pre[pow],u)
 
 def expand_size(size):
-    m = re.match(r'\s*([\.\d]*)\s*(\S+)\s*', size)
+    m = re.match(r'\s*([+-]?)([\.\d]*)\s*(\S+)\s*', size)
     if not m:
         raise ValueError('Invalid size specified: {}'.format(size))
-    num, unit = m.groups()
+    sign, num, unit = m.groups()
+    sign = -1 if sign == '-' else 1
     if not unit:
-        return int(num)
+        return sign * int(num)
     if not num:
         num = 1
     s = {x + 'I' :1024**(idx+1) for idx,x in enumerate('KMGTPEZY')}
@@ -741,7 +745,7 @@ def expand_size(size):
     unit = unit[:-1].upper() if unit[-1].upper().endswith('B') else unit.upper()
     if unit not in s:
         raise ValueError('Invalid size specified: {}'.format(size))
-    return int(float(num) * s[unit])
+    return sign * int(float(num) * s[unit])
 
 def find_symbolic_links(item):
     item = os.path.expanduser(item)
