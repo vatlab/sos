@@ -216,7 +216,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
         description='''Control how sos scirpt is executed.''')
-    runmode.add_argument('-n', action='store_true', dest='__dryrun__',
+    runmode.add_argument('-n', action='store_true', dest='dryrun',
         help='''Execute a workflow in dryrun mode. Please check command
         sos dryrun for details of the dryrun mode.''')
     runmode.add_argument('-s', choices=['default', 'ignore', 'force', 'build', 'assert'],
@@ -294,16 +294,16 @@ def cmd_run(args, workflow_args):
                 'config_file': args.__config__,
                 'output_dag': args.__dag__,
                 # wait if -w or in dryrun mode, not wait if -W, otherwise use queue default
-                'wait_for_task': True if args.__wait__ is True or args.__dryrun__ else (False if args.__no_wait__ else None),
+                'wait_for_task': True if args.__wait__ is True or args.dryrun else (False if args.__no_wait__ else None),
                 'default_queue': '' if args.__queue__ is None else args.__queue__,
                 'max_procs': args.__max_procs__,
                 'max_running_jobs': args.__max_running_jobs__,
                 'sig_mode': args.__sig_mode__,
-                'run_mode': 'dryrun' if args.__dryrun__ else 'run',
+                'run_mode': 'dryrun' if args.dryrun else 'run',
                 'resume_mode': args.__resume__,
                 'verbosity': args.verbosity,
                 })
-        executor.run(args.__targets__, mode='dryrun' if args.__dryrun__ else 'run')
+        executor.run(args.__targets__, mode='dryrun' if args.dryrun else 'run')
     except Exception as e:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -365,7 +365,7 @@ def cmd_dryrun(args, workflow_args):
     args.__max_procs__ = 1
     args.__resume__ = False
     args.__max_running_jobs__ = 1
-    args.__dryrun__ = True
+    args.dryrun = True
     args.__wait__ = True
     args.__no_wait__ = False
     args.__bin_dirs__ = []
@@ -397,7 +397,7 @@ def get_execute_parser(desc_only=False):
         default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
-    parser.add_argument('-n', '--dryrun', action='store_true', dest='__dryrun__',
+    parser.add_argument('-n', '--dryrun', action='store_true', dest='dryrun',
         help='''Dryrun mode, which will cause actions to print scripts instead
             of executing them.''')
     parser.add_argument('-q', '--queue', nargs='?', const='',
@@ -465,7 +465,7 @@ def cmd_execute(args, workflow_args):
             #
             if os.path.isfile(res_file):
                 os.remove(res_file)
-            res = execute_task(task, verbosity=args.verbosity, runmode='dryrun' if args.__dryrun__ else 'run',
+            res = execute_task(task, verbosity=args.verbosity, runmode='dryrun' if args.dryrun else 'run',
                 sigmode=args.__sig_mode__,
                 monitor_interval=monitor_interval, resource_monitor_interval=resource_monitor_interval)
             with open(res_file, 'wb') as res_file:
@@ -490,7 +490,7 @@ def cmd_execute(args, workflow_args):
         env.sos_dict.set('CONFIG', cfg)
         env.verbosity = args.verbosity
         env.config['sig_mode'] = args.__sig_mode__
-        env.config['run_mode'] = 'dryrun' if args.__dryrun__ else 'run'
+        env.config['run_mode'] = 'dryrun' if args.dryrun else 'run'
         host = Host(args.queue)
         for task in args.tasks:
             host.submit_task(task)
@@ -543,7 +543,7 @@ def get_status_parser(desc_only=False):
     parser.add_argument('-v', dest='verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).''')
-    parser.add_argument('--age', help='''Limit to tasks that is created more than
+    parser.add_argument('--age', help='''Limit to tasks that are created more than
         (default) or within specified age. Value of this parameter can be in units
         s (second), m (minute), h (hour), or d (day, default), with optional
         prefix + for older (default) and - for newer than specified age.''')
@@ -594,7 +594,7 @@ def get_purge_parser(desc_only=False):
         name with tasks starting with these names.''')
     parser.add_argument('-a', '--all', action='store_true',
         help='''Kill all tasks in local or specified remote task queue''')
-    parser.add_argument('--age', help='''Limit to tasks that is created more than
+    parser.add_argument('--age', help='''Limit to tasks that are created more than
         (default) or within specified age. Value of this parameter can be in units
         s (second), m (minute), h (hour), or d (day, default), with optional
         prefix + for older (default) and - for younder than specified age.''')
@@ -729,6 +729,15 @@ def get_remove_parser(desc_only=False):
         help='''By default the remove command will only remove files and
         signatures under the current project directory. This option allows
         sos to remove files and/or signature of external files.''')
+    parser.add_argument('--size',
+        help='''Limit to files that exceed or smaller than specified size.
+        Value of option should be in unit K, M, KB, MB, MiB, GB, etc, with
+        optional prefix + for larger than (default), or - for smaller than
+        specified size.''')
+    parser.add_argument('--age', help='''Limit to files that are modified more than
+        (default) or within specified age. Value of this parameter can be in units
+        s (second), m (minute), h (hour), or d (day, default), with optional
+        prefix + for older (default) and - for newer than specified age.''')
     parser.add_argument('-n', '--dryrun', action='store_true', 
         help='''List files or directories to be removed, without actually
             removing them.''')
@@ -786,7 +795,7 @@ def cmd_remove(args, unknown_args):
         removed_cnt = 0
         for s in glob.glob(os.path.join('.sos', '.runtime', '*.file_info')):
             try:
-                if args.__dryrun__:
+                if args.dryrun:
                     print('Would remove {}'.format(os.path.basename(s)))
                 else:
                     env.logger.debug('Remove {}'.format(s))
@@ -794,7 +803,7 @@ def cmd_remove(args, unknown_args):
                 removed_cnt += 1
             except Exception as e:
                 env.logger.warning('Failed to remove signature {}: {}'.format(s, e))
-        if args.__dryrun__:
+        if args.dryrun:
             env.logger.info('Would remove {} runtime signatures'.format(removed_cnt))
         elif removed_cnt:
             env.logger.info('{} runtime signatures removed'.format(removed_cnt))
@@ -830,6 +839,13 @@ def cmd_remove(args, unknown_args):
     if not args.targets:
         args.targets = ['.']
     #
+    if args.size:
+        from sos.utils import expand_size
+        args.size = expand_size(args.size)
+    if args.age:
+        import time
+        from sos.utils import convert_age
+        args.age = convert_age(args.age)
     if args.signature:
         def func(filename):
             if os.path.abspath(filename) not in tracked_files:
@@ -840,6 +856,16 @@ def cmd_remove(args, unknown_args):
                 return False
             if not target.exists('signature'):
                 return False
+            if args.size:
+                if (args.size > 0 and os.path.getsize(filename) < args.size) or \
+                    (args.size < 0 and os.path.getsize(filename) > -args.size):
+                    env.logger.debug('{} ignored due to size limit {}'.format(filename, args.size))
+                    return False
+            if args.age:
+                if (args.age > 0 and time.time() - os.path.getmtime(filename) < args.age) or \
+                    (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
+                    env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
+                    return False
             if get_response('{} signature of {}'.format('Would remove' if args.dryrun else 'Remove', filename),
                     always_yes = args.dryrun):
                 if not args.dryrun:
@@ -860,6 +886,16 @@ def cmd_remove(args, unknown_args):
             if target.is_external() and not args.external():
                 env.logger.debug('Ignore external file {}'.format(filename))
                 return False
+            if args.size:
+                if (args.size > 0 and os.path.getsize(filename) < args.size) or \
+                    (args.size < 0 and os.path.getsize(filename) > -args.size):
+                    env.logger.debug('{} ignored due to size limit {}'.format(filename, args.size))
+                    return False
+            if args.age:
+                if (args.age > 0 and time.time() - os.path.getmtime(filename) < args.age) or \
+                    (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
+                    env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
+                    return False
             if get_response('{} tracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename),
                     always_yes = args.dryrun):
                 if not args.dryrun:
@@ -880,6 +916,16 @@ def cmd_remove(args, unknown_args):
             if target.is_external() and not args.external():
                 env.logger.debug('Ignore external file {}'.format(filename))
                 return False
+            if args.size:
+                if (args.size > 0 and os.path.getsize(filename) < args.size) or \
+                    (args.size < 0 and os.path.getsize(filename) > -args.size):
+                    env.logger.debug('{} ignored due to size limit {}'.format(filename, args.size))
+                    return False
+            if args.age:
+                if (args.age > 0 and time.time() - os.path.getmtime(filename) < args.age) or \
+                    (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
+                    env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
+                    return False
             if get_response('{} untracked file {}'.format('Would remove' if args.dryrun else 'Remove', filename),
                     always_yes = args.dryrun):
                 if not args.dryrun:
@@ -900,6 +946,16 @@ def cmd_remove(args, unknown_args):
             if target.is_external() and not args.external():
                 env.logger.debug('Ignore external file {}'.format(filename))
                 return False
+            if args.size:
+                if (args.size > 0 and os.path.getsize(filename) < args.size) or \
+                    (args.size < 0 and os.path.getsize(filename) > -args.size):
+                    env.logger.debug('{} ignored due to size limit {}'.format(filename, args.size))
+                    return False
+            if args.age:
+                if (args.age > 0 and time.time() - os.path.getmtime(filename) < args.age) or \
+                    (args.age < 0 and time.time() - os.path.getmtime(filename) > -args.age):
+                    env.logger.debug('{} ignored due to age limit {}'.format(filename, args.age))
+                    return False
             if get_response('{} tracked file {}'.format('Would zap' if args.dryrun else 'Zap', filename),
                     always_yes = args.dryrun):
                 if not args.dryrun:
@@ -1155,7 +1211,7 @@ def get_pack_parser(desc_only=False):
         help='''A short message to be included into the archive. Because the
         message would be lost during unpacking, it is highly recommended that
         you create a README file and include it with option --include.''')
-    parser.add_argument('-n', '--dryrun', action='store_true', dest='__dryrun__',
+    parser.add_argument('-n', '--dryrun', action='store_true', 
         help='''List files to be included and total file size without actually
         archiving them''')
     parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
@@ -1293,7 +1349,7 @@ def cmd_pack(args, unknown_args):
                 manifest.write('RUNTIME\t{}\t{}\t{}\t{}\n'.format(os.path.basename(f), ft.mtime(), ft.size(), ft.signature()))
     prog.close()
     #
-    if args.__dryrun__:
+    if args.dryrun:
         print('A total of {} files ({}) with additional scripts and runtime files would be archived.'.
             format(len(tracked_files), pretty_size(total_size)))
         sys.exit(0)
