@@ -277,16 +277,9 @@ class RuntimeEnvironments(object):
         # this directory will be used by a lot of processes
         self.exec_dir = os.getcwd()
         #
-        if not os.path.isdir(os.path.join(os.path.expanduser('~'), '.sos', 'tasks')) or \
-            not os.path.isdir(os.path.join('.sos', '.runtime')):
-            with fasteners.InterProcessLock('/tmp/sos_runtime_lock'):
-                # the directory might haver been created during waiting
-                if not os.path.isdir(os.path.join(os.path.expanduser('~'), '.sos', 'tasks')):
-                    os.makedirs(os.path.join(os.path.expanduser('~'), '.sos', 'tasks'))
-                if not os.path.isdir(os.path.join(os.path.expanduser('~'), '.sos', '.runtime')):
-                    os.makedirs(os.path.join(os.path.expanduser('~'), '.sos', '.runtime'))
-                if not os.path.isdir(os.path.join('.sos', '.runtime')):
-                    os.makedirs(os.path.join('.sos', '.runtime'))
+        os.makedirs(os.path.join(os.path.expanduser('~'), '.sos', 'tasks'), exist_ok=True)
+        os.makedirs(os.path.join(os.path.expanduser('~'), '.sos', '.runtime'), exist_ok=True)
+        os.makedirs(os.path.join('.sos', '.runtime'), exist_ok=True)
 
     #
     # attribute logger
@@ -328,11 +321,7 @@ class RuntimeEnvironments(object):
     #
     # attribute exec_dir
     def _assure_runtime_dir(self, dir):
-        if not os.path.isdir(os.path.join(dir, '.sos')):
-            with fasteners.InterProcessLock('/tmp/sos_runtime_lock'):
-                # the directory might haver been created during waiting
-                if not os.path.isdir(os.path.join(dir, '.sos')):
-                    os.makedirs(os.path.join(dir, '.sos'))
+        os.makedirs(os.path.join(dir, '.sos'), exist_ok=True)
 
     def _set_exec_dir(self, dir):
         if not os.path.isdir(dir):
