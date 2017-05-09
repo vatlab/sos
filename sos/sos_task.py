@@ -402,7 +402,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                         print('Binary file')
     else:
         # HTML output
-        from .utils import PrettyRelativeTime
+        from .utils import PrettyRelativeTime, isPrimitive
         from .monitor import summarizeExecution
         import pprint
         import glob
@@ -433,9 +433,9 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                 if not k.startswith('__') and not k == 'CONFIG':
                     if k == '_runtime':
                         for _k, _v in v.items():
-                            if _v not in (None, '', [], (), {}):
+                            if isPrimitive(_v) and _v not in (None, '', [], (), {}):
                                 row(_k, _v)
-                    elif v not in (None, '', [], (), {}):
+                    elif isPrimitive(v) and v not in (None, '', [], (), {}):
                         row(k, '<pre style="text-align:left">{}</pre>'.format(pprint.pformat(v)))
             summary = summarizeExecution(t, status=s)
             if summary:

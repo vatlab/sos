@@ -1023,3 +1023,8 @@ def linecount_of_file(filename):
         buf = read_f(buf_size)
 
     return lines
+
+def isPrimitive(obj):
+    # test if object is of primitive types (string, number, sequence etc
+    # http://stackoverflow.com/questions/6391694/check-if-a-variables-type-is-primitive
+    return not hasattr(obj, '__dict__')
