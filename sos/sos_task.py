@@ -37,6 +37,7 @@ from .target import textMD5, RuntimeInfo, Undetermined, FileTarget
 from .monitor import ProcessMonitor
 
 from collections import OrderedDict
+import subprocess
 
 
 monitor_interval = 5
@@ -848,9 +849,13 @@ class TaskEngine(threading.Thread):
             return self.pending_tasks()
 
     def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=False, age=None):
-        return self.agent.check_output("sos status {} -v {} {} {} {}".format(
+        try:
+            self.agent.check_output("sos status {} -v {} {} {} {}".format(
                 ' '.join(tasks), verbosity, '--html' if html else '',
                 '--start-time' if start_time else '', '--age {}'.format(age) if age else ''))
+        except subprocess.CalledProcessError as e:
+            env.logger.error('Failed to query status of tasks {}'.format(tasks))
+            return ''
 
     def kill_tasks(self, tasks, all_tasks=False):
         # we wait for the engine to start
@@ -878,8 +883,12 @@ class TaskEngine(threading.Thread):
         self.canceled_tasks.extend(tasks)
         #
         cmd = "sos kill {} {}".format(' '.join(tasks), '-a' if all_tasks else '')
-        ret = self.agent.check_output(cmd)
-        env.logger.debug('"{}" executed with response "{}"'.format(cmd, ret))
+        try:
+            ret = self.agent.check_output(cmd)
+            env.logger.debug('"{}" executed with response "{}"'.format(cmd, ret))
+        except subprocess.CalledProcessError as e:
+            env.logger.error('Failed to kill task {}'.format(tasks))
+            return ''
         return ret
 
     def resume_task(self, task):
@@ -919,11 +928,15 @@ class TaskEngine(threading.Thread):
             return self.agent.prepare_task(task_id)
 
     def purge_tasks(self, tasks, purge_all=False, age=None, status=None, verbosity=2):
-        return self.agent.check_output("sos purge {} {} {} {} -v {}".format(
+        try:
+            self.agent.check_output("sos purge {} {} {} {} -v {}".format(
                 ' '.join(tasks), '--all' if purge_all else '',
                 '--age {}'.format(age) if age is not None else '',
                 '--status {}'.format(' '.join(status)) if status is not None else '',
                 verbosity))
+        except subprocess.CalledProcessError as e:
+            env.logger.error('Failed to purge tasks {}'.format(tasks))
+            return ''
 
 
 class BackgroundProcess_TaskEngine(TaskEngine):

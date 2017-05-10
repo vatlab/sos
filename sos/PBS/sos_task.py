@@ -129,7 +129,11 @@ class PBS_TaskEngine(TaskEngine):
                     self.submit_cmd, e))
             env.logger.debug('submit {}: {}'.format(task_id, cmd))
             try:
-                cmd_output = self.agent.check_output(cmd).strip()
+                try:
+                    cmd_output = self.agent.check_output(cmd).strip()
+                except Exception as e:
+                    raise RuntimeError('Failed to submit task {}: {}'.format(task_id, e))
+
                 if 'submit_cmd_output' not in self.config:
                     submit_cmd_output = '{job_id}'
                 else:

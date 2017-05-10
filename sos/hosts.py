@@ -178,7 +178,7 @@ class LocalHost:
             return subprocess.check_output(cmd, shell=True).decode()
         except Exception as e:
             env.logger.warning('Check output of {} failed: {}'.format(cmd, e))
-            return ''
+            raise
 
     def run_command(self, cmd, wait_for_task):
         # run command but does not wait for result.
@@ -495,7 +495,7 @@ class RemoteHost:
             return subprocess.check_output(cmd, shell=True).decode()
         except Exception as e:
             env.logger.debug('Check output of {} failed: {}'.format(cmd, e))
-            return ''
+            raise
 
     def run_command(self, cmd, wait_for_task):
         try:
