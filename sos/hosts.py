@@ -290,6 +290,8 @@ class RemoteHost:
                 # pick the longest key that matches
                 k = max(matched, key=len)
                 dest = self.path_map[k] + dest[len(k):]
+            else:
+                env.logger.warning('Path {} is not under any specified paths of localhost and is mapped to {} on remote host.'.format(source, dest))
             result[source] = dest
         elif isinstance(source, Sequence):
             for src in source:
@@ -317,6 +319,8 @@ class RemoteHost:
                 # pick the longest key that matches
                 k = max(matched, key=len)
                 dest = self.path_map[k] + dest[len(k):]
+            else:
+                env.logger.warning('Path {} is not under any specified paths of localhost and is mapped to {} on remote host.'.format(source, dest))
             return dest
         elif isinstance(source, Sequence):
             return [self._map_var(x) for x in source]
