@@ -937,6 +937,19 @@ def load_config_files(filename=None):
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(filename, e))
     return cfg
  
+def format_HHMMSS(v):
+    if isinstance(v, int):
+        h, m, s = v // 3600, v %3600//60, v % 60
+    elif isinstance(v, str):
+        try:
+            h,m,s = map(int, v.split(':'))
+        except Exception as e:
+            raise ValueError('walltime should be specified as a integer (second) or string in the format of HH:MM:SS. "{}" specified ({})'.format(v, e))
+    else:
+        raise ValueError('walltime should be specified as a integer (second) or string in the format of HH:MM:SS. "{}" specified ({})'.format(v, e))
+    return '{:02d}:{:02d}:{:02d}'.format(h,m,s)
+
+
 def expand_time(v):
     # expand walltime from '00:00:00' format to second
     if isinstance(v, str):

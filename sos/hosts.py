@@ -31,7 +31,7 @@ import glob
 import pkg_resources
 from collections.abc import Sequence
 
-from .utils import env, pickleable, short_repr, load_config_files, expand_size, expand_time
+from .utils import env, pickleable, short_repr, load_config_files, expand_size, format_HHMMSS, expand_time
 from .sos_eval import interpolate, Undetermined
 from .sos_task import BackgroundProcess_TaskEngine, TaskParams
 
@@ -136,6 +136,8 @@ class LocalHost:
             task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
             task_vars['_runtime']['max_cores'] = self.config.get('max_cores', None)
             task_vars['_runtime']['max_walltime'] = self.config.get('max_walltime', None)
+            if task_vars['_runtime']['max_walltime'] is not None:
+                task_vars['_runtime']['max_walltime'] = format_HHMMSS(task_vars['_runtime']['max_walltime'])
 
             if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
                     and self.config['max_mem'] < task_vars['_runtime']['mem']:
@@ -146,7 +148,7 @@ class LocalHost:
                 raise ValueError('Task {} requested more cores ({}) than allowed max_cores ({})'.format(
                     task_id, task_vars['_runtime']['cores'], self.config['max_cores']))
             if self.config.get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
-                    and self.config['max_walltime'] < task_vars['_runtime']['walltime']:
+                    and expand_time(self.config['max_walltime']) < expand_time(task_vars['_runtime']['walltime']):
                 raise ValueError('Task {} requested more walltime ({}) than allowed max_walltime ({})'.format(
                     task_id, task_vars['_runtime']['walltime'], self.config['max_walltime']))
 
@@ -392,7 +394,7 @@ class RemoteHost:
             raise ValueError('Task {} requested more cores ({}) than allowed max_cores ({})'.format(
                 task_id, task_vars['_runtime']['cores'], self.config['max_cores']))
         if self.config.get('max_walltime', None) is not None and task_vars['_runtime'].get('walltime', None) is not None \
-                and self.config['max_walltime'] < task_vars['_runtime']['walltime']:
+                and expand_time(self.config['max_walltime']) < expand_time(task_vars['_runtime']['walltime']):
             raise ValueError('Task {} requested more walltime ({}) than allowed max_walltime ({})'.format(
                 task_id, task_vars['_runtime']['walltime'], self.config['max_walltime']))
 
@@ -450,6 +452,8 @@ class RemoteHost:
         task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
         task_vars['_runtime']['max_cores'] = self.config.get('max_cores', None)
         task_vars['_runtime']['max_walltime'] = self.config.get('max_walltime', None)
+        if task_vars['_runtime']['max_walltime'] is not None:
+            task_vars['_runtime']['max_walltime'] = format_HHMMSS(task_vars['_runtime']['max_walltime'])
 
         new_param = TaskParams(
             name = params.name,
@@ -670,7 +674,7 @@ class Host:
 
         # standardize parameters max_walltime, max_cores, and max_mem for the host
         if 'max_walltime' in self.config:
-            self.config['max_walltime'] = expand_time(self.config['max_walltime'])
+            self.config['max_walltime'] = format_HHMMSS(self.config['max_walltime'])
         if 'max_cores' in self.config:
             if not isinstance(self.config['max_cores'], int):
                 raise ValueError('An integer is expected for max_cores')

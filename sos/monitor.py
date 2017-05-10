@@ -35,7 +35,7 @@ class ProcessMonitor(threading.Thread):
         self.monitor_interval = monitor_interval
         self.resource_monitor_interval = max(resource_monitor_interval // monitor_interval, 1)
         self.daemon = True
-        self.max_walltime = max_walltime
+        self.max_walltime = None if max_walltime is None else expand_time(max_walltime) 
         self.max_mem = max_mem
         self.max_procs = max_procs
         self.pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.pulse')
@@ -98,7 +98,7 @@ class ProcessMonitor(threading.Thread):
                 elapsed = time.time() - start_time
                 if self.max_walltime is not None and elapsed > self.max_walltime:
                     self._exceed_resource('Task {} exits because of excessive run time (used {}, limit {})'.format(
-                        self.task_id, elapsed, self.max_walltime))
+                        self.task_id, format_HHMMSS(elapsed), format_HHMMSS(self.max_walltime)))
                 time.sleep(self.monitor_interval)
                 counter += 1
             except Exception as e:
