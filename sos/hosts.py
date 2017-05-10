@@ -656,15 +656,14 @@ class Host:
                         self.config['shared'] = [append_slash(cfg[LOCAL]['shared'][x]) for x in common]
                         self.config['path_map'] = ['{} -> {}'.format(append_slash(cfg[LOCAL]['shared'][x]), append_slash(cfg[REMOTE]['shared'][x])) \
                             for x in common if append_slash(cfg[LOCAL]['shared'][x]) != append_slash(cfg[REMOTE]['shared'][x])]
-                if ('paths' in cfg[LOCAL] and cfg[LOCAL]['paths']) or ('paths' in cfg[REMOTE] and cfg[REMOTE]['paths']):
-                    if 'paths' not in cfg[LOCAL] or 'paths' not in cfg[REMOTE] or not cfg[LOCAL]['paths'] or not cfg[REMOTE]['paths'] or \
-                        any(k not in cfg[REMOTE]['paths'] for k in cfg[LOCAL]['paths'].keys()) or \
-                        any(k not in cfg[LOCAL]['paths'] for k in cfg[REMOTE]['paths'].keys()):
-                        raise ValueError('Unmatched paths definition between {} ({}) and {} ({})'.format(
-                            LOCAL, ','.join(cfg[LOCAL]['paths'].keys()), REMOTE, ','.join(cfg[REMOTE]['paths'].keys())))
+                # if paths are defined for both local and remote host, define path_map
+                if ('paths' in cfg[LOCAL] and cfg[LOCAL]['paths']) and ('paths' in cfg[REMOTE] and cfg[REMOTE]['paths']):
+                    if any(k not in cfg[REMOTE]['paths'] for k in cfg[LOCAL]['paths'].keys()):
+                        raise ValueError('One or more local paths {} cannot be mapped to remote host {} with paths {}'.format(
+                            ','.join(cfg[LOCAL]['paths'].keys()), REMOTE, ','.join(cfg[REMOTE]['paths'].keys())))
                     # 
                     self.config['path_map'].extend(['{} -> {}'.format(append_slash(cfg[LOCAL]['paths'][x]), append_slash(cfg[REMOTE]['paths'][x])) \
-                        for x in cfg[REMOTE]['paths'].keys() if append_slash(cfg[LOCAL]['paths'][x]) != append_slash(cfg[REMOTE]['paths'][x])])
+                        for x in cfg[LOCAL]['paths'].keys() if append_slash(cfg[LOCAL]['paths'][x]) != append_slash(cfg[REMOTE]['paths'][x])])
         #
         self.config['alias'] = self.alias
         self.description = self.config.get('description', '')
