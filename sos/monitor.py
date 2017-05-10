@@ -100,7 +100,7 @@ class ProcessMonitor(threading.Thread):
                 elapsed = time.time() - start_time
                 if self.max_walltime is not None and elapsed > self.max_walltime:
                     self._exceed_resource('Task {} exits because of excessive run time (used {}, limit {})'.format(
-                        self.task_id, format_HHMMSS(elapsed), format_HHMMSS(self.max_walltime)))
+                        self.task_id, format_HHMMSS(int(elapsed)), format_HHMMSS(self.max_walltime)))
                 time.sleep(self.monitor_interval)
                 counter += 1
             except Exception as e:
