@@ -35,7 +35,7 @@ class ProcessMonitor(threading.Thread):
         self.monitor_interval = monitor_interval
         self.resource_monitor_interval = max(resource_monitor_interval // monitor_interval, 1)
         self.daemon = True
-        self.max_walltime = None if max_walltime is None else expand_time(max_walltime) 
+        self.max_walltime = None if max_walltime is None else expand_time(max_walltime)
         self.max_mem = max_mem
         self.max_procs = max_procs
         self.pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.pulse')

@@ -946,7 +946,7 @@ def format_HHMMSS(v):
         except Exception as e:
             raise ValueError('walltime should be specified as a integer (second) or string in the format of HH:MM:SS. "{}" specified ({})'.format(v, e))
     else:
-        raise ValueError('walltime should be specified as a integer (second) or string in the format of HH:MM:SS. "{}" specified ({})'.format(v, e))
+        raise ValueError('walltime should be specified as a integer (second) or string in the format of HH:MM:SS. "{}" of type {} specified'.format(v, v.__class__.__name__))
     return '{:02d}:{:02d}:{:02d}'.format(h,m,s)
 
 
