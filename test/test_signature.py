@@ -342,8 +342,8 @@ python:
         # if we zap the file, it 
         if os.path.isfile('midfile.txt'):
             os.remove('midfile.txt')
-        if os.path.isfile('midfile.txt.file_info'):
-            os.remove('midfile.txt.file_info')
+        if os.path.isfile('midfile.txt.zapped'):
+            os.remove('midfile.txt.zapped')
         script = SoS_Script(r'''
 [10]
 
@@ -398,7 +398,7 @@ sh:
         Base_Executor(wf).run()
         self.assertLess(time.time() - st, elapsed - 2)
         FileTarget('midfile.txt').remove('both')
-        FileTarget('midfile.txt.file_info').remove('both')
+        FileTarget('midfile.txt.zapped').remove('both')
         FileTarget('final.txt').remove('both')
 
     def testSignatureWithParameter(self):

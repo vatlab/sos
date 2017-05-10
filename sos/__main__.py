@@ -958,7 +958,7 @@ def cmd_remove(args, unknown_args):
                     env.logger.debug('Zap {}'.format(s))
                     try:
                         target.write_sig()
-                        shutil.copy(target.sig_file(), filename + '.file_info')
+                        shutil.copy(target.sig_file(), filename + '.zapped')
                         os.remove(filename)
                     except Exception as e:
                         env.logger.warning('Failed to zap {}: {}'.format(filename, e))
