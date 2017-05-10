@@ -308,11 +308,12 @@ class SoS_Kernel(IPythonKernel):
             description='''Save the workflow (consisting of all sos steps defined
             in cells starting with section header) to specified file.''')
         parser.add_argument('filename', nargs='?',
-            help='''filename of saved sos script. An extension .sos will be automatically
-            added if the specified filename does not have an extension. Default to
+            help='''filename of saved sos script. Default to
             notebookname + .sos''')
         parser.add_argument('-f', '--force', action='store_true',
-            help='''If destination file already exists, overwrite it.''')
+            help='''if destination file already exists, overwrite it.''')
+        parser.add_argument('-x', '--set-executable', dest = "setx", action='store_true',
+            help='''add `executable` permission to saved script.''')
         parser.error = self._parse_error
         return parser
 
@@ -1115,7 +1116,6 @@ class SoS_Kernel(IPythonKernel):
             finally:
                 # switch back to the original kernel
                 self.switch_kernel(my_kernel)
-                
 
     def _interpolate_option(self, option, quiet=False):
         # interpolate command
@@ -1716,16 +1716,17 @@ class SoS_Kernel(IPythonKernel):
                 except SystemExit:
                     return
                 if args.filename:
-                    filename = self._interpolate_option(options, quiet=False).strip()
+                    filename = self._interpolate_option(args.filename, quiet=False).strip()
                 else:
-                    filename = self._notebook_name
-                if not filename.endswith('.sos'):
-                    filename += '.sos'
+                    filename = self._notebook_name + '.sos'
                 if os.path.isfile(filename) and not args.force:
                     raise ValueError('Cannot overwrite existing output file {}'.format(filename))
                 #self.send_frontend_msg('preview-workflow', self._workflow)
                 with open(filename, 'w') as script:
                     script.write(self._workflow)
+                if args.setx:
+                    import stat
+                    os.chmod(filename, os.stat(filename).st_mode | stat.S_IEXEC)
                 self.send_response(self.iopub_socket, 'stream',
                   {'name': 'stdout', 'text': 'Workflow saved to {}\n'.format(filename)})
             except Exception as e:

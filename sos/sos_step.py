@@ -30,7 +30,7 @@ from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
 
 from .utils import env, AbortExecution, short_repr, stable_repr,\
-    get_traceback, transcribe, ActivityNotifier, expand_size, expand_time
+    get_traceback, transcribe, ActivityNotifier, expand_size, format_HHMMSS
 from .pattern import extract_pattern
 from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
@@ -604,7 +604,7 @@ class Base_Step_Executor:
                 raise RuntimeError('Unrecognized runtime option {}={}'.format(k, v))
             # standardize walltime to an integer
             if k == 'walltime':
-                v = expand_time(v)
+                v = format_HHMMSS(v)
             elif k == 'mem':
                 v = expand_size(v)
             env.sos_dict['_runtime'][k] = v

@@ -77,7 +77,8 @@ class PBS_TaskEngine(TaskEngine):
 
         # for this task, we will need walltime, nodes, cores, mem
         # however, these could be fixed in the job template and we do not need to have them all in the runtime
-        runtime = {x:sos_dict['_runtime'][x] for x in ('nodes', 'cores', 'ppn', 'mem', 'walltime', 'cur_dir', 'home_dir', 'name') if x in sos_dict['_runtime']}
+        runtime = self.config
+        runtime.update({x:sos_dict['_runtime'][x] for x in ('nodes', 'cores', 'ppn', 'mem', 'walltime', 'cur_dir', 'home_dir', 'name') if x in sos_dict['_runtime']})
         runtime['task'] = task_id
         runtime['verbosity'] = env.verbosity
         runtime['sig_mode'] = env.config['sig_mode']
@@ -85,7 +86,7 @@ class PBS_TaskEngine(TaskEngine):
         if 'name' in runtime:
             runtime['job_name'] = interpolate(runtime['name'], '${ }', sos_dict)
         else:
-            runtime['job_name'] = task_id
+            runtime['job_name'] = interpolate('${step_name}_${_index}', '${ }', sos_dict)
         if 'nodes' not in runtime:
             runtime['nodes'] = 1
         if 'cores' not in runtime:
@@ -97,7 +98,6 @@ class PBS_TaskEngine(TaskEngine):
         # for backward compatibility
         runtime['ppn'] = runtime['cores']
         runtime['job_file'] = '~/.sos/tasks/{}.sh'.format(task_id)
-        runtime.update(self.config)
 
         # let us first prepare a task file
         try:
@@ -129,7 +129,11 @@ class PBS_TaskEngine(TaskEngine):
                     self.submit_cmd, e))
             env.logger.debug('submit {}: {}'.format(task_id, cmd))
             try:
-                cmd_output = self.agent.check_output(cmd).strip()
+                try:
+                    cmd_output = self.agent.check_output(cmd).strip()
+                except Exception as e:
+                    raise RuntimeError('Failed to submit task {}: {}'.format(task_id, e))
+
                 if 'submit_cmd_output' not in self.config:
                     submit_cmd_output = '{job_id}'
                 else:

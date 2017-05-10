@@ -958,7 +958,7 @@ def cmd_remove(args, unknown_args):
                     env.logger.debug('Zap {}'.format(s))
                     try:
                         target.write_sig()
-                        shutil.copy(target.sig_file(), filename + '.file_info')
+                        shutil.copy(target.sig_file(), filename + '.zapped')
                         os.remove(filename)
                     except Exception as e:
                         env.logger.warning('Failed to zap {}: {}'.format(filename, e))
@@ -1007,7 +1007,8 @@ def cmd_remove(args, unknown_args):
                         continue
                     removed += func(os.path.join(dirname, x))
             dirlist[:] = [x for x in dirlist if not x.startswith('.')]
-    env.logger.info('{} files {}'.format(removed, 'zapped' if args.zap else 'removed'))
+    env.logger.info('{}{} file{} {}'.format('Signagure of ' if args.signature else '', removed,
+        's' if removed > 1 else '', 'zapped' if args.zap else 'removed'))
 
 #
 # subcommand config
