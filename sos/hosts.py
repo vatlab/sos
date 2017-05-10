@@ -193,7 +193,8 @@ class LocalHost:
             with open(res_file, 'rb') as result:
                 res = pickle.load(result)
         except Exception as e:
-            raise RuntimeError('Failed to receive result for task {}: {}'.format(task_id, e))
+            env.logger.warning('Failed to receive result for task {}: {}'.format(task_id, e))
+            return {'ret_code': 1, 'output': {}}
         return res
 
 
@@ -545,6 +546,10 @@ class RemoteHost:
                     print(err.read())
 
         res_file = os.path.join(sys_task_dir, task_id + '.res')
+        if not os.path.isfile(res_file):
+            env.logger.debug('Result for {} is not received'.format(task_id))
+            return {'ret_code': 1, 'output': {}}
+
         with open(res_file, 'rb') as result:
             res = pickle.load(result)
 
