@@ -25,7 +25,7 @@ import threading
 import time
 from datetime import datetime
 import stat
-from .utils import env
+from .utils import env, expand_time, format_HHMMSS
 
 class ProcessMonitor(threading.Thread):
     def __init__(self, task_id, monitor_interval, resource_monitor_interval, max_walltime=None, max_mem=None, max_procs=None):
