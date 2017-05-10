@@ -850,7 +850,7 @@ class TaskEngine(threading.Thread):
 
     def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=False, age=None):
         try:
-            self.agent.check_output("sos status {} -v {} {} {} {}".format(
+            return self.agent.check_output("sos status {} -v {} {} {} {}".format(
                 ' '.join(tasks), verbosity, '--html' if html else '',
                 '--start-time' if start_time else '', '--age {}'.format(age) if age else ''))
         except subprocess.CalledProcessError as e:
