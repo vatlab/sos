@@ -305,7 +305,7 @@ class FileTarget(BaseTarget):
     def exists(self, mode='any'):
         if mode in ('any', 'target') and os.path.isfile(self.fullname()):
             return True
-        elif mode == 'any' and os.path.isfile(self.fullname() + '.sig'):
+        elif mode == 'any' and os.path.isfile(self.fullname() + '.file_info'):
             return True
         elif mode == 'signature' and os.path.isfile(self.sig_file()):
             return True
@@ -679,7 +679,7 @@ class RuntimeInfo:
         if '__hard_target__' in env.sos_dict:
             for x in self.output_files:
                 if not x.exists('target'):
-                    return 'Missing target {}'.format(x)
+                    return 'Missing hard target {}'.format(x)
         #
         files_checked = {x.name():False for x in sig_files if not isinstance(x, Undetermined)}
         res = {'input': [], 'output': [], 'depends': [], 'local_input': [], 'local_output': [], 'vars': {}}

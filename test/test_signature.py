@@ -314,28 +314,92 @@ python:
         st = time.time()
         Base_Executor(wf).run()
         elapsed = time.time() - st
+        # sleep 3
+        self.assertGreater(elapsed, 3)
         # rerun, because this is the final target, it has to be
         # re-generated
         os.remove('largefile.txt')
         st = time.time()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, elapsed - 1)
-        # 
+        self.assertGreater(time.time() - st, 3)
         self.assertTrue(os.path.isfile('largefile.txt'))
-        # we discard just the signature, the step will be ignored
-        # as long as the file is not touched.
+        # 
+        # we discard the signature
         st = time.time()
         FileTarget('largefile.txt').remove('signature')
         Base_Executor(wf).run()
-        self.assertLess(time.time() - st, elapsed)
+        self.assertGreater(time.time() - st, 3)
         #
         # now if we touch the file, it needs to be regenerated
         st = time.time()
         with open('largefile.txt', 'a') as lf:
             lf.write('something')
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, elapsed - 1)
+        self.assertGreater(time.time() - st, 3)
         FileTarget('largefile.txt').remove('both')
+
+    def testRemovalOfIntermediateFiles(self):
+        # if we zap the file, it 
+        if os.path.isfile('midfile.txt'):
+            os.remove('midfile.txt')
+        if os.path.isfile('midfile.txt.file_info'):
+            os.remove('midfile.txt.file_info')
+        script = SoS_Script(r'''
+[10]
+
+# generate a file
+output: 'midfile.txt'
+
+python:
+    import time
+    time.sleep(3)
+    with open("${output}", 'w') as out:
+        for i in range(1000):
+            out.write('{}\n'.format(i))
+
+[20]
+output: 'finalfile.txt'
+sh:
+    cp ${input} ${output}
+    echo "MORE" >> ${output}
+''')
+        wf = script.workflow()
+        st = time.time()
+        Base_Executor(wf).run()
+        elapsed = time.time() - st
+        # sleep 3
+        self.assertGreater(elapsed, 3)
+        # 
+        # remove middle file, rerun
+        os.remove('midfile.txt')
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 3)
+        self.assertTrue(os.path.isfile('midfile.txt'))
+        # 
+        # we discard the signature, and change midfile rerun
+        st = time.time()
+        FileTarget('midfile.txt').remove('signature')
+        with open('midfile.txt', 'a') as mf:
+            mf.write('extra')
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 3)
+        #
+        # now if we touch the mid file, it needs to be regenerated
+        st = time.time()
+        with open('midfile.txt', 'a') as lf:
+            lf.write('something')
+        Base_Executor(wf).run()
+        self.assertGreater(time.time() - st, 3)
+        #
+        # if we zap the mid file, it does not need to be rerun
+        subprocess.call('sos remove midfile.txt --zap -y', shell=True)
+        st = time.time()
+        Base_Executor(wf).run()
+        self.assertLess(time.time() - st, elapsed - 2)
+        FileTarget('midfile.txt').remove('both')
+        FileTarget('midfile.txt.file_info').remove('both')
+        FileTarget('final.txt').remove('both')
 
     def testSignatureWithParameter(self):
         '''Test signature'''
