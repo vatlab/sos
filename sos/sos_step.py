@@ -1207,6 +1207,8 @@ class Step_Executor(Base_Step_Executor):
         self.pipe.send('tasks {} {}'.format(host, ' '.join(tasks)))
         # wait till the executor responde
         results = self.pipe.recv()
+        if results is None:
+            sys.exit(0)
         return results
 
     def run(self):

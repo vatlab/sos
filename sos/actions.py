@@ -329,7 +329,10 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                 p.start()
                 if shared:
                     res = q[0].recv()
-                    if isinstance(res, Exception):
+                    if res is None:
+                        # worker is killed
+                        sys.exit(0)
+                    elif isinstance(res, Exception):
                         raise res
                     env.sos_dict.quick_update(res['shared'])
                 else:
@@ -348,7 +351,9 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
             shared = {x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
             env.__pipe__.send((wf, targets, args, shared, env.config))
             res = env.__pipe__.recv()
-            if isinstance(res, Exception):
+            if res is None:
+                sys.exit(0)
+            elif isinstance(res, Exception):
                 raise res
             else:
                 env.sos_dict.quick_update(res['shared'])
