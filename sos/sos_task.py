@@ -319,6 +319,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
     if not tasks:
         tasks = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*.task'))
         all_tasks = [(os.path.basename(x)[:-5], os.path.getctime(x)) for x in tasks]
+        if not all_tasks:
+            return
     else:
         all_tasks = []
         for t in tasks:
