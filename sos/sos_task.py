@@ -609,8 +609,13 @@ class TaskEngine(threading.Thread):
             # default
             self.max_running_jobs = 10
         #
-        # multiple threads for job submission and status checking
-        self._thread_workers = concurrent.futures.ThreadPoolExecutor(max_workers=self.max_running_jobs + 1)
+        # multiple thread job submission does not work because the threads share the
+        # same namespace with variables such as sos_dict. Variables changed by
+        # one thread can be changed again by another thread, which makes it unsafe
+        # to submit jobs this way. Multi-processing is possible but that can be done
+        # later.
+        #
+        self._thread_workers = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         self._status_checker = None
         #
         if env.config['wait_for_task'] is not None:
