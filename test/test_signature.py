@@ -324,11 +324,13 @@ python:
         self.assertGreater(time.time() - st, 3)
         self.assertTrue(os.path.isfile('largefile.txt'))
         # 
-        # we discard the signature
+        # we discard the signature, the step would still be
+        # skipped because file signature will be calculated
+        # during verification
         st = time.time()
         FileTarget('largefile.txt').remove('signature')
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 3)
+        self.assertLess(time.time() - st, elapsed)
         #
         # now if we touch the file, it needs to be regenerated
         st = time.time()
