@@ -540,10 +540,6 @@ class Base_Executor:
             # for nested workflow, the input is specified by sos_run, not None.
             if idx == 0:
                 context['__step_output__'] = env.sos_dict['__step_output__']
-            # for regular workflow, the output of the last step has
-            # to exist (existence of signature does not count)
-            if idx + 1 == len(self.workflow.sections):
-                context['__hard_target__'] = True
 
             # NOTE: if a section has option 'shared', the execution of this step would
             # change dictionary, essentially making all later steps rely on this step.

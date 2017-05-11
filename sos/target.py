@@ -694,11 +694,6 @@ class RuntimeInfo:
             if not x.exists('any'):
                 return 'Missing target {}'.format(x)
         #
-        if '__hard_target__' in env.sos_dict:
-            for x in self.output_files:
-                if not x.exists('target'):
-                    return 'Missing hard target {}'.format(x)
-        #
         files_checked = {x.name():False for x in sig_files if not isinstance(x, Undetermined)}
         res = {'input': [], 'output': [], 'depends': [], 'local_input': [], 'local_output': [], 'vars': {}}
         cur_type = 'input'
