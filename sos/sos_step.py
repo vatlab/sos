@@ -329,7 +329,7 @@ class Base_Step_Executor:
         lead to the invalidation of the signature, which will then cause the
         re-execution of the step for any result from the step. '''
         #
-        if env.config['sig_mode'] == 'ignore' or env.config['run_mode'] != 'run':
+        if env.config['sig_mode'] == 'ignore' or env.config['run_mode'] == 'dryrun':
             return None
         env_vars = []
         for var in sorted(env.sos_dict['__signature_vars__']):
