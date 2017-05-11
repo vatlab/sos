@@ -85,6 +85,12 @@ a = 1
         self.assertEqual(subprocess.call('sos pack -o b.sar -i t_d1/ut_f4 --dryrun', shell=True), 0)
         self.assertFalse(os.path.isfile('b.sar'))
 
+    def testPackZapped(self):
+        '''Test archiving of zapped files'''
+        self.assertEqual(subprocess.call('sos remove t_d1/t_f2 --zap -y', shell=True), 0)
+        self.assertEqual(subprocess.call('sos pack -o a.sar', shell=True), 0)
+        self.assertEqual(subprocess.call('sos unpack a.sar -y', shell=True), 0)
+
     def testPackUnpack(self):
         '''Test pack command'''
         self.assertEqual(subprocess.call('sos pack -o a.sar', shell=True), 0)

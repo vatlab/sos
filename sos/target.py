@@ -346,6 +346,14 @@ class FileTarget(BaseTarget):
                     return m.strip()
                 except:
                     pass
+        elif os.path.isfile(self.fullname() + '.zapped'):
+            with open(self.fullname() + '.zapped') as md5:
+                try:
+                    line = md5.readline()
+                    _, _, _, m = line.rsplit('\t', 3)
+                    return m.strip()
+                except:
+                    pass                
         self._md5 = fileMD5(self.fullname())
         return self._md5
     #
@@ -378,7 +386,12 @@ class FileTarget(BaseTarget):
             with open(self.sig_file()) as md5:
                 line = md5.readline()
                 _, _, s, _ = line.rsplit('\t', 3)
-                return s.strip()
+                return int(s.strip())
+        elif os.path.isfile(self.fullname() + '.zapped'):
+            with open(self.fullname() + '.zapped') as md5:
+                line = md5.readline()
+                _, _, s, _ = line.rsplit('\t', 3)
+                return int(s.strip())
         else:
             raise RuntimeError('{} or its signature does not exist.'.format(self._filename))
 
@@ -387,6 +400,11 @@ class FileTarget(BaseTarget):
             return os.path.getmtime(self.fullname())
         elif os.path.isfile(self.sig_file()):
             with open(self.sig_file()) as md5:
+                line = md5.readline()
+                _, t, _, _ = line.rsplit('\t', 3)
+                return t.strip()
+        elif os.path.isfile(self.fullname() + '.zapped'):
+            with open(self.fullname() + '.zapped') as md5:
                 line = md5.readline()
                 _, t, _, _ = line.rsplit('\t', 3)
                 return t.strip()

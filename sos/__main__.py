@@ -1289,7 +1289,7 @@ def cmd_pack(args, unknown_args):
         sys.exit(1)
     #
     # get information about files
-    file_sizes = {x: os.path.getsize(x) for x in tracked_files}
+    file_sizes = {x: FileTarget(x).size() for x in tracked_files}
     # getting file size to create progress bar
     total_size = sum(file_sizes.values())
 
@@ -1364,8 +1364,13 @@ def cmd_pack(args, unknown_args):
             env.logger.info('Adding {}'.format(os.path.basename(f)))
             archive.add(f, arcname='scripts/' + os.path.basename(f))
         for f in tracked_files:
+            zapped = False
             if not os.path.isfile(f):
-                continue
+                if os.path.isfile(f + '.zapped'):
+                    f = f + '.zapped'
+                    zapped = True
+                else:
+                    continue
             env.logger.info('Adding {}'.format(f))
             if FileTarget(f).is_external():
                 # external files
@@ -1537,6 +1542,8 @@ def cmd_unpack(args, unknown_args):
                 # runtime file?
                 if os.path.isfile(dest_file):
                     # signature files should not have md5
+                    if dest_file.endswith('.zapped'):
+                        continue
                     if fileMD5(dest_file) == md5[f.name]:
                         if not is_runtime:
                             env.logger.info('Ignore identical {}'.format(f.name))
