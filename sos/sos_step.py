@@ -651,22 +651,23 @@ class Base_Step_Executor:
         return task_id
 
     def wait_for_results(self):
-        if 'group_by' in env.sos_dict['_runtime']:
-            if isinstance(env.sos_dict['_runtime']['group_by'], int):
-                group_size = env.sos_dict['_runtime']['group_by']
-                group_workers = 1
-            elif isinstance(env.sos_dict['_runtime']['group_by'], Sequence):
-                if len(env.sos_dict['_runtime']['group_by']) != 2:
-                    raise ValueError('Value of runtime option group_by can be a number of a pair of numbers: {} provided'.format(env.sos_dict['_runtime']['group_by']))
-                group_size = env.sos_dict['_runtime']['group_by'][0]
-                group_workers = env.sos_dict['_runtime']['group_by'][1]
+        if 'trunk_size' in env.sos_dict['_runtime']:
+            if not isinstance(env.sos_dict['_runtime']['trunk_size'], int):
+                raise ValueError('An integer value is expected for runtime option trunk, {} provided'.format(env.sos_dict['_runtime']['trunk_size']))
+            trunk_size = env.sos_dict['_runtime']['trunk_size']
         else:
-            group_size = 1
-            group_workers = 1
+            trunk_size = 1
+        if 'trunk_workers' in env.sos_dict['_runtime']:
+            if not isinstance(env.sos_dict['_runtime']['trunk_workers'], int):
+                raise ValueError('An integer value is expected for runtime option trunk_workers, {} provided'.format(env.sos_dict['_runtime']['trunk_workers']))
+            trunk_workers = env.sos_dict['_runtime']['trunk_workers']
+        else:
+            trunk_workers = 0
         #
         # save tasks
         ids = []
-        if group_size == 1 or len(self._task_defs) == 1:
+        # single jobs
+        if trunk_size == 1 or len(self._task_defs) == 1:
             for task_id, taskdef in self._task_defs:
                 job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
                 taskdef.save(job_file)
@@ -674,17 +675,17 @@ class Base_Step_Executor:
         else:
             master = None
             for task_id, taskdef in self._task_defs:
-                if master is not None and master.num_tasks() == group_size:
-                    job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.name + '.def')
-                    ids.append(master.name)
+                if master is not None and master.num_tasks() == trunk_size:
+                    job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
+                    ids.append(master.ID)
                     master.save(job_file)
                     master = None
                 if master is None:
-                    master = MasterTaskParams(task_id, group_workers)
+                    master = MasterTaskParams(trunk_workers)
                 master.push(task_id, taskdef)
             if master is not None:
-                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.name + '.def')
-                ids.append(master.name)
+                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
+                ids.append(master.ID)
                 master.save(job_file)
 
         # waiting for results of specified IDs

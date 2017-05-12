@@ -66,15 +66,14 @@ class TaskParams(object):
         return self.name
 
 class MasterTaskParams(TaskParams):
-    def __init__(self, name, num_workers=1):
-        self.name = 'M_' + name
+    def __init__(self, num_workers=0):
+        self.ID = 'M_0' 
         self.task = ''
         self.sos_dict = {'_runtime': {}, '_input': [], '_output': [], '_depends': []}
         self.sigil = None
         self.num_workers = num_workers
         # a collection of tasks that will be executed by the master task
         self.task_stack = []
-        env.logger.trace('Create a master task with first ID {}'.format(name))
 
     def num_tasks(self):
         return len(self.task_stack)
@@ -94,17 +93,17 @@ class MasterTaskParams(TaskParams):
         # 
         # walltime
         if not self.task_stack:
-            for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem', 'preserved_vars'):
+            for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem', 'preserved_vars', 'name'):
                 if key in params.sos_dict['_runtime'] and params.sos_dict['_runtime'][key] is not None:
                     self.sos_dict['_runtime'][key] = params.sos_dict['_runtime'][key]
         else:
-            for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem'):
+            for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem', 'name'):
                 val0 = self.task_stack[0][1].sos_dict['_runtime'].get(key, None)
                 val = params.sos_dict['_runtime'].get(key, None)
                 if val0 != val:
                     raise ValueError('All tasks should have the same resource {}'.format(key))
                 #
-                nrow = (len(self.task_stack) + 1 ) // self.num_workers + 1
+                nrow = len(self.task_stack) if self.num_workers == 0 else ((len(self.task_stack) + 1) // self.num_workers + (1 if len(self.task_stack) % self.num_workers == 0 else 1))
                 if self.num_workers == 1:
                     ncol = 1
                 elif nrow > 1:
@@ -120,7 +119,9 @@ class MasterTaskParams(TaskParams):
                 elif key == 'mem':
                     self.sos_dict['_runtime']['mem'] = ncol * expand_size(val0)
                 elif key == 'cores':
-                    self.sos_dict['_runtime']['mem'] = ncol * val0
+                    self.sos_dict['_runtime']['cores'] = ncol * val0
+                elif key == 'name':
+                    self.sos_dict['_runtime']['name'] = '{}_{}'.format(val0, len(self.task_stack) + 1)
         #
         # input, output, preserved vars etc
         for key in ['_input', '_output', '_depends']:
@@ -129,7 +130,7 @@ class MasterTaskParams(TaskParams):
         #
         self.task_stack.append((task_id, params))
         #
-        self.name = 'M_{}_{}'.format(self.task_stack[0][0], len(self.task_stack))
+        self.ID = 'M{}_{}'.format(len(self.task_stack), self.task_stack[0][0])
 
         
 def loadTask(filename):
