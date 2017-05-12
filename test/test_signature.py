@@ -416,7 +416,7 @@ output: 'myfile.txt'
 # additional comment
 python:
     import time
-    time.sleep(3)
+    time.sleep(5)
     with open(${output!r}, 'w') as tmp:
         tmp.write('${gvar}')
 
@@ -424,7 +424,8 @@ python:
         st = time.time()
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 2.5)
+        elapsed = time.time() - st
+        self.assertGreater(elapsed, 4.5)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '10')
         #
@@ -434,7 +435,7 @@ python:
         Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
-        self.assertGreater(time.time() - st, 2.5)
+        self.assertGreater(time.time() - st, 4.5)
         #
         # do it again, signature should be effective
         st = time.time()
@@ -442,7 +443,7 @@ python:
         Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
-        self.assertLess(time.time() - st, 2.5)
+        self.assertLess(time.time() - st, elapsed)
 
         #
         script = SoS_Script(r'''
@@ -454,7 +455,7 @@ output: 'myfile.txt'
 # additional comment
 python:
     import time
-    time.sleep(3)
+    time.sleep(5)
     with open(${output!r}, 'w') as tmp:
         tmp.write('${gvar}')
 
@@ -462,7 +463,7 @@ python:
         st = time.time()
         wf = script.workflow()
         Base_Executor(wf).run()
-        self.assertGreater(time.time() - st, 2.5)
+        self.assertGreater(time.time() - st, 4.5)
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '10')
         #
@@ -472,7 +473,7 @@ python:
         Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
-        self.assertGreater(time.time() - st, 2.5)
+        self.assertGreater(time.time() - st, 4.5)
         #
         # do it again, signature should be effective
         st = time.time()
@@ -480,7 +481,7 @@ python:
         Base_Executor(wf, args=['--gvar', '20']).run()
         with open('myfile.txt') as tmp:
             self.assertEqual(tmp.read(), '20')
-        self.assertLess(time.time() - st, 2.5)
+        self.assertLess(time.time() - st, elapsed)
         FileTarget('myfile.txt').remove('both')
 
 
