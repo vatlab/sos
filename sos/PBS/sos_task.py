@@ -24,7 +24,7 @@ import os
 import pickle
 from sos.utils import env
 from sos.sos_eval import interpolate
-from sos.sos_task import TaskEngine
+from sos.sos_task import TaskEngine, loadTask
 from sos.pattern import extract_pattern
 
 class PBS_TaskEngine(TaskEngine):
@@ -71,9 +71,8 @@ class PBS_TaskEngine(TaskEngine):
         # read the task file and look for runtime info
         # 
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.task')
-        with open(task_file, 'rb') as task:
-            params = pickle.load(task)
-            task, sos_dict, sigil = params.data
+        params = loadTask(task_file)
+        task, sos_dict, sigil = params.task, params.sos_dict, params.sigil
 
         # for this task, we will need walltime, nodes, cores, mem
         # however, these could be fixed in the job template and we do not need to have them all in the runtime
