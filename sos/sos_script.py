@@ -976,12 +976,6 @@ for __n, __v in {}.items():
                 if 'global' in [x[0] for x in step_names]:
                     if step_options:
                         parsing_errors.append(lineno, line, 'Global section does not accept any option')
-                    global_section = [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]
-                    if global_section:
-                        if global_section[0][1].statements:
-                            parsing_errors.append(lineno, line, 'Cannot define a global section with a non-empty implicit global section')
-                        # if there is already an global section???
-                        self.sections.pop(global_section[0][0])
                     self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
                 else:
                     self.sections.append(SoS_Step(self.content, step_names, step_options, global_sigil=self.global_sigil))
@@ -1125,24 +1119,20 @@ for __n, __v in {}.items():
             raise parsing_errors
         #
         # as the last step, let us insert the global section to all sections
-        global_section = [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]
-        if global_section:
-            for statement in global_section[0][1].statements:
+        for idx,sec in [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]:
+            for statement in sec.statements:
                 if statement[0] == '=':
                     self.global_def += '{} = {}\n'.format(statement[1], statement[2])
                 else:
                     self.global_def += statement[1]
-            # remove the global section after inserting it to each step of the process
-            self.sections.pop(global_section[0][0])
+        # remove the global section after inserting it to each step of the process
+        self.sections = [x for x in self.sections if not x.is_global]
         # if there is no section in the script, we create a default section with global
         # definition being the content.
         if not self.sections:
             self.sections.append(SoS_Step(self.content, [('default', None, None)], global_sigil=self.global_sigil))
-            if global_section:
-                self.sections[0].statements = global_section[0][1].statements
-            else:
-                self.sections[0].statements = []
-            self.global_def = ''
+            #self.sections[0].statements = self.global_def
+            #self.global_def = ''
         #
         for section in self.sections:
             # for nested / included sections, we need to keep their own global definition
