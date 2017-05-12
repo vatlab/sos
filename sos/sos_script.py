@@ -1125,14 +1125,15 @@ for __n, __v in {}.items():
                     self.global_def += '{} = {}\n'.format(statement[1], statement[2])
                 else:
                     self.global_def += statement[1]
-        # remove the global section after inserting it to each step of the process
-        self.sections = [x for x in self.sections if not x.is_global]
         # if there is no section in the script, we create a default section with global
         # definition being the content.
-        if not self.sections:
+        if not [x for x in self.sections if not x.is_global]:
             self.sections.append(SoS_Step(self.content, [('default', None, None)], global_sigil=self.global_sigil))
-            #self.sections[0].statements = self.global_def
-            #self.global_def = ''
+            for section in [x for x in self.sections if x.is_global]:
+                self.sections[-1].statements.extend(section.statements)
+                self.global_def = ''
+        # remove the global section after inserting it to each step of the process
+        self.sections = [x for x in self.sections if not x.is_global]
         #
         for section in self.sections:
             # for nested / included sections, we need to keep their own global definition
