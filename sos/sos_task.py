@@ -30,7 +30,8 @@ from tokenize import generate_tokens
 from collections.abc import Sequence
 import concurrent.futures
 
-from sos.utils import env, short_repr, get_traceback, sample_of_file, tail_of_file, linecount_of_file
+from sos.utils import env, short_repr, get_traceback, sample_of_file, tail_of_file, linecount_of_file,
+    format_HHMMSS, expand_time, expand_size
 from sos.sos_eval import SoS_exec
 
 from .target import textMD5, RuntimeInfo, Undetermined, FileTarget
@@ -60,13 +61,76 @@ class TaskParams(object):
             except Exception as e:
                 env.logger.warning(e)
                 raise
-
     def __repr__(self):
         return self.name
 
+def MasterTaskParams(TaskParams):
+    def __init__(self, name, num_workers=1):
+        self.name = name
+        self.task = ''
+        self.sos_dict = {'_runtime': {}, '_input': [], '_output': [], '_depends': []}
+        self.sigil = None
+        self.num_workers = num_workers
+        # a collection of tasks that will be executed by the master task
+        self.task_stack = []
+
+    def push(self, params):
+        # update walltime, cores, and mem
+        # right now we require all tasks to have same resource requirment, which is
+        # quite natural because they are from the same step
+        #
+        # update input, output, and depends
+        #
+        # sigil
+        if self.sigil is None:
+            self.sigil = params.sigil
+        elif self.sigil != params.sigil:
+            raise ValueError('Cannot push a task with different sigil {}'.format(params.sigil))
+        # 
+        # walltime
+        if not self.task_stack:
+            for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem', 'preserved_vars'):
+                if key in params.sos_dict['_runtime'] and params.sos_dict['_runtime'][key] is not None:
+                    self.sos_dict['_runtime'][key] = params.sos_dict['_runtime'][key]
+        else:
+            for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem'):
+                val0 = self.task_stack[0].sos_dict['_runtime'].get(key, None)
+                val = params.sos_dict['_runtime'].get(key, None)
+                if val0 != val:
+                    raise ValueError('All tasks should have the same resource {}'.format(key))
+                #
+                nrow = (len(self.task_stack) + 1 ) // self.num_workers + 1
+                if self.num_workers in (1, 2):
+                    ncol = 1
+                elif nrow > 1:
+                    ncol = self.num_workers - 1
+                else:
+                    ncol = len(self.task_stack)
+
+                if val0 is None:
+                    continue
+                elif key == 'walltime':
+                    # if define walltime
+                    self.sos_dict['_runtime']['walltime'] = format_HHMMSS(nrow * expand_time(val0))
+                elif key == 'mem':
+                    self.sos_dict['_runtime']['mem'] = ncol * expand_size(val0)
+                elif key == 'cores':
+                    self.sos_dict['_runtime']['mem'] = ncol * val0
+        #
+        # input, output, preserved vars etc
+        for key in ['_input', '_output', '_depends']:
+            if key in params.sos_dict and isinstance(params.sos_dict[key], list):
+                self.sos_dict[key].extend(params.sos_dict[key])
+        #
+        self.task_stack.push(params)
+        #
+        self.name = '{}_{}'.format(self.task_stack[0].name, len(self.task_stack))
+
+        
 def loadTask(filename):
     with open(filename, 'rb') as task:
         return pickle.load(task)
+
 
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
     resource_monitor_interval=60):
@@ -76,9 +140,32 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     process or remotely on a different machine.'''
     # start a monitoring file, which would be killed after the job
     # is done (killed etc)
+    if isinstance(task_id, str):
+        task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+        params = loadTask(task_file)
+    else:
+        # subtask
+        params = task_id
 
-    task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
-    params = loadTask(task_file)
+    if hasattr(params.task_stack):
+        # if this is a master task, calling each sub task
+        from multiprocessing.pool import ProcessPool as Pool
+        p = Pool(params.num_workers - 1)
+        try:
+            result = p.map(execute_task, params.task_stack)
+        except Exception as e:
+            if env.verbosity > 2:
+                sys.stderr.write(get_traceback())
+            env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
+            return {'ret_code': 1, 'exception': e}
+        #
+        # now we collect result
+        all_res = {'ret_code': 0, 'output': {}}
+        for x in result:
+            all_res['ret_code'] += x['ret_code']
+            all_res['output'].update(x['output'])
+        return all_res
+        
     task, sos_dict, sigil = params.task, params.sos_dict, params.sigil
 
     if '_runtime' not in sos_dict:
@@ -225,7 +312,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         if env.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
-        return {'ret_code': 1, 'exception': e, 'path': os.environ['PATH']}
+        return {'ret_code': 1, 'exception': e}
     except KeyboardInterrupt:
         env.logger.error('{} ``interrupted``'.format(task_id))
         raise
@@ -392,8 +479,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
             task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.task')
             if not os.path.isfile(task_file):
                 continue
-            with open(task_file, 'rb') as task:
-                params = pickle.load(task)
+            params = loadTask(task_file)
             print('TASK:\n=====')
             print(params.task)
             print()
