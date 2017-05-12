@@ -647,17 +647,64 @@ class Base_Step_Executor:
             task_vars['_output'], task_vars['_depends'],
             task_vars['__signature_vars__'], task_vars).sig_id
 
-        job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
-        taskdef.save(job_file)
+        self._task_defs.append((task_id, taskdef))
         return task_id
 
     def wait_for_results(self):
-        results = self.pending_tasks([x for x in self.proc_results if isinstance(x, str)])
+        if 'group_by' in env.sos_dict['_runtime']:
+            if isinstance(env.sos_dict['_runtime']['group_by'], int):
+                group_size = env.sos_dict['_runtime']['group_by']
+                group_workers = 1
+            elif isinstance(env.sos_dict['_runtime']['group_by'], Sequence):
+                if len(env.sos_dict['_runtime']['group_by']) != 2:
+                    raise ValueError('Value of runtime option group_by can be a number of a pair of numbers: {} provided'.format(env.sos_dict['_runtime']['group_by']))
+                group_size = env.sos_dict['_runtime']['group_by'][0]
+                group_workers = env.sos_dict['_runtime']['group_by'][1]
+        else:
+            group_size = 1
+            group_workers = 1
+        #
+        # save tasks
+        ids = []
+        if group_size == 1 or len(self._task_defs) == 1:
+            for task_id, taskdef in self._task_defs:
+                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
+                taskdef.save(job_file)
+                ids.append(task_id)
+        else:
+            master = None
+            for task_id, taskdef in self._task_defs:
+                if master is None:
+                    master = MasterTaskParams()
+                if master.num_tasks() < group_size:
+                    master.push(task_id, taskdef)
+                else:
+                    job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', 'M' + task_id + '.def')
+                    master.save(job_file)
+                    ids.append('M' + task_id)
+                    master = None
+            if master is not None:
+                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', 'M' + task_id + '.def')
+                ids.append('M' + task_id)
+                master.save(job_file)
+
+        # waiting for results of specified IDs
+        results = self.pending_tasks(ids)
         for idx, task in enumerate(self.proc_results):
             # if it is done
             if isinstance(task, dict):
                 continue
-            self.proc_results[idx] = results[task]
+            if task in results:
+                self.proc_results[idx] = results[task]
+            else:
+                # can be a subtask
+                for m in results:
+                    if 'sub_tasks' in m and task in m['sub_tasks']:
+                        self.proc_results[idx] = m['sub_tasks'][task]
+        #
+        # check if all have results?
+        if any(isinstance(x, str) for x in self.proc_results):
+            raise RuntimeError('Failed to get results for tasks {}'.format(', '.join(x for x in self.proc_results if isinstance(x, str))))
 
     
     def log(self, stage=None, msg=None):
@@ -1187,6 +1234,7 @@ class Step_Executor(Base_Step_Executor):
         # __pipe__ is available to all the actions that will be executed
         # in the step
         env.__pipe__ = pipe
+        self._task_defs = []
 
     def pending_tasks(self, tasks):
         env.logger.debug('Send {}'.format(tasks))

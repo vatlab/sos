@@ -74,7 +74,7 @@ def MasterTaskParams(TaskParams):
         # a collection of tasks that will be executed by the master task
         self.task_stack = []
 
-    def push(self, params):
+    def push(self, task_id, params):
         # update walltime, cores, and mem
         # right now we require all tasks to have same resource requirment, which is
         # quite natural because they are from the same step
@@ -94,7 +94,7 @@ def MasterTaskParams(TaskParams):
                     self.sos_dict['_runtime'][key] = params.sos_dict['_runtime'][key]
         else:
             for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem'):
-                val0 = self.task_stack[0].sos_dict['_runtime'].get(key, None)
+                val0 = self.task_stack[0][1].sos_dict['_runtime'].get(key, None)
                 val = params.sos_dict['_runtime'].get(key, None)
                 if val0 != val:
                     raise ValueError('All tasks should have the same resource {}'.format(key))
@@ -122,9 +122,9 @@ def MasterTaskParams(TaskParams):
             if key in params.sos_dict and isinstance(params.sos_dict[key], list):
                 self.sos_dict[key].extend(params.sos_dict[key])
         #
-        self.task_stack.push(params)
+        self.task_stack.push((task_id, params))
         #
-        self.name = '{}_{}'.format(self.task_stack[0].name, len(self.task_stack))
+        self.name = 'M{}_{}'.format(self.task_stack[0][-1], len(self.task_stack))
 
         
 def loadTask(filename):
@@ -152,7 +152,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         from multiprocessing.pool import ProcessPool as Pool
         p = Pool(params.num_workers - 1)
         try:
-            result = p.map(execute_task, params.task_stack)
+            result = p.map(execute_task, [x[1] for x in params.task_stack])
         except Exception as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
@@ -160,10 +160,11 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
             return {'ret_code': 1, 'exception': e}
         #
         # now we collect result
-        all_res = {'ret_code': 0, 'output': {}}
-        for x in result:
+        all_res = {'ret_code': 0, 'output': {}, 'subtasks': {}}
+        for tid,x in zip(params.task_stack, result):
             all_res['ret_code'] += x['ret_code']
             all_res['output'].update(x['output'])
+            all_res['subtasks'][tid[0]] = x
         return all_res
         
     task, sos_dict, sigil = params.task, params.sos_dict, params.sigil
