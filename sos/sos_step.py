@@ -637,11 +637,9 @@ class Base_Step_Executor:
         # save task to a file
         taskdef = TaskParams(
             name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
-            data = (
-                self.step.task,          # task
-                task_vars,
-                self.step.sigil
-            )
+            task = self.step.task,          # task
+            sos_dict = task_vars,
+            sigil = self.step.sigil
         )
         # if no output (thus no signature)
         # temporarily create task signature to obtain sig_id

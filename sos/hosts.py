@@ -33,7 +33,7 @@ from collections.abc import Sequence
 
 from .utils import env, pickleable, short_repr, load_config_files, expand_size, format_HHMMSS, expand_time
 from .sos_eval import interpolate, Undetermined
-from .sos_task import BackgroundProcess_TaskEngine, TaskParams
+from .sos_task import BackgroundProcess_TaskEngine, TaskParams, loadTask
 
 #
 # A 'queue' is defined by queue configurations in SoS configuration files.
@@ -129,9 +129,8 @@ class LocalHost:
             shutil.copyfile(def_file, task_file)
         else:
             # add server restriction on task file
-            with open(def_file, 'rb') as task:
-                params = pickle.load(task)
-                task_vars = params.data[1]
+            params = loadTask(def_file)
+            task_vars = params.sos_dict
 
             task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
             task_vars['_runtime']['max_cores'] = self.config.get('max_cores', None)
@@ -154,18 +153,11 @@ class LocalHost:
 
             new_param = TaskParams(
                 name = params.name,
-                data = (
-                    params.data[0],
-                    task_vars,
-                    params.data[2],
-                )
+                task = params.task,
+                sos_dict = params.sos_dict,
+                sigil = params.sigil
             )
-            with open(task_file, 'wb') as jf:
-                try:
-                    pickle.dump(new_param, jf)
-                except Exception as e:
-                    env.logger.warning(e)
-                    raise
+            new_param.save(task_file)
         return True
 
     def send_task_file(self, task_file):
@@ -386,9 +378,8 @@ class RemoteHost:
 
     def _prepare_task(self, task_id):
         def_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
-        with open(def_file, 'rb') as task:
-            params = pickle.load(task)
-            task_vars = params.data[1]
+        params = loadTask(def_file)
+        task_vars = params.sos_dict
 
         if self.config.get('max_mem', None) is not None and task_vars['_runtime'].get('mem', None) is not None \
                 and self.config['max_mem'] < task_vars['_runtime']['mem']:
@@ -462,20 +453,12 @@ class RemoteHost:
 
         new_param = TaskParams(
             name = params.name,
-            data = (
-                params.data[0],
-                task_vars,
-                params.data[2],
-            )
+            task = params.task,
+            sos_dict = params.sos_dict,
+            sigil = params.sigil
         )
         task_file = os.path.join(self.task_dir, task_id + '.task')
-        with open(task_file, 'wb') as jf:
-            try:
-                pickle.dump(new_param, jf)
-            except Exception as e:
-                env.logger.warning(e)
-                raise
-
+        new_param.save(task_file)
         self.send_task_file(task_id + '.task')
 
     def send_task_file(self, task_file):
@@ -567,9 +550,8 @@ class RemoteHost:
             # do we need to copy files? We need to consult original task file
             # not the converted one
             task_file = os.path.join(sys_task_dir, task_id + '.def')
-            with open(task_file, 'rb') as task:
-                params = pickle.load(task)
-                job_dict = params.data[1]
+            params = loadTask(task_file)
+            job_dict = params.sos_dict
             #
             if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined):
                 self._receive_from_host(job_dict['_output'])

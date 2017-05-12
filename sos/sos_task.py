@@ -47,9 +47,11 @@ class TaskParams(object):
     '''A parameter object that encaptulates parameters sending to
     task executors. This would makes the output of workers, especially
     in the web interface much cleaner (issue #259)'''
-    def __init__(self, name, data):
+    def __init__(self, name, task, sos_dict, sigil):
         self.name = name
-        self.data = data
+        self.task = task
+        self.sos_dict = sos_dict
+        self.sigil = sigil
 
     def save(self, job_file):
         with open(job_file, 'wb') as jf:
@@ -62,6 +64,10 @@ class TaskParams(object):
     def __repr__(self):
         return self.name
 
+def loadTask(filename):
+    with open(filename, 'rb') as task:
+        return pickle.load(task)
+
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
     resource_monitor_interval=60):
     '''A function that execute specified task within a local dictionary
@@ -72,9 +78,8 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     # is done (killed etc)
 
     task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
-    with open(task_file, 'rb') as task:
-        params = pickle.load(task)
-    task, sos_dict, sigil = params.data
+    params = loadTask(task_file)
+    task, sos_dict, sigil = params.task, params.sos_dict, params.sigil
 
     if '_runtime' not in sos_dict:
         sos_dict['_runtime'] = {}
@@ -390,10 +395,10 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
             with open(task_file, 'rb') as task:
                 params = pickle.load(task)
             print('TASK:\n=====')
-            print(params.data[0])
+            print(params.task)
             print()
             print('ENVIRONMENT:\n============')
-            job_vars = params.data[1]
+            job_vars = params.sos_dict
             for k in sorted(job_vars.keys()):
                 v = job_vars[k]
                 print('{:22}{}'.format(k, short_repr(v) if verbosity == 3 else pprint.pformat(v)))
@@ -436,9 +441,9 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
             with open(task_file, 'rb') as task:
                 params = pickle.load(task)
             row('Task')
-            row(td='<pre style="text-align:left">{}</pre>'.format(params.data[0]))
+            row(td='<pre style="text-align:left">{}</pre>'.format(params.task))
             row('Environment')
-            job_vars = params.data[1]
+            job_vars = params.sos_dict
             for k in sorted(job_vars.keys()):
                 v = job_vars[k]
                 if not k.startswith('__') and not k == 'CONFIG':
