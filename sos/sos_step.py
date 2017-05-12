@@ -36,7 +36,7 @@ from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of
 from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
-from .sos_task import TaskParams
+from .sos_task import TaskParams, MasterTaskParams
 
 __all__ = []
 
@@ -674,18 +674,17 @@ class Base_Step_Executor:
         else:
             master = None
             for task_id, taskdef in self._task_defs:
-                if master is None:
-                    master = MasterTaskParams()
-                if master.num_tasks() < group_size:
-                    master.push(task_id, taskdef)
-                else:
-                    job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', 'M' + task_id + '.def')
+                if master is not None and master.num_tasks() == group_size:
+                    job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.name + '.def')
+                    ids.append(master.name)
                     master.save(job_file)
-                    ids.append('M' + task_id)
                     master = None
+                if master is None:
+                    master = MasterTaskParams(task_id, group_workers)
+                master.push(task_id, taskdef)
             if master is not None:
-                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', 'M' + task_id + '.def')
-                ids.append('M' + task_id)
+                job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.name + '.def')
+                ids.append(master.name)
                 master.save(job_file)
 
         # waiting for results of specified IDs
@@ -698,9 +697,9 @@ class Base_Step_Executor:
                 self.proc_results[idx] = results[task]
             else:
                 # can be a subtask
-                for m in results:
-                    if 'sub_tasks' in m and task in m['sub_tasks']:
-                        self.proc_results[idx] = m['sub_tasks'][task]
+                for mid, mres in results.items():
+                    if 'subtasks' in mres and task in mres['subtasks']:
+                        self.proc_results[idx] = mres['subtasks'][task]
         #
         # check if all have results?
         if any(isinstance(x, str) for x in self.proc_results):

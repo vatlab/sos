@@ -30,7 +30,7 @@ from tokenize import generate_tokens
 from collections.abc import Sequence
 import concurrent.futures
 
-from sos.utils import env, short_repr, get_traceback, sample_of_file, tail_of_file, linecount_of_file,
+from sos.utils import env, short_repr, get_traceback, sample_of_file, tail_of_file, linecount_of_file, \
     format_HHMMSS, expand_time, expand_size
 from sos.sos_eval import SoS_exec
 
@@ -61,18 +61,23 @@ class TaskParams(object):
             except Exception as e:
                 env.logger.warning(e)
                 raise
+
     def __repr__(self):
         return self.name
 
-def MasterTaskParams(TaskParams):
+class MasterTaskParams(TaskParams):
     def __init__(self, name, num_workers=1):
-        self.name = name
+        self.name = 'M_' + name
         self.task = ''
         self.sos_dict = {'_runtime': {}, '_input': [], '_output': [], '_depends': []}
         self.sigil = None
         self.num_workers = num_workers
         # a collection of tasks that will be executed by the master task
         self.task_stack = []
+        env.logger.trace('Create a master task with first ID {}'.format(name))
+
+    def num_tasks(self):
+        return len(self.task_stack)
 
     def push(self, task_id, params):
         # update walltime, cores, and mem
@@ -100,10 +105,10 @@ def MasterTaskParams(TaskParams):
                     raise ValueError('All tasks should have the same resource {}'.format(key))
                 #
                 nrow = (len(self.task_stack) + 1 ) // self.num_workers + 1
-                if self.num_workers in (1, 2):
+                if self.num_workers == 1:
                     ncol = 1
                 elif nrow > 1:
-                    ncol = self.num_workers - 1
+                    ncol = self.num_workers
                 else:
                     ncol = len(self.task_stack)
 
@@ -122,9 +127,9 @@ def MasterTaskParams(TaskParams):
             if key in params.sos_dict and isinstance(params.sos_dict[key], list):
                 self.sos_dict[key].extend(params.sos_dict[key])
         #
-        self.task_stack.push((task_id, params))
+        self.task_stack.append((task_id, params))
         #
-        self.name = 'M{}_{}'.format(self.task_stack[0][-1], len(self.task_stack))
+        self.name = 'M_{}_{}'.format(self.task_stack[0][0], len(self.task_stack))
 
         
 def loadTask(filename):
@@ -143,16 +148,19 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     if isinstance(task_id, str):
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
         params = loadTask(task_file)
+        subtask = False
     else:
         # subtask
-        params = task_id
+        subtask = True
+        task_id, params = task_id
+        env.logger.trace('Executing subtask {}'.format(task_id))
 
-    if hasattr(params.task_stack):
+    if hasattr(params, 'task_stack'):
         # if this is a master task, calling each sub task
-        from multiprocessing.pool import ProcessPool as Pool
-        p = Pool(params.num_workers - 1)
+        from multiprocessing.pool import Pool
+        p = Pool(params.num_workers)
         try:
-            result = p.map(execute_task, [x[1] for x in params.task_stack])
+            results = p.map(execute_task, params.task_stack)
         except Exception as e:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
@@ -161,7 +169,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         #
         # now we collect result
         all_res = {'ret_code': 0, 'output': {}, 'subtasks': {}}
-        for tid,x in zip(params.task_stack, result):
+        for tid, x in zip(params.task_stack, results):
             all_res['ret_code'] += x['ret_code']
             all_res['output'].update(x['output'])
             all_res['subtasks'][tid[0]] = x
@@ -185,7 +193,10 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         env.config['sig_mode'] = sigmode
     env.config['run_mode'] = runmode
 
-    env.logger.info('{} ``started``'.format(task_id))
+    if subtask:
+        env.logger.debug('{} ``started``'.format(task_id))
+    else:
+        env.logger.info('{} ``started``'.format(task_id))
     env.sos_dict.quick_update(sos_dict)
 
     skipped = False
@@ -324,7 +335,10 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         sig.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
             env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
         sig.release()
-    env.logger.info('{} ``completed``'.format(task_id))
+    if subtask:
+        env.logger.debug('{} ``completed``'.format(task_id))
+    else:
+        env.logger.info('{} ``completed``'.format(task_id))
     return {'ret_code': 0, 'output': {} if env.sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in env.sos_dict['_output'] if isinstance(x, str)}}
 
 
