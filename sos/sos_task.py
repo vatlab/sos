@@ -157,15 +157,29 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
 
     if hasattr(params, 'task_stack'):
         # if this is a master task, calling each sub task
-        from multiprocessing.pool import Pool
-        p = Pool(params.num_workers)
-        try:
-            results = p.map(execute_task, params.task_stack)
-        except Exception as e:
-            if env.verbosity > 2:
-                sys.stderr.write(get_traceback())
-            env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
-            return {'ret_code': 1, 'exception': e}
+        if params.num_workers > 1:
+            from multiprocessing.pool import Pool
+            p = Pool(params.num_workers)
+            try:
+                results = p.map(execute_task, params.task_stack)
+            except Exception as e:
+                if env.verbosity > 2:
+                    sys.stderr.write(get_traceback())
+                env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
+                return {'ret_code': 1, 'exception': e}
+        else:
+            results = []
+            for tid, tdef in params.task_stack:
+                try:
+                    res = execute_task((tid, tdef), verbosity=verbosity, runmode=runmode,
+                        sigmode=sigmode, monitor_interval=monitor_interval,
+                        resource_monitor_interval=resource_monitor_interval)
+                    results.append(res)
+                except:
+                    if env.verbosity > 2:
+                        sys.stderr.write(get_traceback())
+                    env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
+                    results.append({'ret_code': 1, 'exception': e})
         #
         # now we collect result
         all_res = {'ret_code': 0, 'output': {}, 'subtasks': {}}
