@@ -259,6 +259,7 @@ class Base_Step_Executor:
     #
     def __init__(self, step):
         self.step = step
+        self._task_defs = []
 
     def expand_input_files(self, value, *args):
         if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
@@ -687,6 +688,9 @@ class Base_Step_Executor:
                 job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', master.ID + '.def')
                 ids.append(master.ID)
                 master.save(job_file)
+
+        # reset task definitions
+        self._task_defs = []
 
         # waiting for results of specified IDs
         results = self.pending_tasks(ids)
@@ -1234,7 +1238,6 @@ class Step_Executor(Base_Step_Executor):
         # __pipe__ is available to all the actions that will be executed
         # in the step
         env.__pipe__ = pipe
-        self._task_defs = []
 
     def pending_tasks(self, tasks):
         env.logger.debug('Send {}'.format(tasks))
