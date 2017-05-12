@@ -103,13 +103,13 @@ class MasterTaskParams(TaskParams):
                 if val0 != val:
                     raise ValueError('All tasks should have the same resource {}'.format(key))
                 #
-                nrow = len(self.task_stack) if self.num_workers == 0 else ((len(self.task_stack) + 1) // self.num_workers + (1 if len(self.task_stack) % self.num_workers == 0 else 1))
-                if self.num_workers == 1:
+                nrow = len(self.task_stack) if self.num_workers <= 1 else ((len(self.task_stack) + 1) // self.num_workers + (0 if (len(self.task_stack) + 1) % self.num_workers == 0 else 1))
+                if self.num_workers == 0:
                     ncol = 1
                 elif nrow > 1:
                     ncol = self.num_workers
                 else:
-                    ncol = len(self.task_stack)
+                    ncol = len(self.task_stack) + 1
 
                 if val0 is None:
                     continue
@@ -117,9 +117,11 @@ class MasterTaskParams(TaskParams):
                     # if define walltime
                     self.sos_dict['_runtime']['walltime'] = format_HHMMSS(nrow * expand_time(val0))
                 elif key == 'mem':
-                    self.sos_dict['_runtime']['mem'] = ncol * expand_size(val0)
+                    # number of columns * mem for each + 100M for master
+                    self.sos_dict['_runtime']['mem'] = ncol * expand_size(val0) + (expand_size('100M') if self.num_workers > 0 else 0)
                 elif key == 'cores':
-                    self.sos_dict['_runtime']['cores'] = ncol * val0
+                    # number of columns * cores for each + 1 for the master
+                    self.sos_dict['_runtime']['cores'] = ncol * val0 + (1 if self.num_workers > 0 else 0)
                 elif key == 'name':
                     self.sos_dict['_runtime']['name'] = '{}_{}'.format(val0, len(self.task_stack) + 1)
         #
