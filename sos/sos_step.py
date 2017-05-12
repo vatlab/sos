@@ -252,6 +252,7 @@ def analyze_section(section, default_input=None):
         'changed_vars': changed_vars
         }
 
+
 class Base_Step_Executor:
     # This base class defines how steps are executed. The derived classes will reimplement
     # some function to behave differently in different modes.
@@ -634,7 +635,7 @@ class Base_Step_Executor:
                     })
 
         # save task to a file
-        param = TaskParams(
+        taskdef = TaskParams(
             name = '{} (index={})'.format(self.step.step_name(), env.sos_dict['_index']),
             data = (
                 self.step.task,          # task
@@ -649,13 +650,7 @@ class Base_Step_Executor:
             task_vars['__signature_vars__'], task_vars).sig_id
 
         job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
-        with open(job_file, 'wb') as jf:
-            try:
-                pickle.dump(param, jf)
-            except Exception as e:
-                env.logger.warning(e)
-                raise
-
+        taskdef.save(job_file)
         return task_id
 
     def wait_for_results(self):

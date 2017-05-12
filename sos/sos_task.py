@@ -51,6 +51,14 @@ class TaskParams(object):
         self.name = name
         self.data = data
 
+    def save(self, job_file):
+        with open(job_file, 'wb') as jf:
+            try:
+                pickle.dump(self, jf)
+            except Exception as e:
+                env.logger.warning(e)
+                raise
+
     def __repr__(self):
         return self.name
 
