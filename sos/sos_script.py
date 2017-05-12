@@ -970,7 +970,7 @@ for __n, __v in {}.items():
                             prev_names = [x for x in prev_workflows if re.match(prev_name[0].replace('*', '.*'), x)]
                         else:
                             prev_names = [prev_name[0]]
-                        if len(set(prev_names) & set(names)):
+                        if len(set(prev_names) & set(names)) and 'global' not in names:
                             parsing_errors.append(lineno, line, 'Duplicate section name {}'.format(names))
                 all_step_names.extend(step_names)
                 if 'global' in [x[0] for x in step_names]:
