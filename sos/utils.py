@@ -941,48 +941,50 @@ def format_HHMMSS(v):
     if isinstance(v, int):
         h, m, s = v // 3600, v %3600//60, v % 60
     elif isinstance(v, str):
+        # the time can be spacified as age. 
         try:
-            h,m,s = map(int, v.split(':'))
+            return format_HHMMSS(expand_time(v))
         except Exception as e:
-            raise ValueError('walltime should be specified as a integer (second) or string in the format of HH:MM:SS. "{}" specified ({})'.format(v, e))
+            raise ValueError('walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{}" specified ({})'.format(v, e))
     else:
-        raise ValueError('walltime should be specified as a integer (second) or string in the format of HH:MM:SS. "{}" of type {} specified'.format(v, v.__class__.__name__))
+        raise ValueError('walltime should be specified as a integer with unit s (default), h, m, d or string in the format of HH:MM:SS. "{}" of type {} specified'.format(v, v.__class__.__name__))
     return '{:02d}:{:02d}:{:02d}'.format(h,m,s)
 
 
-def expand_time(v):
+def expand_time(v, default_unit='s'):
     # expand walltime from '00:00:00' format to second
     if isinstance(v, str):
         try:
-            h, m, s = map(int, v.split(':'))
-        except Exception as e:
-            raise ValueError('Input of option walltime should be an integer (seconds) or a string in the format of HH:MM:SS. {} specified: {}'.format(v, e))
-        return h * 60 * 60 + m * 60 + s
+            sign = {'+': 1, '-': -1}[v[1]]
+            v = v[1:]
+        except:
+            # if there is no sign, assume +
+            sign = 1
+
+        # format HHMMSS
+        if ':' in v:
+            try:
+                h, m, s = map(int, v.split(':'))
+                return sign * (h * 60 * 60 + m * 60 + s)
+            except Exception as e:
+                raise ValueError('Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {} specified: {}'.format(v, e))
+        #
+        try:
+            unit = {'s': 1, 'm': 60, 'h': 3600, 'd': 3600*24}[v[-1]]
+            v = v[:-1]
+        except:
+            unit =  {'s': 1, 'm': 60, 'h': 3600, 'd': 3600*24}[default_unit]
+        #
+        try:
+            return sign * unit * int(v)
+        except:
+            raise ValueError('Unacceptable time for parameter age, expecting [+/-] num [s|m|h|d] or HH:MM:SS (e.g. +5h): {} provided'.format(v))
     elif isinstance(v, int):
         return v
     else:
-         raise ValueError('Input of option walltime should be an integer (seconds) or a string in the format of HH:MM:SS. {} specified.'.format(v))
+         raise ValueError('Input of option walltime should be an integer with unit s (default), h, m, d or a string in the format of HH:MM:SS. {} specified.'.format(v))
 
-def convert_age(t):
-    '''Ticket #582: age format being +/- #h #d #s #m
-    '''
-    try:
-        sign = {'+': 1, '-': -1}[t[1]]
-        t = t[1:]
-    except:
-        # if there is no sign, assume +
-        sign = 1
-    #
-    try:
-        unit = {'s': 1, 'm': 60, 'h': 3600, 'd': 3600*24}[t[-1]]
-        t = t[:-1]
-    except:
-        unit = 3600*24
-    #
-    try:
-        return sign * unit * int(t)
-    except:
-        raise ValueError('Unacceptable time for parameter age, expecting [+/-] num [s|m|h|d] (e.g. +5h)')
+
 
 def tail_of_file(filename, n, offset=None):
     """Reads a n lines from f with an offset of offset lines.  The return

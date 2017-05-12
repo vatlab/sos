@@ -463,8 +463,8 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
             else:
                 all_tasks.extend(matched)
     if age is not None:
-        from sos.utils import convert_age
-        age = convert_age(age)
+        from sos.utils import expand_time
+        age = expand_time(age, default_unit='d')
         if age > 0:
             all_tasks = [x for x in all_tasks if time.time() - x[1] >= age]
         else:
@@ -661,8 +661,8 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, verbosity=2):
     else:
         sys.exit('Please specify a list of tasks and/or option -all, --age, or --status')
     if age is not None:
-        from sos.utils import convert_age
-        age = convert_age(age)
+        from sos.utils import expand_time
+        age = expand_time(age, default_unit='d')
         if age > 0:
             all_tasks = [x for x in all_tasks if time.time() - x[1] >= age]
         else:
@@ -774,8 +774,8 @@ class TaskEngine(threading.Thread):
                     self.running_tasks.append(task)
         #
         if age is not None:
-            from sos.utils import convert_age
-            age = convert_age(age)
+            from sos.utils import expand_time
+            age = expand_time(age, default_unit='d')
         return sorted([(x, self.task_status[x], self.task_date.get(x, time.time())) for x in tasks \
             if (status is None or self.task_status[x] in status) and (age is None or \
                 ((age > 0 and time.time() - self.task_date.get(x, time.time()) > age) 

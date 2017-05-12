@@ -545,8 +545,9 @@ def get_status_parser(desc_only=False):
             information to standard output (default to 2).''')
     parser.add_argument('--age', help='''Limit to tasks that are created more than
         (default) or within specified age. Value of this parameter can be in units
-        s (second), m (minute), h (hour), or d (day, default), with optional
-        prefix + for older (default) and - for newer than specified age.''')
+        s (second), m (minute), h (hour), or d (day, default), or in the foramt of
+        HH:MM:SS, with optional prefix + for older (default) and - for newer than
+        specified age.''')
     parser.add_argument('--html', action='store_true',
         help='''Output results in HTML format. This option will override option
             verbosity and output detailed status information in HTML tables and
@@ -596,8 +597,9 @@ def get_purge_parser(desc_only=False):
         help='''Kill all tasks in local or specified remote task queue''')
     parser.add_argument('--age', help='''Limit to tasks that are created more than
         (default) or within specified age. Value of this parameter can be in units
-        s (second), m (minute), h (hour), or d (day, default), with optional
-        prefix + for older (default) and - for younder than specified age.''')
+        s (second), m (minute), h (hour), or d (day, default), or in the foramt of
+        HH:MM:SS, with optional prefix + for older (default) and - for newer than
+        specified age.''')
     parser.add_argument('-s', '--status', nargs='+', help='''Only remove tasks with
         specified status, which can be pending, submitted, running, completed, failed,
         aborted, and result-mismatch. One of more status can be specified.''')
@@ -736,8 +738,9 @@ def get_remove_parser(desc_only=False):
         specified size.''')
     parser.add_argument('--age', help='''Limit to files that are modified more than
         (default) or within specified age. Value of this parameter can be in units
-        s (second), m (minute), h (hour), or d (day, default), with optional
-        prefix + for older (default) and - for newer than specified age.''')
+        s (second), m (minute), h (hour), or d (day, default), or in the foramt of
+        HH:MM:SS, with optional prefix + for older (default) and - for newer than
+        specified age.''')
     parser.add_argument('-n', '--dryrun', action='store_true', 
         help='''List files or directories to be removed, without actually
             removing them.''')
@@ -844,8 +847,8 @@ def cmd_remove(args, unknown_args):
         args.size = expand_size(args.size)
     if args.age:
         import time
-        from sos.utils import convert_age
-        args.age = convert_age(args.age)
+        from sos.utils import expand_time
+        args.age = expand_time(args.age, default_unit='d')
     if args.signature:
         def func(filename):
             if os.path.abspath(filename) not in tracked_files:
