@@ -386,13 +386,7 @@ define([
                     });
                 });
             } else if (msg_type == 'show_toc') {
-                var cell = window.my_panel.cell;
-                cell.clear_input();
-                cell.set_text('%toc')
-                cell.clear_output();
-                var toc = cell.output_area.create_output_area().append(table_of_contents());
-                cell.output_area._safe_append(toc);
-                adjustPanel();
+                show_toc();
             } else {
                 // this is preview output
                 var cell = window.my_panel.cell;
@@ -713,7 +707,9 @@ define([
 
         //process_cell_toc();
 
+        var toc = $('<div class="toc"/>');
         var ul = $("<ul/>").addClass("toc-item").attr('id', 'toc-level0');
+        toc.append(ul);
         var depth = 1; //var depth = ol_depth(ol);
         var li = ul; //yes, initialize li with ul! 
         var all_headers = $("#notebook").find(":header");
@@ -730,8 +726,6 @@ define([
 
         //loop over all headers
         all_headers.each(function(i, h) {
-            console.log(i)
-            console.log(h)
             var level = parseInt(h.tagName.slice(1), 10) - min_lvl + 1;
             // skip headings with no ID to link to
             if (!h.id) {
@@ -784,7 +778,7 @@ define([
             ul.append(li);
             // $(h).prepend(num_lbl);
         });
-        return ul;
+        return toc;
     };
 
     var create_panel_div = function() {
@@ -975,6 +969,10 @@ define([
             help: 'run selected text in panel cell',
             handler: execute_in_panel,
         }, 'execute-selected');
+        var show_toc_in_panel = this.km.actions.register({
+            help: 'show toc in panel',
+            handler: show_toc,
+        }, 'show-toc');
         var shortcuts = {
             'shift-enter': execute_and_select_action,
             'ctrl-enter': execute_action,
@@ -983,6 +981,7 @@ define([
             // Ctrl-e does not work as it will somehow make the
             // code_mirror.getSelection() line getting only blank string.
             'ctrl-shift-enter': execute_selected_in_panel,
+            'ctrl-shift-t': show_toc_in_panel,
         }
         this.km.edit_shortcuts.add_shortcuts(shortcuts);
         this.km.command_shortcuts.add_shortcuts(shortcuts);
@@ -1064,6 +1063,16 @@ define([
         panel_cell.execute();
         return false;
     };
+
+    var show_toc = function(evt) {
+        var cell = window.my_panel.cell;
+        cell.clear_input();
+        cell.set_text('%toc')
+        cell.clear_output();
+        var toc = cell.output_area.create_output_area().append(table_of_contents());
+        cell.output_area._safe_append(toc);
+        adjustPanel();
+    }
 
     function setup_panel() {
         // lazy, hook it up to Jupyter.notebook as the handle on all the singletons
@@ -1217,7 +1226,47 @@ define([
                 '    font-style: normal;' +
                 '    font-family: Georgia, Times New Roman, Times, serif;' +
                 '    color: black;' +
-                '}'
+                '}' +
+                '' +
+                '.toc {' +
+                '  max-height: 500px;' +
+                '  padding: 0px;' +
+                '  overflow-y: auto;' +
+                '  font-weight: normal;' +
+                '  white-space: nowrap;' +
+                '  overflow-x: auto;' +
+                '}' +
+                '' +
+                '.toc  ol.toc-item {' +
+                '    counter-reset: item;' +
+                '    list-style: none;' +
+                '    padding: 0.1em;' +
+                '  }' +
+                '' +
+                '.toc ol.toc-item li {' +
+                '    display: block;' +
+                '  }' +
+                '' +
+                '#toc ul.toc-item {' +
+                '    list-style-type: none;' +
+                '    padding: 0;' +
+                '    margin:  0;' +
+                '}' +
+                '' +
+                '.toc ol.toc-item li:before {' +
+                '    font-size: 90%;' +
+                '    font-family: Georgia, Times New Roman, Times, serif;' +
+                '    counter-increment: item;' +
+                '    content: counters(item, ".")" ";' +
+                '}'' +
+                '.lev1 {margin-left: 80px}' +
+                '.lev2 {margin-left: 100px}' +
+                '.lev3 {margin-left: 120px}' +
+                '.lev4 {margin-left: 140px}' +
+                '.lev5 {margin-left: 160px}' +
+                '.lev6 {margin-left: 180px}' +
+                '.lev7 {margin-left: 200px}' +
+                '.lev8 {margin-left: 220px}'
             document.body.appendChild(css);
         };
 
