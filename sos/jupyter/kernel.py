@@ -199,6 +199,7 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_TASKINFO = re.compile('^%taskinfo(\s|$)')
     MAGIC_TASKS = re.compile('^%tasks(\s|$)')
     MAGIC_SKIP = re.compile('^%skip(\s|$)')
+    MAGIC_TOC = re.compile('^%toc(\s|$)')
 
     def get_use_parser(self):
         parser = argparse.ArgumentParser(prog='%use',
@@ -386,6 +387,12 @@ class SoS_Kernel(IPythonKernel):
     def get_skip_parser(self):
         parser = argparse.ArgumentParser(prog='%skip',
             description='''Skip the rest of the cell content and return''')
+        parser.error = self._parse_error
+        return parser
+
+    def get_toc_parser(self):
+        parser = argparse.ArgumentParser(prog='%toc',
+            description='''Display toc in the side panel''')
         parser.error = self._parse_error
         return parser
 
@@ -651,7 +658,7 @@ class SoS_Kernel(IPythonKernel):
         else:
             raise RuntimeError('Unrecognized status change message {}'.format(task_status))
 
-    def send_frontend_msg(self, msg_type, msg):
+    def send_frontend_msg(self, msg_type, msg={}):
         # if comm is never created by frontend, the kernel is in test mode without frontend
         if not self.frontend_comm:
             return
@@ -1501,6 +1508,10 @@ class SoS_Kernel(IPythonKernel):
             return
         if self.MAGIC_SKIP.match(code):
             return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
+        elif self.MAGIC_TOC.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            self.send_frontend_msg('show_toc')
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_DICT.match(code):
             # %dict should be the last magic
             options, remaining_code = self.get_magic_and_code(code, False)
