@@ -304,13 +304,13 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
         shared = [shared]
 
     # for nested workflow, _input would becomes the input of workflow.
-    env.sos_dict.set('__step_output__', copy.deepcopy(env.sos_dict['_input']))
+    env.sos_dict.set('__step_output__', copy.deepcopy(env.sos_dict.get('_input', None)))
     shared.append('__step_output__')
     try:
         my_name = env.sos_dict['step_name']
         args_output = ', '.join('{}={}'.format(x, short_repr(y)) for x,y in args.items() if not x.startswith('__'))
         env.logger.info('Executing workflow ``{}`` with input ``{}`` and {}'
-            .format(workflow, short_repr(env.sos_dict['_input'], True),
+            .format(workflow, short_repr(env.sos_dict.get('_input', None), True),
             'no args' if not args_output else args_output))
 
         if not hasattr(env, '__pipe__'):
@@ -858,14 +858,12 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
         if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            pid = p.pid
             out, err = p.communicate()
             sys.stdout.write(out.decode())
             sys.stderr.write(err.decode())
             ret = p.returncode
         else:
             p = subprocess.Popen(cmd, shell=True)
-            pid = p.pid
             ret = p.wait()
     except Exception as e:
         env.logger.error(e)
