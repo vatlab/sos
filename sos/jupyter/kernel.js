@@ -708,7 +708,7 @@ define([
         //process_cell_toc();
 
         var toc = $('<div class="toc"/>');
-        var ul = $("<ul/>").addClass("toc-item").attr('id', 'toc-level0');
+        var ul = $("<ul/>").addClass("toc-item").addClass("lev1").attr('id', 'toc-level0');
         toc.append(ul);
         var depth = 1; //var depth = ol_depth(ol);
         var li = ul; //yes, initialize li with ul! 
@@ -739,7 +739,7 @@ define([
 
             // walk down levels
             for (var elm = li; depth < level; depth++) {
-                var new_ul = $("<ul/>").addClass("toc-item");
+                var new_ul = $("<ul/>").addClass("lev" + (depth+1).toString()).addClass("toc-item");
                 elm.append(new_ul);
                 elm = ul = new_ul;
             }
@@ -1020,6 +1020,8 @@ define([
     var execute_in_panel = function(evt) {
         //var cell = IPython.notebook.get_selected_cell();
         var cell = evt.notebook.get_selected_cell();
+        if (cell.cell_type != 'code')
+            return false;
         var text = cell.code_mirror.getSelection();
         if (text === "") {
             // get current line and move the cursor to the next line
@@ -1229,7 +1231,6 @@ define([
                 '}' +
                 '' +
                 '.toc {' +
-                '  max-height: 500px;' +
                 '  padding: 0px;' +
                 '  overflow-y: auto;' +
                 '  font-weight: normal;' +
@@ -1237,7 +1238,7 @@ define([
                 '  overflow-x: auto;' +
                 '}' +
                 '' +
-                '.toc  ol.toc-item {' +
+                '.toc ol.toc-item {' +
                 '    counter-reset: item;' +
                 '    list-style: none;' +
                 '    padding: 0.1em;' +
@@ -1247,10 +1248,9 @@ define([
                 '    display: block;' +
                 '  }' +
                 '' +
-                '#toc ul.toc-item {' +
+                '.toc ul.toc-item {' +
                 '    list-style-type: none;' +
                 '    padding: 0;' +
-                '    margin:  0;' +
                 '}' +
                 '' +
                 '.toc ol.toc-item li:before {' +
@@ -1258,15 +1258,15 @@ define([
                 '    font-family: Georgia, Times New Roman, Times, serif;' +
                 '    counter-increment: item;' +
                 '    content: counters(item, ".")" ";' +
-                '}'' +
-                '.lev1 {margin-left: 80px}' +
-                '.lev2 {margin-left: 100px}' +
-                '.lev3 {margin-left: 120px}' +
-                '.lev4 {margin-left: 140px}' +
-                '.lev5 {margin-left: 160px}' +
-                '.lev6 {margin-left: 180px}' +
-                '.lev7 {margin-left: 200px}' +
-                '.lev8 {margin-left: 220px}'
+                '}' +
+                '.lev1 {margin-left: 5px}' +
+                '.lev2 {margin-left: 10px}' +
+                '.lev3 {margin-left: 10px}' +
+                '.lev4 {margin-left: 10px}' +
+                '.lev5 {margin-left: 10px}' +
+                '.lev6 {margin-left: 10px}' +
+                '.lev7 {margin-left: 10px}' +
+                '.lev8 {margin-left: 10px}'
             document.body.appendChild(css);
         };
 
