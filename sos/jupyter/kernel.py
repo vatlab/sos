@@ -560,13 +560,20 @@ class SoS_Kernel(IPythonKernel):
                     for name in v:
                         if not name.startswith('status_'):
                             continue
-                        tqu, tid = name[7:].rsplit('_', 1)
+                        try:
+                            tqu, tid = name[7:].rsplit('_', 1)
+                        except:
+                            # incorrect ID...
+                            continue
                         host_status[tqu].append(tid)
                     #log_to_file(host_status)
                     #
                     from sos.hosts import Host
                     for tqu, tids in host_status.items():
-                        h = Host(tqu)
+                        try:
+                            h = Host(tqu)
+                        except:
+                            continue
                         for tid in tids:
                             tst = h._task_engine.check_task_status(tid, unknown='unknown')
                             self.notify_task_status(['change-status', tqu, tid, tst])
