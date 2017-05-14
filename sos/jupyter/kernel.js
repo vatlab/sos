@@ -655,8 +655,11 @@ define([
         var tasks = $('[id^=status_]');
         window.unknown_tasks = [];
         for (var i = 0; i < tasks.length; ++i) {
-            tasks[i].className = 'fa fa-fw fa-2x fa-refresh fa-spin';
-            window.unknown_tasks.push(tasks[i].id);
+            // status_localhost_5ea9232779ca19591819072642646d16
+            if (tasks[i].id.match('^status_[^_]+_[0-9a-f]{32}$')) {
+                tasks[i].className = 'fa fa-fw fa-2x fa-refresh fa-spin';
+                window.unknown_tasks.push(tasks[i].id);
+            }
         }
     }
 
@@ -739,7 +742,7 @@ define([
 
             // walk down levels
             for (var elm = li; depth < level; depth++) {
-                var new_ul = $("<ul/>").addClass("lev" + (depth+1).toString()).addClass("toc-item");
+                var new_ul = $("<ul/>").addClass("lev" + (depth + 1).toString()).addClass("toc-item");
                 elm.append(new_ul);
                 elm = ul = new_ul;
             }
