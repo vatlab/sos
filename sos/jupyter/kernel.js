@@ -946,7 +946,42 @@ define([
         this.cell.element.hide();
 
         // move input prompt on top of the cell
-        this.cell.element.find('div.input_prompt').css('min-width', '0ex').css('width', '0ex').text('In [-]');
+		var panel_buttons = $('<div class="toc_buttons"/>');
+        panel_buttons.append(
+            $("<span/>")
+            .html("&nbsp;&nbsp;&nbsp;&nbsp;")
+		).append(
+			$("<i class='fa  fa-chevron-left'></i>")
+        ).append(
+            $("<span/>")
+            .html("&nbsp;&nbsp")
+		).append(
+			$("<i class='fa  fa-chevron-right'></i>")
+        ).append(
+            $("<span/>")
+            .html("&nbsp;&nbsp")
+		).append(
+            $("<a/>").attr('href', '#')
+            .click(function() {
+				console.log('clicked');
+				show_toc();
+				return false;
+			}).append($("<i class='fa  fa-list-ul'></i>"))
+        ).append(
+            $("<span/>")
+            .html("&nbsp;&nbsp")
+		).append(
+			$("<i class='fa  fa-tasks'></i>")
+            .click(function() {
+				show_toc();
+				return false;
+			})
+        )
+
+        var prot = this.cell.element.find('div.input_prompt');
+        prot.css('min-width', '0ex').css('width', '0ex').text('In [-]:');
+		prot.parent().append(panel_buttons);
+
         // move the language selection stuff to the top
         this.cell.element[0].getElementsByClassName('celltoolbar')[0].style.marginBottom = 0;
         // this would allow us to insert lable or title to the left of language dropdown
@@ -1262,6 +1297,14 @@ define([
                 '    counter-increment: item;' +
                 '    content: counters(item, ".")" ";' +
                 '}' +
+				'.toc_buttons {' +
+				'    font-size: 80%;' +
+				'    color: gray;' +
+				'    position: fixed;' +
+				'    padding-left: 40pt;' +
+				'    padding-top: 0.7em;' +
+				'    z-index: 1000;' +
+				'}' +
                 '.lev1 {margin-left: 5px}' +
                 '.lev2 {margin-left: 10px}' +
                 '.lev3 {margin-left: 10px}' +
