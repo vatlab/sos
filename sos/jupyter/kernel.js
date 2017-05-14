@@ -971,7 +971,8 @@ define([
             $("<span/>")
             .html("&nbsp;&nbsp")
 		).append(
-			$("<i class='fa  fa-tasks'></i>")
+			$("<a/>").attr('href', '#').append(
+			$("<i class='fa  fa-tasks'></i>"))
             .click(function() {
 				show_toc();
 				return false;
