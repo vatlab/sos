@@ -461,28 +461,26 @@ define([
             }
         }
         // cell in panel does not have prompt area
+        var col = '';
         if (cell.is_panel !== undefined) {
-            if (BackgroundColor[type])
-                cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = BackgroundColor[type];
-            else
-                cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = '';
-            return;
+            if (BackgroundColor[type]) {
+                col = BackgroundColor[type];
+            }
+            cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = col;
+            return col;
         }
 
         var ip = cell.element[0].getElementsByClassName('input_prompt');
         var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
 
         if (type == 'sos' && get_workflow_from_cell(cell)) {
-            ip[0].style.backgroundColor = '#F0F0F0';
-            op[0].style.backgroundColor = '#F0F0F0';
+            col = '#F0F0F0';
         } else if (BackgroundColor[type]) {
-            ip[0].style.backgroundColor = BackgroundColor[type];
-            op[0].style.backgroundColor = BackgroundColor[type];
-        } else {
-            // Use '' to remove background-color?
-            ip[0].style.backgroundColor = '';
-            op[0].style.backgroundColor = '';
+            col = BackgroundColor[type];
         }
+        ip[0].style.backgroundColor = col;
+        op[0].style.backgroundColor = col;
+        return col;
     }
 
     window.kill_task = function(task_id, task_queue) {
@@ -946,10 +944,21 @@ define([
         this.cell.element.hide();
 
         // move input prompt on top of the cell
-        var panel_buttons = $('<div class="toc_buttons"/>');
+        var panel_buttons = $('<div class="panel_buttons"/>');
         panel_buttons.append(
             $("<a/>").attr('href', '#')
-            .append($("<i class='fa  fa-list-ul'></i>"))
+            .append($("<i class='fa fa-book'></i>"))
+            .click(function() {
+                var win = window.open('http://vatlab.github.io/SOS/doc/documentation/Notebook_Interface.html', '_blank');
+                win.focus();
+                return false;
+            })
+        ).append(
+            $("<span/>")
+            .html("&nbsp;&nbsp")
+        ).append(
+            $("<a/>").attr('href', '#')
+            .append($("<i class='fa fa-list-ul'></i>"))
             .click(function() {
                 show_toc();
                 return false;
@@ -986,11 +995,27 @@ define([
             $("<span/>")
             .html("&nbsp;&nbsp")
         ).append(
-            $("<a/>").attr('href', '#')
-            .append($("<i class='fa fa-book'></i>"))
-            .click(function() {
-                var win = window.open('http://vatlab.github.io/SOS/doc/documentation/Notebook_Interface.html', '_blank');
-                win.focus();
+            $("<select></select>").attr("id", "panel_history")
+            .css("margin-left", "0.75em").css("width", "20")
+            .change(function() {
+                var item = $('#panel_history').val();
+                // separate kernel and input
+                var sep = item.indexOf(':');
+                var kernel = item.substring(0, sep);
+                var text = item.substring(sep+1);
+                
+                var panel_cell = window.my_panel.cell;
+
+                // set the kernel of the panel cell as the sending cell
+                if (panel_cell.metadata.kernel !== kernel) {
+                    panel_cell.metadata.kernel = kernel;
+                    changeStyleOnKernel(panel_cell, kernel);
+                }
+
+                panel_cell.clear_input();
+                panel_cell.set_text(text);
+                panel_cell.clear_output();
+                panel_cell.execute();
                 return false;
             })
         )
@@ -1098,9 +1123,10 @@ define([
         //
         var panel_cell = window.my_panel.cell;
         // set the kernel of the panel cell as the sending cell
+        var col = cell.element[0].getElementsByClassName('input_prompt')[0].style.backGroundColor;
         if (panel_cell.metadata.kernel !== cell.metadata.kernel) {
             panel_cell.metadata.kernel = cell.metadata.kernel;
-            changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
+            col = changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
         }
         // if in sos mode and is single line, enable automatic preview
         if ((cell.metadata.kernel == 'sos' || cell.metadata.kernel === undefined) && text.indexOf('\n') == -1 && text.indexOf('%') !== 0) {
@@ -1117,6 +1143,10 @@ define([
         panel_cell.clear_input();
         panel_cell.set_text(text);
         panel_cell.clear_output();
+        $('#panel_history').append($('<option></option>')
+            .css('background-color', col)
+            .attr('value', panel_cell.metadata.kernel + ":" + text).text(text))
+            .prop("selectedIndex", -1);
         panel_cell.execute();
         return false;
     };
@@ -1314,7 +1344,7 @@ define([
                 '    counter-increment: item;' +
                 '    content: counters(item, ".")" ";' +
                 '}' +
-                '.toc_buttons {' +
+                '.panel_buttons {' +
                 '    font-size: 80%;' +
                 '    color: gray;' +
                 '    position: fixed;' +
