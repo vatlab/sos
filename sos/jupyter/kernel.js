@@ -1164,12 +1164,21 @@ define([
     };
 
     var add_to_panel_history = function(kernel, text, col) {
-        console.log('add ' + kernel + ' ' + col);
-        $('#panel_history').append($('<option></option>')
+        // console.log('add ' + kernel + ' ' + col);
+        var matched = false;
+        $('#panel_history option').each(function (index, element) {
+            if (element.value == kernel + ':' + text) {
+                matched = true;
+                return false;
+            }
+        })
+        if (!matched) {
+            $('#panel_history').append($('<option></option>')
                 .css('background-color', col)
                 .attr('value', kernel + ":" + text).text(text.split("\n").join(' .. ').truncate(40))
             )
             .prop("selectedIndex", -1);
+        }
     }
 
     String.prototype.truncate = function() {
@@ -1180,6 +1189,7 @@ define([
             re = re + "...";
         return re;
     }
+
     var execute_in_panel = function(evt) {
         //var cell = IPython.notebook.get_selected_cell();
         var cell = evt.notebook.get_selected_cell();
