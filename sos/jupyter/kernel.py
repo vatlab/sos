@@ -176,6 +176,13 @@ class SoS_Kernel(IPythonKernel):
         'preview',
         'sandbox',
         'debug',
+        'sosrun',
+        'sossave',
+        'rerun',
+        'taskinfo',
+        'tasks',
+        'skip',
+        'toc',
     }
     MAGIC_DICT = re.compile('^%dict(\s|$)')
     MAGIC_CONNECT_INFO = re.compile('^%connect_info(\s|$)')
