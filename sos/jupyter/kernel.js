@@ -995,16 +995,37 @@ define([
             $("<span/>")
             .html("&nbsp;&nbsp")
         ).append(
+            $("<a/>").attr('href', '#').attr('id', 'history_icon')
+            .append($("<i class='fa fa-history'></i>"))
+            .click(function() {
+                var dropdown = $('#panel_history');
+                var len = $('#panel_history option').length;
+                if (len === 0)
+                    return false;
+                if (dropdown.css('display') === 'none') {
+                    dropdown.show();
+                    dropdown[0].size = len;
+                    setTimeout(function() {
+                        dropdown.hide()
+                    }, 8000);
+                } else {
+                    dropdown.hide();
+                }
+                return false;
+            })
+
+        ).append(
             $("<select></select>").attr("id", "panel_history")
-            .css("margin-left", "0.75em").css("width", "20")
+            .css("margin-left", "0.75em").css('position', 'fixed').css('display', 'none')
             .change(function() {
                 var item = $('#panel_history').val();
                 // separate kernel and input
                 var sep = item.indexOf(':');
                 var kernel = item.substring(0, sep);
-                var text = item.substring(sep+1);
-                
+                var text = item.substring(sep + 1);
+
                 var panel_cell = window.my_panel.cell;
+                $('#panel_history').hide();
 
                 // set the kernel of the panel cell as the sending cell
                 if (panel_cell.metadata.kernel !== kernel) {
@@ -1097,6 +1118,23 @@ define([
         }
     };
 
+    var add_to_panel_history = function(kernel, text, col) {
+        console.log('add ' + kernel + ' ' + col);
+        $('#panel_history').append($('<option></option>')
+                .css('background-color', col)
+                .attr('value', kernel + ":" + text).text(text.split("\n").join(' .. ').truncate(40))
+            )
+            .prop("selectedIndex", -1);
+    }
+
+    String.prototype.truncate = function() {
+        var re = this.match(/^.{0,25}[\S]*/);
+        var l = re[0].length;
+        var re = re[0].replace(/\s$/, '');
+        if (l < this.length)
+            re = re + "...";
+        return re;
+    }
     var execute_in_panel = function(evt) {
         //var cell = IPython.notebook.get_selected_cell();
         var cell = evt.notebook.get_selected_cell();
@@ -1123,7 +1161,7 @@ define([
         //
         var panel_cell = window.my_panel.cell;
         // set the kernel of the panel cell as the sending cell
-        var col = cell.element[0].getElementsByClassName('input_prompt')[0].style.backGroundColor;
+        var col = cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor;
         if (panel_cell.metadata.kernel !== cell.metadata.kernel) {
             panel_cell.metadata.kernel = cell.metadata.kernel;
             col = changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
@@ -1143,10 +1181,7 @@ define([
         panel_cell.clear_input();
         panel_cell.set_text(text);
         panel_cell.clear_output();
-        $('#panel_history').append($('<option></option>')
-            .css('background-color', col)
-            .attr('value', panel_cell.metadata.kernel + ":" + text).text(text))
-            .prop("selectedIndex", -1);
+        add_to_panel_history(panel_cell.metadata.kernel, text, col);
         panel_cell.execute();
         return false;
     };
