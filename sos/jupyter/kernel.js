@@ -1089,6 +1089,9 @@ define([
                 })
             )
 
+        add_to_panel_history('sos', '%toc', '');
+        add_to_panel_history('sos', '%preview --workflow', '');
+        add_to_panel_history('sos', '%tasks', '');
 
         // move the language selection stuff to the top
         this.cell.element[0].getElementsByClassName('celltoolbar')[0].style.marginBottom = 0;
@@ -1443,6 +1446,7 @@ define([
                 '' +
                 '.panel_history {' +
                 '    display: none;' +
+                '    font-family: monospace;' +
                 '}' +
                 '' +
                 '.lev1 {margin-left: 5px}' +
