@@ -943,6 +943,7 @@ define([
         cell.refresh();
         this.cell.element.hide();
 
+        /*
         // move input prompt on top of the cell
         var panel_buttons = $('<div class="panel_buttons"/>');
         panel_buttons.append(
@@ -1040,10 +1041,54 @@ define([
                 return false;
             })
         )
+        */
 
-        var prot = this.cell.element.find('div.input_prompt');
-        prot.css('min-width', '0ex').css('width', '0ex').text('In [-]:');
-        prot.parent().append(panel_buttons);
+        this.cell.element.find('div.input_prompt').css('min-width', '0ex').css('width', '0ex').text('In [-]:');
+        this.cell.element.find('div.input_area')
+            .append(
+                $("<a/>").attr('href', '#').attr('id', 'input_dropdown').addClass('input_dropdown')
+                .append($("<i class='fa fa-caret-down'></i>"))
+                .click(function() {
+                    var dropdown = $('#panel_history');
+                    var len = $('#panel_history option').length;
+                    if (len === 0)
+                        return false;
+                    if (dropdown.css('display') === 'none') {
+                        dropdown.show();
+                        dropdown[0].size = len;
+                        setTimeout(function() {
+                            dropdown.hide()
+                        }, 8000);
+                    } else {
+                        dropdown.hide();
+                    }
+                    return false;
+                })
+            ).parent().append(
+                $("<select></select>").attr("id", "panel_history").addClass('panel_history')
+                .change(function() {
+                    var item = $('#panel_history').val();
+                    // separate kernel and input
+                    var sep = item.indexOf(':');
+                    var kernel = item.substring(0, sep);
+                    var text = item.substring(sep + 1);
+
+                    var panel_cell = window.my_panel.cell;
+                    $('#panel_history').hide();
+
+                    // set the kernel of the panel cell as the sending cell
+                    if (panel_cell.metadata.kernel !== kernel) {
+                        panel_cell.metadata.kernel = kernel;
+                        changeStyleOnKernel(panel_cell, kernel);
+                    }
+                    panel_cell.clear_input();
+                    panel_cell.set_text(text);
+                    panel_cell.clear_output();
+                    panel_cell.execute();
+                    return false;
+                })
+            )
+
 
         // move the language selection stuff to the top
         this.cell.element[0].getElementsByClassName('celltoolbar')[0].style.marginBottom = 0;
@@ -1379,14 +1424,17 @@ define([
                 '    counter-increment: item;' +
                 '    content: counters(item, ".")" ";' +
                 '}' +
-                '.panel_buttons {' +
-                '    font-size: 80%;' +
-                '    color: gray;' +
-                '    position: fixed;' +
-                '    padding-left: 50pt;' +
-                '    padding-top: 0.7em;' +
+                '.input_dropdown {' +
+                '    position: absolute;' +
+                '    right: 5pt;' +
+                '    top: 3.5em;' +
                 '    z-index: 1000;' +
                 '}' +
+                '' +
+                '.panel_history {' +
+                '    display: none;' +
+                '}' +
+                '' +
                 '.lev1 {margin-left: 5px}' +
                 '.lev2 {margin-left: 10px}' +
                 '.lev3 {margin-left: 10px}' +
