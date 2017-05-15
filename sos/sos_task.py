@@ -178,7 +178,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                         sigmode=sigmode, monitor_interval=monitor_interval,
                         resource_monitor_interval=resource_monitor_interval)
                     results.append(res)
-                except:
+                except Exception as e:
                     if env.verbosity > 2:
                         sys.stderr.write(get_traceback())
                     env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
@@ -826,7 +826,6 @@ class TaskEngine(threading.Thread):
                             env.logger.trace('Task {} removed since status check.'.format(tid))
                             continue
                         self.update_task_status(tid, tst)
-
                     except Exception as e:
                         env.logger.warning('Unrecognized response "{}" ({}): {}'.format(line, e.__class__.__name__, e))
                 self.summarize_status()

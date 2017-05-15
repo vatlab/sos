@@ -21,7 +21,6 @@
 #
 
 import os
-import pickle
 from sos.utils import env
 from sos.sos_eval import interpolate
 from sos.sos_task import TaskEngine, loadTask
@@ -72,7 +71,7 @@ class PBS_TaskEngine(TaskEngine):
         # 
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.task')
         params = loadTask(task_file)
-        task, sos_dict, sigil = params.task, params.sos_dict, params.sigil
+        sos_dict = params.sos_dict
 
         # for this task, we will need walltime, nodes, cores, mem
         # however, these could be fixed in the job template and we do not need to have them all in the runtime
@@ -179,9 +178,53 @@ class PBS_TaskEngine(TaskEngine):
                 result[k.strip()] = v.strip()
             return result
 
+    def _query_job_status(self, job_id, task_id):
+        job_id.update({'task': task_id, 'verbosity': 1})
+        cmd = interpolate(self.status_cmd, '${ }', job_id)
+        return self.agent.check_output(cmd)
+
     def query_tasks(self, tasks, verbosity=1, html=False, start_time=True, age=None):
         if verbosity <= 2:
-            return super(PBS_TaskEngine, self).query_tasks(tasks, verbosity, html, start_time, age=age)
+            status_lines = super(PBS_TaskEngine, self).query_tasks(tasks, verbosity, html, start_time, age=age)
+            # there is a change that a job is submitted, but failed before the sos command is executed
+            # so we will have to ask the task engine about the submitted jobs #608
+            if not html:
+                res = ''
+                for line in status_lines.split('\n'):
+                    if not line.strip():
+                        continue
+                    fields = line.split('\t')
+                    if len(fields) < verbosity:
+                        env.logger.error(fields)
+                        env.logger.warning('Suspicious status line {}'.format(line))
+                        continue
+                    task_id = fields[0]
+                    if fields[verbosity] == 'submitted':
+                        try:
+                            job_id = self._get_job_id(task_id)
+                            if not job_id:
+                                raise RuntimeError('failed to obtain job id for task {}'.format(task_id))
+                            self._query_job_status(job_id, task_id)
+                        except Exception as e:
+                            env.logger.trace('Failed to query status for task {}: {}'.format(task_id, e))
+                            fields[verbosity] = 'failed'
+                    res += '\t'.join(fields) + '\n'
+                return res
+            else:
+                # ID line: <tr><th align="right"  width="30%">ID</th><td align="left">5173b80bf85d3d03153b96f9a5b4d6cc</td></tr>
+                task_id = status_lines.split('>ID<', 1)[-1].split('</td',1)[0].split('>')[-1]
+                status = status_lines.split('>Status<', 1)[-1].split('</td',1)[0].split('>')[-1]
+                if status == 'submitted':
+                    try:
+                        job_id = self._get_job_id(task_id)
+                        if not job_id:
+                            raise RuntimeError('failed to obtain job id for task {}'.format(task_id))
+                        self._query_job_status(job_id, task_id)
+                    except Exception as e:
+                        env.logger.trace('Failed to query status for task {}: {}'.format(task_id, e))
+                        status_lines = status_lines.replace('submitted', 'failed', 1)
+                return status_lines
+
         # for more verbose case, we will call pbs's status_cmd to get more accurate information
         status_lines = super(PBS_TaskEngine, self).query_tasks(tasks, 1)
         res = ''
@@ -192,13 +235,12 @@ class PBS_TaskEngine(TaskEngine):
             # call query_tasks again for more verbose output
             res += super(PBS_TaskEngine, self).query_tasks([task_id], verbosity, html) + '\n'
             #
-            job_id = self._get_job_id(task_id)
-            if not job_id:
-                continue
             try:
-                job_id.update({'task': task_id, 'verbosity': verbosity})
-                cmd = interpolate(self.status_cmd, '${ }', job_id)
-                res += self.agent.check_output(cmd)
+                job_id = self._get_job_id(task_id)
+                if not job_id:
+                    # no job id file
+                    raise RuntimeError('failed to obtain job id for task {}'.format(task_id))
+                res += self._query_job_status(job_id, task_id)
             except Exception as e:
                 env.logger.debug('Failed to get status of task {} (job_id: {}) from template "{}": {}'.format(
                     task_id, job_id, self.status_cmd, e))
