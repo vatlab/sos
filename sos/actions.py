@@ -260,6 +260,10 @@ class SoS_ExecuteScript:
                     ret = p.returncode
                     sys.stdout.flush()
                     sys.stderr.flush()
+                elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
+                    with open(env.sos_dict['__std_out__'], 'ab') as so, open(env.sos_dict['__std_err__'], 'ab') as se:
+                        p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
+                    ret = p.wait()
                 else:
                     p = subprocess.Popen(cmd, shell=True,
                                          stderr=None if env.verbosity > 1 else subprocess.DEVNULL,

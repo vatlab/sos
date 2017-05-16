@@ -317,6 +317,10 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 else:
                     raise ValueError('Unacceptable input for option prepend_path: {}'.format(sos_dict['_runtime']['prepend_path']))
 
+        # task output
+        env.sos_dict['__std_out__'] = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out')
+        env.sos_dict['__std_err__'] = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
+
         # create directory. This usually has been done at the step level but the task can be executed
         # on a remote host where the directory does not yet exist.
         ofiles = env.sos_dict['_output']
