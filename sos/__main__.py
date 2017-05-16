@@ -336,33 +336,52 @@ def get_resume_parser(interactive=False, with_workflow=True, desc_only=False):
     parser.set_defaults(func=cmd_resume)
     return parser
 
-def workflow_status(workflow, check_status=False):
+def workflow_status(workflow):
     from .utils import env, load_var, short_repr, load_config_files
     from .hosts import Host
-    res = {}
+    from .sos_task import check_tasks
+    from io import StringIO
+    from contextlib import redirect_stdout
+    from collections import defaultdict
+    pending_tasks = defaultdict(list)
+    res = {'task_status': []}
     with open(workflow) as wf:
         config_file = None
+        env.logger.info('{:20s} \t{}'.format('Workflow ID:', os.path.basename(workflow)[:-7]))
         for line in wf:
             if line.startswith('#') or not line.strip():
                 continue
             try:
                 k, v = load_var(line)
                 res[k] = v
-                env.logger.info('{}: \t{}'.format(k, short_repr(v)))
                 if k == 'config_file':
                     config_file = v
-                elif k == 'pending_task' and check_status:
-                    if not v[0]:
-                        check_tasks([v[1]], 2, False, False, None)
-                    else:
-                        # remote host?
-                        cfg = load_config_files(config_file)
-                        env.sos_dict.set('CONFIG', cfg)
-                        host = Host(v[0])
-                        print(host._task_engine.query_tasks([v[1]],
-                            2, False, False, None))
+                    env.logger.info('{:20s} \t{}'.format(k, short_repr(v)))
+                elif k == 'pending_task':
+                    pending_tasks[v[0]].append(v[1])
+                else:
+                    env.logger.info('{:20s} \t{}'.format(k, short_repr(v)))
             except Exception as e:
                 raise ValueError('Unrecognizable status line {}: {}'.format(line, e))
+    #
+    for k,v in pending_tasks.items():
+        if k in ('', 'localhost'):
+            with StringIO() as buf, redirect_stdout(buf):
+                check_tasks(v, 0, False, False, None)
+                status = buf.getvalue().strip().split('\n')
+        else:
+            # remote host?
+            cfg = load_config_files(config_file)
+            env.sos_dict.set('CONFIG', cfg)
+            try:
+                host = Host(k)
+                status = host._task_engine.query_tasks(v, 0, False, False, None).strip().split('\n')
+            except Exception as e:
+                env.logger.warning('Failed to check status of task {} at host {}'.format(v, k))
+                status = ['unknown'] * len(v)
+        for v,s in zip(v, status):
+            env.logger.info('{:20s} \t{} at {}, currently ``{}``'.format('Pending task:', v, k, s))
+        res['task_status'].extend(status)
     return res
 
 def cmd_resume(args, workflow_args):
@@ -370,8 +389,7 @@ def cmd_resume(args, workflow_args):
         sys.exit('No additional parameter is allowed for command resume: {} provided'.format(workflow_args))
     
     import glob
-    from .sos_task import check_tasks
-    from .utils import env, load_config_files, get_traceback
+    from .utils import env
     env.verbosity = args.verbosity
 
     workflows = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', '{}*.status').format(args.workflow_id if args.workflow_id else ''))
@@ -381,7 +399,7 @@ def cmd_resume(args, workflow_args):
     #
     if args.status:
         for wf in workflows:
-            workflow_status(wf, check_status=True)
+            workflow_status(wf)
         sys.exit(0)
     #
     # resume execution...
@@ -395,6 +413,10 @@ def cmd_resume(args, workflow_args):
         workflow = sorted(workflows, key=lambda x: os.path.getmtime(x))[-1]
     #
     res = workflow_status(workflow)
+    if all(x == 'running' for x in res['task_status']):
+        env.logger.info('Cannot resume workflow {} because all tasks are still running'.format(
+            os.path.basename(workflow)[:-7]))
+        sys.exit(0)
     #
     args.__config__ = res['config_file']
     args.__sig_mode__ = res['sig_mode']
@@ -883,7 +905,6 @@ def cmd_remove(args, unknown_args):
     import glob
     from .utils import env
     import shutil
-    from collections import OrderedDict
     from .target import FileTarget
     env.verbosity = args.verbosity
 
@@ -1471,11 +1492,9 @@ def cmd_pack(args, unknown_args):
             env.logger.info('Adding {}'.format(os.path.basename(f)))
             archive.add(f, arcname='scripts/' + os.path.basename(f))
         for f in tracked_files:
-            zapped = False
             if not os.path.isfile(f):
                 if os.path.isfile(f + '.zapped'):
                     f = f + '.zapped'
-                    zapped = True
                 else:
                     continue
             env.logger.info('Adding {}'.format(f))

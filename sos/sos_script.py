@@ -101,6 +101,9 @@ class SoS_Step:
         self._action_options = ''
         self._script = ''
 
+    def has_external_task(self):
+        return self.task != ''
+
     def step_name(self, alias=True):
         if not self.name:
             n, i, a = self.names[0]
@@ -450,6 +453,10 @@ class SoS_Workflow:
         '''Append another workflow to existing one to created a combined workflow'''
         # all sections are simply appended ...
         self.sections.extend(workflow.sections)
+
+    def has_external_task(self):
+        return any(x.has_external_task() for x in self.sections) or \
+                any(x.has_external_task() for x in self.auxiliary_sections)
 
 class SoS_ScriptContent:
     '''A small class to record the script information to be used by nested

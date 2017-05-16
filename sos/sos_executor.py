@@ -34,7 +34,6 @@ from .sos_step import Step_Executor, analyze_section, PendingTasks
 from .utils import env, Error, WorkflowDict, get_traceback, frozendict, short_repr, pickleable, \
     load_config_files, save_var, load_var
 from .sos_eval import SoS_exec, get_default_global_sigil
-from .sos_syntax import SOS_KEYWORDS
 from .dag import SoS_DAG
 from .target import BaseTarget, FileTarget, UnknownTarget, RemovedTarget, UnavailableLock, sos_variable, textMD5, sos_step
 from .pattern import extract_pattern
@@ -243,8 +242,10 @@ class Base_Executor:
                             env.config['resumed_tasks'].add(v[1])
                 env.logger.info('Resuming with pending tasks: {}'.format(', '.join(env.config['resumed_tasks'])))
             else:
-                raise ValueError('Failed to resume a non-resumable or completed workflow {}'.format(self.md5))
-        else:
+                env.logger.info('Workflow {} has been completed.'.format(self.md5))
+                sys.exit(0)
+        # wait is None or True, and there is task
+        elif self.config['wait_for_task'] is not True and self.workflow.has_external_task():
             with open(wf_status, 'w') as wf:
                 # overwrite previous file
                 for key, val in self.config.items():
