@@ -681,6 +681,32 @@ define([
     }
 
 
+    function highlight_toc_item(evt, data) {
+        if ($('.toc').length === 0)
+            return;
+        var c = data.cell.element; //
+        if (c) {
+            var ll = $(c).find(':header')
+            if (ll.length == 0) {
+                var ll = $(c).prevAll().find(':header')
+            }
+            var elt = ll[ll.length - 1]
+            if (elt) {
+                var highlighted_item = $('.toc').find('a[href="#' + elt.id + '"]')
+                if (evt.type == "execute") {
+                    // remove the selected class and add execute class
+                    // il the cell is selected again, it will be highligted as selected+running
+                    highlighted_item.removeClass('toc-item-highlight-select').addClass('toc-item-highlight-execute')
+                    //console.log("->>> highlighted_item class",highlighted_item.attr('class'))
+                } else {
+                    $('.toc').find('.toc-item-highlight-select').removeClass('toc-item-highlight-select')
+                    highlighted_item.addClass('toc-item-highlight-select')
+                }
+            }
+        }
+    }
+
+
     var make_link = function(h) {
         var a = $("<a/>");
         a.attr("href", '#' + h.attr('id'));
@@ -698,7 +724,9 @@ define([
             var new_selected_cell = $("[id='" + h.attr('id') + "']").parents('.unselected').switchClass('unselected', 'selected')
             new_selected_cell.data('cell').selected = true;
             var cell = new_selected_cell.data('cell') // IPython.notebook.get_selected_cell()
-            /* highlight_toc_item("toc_link_click", {cell: cell}) */
+            highlight_toc_item("toc_link_click", {
+                cell: cell
+            });
         })
         return a;
     };
@@ -1169,7 +1197,7 @@ define([
     var add_to_panel_history = function(kernel, text, col) {
         // console.log('add ' + kernel + ' ' + col);
         var matched = false;
-        $('#panel_history option').each(function (index, element) {
+        $('#panel_history option').each(function(index, element) {
             if (element.value == kernel + ':' + text) {
                 matched = true;
                 return false;
@@ -1177,10 +1205,10 @@ define([
         })
         if (!matched) {
             $('#panel_history').append($('<option></option>')
-                .css('background-color', col)
-                .attr('value', kernel + ":" + text).text(text.split("\n").join(' .. ').truncate(40))
-            )
-            .prop("selectedIndex", -1);
+                    .css('background-color', col)
+                    .attr('value', kernel + ":" + text).text(text.split("\n").join(' .. ').truncate(40))
+                )
+                .prop("selectedIndex", -1);
         }
     }
 
@@ -1254,9 +1282,11 @@ define([
         adjustPanel();
     }
 
-    var update_toc = function(evt) {
-        if ($('.toc').length != 0)
+    var update_toc = function(evt, data) {
+        if ($('.toc').length != 0) {
             show_toc();
+            highlight_toc_item(evt, data);
+        }
     }
 
     function setup_panel() {
@@ -1454,6 +1484,8 @@ define([
                 '    font-family: monospace;' +
                 '}' +
                 '' +
+                '.toc-item-highlight-select  {background-color: Gold}' +
+                '.toc-item-highlight-execute  {background-color: red}' +
                 '.lev1 {margin-left: 5px}' +
                 '.lev2 {margin-left: 10px}' +
                 '.lev3 {margin-left: 10px}' +
@@ -1573,6 +1605,7 @@ define([
         // kernel_ready.Kernel
         //events.on('kernel_connected.Kernel', request_kernel_list);
         events.on('select.Cell', set_codemirror_option);
+        events.on('select.Cell', highlight_toc_item);
 
         load_panel();
         add_panel_button();
