@@ -30,6 +30,7 @@ import math
 import collections
 import traceback
 import threading
+import base64
 import pickle
 import yaml
 import urllib
@@ -1036,3 +1037,18 @@ def isPrimitive(obj):
     # test if object is of primitive types (string, number, sequence etc
     # http://stackoverflow.com/questions/6391694/check-if-a-variables-type-is-primitive
     return not hasattr(obj, '__dict__')
+
+
+def save_var(name, var):
+    if isPrimitive(var):
+        return '{}={}\n'.format(name, stable_repr(var))
+    else:
+         # for more complex type, we use pickle + base64
+         return '{}:={}\n'.format(name, base64.b64encode(pickle.dumps(var)))
+
+def load_var(line):
+    key, value = line.split('=', 1)
+    if key.endswith(':'):
+        return key[:-1], pickle.loads(base64.b64decode(eval(value.strip())))
+    else:
+        return key, eval(value.strip())

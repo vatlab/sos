@@ -32,7 +32,7 @@ from io import StringIO
 from ._version import __version__
 from .sos_step import Step_Executor, analyze_section, PendingTasks
 from .utils import env, Error, WorkflowDict, get_traceback, frozendict, short_repr, pickleable, \
-    load_config_files
+    load_config_files, save_var, load_var
 from .sos_eval import SoS_exec, get_default_global_sigil
 from .sos_syntax import SOS_KEYWORDS
 from .dag import SoS_DAG
@@ -233,13 +233,23 @@ class Base_Executor:
                 sig.write('# runtime signatures\n')
         #
         env.config['resumed_tasks'] = set()
+        wf_status = os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status')
         if env.config['resume_mode']:
-            wf_status = os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status')
             if os.path.isfile(wf_status):
                 with open(wf_status) as status:
                     for line in status:
-                        env.config['resumed_tasks'].add(line.split()[0])
-        #
+                        if line.startswith('pending_task'):
+                            k, v = load_var(line)
+                            env.config['resumed_tasks'].add(v[1])
+                env.logger.info('Resuming with pending tasks: {}'.format(', '.join(env.config['resumed_tasks'])))
+            else:
+                raise ValueError('Failed to resume a non-resumable or completed workflow {}'.format(self.md5))
+        else:
+            with open(wf_status, 'w') as wf:
+                # overwrite previous file
+                for key, val in self.config.items():
+                    wf.write(save_var(key, val))
+
         # if this is a resumed task?
         if hasattr(env, 'accessed_vars'):
             delattr(env, 'accessed_vars')
@@ -264,16 +274,16 @@ class Base_Executor:
                 dag_name = self.config['output_dag'] if self.config['output_dag'].endswith('.dot') else self.config['output_dag'] + '.dot'
             else:
                 dag_name = '{}_{}.dot'.format(self.config['output_dag'][:-4] if self.config['output_dag'].endswith('.dot') else self.config['output_dag'], self.dag_count)
-        #
-        with open(dag_name, 'w') as dfile:
-            dfile.write(out)
+            #
+            with open(dag_name, 'w') as dfile:
+                dfile.write(out)
 
     def record_quit_status(self, tasks):
         if not self.md5:
             return
         with open(os.path.join(os.path.expanduser('~'), '.sos', self.md5 + '.status'), 'a') as status:
-            for task in tasks:
-                status.write('{}\t{}\n'.format(task, 'pending'))
+            for q, t in tasks:
+                status.write(save_var('pending_task', [q, t]))
 
     def create_signature(self):
         with StringIO() as sig:
@@ -978,10 +988,10 @@ class Base_Executor:
                     # if all jobs are pending, let us check if all jbos have been submitted.
                     pending_tasks = []
                     running_tasks = []
-                    for n in [x[2] for x in procs if x[2]._status == 'task_pending']:
+                    for n in [x[2] for x in procs]:
                         p, r = n._host._task_engine.get_tasks()
                         pending_tasks.extend(p)
-                        running_tasks.extend(r)
+                        running_tasks.extend([(n._host.alias, x) for x in r])
                     if not pending_tasks and running_tasks:
                         env.logger.trace('Exit with {} running tasks: '.format(len(running_tasks), running_tasks))
                         raise PendingTasks(running_tasks)
@@ -992,7 +1002,7 @@ class Base_Executor:
             wf_result['pending_tasks'] = running_tasks
             env.logger.info('Workflow {} (ID={}) exits with {} running tasks'.format(self.workflow.name, self.md5, len(e.tasks)))
             for task in e.tasks:
-                env.logger.info(task)
+                env.logger.info(task[1])
             # close all processes
         except Exception as e:
             for p, _, _ in procs + pool:
