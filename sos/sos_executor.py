@@ -245,7 +245,7 @@ class Base_Executor:
                 env.logger.info('Workflow {} has been completed.'.format(self.md5))
                 sys.exit(0)
         # wait is None or True, and there is task
-        elif self.config['wait_for_task'] is not True and self.workflow.has_external_task():
+        elif self.config.get('wait_for_task', None) is not True and self.workflow.has_external_task():
             with open(wf_status, 'w') as wf:
                 # overwrite previous file
                 for key, val in self.config.items():
