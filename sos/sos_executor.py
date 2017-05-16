@@ -240,7 +240,6 @@ class Base_Executor:
                         if line.startswith('pending_task'):
                             k, v = load_var(line)
                             env.config['resumed_tasks'].add(v[1])
-                env.logger.info('Resuming with pending tasks: {}'.format(', '.join(env.config['resumed_tasks'])))
             else:
                 env.logger.info('Workflow {} has been completed.'.format(self.md5))
                 sys.exit(0)

@@ -304,7 +304,8 @@ def cmd_run(args, workflow_args):
                 'script': args.script,
                 'workflow': args.workflow,
                 'targets': args.__targets__,
-                'bin_dirs': args.__bin_dirs__
+                'bin_dirs': args.__bin_dirs__,
+                'workflow_args': workflow_args
                 })
         executor.run(args.__targets__, mode='dryrun' if args.dryrun else 'run')
     except Exception as e:
@@ -333,21 +334,33 @@ def get_resume_parser(interactive=False, with_workflow=True, desc_only=False):
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).'''),
+    parser.add_argument('-j', type=int, metavar='JOBS',
+        default=4, dest='__max_procs__',
+        help='''Maximum number of worker processes for the execution of the
+            workflow if the workflow can be executed in parallel (namely
+            having multiple starting points or execution branches).''')
+    parser.add_argument('-J', type=int, metavar='EXTERNAL_JOBS',
+        dest='__max_running_jobs__',
+        help='''Maximum number of externally running tasks. This option
+            overrides option "max_running_jobs" of a task queue (option -q)
+            so that you can, for example, submit one job at a time (with
+            -J 1) to test the task queue.''')
     parser.set_defaults(func=cmd_resume)
     return parser
 
 def workflow_status(workflow):
-    from .utils import env, load_var, short_repr, load_config_files
+    from .utils import env, load_var, load_config_files
     from .hosts import Host
     from .sos_task import check_tasks
+    from .sos_eval import interpolate
     from io import StringIO
     from contextlib import redirect_stdout
     from collections import defaultdict
+    import re
     pending_tasks = defaultdict(list)
     res = {'task_status': []}
     with open(workflow) as wf:
         config_file = None
-        env.logger.info('{:20s} \t{}'.format('Workflow ID:', os.path.basename(workflow)[:-7]))
         for line in wf:
             if line.startswith('#') or not line.strip():
                 continue
@@ -356,13 +369,25 @@ def workflow_status(workflow):
                 res[k] = v
                 if k == 'config_file':
                     config_file = v
-                    env.logger.info('{:20s} \t{}'.format(k, short_repr(v)))
                 elif k == 'pending_task':
                     pending_tasks[v[0]].append(v[1])
-                else:
-                    env.logger.info('{:20s} \t{}'.format(k, short_repr(v)))
             except Exception as e:
                 raise ValueError('Unrecognizable status line {}: {}'.format(line, e))
+    #
+    env.logger.info('{:15s} \t{}'.format('Workflow ID:', os.path.basename(workflow)[:-7]))
+    env.logger.info('{:15s} \t{}'.format('Command:', re.sub(r'\s+', ' ', interpolate(
+        'sos run ${script} ${workflow if workflow else ""} '
+        '${("-c " + config_file) if config_file else ""} '
+        '${("-s " + sig_mode) if sig_mode not in ("", "default") else ""} '
+        '${("-q " + default_queue) if default_queue else ""} '
+        '${("-d " + output_dag) if output_dag not in ("", None) else ""} '
+        '${("-b " + " ".join(bin_dirs)) if bin_dirs and bin_dirs != ["~/.sos/bin"] else ""} '
+        '${("-j " + str(max_procs)) if max_procs != 4 else ""} '
+        '${("-J " + str(max_running_jobs)) if max_running_jobs else ""} '
+        '${("-t " + " ".join(targets)) if targets else ""} '
+        '${" ".join(workflow_args)} '
+        , '${ }', res))))
+    env.logger.info('{:15s} \t{}'.format('Working dir:', res['workdir']))
     #
     for k,v in pending_tasks.items():
         if k in ('', 'localhost'):
@@ -380,7 +405,7 @@ def workflow_status(workflow):
                 env.logger.warning('Failed to check status of task {} at host {}'.format(v, k))
                 status = ['unknown'] * len(v)
         for v,s in zip(v, status):
-            env.logger.info('{:20s} \t{} at {}, currently ``{}``'.format('Pending task:', v, k, s))
+            env.logger.info('{:15s} \t{} at {}, currently ``{}``'.format('Pending task:', v, k, s))
         res['task_status'].extend(status)
     return res
 
@@ -413,6 +438,9 @@ def cmd_resume(args, workflow_args):
         workflow = sorted(workflows, key=lambda x: os.path.getmtime(x))[-1]
     #
     res = workflow_status(workflow)
+    if not res['task_status']:
+        env.logger.warn('{} does not have any pending task. The workflow might have been interrupted.')
+        os.remove(workflow)
     if all(x == 'running' for x in res['task_status']):
         env.logger.info('Cannot resume workflow {} because all tasks are still running'.format(
             os.path.basename(workflow)[:-7]))
@@ -420,21 +448,21 @@ def cmd_resume(args, workflow_args):
     #
     args.__config__ = res['config_file']
     args.__sig_mode__ = res['sig_mode']
-    args.__max_procs__ = res['max_procs']
+    args.__max_procs__ = args.__max_procs__ if args.__max_procs__ != 4 else res['max_procs']
     args.__resume__ = True
-    args.__max_running_jobs__ = res['max_running_jobs']
+    args.__max_running_jobs__ = args.__max_running_jobs__ if args.__max_running_jobs__ is not None else res['max_running_jobs']
     args.dryrun = False
     args.__wait__ = args.__wait__
     args.__no_wait__ = False
     args.__bin_dirs__ = res['bin_dirs']
     args.__queue__ = None if res['default_queue'] == '' else res['default_queue']
-    args.__dag__ = res['output_dag']
+    args.__dag__ = None if res['output_dag'] == '-' else ('' if res['output_dag'] is None else res['output_dag'])
     args.__targets__ = res['targets']
     args.script = res['script']
     args.workflow = res['workflow']
     if 'workdir' in res:
         os.chdir(res['workdir'])
-    cmd_run(args, workflow_args)
+    cmd_run(args, res['workflow_args'])
 
 #
 # subcommand dryrun
