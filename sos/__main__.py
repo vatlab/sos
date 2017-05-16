@@ -69,6 +69,7 @@ def get_convert_parser(desc_only=False):
         epilog='''Extra command line argument could be specified to customize
             the style of html, markdown, and terminal output. ''',
         )
+    parser.short_description = '''Convert between .sos, .ipynb and other formats'''
     if desc_only:
         return parser
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
@@ -162,6 +163,7 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
     parser = argparse.ArgumentParser(prog='run',
         description='Execute default or specified workflow defined in script',
         epilog=workflow_options)
+    parser.short_description = 'Execute default or specified workflow in script'
     if desc_only:
         return parser
     if not interactive:
@@ -317,7 +319,8 @@ def cmd_run(args, workflow_args):
 
 def get_resume_parser(interactive=False, with_workflow=True, desc_only=False):
     parser = argparse.ArgumentParser(prog='resume',
-        description='Resume the execution of a suspended workflow.')
+        description='''Resume the execution or list status of suspended workflows''')
+    parser.short_description = 'Resume the execution of a suspended workflow'
     if desc_only:
         return parser
     parser.add_argument('workflow_id', nargs='?',
@@ -477,6 +480,7 @@ def get_dryrun_parser(desc_only=False):
         -q is ignored so all tasks are executed locally. 5). Tasks are generated
         but not executed.''',
         epilog=workflow_options)
+    parser.short_description = '''Execute workflow in dryrun mode'''
     if desc_only:
         return parser
     parser.add_argument('script', metavar='SCRIPT', help=script_help)
@@ -858,7 +862,7 @@ def cmd_kill(args, workflow_args):
 #
 def get_remove_parser(desc_only=False):
     parser = argparse.ArgumentParser('remove',
-        description='''Remove specified files and/or their signatures.''')
+        description='''Remove specified files and/or their signatures''')
     if desc_only:
         return parser
     parser.add_argument('targets', nargs='*', metavar='FILE_OR_DIR',
@@ -1173,6 +1177,7 @@ def get_config_parser(desc_only=False):
     parser = argparse.ArgumentParser('config',
         description='''Displays, set, and unset configuration
             variables defined in global or local configuration files.''')
+    parser.short_description = '''Read and write sos configuration files'''
     if desc_only:
         return parser
     group = parser.add_mutually_exclusive_group()
@@ -1337,6 +1342,7 @@ def get_pack_parser(desc_only=False):
         show" and be unpacked with command "sos unpack". This command does not
         include files outside of the current working directory unless they
         are specified by option --include, or --all.''')
+    parser.short_description = '''Pack workflow related files into an archive'''
     if desc_only:
         return parser
     parser.add_argument('session', nargs='?',
@@ -1555,6 +1561,7 @@ def get_unpack_parser(desc_only=False):
         description='''Unpack a sos archive to a specified directory. For security
         reasons, files that were outside of the project directory would be
         extracted in this directory unless option -e is specified.''')
+    parser.short_description = '''Unpack workflow related files from an SoS archive'''
     if desc_only:
         return parser
     parser.add_argument('archive',
@@ -1749,7 +1756,8 @@ def add_sub_parser(subparsers, parser, name=None):
     return subparsers.add_parser(parser.prog if name is None else name,
         description=parser.description,
         epilog=parser.epilog,
-        help=parser.description, parents=[parser],
+        help=parser.short_description if hasattr(parser, 'short_description') else parser.description,
+        parents=[parser],
         add_help=False)
 
 
@@ -1782,27 +1790,29 @@ def main():
         #
         # command dryrun
         add_sub_parser(subparsers, get_dryrun_parser(desc_only='dryrun'!=subcommand))
-        #
-        # command execute
-        add_sub_parser(subparsers, get_execute_parser(desc_only='execute'!=subcommand))
+
         #
         # command status
         add_sub_parser(subparsers, get_status_parser(desc_only='status'!=subcommand))
+        #
+        # command execute
+        add_sub_parser(subparsers, get_execute_parser(desc_only='execute'!=subcommand))
         #
         # command kill
         add_sub_parser(subparsers, get_kill_parser(desc_only='kill'!=subcommand))
         #
         # command purge
         add_sub_parser(subparsers, get_purge_parser(desc_only='purge'!=subcommand))
+
+        #
+        # command config
+        add_sub_parser(subparsers, get_config_parser(desc_only='config'!=subcommand))
         #
         # command convert
         add_sub_parser(subparsers, get_convert_parser(desc_only='convert'!=subcommand))
         #
         # command remove
         add_sub_parser(subparsers, get_remove_parser(desc_only='remove'!=subcommand))
-        #
-        # command config
-        add_sub_parser(subparsers, get_config_parser(desc_only='config'!=subcommand))
         #
         # command pack
         add_sub_parser(subparsers, get_pack_parser(desc_only='pack'!=subcommand))
