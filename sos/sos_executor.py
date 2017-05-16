@@ -999,7 +999,7 @@ class Base_Executor:
                     time.sleep(0.1)
         except PendingTasks as e:
             self.record_quit_status(e.tasks)
-            wf_result['pending_tasks'] = running_tasks
+            wf_result['pending_tasks'] = [x[1] for x in running_tasks]
             env.logger.info('Workflow {} (ID={}) exits with {} running tasks'.format(self.workflow.name, self.md5, len(e.tasks)))
             for task in e.tasks:
                 env.logger.info(task[1])
