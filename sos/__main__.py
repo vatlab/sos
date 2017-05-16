@@ -334,6 +334,10 @@ def get_resume_parser(interactive=False, with_workflow=True, desc_only=False):
     parser.add_argument('-w', dest='__wait__', action='store_true',
         help='''Wait for the completion of external tasks regardless of the
             setting of individual task queue.''')
+    parser.add_argument('-W', dest='__no_wait__', action='store_true',
+        help='''Do not wait for the completion of external tasks and quit SoS
+            if all tasks are being executed by external task queues. This option
+            overrides the default wait setting of task queues.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
             information to standard output (default to 2).'''),
@@ -455,8 +459,8 @@ def cmd_resume(args, workflow_args):
     args.__resume__ = True
     args.__max_running_jobs__ = args.__max_running_jobs__ if args.__max_running_jobs__ is not None else res['max_running_jobs']
     args.dryrun = False
-    args.__wait__ = args.__wait__
-    args.__no_wait__ = False
+    args.__wait__ = args.__wait__ if args.__wait__ is True else (res['wait_for_task'] if res['wait_for_task'] is not None else False)
+    args.__no_wait__ = args.__no_wait__ if args.__no_wait__ is True else (not res['wait_for_task'] if res['wait_for_task'] is not None else False)
     args.__bin_dirs__ = res['bin_dirs']
     args.__queue__ = None if res['default_queue'] == '' else res['default_queue']
     args.__dag__ = None if res['output_dag'] == '-' else ('' if res['output_dag'] is None else res['output_dag'])
