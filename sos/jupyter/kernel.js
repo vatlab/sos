@@ -1254,6 +1254,11 @@ define([
         adjustPanel();
     }
 
+    var update_toc = function(evt) {
+        if ($('.toc').length != 0)
+            show_toc();
+    }
+
     function setup_panel() {
         // lazy, hook it up to Jupyter.notebook as the handle on all the singletons
         console.log("Setting up panel");
@@ -1562,6 +1567,8 @@ define([
         }
         events.on('kernel_connected.Kernel', register_sos_comm);
         events.on('kernel_connected.Kernel', wrap_execute);
+        events.on('rendered.MarkdownCell', update_toc);
+
         // #550
         // kernel_ready.Kernel
         //events.on('kernel_connected.Kernel', request_kernel_list);
