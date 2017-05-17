@@ -27,12 +27,12 @@ import copy
 import threading
 from io import StringIO
 from tokenize import generate_tokens
-from collections.abc import Sequence
+from collections.abc import Sequence, Mapping
 import concurrent.futures
 
 from sos.utils import env, short_repr, get_traceback, sample_of_file, tail_of_file, linecount_of_file, \
     format_HHMMSS, expand_time, expand_size
-from sos.sos_eval import SoS_exec
+from sos.sos_eval import SoS_exec, SoS_eval
 
 from .target import textMD5, RuntimeInfo, Undetermined, FileTarget, UnknownTarget
 from .monitor import ProcessMonitor
@@ -139,6 +139,46 @@ def loadTask(filename):
     with open(filename, 'rb') as task:
         return pickle.load(task)
 
+def collect_task_result(task_id, sigil):
+    shared = {}
+    if 'shared' in env.sos_dict['_runtime']:
+        vars = env.sos_dict['_runtime']['shared']
+        if isinstance(vars, str):
+            if vars not in env.sos_dict:
+                raise ValueError('Unavailable shared variable {} after the completion of task {}'.format(vars, task_id))
+            shared[vars] = copy.deepcopy(env.sos_dict[vars])
+        elif isinstance(vars, Mapping):
+            for var, val in vars.items():
+                if var != val:
+                    env.sos_dict.set(var, SoS_eval(val, sigil))
+                if var not in env.sos_dict:
+                    raise ValueError('Unavailable shared variable {} after the completion of task {}'.format(var, task_id))
+                shared[var] = copy.deepcopy(env.sos_dict[var])
+        elif isinstance(vars, Sequence):
+            # if there are dictionaries in the sequence, e.g.
+            # shared=['A', 'B', {'C':'D"}]
+            for item in vars:
+                if isinstance(item, str):
+                    if item not in env.sos_dict:
+                        raise ValueError('Unavailable shared variable {} after the completion of task {}'.format(item, task_id))
+                    shared[item] = copy.deepcopy(env.sos_dict[item])
+                elif isinstance(item, Mapping):
+                    for var, val in item.items():
+                        if var != val:
+                            env.sos_dict.set(var, SoS_eval(val, sigil))
+                        if var not in env.sos_dict:
+                            raise ValueError('Unavailable shared variable {} after the completion of task {}'.format(var, task_id))
+                        shared[var] = copy.deepcopy(env.sos_dict[var])
+                else:
+                    raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(vars))
+        else:
+            raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(vars))
+        env.logger.debug('task {} (index={}) return shared variable {}'.format(task_id, env.sos_dict['_index'], shared))
+    return {'ret_code': 0, 'task': task_id, 
+            'output': {} if env.sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in env.sos_dict['_output'] if isinstance(x, str)},
+            'shared': {env.sos_dict['_index']: shared} }
+
+
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
     resource_monitor_interval=60):
     '''A function that execute specified task within a local dictionary
@@ -210,11 +250,12 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                         results.append({'ret_code': 1, 'exception': e})
         #
         # now we collect result
-        all_res = {'ret_code': 0, 'output': {}, 'subtasks': {}}
+        all_res = {'ret_code': 0, 'output': {}, 'subtasks': {}, 'shared': {}}
         for tid, x in zip(params.task_stack, results):
             all_res['ret_code'] += x['ret_code']
             all_res['output'].update(x['output'])
             all_res['subtasks'][tid[0]] = x
+            all_res['shared'].update(x['shared'])
         return all_res
         
     task, sos_dict, sigil = params.task, params.sos_dict, params.sigil
@@ -259,7 +300,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     env.sos_dict.quick_update(sos_dict)
 
     skipped = False
-    if env.config['sig_mode'] == 'ignore' or env.sos_dict['_output'] is None:
+    if env.config['sig_mode'] == 'ignore':
         sig = None
     else:
         tokens = [x[1] for x in generate_tokens(StringIO(task).readline)]
@@ -317,7 +358,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
 
     if skipped:
         env.logger.info('{} ``skipped``'.format(task_id))
-        return {'ret_code': 0, 'output': env.sos_dict['_output'], 'task': task_id}
+        return collect_task_result(task_id, sos_dict['_index'], sigil)
 
     try:
         # go to 'cur_dir'
@@ -387,7 +428,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         if env.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
-        return {'ret_code': 1, 'exception': e, 'task': task_id}
+        return {'ret_code': 1, 'exception': e, 'task': task_id, 'shared': {}}
     except KeyboardInterrupt:
         env.logger.error('{} ``interrupted``'.format(task_id))
         raise
@@ -398,12 +439,12 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         sig.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
             env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
         sig.release()
+
     if subtask:
         env.logger.debug('{} ``completed``'.format(task_id))
     else:
         env.logger.info('{} ``completed``'.format(task_id))
-    return {'ret_code': 0, 'task': task_id, 'output': {} if env.sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in env.sos_dict['_output'] if isinstance(x, str)}}
-
+    return collect_task_result(task_id, sigil)
 
 def check_task(task):
     #

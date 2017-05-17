@@ -24,7 +24,6 @@ import sys
 import copy
 import glob
 import fnmatch
-import pickle
 
 from collections.abc import Sequence, Iterable, Mapping
 from itertools import tee, combinations
@@ -709,6 +708,21 @@ class Base_Step_Executor:
         # check if all have results?
         if any(isinstance(x, str) for x in self.proc_results):
             raise RuntimeError('Failed to get results for tasks {}'.format(', '.join(x for x in self.proc_results if isinstance(x, str))))
+        #
+        # now, if the task has shared variable, merge to sos_dict
+        shared = {}
+        for res in self.proc_results:
+            #
+            # shared looks like: {0: {'a': 100}} where the first 0 is _index
+            # we need to convert it to {'a': {0: 100}}
+            env.logger.debug('Collect shared result {}'.format(res['shared']))
+            for idx, sh in res['shared'].items():
+                for k, v in sh.items():
+                    if k in shared:
+                        shared[k][idx] = v
+                    else:
+                        shared[k] = {idx: v}
+        env.sos_dict.update(shared)
 
     
     def log(self, stage=None, msg=None):
