@@ -34,7 +34,7 @@ from sos.utils import env, short_repr, get_traceback, sample_of_file, tail_of_fi
     format_HHMMSS, expand_time, expand_size
 from sos.sos_eval import SoS_exec
 
-from .target import textMD5, RuntimeInfo, Undetermined, FileTarget
+from .target import textMD5, RuntimeInfo, Undetermined, FileTarget, UnknownTarget
 from .monitor import ProcessMonitor
 
 from collections import OrderedDict
@@ -139,7 +139,6 @@ def loadTask(filename):
     with open(filename, 'rb') as task:
         return pickle.load(task)
 
-
 def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_interval=5,
     resource_monitor_interval=60):
     '''A function that execute specified task within a local dictionary
@@ -223,6 +222,23 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     if '_runtime' not in sos_dict:
         sos_dict['_runtime'] = {}
 
+    if runmode != 'dryrun': 
+        # we will need to check existence of targets because the task might
+        # be executed on a remote host where the targets are not available.
+        for target in (sos_dict['_input'] if isinstance(sos_dict['_input'], list) else []) + \
+            (sos_dict['_depends'] if isinstance(sos_dict['_depends'], list) else []):
+            # if the file does not exist (although the signature exists)
+            # request generation of files
+            if isinstance(target, str):
+                if not FileTarget(target).exists('target'):
+                    # remove the signature and regenerate the file
+                    FileTarget(target).remove_sig()
+                    raise UnknownTarget(target)
+            elif not target.exists('target'):
+                target.remove_sig()
+                raise UnknownTarget(target)
+
+    # pulse thread
     m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
         resource_monitor_interval=resource_monitor_interval,
         max_walltime=sos_dict['_runtime'].get('max_walltime', None),
