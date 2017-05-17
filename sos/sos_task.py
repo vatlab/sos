@@ -159,30 +159,56 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         env.logger.trace('Executing subtask {}'.format(task_id))
 
     if hasattr(params, 'task_stack'):
+        master_out = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out')
+        master_err = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
         # if this is a master task, calling each sub task
-        if params.num_workers > 1:
-            from multiprocessing.pool import Pool
-            p = Pool(params.num_workers)
-            try:
-                results = p.map(execute_task, params.task_stack)
-            except Exception as e:
-                if env.verbosity > 2:
-                    sys.stderr.write(get_traceback())
-                env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
-                return {'ret_code': 1, 'exception': e}
-        else:
-            results = []
-            for tid, tdef in params.task_stack:
+        with open(master_out, 'ab') as out, open(master_err, 'ab') as err:
+            def copy_out_and_err(result):
+                tid = result['task']
+                out.write('{}: {}\n'.format(tid, 'completed' if result['ret_code'] == 0 else 'failed').encode())
+                out.write('output: {}\n'.format(result['output']).encode())
+                sub_out = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', tid + '.out')
+                if os.path.isfile(sub_out):
+                    with open(sub_out, 'rb') as sout:
+                        out.write(sout.read())
+
+                sub_err = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', tid + '.err')
+                err.write('{}: {}\n'.format(tid, 'completed' if result['ret_code'] == 0 else 'failed').encode())
+                if os.path.isfile(sub_err):
+                    with open(sub_err, 'rb') as serr:
+                        err.write(serr.read())
+
+            if params.num_workers > 1:
+                from multiprocessing.pool import Pool
+                p = Pool(params.num_workers)
                 try:
-                    res = execute_task((tid, tdef), verbosity=verbosity, runmode=runmode,
-                        sigmode=sigmode, monitor_interval=monitor_interval,
-                        resource_monitor_interval=resource_monitor_interval)
-                    results.append(res)
+                    results = []
+                    for t in params.task_stack:
+                        results.append(p.apply_async(execute_task, (t, verbosity, runmode,
+                            sigmode, monitor_interval, resource_monitor_interval), callback=copy_out_and_err))
+                    for idx,r in enumerate(results):
+                        results[idx] = r.get()
                 except Exception as e:
                     if env.verbosity > 2:
                         sys.stderr.write(get_traceback())
                     env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
-                    results.append({'ret_code': 1, 'exception': e})
+                    return {'ret_code': 1, 'exception': e}
+            else:
+                results = []
+                for tid, tdef in params.task_stack:
+                    try:
+                        res = execute_task((tid, tdef), verbosity=verbosity, runmode=runmode,
+                            sigmode=sigmode, monitor_interval=monitor_interval,
+                            resource_monitor_interval=resource_monitor_interval)
+                        copy_out_and_err(res)
+                        results.append(res)
+                    except Exception as e:
+                        out.write('{}: failed\n'.format(tid).encode())
+                        copy_out_and_err({'task': tid, 'ret_code': 1, 'output': []})
+                        if env.verbosity > 2:
+                            sys.stderr.write(get_traceback())
+                        env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
+                        results.append({'ret_code': 1, 'exception': e})
         #
         # now we collect result
         all_res = {'ret_code': 0, 'output': {}, 'subtasks': {}}
@@ -275,7 +301,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
 
     if skipped:
         env.logger.info('{} ``skipped``'.format(task_id))
-        return {'ret_code': 0, 'output': env.sos_dict['_output'], 'path': os.environ['PATH']}
+        return {'ret_code': 0, 'output': env.sos_dict['_output'], 'task': task_id}
 
     try:
         # go to 'cur_dir'
@@ -345,7 +371,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         if env.verbosity > 2:
             sys.stderr.write(get_traceback())
         env.logger.error('{} ``failed`` with {} error {}'.format(task_id, e.__class__.__name__, e))
-        return {'ret_code': 1, 'exception': e}
+        return {'ret_code': 1, 'exception': e, 'task': task_id}
     except KeyboardInterrupt:
         env.logger.error('{} ``interrupted``'.format(task_id))
         raise
@@ -360,7 +386,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         env.logger.debug('{} ``completed``'.format(task_id))
     else:
         env.logger.info('{} ``completed``'.format(task_id))
-    return {'ret_code': 0, 'output': {} if env.sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in env.sos_dict['_output'] if isinstance(x, str)}}
+    return {'ret_code': 0, 'task': task_id, 'output': {} if env.sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in env.sos_dict['_output'] if isinstance(x, str)}}
 
 
 def check_task(task):
