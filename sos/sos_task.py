@@ -358,7 +358,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
 
     if skipped:
         env.logger.info('{} ``skipped``'.format(task_id))
-        return collect_task_result(task_id, sos_dict['_index'], sigil)
+        return collect_task_result(task_id, sigil)
 
     try:
         # go to 'cur_dir'
