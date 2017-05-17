@@ -996,7 +996,7 @@ class TaskEngine(threading.Thread):
                     if env.config['sig_mode'] != 'force':
                         env.logger.info('{} ``already completed``'.format(task_id))
                         return 'completed'
-                    elif task_id in env.config['resumed_tasks']:
+                    elif task_id in env.config.get('resumed_tasks', []):
                         # force re-execution, but it is possible that this task has been
                         # executed but quit in no-wait mode (or canceled by user). More
                         # importantly, the Jupyter notebook would re-run complted workflow
