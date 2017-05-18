@@ -559,7 +559,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
 
     all_tasks = sorted(list(set(all_tasks)), key=lambda x: 0 if x[1] is None else x[1])
     if not all_tasks:
-        env.logger.warning('No matching tasks')
+        env.logger.info('No matching tasks')
         return
     # at most 20 threads
     p = Pool(min(20, len(all_tasks)))

@@ -114,5 +114,5 @@ cat >> docker.yml << 'HERE'
         max_running_jobs: 100
         submit_cmd: tsp -L ${task} sh ${job_file}
         status_cmd: tsp -s ${job_id}
-        kill_cmd: tsp -w ${job_id}
+        kill_cmd: tsp -r ${job_id}
 HERE
