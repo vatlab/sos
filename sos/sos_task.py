@@ -717,12 +717,6 @@ def kill_task(task):
     status = check_task(task)
     if status == 'pending':
         return 'cancelled'
-    elif status != 'running':
-        return status
-    # job is running
-    pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
-    from stat import S_IREAD, S_IRGRP, S_IROTH
-    os.chmod(pulse_file, S_IREAD|S_IRGRP|S_IROTH)
     # remove job file as well
     job_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.sh')
     if os.path.isfile(job_file):
@@ -730,6 +724,12 @@ def kill_task(task):
             os.remove(job_file)
         except:
             pass
+    if status != 'running':
+        return status
+    # job is running
+    pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
+    from stat import S_IREAD, S_IRGRP, S_IROTH
+    os.chmod(pulse_file, S_IREAD|S_IRGRP|S_IROTH)
     return 'killed'
 
 
