@@ -647,7 +647,13 @@ class Base_Step_Executor:
             task_vars['_output'], task_vars['_depends'],
             task_vars['__signature_vars__'], task_vars).sig_id
 
-        self._task_defs.append((task_id, taskdef))
+        #618
+        # it is possible that identical tasks are executed (with different underlying random numbers)
+        # we should either give a warning or produce different ids...
+        if task_id in [x[0] for x in self._task_defs]:
+            env.logger.warning('Identical task generated from _index={} is ignored.'.format(env.sos_dict['_index']))
+        else:
+            self._task_defs.append((task_id, taskdef))
         return task_id
 
     def wait_for_results(self):
