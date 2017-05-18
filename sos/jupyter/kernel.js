@@ -1641,6 +1641,7 @@ define([
             /* #524. syntax highlighting would be disabled after page reload. Note quite sure if this is
                a correct fix but it seems to work. */
             IPython.notebook.set_codemirror_mode('sos');
+            show_toc();
         }, 1000);
 
 
