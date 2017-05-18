@@ -290,7 +290,8 @@ class RemoteHost:
             for src in source:
                 result.update(self._map_path(src))
         else:
-            raise ValueError('Unacceptable parameter {} to option to_host'.format(source))
+            env.logger.debug('Ignore unmappable source {}'.format(source))
+            return {}
         return result
 
     #
@@ -316,9 +317,11 @@ class RemoteHost:
                 env.logger.warning('Path {} is not under any specified paths of localhost and is mapped to {} on remote host.'.format(source, dest))
             return dest
         elif isinstance(source, Sequence):
-            return [self._map_var(x) for x in source]
+            ret = [self._map_var(x) for x in source]
+            return [x for x in ret if x is not None]
         else:
-            raise ValueError('Cannot map variables {} of type {}'.format(source, type(source).__name__))
+            env.logger.debug('Ignore unmappable source {}'.format(source))
+            return None
 
     def _send_to_host(self, items):
         # we only copy files and directories, not other types of targets

@@ -34,7 +34,7 @@ from sos.utils import env, short_repr, get_traceback, sample_of_file, tail_of_fi
     format_HHMMSS, expand_time, expand_size
 from sos.sos_eval import SoS_exec, SoS_eval
 
-from .target import textMD5, RuntimeInfo, Undetermined, FileTarget, UnknownTarget
+from .target import textMD5, RuntimeInfo, Undetermined, FileTarget, UnknownTarget, remote
 from .monitor import ProcessMonitor
 
 from collections import OrderedDict
@@ -263,6 +263,11 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     if '_runtime' not in sos_dict:
         sos_dict['_runtime'] = {}
 
+    # if targets are defined as `remote`, they should be resolved during task execution
+    for key in ['_input', 'input', '_output', 'output', '_depends', 'depends']:
+        if key in sos_dict and isinstance(sos_dict[key], list):
+            sos_dict[key] = [x.resolve() if isinstance(x, remote) else x for x in sos_dict[key]]
+
     if runmode != 'dryrun': 
         # we will need to check existence of targets because the task might
         # be executed on a remote host where the targets are not available.
@@ -297,6 +302,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         env.logger.debug('{} ``started``'.format(task_id))
     else:
         env.logger.info('{} ``started``'.format(task_id))
+
     env.sos_dict.quick_update(sos_dict)
 
     skipped = False

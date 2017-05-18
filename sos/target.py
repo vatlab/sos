@@ -129,7 +129,7 @@ class BaseTarget:
     #
     def sig_file(self):
         if self._sigfile is None:
-            self._sigfile = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}_{}.sig'.format(self.__class__.__name__,
+            self._sigfile = os.path.join(env.exec_dir, '.sos', '.runtime', '{}_{}.file_info'.format(self.__class__.__name__,
                 textMD5(self.name())))
         return self._sigfile
 
@@ -237,6 +237,24 @@ class dynamic(BaseTarget):
 
     def name(self):
         return self._target
+
+    def resolve(self):
+        return self._target
+
+class remote(BaseTarget):
+    '''A remote target is not tracked and not translated during task execution'''
+    def __init__(self, target):
+        super(remote, self).__init__()
+        self._target = target
+
+    def name(self):
+        return FileTarget(self._target).name() if isinstance(self._target, str) else self._target.name()
+
+    def exists(self, mode='any'):
+        return True
+
+    def signature(self, mode='any'):
+        return textMD5(self.name())
 
     def resolve(self):
         return self._target
