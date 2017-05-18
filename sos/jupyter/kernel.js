@@ -550,7 +550,7 @@ define([
             var css = document.createElement("style");
             css.type = "text/css";
             css.innerHTML = '.code_cell .celltoolbar {' +
-                'width:60pt;background:none;border:none;border-bottom:none;z-index: 1000;' +
+                'width:70pt;background:none;border:none;border-bottom:none;z-index: 1000;' +
                 'position:relative;margin-bottom:-50pt;float:right;}  ' +
                 '.text_cell .celltoolbar {display:none}  ';
             document.body.appendChild(css);

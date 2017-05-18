@@ -364,10 +364,17 @@ def get_notebook_to_html_parser():
         .html file. Additional command line arguments are passed directly to 
         command "jupyter nbconvert --to html" so please refer to nbconvert manual for
         available options.''')
+    parser.add_argument('--template',
+        help='''Template to export Jupyter notebook with sos kernel. If no template is
+        specified, a default sos template that allows you to hide input cells will be used.''')
     return parser
 
 def notebook_to_html(notebook_file, output_file, sargs=None, unknown_args=[]):
     from nbconvert.exporters.html import HTMLExporter
+    import os
+    if sargs.template is None:
+        # use the default sos template
+        unknown_args = ['--template', os.path.join(os.path.split(__file__)[0], 'sos.tpl') ] + unknown_args
     export_notebook(HTMLExporter, 'html', notebook_file, output_file, unknown_args)
 
 def get_notebook_to_pdf_parser():
