@@ -250,6 +250,7 @@ class PBS_TaskEngine(TaskEngine):
         # remove the task from SoS task queue, this would also give us a list of
         # tasks on the remote server
         output = super(PBS_TaskEngine, self).kill_tasks(tasks, all_tasks)
+        env.logger.trace('Output of local kill: {}'.format(output))
         # then we call the real PBS commands to kill tasks
         res = ''
         for line in output.split('\n'):

@@ -841,6 +841,7 @@ def cmd_kill(args, workflow_args):
     from .sos_task import kill_tasks
     from .utils import env, load_config_files
     from .hosts import Host
+    env.verbosity = args.verbosity
     if args.queue == '':
         from .hosts import list_queues
         list_queues(args.config, args.verbosity)
