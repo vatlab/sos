@@ -356,7 +356,8 @@ def get_resume_parser(interactive=False, with_workflow=True, desc_only=False):
     return parser
 
 def workflow_status(workflow):
-    from .utils import env, load_var, load_config_files
+    import time
+    from .utils import env, load_var, load_config_files, PrettyRelativeTime
     from .hosts import Host
     from .sos_task import check_tasks
     from .sos_eval import interpolate
@@ -394,6 +395,8 @@ def workflow_status(workflow):
         '${("-t " + " ".join(targets)) if targets else ""} '
         '${" ".join(workflow_args)} '
         , '${ }', res))))
+    env.logger.info('{:15s} \t{} ago'.format('Started:',
+                PrettyRelativeTime(time.time() - os.path.getmtime(workflow))))
     env.logger.info('{:15s} \t{}'.format('Working dir:', res['workdir']))
     #
     for k,v in pending_tasks.items():
@@ -433,21 +436,25 @@ def cmd_resume(args, workflow_args):
         for wf in workflows:
             workflow_status(wf)
         sys.exit(0)
+    elif len(workflows) > 1:
+        workflows = sorted(workflows, key=lambda x: os.path.getmtime(x))
+        for wf in workflows:
+            env.logger.info('{}\tstarted {} ago'.format(os.path.basename(wf)[:-4],
+                PrettyRelativeTime(time.time() - os.path.getmtime(wf))))
     #
     # resume execution...
     if args.workflow_id and len(workflows) > 1:
         env.logger.error('{} matches more than one resumable workflows {}'.format(args.workflow_id,
             ', '.join([os.path.basename(x)[:-4] for x in workflows])))
         sys.exit(1)
-    elif len(workflows) == 1:
-        workflow = workflows[0]
     else:
-        workflow = sorted(workflows, key=lambda x: os.path.getmtime(x))[-1]
+        workflow = workflows[-1]
     #
     res = workflow_status(workflow)
     if not res['task_status']:
-        env.logger.warn('{} does not have any pending task. The workflow might have been interrupted.')
+        env.logger.warn('Removing workflow {} because it does not have any pending task. The workflow might have been interrupted.'.format(os.path.basename(wworkflow)[:-4]))
         os.remove(workflow)
+        sys.exit(1)
     if all(x == 'running' for x in res['task_status']):
         env.logger.info('Cannot resume workflow {} because all tasks are still running'.format(
             os.path.basename(workflow)[:-7]))
