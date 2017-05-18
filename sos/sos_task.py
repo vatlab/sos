@@ -67,7 +67,7 @@ class TaskParams(object):
 
 class MasterTaskParams(TaskParams):
     def __init__(self, num_workers=0):
-        self.ID = 'M_0' 
+        self.ID = 'M_0'
         self.task = ''
         self.sos_dict = {'_runtime': {}, '_input': [], '_output': [], '_depends': []}
         self.sigil = None
@@ -90,7 +90,7 @@ class MasterTaskParams(TaskParams):
             self.sigil = params.sigil
         elif self.sigil != params.sigil:
             raise ValueError('Cannot push a task with different sigil {}'.format(params.sigil))
-        # 
+        #
         # walltime
         if not self.task_stack:
             for key in ('walltime', 'max_walltime', 'cores', 'max_cores', 'mem', 'max_mem', 'preserved_vars', 'name'):
@@ -134,12 +134,12 @@ class MasterTaskParams(TaskParams):
         #
         self.ID = 'M{}_{}'.format(len(self.task_stack), self.task_stack[0][0])
 
-        
+
 def loadTask(filename):
     with open(filename, 'rb') as task:
         return pickle.load(task)
 
-def collect_task_result(task_id, sigil):
+def collect_task_result(task_id, sigil, sos_dict):
     shared = {}
     if 'shared' in env.sos_dict['_runtime']:
         vars = env.sos_dict['_runtime']['shared']
@@ -174,8 +174,10 @@ def collect_task_result(task_id, sigil):
         else:
             raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(vars))
         env.logger.debug('task {} (index={}) return shared variable {}'.format(task_id, env.sos_dict['_index'], shared))
-    return {'ret_code': 0, 'task': task_id, 
-            'output': {} if env.sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in env.sos_dict['_output'] if isinstance(x, str)},
+    # the difference between sos_dict and env.sos_dict is that sos_dict (the original version) can have remote() targets
+    # which should not be reported.
+    return {'ret_code': 0, 'task': task_id,
+            'output': {} if env.sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in sos_dict['_output'] if isinstance(x, str)},
             'shared': {env.sos_dict['_index']: shared} }
 
 
@@ -257,32 +259,11 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
             all_res['subtasks'][tid[0]] = x
             all_res['shared'].update(x['shared'])
         return all_res
-        
+
     task, sos_dict, sigil = params.task, params.sos_dict, params.sigil
 
     if '_runtime' not in sos_dict:
         sos_dict['_runtime'] = {}
-
-    # if targets are defined as `remote`, they should be resolved during task execution
-    for key in ['_input', 'input', '_output', 'output', '_depends', 'depends']:
-        if key in sos_dict and isinstance(sos_dict[key], list):
-            sos_dict[key] = [x.resolve() if isinstance(x, remote) else x for x in sos_dict[key]]
-
-    if runmode != 'dryrun': 
-        # we will need to check existence of targets because the task might
-        # be executed on a remote host where the targets are not available.
-        for target in (sos_dict['_input'] if isinstance(sos_dict['_input'], list) else []) + \
-            (sos_dict['_depends'] if isinstance(sos_dict['_depends'], list) else []):
-            # if the file does not exist (although the signature exists)
-            # request generation of files
-            if isinstance(target, str):
-                if not FileTarget(target).exists('target'):
-                    # remove the signature and regenerate the file
-                    FileTarget(target).remove_sig()
-                    raise UnknownTarget(target)
-            elif not target.exists('target'):
-                target.remove_sig()
-                raise UnknownTarget(target)
 
     # pulse thread
     m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
@@ -304,6 +285,11 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         env.logger.info('{} ``started``'.format(task_id))
 
     env.sos_dict.quick_update(sos_dict)
+
+    # if targets are defined as `remote`, they should be resolved during task execution
+    for key in ['_input', 'input', '_output', 'output', '_depends', 'depends']:
+        if key in sos_dict and isinstance(sos_dict[key], list):
+            env.sos_dict.set(key, [x.resolve() if isinstance(x, remote) else x for x in sos_dict[key]])
 
     skipped = False
     if env.config['sig_mode'] == 'ignore':
@@ -364,7 +350,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
 
     if skipped:
         env.logger.info('{} ``skipped``'.format(task_id))
-        return collect_task_result(task_id, sigil)
+        return collect_task_result(task_id, sigil, sos_dict)
 
     try:
         # go to 'cur_dir'
@@ -407,8 +393,24 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                     raise ValueError('Unacceptable input for option prepend_path: {}'.format(sos_dict['_runtime']['prepend_path']))
 
         # task output
-        env.sos_dict['__std_out__'] = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out')
-        env.sos_dict['__std_err__'] = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
+        env.sos_dict.set('__std_out__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out'))
+        env.sos_dict.set('__std_err__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'))
+
+        if runmode != 'dryrun':
+            # we will need to check existence of targets because the task might
+            # be executed on a remote host where the targets are not available.
+            for target in (sos_dict['_input'] if isinstance(sos_dict['_input'], list) else []) + \
+                (sos_dict['_depends'] if isinstance(sos_dict['_depends'], list) else []):
+                # if the file does not exist (although the signature exists)
+                # request generation of files
+                if isinstance(target, str):
+                    if not FileTarget(target).exists('target'):
+                        # remove the signature and regenerate the file
+                        FileTarget(target).remove_sig()
+                        raise UnknownTarget(target)
+                elif not target.exists('target'):
+                    target.remove_sig()
+                    raise UnknownTarget(target)
 
         # create directory. This usually has been done at the step level but the task can be executed
         # on a remote host where the directory does not yet exist.
@@ -429,7 +431,18 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         SoS_exec('from sos.runtime import *', None)
         # step process
         SoS_exec(task, sigil)
-        os.chdir(orig_dir)
+
+        if sig:
+            sig.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
+                env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
+            sig.release()
+
+        if subtask:
+            env.logger.debug('{} ``completed``'.format(task_id))
+        else:
+            env.logger.info('{} ``completed``'.format(task_id))
+        return collect_task_result(task_id, sigil, sos_dict)
+
     except Exception as e:
         if env.verbosity > 2:
             sys.stderr.write(get_traceback())
@@ -440,17 +453,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         raise
     finally:
         env.sos_dict.set('__step_sig__', None)
-
-    if sig:
-        sig.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
-            env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
-        sig.release()
-
-    if subtask:
-        env.logger.debug('{} ``completed``'.format(task_id))
-    else:
-        env.logger.info('{} ``completed``'.format(task_id))
-    return collect_task_result(task_id, sigil)
+        os.chdir(orig_dir)
 
 def check_task(task):
     #
@@ -463,7 +466,7 @@ def check_task(task):
     pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.pulse')
     if not os.path.isfile(pulse_file):
         pulse_file =  os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task + '.status')
-    
+
     def has_pulse():
         return os.path.isfile(pulse_file) and os.stat(pulse_file).st_mtime >= os.stat(task_file).st_mtime
 
@@ -871,7 +874,7 @@ class TaskEngine(threading.Thread):
             age = expand_time(age, default_unit='d')
         return sorted([(x, self.task_status[x], self.task_date.get(x, time.time())) for x in tasks \
             if (status is None or self.task_status[x] in status) and (age is None or \
-                ((age > 0 and time.time() - self.task_date.get(x, time.time()) > age) 
+                ((age > 0 and time.time() - self.task_date.get(x, time.time()) > age)
                   or (age < 0 and time.time() - self.task_date.get(x, time.time()) < -age)))],
                 key=lambda x: -x[2])
 
@@ -991,7 +994,7 @@ class TaskEngine(threading.Thread):
                 if self.task_status[task_id] == 'running':
                     env.logger.info('{} ``already runnng``'.format(task_id))
                     if hasattr(env, '__task_notifier__'):
-                        env.__task_notifier__(['new-status', self.agent.alias, task_id, 'running', 
+                        env.__task_notifier__(['new-status', self.agent.alias, task_id, 'running',
                             self.task_date.get(task_id, time.time())])
                     return 'running'
                 # there is a case when the job is already completed (complete-old), but
@@ -1106,7 +1109,7 @@ class TaskEngine(threading.Thread):
                 elif task in self.running_tasks:
                     env.logger.debug('Killing running task {}'.format(task))
                 else:
-                    # it is not in the system, so we need to know what the 
+                    # it is not in the system, so we need to know what the
                     # status of the task before we do anything...
                     pass
 

@@ -291,7 +291,7 @@ class RemoteHost:
                 result.update(self._map_path(src))
         else:
             env.logger.debug('Ignore unmappable source {}'.format(source))
-            return {}
+            return {source: source}
         return result
 
     #
@@ -321,7 +321,7 @@ class RemoteHost:
             return [x for x in ret if x is not None]
         else:
             env.logger.debug('Ignore unmappable source {}'.format(source))
-            return None
+            return source
 
     def _send_to_host(self, items):
         # we only copy files and directories, not other types of targets
@@ -557,7 +557,7 @@ class RemoteHost:
             job_dict = params.sos_dict
             #
             if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined):
-                self._receive_from_host(job_dict['_output'])
+                self._receive_from_host([x for x in job_dict['_output'] if isinstance(x, str)])
                 env.logger.info('{} ``received`` {}'.format(task_id, short_repr(job_dict['_output'])))
             if 'from_host' in job_dict['_runtime']:
                 self._receive_from_host(job_dict['_runtime']['from_host'])
@@ -586,7 +586,7 @@ class Host:
             del host._task_engine
         cls.host_instances = {}
 
-    
+
     @classmethod
     def not_wait_for_tasks(cls):
         return all(host._task_engine.wait_for_task is False for host in cls.host_instances.values())
@@ -659,7 +659,7 @@ class Host:
                     if any(k not in cfg[REMOTE]['paths'] for k in cfg[LOCAL]['paths'].keys()):
                         raise ValueError('One or more local paths {} cannot be mapped to remote host {} with paths {}'.format(
                             ','.join(cfg[LOCAL]['paths'].keys()), REMOTE, ','.join(cfg[REMOTE]['paths'].keys())))
-                    # 
+                    #
                     self.config['path_map'].extend(['{} -> {}'.format(append_slash(cfg[LOCAL]['paths'][x]), append_slash(cfg[REMOTE]['paths'][x])) \
                         for x in cfg[LOCAL]['paths'].keys()])
         #

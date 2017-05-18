@@ -1047,6 +1047,8 @@ def save_var(name, var):
          return '{}:={}\n'.format(name, base64.b64encode(pickle.dumps(var)))
 
 def load_var(line):
+    from .target import remote
+    assert remote
     key, value = line.split('=', 1)
     if key.endswith(':'):
         return key[:-1], pickle.loads(base64.b64decode(eval(value.strip())))
