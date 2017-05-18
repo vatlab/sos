@@ -385,5 +385,72 @@ run:
         self.assertEqual(out.strip().count('\n'), 0)
 
 
+    def testRemoteInput(self):
+        '''Test remote target'''
+        # purge all previous tasks
+        script = SoS_Script('''
+[10]
+task:
+run:
+    echo A file >> "test_file.txt"
+''')
+        wf = script.workflow()
+        res = Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                'sig_mode': 'force',
+                }).run()
+        # this file is remote only
+        self.assertFalse(os.path.isfile('test_file.txt'))
+        #
+        FileTarget('test1.txt').remove('both')
+        script = SoS_Script('''
+[10]
+input: remote('test_file.txt')
+output: 'test1.txt'
+task:
+run:
+    echo ${input} >> ${output}
+''')
+        wf = script.workflow()
+        res = Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                'sig_mode': 'force',
+                }).run()
+        #
+        self.assertFalse(os.path.isfile('test_file.txt'))
+        self.assertTrue(os.path.isfile('test1.txt'))
+
+
+    def testRemoteOutput(self):
+        '''Test remote target'''
+        # purge all previous tasks
+        FileTarget('test_file.txt').remove('both')
+        FileTarget('test_file1.txt').remove('both')
+        script = SoS_Script('''
+[10]
+output: remote('test_file.txt'), 'test_file1.txt'
+task:
+run:
+    echo A file >> "test_file.txt"
+    echo A file >> "test_file1.txt"
+''')
+        wf = script.workflow()
+        res = Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                'sig_mode': 'force',
+                }).run()
+        # this file is remote only
+        self.assertFalse(os.path.isfile('test_file.txt'))
+        self.assertTrue(os.path.isfile('test_file1.txt'))
+
 if __name__ == '__main__':
     unittest.main()
