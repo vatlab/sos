@@ -354,7 +354,6 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
 
     try:
         # go to 'cur_dir'
-        orig_dir = os.getcwd()
         if '_runtime' in sos_dict and 'cur_dir' in sos_dict['_runtime']:
             if not os.path.isdir(os.path.expanduser(sos_dict['_runtime']['cur_dir'])):
                 try:
@@ -362,6 +361,40 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
                 except Exception as e:
                     raise RuntimeError('Failed to create cur_dir {}'.format(sos_dict['_runtime']['cur_dir']))
             os.chdir(os.path.expanduser(sos_dict['_runtime']['cur_dir']))
+        orig_dir = os.getcwd()
+
+        if runmode != 'dryrun':
+            # we will need to check existence of targets because the task might
+            # be executed on a remote host where the targets are not available.
+            for target in (sos_dict['_input'] if isinstance(sos_dict['_input'], list) else []) + \
+                (sos_dict['_depends'] if isinstance(sos_dict['_depends'], list) else []):
+                # if the file does not exist (although the signature exists)
+                # request generation of files
+                if isinstance(target, str):
+                    if not FileTarget(target).exists('target'):
+                        # remove the signature and regenerate the file
+                        FileTarget(target).remove_sig()
+                        raise UnknownTarget(target)
+                elif not target.exists('target'):
+                    target.remove_sig()
+                    raise UnknownTarget(target)
+
+        # create directory. This usually has been done at the step level but the task can be executed
+        # on a remote host where the directory does not yet exist.
+        ofiles = env.sos_dict['_output']
+        if not isinstance(ofiles, (type(None), Undetermined)):
+            for ofile in ofiles:
+                if isinstance(ofile, str):
+                    parent_dir = os.path.split(os.path.expanduser(ofile))[0]
+                    if parent_dir and not os.path.isdir(parent_dir):
+                        try:
+                            os.makedirs(parent_dir)
+                        except Exception as e:
+                            # this can fail but we do not really care because the task itself might
+                            # create this directory, or if the directory has already been created by other tasks
+                            env.logger.warning('Failed to create directory {}: {}'.format(parent_dir, e))
+
+
         # go to user specified workdir
         if '_runtime' in sos_dict and 'workdir' in sos_dict['_runtime']:
             if not os.path.isdir(os.path.expanduser(sos_dict['_runtime']['workdir'])):
@@ -396,52 +429,15 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         env.sos_dict.set('__std_out__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out'))
         env.sos_dict.set('__std_err__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'))
 
-        if runmode != 'dryrun':
-            # we will need to check existence of targets because the task might
-            # be executed on a remote host where the targets are not available.
-            for target in (sos_dict['_input'] if isinstance(sos_dict['_input'], list) else []) + \
-                (sos_dict['_depends'] if isinstance(sos_dict['_depends'], list) else []):
-                # if the file does not exist (although the signature exists)
-                # request generation of files
-                if isinstance(target, str):
-                    if not FileTarget(target).exists('target'):
-                        # remove the signature and regenerate the file
-                        FileTarget(target).remove_sig()
-                        raise UnknownTarget(target)
-                elif not target.exists('target'):
-                    target.remove_sig()
-                    raise UnknownTarget(target)
-
-        # create directory. This usually has been done at the step level but the task can be executed
-        # on a remote host where the directory does not yet exist.
-        ofiles = env.sos_dict['_output']
-        if not isinstance(ofiles, (type(None), Undetermined)):
-            for ofile in ofiles:
-                if isinstance(ofile, str):
-                    parent_dir = os.path.split(os.path.expanduser(ofile))[0]
-                    if parent_dir and not os.path.isdir(parent_dir):
-                        try:
-                            os.makedirs(parent_dir)
-                        except Exception as e:
-                            # this can fail but we do not really care because the task itself might
-                            # create this directory, or if the directory has already been created by other tasks
-                            env.logger.warning('Failed to create directory {}: {}'.format(parent_dir, e))
-
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
         # step process
         SoS_exec(task, sigil)
 
-        if sig:
-            sig.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
-                env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
-            sig.release()
-
         if subtask:
             env.logger.debug('{} ``completed``'.format(task_id))
         else:
             env.logger.info('{} ``completed``'.format(task_id))
-        return collect_task_result(task_id, sigil, sos_dict)
 
     except Exception as e:
         if env.verbosity > 2:
@@ -454,6 +450,15 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     finally:
         env.sos_dict.set('__step_sig__', None)
         os.chdir(orig_dir)
+
+    if sig:
+        sig.write(env.sos_dict['_local_input_{}'.format(env.sos_dict['_index'])],
+            env.sos_dict['_local_output_{}'.format(env.sos_dict['_index'])])
+        sig.release()
+
+    # the final result should be relative to cur_dir, not workdir
+    # because output is defined outside of task
+    return collect_task_result(task_id, sigil, sos_dict)
 
 def check_task(task):
     #
