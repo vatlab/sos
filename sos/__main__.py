@@ -424,7 +424,8 @@ def cmd_resume(args, workflow_args):
         sys.exit('No additional parameter is allowed for command resume: {} provided'.format(workflow_args))
     
     import glob
-    from .utils import env
+    import time
+    from .utils import env, PrettyRelativeTime
     env.verbosity = args.verbosity
 
     workflows = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', '{}*.status').format(args.workflow_id if args.workflow_id else ''))
@@ -439,7 +440,7 @@ def cmd_resume(args, workflow_args):
     elif len(workflows) > 1:
         workflows = sorted(workflows, key=lambda x: os.path.getmtime(x))
         for wf in workflows:
-            env.logger.info('{}\tstarted {} ago'.format(os.path.basename(wf)[:-4],
+            env.logger.info('{}\tstarted {} ago'.format(os.path.basename(wf)[:-7],
                 PrettyRelativeTime(time.time() - os.path.getmtime(wf))))
     #
     # resume execution...
@@ -466,8 +467,8 @@ def cmd_resume(args, workflow_args):
     args.__resume__ = True
     args.__max_running_jobs__ = args.__max_running_jobs__ if args.__max_running_jobs__ is not None else res['max_running_jobs']
     args.dryrun = False
-    args.__wait__ = args.__wait__ if args.__wait__ is True else (res['wait_for_task'] if res['wait_for_task'] is not None else False)
-    args.__no_wait__ = args.__no_wait__ if args.__no_wait__ is True else (not res['wait_for_task'] if res['wait_for_task'] is not None else False)
+    args.__wait__ = args.__wait__ if args.__wait__ is True else None
+    args.__no_wait__ = args.__no_wait__ if args.__no_wait__ is True else None
     args.__bin_dirs__ = res['bin_dirs']
     args.__queue__ = None if res['default_queue'] == '' else res['default_queue']
     args.__dag__ = None if res['output_dag'] == '-' else ('' if res['output_dag'] is None else res['output_dag'])

@@ -308,10 +308,22 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
             'config_file': args.__config__,
             'output_dag': args.__dag__,
             'sig_mode': args.__sig_mode__,
-            'default_queue': args.__queue__,
-            'wait_for_task': args.__wait__,
+            'default_queue': '' if args.__queue__ is None else args.__queue__,
+            'wait_for_task': True if args.__wait__ is True or args.dryrun else (False if args.__no_wait__ else None),
             'resume_mode': args.__resume__,
-            'run_mode': 'dryrun' if args.dryrun else 'interactive'
+            'run_mode': 'dryrun' if args.dryrun else 'interactive',
+            'verbosity': args.verbosity,
+
+            # wait if -w or in dryrun mode, not wait if -W, otherwise use queue default
+            'max_procs': 1,
+            'max_running_jobs': args.__max_running_jobs__,
+            # for infomration and resume only
+            'workdir': os.getcwd(),
+            'script': "interactive",
+            'workflow': args.workflow,
+            'targets': args.__targets__,
+            'bin_dirs': args.__bin_dirs__,
+            'workflow_args': workflow_args
         })
         return executor.run(args.__targets__)
     except PendingTasks as e:

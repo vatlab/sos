@@ -320,5 +320,57 @@ run:
         # sos should wait till everything exists
         self.assertLess(time.time() - st, 15)
 
+    def testSharedOption(self):
+        '''Test shared option of task'''
+        FileTarget("a.txt").remove("both")
+        FileTarget("a100.txt").remove("both")
+        script = SoS_Script('''
+[10: shared = {'a': 'a[0]'}]
+task: shared={'a': 'int(open("a.txt").read())'}
+sh:
+  echo 100 > a.txt
+
+[20]
+sh:
+    touch a${a}.txt
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        self.assertTrue(os.path.isfile("a100.txt"))
+
+    def testTrunkSizeOption(self):
+        '''Test option trunk_size and trunk_workers'''
+        with open('test_trunksize.sos', 'w') as tt:
+            tt.write('''
+[10]
+input: for_each={'I': range(10)}
+task: trunk_size=5
+sh:
+    echo ${I} > ${I}.txt
+    sleep 2
+''')
+        wf = SoS_Script(filename='test_trunksize.sos').workflow()
+        res = Base_Executor(wf, config={
+                'wait_for_task': False,
+                'sig_mode': 'force',
+                'script': 'test_trunksize.sos',
+                'max_running_jobs': 10,
+                'bin_dirs': [],
+                'workflow_args': [],
+                'output_dag': '',
+                'targets': [],
+                'max_procs': 4,
+                'default_queue': None,
+                'workflow': 'default',
+                'workdir': '.'
+                }).run()
+        self.assertEqual(len(res['pending_tasks']), 2)
+        subprocess.call('sos resume -w', shell=True)
+        for i in range(10):
+            self.assertTrue(os.path.isfile('{}.txt'.format(i)))
+            FileTarget('{}.txt'.format(i)).remove('both')
+        FileTarget('test_trunksize.sos').remove()
+
+
 if __name__ == '__main__':
     unittest.main()
