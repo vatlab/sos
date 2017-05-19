@@ -375,6 +375,8 @@ def notebook_to_html(notebook_file, output_file, sargs=None, unknown_args=[]):
     if sargs.template is None:
         # use the default sos template
         unknown_args = ['--template', os.path.join(os.path.split(__file__)[0], 'sos.tpl') ] + unknown_args
+    else:
+        unknown_args = ['--template', sargs.template] + unknown_args
     export_notebook(HTMLExporter, 'html', notebook_file, output_file, unknown_args)
 
 def get_notebook_to_pdf_parser():
