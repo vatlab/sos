@@ -266,7 +266,7 @@ class Base_Step_Executor:
 
         # if unspecified, use __step_output__ as input (default)
         # resolve dynamic input.
-        if env.config['remote_targets']:
+        if env.config.get('remote_targets', False):
             args = [remote(x) if not isinstance(x, remote) else x for x in args]
         else:
             args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
@@ -283,7 +283,7 @@ class Base_Step_Executor:
                     env.logger.warning('Dependent target {} is dynamic'.format(k))
             return Undetermined()
 
-        if env.config['remote_targets']:
+        if env.config.get('remote_targets', False):
             args = [remote(x) if not isinstance(x, remote) else x for x in args]
         else:
             args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
@@ -292,7 +292,7 @@ class Base_Step_Executor:
     def expand_output_files(self, value, *args):
         '''Process output files (perhaps a pattern) to determine input files.
         '''
-        if env.config['remote_targets']:
+        if env.config.get('remote_targets', False):
             # the output files are handled remotely
             return [remote(x) if not isinstance(x, remote) else x for x in args]
         if any(isinstance(x, dynamic) for x in args):
