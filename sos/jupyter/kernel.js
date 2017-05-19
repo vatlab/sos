@@ -1600,10 +1600,14 @@ define([
         events.on('kernel_connected.Kernel', register_sos_comm);
         events.on('kernel_connected.Kernel', wrap_execute);
         events.on('rendered.MarkdownCell', update_toc);
-        // not sure which event would complete first but I assume that Jupyter
-        // would load the notebook before it tries to connect to the kernel
+        // I assume that Jupyter would load the notebook before it tries to connect
+        // to the kernel, so kernel_connected.kernel is the right time to show toc
+        // However, it is possible to load a page without rebooting the kernel so
+        // a notebook_load event seems also to be necessary. It is a bit of
+        // burden to run show_toc twice but hopefully this provides a more consistent
+        // user experience.
         //
-        // events.on('notebook_loaded.Notebook', show_toc);
+        events.on('notebook_loaded.Notebook', show_toc);
         events.on('kernel_connected.Kernel', show_toc);
         // #550
         // kernel_ready.Kernel
