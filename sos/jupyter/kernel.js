@@ -1600,7 +1600,11 @@ define([
         events.on('kernel_connected.Kernel', register_sos_comm);
         events.on('kernel_connected.Kernel', wrap_execute);
         events.on('rendered.MarkdownCell', update_toc);
-
+        // not sure which event would complete first but I assume that Jupyter
+        // would load the notebook before it tries to connect to the kernel
+        //
+        // events.on('notebook_loaded.Notebook', show_toc);
+        events.on('kernel_connected.Kernel', show_toc);
         // #550
         // kernel_ready.Kernel
         //events.on('kernel_connected.Kernel', request_kernel_list);
@@ -1641,7 +1645,6 @@ define([
             /* #524. syntax highlighting would be disabled after page reload. Note quite sure if this is
                a correct fix but it seems to work. */
             IPython.notebook.set_codemirror_mode('sos');
-            show_toc();
         }, 1000);
 
 
