@@ -119,7 +119,7 @@ time.sleep(_repeat + 1)
 print('I am {}, done'.format(_index))
 """)
         wf = script.workflow()
-        start = time.time()
+        #start = time.time()
         Base_Executor(wf).run()
         # FIXME: not sure how to use a non-timer test method
         # self.assertLess(time.time() - start, 15)
@@ -406,6 +406,37 @@ sh:
             FileTarget('{}.txt'.format(i)).remove('both')
         FileTarget('test_trunkworker.sos').remove()
 
+
+    def testLocalTarget(self):
+        '''Test the use of local target in remote mode'''
+        # this file does not exist on remote machine
+        shutil.copy(__file__, 'test_task_tmp.py')
+        script = SoS_Script('''
+[10]
+input: local('test_task_tmp.py')
+output: local('size.txt')
+sh:
+    wc -l ${input} > ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'wait_for_task': False,
+                'sig_mode': 'force',
+                'script': 'test_trunkworker.sos',
+                'max_running_jobs': 10,
+                'bin_dirs': [],
+                'workflow_args': [],
+                'output_dag': '',
+                'targets': [],
+                'max_procs': 4,
+                'default_queue': None,
+                'workflow': 'default',
+                'workdir': '.',
+                'remote_targets': True
+                }).run()
+        self.assertTrue(os.path.isfile('size.txt'))
+        FileTarget('size.txt').remove()
+        FileTarget('test_task_tmp.py')
 
 
 if __name__ == '__main__':

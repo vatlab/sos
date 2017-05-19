@@ -259,6 +259,24 @@ class remote(BaseTarget):
     def resolve(self):
         return self._target
 
+class local(BaseTarget):
+    '''A local target that counters remote() in -r mode'''
+    def __init__(self, target):
+        super(local, self).__init__()
+        self._target = target
+
+    def name(self):
+        return FileTarget(self._target).name() if isinstance(self._target, str) else self._target.name()
+
+    def exists(self, mode='any'):
+        return False
+
+    def signature(self, mode='any'):
+        return textMD5(self.name())
+
+    def resolve(self):
+        return self._target
+
 class executable(BaseTarget):
     '''A target for an executable command.'''
 
