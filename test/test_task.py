@@ -438,6 +438,36 @@ sh:
         FileTarget('size.txt').remove()
         FileTarget('test_task_tmp.py')
 
+    def testLocalSectionOption(self):
+        '''Test the use of local target in remote mode'''
+        # this file does not exist on remote machine
+        shutil.copy(__file__, 'test_task_tmp.py')
+        script = SoS_Script('''
+[10: local]
+input: 'test_task_tmp.py'
+output: 'size.txt'
+sh:
+    wc -l ${input} > ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'wait_for_task': False,
+                'sig_mode': 'force',
+                'script': 'test_trunkworker.sos',
+                'max_running_jobs': 10,
+                'bin_dirs': [],
+                'workflow_args': [],
+                'output_dag': '',
+                'targets': [],
+                'max_procs': 4,
+                'default_queue': None,
+                'workflow': 'default',
+                'workdir': '.',
+                'remote_targets': True
+                }).run()
+        self.assertTrue(os.path.isfile('size.txt'))
+        FileTarget('size.txt').remove()
+        FileTarget('test_task_tmp.py')
 
 if __name__ == '__main__':
     unittest.main()

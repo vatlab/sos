@@ -363,7 +363,6 @@ run:
                 'default_queue': 'ts',
                 'sig_mode': 'force',
                 }).run()
-        import time
         # we should be able to get status
         tasks = res['pending_tasks']
         # should be ok
@@ -395,7 +394,7 @@ run:
     echo A file >> "test_file.txt"
 ''')
         wf = script.workflow()
-        res = Base_Executor(wf, config={
+        Base_Executor(wf, config={
                 'config_file': 'docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
@@ -415,7 +414,7 @@ run:
     echo ${input} >> ${output}
 ''')
         wf = script.workflow()
-        res = Base_Executor(wf, config={
+        Base_Executor(wf, config={
                 'config_file': 'docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
@@ -441,7 +440,7 @@ run:
     echo A file >> "test_file1.txt"
 ''')
         wf = script.workflow()
-        res = Base_Executor(wf, config={
+        Base_Executor(wf, config={
                 'config_file': 'docker.yml',
                 # do not wait for jobs
                 'wait_for_task': True,
@@ -451,6 +450,29 @@ run:
         # this file is remote only
         self.assertFalse(os.path.isfile('test_file.txt'))
         self.assertTrue(os.path.isfile('test_file1.txt'))
+
+    def testRemoteSectionOption(self):
+        '''Test remote target'''
+        FileTarget('test1.txt').remove('both')
+        script = SoS_Script('''
+[10: remote]
+input: 'test_file.txt'
+output: local('test1.txt')
+task:
+run:
+    echo ${input} >> ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                'sig_mode': 'force',
+                }).run()
+        #
+        self.assertFalse(os.path.isfile('test_file.txt'))
+        self.assertTrue(os.path.isfile('test1.txt'))
 
 if __name__ == '__main__':
     unittest.main()
