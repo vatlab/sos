@@ -339,7 +339,7 @@ sh:
         self.assertTrue(os.path.isfile("a100.txt"))
 
     def testTrunkSizeOption(self):
-        '''Test option trunk_size and trunk_workers'''
+        '''Test option trunk_size'''
         with open('test_trunksize.sos', 'w') as tt:
             tt.write('''
 [10]
@@ -362,7 +362,8 @@ sh:
                 'max_procs': 4,
                 'default_queue': None,
                 'workflow': 'default',
-                'workdir': '.'
+                'workdir': '.',
+                'remote_targets': False
                 }).run()
         self.assertEqual(len(res['pending_tasks']), 2)
         subprocess.call('sos resume -w', shell=True)
@@ -370,6 +371,41 @@ sh:
             self.assertTrue(os.path.isfile('{}.txt'.format(i)))
             FileTarget('{}.txt'.format(i)).remove('both')
         FileTarget('test_trunksize.sos').remove()
+
+    def testTrunkWorkersOption(self):
+        '''Test option trunk_workers'''
+        with open('test_trunkworker.sos', 'w') as tt:
+            tt.write('''
+[10]
+input: for_each={'I': range(12)}
+task: trunk_size=6, trunk_workers=3
+sh:
+    echo ${I} > ${I}.txt
+    sleep 2
+''')
+        wf = SoS_Script(filename='test_trunkworker.sos').workflow()
+        res = Base_Executor(wf, config={
+                'wait_for_task': False,
+                'sig_mode': 'force',
+                'script': 'test_trunkworker.sos',
+                'max_running_jobs': 10,
+                'bin_dirs': [],
+                'workflow_args': [],
+                'output_dag': '',
+                'targets': [],
+                'max_procs': 4,
+                'default_queue': None,
+                'workflow': 'default',
+                'workdir': '.',
+                'remote_targets': False
+                }).run()
+        self.assertEqual(len(res['pending_tasks']), 2)
+        subprocess.call('sos resume -w', shell=True)
+        for i in range(10):
+            self.assertTrue(os.path.isfile('{}.txt'.format(i)))
+            FileTarget('{}.txt'.format(i)).remove('both')
+        FileTarget('test_trunkworker.sos').remove()
+
 
 
 if __name__ == '__main__':
