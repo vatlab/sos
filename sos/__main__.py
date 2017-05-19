@@ -208,8 +208,6 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         help='''Do not wait for the completion of external tasks and quit SoS
             if all tasks are being executed by external task queues. This option
             overrides the default wait setting of task queues.''')
-    parser.add_argument('-r', dest='__resume__', action='store_true',
-        help=argparse.SUPPRESS)
     #parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
@@ -299,7 +297,7 @@ def cmd_run(args, workflow_args):
                 'max_running_jobs': args.__max_running_jobs__,
                 'sig_mode': args.__sig_mode__,
                 'run_mode': 'dryrun' if args.dryrun else 'run',
-                'resume_mode': args.__resume__,
+                'resume_mode': getattr(args, '__resume__', False),
                 'verbosity': args.verbosity,
                 # for infomration and resume only
                 'workdir': os.getcwd(),
@@ -533,7 +531,6 @@ def get_dryrun_parser(desc_only=False):
 def cmd_dryrun(args, workflow_args):
     args.__sig_mode__ = 'ignore'
     args.__max_procs__ = 1
-    args.__resume__ = False
     args.__max_running_jobs__ = 1
     args.dryrun = True
     args.__wait__ = True
