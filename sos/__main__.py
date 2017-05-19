@@ -208,6 +208,10 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
         help='''Do not wait for the completion of external tasks and quit SoS
             if all tasks are being executed by external task queues. This option
             overrides the default wait setting of task queues.''')
+    parser.add_argument('-r', dest='__remote__', action='store_true',
+        help='''Forcing all targets specified in input, output, and
+            depends are remote targets so that they are not synchronized
+            between local and remote hosts.''')
     #parser.add_argument('-t', dest='__transcript__', nargs='?',
     #    metavar='TRANSCRIPT', const='__STDERR__', help=transcript_help)
     runmode = parser.add_argument_group(title='Run mode options',
@@ -299,6 +303,7 @@ def cmd_run(args, workflow_args):
                 'run_mode': 'dryrun' if args.dryrun else 'run',
                 'resume_mode': getattr(args, '__resume__', False),
                 'verbosity': args.verbosity,
+                'remote_targets': args.__remote__,
                 # for infomration and resume only
                 'workdir': os.getcwd(),
                 'script': args.script,
@@ -463,6 +468,7 @@ def cmd_resume(args, workflow_args):
     args.__sig_mode__ = res['sig_mode']
     args.__max_procs__ = args.__max_procs__ if args.__max_procs__ != 4 else res['max_procs']
     args.__resume__ = True
+    args.__remote__ = res['remote_targets']
     args.__max_running_jobs__ = args.__max_running_jobs__ if args.__max_running_jobs__ is not None else res['max_running_jobs']
     args.dryrun = False
     args.__wait__ = args.__wait__ if args.__wait__ is True else None

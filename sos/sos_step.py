@@ -32,7 +32,7 @@ from .utils import env, AbortExecution, short_repr, stable_repr,\
     get_traceback, transcribe, ActivityNotifier, expand_size, format_HHMMSS
 from .pattern import extract_pattern
 from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of
-from .target import BaseTarget, FileTarget, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
+from .target import BaseTarget, FileTarget, remote, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
 from .sos_task import TaskParams, MasterTaskParams
@@ -266,7 +266,10 @@ class Base_Step_Executor:
 
         # if unspecified, use __step_output__ as input (default)
         # resolve dynamic input.
-        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+        if env.config['remote_targets']:
+            args = [remote(x) if not isinstance(x, remote) else x for x in args]
+        else:
+            args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         if not args:
             return env.sos_dict['input']
         else:
@@ -280,12 +283,18 @@ class Base_Step_Executor:
                     env.logger.warning('Dependent target {} is dynamic'.format(k))
             return Undetermined()
 
-        args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
+        if env.config['remote_targets']:
+            args = [remote(x) if not isinstance(x, remote) else x for x in args]
+        else:
+            args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         return _expand_file_list(False, *args)
 
     def expand_output_files(self, value, *args):
         '''Process output files (perhaps a pattern) to determine input files.
         '''
+        if env.config['remote_targets']:
+            # the output files are handled remotely
+            return [remote(x) if not isinstance(x, remote) else x for x in args]
         if any(isinstance(x, dynamic) for x in args):
             return Undetermined(value)
         else:
