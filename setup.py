@@ -104,9 +104,42 @@ class InstallWithConfigurations(install):
         log.info('Run "python misc/patch_spyder.py" to patch spyder with sos support.')
         log.info('And "sos -h" to start using Script of Scripts.')
 
+dest = '''\
+Exploratory data analysis in computationally intensive disciplines such as computational
+biology often requires one to exploit a variety of tools implemented in different programming
+languages and analyzing large datasets on high performance computing systems (e.g. computer
+clusters). On top of all the difficulties in exchanging data between languages and computing
+systems and analyzing data on different platforms, it becomes challenging to keep track of
+such fragmented workflows and reproduce prior analyses.
+
+With strong emphases on readability, practicality, and reproducibility, we have developed
+a workflow system called “Script of Scripts” (SoS) with a web front-end and notebook format
+based on Jupyter. Major features of SoS for exploratory analysis include multi-language
+support, explicit and automatic data exchange between running sessions (kernels) in
+different languages, cell-specific kernel switch using frontend-UI or cell magics, 
+a side-panel that allows scratch execution of statements, preview of files and expressions,
+and line-by-line execution of statements in cells. In particular, variable and file preview
+on the side panel makes it possible to trouble-shoot scripts in multiple languages without 
+contaminating the main notebook or interrupting the logic flow of the analysis. For large-scale
+data analysis, the SoS workflow engine provides a unified interface to executing and managing
+tasks on a variety of computing platforms such as PBS/Torch/LSF/Slurm clusters and RQ and
+Celery task queues. Specified files are automatically synchronized between file systems,
+thus enabling a single workflow to utilize multiple remote computing environments.
+
+Researchers will benefit from the SoS system the flexibility to use their preferred languages
+and tools for tasks without having to worry about data flow, and can perform light interactive
+analysis while executing heavy remote tasks simultaneous in the same notebook in a neat and
+organized fashion. SoS is available at http://vatlab.github.io/SOS/ and is distributed freely
+under a GPL3 license. A live Jupyter server and several docker containers are available for
+testing and running SoS without a local installation.
+
+Please refer to http://vatlab.github.io/SOS/ for more details on SoS.
+'''
+
 setup(name = "sos",
     version = __version__,
-    description = 'Script of Scripts (SoS): a lightweight workflow system for the creation of readable workflows',
+    description = 'Script of Scripts (SoS): an interactive, cross-platform, and cross-language workflow system for reproducible data analysis',
+    long_description=dest,
     author = 'Bo Peng',
     url = 'https://github.com/vatlab/SOS',
     author_email = 'bpeng@mdanderson.org',
