@@ -303,7 +303,7 @@ def cmd_run(args, workflow_args):
                 'run_mode': 'dryrun' if args.dryrun else 'run',
                 'resume_mode': getattr(args, '__resume__', False),
                 'verbosity': args.verbosity,
-                'remote_targets': args.__remote__,
+                'remote_targets': getattr(args, '__remote__', False),
                 # for infomration and resume only
                 'workdir': os.getcwd(),
                 'script': args.script,
