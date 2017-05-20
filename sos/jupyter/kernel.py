@@ -473,6 +473,8 @@ class SoS_Kernel(IPythonKernel):
         for idx,x in enumerate(self._kernel_list):
             if x[1] == name:
                 # if exist language or no new langauge defined.
+                env.logger.error(x)
+                env.logger.error(langauge)
                 if x[2] or language is None:
                     update_existing(idx)
                     return x
