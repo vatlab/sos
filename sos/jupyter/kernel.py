@@ -451,23 +451,17 @@ class SoS_Kernel(IPythonKernel):
         # find from subkernel name
         def update_existing(idx):
             x = self._kernel_list[idx]
-            # if the kernel has been started
-            if x[0] in self.kernels:
-                if (kernel is not None and kernel != x[1]) or (language is not None and language != x[2]) or \
-                        (color is not None and color != x[3]):
-                    raise ValueError('Cannot change kernel, language or color of started subkernel {}'.format(name))
-            else:
-                if (kernel is not None and kernel != x[1]) or (language is not None and language != x[2]):
-                    raise ValueError('Cannot change kernel or language of predefined subkernel {}'.format(name))
-                if color is not None:
-                    self._kernel_list[idx][3] = color
-                    if notify_frontend:
-                        self.send_frontend_msg('kernel-list', self.get_kernel_list())
+            if (kernel is not None and kernel != x[1]) or (language is not None and language != x[2]):
+                raise ValueError('Cannot change kernel or language of predefined subkernel {}'.format(name))
+            if color is not None:
+                self._kernel_list[idx][3] = color
+                if notify_frontend:
+                    self.send_frontend_msg('kernel-list', self.get_kernel_list())
 
         # find from language name (subkernel name, which is usually language name)
         for idx,x in enumerate(self.get_kernel_list()):
             if x[0] == name:
-                if x[2] or language is None:
+                if x[0] == 'SoS' or x[2] or language is None:
                     update_existing(idx)
                     return x
                 else:
@@ -486,6 +480,14 @@ class SoS_Kernel(IPythonKernel):
                     break
         # now, no kernel is found, name has to be a new name and we need some definition
         # if kernel is defined
+        def add_or_replace(kdef):
+            for idx, x in enumerate(self._kernel_list):
+                if x[0] == kdef[0]:
+                    self._kernel_list[idx] = kdef
+                    return
+            else:
+                self._kernel_list.append(kdef)
+
         if kernel is not None:
             # in this case kernel should have been defined in kernel list
             if kernel not in [x[1] for x in self._kernel_list]:
@@ -493,8 +495,7 @@ class SoS_Kernel(IPythonKernel):
             # now this a new instance for an existing kernel
             kdef = [x for x in self._kernel_list if x[1] == kernel][0]
             if language is None:
-                self._kernel_list.append([
-                    name, kdef[1], kdef[2], kdef[3] if color is None else color])
+                add_or_replace([name, kdef[1], kdef[2], kdef[3] if color is None else color])
                 if notify_frontend:
                     self.send_frontend_msg('kernel-list', self.get_kernel_list())
                 return self._kernel_list[-1]
@@ -514,16 +515,14 @@ class SoS_Kernel(IPythonKernel):
                     except Exception as e:
                         raise RuntimeError('Failed to load language {}: {}'.format(language, e))
                     #
-                    self._kernel_list.append([
-                        name, kdef[1], kernel, kdef[3] if color is None else color])
+                    add_or_replace([name, kdef[1], kernel, kdef[3] if color is None else color])
                 else:
                     # if should be defined ...
                     if language not in self._supported_languages:
                         raise RuntimeError('Unrecognized language definition {}'.format(language))
                     #
                     self._supported_languages[name] = self._supported_languages[language]
-                    self._kernel_list.append([
-                        name, kdef[1], language, kdef[3] if color is None else color])
+                    add_or_replace([name, kdef[1], language, kdef[3] if color is None else color])
                 if notify_frontend:
                     self.send_frontend_msg('kernel-list', self.get_kernel_list())
                 return self._kernel_list[-1]
@@ -543,8 +542,7 @@ class SoS_Kernel(IPythonKernel):
                     raise ValueError('Unrecognized Jupyter kernel name {} defined by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
                         plugin.kernel_name, language))
 
-                self._kernel_list.append([
-                    name, plugin.kernel_name, plugin.kernel_name, plugin.background_color if color is None else color])
+                add_or_replace([name, plugin.kernel_name, plugin.kernel_name, plugin.background_color if color is None else color])
             else:
                 # if should be defined ...
                 if language not in self._supported_languages:
@@ -554,7 +552,7 @@ class SoS_Kernel(IPythonKernel):
                     raise ValueError('Unrecognized Jupyter kernel name {} defined by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
                         self._supported_languages[language].kernel_name, language))
 
-                self._kernel_list.append([
+                add_or_replace([
                     name, self._supported_languages[language].kernel_name, language,
                         self._supported_languages[language].background_color if color is None else color])
 

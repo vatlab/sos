@@ -255,7 +255,7 @@ define([
                         if (IPython.notebook.metadata['sos']['kernels'][k_idx][2] != data[i][2]) {
                             if (IPython.notebook.metadata['sos']['kernels'][k_idx][2] === '') {
                                 IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
-                            } else {
+                            } else if (data[i][2] != '') {
                                 var r = confirm("This notebook used language definition " + IPython.notebook.metadata['sos']['kernels'][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
                                 if (r == true)
                                     IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
