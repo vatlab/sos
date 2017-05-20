@@ -38,7 +38,7 @@ define([
     window.Jupyter = require('base/js/namespace');
     window.CodeCell = require('notebook/js/codecell').CodeCell;
 
-    window.default_kernel = 'sos';
+    window.default_kernel = 'SoS';
     window.kernel_updated = false;
     window.my_panel = null;
     window.pending_cells = {};
@@ -212,19 +212,16 @@ define([
                     }
                 }
 
+                //
                 for (var j = 0; j < IPython.notebook.metadata['sos']['kernels'].length; j++) {
                     var kdef = IPython.notebook.metadata['sos']['kernels'][j];
+                    // if local environment has kernel, ok...
                     var k_idx = data.findIndex((item) => item[0] === kdef[0]);
+                    // otherwise is the kernel actually used?
                     if (k_idx == -1) {
-                        // check if this kernel is actually used.
-                        var cells = IPython.notebook.get_cells();
-                        for (var i = cells.length - 1; i >= 0; --i)
-                            if (cells[i].cell_type == 'code' && cells[i].metadata.kernel == kdef[0]) {
-                                alert("subkernel " + kdef[0] + " defined in this notebook (kernel " + kdef[1] + " and language " + kdef[2] +
-                                    ") is unavailableis not available.");
-                                break;
-                            }
-                    }
+                        alert("subkernel " + kdef[0] + " defined in this notebook (kernel " + kdef[1] + " and language " + kdef[2] +
+                                ") is unavailableis not available.");
+                        }
                 }
 
                 for (var i = 0; i < data.length; i++) {
@@ -444,6 +441,13 @@ define([
             }
             adjustPanel();
         });
+        var used_kernels = new Set();
+        var cells = IPython.notebook.get_cells();
+        for (var i = cells.length - 1; i >= 0; --i) {
+            if (cells[i].cell_type == 'code' && cells[i].metadata.kernel)
+                used_kernels.add(cells[i].metadata.kernel);
+        }
+        IPython.notebook.metadata['sos']['kernels'] = IPython.notebook.metadata['sos']['kernels'].filter(function(x) { return used_kernels.has(x[0]) });
         window.sos_comm.send({
             'list-kernel': IPython.notebook.metadata['sos']['kernels'],
             'update-task-status': window.unknown_tasks,
