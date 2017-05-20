@@ -204,8 +204,6 @@ define([
             var msg_type = msg.metadata.msg_type;
 
             if (msg_type == 'kernel-list') {
-                if (window.kernel_updated)
-                    return;
                 for (var i = 0; i < data.length; i++) {
                     // BackgroundColor is color
                     BackgroundColor[data[i][0]] = data[i][3];
