@@ -280,8 +280,7 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('--off', action='store_true',
             help='''Turn off file preview''')
         parser.add_argument('-p', '--panel', action='store_true',
-            help='''Preview in side panel. The side panel will be opened if it is
-                currently closed.''')
+            help='''Preview in side panel even if the panel is currently closed''')
         parser.add_argument('-n', '--notebook', action='store_true',
             help='''Preview in the main notebook.''')
         parser.error = self._parse_error
