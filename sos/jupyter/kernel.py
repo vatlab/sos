@@ -231,7 +231,8 @@ class SoS_Kernel(IPythonKernel):
             ''')
         parser.add_argument('-c', '--color',
             help='''Background color of new or existing kernel, which overrides
-            the default color of the language.''')
+            the default color of the language. A special value "default" can be
+            used to reset color to default.''')
         parser.add_argument('-i', '--in', nargs='*', dest='in_vars',
             help='Input variables (variables to get from SoS kernel)')
         parser.add_argument('-o', '--out', nargs='*', dest='out_vars',
@@ -263,8 +264,9 @@ class SoS_Kernel(IPythonKernel):
             so this option is only needed for starting a new instance of a kernel.
             ''')
         parser.add_argument('-c', '--color',
-            help='''Background color of the new kernel, which overrides
-            the default color of the language.''')
+            help='''Background color of existing or new kernel, which overrides
+            the default color of the language. A special value "default" can be
+            used to reset color to default.''')
         parser.add_argument('-i', '--in', nargs='*', dest='in_vars',
             help='Input variables (variables to get from SoS kernel)')
         parser.add_argument('-o', '--out', nargs='*', dest='out_vars',
@@ -454,7 +456,13 @@ class SoS_Kernel(IPythonKernel):
             if (kernel is not None and kernel != x[1]) or (language is not None and language != x[2]):
                 raise ValueError('Cannot change kernel or language of predefined subkernel {}'.format(name))
             if color is not None:
-                self._kernel_list[idx][3] = color
+                if color == 'default':
+                    if self._kernel_list[idx][2]:
+                        self._kernel_list[idx][3] = self._supported_languages[self._kernel_list[idx][2]].background_color
+                    else:
+                        self._kernel_list[idx][3] = ''
+                else:
+                    self._kernel_list[idx][3] = color
                 if notify_frontend:
                     self.send_frontend_msg('kernel-list', self.get_kernel_list())
 
@@ -494,7 +502,12 @@ class SoS_Kernel(IPythonKernel):
                 raise ValueError('Unrecognized Jupyter kernel name {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(kernel))
             # now this a new instance for an existing kernel
             kdef = [x for x in self._kernel_list if x[1] == kernel][0]
-            if language is None:
+            if not language:
+                if color == 'default':
+                    if kdef[2]:
+                        color = self._supported_languages[kdef[2]].background_color
+                    else:
+                        color = kdef[3]
                 add_or_replace([name, kdef[1], kdef[2], kdef[3] if color is None else color])
                 if notify_frontend:
                     self.send_frontend_msg('kernel-list', self.get_kernel_list())
@@ -515,13 +528,17 @@ class SoS_Kernel(IPythonKernel):
                     except Exception as e:
                         raise RuntimeError('Failed to load language {}: {}'.format(language, e))
                     #
+                    if color == 'default':
+                        color = plugin.background_color
                     add_or_replace([name, kdef[1], kernel, kdef[3] if color is None else color])
                 else:
                     # if should be defined ...
                     if language not in self._supported_languages:
-                        raise RuntimeError('Unrecognized language definition {}'.format(language))
+                        raise RuntimeError('Unrecognized language definition {}, which should be a known language name or a class in the format of package.module:class'.format(language))
                     #
                     self._supported_languages[name] = self._supported_languages[language]
+                    if color == 'default':
+                        color = self._supported_languages[name].background_color
                     add_or_replace([name, kdef[1], language, kdef[3] if color is None else color])
                 if notify_frontend:
                     self.send_frontend_msg('kernel-list', self.get_kernel_list())
@@ -542,6 +559,8 @@ class SoS_Kernel(IPythonKernel):
                     raise ValueError('Unrecognized Jupyter kernel name {} defined by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
                         plugin.kernel_name, language))
 
+                if color == 'default':
+                    color = plugin.background_color
                 add_or_replace([name, plugin.kernel_name, plugin.kernel_name, plugin.background_color if color is None else color])
             else:
                 # if should be defined ...
@@ -554,7 +573,7 @@ class SoS_Kernel(IPythonKernel):
 
                 add_or_replace([
                     name, self._supported_languages[language].kernel_name, language,
-                        self._supported_languages[language].background_color if color is None else color])
+                        self._supported_languages[language].background_color if color is None or color == 'default' else color])
 
             self.send_frontend_msg('kernel-list', self.get_kernel_list())
             return self._kernel_list[-1]
@@ -980,8 +999,8 @@ class SoS_Kernel(IPythonKernel):
 
             kinfo = self.find_kernel(self.kernel)
             self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': 'Subkernel "{}" is used (kernel={}, language={}).\nAvailable subkernels are: SoS (sos), {}.'
-                    .format(kinfo[0], kinfo[1], kinfo[2] if kinfo[2] else "undefined", ', '.join(
+                {'name': 'stdout', 'text': 'Subkernel "{}" is used (kernel={}, language={}, color="{}").\nAvailable subkernels are: SoS (sos), {}.'
+                    .format(kinfo[0], kinfo[1], kinfo[2] if kinfo[2] else "undefined", kinfo[3], ', '.join(
                     [x if x == y else '{} ({})'.format(x, y)
                     for x,y in available_kernels.items()]))})
             return
