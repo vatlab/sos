@@ -150,11 +150,8 @@ define([
                     // 1. the default kernel (might have been changed from menu bar
                     // 2. cell kernel (might be unspecified for new cell)
                     // 3. cell index (for setting style after execution)
-                    // in addition, the frontend command will send a "--list-kernel" request if
-                    // the frontend is not correctly initialized, possibly because the kernel was
-                    // not ready when the frontend sent the command `%listkernel`.
                     "%frontend " +
-                    (window.kernel_updated ? "" : " --list-kernel ") +
+                    // (window.kernel_updated ? "" : " --list-kernel ") +
                     (IPython.notebook.metadata['sos']['panel'].displayed ? " --use-panel" : "") +
                     " --default-kernel " + window.default_kernel +
                     " --cell-kernel " + cells[i].metadata.kernel +
@@ -167,7 +164,7 @@ define([
         // if this is a command from scratch pad (not part of the notebook)
         return this.orig_execute(
             "%frontend " +
-            (window.kernel_updated ? "" : " --list-kernel ") +
+            // (window.kernel_updated ? "" : " --list-kernel ") +
             " --use-panel " +
             " --default-kernel " + window.default_kernel +
             " --cell-kernel " + window.my_panel.cell.metadata.kernel +
@@ -204,6 +201,32 @@ define([
             var msg_type = msg.metadata.msg_type;
 
             if (msg_type == 'kernel-list') {
+                // upgrade existing meta data if it uses the old 3 item format
+                if (IPython.notebook.metadata['sos']['kernels'].length > 0 &&
+                    IPython.notebook.metadata['sos']['kernels'][0].length === 3) {
+                    for (var j = 0; j < IPython.notebook.metadata['sos']['kernels'].length; j++) {
+                        var def = IPython.notebook.metadata['sos']['kernels'][j];
+                        // original format, kernel, name, color
+                        // new format, name, kenel, lan, color
+                        IPython.notebook.metadata['sos']['kernels'][j] = [def[1], def[0], def[1], def[2]];
+                    }
+                }
+
+                for (var j = 0; j < IPython.notebook.metadata['sos']['kernels'].length; j++) {
+                    var kdef = IPython.notebook.metadata['sos']['kernels'][j];
+                    var k_idx = data.findIndex((item) => item[0] === kdef[0]);
+                    if (k_idx == -1) {
+                        // check if this kernel is actually used.
+                        var cells = IPython.notebook.get_cells();
+                        for (var i = cells.length - 1; i >= 0; --i)
+                            if (cells[i].cell_type == 'code' && cells[i].metadata.kernel == kdef[0]) {
+                                alert("subkernel " + kdef[0] + " defined in this notebook (kernel " + kdef[1] + " and language " + kdef[2] +
+                                    ") is unavailableis not available.");
+                                break;
+                            }
+                    }
+                }
+
                 for (var i = 0; i < data.length; i++) {
                     // BackgroundColor is color
                     BackgroundColor[data[i][0]] = data[i][3];
@@ -217,16 +240,7 @@ define([
                     // KernelList, use displayed name
                     if (KernelList.findIndex((item) => item[0] === data[i][0]) == -1)
                         KernelList.push([data[i][0], data[i][0]]);
-                    // upgrade existing meta data if it uses the old 3 item format
-                    if (IPython.notebook.metadata['sos']['kernels'].length > 0 &&
-                        IPython.notebook.metadata['sos']['kernels'][0].length === 3) {
-                        for (var j = 0; j < IPython.notebook.metadata['sos']['kernels'].length; j++) {
-                            var def = IPython.notebook.metadata['sos']['kernels'][j];
-                            // original format, kernel, name, color
-                            // new format, name, kenel, lan, color
-                            IPython.notebook.metadata['sos']['kernels'][j] = [def[1], def[0], def[1], def[2]];
-                        }
-                    }
+
                     // if the kernel is not in metadata, push it in
                     var k_idx = IPython.notebook.metadata['sos']['kernels'].findIndex((item) => item[0] === data[i][0])
                     if (k_idx == -1)
@@ -431,7 +445,7 @@ define([
             adjustPanel();
         });
         window.sos_comm.send({
-            'list-kernel': true,
+            'list-kernel': IPython.notebook.metadata['sos']['kernels'],
             'update-task-status': window.unknown_tasks,
         })
         console.log('sos comm registered');

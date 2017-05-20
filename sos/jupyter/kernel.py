@@ -447,20 +447,22 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
-    def find_kernel(self, name, kernel=None, language=None, color=None):
+    def find_kernel(self, name, kernel=None, language=None, color=None, notify_frontend=True):
         # find from subkernel name
         def update_existing(idx):
             x = self._kernel_list[idx]
             # if the kernel has been started
             if x[0] in self.kernels:
-                if kernel is not None or language is not None or color is not None:
+                if (kernel is not None and kernel != x[1]) or (language is not None and language != x[2]) or \
+                        (color is not None and color != x[3]):
                     raise ValueError('Cannot change kernel, language or color of started subkernel {}'.format(name))
             else:
-                if kernel is not None or language is not None:
-                    raise ValueError('Cannot change kernel ir language of predefined subkernel {}'.format(name))
+                if (kernel is not None and kernel != x[1]) or (language is not None and language != x[2]):
+                    raise ValueError('Cannot change kernel or language of predefined subkernel {}'.format(name))
                 if color is not None:
                     self._kernel_list[idx][3] = color
-                    self.send_frontend_msg('kernel-list', self.get_kernel_list())
+                    if notify_frontend:
+                        self.send_frontend_msg('kernel-list', self.get_kernel_list())
 
         # find from language name (subkernel name, which is usually language name)
         for idx,x in enumerate(self.get_kernel_list()):
@@ -479,11 +481,12 @@ class SoS_Kernel(IPythonKernel):
             if kernel not in [x[1] for x in self._kernel_list]:
                 raise ValueError('Unrecognized Jupyter kernel name {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(kernel))
             # now this a new instance for an existing kernel
-            kdef = [x for x in self._kernel_list.index(kernel) if x[1] == kernel][0]
+            kdef = [x for x in self._kernel_list if x[1] == kernel][0]
             if language is None:
                 self._kernel_list.append([
                     name, kdef[1], kdef[2], kdef[3] if color is None else color])
-                self.send_frontend_msg('kernel-list', self.get_kernel_list())
+                if notify_frontend:
+                    self.send_frontend_msg('kernel-list', self.get_kernel_list())
                 return self._kernel_list[-1]
             else:
                 # if language is defined,
@@ -510,7 +513,8 @@ class SoS_Kernel(IPythonKernel):
                     #
                     self._kernel_list.append([
                         name, kdef[1], language, kdef[3] if color is None else color])
-                self.send_frontend_msg('kernel-list', self.get_kernel_list())
+                if notify_frontend:
+                    self.send_frontend_msg('kernel-list', self.get_kernel_list())
                 return self._kernel_list[-1]
         elif language is not None:
             # kernel is not defined and we only have language
@@ -692,7 +696,7 @@ class SoS_Kernel(IPythonKernel):
             #log_to_file(msg)
             for k,v in content.items():
                 if k == 'list-kernel':
-                    self.send_frontend_msg('kernel-list', self.get_kernel_list())
+                    self.send_frontend_msg('kernel-list', self.get_kernel_list(v))
                 elif k == 'kill-task':
                     # kill specified task
                     from sos.hosts import Host
@@ -1587,7 +1591,7 @@ class SoS_Kernel(IPythonKernel):
                 {'execution_count': self._execution_count, 'data': format_dict,
                 'metadata': md_dict})
 
-    def get_kernel_list(self):
+    def get_kernel_list(self, notebook_list=None):
         if not hasattr(self, '_kernel_list'):
             from jupyter_client.kernelspec import KernelSpecManager
             km = KernelSpecManager()
@@ -1606,6 +1610,15 @@ class SoS_Kernel(IPythonKernel):
                 else:
                     # undefined language also use default theme color
                     self._kernel_list.append([spec, spec, spec, ''])
+        if notebook_list is not None:
+            for [name, kernel, lan, color] in notebook_list:
+                try:
+                    # if we can find the kernel, fine...
+                    self.find_kernel(name, kernel, lan, color, notify_frontend=False)
+                except Exception as e:
+                    # otherwise do not worry about it.
+                    env.logger.warning('Failed to locate subkernel {} with kernerl {} and language {}: {}'.format(
+                        name, kernel, lan, e))
         return self._kernel_list
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
