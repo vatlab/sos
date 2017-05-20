@@ -266,7 +266,9 @@ class SoS_Kernel(IPythonKernel):
 
     def get_preview_parser(self):
         parser = argparse.ArgumentParser(prog='%preview',
-            description='''Preview files, sos variables, or expressions''')
+            description='''Preview files, sos variables, or expressions in the
+                side panel, or notebook if side panel is not opened, unless
+                options --panel or --notebook is specified.''')
         parser.add_argument('items', nargs='*',
             help='''Filename, variable name, or expression. Wildcard characters
                 such as '*' and '?' are allowed for filenames.''')
@@ -277,6 +279,11 @@ class SoS_Kernel(IPythonKernel):
             help='''Preview notebook workflow''')
         parser.add_argument('--off', action='store_true',
             help='''Turn off file preview''')
+        parser.add_argument('-p', '--panel', action='store_true',
+            help='''Preview in side panel. The side panel will be opened if it is
+                currently closed.''')
+        parser.add_argument('-n', '--notebook', action='store_true',
+            help='''Preview in the main notebook.''')
         parser.error = self._parse_error
         return parser
 
@@ -1829,6 +1836,12 @@ class SoS_Kernel(IPythonKernel):
                 self.preview_output = False
             else:
                 self.preview_output = True
+            #
+            if args.panel:
+                self._use_panel = True
+            elif args.notebook:
+                self._use_panel = False
+            # else, use default _use_panel
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
