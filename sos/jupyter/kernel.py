@@ -549,7 +549,7 @@ class SoS_Kernel(IPythonKernel):
             self.send_frontend_msg('kernel-list', self.get_kernel_list())
             return self._kernel_list[-1]
         else:
-            raise ValueError('No pre-defined subkernel named {} is found. Please define it with one or both of parameters --kernel and --language'.format(kernel))
+            raise ValueError('No pre-defined subkernel named {} is found. Please define it with one or both of parameters --kernel and --language'.format(name))
 
     def get_supported_languages(self):
         if self._supported_languages is not None:
@@ -960,9 +960,9 @@ class SoS_Kernel(IPythonKernel):
         reply['content']['execution_count'] = self._execution_count
         return reply['content']
 
-    def switch_kernel(self, kernel, in_vars=[], ret_vars=[], language=None, kerne_name=None, color=None):
+    def switch_kernel(self, kernel, in_vars=[], ret_vars=[], kernel_name=None, language=None, color=None):
         # switching to a non-sos kernel
-        kernel = self.find_kernel(kernel)[1]
+        kernel = self.find_kernel(kernel, kernel_name, language, color)[1]
         # self.warn('Switch from {} to {}'.format(self.kernel, kernel))
         if kernel == 'undefined':
             return
@@ -1789,8 +1789,18 @@ class SoS_Kernel(IPythonKernel):
                     'execution_count': self._execution_count,
                    }
             original_kernel = self.kernel
-            self.switch_kernel(args.name, args.in_vars, args.out_vars,
-                    args.language, args.kernel, args.color)
+            try:
+                self.switch_kernel(args.name, args.in_vars, args.out_vars,
+                    args.kernel, args.language, args.color)
+            except Exception as e:
+                self.warn('Failed to switch to subkernel {} (kernel {}, language {}): {}'.format(args.name,
+                    args.kernel, args.language, e))
+                return {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self._execution_count,
+                   }
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
@@ -1811,10 +1821,20 @@ class SoS_Kernel(IPythonKernel):
                     'traceback': [],
                     'execution_count': self._execution_count,
                    }
-            self.switch_kernel(args.name, args.in_vars, args.out_vars,
-                    args.language, args.kernel, args.color)
-            self.hard_switch_kernel = True
-            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            try:
+                self.switch_kernel(args.name, args.in_vars, args.out_vars,
+                    args.kernel, args.language, args.color)
+                self.hard_switch_kernel = True
+                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            except Exception as e:
+                self.warn('Failed to switch to subkernel {} (kernel {}, language {}): {}'.format(args.name,
+                    args.kernel, args.language, e))
+                return {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self._execution_count,
+                   }
         elif self.MAGIC_GET.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
