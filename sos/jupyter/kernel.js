@@ -491,17 +491,21 @@ define([
     function changeStyleOnKernel(cell, type) {
         // type should be  displayed name of kernel
         var sel = cell.element[0].getElementsByTagName('select')[0]
-        var opts = sel.options;
-        for (var opt, j = 0; opt = opts[j]; j++) {
-            if (opt.value == DisplayName[type]) {
-                sel.selectedIndex = j;
-                break;
+        if (!type) {
+            sel.selectedIndex = -1;
+        } else {
+            var opts = sel.options;
+            for (var opt, j = 0; opt = opts[j]; j++) {
+                if (opt.value == DisplayName[type]) {
+                    sel.selectedIndex = j;
+                    break;
+                }
             }
         }
         // cell in panel does not have prompt area
         var col = '';
         if (cell.is_panel !== undefined) {
-            if (BackgroundColor[type]) {
+            if (type && BackgroundColor[type]) {
                 col = BackgroundColor[type];
             }
             cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = col;
@@ -513,7 +517,7 @@ define([
 
         if (type == 'sos' && get_workflow_from_cell(cell)) {
             col = '#F0F0F0';
-        } else if (BackgroundColor[type]) {
+        } else if (type && BackgroundColor[type]) {
             col = BackgroundColor[type];
         }
         ip[0].style.backgroundColor = col;
@@ -673,7 +677,7 @@ define([
             var cells = IPython.notebook.get_cells();
             for (var i in cells) {
                 if (cells[i].cell_type == 'code' && !cells[i].metadata.kernel) {
-                    changeStyleOnKernel(cells[i], kernel_type);
+                    changeStyleOnKernel(cells[i], undefined);
                 }
             }
         });
