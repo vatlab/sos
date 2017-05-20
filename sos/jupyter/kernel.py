@@ -517,9 +517,10 @@ class SoS_Kernel(IPythonKernel):
                 if ':' in language:
                     # if this is a new module, let us create an entry point and load
                     from pkg_resources import EntryPoint
-                    ep = EntryPoint(name=kernel, module_name=language)
+                    mn, attr = language.split(':', 1)
+                    ep = EntryPoint(name=kernel, module_name=mn, attrs=tuple(attr.split('.')))
                     try:
-                        plugin = ep.load()(self)
+                        plugin = ep.resolve()(self)
                         self._supported_languages[name] = plugin
                         # for convenience, we create two entries for, e.g. R and ir
                         # but only if there is no existing definition
@@ -548,9 +549,10 @@ class SoS_Kernel(IPythonKernel):
             if ':' in language:
                 # if this is a new module, let us create an entry point and load
                 from pkg_resources import EntryPoint
-                ep = EntryPoint(name="__unknown__", module_name=language)
+                mn, attr = language.split(':', 1)
+                ep = EntryPoint(name='__unknown__', module_name=mn, attrs=tuple(attr.split('.')))
                 try:
-                    plugin = ep.load()(self)
+                    plugin = ep.resolve()(self)
                     self._supported_languages[name] = plugin
                 except Exception as e:
                     raise RuntimeError('Failed to load language {}: {}'.format(language, e))

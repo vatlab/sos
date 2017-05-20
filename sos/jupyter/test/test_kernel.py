@@ -94,7 +94,7 @@ class TestKernel(unittest.TestCase):
     def testMagicUse(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            msg_id, content = execute(kc=kc, code="%use R1 -l R -c #CCCCCC")
+            msg_id, content = execute(kc=kc, code="%use R1 -l sos.R.kernel:sos_R -c #CCCCCC")
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%use R2 -k ir")
             wait_for_idle(kc)
