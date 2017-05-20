@@ -49,7 +49,8 @@ define([
     if (!('sos' in IPython.notebook.metadata))
         IPython.notebook.metadata['sos'] = {
             'kernels': [
-                ['sos', 'SoS', '']
+                // displayed name, kernel name, language, color
+                ['SoS', 'sos', '', '']
             ],
             // panel displayed, position (float or side), old panel height
             'panel': {
@@ -73,18 +74,29 @@ define([
     IPython.notebook.metadata['sos']['panel'].style = 'side';
 
     window.data = IPython.notebook.metadata['sos']['kernels'];
+    // upgrade existing meta data if it uses the old 3 item format
+    if (IPython.notebook.metadata['sos']['kernels'].length > 0 &&
+        IPython.notebook.metadata['sos']['kernels'][0].length === 3) {
+        for (var j = 0; j < IPython.notebook.metadata['sos']['kernels'].length; j++) {
+            var def = IPython.notebook.metadata['sos']['kernels'][j];
+            // original format, kernel, name, color
+            // new format, name, kenel, lan, color
+            IPython.notebook.metadata['sos']['kernels'][j] = [def[1], def[0], def[1], def[2]];
+        }
+    }
+
     for (var i = 0; i < data.length; i++) {
         // BackgroundColor is color
-        BackgroundColor[data[i][0]] = data[i][2];
-        BackgroundColor[data[i][1]] = data[i][2];
+        BackgroundColor[data[i][0]] = data[i][3];
+        BackgroundColor[data[i][1]] = data[i][3];
         // DisplayName
-        DisplayName[data[i][0]] = data[i][1];
-        DisplayName[data[i][1]] = data[i][1];
+        DisplayName[data[i][0]] = data[i][0];
+        DisplayName[data[i][1]] = data[i][0];
         // Name
-        KernelName[data[i][0]] = data[i][0];
-        KernelName[data[i][1]] = data[i][0];
+        KernelName[data[i][0]] = data[i][1];
+        KernelName[data[i][1]] = data[i][1];
         // KernelList, use displayed name
-        KernelList.push([data[i][1], data[i][1]])
+        KernelList.push([data[i][0], data[i][0]])
     }
 
     var my_execute = function(code, callbacks, options) {
@@ -196,25 +208,34 @@ define([
                     return;
                 for (var i = 0; i < data.length; i++) {
                     // BackgroundColor is color
-                    BackgroundColor[data[i][0]] = data[i][2];
-                    BackgroundColor[data[i][1]] = data[i][2];
+                    BackgroundColor[data[i][0]] = data[i][3];
+                    BackgroundColor[data[i][1]] = data[i][3];
                     // DisplayName
-                    DisplayName[data[i][0]] = data[i][1];
-                    DisplayName[data[i][1]] = data[i][1];
+                    DisplayName[data[i][0]] = data[i][0];
+                    DisplayName[data[i][1]] = data[i][0];
                     // Name
-                    KernelName[data[i][0]] = data[i][0];
-                    KernelName[data[i][1]] = data[i][0];
+                    KernelName[data[i][0]] = data[i][1];
+                    KernelName[data[i][1]] = data[i][1];
                     // KernelList, use displayed name
-                    if (KernelList.findIndex((item) => item[0] === data[i][1]) == -1)
-                        KernelList.push([data[i][1], data[i][1]]);
+                    if (KernelList.findIndex((item) => item[0] === data[i][0]) == -1)
+                        KernelList.push([data[i][0], data[i][0]]);
+                    // upgrade existing meta data if it uses the old 3 item format
+                    if (IPython.notebook.metadata['sos']['kernels'].length > 0 &&
+                        IPython.notebook.metadata['sos']['kernels'][0].length === 3) {
+                        for (var j = 0; j < IPython.notebook.metadata['sos']['kernels'].length; j++) {
+                            var def = IPython.notebook.metadata['sos']['kernels'][j];
+                            // original format, kernel, name, color
+                            // new format, name, kenel, lan, color
+                            IPython.notebook.metadata['sos']['kernels'][j] = [def[1], def[0], def[1], def[2]];
+                        }
+                    }
                     // if the kernel is not in metadata, push it in
                     var k_idx = IPython.notebook.metadata['sos']['kernels'].findIndex((item) => item[0] === data[i][0])
                     if (k_idx == -1)
                         IPython.notebook.metadata['sos']['kernels'].push(data[i])
                     else {
-                        // if language exist update the display name and color, in case it was using old ones
-                        IPython.notebook.metadata['sos']['kernels'][k_idx][1] = data[i][1];
-                        IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
+                        // if kernel exist update the rest of the information
+                        IPython.notebook.metadata['sos']['kernels'][k_idx] = data[i];
                     }
                 }
                 //add dropdown menu of kernels in frontend
@@ -234,8 +255,8 @@ define([
                     var cell = window.my_panel.cell;
                 else
                     var cell = IPython.notebook.get_cell(data[0]);
-                if (cell.metadata.kernel != KernelName[data[1]]) {
-                    cell.metadata.kernel = KernelName[data[1]];
+                if (cell.metadata.kernel != DisplayName[data[1]]) {
+                    cell.metadata.kernel = DisplayName[data[1]];
                     // set meta information
                     changeStyleOnKernel(cell, data[1])
                 }
@@ -453,6 +474,7 @@ define([
     }
 
     function changeStyleOnKernel(cell, type) {
+        // type should be  displayed name of kernel
         var sel = cell.element[0].getElementsByTagName('select')[0]
         var opts = sel.options;
         for (var opt, j = 0; opt = opts[j]; j++) {
@@ -568,7 +590,7 @@ define([
             function(cell, value) {
                 // we check that the slideshow namespace exist and create it if needed
                 //if (cell.metadata.kernel == undefined) {
-                cell.metadata.kernel = KernelName[value];
+                cell.metadata.kernel = DisplayName[value];
                 // cell in panel does not have prompt area
                 if (cell.is_panel !== undefined) {
                     if (BackgroundColor[value])
@@ -1254,7 +1276,7 @@ define([
             col = changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
         }
         // if in sos mode and is single line, enable automatic preview
-        if ((cell.metadata.kernel == 'sos' || cell.metadata.kernel === undefined) && text.indexOf('\n') == -1 && text.indexOf('%') !== 0) {
+        if ((cell.metadata.kernel == 'sos' || cell.metadata.kernel == 'SoS' || cell.metadata.kernel === undefined) && text.indexOf('\n') == -1 && text.indexOf('%') !== 0) {
             // if it is expression without space
             if (text.indexOf('=') == -1) {
                 if (text.indexOf(' ') == -1)

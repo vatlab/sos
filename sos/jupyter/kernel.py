@@ -1507,13 +1507,13 @@ class SoS_Kernel(IPythonKernel):
             for spec in specs.keys():
                 if spec == 'sos':
                     # the SoS kernel will be default theme color.
-                    self._kernel_list.append(['sos', 'SoS', ''])
+                    self._kernel_list.append(['SoS', 'sos', '', ''])
                 elif spec in lan_map:
                     # e.g. ir ==> R
-                    self._kernel_list.append([spec, lan_map[spec][0], lan_map[spec][1]])
+                    self._kernel_list.append([lan_map[spec][0], spec, lan_map[spec][0], lan_map[spec][1]])
                 else:
                     # undefined language also use default theme color
-                    self._kernel_list.append([spec, spec, ''])
+                    self._kernel_list.append([spec, spec, spec, ''])
         return self._kernel_list
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
