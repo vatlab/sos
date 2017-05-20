@@ -234,8 +234,23 @@ define([
                     if (k_idx == -1)
                         IPython.notebook.metadata['sos']['kernels'].push(data[i])
                     else {
-                        // if kernel exist update the rest of the information
-                        IPython.notebook.metadata['sos']['kernels'][k_idx] = data[i];
+                        // if kernel exist update the rest of the information, but warn users first on
+                        // inconsistency
+                        if (IPython.notebook.metadata['sos']['kernels'][k_idx][1] != data[i][1]) {
+                            var r = confirm("This notebook used Jupyter kernel " + IPython.notebook.metadata['sos']['kernels'][k_idx][1] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][1] + " instead?");
+                            if (r == true)
+                                IPython.notebook.metadata['sos']['kernels'][k_idx][1] = data[i][1];
+                        } else {
+                            IPython.notebook.metadata['sos']['kernels'][k_idx][1] = data[i][1];
+                        }
+                        if (IPython.notebook.metadata['sos']['kernels'][k_idx][2] != data[i][2]) {
+                            var r = confirm("This notebook used language definition " + IPython.notebook.metadata['sos']['kernels'][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
+                            if (r == true)
+                                IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
+                        } else {
+                            IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
+                        }
+                        IPython.notebook.metadata['sos']['kernels'][k_idx][3] = data[i][3];
                     }
                 }
                 //add dropdown menu of kernels in frontend
