@@ -441,22 +441,6 @@ define([
         window.sos_comm.send(msg);
     }
 
-    function request_kernel_list() {
-        if (!window.kernel_updated) {
-            // Use comm communication to request kernel list, instead of sending
-            // an evaluation request.
-            //
-            // IPython.notebook.kernel.execute('%frontend --list-kernel', [], {
-            //    'silent': true,
-            //    'store_history': false
-            // });
-            send_kernel_msg({
-                'list-kernel': true,
-            });
-            console.log('kernel list requested');
-        }
-    }
-
     function wrap_execute() {
         // override kernel execute with the wrapper.
         // however, this function can be called multiple times for kernel
@@ -1007,106 +991,6 @@ define([
         cell.refresh();
         this.cell.element.hide();
 
-        /*
-        // move input prompt on top of the cell
-        var panel_buttons = $('<div class="panel_buttons"/>');
-        panel_buttons.append(
-            $("<a/>").attr('href', '#')
-            .append($("<i class='fa fa-book'></i>"))
-            .click(function() {
-                var win = window.open('http://vatlab.github.io/SOS/doc/documentation/Notebook_Interface.html', '_blank');
-                win.focus();
-                return false;
-            })
-        ).append(
-            $("<span/>")
-            .html("&nbsp;&nbsp")
-        ).append(
-            $("<a/>").attr('href', '#')
-            .append($("<i class='fa fa-list-ul'></i>"))
-            .click(function() {
-                show_toc();
-                return false;
-            })
-        ).append(
-            $("<span/>")
-            .html("&nbsp;&nbsp")
-        ).append(
-            $("<a/>").attr('href', '#')
-            .append($("<i class='fa  fa-tasks'></i>"))
-            .click(function() {
-                var panel_cell = window.my_panel.cell;
-                panel_cell.clear_input();
-                panel_cell.set_text('%tasks');
-                panel_cell.clear_output();
-                panel_cell.execute();
-                return false;
-            })
-        ).append(
-            $("<span/>")
-            .html("&nbsp;&nbsp")
-        ).append(
-            $("<a/>").attr('href', '#')
-            .append($("<i class='fa fa-file-text'></i>"))
-            .click(function() {
-                var panel_cell = window.my_panel.cell;
-                panel_cell.clear_input();
-                panel_cell.set_text('%preview --workflow');
-                panel_cell.clear_output();
-                panel_cell.execute();
-                return false;
-            })
-        ).append(
-            $("<span/>")
-            .html("&nbsp;&nbsp")
-        ).append(
-            $("<a/>").attr('href', '#').attr('id', 'history_icon')
-            .append($("<i class='fa fa-history'></i>"))
-            .click(function() {
-                var dropdown = $('#panel_history');
-                var len = $('#panel_history option').length;
-                if (len === 0)
-                    return false;
-                if (dropdown.css('display') === 'none') {
-                    dropdown.show();
-                    dropdown[0].size = len;
-                    setTimeout(function() {
-                        dropdown.hide()
-                    }, 8000);
-                } else {
-                    dropdown.hide();
-                }
-                return false;
-            })
-
-        ).append(
-            $("<select></select>").attr("id", "panel_history")
-            .css("margin-left", "0.75em").css('position', 'fixed').css('display', 'none')
-            .change(function() {
-                var item = $('#panel_history').val();
-                // separate kernel and input
-                var sep = item.indexOf(':');
-                var kernel = item.substring(0, sep);
-                var text = item.substring(sep + 1);
-
-                var panel_cell = window.my_panel.cell;
-                $('#panel_history').hide();
-
-                // set the kernel of the panel cell as the sending cell
-                if (panel_cell.metadata.kernel !== kernel) {
-                    panel_cell.metadata.kernel = kernel;
-                    changeStyleOnKernel(panel_cell, kernel);
-                }
-
-                panel_cell.clear_input();
-                panel_cell.set_text(text);
-                panel_cell.clear_output();
-                panel_cell.execute();
-                return false;
-            })
-        )
-        */
-
         this.cell.element.find('div.input_prompt').css('min-width', '0ex').css('width', '0ex').text('In [-]:');
         this.cell.element.find('div.input_area')
             .append(
@@ -1636,7 +1520,6 @@ define([
         events.on('kernel_connected.Kernel', show_toc);
         // #550
         // kernel_ready.Kernel
-        //events.on('kernel_connected.Kernel', request_kernel_list);
         events.on('select.Cell', set_codemirror_option);
         events.on('select.Cell', highlight_toc_item);
 
