@@ -1543,7 +1543,13 @@ define([
         // user experience.
         //
         events.on('notebook_loaded.Notebook', show_toc);
-        events.on('kernel_connected.Kernel', show_toc);
+        // restart kernel does not clear existing side panel.
+        events.on('kernel_connected.Kernel', function() {
+            var cell = window.my_panel.cell;
+            // do not clear existing content
+            if (!cell.get_text())
+                show_toc()
+        });
         // #550
         // kernel_ready.Kernel
         events.on('select.Cell', set_codemirror_option);

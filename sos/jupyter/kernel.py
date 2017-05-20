@@ -230,7 +230,7 @@ class SoS_Kernel(IPythonKernel):
             so this option is only needed for starting a new instance of a kernel.
             ''')
         parser.add_argument('-c', '--color',
-            help='''Background color of the new kernel, which overrides
+            help='''Background color of new or existing kernel, which overrides
             the default color of the language.''')
         parser.add_argument('-i', '--in', nargs='*', dest='in_vars',
             help='Input variables (variables to get from SoS kernel)')
