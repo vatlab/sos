@@ -1808,7 +1808,7 @@ class SoS_Kernel(IPythonKernel):
             try:
                 parser = self.get_with_parser()
                 try:
-                    args = parser.parse_args(options.split())
+                    args = parser.parse_args(shlex.split(options))
                 except SystemExit:
                     return
             except Exception as e:
@@ -1841,7 +1841,7 @@ class SoS_Kernel(IPythonKernel):
             try:
                 parser = self.get_use_parser()
                 try:
-                    args = parser.parse_args(options.split())
+                    args = parser.parse_args(shlex.split(options))
                 except SystemExit:
                     return
             except Exception as e:
