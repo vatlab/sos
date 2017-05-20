@@ -214,8 +214,8 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('name', nargs='?', default='',
             help='''Displayed name of kernel to start (if no kernel with name is
             specified) or switch to (if a kernel with this name is already started).
-            The name is usually a kernel name (e.g. %use ir) or a language name
-            (e.g. %use R) in which case the language name will be used. One or
+            The name is usually a kernel name (e.g. %%use ir) or a language name
+            (e.g. %%use R) in which case the language name will be used. One or
             more parameters --language or --kernel will need to be specified
             if a new name is used to start a separate instance of a kernel.''')
         parser.add_argument('-k', '--kernel',
@@ -223,7 +223,7 @@ class SoS_Kernel(IPythonKernel):
             list. Default to the default kernel of selected language (e.g. ir for
             language R.''')
         parser.add_argument('-l', '--language',
-            help='''Language extension that enables magics such as %get and %put
+            help='''Language extension that enables magics such as %%get and %%put
             for the kernel, which should be in the name of a registered language
             (e.g. R), or a specific language module in the format of
             package.module:class. SoS maitains a list of languages and kernels
