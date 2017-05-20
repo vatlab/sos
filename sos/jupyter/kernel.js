@@ -156,6 +156,7 @@ define([
         return this.orig_execute(
             "%frontend " +
             (window.kernel_updated ? "" : " --list-kernel ") +
+            " --use-panel " +
             " --default-kernel " + window.default_kernel +
             " --cell-kernel " + window.my_panel.cell.metadata.kernel +
             (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'" : '') +
@@ -1300,7 +1301,7 @@ define([
         //$("#panel-wrapper").toggle({'complete':function(){
         $("#panel-wrapper").toggle({
             'progress': function() {
-                if ($('#panel-wrapper').css('display') != 'block' && $('#toc-wrapper').css('display') != 'block') {
+                if ($('#panel-wrapper').css('display') != 'block') {
                     $('#notebook-container').css('margin-left', 15);
                     $('#notebook-container').css('width', $('#site').width());
                 } else {
@@ -1313,19 +1314,8 @@ define([
                 if (IPython.notebook.metadata['sos']['panel'].displayed) {
                     console.log("panel open toc close")
                     window.my_panel.cell.focus_editor();
-                    $('#toc-wrapper').css('display', 'none')
-                    $('#toc-wrapper').css('z-index', 5)
                     $('#panel-wrapper').css('z-index', 10)
-                } else if ($("#toc-wrapper").css('display') === 'block') {
-                    $('#toc-wrapper').css('z-index', 5)
-                    $('#panel-wrapper').css('z-index', 10)
-                    $('#panel-wrapper').css('display', 'block')
-                    $('#panel-wrapper').css('display', 'none')
-                    $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
-                    $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
-
-
-                }
+                } 
             }
         });
     }
@@ -1522,7 +1512,7 @@ define([
     };
 
     function adjustPanel() {
-        if ($('#panel-wrapper').css('display') != "none" || $('#toc-wrapper').css('display') != "none") {
+        if ($('#panel-wrapper').css('display') != "none") {
 
             var panel_width = IPython.notebook.metadata['sos']['panel'].style == 'side' ? $('#panel-wrapper').width() : 0;
             $('#notebook-container').css('margin-left', panel_width + 30);
@@ -1574,7 +1564,7 @@ define([
     }
 
     function remove_nbextensions() {
-        // var extenstionArray=["#toc-wrapper","#nbextension-scratchpad"]
+        // var extenstionArray=["#nbextension-scratchpad"]
         var extenstionArray = ["#nbextension-scratchpad"]
         return Array.prototype.map.call(extenstionArray, remove_extension)
     }
@@ -1619,28 +1609,6 @@ define([
         add_panel_button();
         patch_CodeCell_get_callbacks();
 
-        if ($("#toc_button").length !== 0) {
-            $("#toc_button").click(function() {
-                if ($('#panel-wrapper').css('display') === 'block' && $('#toc-wrapper').css('display') === 'block') {
-                    if ($('#toc-wrapper').css('z-index') == "auto" && $('#panel-wrapper').css('z-index') == "auto") {
-                        $('#toc-wrapper').css('z-index', 10)
-                        $('#panel-wrapper').css('z-index', 5)
-                        $('#panel-wrapper').css('display', 'none')
-                    } else if (parseInt($('#toc-wrapper').css('z-index')) < parseInt($('#panel-wrapper').css('z-index'))) {
-                        console.log("click on toc hide panel")
-                        $('#toc-wrapper').css('z-index', 10)
-                        $('#panel-wrapper').css('z-index', 5)
-                        $('#panel-wrapper').css('display', 'none')
-                        $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
-                        $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
-
-                    }
-                } else if ($('#panel-wrapper').css('display') === 'none' && $('#toc-wrapper').css('display') === 'none') {
-                    $('#notebook-container').css('margin-left', 15);
-                    $('#notebook-container').css('width', $('#site').width());
-                }
-            });
-        }
         $("#to_markdown").click(function() {
             adjustPanel();
         });
