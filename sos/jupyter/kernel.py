@@ -502,10 +502,10 @@ class SoS_Kernel(IPythonKernel):
                     ep = EntryPoint(name=kernel, module_name=language)
                     try:
                         plugin = ep.load()(self)
-                        self._supported_languages[kernel] = plugin
+                        self._supported_languages[name] = plugin
                         # for convenience, we create two entries for, e.g. R and ir
                         # but only if there is no existing definition
-                        if kernel != plugin.kernel_name and plugin.kernel_name not in self._supported_languages:
+                        if name != plugin.kernel_name and plugin.kernel_name not in self._supported_languages:
                             self._supported_languages[plugin.kernel_name] = plugin
                     except Exception as e:
                         raise RuntimeError('Failed to load language {}: {}'.format(language, e))
@@ -517,6 +517,7 @@ class SoS_Kernel(IPythonKernel):
                     if language not in self._supported_languages:
                         raise RuntimeError('Unrecognized language definition {}'.format(language))
                     #
+                    self._supported_languages[name] = self._supported_languages[language]
                     self._kernel_list.append([
                         name, kdef[1], language, kdef[3] if color is None else color])
                 if notify_frontend:
@@ -530,7 +531,7 @@ class SoS_Kernel(IPythonKernel):
                 ep = EntryPoint(name="__unknown__", module_name=language)
                 try:
                     plugin = ep.load()(self)
-                    self._supported_languages[plugin.kernel_name] = plugin
+                    self._supported_languages[name] = plugin
                 except Exception as e:
                     raise RuntimeError('Failed to load language {}: {}'.format(language, e))
                 #
@@ -971,12 +972,14 @@ class SoS_Kernel(IPythonKernel):
         # switching to a non-sos kernel
         if not kernel:
             # all kernel names
-            available_kernels = {x:self.find_kernel(x)[0] for x in self.supported_languages.keys()}
+            available_kernels = {self.find_kernel(x)[0]:x for x in self.supported_languages.keys()}
             # remove aliases
             available_kernels = {x:y for x,y in available_kernels.items() if x not in available_kernels.values()}
+
+            kinfo = self.find_kernel(self.kernel)
             self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': 'Kernel "{}" is used.\nAvailable kernels are: SoS (sos), {}.'
-                    .format(self.kernel, ', '.join(
+                {'name': 'stdout', 'text': 'Subkernel "{}" is used (kernel={}, language={}).\nAvailable subkernels are: SoS (sos), {}.'
+                    .format(kinfo[0], kinfo[1], kinfo[2] if kinfo[2] else "undefined", ', '.join(
                     [x if x == y else '{} ({})'.format(x, y)
                     for x,y in available_kernels.items()]))})
             return
@@ -1155,7 +1158,7 @@ class SoS_Kernel(IPythonKernel):
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Usage: set persistent sos command line options such as "-v 3" (debug output)\n'})
 
-    def handle_magic_get(self, items, kernel=None):
+    def handle_magic_get(self, items, kernel=None, explicit=False):
         if kernel is None or kernel.lower() == 'sos':
             # autmatically get all variables with names start with 'sos'
             default_items = [x for x in env.sos_dict.keys() if x.startswith('sos') and x not in self.original_keys]
@@ -1197,7 +1200,7 @@ class SoS_Kernel(IPythonKernel):
                 self.warn('Magic %get without option --kernel can only be executed by subkernels')
                 return
             else:
-                if self._debug_mode:
+                if explicit:
                     self.warn('Language {} does not support magic %get.'.format(self.kernel))
                 return
         elif self.kernel.lower() == 'sos':
@@ -1249,7 +1252,7 @@ class SoS_Kernel(IPythonKernel):
 
         return responses
 
-    def handle_magic_put(self, items, kernel=None):
+    def handle_magic_put(self, items, kernel=None, explicit=False):
         if kernel is None or kernel.lower() == 'sos':
             # put to sos kernel
             # items can be None if unspecified
@@ -1270,8 +1273,8 @@ class SoS_Kernel(IPythonKernel):
             elif self.kernel == 'SoS':
                 self.warn('Magic %put without option --kernel can only be executed by subkernels')
             else:
-                if self._debug_mode:
-                    self.warn('Language {} does not support magic %put.'.format(self.kernel))
+                if explicit:
+                    self.warn('Subkernel {} does not support magic %put.'.format(self.kernel))
         elif self.kernel.lower() == 'sos':
             # if another kernel is specified and the current kernel is sos
             try:
@@ -1614,7 +1617,7 @@ class SoS_Kernel(IPythonKernel):
                     self._kernel_list.append([lan_map[spec][0], spec, lan_map[spec][0], lan_map[spec][1]])
                 else:
                     # undefined language also use default theme color
-                    self._kernel_list.append([spec, spec, spec, ''])
+                    self._kernel_list.append([spec, spec, '', ''])
         # now, using a list of kernels sent from the kernel, we might need to adjust
         # our list or create new kernels.
         if notebook_kernel_list is not None:
@@ -1858,7 +1861,7 @@ class SoS_Kernel(IPythonKernel):
                     'traceback': [],
                     'execution_count': self._execution_count,
                    }
-            self.handle_magic_get(args.vars, args.__from__)
+            self.handle_magic_get(args.vars, args.__from__, explicit=True)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_PUT.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
@@ -1876,7 +1879,7 @@ class SoS_Kernel(IPythonKernel):
                     'traceback': [],
                     'execution_count': self._execution_count,
                    }
-            self.handle_magic_put(args.vars, args.__to__)
+            self.handle_magic_put(args.vars, args.__to__, explicit=True)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_PASTE.match(code):
             options, remaining_code = self.get_magic_and_code(code, True)
