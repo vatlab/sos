@@ -211,8 +211,27 @@ class SoS_Kernel(IPythonKernel):
     def get_use_parser(self):
         parser = argparse.ArgumentParser(prog='%use',
             description='''Switch to a specified subkernel.''')
-        parser.add_argument('kernel', nargs='?', default='',
-            help='Kernel to switch to.')
+        parser.add_argument('name', nargs='?', default='',
+            help='''Displayed name of kernel to start (if no kernel with name is
+            specified) or switch to (if a kernel with this name is already started).
+            The name is usually a kernel name (e.g. %use ir) or a language name
+            (e.g. %use R) in which case the language name will be used. One or
+            more parameters --language or --kernel will need to be specified
+            if a new name is used to start a separate instance of a kernel.''')
+        parser.add_argument('-k', '--kernel',
+            help='''kernel name as displayed in the output of jupyter kernelspec
+            list. Default to the default kernel of selected language (e.g. ir for
+            language R.''')
+        parser.add_argument('-l', '--language',
+            help='''Language extension that enables magics such as %get and %put
+            for the kernel, which should be in the name of a registered language
+            (e.g. R), or a specific language module in the format of
+            package.module:class. SoS maitains a list of languages and kernels
+            so this option is only needed for starting a new instance of a kernel.
+            ''')
+        parser.add_argument('-c', '--color',
+            help='''Background color of the new kernel, which overrides
+            the default color of the language.''')
         parser.add_argument('-i', '--in', nargs='*', dest='in_vars',
             help='Input variables (variables to get from SoS kernel)')
         parser.add_argument('-o', '--out', nargs='*', dest='out_vars',
@@ -225,8 +244,27 @@ class SoS_Kernel(IPythonKernel):
         parser = argparse.ArgumentParser(prog='%with',
             description='''Use specified the subkernel to evaluate current
             cell''')
-        parser.add_argument('kernel', nargs='?', default='',
-            help='Kernel to switch to.')
+        parser.add_argument('name', nargs='?', default='',
+            help='''Displayed name of kernel to start (if no kernel with name is
+            specified) or switch to (if a kernel with this name is already started).
+            The name is usually a kernel name (e.g. %use ir) or a language name
+            (e.g. %use R) in which case the language name will be used. One or
+            more parameters --language or --kernel will need to be specified
+            if a new name is used to start a separate instance of a kernel.''')
+        parser.add_argument('-k', '--kernel',
+            help='''kernel name as displayed in the output of jupyter kernelspec
+            list. Default to the default kernel of selected language (e.g. ir for
+            language R.''')
+        parser.add_argument('-l', '--language',
+            help='''Language extension that enables magics such as %get and %put
+            for the kernel, which should be in the name of a registered language
+            (e.g. R), or a specific language module in the format of
+            package.module:class. SoS maitains a list of languages and kernels
+            so this option is only needed for starting a new instance of a kernel.
+            ''')
+        parser.add_argument('-c', '--color',
+            help='''Background color of the new kernel, which overrides
+            the default color of the language.''')
         parser.add_argument('-i', '--in', nargs='*', dest='in_vars',
             help='Input variables (variables to get from SoS kernel)')
         parser.add_argument('-o', '--out', nargs='*', dest='out_vars',
@@ -455,7 +493,17 @@ class SoS_Kernel(IPythonKernel):
         super(SoS_Kernel, self).__init__(**kwargs)
         self.options = ''
         self.kernel = 'sos'
-        # FIXME: this should in theory be a MultiKernelManager...
+        # a dictionary of started kernels, with the format of
+        #
+        # 'R': ['ir', 'sos.R.sos_R', '#FFEEAABB']
+        #
+        # Note that:
+        #
+        # 'R' is the displayed name of the kernel.
+        # 'ir' is the kernel name.
+        # 'sos.R.sos_R' is the language module.
+        # '#FFEEAABB' is the background color
+        #
         self.kernels = {}
         #self.shell = InteractiveShell.instance()
         self.format_obj = self.shell.display_formatter.format
@@ -638,11 +686,11 @@ class SoS_Kernel(IPythonKernel):
                 {
                     'source': 'SoS',
                     'metadata': {},
-                    'data': { 'text/html': 
+                    'data': { 'text/html':
                         HTML('''<table id="table_{0}_{1}" style="border: 0px"><tr style="border: 0px">
                         <td style="border: 0px">
                         <i id="status_{0}_{1}"
-                            class="fa fa-2x fa-fw {2}" 
+                            class="fa fa-2x fa-fw {2}"
                             onmouseover="$('#status_{0}_{1}').addClass('{3}').removeClass('{2}')"
                             onmouseleave="$('#status_{0}_{1}').addClass('{2}').removeClass('{3}')"
                             onclick="{4}('{1}', '{0}')"
@@ -816,7 +864,7 @@ class SoS_Kernel(IPythonKernel):
         reply['content']['execution_count'] = self._execution_count
         return reply['content']
 
-    def switch_kernel(self, kernel, in_vars=[], ret_vars=[]):
+    def switch_kernel(self, kernel, in_vars=[], ret_vars=[], language=None, kerne_name=None, color=None):
         # switching to a non-sos kernel
         kernel = self.kernel_name(kernel)
         # self.warn('Switch from {} to {}'.format(self.kernel, kernel))
@@ -1636,7 +1684,8 @@ class SoS_Kernel(IPythonKernel):
                     'execution_count': self._execution_count,
                    }
             original_kernel = self.kernel
-            self.switch_kernel(args.kernel, args.in_vars, args.out_vars)
+            self.switch_kernel(args.name, args.in_vars, args.out_vars,
+                    args.language, args.kernel, args.color)
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
@@ -1657,7 +1706,8 @@ class SoS_Kernel(IPythonKernel):
                     'traceback': [],
                     'execution_count': self._execution_count,
                    }
-            self.switch_kernel(args.kernel, args.in_vars, args.out_vars)
+            self.switch_kernel(args.name, args.in_vars, args.out_vars,
+                    args.language, args.kernel, args.color)
             self.hard_switch_kernel = True
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_GET.match(code):
