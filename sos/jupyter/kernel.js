@@ -253,9 +253,13 @@ define([
                             IPython.notebook.metadata['sos']['kernels'][k_idx][1] = data[i][1];
                         }
                         if (IPython.notebook.metadata['sos']['kernels'][k_idx][2] != data[i][2]) {
-                            var r = confirm("This notebook used language definition " + IPython.notebook.metadata['sos']['kernels'][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
-                            if (r == true)
+                            if (IPython.notebook.metadata['sos']['kernels'][k_idx][2] === '') {
                                 IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
+                            } else {
+                                var r = confirm("This notebook used language definition " + IPython.notebook.metadata['sos']['kernels'][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
+                                if (r == true)
+                                    IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
+                            }
                         } else {
                             IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
                         }

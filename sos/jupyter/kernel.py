@@ -467,14 +467,16 @@ class SoS_Kernel(IPythonKernel):
         # find from language name (subkernel name, which is usually language name)
         for idx,x in enumerate(self.get_kernel_list()):
             if x[0] == name:
-                update_existing(idx)
-                return x
+                if x[2] or language is None:
+                    update_existing(idx)
+                    return x
+                else:
+                    kernel = name
+                    break
         # find from kernel name
         for idx,x in enumerate(self._kernel_list):
             if x[1] == name:
-                # if exist language or no new langauge defined.
-                env.logger.error(x)
-                env.logger.error(langauge)
+                # if exist language or no new language defined.
                 if x[2] or language is None:
                     update_existing(idx)
                     return x
