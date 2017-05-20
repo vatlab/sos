@@ -472,8 +472,14 @@ class SoS_Kernel(IPythonKernel):
         # find from kernel name
         for idx,x in enumerate(self._kernel_list):
             if x[1] == name:
-                update_existing(idx)
-                return x
+                # if exist language or no new langauge defined.
+                if x[2] or language is None:
+                    update_existing(idx)
+                    return x
+                else:
+                    # otherwise, try to use the new language
+                    kernel = name
+                    break
         # now, no kernel is found, name has to be a new name and we need some definition
         # if kernel is defined
         if kernel is not None:
