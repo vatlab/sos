@@ -23,6 +23,7 @@
 import os
 import unittest
 import shutil
+import subprocess
 
 from sos.utils import env
 from sos.jupyter.converter import script_to_notebook, notebook_to_script
@@ -62,6 +63,15 @@ report('this is action report')
         for script_file in self.scripts:
             script_to_notebook(script_file, script_file + '.ipynb')
             notebook_to_script(script_file + '.ipynb', script_file) 
+
+    def testConvertAll(self):
+        subprocess.call('sos convert test.ipynb test_wf.sos --all', shell=True)
+        self.assertTrue(os.path.isfile('test_wf.sos'))
+        subprocess.call('sos convert test_wf.sos test2.ipynb', shell=True)
+        self.assertTrue(os.path.isfile('test2.ipynb'))
+        # --execute does not yet work
+        os.remove('test_wf.sos')
+        os.remove('test2.ipynb')
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestConvert)

@@ -78,7 +78,7 @@ class SoS_Exporter(Exporter):
                 fh.write('\n'.join('#! ' + x for x in cell.source.split('\n')) + '\n\n')
             elif cell.cell_type == 'code':
                 # ignore cells with other kernel
-                if 'kernel' in cell.metadata and cell.metadata['kernel'] not in ('sos', None):
+                if 'kernel' in cell.metadata and cell.metadata['kernel'] not in ('sos', 'SoS', None):
                     return
                 lines = cell.source.split('\n')
                 valid_cell = False
@@ -170,10 +170,10 @@ class SoS_ExecutePreprocessor(ExecutePreprocessor):
         super(SoS_ExecutePreprocessor, self).__init__(*args, **kwargs)
 
     def run_cell(self, cell):
-        kernel = cell.metadata.get('kernel', 'sos')
+        kernel = cell.metadata.get('kernel', 'SoS')
         try:
             source = cell.source
-            cell.source = '%frontend --default-kernel sos --cell-kernel {}\n{}'.format(kernel, source)
+            cell.source = '%frontend --default-kernel SoS --cell-kernel {}\n{}'.format(kernel, source)
             print(cell.source)
             return super(SoS_ExecutePreprocessor, self).run_cell(cell)
         finally:
@@ -254,7 +254,7 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
 
                     cell_type = 'code'
                     cell_count += 1
-                    metainfo = {'kernel': 'sos'}
+                    metainfo = {'kernel': 'SoS'}
                     content = [line]
                     continue
 

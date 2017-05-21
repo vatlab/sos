@@ -38,7 +38,7 @@ define([
     window.Jupyter = require('base/js/namespace');
     window.CodeCell = require('notebook/js/codecell').CodeCell;
 
-    window.default_kernel = 'sos';
+    window.default_kernel = 'SoS';
     window.kernel_updated = false;
     window.my_panel = null;
     window.pending_cells = {};
@@ -49,7 +49,8 @@ define([
     if (!('sos' in IPython.notebook.metadata))
         IPython.notebook.metadata['sos'] = {
             'kernels': [
-                ['sos', 'SoS', '']
+                // displayed name, kernel name, language, color
+                ['SoS', 'sos', '', '']
             ],
             // panel displayed, position (float or side), old panel height
             'panel': {
@@ -73,18 +74,29 @@ define([
     IPython.notebook.metadata['sos']['panel'].style = 'side';
 
     window.data = IPython.notebook.metadata['sos']['kernels'];
+    // upgrade existing meta data if it uses the old 3 item format
+    if (IPython.notebook.metadata['sos']['kernels'].length > 0 &&
+        IPython.notebook.metadata['sos']['kernels'][0].length === 3) {
+        for (var j = 0; j < IPython.notebook.metadata['sos']['kernels'].length; j++) {
+            var def = IPython.notebook.metadata['sos']['kernels'][j];
+            // original format, kernel, name, color
+            // new format, name, kenel, lan, color
+            IPython.notebook.metadata['sos']['kernels'][j] = [def[1], def[0], def[1], def[2]];
+        }
+    }
+
     for (var i = 0; i < data.length; i++) {
         // BackgroundColor is color
-        BackgroundColor[data[i][0]] = data[i][2];
-        BackgroundColor[data[i][1]] = data[i][2];
+        BackgroundColor[data[i][0]] = data[i][3];
+        BackgroundColor[data[i][1]] = data[i][3];
         // DisplayName
-        DisplayName[data[i][0]] = data[i][1];
-        DisplayName[data[i][1]] = data[i][1];
+        DisplayName[data[i][0]] = data[i][0];
+        DisplayName[data[i][1]] = data[i][0];
         // Name
-        KernelName[data[i][0]] = data[i][0];
-        KernelName[data[i][1]] = data[i][0];
+        KernelName[data[i][0]] = data[i][1];
+        KernelName[data[i][1]] = data[i][1];
         // KernelList, use displayed name
-        KernelList.push([data[i][1], data[i][1]])
+        KernelList.push([data[i][0], data[i][0]])
     }
 
     var my_execute = function(code, callbacks, options) {
@@ -115,7 +127,9 @@ define([
         if (run_notebook) {
             var cells = IPython.notebook.get_cells();
             for (var i = 0; i < cells.length; ++i) {
-                if (cells[i].cell_type == 'code' && (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'sos')) {
+				// older version of the notebook might have sos in metadata
+                if (cells[i].cell_type == 'code' && (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'SoS' 
+					|| cells[i].metadata.kernel === 'sos')) {
                     workflow += get_workflow_from_cell(cells[i])
                 }
             }
@@ -138,11 +152,8 @@ define([
                     // 1. the default kernel (might have been changed from menu bar
                     // 2. cell kernel (might be unspecified for new cell)
                     // 3. cell index (for setting style after execution)
-                    // in addition, the frontend command will send a "--list-kernel" request if
-                    // the frontend is not correctly initialized, possibly because the kernel was
-                    // not ready when the frontend sent the command `%listkernel`.
                     "%frontend " +
-                    (window.kernel_updated ? "" : " --list-kernel ") +
+                    // (window.kernel_updated ? "" : " --list-kernel ") +
                     (IPython.notebook.metadata['sos']['panel'].displayed ? " --use-panel" : "") +
                     " --default-kernel " + window.default_kernel +
                     " --cell-kernel " + cells[i].metadata.kernel +
@@ -155,7 +166,8 @@ define([
         // if this is a command from scratch pad (not part of the notebook)
         return this.orig_execute(
             "%frontend " +
-            (window.kernel_updated ? "" : " --list-kernel ") +
+            // (window.kernel_updated ? "" : " --list-kernel ") +
+            " --use-panel " +
             " --default-kernel " + window.default_kernel +
             " --cell-kernel " + window.my_panel.cell.metadata.kernel +
             (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'" : '') +
@@ -191,29 +203,69 @@ define([
             var msg_type = msg.metadata.msg_type;
 
             if (msg_type == 'kernel-list') {
-                if (window.kernel_updated)
-                    return;
+                // upgrade existing meta data if it uses the old 3 item format
+                if (IPython.notebook.metadata['sos']['kernels'].length > 0 &&
+                    IPython.notebook.metadata['sos']['kernels'][0].length === 3) {
+                    for (var j = 0; j < IPython.notebook.metadata['sos']['kernels'].length; j++) {
+                        var def = IPython.notebook.metadata['sos']['kernels'][j];
+                        // original format, kernel, name, color
+                        // new format, name, kenel, lan, color
+                        IPython.notebook.metadata['sos']['kernels'][j] = [def[1], def[0], def[1], def[2]];
+                    }
+                }
+
+                //
+                for (var j = 0; j < IPython.notebook.metadata['sos']['kernels'].length; j++) {
+                    var kdef = IPython.notebook.metadata['sos']['kernels'][j];
+                    // if local environment has kernel, ok...
+                    var k_idx = data.findIndex((item) => item[0] === kdef[0]);
+                    // otherwise is the kernel actually used?
+                    if (k_idx == -1) {
+                        alert("subkernel " + kdef[0] + " defined in this notebook (kernel " + kdef[1] + " and language " + kdef[2] +
+                                ") is unavailableis not available.");
+                        }
+                }
+
                 for (var i = 0; i < data.length; i++) {
                     // BackgroundColor is color
-                    BackgroundColor[data[i][0]] = data[i][2];
-                    BackgroundColor[data[i][1]] = data[i][2];
+                    BackgroundColor[data[i][0]] = data[i][3];
+                    BackgroundColor[data[i][1]] = data[i][3];
                     // DisplayName
-                    DisplayName[data[i][0]] = data[i][1];
-                    DisplayName[data[i][1]] = data[i][1];
+                    DisplayName[data[i][0]] = data[i][0];
+                    DisplayName[data[i][1]] = data[i][0];
                     // Name
-                    KernelName[data[i][0]] = data[i][0];
-                    KernelName[data[i][1]] = data[i][0];
+                    KernelName[data[i][0]] = data[i][1];
+                    KernelName[data[i][1]] = data[i][1];
                     // KernelList, use displayed name
-                    if (KernelList.findIndex((item) => item[0] === data[i][1]) == -1)
-                        KernelList.push([data[i][1], data[i][1]]);
+                    if (KernelList.findIndex((item) => item[0] === data[i][0]) == -1)
+                        KernelList.push([data[i][0], data[i][0]]);
+
                     // if the kernel is not in metadata, push it in
                     var k_idx = IPython.notebook.metadata['sos']['kernels'].findIndex((item) => item[0] === data[i][0])
                     if (k_idx == -1)
                         IPython.notebook.metadata['sos']['kernels'].push(data[i])
                     else {
-                        // if language exist update the display name and color, in case it was using old ones
-                        IPython.notebook.metadata['sos']['kernels'][k_idx][1] = data[i][1];
-                        IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
+                        // if kernel exist update the rest of the information, but warn users first on
+                        // inconsistency
+                        if (IPython.notebook.metadata['sos']['kernels'][k_idx][1] != data[i][1]) {
+                            var r = confirm("This notebook used Jupyter kernel " + IPython.notebook.metadata['sos']['kernels'][k_idx][1] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][1] + " instead?");
+                            if (r == true)
+                                IPython.notebook.metadata['sos']['kernels'][k_idx][1] = data[i][1];
+                        } else {
+                            IPython.notebook.metadata['sos']['kernels'][k_idx][1] = data[i][1];
+                        }
+                        if (IPython.notebook.metadata['sos']['kernels'][k_idx][2] != data[i][2]) {
+                            if (IPython.notebook.metadata['sos']['kernels'][k_idx][2] === '') {
+                                IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
+                            } else if (data[i][2] != '') {
+                                var r = confirm("This notebook used language definition " + IPython.notebook.metadata['sos']['kernels'][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
+                                if (r == true)
+                                    IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
+                            }
+                        } else {
+                            IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
+                        }
+                        IPython.notebook.metadata['sos']['kernels'][k_idx][3] = data[i][3];
                     }
                 }
                 //add dropdown menu of kernels in frontend
@@ -233,8 +285,8 @@ define([
                     var cell = window.my_panel.cell;
                 else
                     var cell = IPython.notebook.get_cell(data[0]);
-                if (cell.metadata.kernel != KernelName[data[1]]) {
-                    cell.metadata.kernel = KernelName[data[1]];
+                if (cell.metadata.kernel != DisplayName[data[1]]) {
+                    cell.metadata.kernel = DisplayName[data[1]];
                     // set meta information
                     changeStyleOnKernel(cell, data[1])
                 }
@@ -395,8 +447,15 @@ define([
             }
             adjustPanel();
         });
+        var used_kernels = new Set();
+        var cells = IPython.notebook.get_cells();
+        for (var i = cells.length - 1; i >= 0; --i) {
+            if (cells[i].cell_type == 'code' && cells[i].metadata.kernel)
+                used_kernels.add(cells[i].metadata.kernel);
+        }
+        IPython.notebook.metadata['sos']['kernels'] = IPython.notebook.metadata['sos']['kernels'].filter(function(x) { return used_kernels.has(x[0]) });
         window.sos_comm.send({
-            'list-kernel': true,
+            'list-kernel': IPython.notebook.metadata['sos']['kernels'],
             'update-task-status': window.unknown_tasks,
         })
         console.log('sos comm registered');
@@ -404,22 +463,6 @@ define([
 
     function send_kernel_msg(msg) {
         window.sos_comm.send(msg);
-    }
-
-    function request_kernel_list() {
-        if (!window.kernel_updated) {
-            // Use comm communication to request kernel list, instead of sending
-            // an evaluation request.
-            //
-            // IPython.notebook.kernel.execute('%frontend --list-kernel', [], {
-            //    'silent': true,
-            //    'store_history': false
-            // });
-            send_kernel_msg({
-                'list-kernel': true,
-            });
-            console.log('kernel list requested');
-        }
     }
 
     function wrap_execute() {
@@ -452,18 +495,23 @@ define([
     }
 
     function changeStyleOnKernel(cell, type) {
+        // type should be  displayed name of kernel
         var sel = cell.element[0].getElementsByTagName('select')[0]
-        var opts = sel.options;
-        for (var opt, j = 0; opt = opts[j]; j++) {
-            if (opt.value == DisplayName[type]) {
-                sel.selectedIndex = j;
-                break;
+        if (!type) {
+            sel.selectedIndex = -1;
+        } else {
+            var opts = sel.options;
+            for (var opt, j = 0; opt = opts[j]; j++) {
+                if (opt.value == DisplayName[type]) {
+                    sel.selectedIndex = j;
+                    break;
+                }
             }
         }
         // cell in panel does not have prompt area
         var col = '';
         if (cell.is_panel !== undefined) {
-            if (BackgroundColor[type]) {
+            if (type && BackgroundColor[type]) {
                 col = BackgroundColor[type];
             }
             cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = col;
@@ -475,7 +523,7 @@ define([
 
         if (type == 'sos' && get_workflow_from_cell(cell)) {
             col = '#F0F0F0';
-        } else if (BackgroundColor[type]) {
+        } else if (type && BackgroundColor[type]) {
             col = BackgroundColor[type];
         }
         ip[0].style.backgroundColor = col;
@@ -567,7 +615,7 @@ define([
             function(cell, value) {
                 // we check that the slideshow namespace exist and create it if needed
                 //if (cell.metadata.kernel == undefined) {
-                cell.metadata.kernel = KernelName[value];
+                cell.metadata.kernel = DisplayName[value];
                 // cell in panel does not have prompt area
                 if (cell.is_panel !== undefined) {
                     if (BackgroundColor[value])
@@ -635,7 +683,7 @@ define([
             var cells = IPython.notebook.get_cells();
             for (var i in cells) {
                 if (cells[i].cell_type == 'code' && !cells[i].metadata.kernel) {
-                    changeStyleOnKernel(cells[i], kernel_type);
+                    changeStyleOnKernel(cells[i], undefined);
                 }
             }
         });
@@ -971,106 +1019,6 @@ define([
         cell.refresh();
         this.cell.element.hide();
 
-        /*
-        // move input prompt on top of the cell
-        var panel_buttons = $('<div class="panel_buttons"/>');
-        panel_buttons.append(
-            $("<a/>").attr('href', '#')
-            .append($("<i class='fa fa-book'></i>"))
-            .click(function() {
-                var win = window.open('http://vatlab.github.io/SOS/doc/documentation/Notebook_Interface.html', '_blank');
-                win.focus();
-                return false;
-            })
-        ).append(
-            $("<span/>")
-            .html("&nbsp;&nbsp")
-        ).append(
-            $("<a/>").attr('href', '#')
-            .append($("<i class='fa fa-list-ul'></i>"))
-            .click(function() {
-                show_toc();
-                return false;
-            })
-        ).append(
-            $("<span/>")
-            .html("&nbsp;&nbsp")
-        ).append(
-            $("<a/>").attr('href', '#')
-            .append($("<i class='fa  fa-tasks'></i>"))
-            .click(function() {
-                var panel_cell = window.my_panel.cell;
-                panel_cell.clear_input();
-                panel_cell.set_text('%tasks');
-                panel_cell.clear_output();
-                panel_cell.execute();
-                return false;
-            })
-        ).append(
-            $("<span/>")
-            .html("&nbsp;&nbsp")
-        ).append(
-            $("<a/>").attr('href', '#')
-            .append($("<i class='fa fa-file-text'></i>"))
-            .click(function() {
-                var panel_cell = window.my_panel.cell;
-                panel_cell.clear_input();
-                panel_cell.set_text('%preview --workflow');
-                panel_cell.clear_output();
-                panel_cell.execute();
-                return false;
-            })
-        ).append(
-            $("<span/>")
-            .html("&nbsp;&nbsp")
-        ).append(
-            $("<a/>").attr('href', '#').attr('id', 'history_icon')
-            .append($("<i class='fa fa-history'></i>"))
-            .click(function() {
-                var dropdown = $('#panel_history');
-                var len = $('#panel_history option').length;
-                if (len === 0)
-                    return false;
-                if (dropdown.css('display') === 'none') {
-                    dropdown.show();
-                    dropdown[0].size = len;
-                    setTimeout(function() {
-                        dropdown.hide()
-                    }, 8000);
-                } else {
-                    dropdown.hide();
-                }
-                return false;
-            })
-
-        ).append(
-            $("<select></select>").attr("id", "panel_history")
-            .css("margin-left", "0.75em").css('position', 'fixed').css('display', 'none')
-            .change(function() {
-                var item = $('#panel_history').val();
-                // separate kernel and input
-                var sep = item.indexOf(':');
-                var kernel = item.substring(0, sep);
-                var text = item.substring(sep + 1);
-
-                var panel_cell = window.my_panel.cell;
-                $('#panel_history').hide();
-
-                // set the kernel of the panel cell as the sending cell
-                if (panel_cell.metadata.kernel !== kernel) {
-                    panel_cell.metadata.kernel = kernel;
-                    changeStyleOnKernel(panel_cell, kernel);
-                }
-
-                panel_cell.clear_input();
-                panel_cell.set_text(text);
-                panel_cell.clear_output();
-                panel_cell.execute();
-                return false;
-            })
-        )
-        */
-
         this.cell.element.find('div.input_prompt').css('min-width', '0ex').css('width', '0ex').text('In [-]:');
         this.cell.element.find('div.input_area')
             .append(
@@ -1253,7 +1201,7 @@ define([
             col = changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
         }
         // if in sos mode and is single line, enable automatic preview
-        if ((cell.metadata.kernel == 'sos' || cell.metadata.kernel === undefined) && text.indexOf('\n') == -1 && text.indexOf('%') !== 0) {
+        if ((cell.metadata.kernel == 'sos' || cell.metadata.kernel == 'SoS' || cell.metadata.kernel === undefined) && text.indexOf('\n') == -1 && text.indexOf('%') !== 0) {
             // if it is expression without space
             if (text.indexOf('=') == -1) {
                 if (text.indexOf(' ') == -1)
@@ -1300,7 +1248,7 @@ define([
         //$("#panel-wrapper").toggle({'complete':function(){
         $("#panel-wrapper").toggle({
             'progress': function() {
-                if ($('#panel-wrapper').css('display') != 'block' && $('#toc-wrapper').css('display') != 'block') {
+                if ($('#panel-wrapper').css('display') != 'block') {
                     $('#notebook-container').css('margin-left', 15);
                     $('#notebook-container').css('width', $('#site').width());
                 } else {
@@ -1313,19 +1261,8 @@ define([
                 if (IPython.notebook.metadata['sos']['panel'].displayed) {
                     console.log("panel open toc close")
                     window.my_panel.cell.focus_editor();
-                    $('#toc-wrapper').css('display', 'none')
-                    $('#toc-wrapper').css('z-index', 5)
                     $('#panel-wrapper').css('z-index', 10)
-                } else if ($("#toc-wrapper").css('display') === 'block') {
-                    $('#toc-wrapper').css('z-index', 5)
-                    $('#panel-wrapper').css('z-index', 10)
-                    $('#panel-wrapper').css('display', 'block')
-                    $('#panel-wrapper').css('display', 'none')
-                    $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
-                    $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
-
-
-                }
+                } 
             }
         });
     }
@@ -1522,7 +1459,7 @@ define([
     };
 
     function adjustPanel() {
-        if ($('#panel-wrapper').css('display') != "none" || $('#toc-wrapper').css('display') != "none") {
+        if ($('#panel-wrapper').css('display') != "none") {
 
             var panel_width = IPython.notebook.metadata['sos']['panel'].style == 'side' ? $('#panel-wrapper').width() : 0;
             $('#notebook-container').css('margin-left', panel_width + 30);
@@ -1574,7 +1511,7 @@ define([
     }
 
     function remove_nbextensions() {
-        // var extenstionArray=["#toc-wrapper","#nbextension-scratchpad"]
+        // var extenstionArray=["#nbextension-scratchpad"]
         var extenstionArray = ["#nbextension-scratchpad"]
         return Array.prototype.map.call(extenstionArray, remove_extension)
     }
@@ -1608,10 +1545,15 @@ define([
         // user experience.
         //
         events.on('notebook_loaded.Notebook', show_toc);
-        events.on('kernel_connected.Kernel', show_toc);
+        // restart kernel does not clear existing side panel.
+        events.on('kernel_connected.Kernel', function() {
+            var cell = window.my_panel.cell;
+            // do not clear existing content
+            if (!cell.get_text())
+                show_toc()
+        });
         // #550
         // kernel_ready.Kernel
-        //events.on('kernel_connected.Kernel', request_kernel_list);
         events.on('select.Cell', set_codemirror_option);
         events.on('select.Cell', highlight_toc_item);
 
@@ -1619,28 +1561,6 @@ define([
         add_panel_button();
         patch_CodeCell_get_callbacks();
 
-        if ($("#toc_button").length !== 0) {
-            $("#toc_button").click(function() {
-                if ($('#panel-wrapper').css('display') === 'block' && $('#toc-wrapper').css('display') === 'block') {
-                    if ($('#toc-wrapper').css('z-index') == "auto" && $('#panel-wrapper').css('z-index') == "auto") {
-                        $('#toc-wrapper').css('z-index', 10)
-                        $('#panel-wrapper').css('z-index', 5)
-                        $('#panel-wrapper').css('display', 'none')
-                    } else if (parseInt($('#toc-wrapper').css('z-index')) < parseInt($('#panel-wrapper').css('z-index'))) {
-                        console.log("click on toc hide panel")
-                        $('#toc-wrapper').css('z-index', 10)
-                        $('#panel-wrapper').css('z-index', 5)
-                        $('#panel-wrapper').css('display', 'none')
-                        $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
-                        $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
-
-                    }
-                } else if ($('#panel-wrapper').css('display') === 'none' && $('#toc-wrapper').css('display') === 'none') {
-                    $('#notebook-container').css('margin-left', 15);
-                    $('#notebook-container').css('width', $('#site').width());
-                }
-            });
-        }
         $("#to_markdown").click(function() {
             adjustPanel();
         });

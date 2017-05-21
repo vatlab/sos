@@ -211,8 +211,28 @@ class SoS_Kernel(IPythonKernel):
     def get_use_parser(self):
         parser = argparse.ArgumentParser(prog='%use',
             description='''Switch to a specified subkernel.''')
-        parser.add_argument('kernel', nargs='?', default='',
-            help='Kernel to switch to.')
+        parser.add_argument('name', nargs='?', default='',
+            help='''Displayed name of kernel to start (if no kernel with name is
+            specified) or switch to (if a kernel with this name is already started).
+            The name is usually a kernel name (e.g. %%use ir) or a language name
+            (e.g. %%use R) in which case the language name will be used. One or
+            more parameters --language or --kernel will need to be specified
+            if a new name is used to start a separate instance of a kernel.''')
+        parser.add_argument('-k', '--kernel',
+            help='''kernel name as displayed in the output of jupyter kernelspec
+            list. Default to the default kernel of selected language (e.g. ir for
+            language R.''')
+        parser.add_argument('-l', '--language',
+            help='''Language extension that enables magics such as %%get and %%put
+            for the kernel, which should be in the name of a registered language
+            (e.g. R), or a specific language module in the format of
+            package.module:class. SoS maitains a list of languages and kernels
+            so this option is only needed for starting a new instance of a kernel.
+            ''')
+        parser.add_argument('-c', '--color',
+            help='''Background color of new or existing kernel, which overrides
+            the default color of the language. A special value "default" can be
+            used to reset color to default.''')
         parser.add_argument('-i', '--in', nargs='*', dest='in_vars',
             help='Input variables (variables to get from SoS kernel)')
         parser.add_argument('-o', '--out', nargs='*', dest='out_vars',
@@ -225,8 +245,28 @@ class SoS_Kernel(IPythonKernel):
         parser = argparse.ArgumentParser(prog='%with',
             description='''Use specified the subkernel to evaluate current
             cell''')
-        parser.add_argument('kernel', nargs='?', default='',
-            help='Kernel to switch to.')
+        parser.add_argument('name', nargs='?', default='',
+            help='''Displayed name of kernel to start (if no kernel with name is
+            specified) or switch to (if a kernel with this name is already started).
+            The name is usually a kernel name (e.g. %use ir) or a language name
+            (e.g. %use R) in which case the language name will be used. One or
+            more parameters --language or --kernel will need to be specified
+            if a new name is used to start a separate instance of a kernel.''')
+        parser.add_argument('-k', '--kernel',
+            help='''kernel name as displayed in the output of jupyter kernelspec
+            list. Default to the default kernel of selected language (e.g. ir for
+            language R.''')
+        parser.add_argument('-l', '--language',
+            help='''Language extension that enables magics such as %get and %put
+            for the kernel, which should be in the name of a registered language
+            (e.g. R), or a specific language module in the format of
+            package.module:class. SoS maitains a list of languages and kernels
+            so this option is only needed for starting a new instance of a kernel.
+            ''')
+        parser.add_argument('-c', '--color',
+            help='''Background color of existing or new kernel, which overrides
+            the default color of the language. A special value "default" can be
+            used to reset color to default.''')
         parser.add_argument('-i', '--in', nargs='*', dest='in_vars',
             help='Input variables (variables to get from SoS kernel)')
         parser.add_argument('-o', '--out', nargs='*', dest='out_vars',
@@ -266,7 +306,9 @@ class SoS_Kernel(IPythonKernel):
 
     def get_preview_parser(self):
         parser = argparse.ArgumentParser(prog='%preview',
-            description='''Preview files, sos variables, or expressions''')
+            description='''Preview files, sos variables, or expressions in the
+                side panel, or notebook if side panel is not opened, unless
+                options --panel or --notebook is specified.''')
         parser.add_argument('items', nargs='*',
             help='''Filename, variable name, or expression. Wildcard characters
                 such as '*' and '?' are allowed for filenames.''')
@@ -277,6 +319,10 @@ class SoS_Kernel(IPythonKernel):
             help='''Preview notebook workflow''')
         parser.add_argument('--off', action='store_true',
             help='''Turn off file preview''')
+        parser.add_argument('-p', '--panel', action='store_true',
+            help='''Preview in side panel even if the panel is currently closed''')
+        parser.add_argument('-n', '--notebook', action='store_true',
+            help='''Preview in the main notebook.''')
         parser.error = self._parse_error
         return parser
 
@@ -403,13 +449,138 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
-    def kernel_name(self, name):
-        if name in self.supported_languages:
-            return self.supported_languages[name].kernel_name
-        elif name == 'SoS':
-            return 'sos'
+    def find_kernel(self, name, kernel=None, language=None, color=None, notify_frontend=True):
+        # find from subkernel name
+        def update_existing(idx):
+            x = self._kernel_list[idx]
+            if (kernel is not None and kernel != x[1]) or (language is not None and language != x[2]):
+                raise ValueError('Cannot change kernel or language of predefined subkernel {}'.format(name))
+            if color is not None:
+                if color == 'default':
+                    if self._kernel_list[idx][2]:
+                        self._kernel_list[idx][3] = self._supported_languages[self._kernel_list[idx][2]].background_color
+                    else:
+                        self._kernel_list[idx][3] = ''
+                else:
+                    self._kernel_list[idx][3] = color
+                if notify_frontend:
+                    self.send_frontend_msg('kernel-list', self.get_kernel_list())
+
+        # find from language name (subkernel name, which is usually language name)
+        for idx,x in enumerate(self.get_kernel_list()):
+            if x[0] == name:
+                if x[0] == 'SoS' or x[2] or language is None:
+                    update_existing(idx)
+                    return x
+                else:
+                    kernel = name
+                    break
+        # find from kernel name
+        for idx,x in enumerate(self._kernel_list):
+            if x[1] == name:
+                # if exist language or no new language defined.
+                if x[2] or language is None:
+                    update_existing(idx)
+                    return x
+                else:
+                    # otherwise, try to use the new language
+                    kernel = name
+                    break
+        # now, no kernel is found, name has to be a new name and we need some definition
+        # if kernel is defined
+        def add_or_replace(kdef):
+            for idx, x in enumerate(self._kernel_list):
+                if x[0] == kdef[0]:
+                    self._kernel_list[idx] = kdef
+                    return
+            else:
+                self._kernel_list.append(kdef)
+
+        if kernel is not None:
+            # in this case kernel should have been defined in kernel list
+            if kernel not in [x[1] for x in self._kernel_list]:
+                raise ValueError('Unrecognized Jupyter kernel name {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(kernel))
+            # now this a new instance for an existing kernel
+            kdef = [x for x in self._kernel_list if x[1] == kernel][0]
+            if not language:
+                if color == 'default':
+                    if kdef[2]:
+                        color = self._supported_languages[kdef[2]].background_color
+                    else:
+                        color = kdef[3]
+                add_or_replace([name, kdef[1], kdef[2], kdef[3] if color is None else color])
+                if notify_frontend:
+                    self.send_frontend_msg('kernel-list', self.get_kernel_list())
+                return self._kernel_list[-1]
+            else:
+                # if language is defined,
+                if ':' in language:
+                    # if this is a new module, let us create an entry point and load
+                    from pkg_resources import EntryPoint
+                    mn, attr = language.split(':', 1)
+                    ep = EntryPoint(name=kernel, module_name=mn, attrs=tuple(attr.split('.')))
+                    try:
+                        plugin = ep.resolve()(self)
+                        self._supported_languages[name] = plugin
+                        # for convenience, we create two entries for, e.g. R and ir
+                        # but only if there is no existing definition
+                        if name != plugin.kernel_name and plugin.kernel_name not in self._supported_languages:
+                            self._supported_languages[plugin.kernel_name] = plugin
+                    except Exception as e:
+                        raise RuntimeError('Failed to load language {}: {}'.format(language, e))
+                    #
+                    if color == 'default':
+                        color = plugin.background_color
+                    add_or_replace([name, kdef[1], kernel, kdef[3] if color is None else color])
+                else:
+                    # if should be defined ...
+                    if language not in self._supported_languages:
+                        raise RuntimeError('Unrecognized language definition {}, which should be a known language name or a class in the format of package.module:class'.format(language))
+                    #
+                    self._supported_languages[name] = self._supported_languages[language]
+                    if color == 'default':
+                        color = self._supported_languages[name].background_color
+                    add_or_replace([name, kdef[1], language, kdef[3] if color is None else color])
+                if notify_frontend:
+                    self.send_frontend_msg('kernel-list', self.get_kernel_list())
+                return self._kernel_list[-1]
+        elif language is not None:
+            # kernel is not defined and we only have language
+            if ':' in language:
+                # if this is a new module, let us create an entry point and load
+                from pkg_resources import EntryPoint
+                mn, attr = language.split(':', 1)
+                ep = EntryPoint(name='__unknown__', module_name=mn, attrs=tuple(attr.split('.')))
+                try:
+                    plugin = ep.resolve()(self)
+                    self._supported_languages[name] = plugin
+                except Exception as e:
+                    raise RuntimeError('Failed to load language {}: {}'.format(language, e))
+                #
+                if plugin.kernel_name not in [x[1] for x in self._kernel_list]:
+                    raise ValueError('Unrecognized Jupyter kernel name {} defined by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
+                        plugin.kernel_name, language))
+
+                if color == 'default':
+                    color = plugin.background_color
+                add_or_replace([name, plugin.kernel_name, plugin.kernel_name, plugin.background_color if color is None else color])
+            else:
+                # if should be defined ...
+                if language not in self._supported_languages:
+                    raise RuntimeError('Unrecognized language definition {}'.format(language))
+                #
+                if self._supported_languages[language].kernel_name not in [x[1] for x in self._kernel_list]:
+                    raise ValueError('Unrecognized Jupyter kernel name {} defined by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
+                        self._supported_languages[language].kernel_name, language))
+
+                add_or_replace([
+                    name, self._supported_languages[language].kernel_name, language,
+                        self._supported_languages[language].background_color if color is None or color == 'default' else color])
+
+            self.send_frontend_msg('kernel-list', self.get_kernel_list())
+            return self._kernel_list[-1]
         else:
-            return name
+            raise ValueError('No pre-defined subkernel named {} is found. Please define it with one or both of parameters --kernel and --language'.format(name))
 
     def get_supported_languages(self):
         if self._supported_languages is not None:
@@ -448,8 +619,18 @@ class SoS_Kernel(IPythonKernel):
     def __init__(self, **kwargs):
         super(SoS_Kernel, self).__init__(**kwargs)
         self.options = ''
-        self.kernel = 'sos'
-        # FIXME: this should in theory be a MultiKernelManager...
+        self.kernel = 'SoS'
+        # a dictionary of started kernels, with the format of
+        #
+        # 'R': ['ir', 'sos.R.sos_R', '#FFEEAABB']
+        #
+        # Note that:
+        #
+        # 'R' is the displayed name of the kernel.
+        # 'ir' is the kernel name.
+        # 'sos.R.sos_R' is the language module.
+        # '#FFEEAABB' is the background color
+        #
         self.kernels = {}
         #self.shell = InteractiveShell.instance()
         self.format_obj = self.shell.display_formatter.format
@@ -546,7 +727,7 @@ class SoS_Kernel(IPythonKernel):
             #log_to_file(msg)
             for k,v in content.items():
                 if k == 'list-kernel':
-                    self.send_frontend_msg('kernel-list', self.get_kernel_list())
+                    self.send_frontend_msg('kernel-list', self.get_kernel_list(v))
                 elif k == 'kill-task':
                     # kill specified task
                     from sos.hosts import Host
@@ -632,11 +813,11 @@ class SoS_Kernel(IPythonKernel):
                 {
                     'source': 'SoS',
                     'metadata': {},
-                    'data': { 'text/html': 
+                    'data': { 'text/html':
                         HTML('''<table id="table_{0}_{1}" style="border: 0px"><tr style="border: 0px">
                         <td style="border: 0px">
                         <i id="status_{0}_{1}"
-                            class="fa fa-2x fa-fw {2}" 
+                            class="fa fa-2x fa-fw {2}"
                             onmouseover="$('#status_{0}_{1}').addClass('{3}').removeClass('{2}')"
                             onmouseleave="$('#status_{0}_{1}').addClass('{2}').removeClass('{3}')"
                             onclick="{4}('{1}', '{0}')"
@@ -810,23 +991,23 @@ class SoS_Kernel(IPythonKernel):
         reply['content']['execution_count'] = self._execution_count
         return reply['content']
 
-    def switch_kernel(self, kernel, in_vars=[], ret_vars=[]):
+    def switch_kernel(self, kernel, in_vars=[], ret_vars=[], kernel_name=None, language=None, color=None):
         # switching to a non-sos kernel
-        kernel = self.kernel_name(kernel)
-        # self.warn('Switch from {} to {}'.format(self.kernel, kernel))
-        if kernel == 'undefined':
-            return
-        elif not kernel:
+        if not kernel:
             # all kernel names
-            available_kernels = {x:self.kernel_name(x) for x in self.supported_languages.keys()}
+            available_kernels = {self.find_kernel(x)[0]:x for x in self.supported_languages.keys()}
             # remove aliases
             available_kernels = {x:y for x,y in available_kernels.items() if x not in available_kernels.values()}
+
+            kinfo = self.find_kernel(self.kernel)
             self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': 'Kernel "{}" is used.\nAvailable kernels are: SoS (sos), {}.'
-                    .format(self.kernel, ', '.join(
+                {'name': 'stdout', 'text': 'Subkernel "{}" is used (kernel={}, language={}, color="{}").\nAvailable subkernels are: SoS (sos), {}.'
+                    .format(kinfo[0], kinfo[1], kinfo[2] if kinfo[2] else "undefined", kinfo[3], ', '.join(
                     [x if x == y else '{} ({})'.format(x, y)
                     for x,y in available_kernels.items()]))})
-        elif kernel == self.kernel:
+            return
+        kinfo = self.find_kernel(kernel, kernel_name, language, color)
+        if kinfo[0] == self.kernel:
             # the same kernel, do nothing?
             # but the senario can be
             #
@@ -844,34 +1025,34 @@ class SoS_Kernel(IPythonKernel):
 
             # or, when we randomly jump cells, we should more aggreessively return
             # automatically shared variables to sos (done by the following) (#375)
-            if kernel != 'sos':
-                self.switch_kernel('sos')
-                self.switch_kernel(kernel, in_vars, ret_vars)
-        elif kernel == 'sos':
+            if kinfo[0] != 'SoS':
+                self.switch_kernel('SoS')
+                self.switch_kernel(kinfo[0], in_vars, ret_vars)
+        elif kinfo[0] == 'SoS':
             # switch from non-sos to sos kernel
             self.handle_magic_put(self.RET_VARS)
             self.RET_VARS = []
-            self.kernel = 'sos'
-        elif self.kernel != 'sos':
+            self.kernel = 'SoS'
+        elif self.kernel != 'SoS':
             # not to 'sos' (kernel != 'sos'), see if they are the same kernel under
-            self.switch_kernel('sos', in_vars, ret_vars)
-            self.switch_kernel(kernel, in_vars, ret_vars)
+            self.switch_kernel('SoS', in_vars, ret_vars)
+            self.switch_kernel(kinfo[0], in_vars, ret_vars)
         else:
             if self._debug_mode:
-                self.warn('Switch from {} to {}'.format(self.kernel, kernel))
+                self.warn('Switch from {} to {}'.format(self.kernel, kinfo[0]))
             # case when self.kernel == 'sos', kernel != 'sos'
             # to a subkernel
-            if kernel not in self.kernels:
+            if kinfo[0] not in self.kernels:
                 # start a new kernel
                 try:
-                    self.kernels[kernel] = manager.start_new_kernel(
-                            startup_timeout=60, kernel_name=kernel, cwd=os.getcwd())
+                    self.kernels[kinfo[0]] = manager.start_new_kernel(
+                            startup_timeout=60, kernel_name=kinfo[1], cwd=os.getcwd())
                 except Exception as e:
                     self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}'.format(kernel, e))
                     return
-            self.KM, self.KC = self.kernels[kernel]
+            self.KM, self.KC = self.kernels[kinfo[0]]
             self.RET_VARS = ret_vars
-            self.kernel = kernel
+            self.kernel = kinfo[0]
             if self.kernel in self.supported_languages:
                 init_stmts = self.supported_languages[self.kernel].init_statements
                 if init_stmts:
@@ -880,8 +1061,8 @@ class SoS_Kernel(IPythonKernel):
             self.handle_magic_get(in_vars)
 
     def restart_kernel(self, kernel):
-        kernel = self.kernel_name(kernel)
-        if kernel == 'sos':
+        kernel = self.find_kernel(kernel)[0]
+        if kernel == 'SoS':
             # cannot restart myself ...
             self.warn('Cannot restart sos kernel from within sos.')
         elif kernel:
@@ -1000,7 +1181,7 @@ class SoS_Kernel(IPythonKernel):
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Usage: set persistent sos command line options such as "-v 3" (debug output)\n'})
 
-    def handle_magic_get(self, items, kernel=None):
+    def handle_magic_get(self, items, kernel=None, explicit=False):
         if kernel is None or kernel.lower() == 'sos':
             # autmatically get all variables with names start with 'sos'
             default_items = [x for x in env.sos_dict.keys() if x.startswith('sos') and x not in self.original_keys]
@@ -1038,11 +1219,11 @@ class SoS_Kernel(IPythonKernel):
                 except Exception as e:
                     self.warn('Failed to get variable: {}\n'.format(e))
                     return
-            elif self.kernel == 'sos':
+            elif self.kernel == 'SoS':
                 self.warn('Magic %get without option --kernel can only be executed by subkernels')
                 return
             else:
-                if self._debug_mode:
+                if explicit:
                     self.warn('Language {} does not support magic %get.'.format(self.kernel))
                 return
         elif self.kernel.lower() == 'sos':
@@ -1052,7 +1233,7 @@ class SoS_Kernel(IPythonKernel):
                 self.switch_kernel(kernel)
                 self.handle_magic_put(items)
             finally:
-                self.switch_kernel('sos')
+                self.switch_kernel('SoS')
         else:
             # if another kernel is specified and the current kernel is not sos
             # we need to first get from another kernel (to sos) and then to this kernel
@@ -1094,7 +1275,7 @@ class SoS_Kernel(IPythonKernel):
 
         return responses
 
-    def handle_magic_put(self, items, kernel=None):
+    def handle_magic_put(self, items, kernel=None, explicit=False):
         if kernel is None or kernel.lower() == 'sos':
             # put to sos kernel
             # items can be None if unspecified
@@ -1112,11 +1293,11 @@ class SoS_Kernel(IPythonKernel):
                         env.sos_dict.update(objects)
                     except Exception as e:
                         self.warn('Failed to execute %put: {}'.format(e))
-            elif self.kernel == 'sos':
+            elif self.kernel == 'SoS':
                 self.warn('Magic %put without option --kernel can only be executed by subkernels')
             else:
-                if self._debug_mode:
-                    self.warn('Language {} does not support magic %put.'.format(self.kernel))
+                if explicit:
+                    self.warn('Subkernel {} does not support magic %put.'.format(self.kernel))
         elif self.kernel.lower() == 'sos':
             # if another kernel is specified and the current kernel is sos
             try:
@@ -1124,7 +1305,7 @@ class SoS_Kernel(IPythonKernel):
                 self.switch_kernel(kernel, in_vars=items)
             finally:
                 # switch back
-                self.switch_kernel('sos')
+                self.switch_kernel('SoS')
         else:
             # if another kernel is specified and the current kernel is not sos
             # we need to first put to sos then to another kernel
@@ -1179,9 +1360,9 @@ class SoS_Kernel(IPythonKernel):
             return
 
         # non-sos kernel
-        use_sos = kernel in ('sos', 'SoS') or (kernel is None and self.kernel == 'sos')
+        use_sos = kernel in ('sos', 'SoS') or (kernel is None and self.kernel == 'SoS')
         orig_kernel = self.kernel
-        if kernel is not None and self.kernel != self.kernel_name(kernel):
+        if kernel is not None and self.kernel != self.find_kernel(kernel)[0]:
             self.switch_kernel(kernel)
         if self._use_panel:
             self.send_frontend_msg('preview-kernel', self.kernel)
@@ -1441,7 +1622,7 @@ class SoS_Kernel(IPythonKernel):
                 {'execution_count': self._execution_count, 'data': format_dict,
                 'metadata': md_dict})
 
-    def get_kernel_list(self):
+    def get_kernel_list(self, notebook_kernel_list=None):
         if not hasattr(self, '_kernel_list'):
             from jupyter_client.kernelspec import KernelSpecManager
             km = KernelSpecManager()
@@ -1453,13 +1634,24 @@ class SoS_Kernel(IPythonKernel):
             for spec in specs.keys():
                 if spec == 'sos':
                     # the SoS kernel will be default theme color.
-                    self._kernel_list.append(['sos', 'SoS', ''])
+                    self._kernel_list.append(['SoS', 'sos', '', ''])
                 elif spec in lan_map:
                     # e.g. ir ==> R
-                    self._kernel_list.append([spec, lan_map[spec][0], lan_map[spec][1]])
+                    self._kernel_list.append([lan_map[spec][0], spec, lan_map[spec][0], lan_map[spec][1]])
                 else:
                     # undefined language also use default theme color
-                    self._kernel_list.append([spec, spec, ''])
+                    self._kernel_list.append([spec, spec, '', ''])
+        # now, using a list of kernels sent from the kernel, we might need to adjust
+        # our list or create new kernels.
+        if notebook_kernel_list is not None:
+            for [name, kernel, lan, color] in notebook_kernel_list:
+                try:
+                    # if we can find the kernel, fine...
+                    self.find_kernel(name, kernel, lan, color, notify_frontend=False)
+                except Exception as e:
+                    # otherwise do not worry about it.
+                    env.logger.warning('Failed to locate subkernel {} with kernerl {} and language {}: {}'.format(
+                        name, kernel, lan, e))
         return self._kernel_list
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
@@ -1596,14 +1788,14 @@ class SoS_Kernel(IPythonKernel):
                 self.comm_manager.register_target('sos_comm', self.sos_comm)
 
             # args.default_kernel should be valid
-            if self.kernel_name(args.default_kernel) != self.kernel_name(self.kernel):
+            if self.find_kernel(args.default_kernel)[0] != self.find_kernel(self.kernel)[0]:
                 self.switch_kernel(args.default_kernel)
             #
             if args.cell_kernel == 'undefined':
                 args.cell_kernel = args.default_kernel
             #
             original_kernel = self.kernel
-            if self.kernel_name(args.cell_kernel) != self.kernel_name(self.kernel):
+            if self.find_kernel(args.cell_kernel)[0] != self.find_kernel(self.kernel)[0]:
                 self.switch_kernel(args.cell_kernel)
             try:
                 if args.resume:
@@ -1618,7 +1810,7 @@ class SoS_Kernel(IPythonKernel):
             try:
                 parser = self.get_with_parser()
                 try:
-                    args = parser.parse_args(options.split())
+                    args = parser.parse_args(shlex.split(options))
                 except SystemExit:
                     return
             except Exception as e:
@@ -1630,7 +1822,18 @@ class SoS_Kernel(IPythonKernel):
                     'execution_count': self._execution_count,
                    }
             original_kernel = self.kernel
-            self.switch_kernel(args.kernel, args.in_vars, args.out_vars)
+            try:
+                self.switch_kernel(args.name, args.in_vars, args.out_vars,
+                    args.kernel, args.language, args.color)
+            except Exception as e:
+                self.warn('Failed to switch to subkernel {} (kernel {}, language {}): {}'.format(args.name,
+                    args.kernel, args.language, e))
+                return {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self._execution_count,
+                   }
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
@@ -1640,7 +1843,7 @@ class SoS_Kernel(IPythonKernel):
             try:
                 parser = self.get_use_parser()
                 try:
-                    args = parser.parse_args(options.split())
+                    args = parser.parse_args(shlex.split(options))
                 except SystemExit:
                     return
             except Exception as e:
@@ -1651,9 +1854,20 @@ class SoS_Kernel(IPythonKernel):
                     'traceback': [],
                     'execution_count': self._execution_count,
                    }
-            self.switch_kernel(args.kernel, args.in_vars, args.out_vars)
-            self.hard_switch_kernel = True
-            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            try:
+                self.switch_kernel(args.name, args.in_vars, args.out_vars,
+                    args.kernel, args.language, args.color)
+                self.hard_switch_kernel = True
+                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            except Exception as e:
+                self.warn('Failed to switch to subkernel {} (kernel {}, language {}): {}'.format(args.name,
+                    args.kernel, args.language, e))
+                return {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self._execution_count,
+                   }
         elif self.MAGIC_GET.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
@@ -1670,7 +1884,7 @@ class SoS_Kernel(IPythonKernel):
                     'traceback': [],
                     'execution_count': self._execution_count,
                    }
-            self.handle_magic_get(args.vars, args.__from__)
+            self.handle_magic_get(args.vars, args.__from__, explicit=True)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_PUT.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
@@ -1688,7 +1902,7 @@ class SoS_Kernel(IPythonKernel):
                     'traceback': [],
                     'execution_count': self._execution_count,
                    }
-            self.handle_magic_put(args.vars, args.__to__)
+            self.handle_magic_put(args.vars, args.__to__, explicit=True)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_PASTE.match(code):
             options, remaining_code = self.get_magic_and_code(code, True)
@@ -1700,7 +1914,7 @@ class SoS_Kernel(IPythonKernel):
                 except ClipboardEmpty:
                     raise UsageError("The clipboard appears to be empty")
                 except Exception as e:
-                    env.logger.error('Could not get text from the clipboard: {}'.format(e))
+                    env.logger.warn('Failed to get text from the clipboard: {}'.format(e))
                     return
                 #
                 self.send_response(self.iopub_socket, 'stream',
@@ -1829,6 +2043,12 @@ class SoS_Kernel(IPythonKernel):
                 self.preview_output = False
             else:
                 self.preview_output = True
+            #
+            if args.panel:
+                self._use_panel = True
+            elif args.notebook:
+                self._use_panel = False
+            # else, use default _use_panel
             try:
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
@@ -1873,7 +2093,7 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_shell_command(code.split(' ')[0][1:] + ' ' + options)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-        elif self.kernel != 'sos':
+        elif self.kernel != 'SoS':
             # handle string interpolation before sending to the underlying kernel
             if code:
                 self.last_executed_code = code
@@ -1895,7 +2115,7 @@ class SoS_Kernel(IPythonKernel):
             try:
                 self.run_sos_code(code, silent)
                 if self.cell_idx is not None:
-                    self.send_frontend_msg('cell-kernel', [self.cell_idx, 'sos'])
+                    self.send_frontend_msg('cell-kernel', [self.cell_idx, 'SoS'])
                     self.cell_idx = None
                 return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
             except Exception as e:

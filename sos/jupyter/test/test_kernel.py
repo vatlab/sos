@@ -91,6 +91,33 @@ class TestKernel(unittest.TestCase):
             self.assertEqual(stderr, '')
             msg_id, content = execute(kc=kc, code="%cd test")
         
+    def testMagicUse(self):
+        with sos_kernel() as kc:
+            iopub = kc.iopub_channel
+            msg_id, content = execute(kc=kc, code="%use R1 -l sos.R.kernel:sos_R -c #CCCCCC")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="%use R2 -k ir")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="a <- 1024")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="a")
+            res = get_display_data(iopub)
+            self.assertEqual(res, '[1] 1024')
+            msg_id, content = execute(kc=kc, code="%use R3 -k ir -l R")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="a <- 233")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="a")
+            res = get_display_data(iopub)
+            self.assertEqual(res, '[1] 233')
+            msg_id, content = execute(kc=kc, code="%use R2 -c red")
+            wait_for_idle(kc)
+            msg_id, content = execute(kc=kc, code="a")
+            res = get_display_data(iopub)
+            self.assertEqual(res, '[1] 1024')
+            msg_id, content = execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
+      
     def testSubKernel(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
