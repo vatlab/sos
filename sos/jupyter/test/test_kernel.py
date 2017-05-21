@@ -115,6 +115,8 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code="a")
             res = get_display_data(iopub)
             self.assertEqual(res, '[1] 1024')
+            msg_id, content = execute(kc=kc, code="%use sos")
+            wait_for_idle(kc)
       
     def testSubKernel(self):
         with sos_kernel() as kc:
