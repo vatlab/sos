@@ -170,10 +170,10 @@ class SoS_ExecutePreprocessor(ExecutePreprocessor):
         super(SoS_ExecutePreprocessor, self).__init__(*args, **kwargs)
 
     def run_cell(self, cell):
-        kernel = cell.metadata.get('kernel', 'sos')
+        kernel = cell.metadata.get('kernel', 'SoS')
         try:
             source = cell.source
-            cell.source = '%frontend --default-kernel sos --cell-kernel {}\n{}'.format(kernel, source)
+            cell.source = '%frontend --default-kernel SoS --cell-kernel {}\n{}'.format(kernel, source)
             print(cell.source)
             return super(SoS_ExecutePreprocessor, self).run_cell(cell)
         finally:
