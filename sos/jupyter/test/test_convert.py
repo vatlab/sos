@@ -65,6 +65,8 @@ report('this is action report')
             notebook_to_script(script_file + '.ipynb', script_file) 
 
     def testConvertAll(self):
+        olddir = os.getcwd()
+        os.chdir(os.path.split(__file__)[0])
         subprocess.call('sos convert test.ipynb test_wf.sos --all', shell=True)
         self.assertTrue(os.path.isfile('test_wf.sos'))
         subprocess.call('sos convert test_wf.sos test2.ipynb', shell=True)
@@ -72,6 +74,7 @@ report('this is action report')
         # --execute does not yet work
         os.remove('test_wf.sos')
         os.remove('test2.ipynb')
+        os.chdir(olddir)
 
 if __name__ == '__main__':
     #suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestConvert)
