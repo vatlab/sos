@@ -47,8 +47,9 @@ def preview_pdf(filename):
         # if imagemagick is not installed properly.
         from wand.image import Image
         img = Image(filename=filename)
+        # iframe preview does not work as good as png preview
+        # 'text/html': HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data,
         return {
-            'text/html': HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data,
             'image/png': base64.b64encode(img._repr_png_()).decode('ascii') }
     except Exception as e:
         env.logger.error(e)
