@@ -127,7 +127,9 @@ define([
         if (run_notebook) {
             var cells = IPython.notebook.get_cells();
             for (var i = 0; i < cells.length; ++i) {
-                if (cells[i].cell_type == 'code' && (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'SoS')) {
+				// older version of the notebook might have sos in metadata
+                if (cells[i].cell_type == 'code' && (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'SoS' 
+					|| cells[i].metadata.kernel === 'sos')) {
                     workflow += get_workflow_from_cell(cells[i])
                 }
             }
