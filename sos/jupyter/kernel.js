@@ -1065,9 +1065,9 @@ define([
                 })
             )
 
-        add_to_panel_history('sos', '%toc', '');
         add_to_panel_history('sos', '%preview --workflow', '');
         add_to_panel_history('sos', '%tasks', '');
+        add_to_panel_history('sos', '%toc', '');
 
         // move the language selection stuff to the top
         this.cell.element[0].getElementsByClassName('celltoolbar')[0].style.marginBottom = 0;
@@ -1152,7 +1152,7 @@ define([
             }
         })
         if (!matched) {
-            $('#panel_history').append($('<option></option>')
+            $('#panel_history').prepend($('<option></option>')
                     .css('background-color', col)
                     .attr('value', kernel + ":" + text).text(text.split("\n").join(' .. ').truncate(40))
                 )
