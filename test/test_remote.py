@@ -474,5 +474,37 @@ run:
         self.assertFalse(os.path.isfile('test_file.txt'))
         self.assertTrue(os.path.isfile('test1.txt'))
 
+    def testDelayedInterpolation(self):
+        '''Test delayed interpolation with expression involving remote objects'''
+        # purge all previous tasks
+        FileTarget('test.py').remove('both')
+        FileTarget('test.py.bak').remove('both')
+        script = SoS_Script('''
+[10]
+output: 'test.py'
+task:
+run:
+    touch test.py
+
+[20]
+output: "${input}.bak"
+task:
+run:
+    cp ${input} ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                'remote_targets': True,
+                'sig_mode': 'force',
+                }).run()
+        # this file is remote only
+        self.assertFalse(os.path.isfile('test.py'))
+        self.assertFalse(os.path.isfile('test.py.bak'))
+
+
 if __name__ == '__main__':
     unittest.main()

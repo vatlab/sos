@@ -48,6 +48,10 @@ class InterpolationError(Error):
         Error.__init__(self, msg)
         self.args = (text, msg)
 
+class UnresolvableObject(Error):
+    def __init__(self, obj):
+        super(UnresolvableObject, self).__init__('Unresolvable object: {}'.format(obj))
+
 def sos_compile(expr, *args, **kwargs):
     ''' Compiling an statement but ignores tab error (mixed tab and space'''
     try:
@@ -166,7 +170,11 @@ class SoS_String:
                     expr = pieces[i]
                     fmt = None
                     conversion = None
-                pieces[i] = self._repr(eval(expr, env.sos_dict._dict, self.local_dict), fmt, conversion)
+                try:
+                    pieces[i] = self._repr(eval(expr, env.sos_dict._dict, self.local_dict), fmt, conversion)
+                except UnresolvableObject:
+                    # pieces[i] is kept untoubhed.
+                    pass
         return ''.join(pieces)
 
     def _interpolate(self, text, start_nested=0):
@@ -245,7 +253,11 @@ class SoS_String:
                             return self.interpolate(text[j+len(self.r):])
                         else:
                             result = eval(expr, env.sos_dict._dict, self.local_dict)
-                            return self._repr(result, fmt, conversion) + self.interpolate(text[j+len(self.r):])
+                            try:
+                                return self._repr(result, fmt, conversion) + self.interpolate(text[j+len(self.r):])
+                            except UnresolvableObject:
+                                # keep expression with remote() intact
+                                return text[:j] + self.interpolate(text[j+len(self.r):])
                     except Exception as e:
                         raise InterpolationError(expr, e)
                     # evaluate the expression and interpolate the next expression
@@ -290,6 +302,8 @@ class SoS_String:
             return sep.join(sorted([self._repr(x, fmt, conversion) for x in obj]))
         elif callable(obj):
             raise InterpolationError(repr(obj), '{} cannot be used as interpolation variable'.format(obj))
+        elif hasattr(obj, '__unresolvable_object__'):
+            raise UnresolvableObject(obj)
         else:
             return repr(obj) if fmt is None and conversion is None else self._format(obj, fmt, conversion)
 
