@@ -35,6 +35,7 @@ from sos.utils import env, short_repr, get_traceback, sample_of_file, tail_of_fi
 from sos.sos_eval import SoS_exec, SoS_eval
 
 from .target import textMD5, RuntimeInfo, Undetermined, FileTarget, UnknownTarget, remote
+from .sos_eval import interpolate
 from .monitor import ProcessMonitor
 
 from collections import OrderedDict
@@ -290,9 +291,9 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     env.sos_dict.quick_update(sos_dict)
 
     # if targets are defined as `remote`, they should be resolved during task execution
-    for key in ['_input', 'input', '_output', 'output', '_depends', 'depends']:
+    for key in ['input', '_input',  'output', '_output', 'depends', '_depends']:
         if key in sos_dict and isinstance(sos_dict[key], list):
-            env.sos_dict.set(key, [x.resolve() if isinstance(x, remote) else x for x in sos_dict[key]])
+            env.sos_dict.set(key, [interpolate(x.resolve(), sigil, env.sos_dict) if isinstance(x, remote) else x for x in sos_dict[key]])
 
     skipped = False
     if env.config['sig_mode'] == 'ignore':

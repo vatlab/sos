@@ -174,7 +174,7 @@ class SoS_String:
                     pieces[i] = self._repr(eval(expr, env.sos_dict._dict, self.local_dict), fmt, conversion)
                 except UnresolvableObject:
                     # pieces[i] is kept untoubhed.
-                    pass
+                    pieces[i] = self.l + pieces[i] + self.r
         return ''.join(pieces)
 
     def _interpolate(self, text, start_nested=0):
@@ -257,7 +257,7 @@ class SoS_String:
                                 return self._repr(result, fmt, conversion) + self.interpolate(text[j+len(self.r):])
                             except UnresolvableObject:
                                 # keep expression with remote() intact
-                                return text[:j] + self.interpolate(text[j+len(self.r):])
+                                return self.l + text[:j] + self.r + self.interpolate(text[j+len(self.r):])
                     except Exception as e:
                         raise InterpolationError(expr, e)
                     # evaluate the expression and interpolate the next expression
