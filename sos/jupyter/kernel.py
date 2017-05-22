@@ -179,6 +179,7 @@ class SoS_Kernel(IPythonKernel):
         'sosrun',
         'sossave',
         'rerun',
+        'render',
         'taskinfo',
         'tasks',
         'skip',
@@ -207,6 +208,7 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_TASKS = re.compile('^%tasks(\s|$)')
     MAGIC_SKIP = re.compile('^%skip(\s|$)')
     MAGIC_TOC = re.compile('^%toc(\s|$)')
+    MAGIC_RENDER = re.compile('^%render(\s|%)')
 
     def get_use_parser(self):
         parser = argparse.ArgumentParser(prog='%use',
@@ -449,6 +451,16 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
+    def get_render_parser(self):
+        parser = argparse.ArgumentParser(prog='%render',
+            description='''Treat the output of a SoS cell as another format, default to markdown.''')
+        parser.add_argument('format', default='Markdown', nargs='?',
+            help='''Format to render output of cell, default to Markdown, but can be any
+            format that is supported by the IPython.display module such as HTML, Math, JSON,
+            JavaScript and SVG.''')
+        parser.error = self._parse_error
+        return parser
+
     def find_kernel(self, name, kernel=None, language=None, color=None, notify_frontend=True):
         # find from subkernel name
         def update_existing(idx):
@@ -652,6 +664,7 @@ class SoS_Kernel(IPythonKernel):
         self.my_tasks = {}
         #
         self._workflow_mode = False
+        self._render_result = False
         env.__task_notifier__ = self.notify_task_status
 
     def handle_taskinfo(self, task_id, task_queue, side_panel=None):
@@ -1617,6 +1630,19 @@ class SoS_Kernel(IPythonKernel):
     def send_result(self, res, silent=False):
         # this is Ok, send result back
         if not silent and res is not None:
+            if self._render_result is not False:
+                if not isinstance(res, str):
+                    self.warn('Cannot render result {} in type {} as {}.'.format(short_repr(res),
+                        res.__class__.__name__, self._render_result))
+                else:
+                    # import the object from IPython.display
+                    mod = __import__('IPython.display')
+                    if not hasattr(mod.display, self._render_result):
+                        self.warn('Unrecognized render format {}'.format(self._render_result))
+                    else:
+                        func = getattr(mod.display, self._render_result)
+                        res = func(res)
+            #
             format_dict, md_dict = self.format_obj(res)
             self.send_response(self.iopub_socket, 'execute_result',
                 {'execution_count': self._execution_count, 'data': format_dict,
@@ -1714,6 +1740,18 @@ class SoS_Kernel(IPythonKernel):
             return
         if self.MAGIC_SKIP.match(code):
             return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
+        elif self.MAGIC_RENDER.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            parser = self.get_render_parser()
+            try:
+                args = parser.parse_args(shlex.split(options))
+            except SystemExit:
+                return
+            try:
+                self._render_result = args.format
+                return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+            finally:
+                self._render_result = False
         elif self.MAGIC_TOC.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.send_frontend_msg('show_toc')
