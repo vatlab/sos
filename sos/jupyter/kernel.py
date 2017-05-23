@@ -34,7 +34,7 @@ import pkg_resources
 import pydoc
 
 from ipykernel.ipkernel import IPythonKernel
-from collections import Sized, defaultdict
+from collections import Sized, defaultdict, OrderedDict
 
 from types import ModuleType
 from sos.utils import env, WorkflowDict, short_repr, pretty_size, PrettyRelativeTime
@@ -144,8 +144,6 @@ def get_previewers():
     result.sort(key=lambda x: -x[2])
     return result
 
-
-
 class SoS_Kernel(IPythonKernel):
     implementation = 'SOS'
     implementation_version = __version__
@@ -183,6 +181,7 @@ class SoS_Kernel(IPythonKernel):
         'taskinfo',
         'tasks',
         'skip',
+        'sessioninfo',
         'toc',
     }
     MAGIC_DICT = re.compile('^%dict(\s|$)')
@@ -208,7 +207,8 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_TASKS = re.compile('^%tasks(\s|$)')
     MAGIC_SKIP = re.compile('^%skip(\s|$)')
     MAGIC_TOC = re.compile('^%toc(\s|$)')
-    MAGIC_RENDER = re.compile('^%render(\s|%)')
+    MAGIC_RENDER = re.compile('^%render(\s|$)')
+    MAGIC_SESSIONINFO = re.compile('^%sessioninfo(\s|$)')
 
     def get_use_parser(self):
         parser = argparse.ArgumentParser(prog='%use',
@@ -458,6 +458,17 @@ class SoS_Kernel(IPythonKernel):
             help='''Format to render output of cell, default to Markdown, but can be any
             format that is supported by the IPython.display module such as HTML, Math, JSON,
             JavaScript and SVG.''')
+        parser.error = self._parse_error
+        return parser
+
+    def get_sessioninfo_parser(self):
+        parser = argparse.ArgumentParser(prog='%sessioninfo',
+            description='''List the session info of all subkernels. An arbitrary list of
+            SoS variables can be displayed. For example, option --software a b c will create
+            a table with software, and a, b, c as keys.''')
+        parser.add_argument('--format', default='markdown', nargs='?',
+            help='''Format of output, which can be markdown (default), and text.
+            A %%render magic can be used to process output of the markdown output of sessioninfo.''')
         parser.error = self._parse_error
         return parser
 
@@ -729,6 +740,66 @@ class SoS_Kernel(IPythonKernel):
         for tid, tst, tdt in host._task_engine.monitor_tasks(tasks, status=None, age=age):
             self.notify_task_status(['new-status', queue, tid, tst, tdt])
         self.send_frontend_msg('update-duration', {})
+
+    def handle_sessioninfo(self, output_format, unknown):
+        #
+        result = OrderedDict()
+        #
+        from sos._version import __version__
+        result['SoS'] = {
+            'SoS Version': __version__
+        }
+        #
+        for kernel in self.kernels.keys():
+            kinfo = self.find_kernel(kernel)
+            result[kernel] = OrderedDict()
+            result[kernel]['kernel'] = kinfo[1]
+            result[kernel]['language'] = kinfo[2]
+            if kernel not in self.supported_languages:
+                continue
+            lan = self.supported_languages[kernel]
+            if hasattr(lan, 'sessioninfo'):
+                objects = lan.sessioninfo()
+                if not isinstance(objects, dict):
+                    self.warn('Kernel {} returned session in wrong format: {}'.format(objects))
+                else:
+                    result[kernel].update(objects)
+        #
+        key = None
+        for arg in unknown:
+            if arg.startswith('--'):
+                key = arg[2:]
+                result[key]= {}
+            elif key is None:
+                key = 'Extras'
+                result[key] = {arg: str(env.sos_dict.get(arg, 'NA'))}
+            else:
+                result[key][arg] = str(env.sos_dict.get(arg, 'NA'))
+        #
+        if output_format == 'text':
+            res = ''
+            for key, item in result.items():
+                res += key + ':\n'
+                for k,v in item.items():
+                    res += '  {:<15s} {}\n'.format(k+':', v)
+            self.send_response(self.iopub_socket, 'stream',
+                {'name': 'stdout', 'text': res})
+        elif output_format == 'markdown':
+            res = ''
+            for key, item in result.items():
+                res += '### ' + key + ':\n'
+                res += '|Setting|Value  |\n'
+                res += '|--|--|\n'
+                for k,v in item.items():
+                    res += '|{}|{}|\n'.format(k, v)
+            self.send_response(self.iopub_socket, 'display_data',
+                        {
+                            'source': 'SoS',
+                            'metadata': {},
+                            'data': {'text/markdown': res}
+                        })
+        else:
+            self.warn('Unsupported output format {}'.format(output_format))
 
     def sos_comm(self, comm, msg):
         # record frontend_comm to send messages
@@ -1752,6 +1823,15 @@ class SoS_Kernel(IPythonKernel):
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
                 self._render_result = False
+        elif self.MAGIC_SESSIONINFO.match(code):
+            options, remaining_code = self.get_magic_and_code(code, False)
+            parser = self.get_sessioninfo_parser()
+            try:
+                args, unknown = parser.parse_known_args(shlex.split(options))
+            except SystemExit:
+                return
+            self.handle_sessioninfo(args.format, unknown)
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_TOC.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.send_frontend_msg('show_toc')
