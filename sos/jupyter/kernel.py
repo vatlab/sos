@@ -743,12 +743,14 @@ class SoS_Kernel(IPythonKernel):
 
     def handle_sessioninfo(self, output_format, unknown):
         #
+        from sos.utils import loaded_modules
         result = OrderedDict()
         #
         from sos._version import __version__
         result['SoS'] = {
             'SoS Version': __version__
         }
+        result['SoS'].update(loaded_modules(env.sos_dict))
         #
         for kernel in self.kernels.keys():
             kinfo = self.find_kernel(kernel)
@@ -759,11 +761,14 @@ class SoS_Kernel(IPythonKernel):
                 continue
             lan = self.supported_languages[kernel]
             if hasattr(lan, 'sessioninfo'):
-                objects = lan.sessioninfo()
-                if not isinstance(objects, dict):
-                    self.warn('Kernel {} returned session in wrong format: {}'.format(objects))
-                else:
-                    result[kernel].update(objects)
+                try:
+                    objects = lan.sessioninfo()
+                    if not isinstance(objects, dict):
+                        self.warn('Kernel {} returned session in wrong format: {}'.format(objects))
+                    else:
+                        result[kernel].update(objects)
+                except Exception as e:
+                    self.warn('Failed to obtain sessioninfo of kernel {}: {}'.format(kernel, e))
         #
         key = None
         for arg in unknown:
@@ -791,7 +796,7 @@ class SoS_Kernel(IPythonKernel):
                 res += '|Setting|Value  |\n'
                 res += '|--|--|\n'
                 for k,v in item.items():
-                    res += '|{}|{}|\n'.format(k, v)
+                    res += '|{}|{}|\n'.format(k, str(v).strip().replace('\n', '|').replace('|', '|\n| |'))
             self.send_response(self.iopub_socket, 'display_data',
                         {
                             'source': 'SoS',

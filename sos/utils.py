@@ -1054,3 +1054,27 @@ def load_var(line):
         return key[:-1], pickle.loads(base64.b64decode(eval(value.strip())))
     else:
         return key, eval(value.strip())
+
+
+def version_info(module):
+    # return the version of Python module
+    try:
+        code = ("import %s; version=str(%s.__version__)" %
+                (module, module))
+        ns_g = ns_l = {}
+        exec(compile(code, "<string>", "exec"), ns_g, ns_l)
+        return ns_l["version"]
+    except Exception as e:
+        import pkg_resources
+        try:
+            return pkg_resources.require(module)[0].version
+        except Exception as e:
+            return 'na'
+
+def loaded_modules(namespace={}):
+    from types import ModuleType
+    res = {}
+    for key,value in namespace.items():
+        if isinstance(value, ModuleType):
+            res[value.__name__] = version_info(value.__name__)
+    return {x:y for x,y in res.items() if y != 'na'}

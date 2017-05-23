@@ -21,13 +21,40 @@
 #
 
 import pickle
+import sys
+from collections import OrderedDict
+
+__init_statement__ = '''
+def __version_info__(module):
+    # return the version of Python module
+    try:
+        code = ("import %s; version=str(%s.__version__)" %
+                (module, module))
+        ns_g = ns_l = {}
+        exec(compile(code, "<string>", "exec"), ns_g, ns_l)
+        return ns_l["version"]
+    except Exception as e:
+        import pkg_resources
+        try:
+            return pkg_resources.require(module)[0].version
+        except Exception as e:
+            return 'na'
+
+def __loaded_modules__():
+    from types import ModuleType
+    res = {}
+    for key,value in globals().items():
+        if isinstance(value, ModuleType):
+            res[value.__name__] = __version_info__(value.__name__)
+    return {x:y for x,y in res.items() if y != 'na'}
+'''
 
 class sos_Python2:
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
         self.kernel_name = 'python2'
         self.background_color = '#F6FAEA'
-        self.init_statements = ''
+        self.init_statements = __init_statement__
 
     def sos_to_lan(self, name, obj):
         # try to dump data in a python 2 compatible fashion so that python 2 can load it
@@ -47,3 +74,10 @@ class sos_Python2:
         except Exception as e:
             self.sos_kernel.warn('Failed to import variables {}: {}'.format(items, e))
             return {}
+
+    def sessioninfo(self):
+        res = OrderedDict()
+        res['Version'] = sys.version
+        modules = self.sos_kernel.get_response('__loaded_modules__()', ['execute_result'])[0][1]
+        res.update(eval(modules['data']['text/plain']))
+        return res
