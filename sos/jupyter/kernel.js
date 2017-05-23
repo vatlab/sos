@@ -58,7 +58,6 @@ define([
                 'style': 'side',
                 'height': 0
             },
-            'celltoolbar': true,
         };
     // for older notebook without panel attribute
     else if (!IPython.notebook.metadata['sos'].panel) {
@@ -67,7 +66,6 @@ define([
             'style': 'side',
             'height': 0
         };
-        IPython.notebook.metadata['sos'].celltoolbar = true;
     }
     // Initial style is always side but the style is saved and we can honor this
     // configuration later on.
@@ -127,9 +125,9 @@ define([
         if (run_notebook) {
             var cells = IPython.notebook.get_cells();
             for (var i = 0; i < cells.length; ++i) {
-				// older version of the notebook might have sos in metadata
-                if (cells[i].cell_type == 'code' && (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'SoS' 
-					|| cells[i].metadata.kernel === 'sos')) {
+                // older version of the notebook might have sos in metadata
+                if (cells[i].cell_type == 'code' && (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'SoS' ||
+                        cells[i].metadata.kernel === 'sos')) {
                     workflow += get_workflow_from_cell(cells[i])
                 }
             }
@@ -222,8 +220,8 @@ define([
                     // otherwise is the kernel actually used?
                     if (k_idx == -1) {
                         alert("subkernel " + kdef[0] + " defined in this notebook (kernel " + kdef[1] + " and language " + kdef[2] +
-                                ") is unavailableis not available.");
-                        }
+                            ") is unavailable.");
+                    }
                 }
 
                 for (var i = 0; i < data.length; i++) {
@@ -453,7 +451,9 @@ define([
             if (cells[i].cell_type == 'code' && cells[i].metadata.kernel)
                 used_kernels.add(cells[i].metadata.kernel);
         }
-        IPython.notebook.metadata['sos']['kernels'] = IPython.notebook.metadata['sos']['kernels'].filter(function(x) { return used_kernels.has(x[0]) });
+        IPython.notebook.metadata['sos']['kernels'] = IPython.notebook.metadata['sos']['kernels'].filter(function(x) {
+            return used_kernels.has(x[0])
+        });
         window.sos_comm.send({
             'list-kernel': IPython.notebook.metadata['sos']['kernels'],
             'update-task-status': window.unknown_tasks,
@@ -496,7 +496,7 @@ define([
 
     function changeStyleOnKernel(cell, type) {
         // type should be  displayed name of kernel
-        var sel = cell.element[0].getElementsByTagName('select')[0]
+        var sel = cell.element[0].getElementsByClassName('cell_kernel_selector')[0]
         if (!type) {
             sel.selectedIndex = -1;
         } else {
@@ -593,65 +593,10 @@ define([
         // this is why we should not add additional UI elements when the function is called
         // the second time.
 
-        //change css for CellToolBar
-        var load_css = function() {
-            var css = document.createElement("style");
-            css.type = "text/css";
-            css.innerHTML = '.code_cell .celltoolbar {' +
-                'width:70pt;background:none;border:none;border-bottom:none;z-index: 1000;' +
-                'position:relative;margin-bottom:-50pt;float:right;}  ' +
-                '.text_cell .celltoolbar {display:none}  ';
-            document.body.appendChild(css);
-        };
-
-        load_css();
-
-        var CellToolbar = IPython.CellToolbar;
-        // the cell tool bar might have been added by the previous load_select_kernel call
-        var slideshow_preset = [];
-        var select_type = CellToolbar.utils.select_ui_generator(
-            KernelList,
-            // setter
-            function(cell, value) {
-                // we check that the slideshow namespace exist and create it if needed
-                //if (cell.metadata.kernel == undefined) {
-                cell.metadata.kernel = DisplayName[value];
-                // cell in panel does not have prompt area
-                if (cell.is_panel !== undefined) {
-                    if (BackgroundColor[value])
-                        cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = BackgroundColor[value];
-                    else
-                        cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = '';
-                    return;
-                }
-
-                var ip = cell.element[0].getElementsByClassName('input_prompt');
-                var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
-                if (BackgroundColor[value]) {
-                    ip[0].style.backgroundColor = BackgroundColor[value];
-                    op[0].style.backgroundColor = BackgroundColor[value];
-                } else {
-                    // Use '' to remove background-color?
-                    ip[0].style.backgroundColor = '';
-                    op[0].style.backgroundColor = '';
-                }
-            },
-            //geter
-            function(cell) {
-                var ns = cell.metadata.kernel;
-                return (ns == undefined) ? undefined : ns.kernel
-            },
-            "");
-
-        if (CellToolbar.list_presets().indexOf("Select cell kernel") > 0)
-            CellToolbar.unregister_preset('Select cell kernel');
-        CellToolbar.register_callback('slideshow.select', select_type);
-        slideshow_preset.push('slideshow.select');
-        var reveal_preset = slideshow_preset.slice();
-        CellToolbar.register_preset('Select cell kernel', reveal_preset);
-        // console.log('Select cell kernel loaded.');
-        CellToolbar.global_show();
-        CellToolbar.activate_preset('Select cell kernel');
+        var cells = IPython.notebook.get_cells();
+        for (var i in cells) {
+            add_lan_selector(cells[i], cells[i].metadata.kernel);
+        }
 
         var cells = IPython.notebook.get_cells();
         for (var i in cells) {
@@ -670,7 +615,7 @@ define([
         $('#kernel_selector').empty();
         $.each(KernelList, function(key, value) {
             $('#kernel_selector')
-                .append($("<option></option>")
+                .append($("<option/>")
                     .attr("value", DisplayName[value[0]])
                     .text(DisplayName[value[0]]));
         });
@@ -992,8 +937,6 @@ define([
         $(window).trigger('resize');
     }
 
-
-
     var panel = function(nb) {
         var panel = this;
         this.notebook = nb;
@@ -1011,6 +954,7 @@ define([
             notebook: nb,
             tooltip: nb.tooltip,
         });
+        add_lan_selector(cell).css('top', '-2.2em');
         cell.set_input_prompt();
         cell.is_panel = true;
         $("#panel").append(this.cell.element);
@@ -1019,7 +963,8 @@ define([
         cell.refresh();
         this.cell.element.hide();
 
-        this.cell.element.find('div.input_prompt').css('min-width', '0ex').css('width', '0ex').text('In [-]:');
+        //this.cell.element.find('code_cell').css('position', 'absolute').css('top', '1.5em');
+        this.cell.element.find('div.input_prompt').addClass('panel_input_prompt').text('In [-]:');
         this.cell.element.find('div.input_area')
             .append(
                 $("<a/>").attr('href', '#').attr('id', 'input_dropdown').addClass('input_dropdown')
@@ -1069,10 +1014,6 @@ define([
         add_to_panel_history('sos', '%tasks', '');
         add_to_panel_history('sos', '%toc', '');
 
-        // move the language selection stuff to the top
-        this.cell.element[0].getElementsByClassName('celltoolbar')[0].style.marginBottom = 0;
-        // this would allow us to insert lable or title to the left of language dropdown
-        this.cell.element[0].getElementsByClassName('celltoolbar')[0].style.width = '100%';
         // make the font of the panel slightly smaller than the main notebook
         // unfortunately the code mirror input cell has fixed font size that cannot
         // be changed.
@@ -1262,7 +1203,7 @@ define([
                     console.log("panel open toc close")
                     window.my_panel.cell.focus_editor();
                     $('#panel-wrapper').css('z-index', 10)
-                } 
+                }
             }
         });
     }
@@ -1409,16 +1350,36 @@ define([
                 '    counter-increment: item;' +
                 '    content: counters(item, ".")" ";' +
                 '}' +
+                '' +
+                '.panel_input_prompt {' +
+                '    position: absolute;' +
+                '    min-width: 0pt;' +
+                '}' +
+                '' +
                 '.input_dropdown {' +
                 '    position: absolute;' +
                 '    right: 5pt;' +
-                '    top: 3.5em;' +
+                '    top: 0.5em;' +
                 '    z-index: 1000;' +
                 '}' +
                 '' +
                 '.panel_history {' +
                 '    display: none;' +
                 '    font-family: monospace;' +
+                '}' +
+                '' +
+                '.code_cell .cell_kernel_selector {' +
+                '    width:70pt;' +
+                '    background:none;' +
+                '    border-bottom: none;' +
+                '    z-index: 1000;' +
+                '    position:absolute;' +
+                '    right: 3pt;' +
+                '    top: 5pt;' +
+                '}' +
+                '' +
+                '.text_cell .cell_kernel_selector {' +
+                '    display: none;' +
                 '}' +
                 '' +
                 '.toc-item-highlight-select  {background-color: Gold}' +
@@ -1464,8 +1425,6 @@ define([
             var panel_width = IPython.notebook.metadata['sos']['panel'].style == 'side' ? $('#panel-wrapper').width() : 0;
             $('#notebook-container').css('margin-left', panel_width + 30);
             $('#notebook-container').css('width', $('#site').width() - panel_width - 30);
-            $('.celltoolbar label').css('margin-left', 0);
-            $('.celltoolbar label').css('margin-right', 0);
         }
         var cell = window.my_panel.cell;
         $('.output_area .prompt', cell.element).remove()
@@ -1516,7 +1475,51 @@ define([
         return Array.prototype.map.call(extenstionArray, remove_extension)
     }
 
+            
+    function add_lan_selector(cell, kernel) {
+        //
+        if (cell.element[0].getElementsByClassName('cell_kernel_selector').length > 0)
+            return
 
+        var select = $("<select/>").attr("id", "cell_kernel_selector")
+            .css("margin-left", "0.75em")
+            .attr("class", "form-control select-xs cell_kernel_selector");
+        console.log('Add ' + KernelList.length.toString() + ' ' + cell.cell_id)
+        for (var i = 0; i < KernelList.length; i++) {
+            select.append($("<option/>")
+                .attr("value", DisplayName[KernelList[i][0]])
+                .text(DisplayName[KernelList[i][0]]));
+        }
+        if (kernel)
+            select.val(kernel);
+
+        select.change(function() {
+            cell.metadata.kernel = DisplayName[this.value];
+            // cell in panel does not have prompt area
+            if (cell.is_panel !== undefined) {
+                if (BackgroundColor[this.value])
+                    cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = BackgroundColor[this.value];
+                else
+                    cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = '';
+                return;
+            }
+
+            var ip = cell.element[0].getElementsByClassName('input_prompt');
+            var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
+            if (BackgroundColor[this.value]) {
+                ip[0].style.backgroundColor = BackgroundColor[this.value];
+                op[0].style.backgroundColor = BackgroundColor[this.value];
+            } else {
+                // Use '' to remove background-color?
+                ip[0].style.backgroundColor = '';
+                op[0].style.backgroundColor = '';
+            }
+
+        });
+
+        cell.element.find('div.input_area').append(select);
+        return select;
+    }
 
     var onload = function() {
 
@@ -1537,6 +1540,9 @@ define([
         events.on('kernel_connected.Kernel', register_sos_comm);
         events.on('kernel_connected.Kernel', wrap_execute);
         events.on('rendered.MarkdownCell', update_toc);
+        events.on('create.Cell', function(evt, param) {
+            add_lan_selector(param.cell);
+        });
         // I assume that Jupyter would load the notebook before it tries to connect
         // to the kernel, so kernel_connected.kernel is the right time to show toc
         // However, it is possible to load a page without rebooting the kernel so
