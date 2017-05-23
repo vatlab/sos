@@ -508,6 +508,13 @@ define([
                 }
             }
         }
+
+        if (cell.metadata.show_output === undefined || cell.metadata.show_output === false) {
+            $('.output_subarea', cell.element).css('background', '');
+        } else {
+            $('.output_subarea', cell.element).css('background', '#E0FFFF');
+        }
+
         // cell in panel does not have prompt area
         var col = '';
         if (cell.is_panel !== undefined) {
@@ -1041,6 +1048,10 @@ define([
             help: 'show toc in panel',
             handler: show_toc,
         }, 'show-toc');
+        var toggle_output = this.km.actions.register({
+            help: 'toggle display output in HTML',
+            handler: toggle_display_output,
+        }, 'show-toc');
         var shortcuts = {
             'shift-enter': execute_and_select_action,
             'ctrl-enter': execute_action,
@@ -1050,6 +1061,7 @@ define([
             // code_mirror.getSelection() line getting only blank string.
             'ctrl-shift-enter': execute_selected_in_panel,
             'ctrl-shift-t': show_toc_in_panel,
+            'ctrl-shift-o': toggle_output,
         }
         this.km.edit_shortcuts.add_shortcuts(shortcuts);
         this.km.command_shortcuts.add_shortcuts(shortcuts);
@@ -1110,6 +1122,19 @@ define([
         if (l < this.length)
             re = re + "...";
         return re;
+    }
+
+    var toggle_display_output = function(evt) {
+        var cell = evt.notebook.get_selected_cell();
+        if (cell.metadata.show_output === undefined || cell.metadata.show_output === false) {
+            cell.metadata.show_output = true;
+            $('.output_subarea', cell.element).css('background', '#E0FFFF');
+        } else {
+            cell.metadata.show_output = false;
+            $('.output_subarea', cell.element).css('background', '');
+        }
+        evt.notebook.select_next(true);
+        evt.notebook.focus_cell();
     }
 
     var execute_in_panel = function(evt) {
@@ -1378,7 +1403,7 @@ define([
                 '    height: 1.7em;' +
                 '    margin-top: 5pt;' +
                 '    margin-right: 5pt;' +
-				'    font-size: 80%;' +
+                '    font-size: 80%;' +
                 '}' +
                 '' +
                 '.text_cell .cell_kernel_selector {' +
