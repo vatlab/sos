@@ -954,7 +954,7 @@ define([
             notebook: nb,
             tooltip: nb.tooltip,
         });
-        add_lan_selector(cell).css('top', '-2.2em');
+        add_lan_selector(cell).css('margin-top', '-17pt').css('margin-right', '0pt');
         cell.set_input_prompt();
         cell.is_panel = true;
         $("#panel").append(this.cell.element);
@@ -963,10 +963,12 @@ define([
         cell.refresh();
         this.cell.element.hide();
 
+        // remove cell toolbar
+        $('.celltoolbar', cell.element).remove()
         //this.cell.element.find('code_cell').css('position', 'absolute').css('top', '1.5em');
         this.cell.element.find('div.input_prompt').addClass('panel_input_prompt').text('In [-]:');
-        this.cell.element.find('div.input_area')
-            .append(
+        this.cell.element.find('div.input_area').css('margin-top', '20pt')
+            .prepend(
                 $("<a/>").attr('href', '#').attr('id', 'input_dropdown').addClass('input_dropdown')
                 .append($("<i class='fa fa-caret-down'></i>"))
                 .click(function() {
@@ -1357,9 +1359,9 @@ define([
                 '}' +
                 '' +
                 '.input_dropdown {' +
-                '    position: absolute;' +
-                '    right: 5pt;' +
-                '    top: 0.5em;' +
+                '    float: right;' +
+                '    margin-right: 2pt;' +
+                '    margin-top: 5pt;' +
                 '    z-index: 1000;' +
                 '}' +
                 '' +
@@ -1370,12 +1372,13 @@ define([
                 '' +
                 '.code_cell .cell_kernel_selector {' +
                 '    width:70pt;' +
-                '    background:none;' +
-                '    border-bottom: none;' +
+                '    background: none;' +
                 '    z-index: 1000;' +
-                '    position:absolute;' +
-                '    right: 3pt;' +
-                '    top: 5pt;' +
+                '    float:right;' +
+                '    height: 1.7em;' +
+                '    margin-top: 5pt;' +
+                '    margin-right: 5pt;' +
+				'    font-size: 80%;' +
                 '}' +
                 '' +
                 '.text_cell .cell_kernel_selector {' +
@@ -1483,7 +1486,7 @@ define([
 
         var select = $("<select/>").attr("id", "cell_kernel_selector")
             .css("margin-left", "0.75em")
-            .attr("class", "form-control select-xs cell_kernel_selector");
+            .attr("class", "select-xs cell_kernel_selector");
         console.log('Add ' + KernelList.length.toString() + ' ' + cell.cell_id)
         for (var i = 0; i < KernelList.length; i++) {
             select.append($("<option/>")
@@ -1517,7 +1520,7 @@ define([
 
         });
 
-        cell.element.find('div.input_area').append(select);
+        cell.element.find('div.input_area').prepend(select);
         return select;
     }
 
