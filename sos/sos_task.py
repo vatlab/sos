@@ -291,9 +291,17 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
     env.sos_dict.quick_update(sos_dict)
 
     # if targets are defined as `remote`, they should be resolved during task execution
+    def resolve_remote(x):
+        if isinstance(x, remote):
+            x = x.resolve()
+            if isinstance(x, str):
+                x = interpolate(x, sigil, env.sos_dict)
+        return x
+
     for key in ['input', '_input',  'output', '_output', 'depends', '_depends']:
         if key in sos_dict and isinstance(sos_dict[key], list):
-            env.sos_dict.set(key, [interpolate(x.resolve(), sigil, env.sos_dict) if isinstance(x, remote) else x for x in sos_dict[key]])
+            # resolve remote() target
+            env.sos_dict.set(key, [resolve_remote(x) for x in sos_dict[key]])
 
     skipped = False
     if env.config['sig_mode'] == 'ignore':
