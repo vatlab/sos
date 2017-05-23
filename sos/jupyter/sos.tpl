@@ -35,6 +35,10 @@ div.input {
     display: none;
 }
 
+.hidden_output {
+    display: none;
+}
+
 .input_prompt {
     display: none;
 }
@@ -50,56 +54,61 @@ div.input {
 </style>
 
 <script>
-function toggle_source() {
-  var x = document.getElementsByClassName("input");
-  if (x.length == 0) return;
-  function toggle_vis(o) {
+
+function toggle_vis(o) {
     var d = o.style.display;
     o.style.display = (d == "flex" || d == "" || d == "block" | d == "-webkit-box") ? "none": "-webkit-box";
-  }
+}
 
-  for (i = 0; i < x.length; i++) {
-    toggle_vis(x[i]);
-  }
-   btn = document.getElementById("1")
-   if (btn.textContent.indexOf("Hide") > 0) 
-      btn.textContent = "Show source code of this document";
-    else
-      btn.textContent = "Hide source code of this document";
+function toggle_source() {
+    var btn = document.getElementById("show_1");
+	var hide = true;
+    if (btn.textContent.indexOf("Less") > 0) {
+        btn.textContent = "Show More";
+    } else {
+	    hide = false;
+        btn.textContent = "Show Less";
+	}
+    var x = document.getElementsByClassName("input");
+    for (i = 0; i < x.length; i++) {
+        if (hide) {
+		    x[i].style.display = 'none';
+		} else {
+		    x[i].style.display = 'flex';
+		}
+    }
+	var x = document.getElementsByClassName("hidden_output");
+    for (i = 0; i < x.length; i++) {
+        if (hide) {
+		    x[i].style.display = 'none';
+		} else {
+		    x[i].style.display = 'block';
+		}
+    }
 }
 </script>
 
-<button id="1" type="button" onclick="toggle_source();" >Hide source code of this document</button> 
+<button id="show_1" type="button" onclick="toggle_source();" >Show More</button> 
 
 </script>
-
-<style> 
-
- {% for item in nb['metadata'].get('sos',{}).get('kernels',{}) %}
-
-{%- if item[2] -%}
-.lan_{{item[0]}} {background-color: {{item[2]}} !important }
-
-{%- else -%}
-.lan_{{item[0]}} {}
-
-{%- endif -%}
-
-{% endfor %}
-
-</style>
-
 
 {%- endif -%}
 
 {%- endblock header -%}
 
+{%- block input -%}
 
-{% block codecell %}
-
-	<div class="border-box-sizing code_cell rendered">
 	{{ super() }}
-	</div>
 
-{%- endblock codecell %}
+{%- endblock input -%}
 
+
+{% block output %}
+	{%- if cell.metadata.show_output -%}
+	    {{ super() }}
+    {%- else -%}
+	    <div class="hidden_output">
+	    {{ super() }}
+		</div>
+   {%- endif -%}
+{% endblock output %}
