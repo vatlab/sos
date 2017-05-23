@@ -20,7 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from collections.abc import Sequence
+from collections import Sequence, OrderedDict
 import tempfile
 from sos.utils import short_repr
 from IPython.core.error import UsageError
@@ -280,4 +280,19 @@ class sos_R:
         except Exception as e:
             raise UsageError('Failed to convert {} to Python object: {}'.format(expr, e))
 
-
+    def sessioninfo(self):
+        response = self.sos_kernel.get_response('..py.repr(capture.output(sessionInfo()))', ('display_data', 'execute_result'))[0][1]['data']['text/plain']
+        response = eval(eval(response.split(' ', 1)[-1]))
+        res = OrderedDict()
+        for line in response:
+            if not line.strip():
+                continue
+            if ':' in line:
+                k, v = line.split(':', 1)
+                res[k] = v
+            elif ']' in line:
+                k, v = line.split(']', 1)
+                res[k.strip() + ']'] = v
+            else:
+                res[line.strip()] = ''
+        return res
