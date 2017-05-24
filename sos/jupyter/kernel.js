@@ -530,16 +530,18 @@ define([
             return col;
         }
 
-        var ip = cell.element[0].getElementsByClassName('input_prompt');
-        var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
 
         if (type == 'sos' && get_workflow_from_cell(cell)) {
             col = '#F0F0F0';
         } else if (type && BackgroundColor[type]) {
             col = BackgroundColor[type];
         }
-        ip[0].style.backgroundColor = col;
-        op[0].style.backgroundColor = col;
+        var ip = cell.element[0].getElementsByClassName('input_prompt');
+        var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
+        if (ip.length > 0)
+            ip[0].style.backgroundColor = col;
+        if (op.length > 0)
+            op[0].style.backgroundColor = col;
         return col;
     }
 
