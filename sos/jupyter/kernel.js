@@ -510,9 +510,9 @@ define([
         }
 
         if (cell.metadata.show_output === undefined || cell.metadata.show_output === false) {
-            $('.output_subarea', cell.element).css('background', '');
+            $('.output_subarea', cell.element).removeClass('show_output');
         } else {
-            $('.output_subarea', cell.element).css('background', '#E0FFFF');
+            $('.output_subarea', cell.element).addClass('show_output');
         }
 
         // cell in panel does not have prompt area
@@ -1132,10 +1132,10 @@ define([
         var cell = evt.notebook.get_selected_cell();
         if (cell.metadata.show_output === undefined || cell.metadata.show_output === false) {
             cell.metadata.show_output = true;
-            $('.output_subarea', cell.element).css('background', '#E0FFFF');
+            $('.output_subarea', cell.element).addClass('show_output');
         } else {
             cell.metadata.show_output = false;
-            $('.output_subarea', cell.element).css('background', '');
+            $('.output_subarea', cell.element).removeClass('show_output');
         }
         evt.notebook.select_next(true);
         evt.notebook.focus_cell();
@@ -1422,6 +1422,10 @@ define([
                 '    text-align: left;' +
                 '    font-weight: bold;' +
                 '    font-size: 120%;' +
+                '}' +
+                '' +
+                '.show_output {' +
+                '    box-shadow: 13px 0px 0px #aaaaaa;' +
                 '}' +
                 '' +
                 '.toc-item-highlight-select  {background-color: Gold}' +
