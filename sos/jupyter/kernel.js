@@ -39,7 +39,6 @@ define([
     window.CodeCell = require('notebook/js/codecell').CodeCell;
 
     window.default_kernel = 'SoS';
-    window.kernel_updated = false;
     window.my_panel = null;
     window.pending_cells = {};
 
@@ -150,7 +149,6 @@ define([
                     // 2. cell kernel (might be unspecified for new cell)
                     // 3. cell index (for setting style after execution)
                     "%frontend " +
-                    // (window.kernel_updated ? "" : " --list-kernel ") +
                     (IPython.notebook.metadata['sos']['panel'].displayed ? " --use-panel" : "") +
                     " --default-kernel " + window.default_kernel +
                     " --cell-kernel " + cells[i].metadata.kernel +
@@ -163,7 +161,6 @@ define([
         // if this is a command from scratch pad (not part of the notebook)
         return this.orig_execute(
             "%frontend " +
-            // (window.kernel_updated ? "" : " --list-kernel ") +
             " --use-panel " +
             " --default-kernel " + window.default_kernel +
             " --cell-kernel " + window.my_panel.cell.metadata.kernel +
@@ -176,14 +173,6 @@ define([
             })
     }
 
-    function request_kernel_list() {
-        if (!window.kernel_updated) {
-            window.sos_comm.send({
-                'list-kernel': IPython.notebook.metadata['sos']['kernels'],
-                'update-task-status': window.unknown_tasks,
-            })
-        }
-    }
 
     function register_sos_comm() {
         // comm message sent from the kernel
@@ -276,7 +265,6 @@ define([
                 }
                 //add dropdown menu of kernels in frontend
                 load_select_kernel();
-                window.kernel_updated = true;
                 console.log('kernel list updated');
             } else if (msg_type == 'default-kernel') {
                 // update the cells when the notebook is being opened.
@@ -462,7 +450,10 @@ define([
         IPython.notebook.metadata['sos']['kernels'] = IPython.notebook.metadata['sos']['kernels'].filter(function(x) {
             return used_kernels.has(x[0])
         });
-        request_kernel_list();
+        window.sos_comm.send({
+            'list-kernel': IPython.notebook.metadata['sos']['kernels'],
+            'update-task-status': window.unknown_tasks,
+        })
         console.log('sos comm registered');
     }
 
@@ -1579,12 +1570,10 @@ define([
         // kernel that the frontend has been refreshed so that it will create
         // another Comm object. This is done by sending another --list-kernel
         // option.
-        if (IPython.notebook.kernel) {
+        events.on('kernel_connected.Kernel', function() {
             register_sos_comm();
-            window.kernel_updated = false;
-        }
-        events.on('kernel_connected.Kernel', register_sos_comm);
-        events.on('kernel_connected.Kernel', wrap_execute);
+            wrap_execute();
+        });
         events.on('rendered.MarkdownCell', update_toc);
         events.on('create.Cell', function(evt, param) {
             add_lan_selector(param.cell);
@@ -1605,7 +1594,6 @@ define([
                 show_toc()
         });
         // #550
-        events.on('kernel_ready.Kernel', request_kernel_list);
         events.on('select.Cell', set_codemirror_option);
         events.on('select.Cell', highlight_toc_item);
 
