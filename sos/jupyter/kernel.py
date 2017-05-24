@@ -463,9 +463,8 @@ class SoS_Kernel(IPythonKernel):
 
     def get_sessioninfo_parser(self):
         parser = argparse.ArgumentParser(prog='%sessioninfo',
-            description='''List the session info of all subkernels. An arbitrary list of
-            SoS variables can be displayed. For example, option --software a b c will create
-            a table with software, and a, b, c as keys.''')
+            description='''List the session info of all subkernels, and information
+            stored in variable sessioninfo''')
         parser.error = self._parse_error
         return parser
 
@@ -740,7 +739,7 @@ class SoS_Kernel(IPythonKernel):
             self.notify_task_status(['new-status', queue, tid, tst, tdt])
         self.send_frontend_msg('update-duration', {})
 
-    def handle_sessioninfo(self, unknown):
+    def handle_sessioninfo(self):
         #
         from sos.utils import loaded_modules
         result = OrderedDict()
@@ -777,20 +776,12 @@ class SoS_Kernel(IPythonKernel):
         finally:
             self.switch_kernel(cur_kernel)
         #
-        key = None
-        for arg in unknown:
-            if arg.startswith('--'):
-                key = arg[2:]
-                result[key]= {}
-            elif key is None:
-                key = 'Extras'
-                result[key] = [(arg, str(env.sos_dict.get(arg, 'NA')))]
-            else:
-                result[key].append((arg, str(env.sos_dict.get(arg, 'NA'))))
+        if 'sessioninfo' in env.sos_dict:
+            result.update(env.sos_dict['sessioninfo'])
         #
         res = ''
         for key, items in result.items():
-            res += '<h3>{}</h3>\n'.format(key)
+            res += '<p class="session_section">{}</p>\n'.format(key)
             res += '<table class="session_info">\n'
             for item in items:
                 res += '<tr>\n'
@@ -1837,10 +1828,10 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             parser = self.get_sessioninfo_parser()
             try:
-                args, unknown = parser.parse_known_args(shlex.split(options))
+                args = parser.parse_known_args(shlex.split(options))
             except SystemExit:
                 return
-            self.handle_sessioninfo(unknown)
+            self.handle_sessioninfo()
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_TOC.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)

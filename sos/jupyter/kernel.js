@@ -1414,6 +1414,16 @@ define([
                 '    display: none;' +
                 '}' +
                 '' +
+                '.session_info td {' +
+                '    text-align: left;' +
+                '}' +
+                '' +
+                '.session_section {' +
+                '    text-align: left;' +
+                '    font-weight: bold;' +
+                '    font-size: 120%;' +
+                '}' +
+                '' +
                 '.toc-item-highlight-select  {background-color: Gold}' +
                 '.toc-item-highlight-execute  {background-color: red}' +
                 '.lev1 {margin-left: 5px}' +
