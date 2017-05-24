@@ -493,7 +493,8 @@ class SoS_Kernel(IPythonKernel):
                     update_existing(idx)
                     return x
                 else:
-                    kernel = name
+                    if not kernel:
+                        kernel = name
                     break
         # find from kernel name
         for idx,x in enumerate(self._kernel_list):
@@ -1756,7 +1757,7 @@ class SoS_Kernel(IPythonKernel):
                     self.find_kernel(name, kernel, lan, color, notify_frontend=False)
                 except Exception as e:
                     # otherwise do not worry about it.
-                    env.logger.warning('Failed to locate subkernel {} with kernerl {} and language {}: {}'.format(
+                    env.logger.warning('Failed to locate subkernel {} with kernerl "{}" and language "{}": {}'.format(
                         name, kernel, lan, e))
         return self._kernel_list
 
