@@ -1077,4 +1077,4 @@ def loaded_modules(namespace={}):
     for key,value in namespace.items():
         if isinstance(value, ModuleType):
             res[value.__name__] = version_info(value.__name__)
-    return {x:y for x,y in res.items() if y != 'na'}
+    return [(x,y) for x,y in res.items() if y != 'na']

@@ -23,6 +23,7 @@
 import pickle
 import sys
 from collections import OrderedDict
+from sos.utils import short_repr
 
 __init_statement__ = '''
 def __version_info__(module):
@@ -40,15 +41,24 @@ def __version_info__(module):
         except Exception as e:
             return 'na'
 
+
 def __loaded_modules__():
     from types import ModuleType
-    res = {}
+    res = []
     for key,value in globals().items():
         if isinstance(value, ModuleType):
-            res[value.__name__] = __version_info__(value.__name__)
-    return {x:y for x,y in res.items() if y != 'na'}
+            res.append([value.__name__, __version_info__(value.__name__)])
+    return [(x,y) for x,y in res if y != 'na']
 '''
 
+def load_pickled(item):
+    if isinstance(item, bytes):
+        return pickle.loads(item)
+    elif isinstance(item, str):
+        return pickle.loads(item.encode('utf-8'))
+    else:
+        self.warn('Cannot restore from result of pickle.dumps: {}'.format(short_repr(item)))
+        return {}
 
 class sos_Python3:
     def __init__(self, sos_kernel):
@@ -64,15 +74,12 @@ class sos_Python3:
         stmt = 'import pickle\n__vars__={{ {} }}\n__vars__.update({{x:y for x,y in locals().items() if x.startswith("sos")}})\npickle.dumps(__vars__)'.format(','.join('"{0}":{0}'.format(x) for x in items))
         response = self.sos_kernel.get_response(stmt, ['execute_result'])[0][1]
         try:
-            ret = pickle.loads(eval(response['data']['text/plain']))
+            ret = load_pickled(eval(response['data']['text/plain']))
             return ret
         except Exception as e:
             self.sos_kernel.warn('Failed to import variables {}: {}'.format(items, e))
             return {}
 
     def sessioninfo(self):
-        res = OrderedDict()
-        res['Version'] = sys.version
-        modules = self.sos_kernel.get_response('__loaded_modules__()', ['execute_result'])[0][1]
-        res.update(eval(modules['data']['text/plain']))
-        return res
+        modules = self.sos_kernel.get_response('import pickle;import sys;res=[("Version", sys.version)];res.extend(__loaded_modules__());pickle.dumps(res)', ['execute_result'])[0][1]
+        return load_pickled(eval(modules['data']['text/plain']))

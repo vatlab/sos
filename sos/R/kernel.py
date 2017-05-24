@@ -282,17 +282,4 @@ class sos_R:
 
     def sessioninfo(self):
         response = self.sos_kernel.get_response('..py.repr(capture.output(sessionInfo()))', ('display_data', 'execute_result'))[0][1]['data']['text/plain']
-        response = eval(eval(response.split(' ', 1)[-1]))
-        res = OrderedDict()
-        for line in response:
-            if not line.strip():
-                continue
-            if ':' in line:
-                k, v = line.split(':', 1)
-                res[k] = v
-            elif ']' in line:
-                k, v = line.split(']', 1)
-                res[k.strip() + ']'] = v
-            else:
-                res[line.strip()] = ''
-        return res
+        return eval(eval(response.split(' ', 1)[-1]))

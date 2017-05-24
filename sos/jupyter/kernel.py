@@ -466,9 +466,6 @@ class SoS_Kernel(IPythonKernel):
             description='''List the session info of all subkernels. An arbitrary list of
             SoS variables can be displayed. For example, option --software a b c will create
             a table with software, and a, b, c as keys.''')
-        parser.add_argument('--format', default='markdown', nargs='?',
-            help='''Format of output, which can be markdown (default), and text.
-            A %%render magic can be used to process output of the markdown output of sessioninfo.''')
         parser.error = self._parse_error
         return parser
 
@@ -741,34 +738,42 @@ class SoS_Kernel(IPythonKernel):
             self.notify_task_status(['new-status', queue, tid, tst, tdt])
         self.send_frontend_msg('update-duration', {})
 
-    def handle_sessioninfo(self, output_format, unknown):
+    def handle_sessioninfo(self, unknown):
         #
         from sos.utils import loaded_modules
         result = OrderedDict()
         #
         from sos._version import __version__
-        result['SoS'] = {
-            'SoS Version': __version__
-        }
-        result['SoS'].update(loaded_modules(env.sos_dict))
+        result['SoS'] = [('SoS Version', __version__)]
+        result['SoS'].extend(loaded_modules(env.sos_dict))
         #
-        for kernel in self.kernels.keys():
-            kinfo = self.find_kernel(kernel)
-            result[kernel] = OrderedDict()
-            result[kernel]['kernel'] = kinfo[1]
-            result[kernel]['language'] = kinfo[2]
-            if kernel not in self.supported_languages:
-                continue
-            lan = self.supported_languages[kernel]
-            if hasattr(lan, 'sessioninfo'):
-                try:
-                    objects = lan.sessioninfo()
-                    if not isinstance(objects, dict):
-                        self.warn('Kernel {} returned session in wrong format: {}'.format(objects))
-                    else:
-                        result[kernel].update(objects)
-                except Exception as e:
-                    self.warn('Failed to obtain sessioninfo of kernel {}: {}'.format(kernel, e))
+        cur_kernel = self.kernel
+        try:
+            for kernel in self.kernels.keys():
+                kinfo = self.find_kernel(kernel)
+                self.switch_kernel(kernel)
+                result[kernel] = [
+                        ('Kernel', kinfo[1]),
+                        ('Language', kinfo[2])
+                ]
+                if kernel not in self.supported_languages:
+                    continue
+                lan = self.supported_languages[kernel]
+                if hasattr(lan, 'sessioninfo'):
+                    try:
+                        sinfo = lan.sessioninfo()
+                        if isinstance(sinfo, str):
+                            result[kernel].append([sinfo])
+                        elif isinstance(sinfo, dict):
+                            result[kernel].extend(list(sinfo.items()))
+                        elif isinstance(sinfo, list):
+                            result[kernel].extend(sinfo)
+                        else:
+                            self.warn('Unrecognized session info: {}'.format(sinfo))
+                    except Exception as e:
+                        self.warn('Failed to obtain sessioninfo of kernel {}: {}'.format(kernel, e))
+        finally:
+            self.switch_kernel(cur_kernel)
         #
         key = None
         for arg in unknown:
@@ -777,34 +782,32 @@ class SoS_Kernel(IPythonKernel):
                 result[key]= {}
             elif key is None:
                 key = 'Extras'
-                result[key] = {arg: str(env.sos_dict.get(arg, 'NA'))}
+                result[key] = [(arg, str(env.sos_dict.get(arg, 'NA')))]
             else:
-                result[key][arg] = str(env.sos_dict.get(arg, 'NA'))
+                result[key].append((arg, str(env.sos_dict.get(arg, 'NA'))))
         #
-        if output_format == 'text':
-            res = ''
-            for key, item in result.items():
-                res += key + ':\n'
-                for k,v in item.items():
-                    res += '  {:<15s} {}\n'.format(k+':', v)
-            self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': res})
-        elif output_format == 'markdown':
-            res = ''
-            for key, item in result.items():
-                res += '### ' + key + ':\n'
-                res += '|Setting|Value  |\n'
-                res += '|--|--|\n'
-                for k,v in item.items():
-                    res += '|{}|{}|\n'.format(k, str(v).strip().replace('\n', '|').replace('|', '|\n| |'))
-            self.send_response(self.iopub_socket, 'display_data',
+        res = ''
+        for key, items in result.items():
+            res += '<h3>{}</h3>\n'.format(key)
+            res += '<table class="session_info">\n'
+            for item in items:
+                res += '<tr>\n'
+                if isinstance(item, str):
+                    res += '<td colspan="2">{}</td>\n'.format(item)
+                elif len(item) == 1:
+                    res += '<td colspan="2">{}</td>\n'.format(item[0])
+                elif len(item) == 2:
+                    res += '<td>{}</td><td>{}</td>\n'.format(item[0], item[1])
+                else:
+                    self.warn('Invalid session info item of type {}: {}'.format(item.__class__.__name__, short_repr(item)))
+                res += '</tr>\n'
+            res += '</table>\n'
+        self.send_response(self.iopub_socket, 'display_data',
                         {
                             'source': 'SoS',
                             'metadata': {},
-                            'data': {'text/markdown': res}
+                            'data': {'text/html': HTML(res).data}
                         })
-        else:
-            self.warn('Unsupported output format {}'.format(output_format))
 
     def sos_comm(self, comm, msg):
         # record frontend_comm to send messages
@@ -1835,7 +1838,7 @@ class SoS_Kernel(IPythonKernel):
                 args, unknown = parser.parse_known_args(shlex.split(options))
             except SystemExit:
                 return
-            self.handle_sessioninfo(args.format, unknown)
+            self.handle_sessioninfo(unknown)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_TOC.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
