@@ -512,9 +512,10 @@ class SoS_Kernel(IPythonKernel):
             for idx, x in enumerate(self._kernel_list):
                 if x[0] == kdef[0]:
                     self._kernel_list[idx] = kdef
-                    return
+                    return self._kernel_list[idx]
             else:
                 self._kernel_list.append(kdef)
+                return self._kernel_list[-1]
 
         if kernel is not None:
             # in this case kernel should have been defined in kernel list
@@ -528,10 +529,10 @@ class SoS_Kernel(IPythonKernel):
                         color = self._supported_languages[kdef[2]].background_color
                     else:
                         color = kdef[3]
-                add_or_replace([name, kdef[1], kdef[2], kdef[3] if color is None else color])
+                new_def = add_or_replace([name, kdef[1], kdef[2], kdef[3] if color is None else color])
                 if notify_frontend:
                     self.send_frontend_msg('kernel-list', self.get_kernel_list())
-                return self._kernel_list[-1]
+                return new_def
             else:
                 # if language is defined,
                 if ':' in language:
@@ -551,7 +552,7 @@ class SoS_Kernel(IPythonKernel):
                     #
                     if color == 'default':
                         color = plugin.background_color
-                    add_or_replace([name, kdef[1], kernel, kdef[3] if color is None else color])
+                    new_def = add_or_replace([name, kdef[1], kernel, kdef[3] if color is None else color])
                 else:
                     # if should be defined ...
                     if language not in self._supported_languages:
@@ -560,10 +561,10 @@ class SoS_Kernel(IPythonKernel):
                     self._supported_languages[name] = self._supported_languages[language]
                     if color == 'default':
                         color = self._supported_languages[name].background_color
-                    add_or_replace([name, kdef[1], language, kdef[3] if color is None else color])
+                    new_def = add_or_replace([name, kdef[1], language, kdef[3] if color is None else color])
                 if notify_frontend:
                     self.send_frontend_msg('kernel-list', self.get_kernel_list())
-                return self._kernel_list[-1]
+                return new_def
         elif language is not None:
             # kernel is not defined and we only have language
             if ':' in language:
@@ -583,7 +584,7 @@ class SoS_Kernel(IPythonKernel):
 
                 if color == 'default':
                     color = plugin.background_color
-                add_or_replace([name, plugin.kernel_name, plugin.kernel_name, plugin.background_color if color is None else color])
+                new_def = add_or_replace([name, plugin.kernel_name, plugin.kernel_name, plugin.background_color if color is None else color])
             else:
                 # if should be defined ...
                 if language not in self._supported_languages:
@@ -593,12 +594,12 @@ class SoS_Kernel(IPythonKernel):
                     raise ValueError('Unrecognized Jupyter kernel name {} defined by language {}. Please make sure it is properly installed and appear in the output of command "jupyter kenelspec list"'.format(
                         self._supported_languages[language].kernel_name, language))
 
-                add_or_replace([
+                new_def = add_or_replace([
                     name, self._supported_languages[language].kernel_name, language,
                         self._supported_languages[language].background_color if color is None or color == 'default' else color])
 
             self.send_frontend_msg('kernel-list', self.get_kernel_list())
-            return self._kernel_list[-1]
+            return new_def
         else:
             raise ValueError('No pre-defined subkernel named {} is found. Please define it with one or both of parameters --kernel and --language'.format(name))
 

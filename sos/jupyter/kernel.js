@@ -224,13 +224,17 @@ define([
                 for (var i = 0; i < data.length; i++) {
                     // BackgroundColor is color
                     BackgroundColor[data[i][0]] = data[i][3];
-                    BackgroundColor[data[i][1]] = data[i][3];
+                    // by kernel name? For compatibility ...
+                    if (! (data[i][1] in BackgroundColor))
+                        BackgroundColor[data[i][1]] = data[i][3];
                     // DisplayName
                     DisplayName[data[i][0]] = data[i][0];
-                    DisplayName[data[i][1]] = data[i][0];
+                    if (! (data[i][1] in DisplayName))
+                        DisplayName[data[i][1]] = data[i][0];
                     // Name
                     KernelName[data[i][0]] = data[i][1];
-                    KernelName[data[i][1]] = data[i][1];
+                    if (! (data[i][1] in KernelName))
+                        KernelName[data[i][1]] = data[i][1];
                     // KernelList, use displayed name
                     if (KernelList.findIndex((item) => item[0] === data[i][0]) == -1)
                         KernelList.push([data[i][0], data[i][0]]);
@@ -1570,6 +1574,10 @@ define([
         // kernel that the frontend has been refreshed so that it will create
         // another Comm object. This is done by sending another --list-kernel
         // option.
+        if (IPython.notebook.kernel) {
+            // this is needed for refreshing a page...
+            register_sos_comm();
+        }
         events.on('kernel_connected.Kernel', function() {
             register_sos_comm();
             wrap_execute();
