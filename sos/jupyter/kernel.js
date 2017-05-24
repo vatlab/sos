@@ -110,7 +110,6 @@ define([
                 continue
             // other magic
             if (lines[l].startsWith('%')) {
-                console.log(lines[l]);
                 if (lines[l].match(/^%sosrun($|\s)|^%sossave($|\s)|^%preview\s.*(-w|--workflow).*$/)) {
                     run_notebook = true;
                     break;
@@ -175,6 +174,15 @@ define([
                 'silent': false,
                 'store_history': false
             })
+    }
+
+    function request_kernel_list() {
+        if (!window.kernel_updated) {
+            window.sos_comm.send({
+                'list-kernel': IPython.notebook.metadata['sos']['kernels'],
+                'update-task-status': window.unknown_tasks,
+            })
+        }
     }
 
     function register_sos_comm() {
@@ -454,10 +462,7 @@ define([
         IPython.notebook.metadata['sos']['kernels'] = IPython.notebook.metadata['sos']['kernels'].filter(function(x) {
             return used_kernels.has(x[0])
         });
-        window.sos_comm.send({
-            'list-kernel': IPython.notebook.metadata['sos']['kernels'],
-            'update-task-status': window.unknown_tasks,
-        })
+        request_kernel_list();
         console.log('sos comm registered');
     }
 
@@ -601,15 +606,17 @@ define([
         // the second time.
 
         var cells = IPython.notebook.get_cells();
-        for (var i in cells) {
+        for (var i = 0; i < cells.length; i++) {
             add_lan_selector(cells[i], cells[i].metadata.kernel);
         }
 
         var cells = IPython.notebook.get_cells();
-        for (var i in cells) {
-            if (cells[i].cell_type == 'code') {
-                changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
-            }
+        for (var i = 0; i < cells.length; i++) {
+            changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
+        }
+        // update droplist of panel cell
+        if (window.my_panel) {
+            changeStyleOnKernel(window.my_panel.cell);
         }
 
         var dropdown = $("<select></select>").attr("id", "kernel_selector")
@@ -1503,16 +1510,25 @@ define([
         return Array.prototype.map.call(extenstionArray, remove_extension)
     }
 
-            
+
     function add_lan_selector(cell, kernel) {
         //
-        if (cell.element[0].getElementsByClassName('cell_kernel_selector').length > 0)
-            return
-
+        if (cell.element[0].getElementsByClassName('cell_kernel_selector').length > 0) {
+            // update existing list
+            var select = $('.cell_kernel_selector', cell.element).empty();
+            for (var i = 0; i < KernelList.length; i++) {
+                select.append($("<option/>")
+                    .attr("value", DisplayName[KernelList[i][0]])
+                    .text(DisplayName[KernelList[i][0]]));
+            }
+            if (kernel)
+                select.val(kernel);
+            return;
+        }
+        // add a new one
         var select = $("<select/>").attr("id", "cell_kernel_selector")
             .css("margin-left", "0.75em")
             .attr("class", "select-xs cell_kernel_selector");
-        console.log('Add ' + KernelList.length.toString() + ' ' + cell.cell_id)
         for (var i = 0; i < KernelList.length; i++) {
             select.append($("<option/>")
                 .attr("value", DisplayName[KernelList[i][0]])
@@ -1587,7 +1603,7 @@ define([
                 show_toc()
         });
         // #550
-        // kernel_ready.Kernel
+        events.on('kernel_ready.Kernel', request_kernel_list);
         events.on('select.Cell', set_codemirror_option);
         events.on('select.Cell', highlight_toc_item);
 
