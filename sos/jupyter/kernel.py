@@ -790,17 +790,14 @@ class SoS_Kernel(IPythonKernel):
                 elif len(item) == 1:
                     res += '<td colspan="2">{}</td>\n'.format(item[0])
                 elif len(item) == 2:
-                    res += '<td>{}</td><td>{}</td>\n'.format(item[0], item[1])
+                    res += '<th>{}</th><td>{}</td>\n'.format(item[0], item[1])
                 else:
                     self.warn('Invalid session info item of type {}: {}'.format(item.__class__.__name__, short_repr(item)))
                 res += '</tr>\n'
             res += '</table>\n'
         self.send_response(self.iopub_socket, 'display_data',
-                        {
-                            'source': 'SoS',
-                            'metadata': {},
-                            'data': {'text/html': HTML(res).data}
-                        })
+            { 'source': 'SoS', 'metadata': {},
+              'data': {'text/html': HTML(res).data} })
 
     def sos_comm(self, comm, msg):
         # record frontend_comm to send messages

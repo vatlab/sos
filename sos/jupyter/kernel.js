@@ -1418,6 +1418,10 @@ define([
                 '    text-align: left;' +
                 '}' +
                 '' +
+                '.session_info th {' +
+                '    text-align: left;' +
+                '}' +
+                '' +
                 '.session_section {' +
                 '    text-align: left;' +
                 '    font-weight: bold;' +
