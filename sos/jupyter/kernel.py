@@ -1153,19 +1153,19 @@ class SoS_Kernel(IPythonKernel):
                     self.kernels[kernel][0].shutdown_kernel(restart=False)
                 except Exception as e:
                     self.warn('Failed to shutdown kernel {}: {}\n'.format(kernel, e))
+                finally:
+                    self.kernels.pop(kernel)
             #
+            cur_kernel = self.kernel
             try:
-                self.kernels[kernel] = manager.start_new_kernel(startup_timeout=60, kernel_name=kernel,
-                        cwd=os.getcwd())
+                self.switch_kernel(kernel)
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Kernel {} {}started\n'.format(kernel, 're' if kernel in self.kernels else '')})
-                #self.send_response(self.iopub_socket, 'stream',
-                #    {'name': 'stdout', 'text': 'Kernel "{}" started\n'.format(kernel)})
-                if kernel == self.kernel:
-                    self.KM, self.KC = self.kernels[kernel]
             except Exception as e:
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e)})
+            finally:
+                self.switch_kernel(cur_kernel)
         else:
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': 'Specify one of the kernels to restart: sos{}\n'
