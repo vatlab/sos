@@ -1059,6 +1059,10 @@ define([
             help: 'toggle display output in HTML',
             handler: toggle_display_output,
         }, 'toggle-show-output');
+        var toggle_markdown = this.km.actions.register({
+            help: 'toggle between markdown and code cells',
+            handler: toggle_markdown_cell,
+        }, 'toggle-markdown');
         var shortcuts = {
             'shift-enter': execute_and_select_action,
             'ctrl-enter': execute_action,
@@ -1069,6 +1073,7 @@ define([
             'ctrl-shift-enter': execute_selected_in_panel,
             'ctrl-shift-t': show_toc_in_panel,
             'ctrl-shift-o': toggle_output,
+            'ctrl-shift-m': toggle_markdown,
         }
         this.km.edit_shortcuts.add_shortcuts(shortcuts);
         this.km.command_shortcuts.add_shortcuts(shortcuts);
@@ -1140,7 +1145,17 @@ define([
             cell.metadata.show_output = false;
             $('.output_subarea', cell.element).removeClass('show_output');
         }
-        evt.notebook.select_next(true);
+        evt.nomarkdownok.select_next(true);
+        evt.notebook.focus_cell();
+    }
+
+    var toggle_markdown_cell = function(evt) {
+        var idx = evt.notebook.get_selected_index();
+        if (evt.notebook.get_cell(idx).cell_type === 'markdown') {
+            evt.notebook.to_code(idx);
+        } else {
+            evt.notebook.to_markdown(idx);
+        }
         evt.notebook.focus_cell();
     }
 
