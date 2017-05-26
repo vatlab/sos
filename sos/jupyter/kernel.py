@@ -365,13 +365,14 @@ class SoS_Kernel(IPythonKernel):
             steps defined in cells starting with section header) or a HTML report to
             specified file.''')
         parser.add_argument('filename', nargs='?',
-            help='''filename of saved sos script. Default to notebookname + .sos''')
+            help='''Filename of saved report or script. Default to notebookname with file
+            extension determined by option --to.''')
         parser.add_argument('-t', '--to', dest='__to__', choices=['sos', 'html'],
-            help='''Destination format, default to sos''')
+            help='''Destination format, default to sos.''')
         parser.add_argument('-f', '--force', action='store_true',
-            help='''if destination file already exists, overwrite it.''')
+            help='''If destination file already exists, overwrite it.''')
         parser.add_argument('-x', '--set-executable', dest = "setx", action='store_true',
-            help='''add `executable` permission to saved script.''')
+            help='''Sdd `executable` permission to saved script.''')
         parser.error = self._parse_error
         return parser
 
