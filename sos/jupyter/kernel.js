@@ -1055,7 +1055,7 @@ define([
         var toggle_output = this.km.actions.register({
             help: 'toggle display output in HTML',
             handler: toggle_display_output,
-        }, 'show-toc');
+        }, 'toggle-show-output');
         var shortcuts = {
             'shift-enter': execute_and_select_action,
             'ctrl-enter': execute_action,
