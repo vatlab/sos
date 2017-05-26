@@ -361,11 +361,13 @@ class SoS_Kernel(IPythonKernel):
 
     def get_sossave_parser(self):
         parser = argparse.ArgumentParser(prog='%sossave',
-            description='''Save the workflow (consisting of all sos steps defined
-            in cells starting with section header) to specified file.''')
+            description='''Save the jupyter notebook as workflow (consisting of all sos
+            steps defined in cells starting with section header) or a HTML report to
+            specified file.''')
         parser.add_argument('filename', nargs='?',
-            help='''filename of saved sos script. Default to
-            notebookname + .sos''')
+            help='''filename of saved sos script. Default to notebookname + .sos''')
+        parser.add_argument('-t', '--to', dest='__to__', choices=['sos', 'html'],
+            help='''Destination format, default to sos''')
         parser.add_argument('-f', '--force', action='store_true',
             help='''if destination file already exists, overwrite it.''')
         parser.add_argument('-x', '--set-executable', dest = "setx", action='store_true',
@@ -2072,18 +2074,39 @@ class SoS_Kernel(IPythonKernel):
                     return
                 if args.filename:
                     filename = self._interpolate_option(args.filename, quiet=False).strip()
+                    if filename.lower().endswith('.html'):
+                        if args.__to__ is None:
+                            ftype = 'html'
+                        else:
+                            self.warn('%sossave to an .html file in {} format'.format(args.__to__))
+                    else:
+                        ftype = 'sos'
                 else:
-                    filename = self._notebook_name + '.sos'
+                    ftype = args.__to__ if args.__to__ else 'sos'
+                    filename = self._notebook_name + '.' + ftype
+
                 if os.path.isfile(filename) and not args.force:
                     raise ValueError('Cannot overwrite existing output file {}'.format(filename))
                 #self.send_frontend_msg('preview-workflow', self._workflow)
-                with open(filename, 'w') as script:
-                    script.write(self._workflow)
-                if args.setx:
-                    import stat
-                    os.chmod(filename, os.stat(filename).st_mode | stat.S_IEXEC)
-                self.send_response(self.iopub_socket, 'stream',
-                  {'name': 'stdout', 'text': 'Workflow saved to {}\n'.format(filename)})
+                if ftype == 'sos':
+                    with open(filename, 'w') as script:
+                        script.write(self._workflow)
+                    if args.setx:
+                        import stat
+                        os.chmod(filename, os.stat(filename).st_mode | stat.S_IEXEC)
+                else:
+                    # convert to sos report
+                    from sos.jupyter.converter import notebook_to_html
+                    arg = argparse.Namespace()
+                    arg.template = 'sos'
+                    notebook_to_html(self._notebook_name + '.ipynb', filename, sargs=arg, unknown_args=[])
+                self.send_response(self.iopub_socket, 'display_data',
+                    {'source': 'SoS', 'metadata': {},
+                     'data': {
+                         'text/plain': 'Workflow saved to {}\n'.format(filename),
+                         'text/html': HTML('Workflow saved to <a href="{0}" target="_blank">{0}</a>'.format(filename)).data
+                          }
+                     })
             except Exception as e:
                 self.warn('Failed to save workflow: {}'.format(e))
                 return {'status': 'error',

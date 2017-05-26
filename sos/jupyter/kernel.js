@@ -121,6 +121,8 @@ define([
         }
 
         if (run_notebook) {
+            // Running %sossave --to html needs to save notebook
+            IPython.notebook.save_notebook();
             var cells = IPython.notebook.get_cells();
             for (var i = 0; i < cells.length; ++i) {
                 // older version of the notebook might have sos in metadata
@@ -1023,6 +1025,7 @@ define([
                 })
             )
 
+        add_to_panel_history('sos', '%sossave --to html --force', '');
         add_to_panel_history('sos', '%preview --workflow', '');
         add_to_panel_history('sos', '%tasks', '');
         add_to_panel_history('sos', '%toc', '');
