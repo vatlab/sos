@@ -369,6 +369,13 @@ class SoS_Kernel(IPythonKernel):
             extension determined by option --to.''')
         parser.add_argument('-t', '--to', dest='__to__', choices=['sos', 'html'],
             help='''Destination format, default to sos.''')
+        parser.add_argument('-c', '--commit', action='store_true',
+            help='''Commit the saved file to git directory using command
+            git commit FILE''')
+        parser.add_argument('-m', '--message',
+            help='''Message for git commit. Default to "save FILENAME"''')
+        parser.add_argument('-p', '--push', action='store_true',
+            help='''Push the commit with command "git push"''')
         parser.add_argument('-f', '--force', action='store_true',
             help='''If destination file already exists, overwrite it.''')
         parser.add_argument('-x', '--set-executable', dest = "setx", action='store_true',
@@ -1511,7 +1518,10 @@ class SoS_Kernel(IPythonKernel):
             return
         with self.redirect_sos_io():
             try:
-                p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                if isinstance(cmd, str):
+                    p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                else:
+                    p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
                 out, err = p.communicate()
                 sys.stdout.write(out.decode())
                 sys.stderr.write(err.decode())
@@ -2108,6 +2118,12 @@ class SoS_Kernel(IPythonKernel):
                          'text/html': HTML('Workflow saved to <a href="{0}" target="_blank">{0}</a>'.format(filename)).data
                           }
                      })
+                #
+                if args.commit:
+                    self.handle_shell_command(['git', 'commit', filename, '-m',
+                        args.message if args.message else 'save {}'.format(filename)])
+                if args.push:
+                    self.handle_shell_command(['git', 'push'])
             except Exception as e:
                 self.warn('Failed to save workflow: {}'.format(e))
                 return {'status': 'error',
