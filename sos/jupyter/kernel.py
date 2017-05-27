@@ -95,8 +95,15 @@ class FlushableStringIO(StringIO):
                 '\n-- {} lines --\n'.format(self.nlines - 190) + \
                 '\n'.join(lines[-10:])
         if content.strip():
-            self.kernel.send_response(self.kernel.iopub_socket, 'stream',
-                {'name': self.name, 'text': content})
+            if self.name == 'stdout' and self.kernel._render_result:
+                format_dict, md_dict = self.kernel.format_obj(self.kernel.render_result(content))
+                self.kernel.send_response(self.kernel.iopub_socket, 'display_data',
+                    {'source': 'SoS', 'metadata': md_dict,
+                     'data': format_dict
+                    })
+            else:
+                self.kernel.send_response(self.kernel.iopub_socket, 'stream',
+                    {'name': self.name, 'text': content})
         self.truncate(0)
         self.seek(0)
         self.nlines = 0
@@ -1075,8 +1082,14 @@ class SoS_Kernel(IPythonKernel):
                     # NOTE: we do not send status of sub kernel alone because
                     # these are generated automatically during the execution of
                     # "this cell" in SoS kernel
-                    #
-                    self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
+                    if self._render_result and msg_type == 'stream' and sub_msg['content']['name'] == 'stdout':
+                        format_dict, md_dict = self.format_obj(self.render_result(sub_msg['content']['text']))
+                        self.send_response(self.iopub_socket, 'display_data',
+                            {'source': 'SoS', 'metadata': md_dict,
+                             'data': format_dict
+                            })
+                    else:
+                        self.send_response(self.iopub_socket, msg_type, sub_msg['content'])
         #
         # now get the real result
         reply = self.KC.get_shell_msg(timeout=10)
@@ -1709,23 +1722,26 @@ class SoS_Kernel(IPythonKernel):
                 'name': 'stderr',
                 'text': 'Failed to preview {}: {}'.format(filename, e)})
 
+    def render_result(self, res):
+        if self._render_result is False:
+            return res
+        if not isinstance(res, str):
+            self.warn('Cannot render result {} in type {} as {}.'.format(short_repr(res),
+                res.__class__.__name__, self._render_result))
+        else:
+            # import the object from IPython.display
+            mod = __import__('IPython.display')
+            if not hasattr(mod.display, self._render_result):
+                self.warn('Unrecognized render format {}'.format(self._render_result))
+            else:
+                func = getattr(mod.display, self._render_result)
+                res = func(res)
+        return res
+
     def send_result(self, res, silent=False):
         # this is Ok, send result back
         if not silent and res is not None:
-            if self._render_result is not False:
-                if not isinstance(res, str):
-                    self.warn('Cannot render result {} in type {} as {}.'.format(short_repr(res),
-                        res.__class__.__name__, self._render_result))
-                else:
-                    # import the object from IPython.display
-                    mod = __import__('IPython.display')
-                    if not hasattr(mod.display, self._render_result):
-                        self.warn('Unrecognized render format {}'.format(self._render_result))
-                    else:
-                        func = getattr(mod.display, self._render_result)
-                        res = func(res)
-            #
-            format_dict, md_dict = self.format_obj(res)
+            format_dict, md_dict = self.format_obj(self.render_result(res))
             self.send_response(self.iopub_socket, 'execute_result',
                 {'execution_count': self._execution_count, 'data': format_dict,
                 'metadata': md_dict})
