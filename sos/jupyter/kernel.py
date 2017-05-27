@@ -1055,7 +1055,7 @@ class SoS_Kernel(IPythonKernel):
             self.warn('Statement {} ignored'.format(short_repr(remaining_code)))
         return command_line, remaining_code
 
-    def run_cell(self, code, store_history):
+    def run_cell(self, code, silent, store_history):
         #
         if not self.KM.is_alive():
             self.send_response(self.iopub_socket, 'stream',
@@ -1066,7 +1066,7 @@ class SoS_Kernel(IPythonKernel):
         while self.KC.shell_channel.msg_ready():
             self.KC.shell_channel.get_msg()
         # executing code in another kernel
-        self.KC.execute(code, silent=False, store_history=not store_history)
+        self.KC.execute(code, silent=silent, store_history=store_history)
 
         # first thing is wait for any side effects (output, stdin, etc.)
         _execution_state = "busy"
@@ -1083,6 +1083,8 @@ class SoS_Kernel(IPythonKernel):
                         # not sure if it is needed
                         sub_msg['content']['execution_count'] = self._execution_count
                     #
+                    if silent and msg_type in ['display_data', 'stream', 'execute_result']:
+                        continue
                     # NOTE: we do not send status of sub kernel alone because
                     # these are generated automatically during the execution of
                     # "this cell" in SoS kernel
@@ -1151,21 +1153,23 @@ class SoS_Kernel(IPythonKernel):
                 self.warn('Switch from {} to {}'.format(self.kernel, kinfo[0]))
             # case when self.kernel == 'sos', kernel != 'sos'
             # to a subkernel
+            new_kernel = False
             if kinfo[0] not in self.kernels:
                 # start a new kernel
                 try:
                     self.kernels[kinfo[0]] = manager.start_new_kernel(
                             startup_timeout=60, kernel_name=kinfo[1], cwd=os.getcwd())
+                    new_kernel = True
                 except Exception as e:
                     self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}'.format(kernel, e))
                     return
             self.KM, self.KC = self.kernels[kinfo[0]]
             self.RET_VARS = ret_vars
             self.kernel = kinfo[0]
-            if self.kernel in self.supported_languages:
+            if new_kernel and self.kernel in self.supported_languages:
                 init_stmts = self.supported_languages[self.kernel].init_statements
                 if init_stmts:
-                    self.run_cell(init_stmts, False)
+                    self.run_cell(init_stmts, True, False)
             #
             self.handle_magic_get(in_vars)
 
@@ -2287,7 +2291,7 @@ class SoS_Kernel(IPythonKernel):
             if code is None:
                 return
             try:
-                return self.run_cell(code, store_history)
+                return self.run_cell(code, silent, store_history)
             except KeyboardInterrupt:
                 self.warn('Keyboard Interrupt\n')
                 return {'status': 'abort', 'execution_count': self._execution_count}
