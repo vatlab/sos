@@ -43,7 +43,7 @@ before_install:
     - conda install -c r r-essentials r-feather
     - conda install -c conda-forge feather-format
     # install JavaScript kernel
-    - sudo apt-get install -y nodejs-legacy npm ipython ipython-notebook
+    - sudo apt-get install -y nodejs
     - sudo npm install -g ijavascript
     - ijsinstall
     # install bash kernel
@@ -62,6 +62,7 @@ script:
     - ./run_tests ../sos/Python3/test
     - ./run_tests ../sos/R/test
     - ./run_tests ../sos/jupyter/test 
+    - ./run_tests ../sos/JavaScript/test 
     #- ./run_tests ../sos/rq/test
 notifications:
     email:
