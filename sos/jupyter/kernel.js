@@ -289,6 +289,11 @@ define([
                     cell.metadata.kernel = DisplayName[data[1]];
                     // set meta information
                     changeStyleOnKernel(cell, data[1])
+                } else if (cell.metadata.show_output === true) {
+                    // #639
+                    // if kernel is different, changeStyleOnKernel would set show_output.
+                    // otherwise we mark show_output
+                    $('.output_subarea', cell.element).addClass('show_output');
                 }
             } else if (msg_type == 'preview-input') {
                 cell = window.my_panel.cell;
