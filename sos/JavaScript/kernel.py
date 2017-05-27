@@ -66,32 +66,25 @@ class sos_JavaScript:
         self.sos_kernel = sos_kernel
         self.kernel_name = 'javascript'
         self.background_color = '#00ff80'
-        self.init_statements = ''
+        self.init_statements = JS_init_statement
 
     def sos_to_lan(self, name, obj):
-        return name, '{} = {}'.format(new_name, _JS_repr(obj))
+        return name, '{} = {}'.format(name, _JS_repr(obj))
 
     def lan_to_sos(self, items):
         # first let us get all variables with names starting with sos
-        response = self.sos_kernel.get_response('__get_sos_vars()', ('display_data', 'execute_result'))[0][1]
+        response = self.sos_kernel.get_response('__get_sos_vars()', ('execute_result'))[0][1]
         expr = response['data']['text/plain']
-        all_vars = eval(eval(expr.split(' ', 1)[-1]))
-        all_vars = [all_vars] if isinstance(all_vars, str) else all_vars
-
-        items += [x for x in all_vars if x.startswith('sos')]
-
-        for item in items:
-            if '.' in item:
-                self.sos_kernel.warn('Variable {} is put to SoS as {}'.format(item, item.replace('.', '_')))
+        items += eval(expr)
 
         if not items:
             return {}
 
-        py_repr = 'JSON.strinify({})'.format(','.join('{0}={0}'.format(x) for x in items))
-
-        response = self.sos_kernel.get_response(py_repr, ('display_data', 'execute_result'))[0][1]
+        py_repr = 'JSON.stringify({{ {} }})'.format(','.join('"{0}":{0}'.format(x) for x in items))
+        response = self.sos_kernel.get_response(py_repr, ('execute_result'))[0][1]
         expr = response['data']['text/plain']
         try:
-            return eval(eval(expr.split(' ', 1)[-1]))
+            return json.loads(eval(expr))
         except Exception as e:
-            raise UsageError('Failed to convert {} to Python object: {}'.format(expr, e))
+            self.sos_kernel.warn('Failed to convert {} to Python object: {}'.format(expr, e))
+            return {}
