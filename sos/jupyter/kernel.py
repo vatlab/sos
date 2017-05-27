@@ -379,6 +379,10 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('-c', '--commit', action='store_true',
             help='''Commit the saved file to git directory using command
             git commit FILE''')
+        parser.add_argument('-a', '--all', action='store_true',
+            help='''The --all option for sos convert script.ipynb script.sos, which
+            saves all cells and their metadata to a .sos file, that contains all input
+            information of the notebook but might not be executable in batch mode.''')
         parser.add_argument('-m', '--message',
             help='''Message for git commit. Default to "save FILENAME"''')
         parser.add_argument('-p', '--push', action='store_true',
@@ -2116,8 +2120,15 @@ class SoS_Kernel(IPythonKernel):
                     raise ValueError('Cannot overwrite existing output file {}'.format(filename))
                 #self.send_frontend_msg('preview-workflow', self._workflow)
                 if ftype == 'sos':
-                    with open(filename, 'w') as script:
-                        script.write(self._workflow)
+                    if not args.all:
+                        with open(filename, 'w') as script:
+                            script.write(self._workflow)
+                    else:
+                        # convert to sos report
+                        from sos.jupyter.converter import notebook_to_script
+                        arg = argparse.Namespace()
+                        arg.all = True
+                        notebook_to_script(self._notebook_name + '.ipynb', filename, sargs=arg, unknown_args=[])
                     if args.setx:
                         import stat
                         os.chmod(filename, os.stat(filename).st_mode | stat.S_IEXEC)
