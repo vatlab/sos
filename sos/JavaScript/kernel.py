@@ -56,7 +56,9 @@ def _JS_repr(obj):
                 numpy.float64, numpy.matrixlib.defmatrix.matrix, numpy.ndarray)):
             return json.dumps(obj.tolist())
         elif isinstance(obj, pandas.DataFrame):
-            return  obj.to_json(orient='index')
+            return obj.to_json(orient='index')
+        elif isinstance(obj, set):
+            return json.dumps(list(obj))
         else:
             return 'Unsupported seralizable data {} with type {}'.format(short_repr(obj), obj.__class__.__name__)
 
