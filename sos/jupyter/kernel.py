@@ -321,14 +321,13 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('items', nargs='*',
             help='''Filename, variable name, or expression. Wildcard characters
                 such as '*' and '?' are allowed for filenames.''')
-        parser.add_argument('-f', '--formatter', choices=['DataTables'],
-            help='''Use specified formatter to display the resulting table (csv file)
-            or Pandas DataFrame. Currently only DataTables are supported.''')
         parser.add_argument('-k', '--kernel',
             help='''kernel in which variables will be previewed. By default
             the variable will be previewed in the current kernel of the cell.''')
         parser.add_argument('-w', '--workflow', action='store_true',
             help='''Preview notebook workflow''')
+        parser.add_argument('-s', '--style',
+            help='''Style of preview, which varies on the type of data.''')
         parser.add_argument('--off', action='store_true',
             help='''Turn off file preview''')
         parser.add_argument('-p', '--panel', action='store_true',
@@ -1448,7 +1447,7 @@ class SoS_Kernel(IPythonKernel):
             self.warn('Failed to interpolate {}: {}\n'.format(short_repr(option), e))
             return None
 
-    def handle_magic_preview(self, items, kernel=None, formatter=None):
+    def handle_magic_preview(self, items, kernel=None, style=None):
         # find filenames and quoted expressions
         self.send_frontend_msg('preview-input', '%preview {}'.format(' '.join(items)))
         # expand items
@@ -1493,7 +1492,7 @@ class SoS_Kernel(IPythonKernel):
                         except:
                             pass
                     if use_sos:
-                        obj_desc, (format_dict, md_dict) = self.preview_var(item, formatter)
+                        obj_desc, (format_dict, md_dict) = self.preview_var(item, style)
                         self.send_frontend_msg('display_data',
                             {'metadata': {},
                             'data': {'text/plain': '>>> ' + item + ':\n',
@@ -1648,7 +1647,7 @@ class SoS_Kernel(IPythonKernel):
                 for filename in output_files:
                     self.preview_file(filename)
 
-    def preview_var(self, item, formatter=None):
+    def preview_var(self, item, style=None):
 
         if item in env.sos_dict:
             obj = env.sos_dict[item]
@@ -1664,15 +1663,17 @@ class SoS_Kernel(IPythonKernel):
             txt += ' of length {}'.format(obj.__len__())
         if callable(obj) or isinstance(obj, ModuleType):
             return txt, ({'text/plain': pydoc.render_doc(obj, title='SoS Documentation: %s')}, {})
-        elif formatter == 'DataTables':
-            # the item should be a Pandas DataFrame
-            if hasattr(obj, 'to_html'):
-                code = obj.to_html().replace('class=', 'id="dataframe_{}" class='.format(item), 1)
-                self.send_frontend_msg('show_table', ['dataframe_{}'.format(item), code])
-                return txt, ({'text/html': HTML('<iframe src="about:blank" id="iframe_dataframe_{}" width="100%" height="400px"></iframe>'
-                    .format(item)).data}, {})
+        elif style:
+            if style == 'full':
+                try:
+                    code = obj.to_html().replace('class=', 'id="dataframe_{}" class='.format(item), 1)
+                    return txt, ({'text/html': HTML(code).data}, {})
+                except Exception as e:
+                    self.warn('Failed to preview {} in {} style: {}'.format(short_repr(obj),
+                        style, e))
+                    return txt, self.format_obj(obj)
             else:
-                self.warn('Cannot use DataTables on object of type {}'.format(obj.__class__.__name__))
+                self.warn('Unknown style {}'.format(style))
                 return txt, self.format_obj(obj)
         else:
             return txt, self.format_obj(obj)
@@ -2256,7 +2257,7 @@ class SoS_Kernel(IPythonKernel):
                     self.send_frontend_msg('stream',
                         {'name': 'stdout', 'text': self._workflow})
                 if not args.off and args.items:
-                    self.handle_magic_preview(args.items, args.kernel, args.formatter)
+                    self.handle_magic_preview(args.items, args.kernel, args.style)
         elif self.MAGIC_CD.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_cd(options)
