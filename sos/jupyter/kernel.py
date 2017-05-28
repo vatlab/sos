@@ -1667,10 +1667,35 @@ class SoS_Kernel(IPythonKernel):
         elif formatter == 'DataTables':
             # the item should be a Pandas DataFrame
             if hasattr(obj, 'to_html'):
-                code = obj.to_html().replace('class=', 'id="dataframe_{}" class='.format(item), 1)
-                self.send_frontend_msg('show_table', ['dataframe_{}'.format(item), code])
-                return txt, ({'text/html': HTML('<iframe src="about:blank" id="iframe_dataframe_{}" width="100%" height="400px"></iframe>'
-                    .format(item)).data}, {})
+                code = '''
+<div id="datatable-container-{id_container}">
+<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.15/css/jquery.dataTables.css">
+<script type="text/javascript" charset="utf8" src="//cdn.datatables.net/1.10.15/js/jquery.dataTables.js"></script>
+
+<script type="text/javascript">
+    (function () {{
+      var dt = 100;
+      function tablify() {{
+        if ( $().dataTable === undefined ) {{
+          console.log("no dataTable");
+          dt = dt * 1.5; // slow-down checks for datatable as time goes on;
+          setTimeout(tablify, dt);
+          return;
+        }}
+      $('#datatable-container-{id_container} table.datatable').dataTable();
+      }}
+      $(document).ready(tablify)
+      // tablify();
+    }})();
+</script>
+<!-- Insert table below -->
+  {table}
+</div>
+    '''.format(
+        id_container="dataframe_{}".format(item),
+        table=obj.to_html(index=False, classes="datatable dataframe"))
+                # self.send_frontend_msg('show_table', 'dataframe_{}'.format(item))
+                return txt, ({'text/html': HTML(code).data}, {})
             else:
                 self.warn('Cannot use DataTables on object of type {}'.format(obj.__class__.__name__))
                 return txt, self.format_obj(obj)

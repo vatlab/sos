@@ -176,6 +176,38 @@ define([
     }
 
 
+    function loadFiles(files, fn) {
+        if (!files.length) {
+            files = [];
+        }
+        var head = document.head || document.getElementsByTagName('head')[0];
+
+        function loadFile(index) {
+            if (files.length > index) {
+                if (files[index].endsWith('.css')) {
+                    var fileref = document.createElement('link');
+                    fileref.setAttribute("rel", "stylesheet");
+                    fileref.setAttribute("type", "text/css");
+                    fileref.setAttribute("href", files[index]);
+                } else {
+                    var fileref = document.createElement('script');
+                    fileref.setAttribute("type", "text/javascript");
+                    fileref.setAttribute("src", files[index]);
+                }
+                console.log('Load ' + files[index]);
+                head.appendChild(fileref);
+                index = index + 1;
+                // Used to call a callback function
+                fileref.onload = function() {
+                    loadFile(index);
+                }
+            } else if (fn) {
+                fn();
+            }
+        }
+        loadFile(0);
+    }
+
     function register_sos_comm() {
         // comm message sent from the kernel
         window.sos_comm = Jupyter.notebook.kernel.comm_manager.new_comm('sos_comm', {});
@@ -388,30 +420,6 @@ define([
                     mem.push([data[1][i] * 1000, data[3][i]]);
                 }
 
-                function loadFiles(files, fn) {
-                    if (!files.length) {
-                        files = [];
-                    }
-                    var head = document.head || document.getElementsByTagName('head')[0];
-
-                    function loadFile(index) {
-                        if (files.length > index) {
-                            var fileref = document.createElement('script');
-                            fileref.setAttribute("type", "text/javascript");
-                            fileref.setAttribute("src", files[index]);
-                            head.appendChild(fileref);
-                            index = index + 1;
-                            // Used to call a callback function
-                            fileref.onload = function() {
-                                loadFile(index);
-                            }
-                        } else if (fn) {
-                            fn();
-                        }
-                    }
-                    loadFile(0);
-                }
-
                 //$.getScript("http://www.flotcharts.org/flot/jquery.flot.js", function() {
                 loadFiles(["http://www.flotcharts.org/flot/jquery.flot.js",
                     "http://www.flotcharts.org/flot/jquery.flot.time.js"
@@ -443,29 +451,28 @@ define([
                     });
                 });
             } else if (msg_type == 'show_table') {
+
                 var dt = 100;
-                function inject_table() {
-                    if (  document.getElementById('iframe_' + data[0]) === null ) {
+                // the frontend might be notified before the table is inserted as results.
+                function tablify() {
+                    if (  $().DataTable === undefined || $('#' + data).length === 0 ) {
+                          console.log('wait for ' +  ($().DataTable === undefined).toString() + " t " +  $('#' + data).length.toString());
                           dt = dt * 1.5; // slow-down checks for datatable as time goes on;
-                          setTimeout(inject_table, dt);
+                          setTimeout(tablify, dt);
                           return;
                     } else {
-                        var doc = document.getElementById('iframe_' + data[0]).contentWindow.document;
-                        doc.open();
-                        doc.write('<html>\n' +
-'<head>\n' + 
-'  <link rel="stylesheet" type="text/css" href="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css">\n' +
-'</head>\n' +
-'<body>\n' + data[1] + 
-'<script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.2.min.js"></script>\n' + 
-'<script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>\n' +
-'<script>\n' +
-'$(function(){ $("#' + data[0] + '").dataTable(); })' +
-'</script>\n</body>\n</html>');
-                        doc.close();
+                        console.log('show table ' + data);
+                        $('#' + data).DataTable( {
+                            paging: false,
+                            scrollY: 400,
+                            compact: true,
+                            over: true,
+                            nowrap: true });
                     }
                 }
-                inject_table();
+                //loadFiles(["//cdn.datatables.net/1.10.15/css/jquery.dataTables.css",
+                //    "//cdn.datatables.net/1.10.15/js/jquery.dataTables.js"], tablify);
+                tablify();
             } else if (msg_type == 'show_toc') {
                 show_toc();
             } else {
