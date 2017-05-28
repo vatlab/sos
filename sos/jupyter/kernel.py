@@ -1668,8 +1668,9 @@ class SoS_Kernel(IPythonKernel):
             # the item should be a Pandas DataFrame
             if hasattr(obj, 'to_html'):
                 code = obj.to_html().replace('class=', 'id="dataframe_{}" class='.format(item), 1)
-                self.send_frontend_msg('show_table', 'dataframe_{}'.format(item))
-                return txt, ({'text/html': HTML(code).data}, {})
+                self.send_frontend_msg('show_table', ['dataframe_{}'.format(item), code])
+                return txt, ({'text/html': HTML('<iframe src="about:blank" id="iframe_dataframe_{}" width="100%" height="400px"></iframe>'
+                    .format(item)).data}, {})
             else:
                 self.warn('Cannot use DataTables on object of type {}'.format(obj.__class__.__name__))
                 return txt, self.format_obj(obj)

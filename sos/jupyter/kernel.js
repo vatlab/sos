@@ -442,6 +442,30 @@ define([
                         }
                     });
                 });
+            } else if (msg_type == 'show_table') {
+                var dt = 100;
+                function inject_table() {
+                    if (  document.getElementById('iframe_' + data[0]) === null ) {
+                          dt = dt * 1.5; // slow-down checks for datatable as time goes on;
+                          setTimeout(inject_table, dt);
+                          return;
+                    } else {
+                        var doc = document.getElementById('iframe_' + data[0]).contentWindow.document;
+                        doc.open();
+                        doc.write('<html>\n' +
+'<head>\n' + 
+'  <link rel="stylesheet" type="text/css" href="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css">\n' +
+'</head>\n' +
+'<body>\n' + data[1] + 
+'<script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.2.min.js"></script>\n' + 
+'<script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>\n' +
+'<script>\n' +
+'$(function(){ $("#' + data[0] + '").dataTable(); })' +
+'</script>\n</body>\n</html>');
+                        doc.close();
+                    }
+                }
+                inject_table();
             } else if (msg_type == 'show_toc') {
                 show_toc();
             } else {
