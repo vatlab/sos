@@ -1479,6 +1479,12 @@ define([
                 '    box-shadow: 13px 0px 0px #aaaaaa;' +
                 '}' +
                 '' +
+                '.dataframe_container { max-height: 400px } ' +
+                '.dataframe_input {' +
+                '    border: 1px solid #ddd; ' +
+                '    margin-bottom: 5px;' +
+                '}' +
+                '' +
                 '.toc-item-highlight-select  {background-color: Gold}' +
                 '.toc-item-highlight-execute  {background-color: red}' +
                 '.lev1 {margin-left: 5px}' +

@@ -1666,7 +1666,39 @@ class SoS_Kernel(IPythonKernel):
         elif style:
             if style == 'full':
                 try:
-                    code = obj.to_html().replace('class=', 'id="dataframe_{}" class='.format(item), 1)
+                    if not hasattr(self, '_tid'):
+                        self._tid = 1
+                    else:
+                        self._tid += 1
+                    code = obj.to_html().replace('class=', 'id="dataframe_{}" class='.format(self._tid), 1)
+                    code = """
+<div class='dataframe_container'>
+<input type="text" class='dataframe_input' id="search_{}" """.format(self._tid) + \
+"""onkeyup="filterTable('{}""".format(self._tid) + """')" placeholder="Search for names..">
+""" + code + '''
+<script>
+function filterTable(id) {
+  var input, filter, table, tr, td, i;
+  input = document.getElementById("search_" + id);
+  filter = input.value.toUpperCase();
+  table = document.getElementById("dataframe_" + id);
+  tr = table.getElementsByTagName("tr");
+
+  // Loop through all table rows, and hide those who don't match the search query
+  for (i = 0; i < tr.length; i++) {
+    td = tr[i].getElementsByTagName("td")[0];
+    if (td) {
+      if (td.innerHTML.toUpperCase().indexOf(filter) > -1) {
+        tr[i].style.display = "";
+      } else {
+        tr[i].style.display = "none";
+      }
+    } 
+  }
+}
+</script>
+</div>
+'''
                     return txt, ({'text/html': HTML(code).data}, {})
                 except Exception as e:
                     self.warn('Failed to preview {} in {} style: {}'.format(short_repr(obj),
