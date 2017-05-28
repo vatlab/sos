@@ -326,8 +326,9 @@ class SoS_Kernel(IPythonKernel):
             the variable will be previewed in the current kernel of the cell.''')
         parser.add_argument('-w', '--workflow', action='store_true',
             help='''Preview notebook workflow''')
+        # this option is currently hidden
         parser.add_argument('-s', '--style',
-            help='''Style of preview, which varies on the type of data.''')
+            help=argparse.SUPPRESS)
         parser.add_argument('--off', action='store_true',
             help='''Turn off file preview''')
         parser.add_argument('-p', '--panel', action='store_true',
@@ -1647,31 +1648,16 @@ class SoS_Kernel(IPythonKernel):
                 for filename in output_files:
                     self.preview_file(filename)
 
-    def preview_var(self, item, style=None):
-
-        if item in env.sos_dict:
-            obj = env.sos_dict[item]
+    def preview_dataframe(self, df):
+        import pandas
+        if not isinstance(df, pandas.core.frame.DataFrame):
+            raise ValuError('Not of DataFrame type')
+        if not hasattr(self, '_tid'):
+            self._tid = 1
         else:
-            obj = SoS_eval(item, sigil=get_default_global_sigil())
-        # get the basic information of object
-        txt = type(obj).__name__
-        # we could potentially check the shape of data frame and matrix
-        # but then we will need to import the numpy and pandas libraries
-        if hasattr(obj, 'shape'):
-            txt += ' of shape {}'.format(getattr(obj, 'shape'))
-        elif isinstance(obj, Sized):
-            txt += ' of length {}'.format(obj.__len__())
-        if callable(obj) or isinstance(obj, ModuleType):
-            return txt, ({'text/plain': pydoc.render_doc(obj, title='SoS Documentation: %s')}, {})
-        elif style:
-            if style == 'full':
-                try:
-                    if not hasattr(self, '_tid'):
-                        self._tid = 1
-                    else:
-                        self._tid += 1
-                    code = obj.to_html().replace('class=', 'id="dataframe_{}" class='.format(self._tid), 1)
-                    code = """
+            self._tid += 1
+        code = df.to_html().replace('class=', 'id="dataframe_{}" class='.format(self._tid), 1)
+        code = """
 <div class='dataframe_container'>
 <input type="text" class='dataframe_input' id="search_{}" """.format(self._tid) + \
 """onkeyup="filterTable('{}""".format(self._tid) + """')" placeholder="Search for names..">
@@ -1699,13 +1685,28 @@ function filterTable(id) {
 </script>
 </div>
 '''
-                    return txt, ({'text/html': HTML(code).data}, {})
-                except Exception as e:
-                    self.warn('Failed to preview {} in {} style: {}'.format(short_repr(obj),
-                        style, e))
-                    return txt, self.format_obj(obj)
-            else:
-                self.warn('Unknown style {}'.format(style))
+        return {'text/html': HTML(code).data}, {}
+ 
+    def preview_var(self, item, style=None):
+
+        if item in env.sos_dict:
+            obj = env.sos_dict[item]
+        else:
+            obj = SoS_eval(item, sigil=get_default_global_sigil())
+        # get the basic information of object
+        txt = type(obj).__name__
+        # we could potentially check the shape of data frame and matrix
+        # but then we will need to import the numpy and pandas libraries
+        if hasattr(obj, 'shape'):
+            txt += ' of shape {}'.format(getattr(obj, 'shape'))
+        elif isinstance(obj, Sized):
+            txt += ' of length {}'.format(obj.__len__())
+        if callable(obj) or isinstance(obj, ModuleType):
+            return txt, ({'text/plain': pydoc.render_doc(obj, title='SoS Documentation: %s')}, {})
+        elif hasattr(obj, 'to_html'):
+            try:
+                return txt, self.preview_dataframe(obj)
+            except Exception as e:
                 return txt, self.format_obj(obj)
         else:
             return txt, self.format_obj(obj)
