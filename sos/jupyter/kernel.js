@@ -96,6 +96,25 @@ define([
         KernelList.push([data[i][0], data[i][0]])
     }
 
+    var filterTable = function(id) {
+		var input = document.getElementById("search_" + id);
+		var filter = input.value.toUpperCase();
+		var table = document.getElementById("dataframe_" + id);
+		var tr = table.getElementsByTagName("tr");
+
+		// Loop through all table rows, and hide those who don't match the search query
+		for (var i = 0; i < tr.length; i++) {
+			var td = tr[i].getElementsByTagName("td")[0];
+			if (td) {
+				if (td.innerHTML.toUpperCase().indexOf(filter) > -1) {
+					tr[i].style.display = "";
+				} else {
+					tr[i].style.display = "none";
+				}
+			} 
+		}
+    }
+
     var my_execute = function(code, callbacks, options) {
         "use strict"
         /* check if the code is a workflow call, which is marked by

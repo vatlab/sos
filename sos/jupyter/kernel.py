@@ -1686,30 +1686,7 @@ class SoS_Kernel(IPythonKernel):
     <div class='dataframe_container'>
     <input type="text" class='dataframe_input' id="search_{}" """.format(self._tid) + \
     """onkeyup="filterTable('{}""".format(self._tid) + """')" placeholder="Search for names..">
-    """ + code + '''
-    <script>
-    function filterTable(id) {
-    var input, filter, table, tr, td, i;
-    input = document.getElementById("search_" + id);
-    filter = input.value.toUpperCase();
-    table = document.getElementById("dataframe_" + id);
-    tr = table.getElementsByTagName("tr");
-
-    // Loop through all table rows, and hide those who don't match the search query
-    for (i = 0; i < tr.length; i++) {
-    td = tr[i].getElementsByTagName("td")[0];
-    if (td) {
-      if (td.innerHTML.toUpperCase().indexOf(filter) > -1) {
-        tr[i].style.display = "";
-      } else {
-        tr[i].style.display = "none";
-      }
-    } 
-    }
-    }
-    </script>
-    </div>
-    '''
+    """ + code + '''</div>'''
         return {'text/html': HTML(code).data}, {}
 
     def preview_file(self, filename):
