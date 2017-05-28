@@ -41,7 +41,6 @@ from sos.utils import env, WorkflowDict, short_repr, pretty_size, PrettyRelative
 from sos._version import __sos_version__, __version__
 from sos.sos_eval import SoS_exec, SoS_eval, interpolate, get_default_global_sigil
 from sos.sos_syntax import SOS_SECTION_HEADER
-from sos.jupyter.preview import preview_dataframe
 
 from IPython.lib.clipboard import ClipboardEmpty, osx_clipboard_get, tkinter_clipboard_get
 from IPython.core.error import UsageError
@@ -1666,11 +1665,52 @@ class SoS_Kernel(IPythonKernel):
             return txt, ({'text/plain': pydoc.render_doc(obj, title='SoS Documentation: %s')}, {})
         elif hasattr(obj, 'to_html'):
             try:
-                return txt, preview_dataframe(obj, self)
+                return txt, self.preview_dataframe(obj)
             except Exception as e:
                 return txt, self.format_obj(obj)
         else:
             return txt, self.format_obj(obj)
+
+    def preview_dataframe(self, df):
+        import pandas
+        if not isinstance(df, pandas.core.frame.DataFrame):
+            raise ValuError('Not of DataFrame type')
+        if not hasattr(self, '_tid'):
+            self._tid = 1
+        else:
+            self._tid += 1
+        if df.shape[0] > 2000:
+            self.warn("Only the first 2000 of the {} rows are previewed.".format(df.shape[0]))
+        code = df.head(2000).to_html().replace('class=', 'id="dataframe_{}" class='.format(self._tid), 1)
+        code = """
+    <div class='dataframe_container'>
+    <input type="text" class='dataframe_input' id="search_{}" """.format(self._tid) + \
+    """onkeyup="filterTable('{}""".format(self._tid) + """')" placeholder="Search for names..">
+    """ + code + '''
+    <script>
+    function filterTable(id) {
+    var input, filter, table, tr, td, i;
+    input = document.getElementById("search_" + id);
+    filter = input.value.toUpperCase();
+    table = document.getElementById("dataframe_" + id);
+    tr = table.getElementsByTagName("tr");
+
+    // Loop through all table rows, and hide those who don't match the search query
+    for (i = 0; i < tr.length; i++) {
+    td = tr[i].getElementsByTagName("td")[0];
+    if (td) {
+      if (td.innerHTML.toUpperCase().indexOf(filter) > -1) {
+        tr[i].style.display = "";
+      } else {
+        tr[i].style.display = "none";
+      }
+    } 
+    }
+    }
+    </script>
+    </div>
+    '''
+        return {'text/html': HTML(code).data}, {}
 
     def preview_file(self, filename):
         if not os.path.isfile(filename):

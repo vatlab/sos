@@ -23,47 +23,6 @@ import base64
 from IPython.core.display import HTML
 from sos.utils import env, dehtml
 
-def preview_dataframe(df, kernel=None):
-    import pandas
-    if not isinstance(df, pandas.core.frame.DataFrame):
-        raise ValuError('Not of DataFrame type')
-    if not hasattr(kernel, '_tid'):
-        kernel._tid = 1
-    else:
-        kernel._tid += 1
-    if df.shape[0] > 2000:
-        kernel.warn("Only the first 2000 of the {} rows are previewed.".format(df.shape[0]))
-    code = df.head(2000).to_html().replace('class=', 'id="dataframe_{}" class='.format(kernel._tid), 1)
-    code = """
-<div class='dataframe_container'>
-<input type="text" class='dataframe_input' id="search_{}" """.format(kernel._tid) + \
-"""onkeyup="filterTable('{}""".format(kernel._tid) + """')" placeholder="Search for names..">
-""" + code + '''
-<script>
-function filterTable(id) {
-var input, filter, table, tr, td, i;
-input = document.getElementById("search_" + id);
-filter = input.value.toUpperCase();
-table = document.getElementById("dataframe_" + id);
-tr = table.getElementsByTagName("tr");
-
-// Loop through all table rows, and hide those who don't match the search query
-for (i = 0; i < tr.length; i++) {
-td = tr[i].getElementsByTagName("td")[0];
-if (td) {
-  if (td.innerHTML.toUpperCase().indexOf(filter) > -1) {
-    tr[i].style.display = "";
-  } else {
-    tr[i].style.display = "none";
-  }
-} 
-}
-}
-</script>
-</div>
-'''
-    return {'text/html': HTML(code).data}, {}
-
 def preview_img(filename, kernel=None):
     with open(filename, 'rb') as f:
         image = f.read()
@@ -117,7 +76,7 @@ def preview_csv(filename, kernel=None):
     try:
         import pandas
         data = pandas.read_csv(filename)
-        return preview_dataframe(data, kernel)
+        return kernel.preview_dataframe(data)
     except Exception as e:
         env.logger.warning(e)
         return ''
@@ -127,7 +86,7 @@ def preview_xls(filename, kernel=None):
         import pandas
         data = pandas.read_excel(filename)
         html = data._repr_html_()
-        return preview_dataframe(data, kernel)
+        return kernel.preview_dataframe(data)
     except Exception as e:
         env.logger.warning(e)
         return ''
