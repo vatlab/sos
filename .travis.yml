@@ -34,9 +34,7 @@ before_install:
     # add docker
     - pip install docker
     # packages required by SoS
-    - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm entrypoints
-    # seems to be needed to get nbconvert 5.1.1 installed
-    - conda upgrade -y nbconvert
+    - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm 
     - pip install fasteners pygments ipython ptpython networkx pydotplus
     # for testing purposes
     - pip install nose
