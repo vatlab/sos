@@ -96,7 +96,7 @@ define([
         KernelList.push([data[i][0], data[i][0]])
     }
 
-    var filterTable = function(id) {
+    window.filterDataFrame = function(id) {
 		var input = document.getElementById("search_" + id);
 		var filter = input.value.toUpperCase();
 		var table = document.getElementById("dataframe_" + id);
@@ -114,6 +114,62 @@ define([
 			} 
 		}
     }
+
+	window.sortDataFrame = function(id, n, tag) {
+		var switchcount = 0;
+		var table = document.getElementById("dataframe_" + id);
+		var switching = true;
+		var shouldSwitch = false;
+		//Set the sorting direction to ascending:
+		var dir = "asc"; 
+		var rows;
+		/*Make a loop that will continue until no switching has been done:*/
+		while (switching) {
+			//start by saying: no switching is done:
+			switching = false;
+			rows = table.getElementsByTagName("TR");
+			/*Loop through all table rows (except the
+				first, which contains table headers):*/
+			for (var i = 1; i < (rows.length - 1); i++) {
+				//start by saying there should be no switching:
+				shouldSwitch = false;
+				/*Get the two elements you want to compare,
+					one from current row and one from the next:*/
+				var x = rows[i].getElementsByTagName(tag)[n];
+				var y = rows[i + 1].getElementsByTagName(tag)[n];
+				/*check if the two rows should switch place,
+					based on the direction, asc or desc:*/
+				if (dir == "asc") {
+					if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+						//if so, mark as a switch and break the loop:
+						shouldSwitch= true;
+						break;
+					}
+				} else if (dir == "desc") {
+					if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+						//if so, mark as a switch and break the loop:
+						shouldSwitch= true;
+						break;
+					}
+				}
+			}
+			if (shouldSwitch) {
+				/*If a switch has been marked, make the switch
+				and mark that a switch has been done:*/
+				rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+				switching = true;
+				//Each time a switch is done, increase this count by 1:
+				switchcount ++; 
+			} else {
+				/*If no switching has been done AND the direction is "asc",
+				set the direction to "desc" and run the while loop again.*/
+				if (switchcount == 0 && dir == "asc") {
+					dir = "desc";
+					switching = true;
+				}
+			}
+		}
+	}
 
     var my_execute = function(code, callbacks, options) {
         "use strict"

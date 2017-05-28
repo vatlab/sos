@@ -1681,11 +1681,17 @@ class SoS_Kernel(IPythonKernel):
             self._tid += 1
         if df.shape[0] > 2000:
             self.warn("Only the first 2000 of the {} rows are previewed.".format(df.shape[0]))
-        code = df.head(2000).to_html().replace('class=', 'id="dataframe_{}" class='.format(self._tid), 1)
+        code = df.head(2000).to_html(index=True).replace('class=', 'id="dataframe_{}" class='.format(self._tid), 1)
+        hr, rest = code.split('</tr>', 1)
+        code = ''.join('''<th onclick="sortDataFrame('{}', {}, '{}')"> {}'''.format(
+            self._tid, idx - (2 if show_index else 1),
+                "TH" if idx == 1 else "TD", x) if idx > 0 else x \
+                for idx,x in enumerate(hr.split('<th>')  )) + '</tr>' + rest
+
         code = """
     <div class='dataframe_container'>
     <input type="text" class='dataframe_input' id="search_{}" """.format(self._tid) + \
-    """onkeyup="filterTable('{}""".format(self._tid) + """')" placeholder="Search for names..">
+    """onkeyup="filterDataFrame('{}""".format(self._tid) + """')" placeholder="Search for names..">
     """ + code + '''</div>'''
         return {'text/html': HTML(code).data}, {}
 
