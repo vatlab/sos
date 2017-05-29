@@ -36,7 +36,7 @@ class Visualizer:
             self.style = 'table'
             self.options = []
         else:
-            self.style = style['style']
+            self.style = 'table' if style['style'] is None else style['style']
             self.options = style['options']
 
     def _parse_error(self, msg):
@@ -47,6 +47,8 @@ class Visualizer:
             return self._handle_table(df)
         elif self.style == 'scatterplot':
             return self._handle_scatterplot(df)
+        else:
+            raise ValueError('Unknown style {}'.format(self.style))
 
     def get_tid(self):
         if not hasattr(self.kernel, '_tid'):
