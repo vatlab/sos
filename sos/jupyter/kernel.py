@@ -1673,6 +1673,7 @@ class SoS_Kernel(IPythonKernel):
 
     def preview_dataframe(self, df):
         import pandas
+        import numpy
         if not isinstance(df, pandas.core.frame.DataFrame):
             raise ValuError('Not of DataFrame type')
         if not hasattr(self, '_tid'):
@@ -1683,10 +1684,12 @@ class SoS_Kernel(IPythonKernel):
             self.warn("Only the first 2000 of the {} rows are previewed.".format(df.shape[0]))
         code = df.head(2000).to_html(index=True).replace('class=', 'id="dataframe_{}" class='.format(self._tid), 1)
         hr, rest = code.split('</tr>', 1)
+        index_type = 'numeric' if isinstance(df.index, pandas.indexes.range.RangeIndex) else 'alphabetic'
+        col_type = ['numeric' if numpy.issubdtype(x, numpy.number) else 'alphabetic' for x in df.dtypes]
         code = ''.join('''<th onclick="sortDataFrame('{}', {}, '{}')"> {}'''.format(
-            self._tid, idx - (2 if show_index else 1),
-                "TH" if idx == 1 else "TD", x) if idx > 0 else x \
-                for idx,x in enumerate(hr.split('<th>')  )) + '</tr>' + rest
+            self._tid, idx - 1,
+            index_type if idx == 1 else col_type[idx-2],
+            x) if idx > 0 else x for idx,x in enumerate(hr.split('<th>')  )) + '</tr>' + rest
 
         code = """
     <div class='dataframe_container'>

@@ -115,59 +115,47 @@ define([
 		}
     }
 
-	window.sortDataFrame = function(id, n, tag) {
-		var switchcount = 0;
+	window.sortDataFrame = function(id, n, dtype) {
 		var table = document.getElementById("dataframe_" + id);
-		var switching = true;
-		var shouldSwitch = false;
-		//Set the sorting direction to ascending:
-		var dir = "asc"; 
-		var rows;
-		/*Make a loop that will continue until no switching has been done:*/
-		while (switching) {
-			//start by saying: no switching is done:
-			switching = false;
-			rows = table.getElementsByTagName("TR");
-			/*Loop through all table rows (except the
-				first, which contains table headers):*/
-			for (var i = 1; i < (rows.length - 1); i++) {
-				//start by saying there should be no switching:
-				shouldSwitch = false;
-				/*Get the two elements you want to compare,
-					one from current row and one from the next:*/
-				var x = rows[i].getElementsByTagName(tag)[n];
-				var y = rows[i + 1].getElementsByTagName(tag)[n];
-				/*check if the two rows should switch place,
-					based on the direction, asc or desc:*/
-				if (dir == "asc") {
-					if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
-						//if so, mark as a switch and break the loop:
-						shouldSwitch= true;
-						break;
-					}
-				} else if (dir == "desc") {
-					if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
-						//if so, mark as a switch and break the loop:
-						shouldSwitch= true;
-						break;
-					}
-				}
+
+		var tb = table.tBodies[0]; // use `<tbody>` to ignore `<thead>` and `<tfoot>` rows
+        var tr = Array.prototype.slice.call(tb.rows, 0); // put rows into array
+
+		if (dtype === 'numeric') {
+			var fn = function(a, b) { 
+				return parseFloat(a.cells[n].textContent) <= parseFloat(b.cells[n].textContent) ? -1 : 1;
 			}
-			if (shouldSwitch) {
-				/*If a switch has been marked, make the switch
-				and mark that a switch has been done:*/
-				rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-				switching = true;
-				//Each time a switch is done, increase this count by 1:
-				switchcount ++; 
-			} else {
-				/*If no switching has been done AND the direction is "asc",
-				set the direction to "desc" and run the while loop again.*/
-				if (switchcount == 0 && dir == "asc") {
-					dir = "desc";
-					switching = true;
+		} else {
+			var fn = function(a, b) {
+				var c = a.cells[n].textContent.trim().localeCompare(b.cells[n].textContent.trim()); 
+				return c > 0 ? 1 : (c < 0 ? -1 : 0) }
+		}
+		var isSorted = function(array, fn) {
+			if (array.length < 2)
+				return 1;
+			var direction = fn(array[0], array[1]); 
+			for (var i = 1; i < array.length - 1; ++i) {
+				var d = fn(array[i], array[i+1]);
+				if (d == 0)
+					continue;
+				else if (direction == 0)
+					direction = d;
+				else if (direction != d)
+					return 0;
 				}
-			}
+			return direction;
+		}
+
+		var sorted = isSorted(tr, fn);
+
+		if (sorted == 1 || sorted == -1) {
+			// if sorted already, reverse it
+			for(var i = tr.length - 1; i >= 0; --i)
+				tb.appendChild(tr[i]); // append each row in order
+		} else {
+			tr = tr.sort(fn);
+			for(var i = 0; i < tr.length; ++i)
+				tb.appendChild(tr[i]); // append each row in order
 		}
 	}
 
