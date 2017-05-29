@@ -103,14 +103,16 @@ define([
 		var tr = table.getElementsByTagName("tr");
 
 		// Loop through all table rows, and hide those who don't match the search query
-		for (var i = 0; i < tr.length; i++) {
-			var td = tr[i].getElementsByTagName("td")[0];
-			if (td) {
-				if (td.innerHTML.toUpperCase().indexOf(filter) > -1) {
+		for (var i = 1; i < tr.length; i++) {
+            for (var j = 0; j < tr[i].cells.length; ++j) {
+                var matched = false;
+                if (tr[i].cells[j].innerHTML.toUpperCase().indexOf(filter) != -1) {
 					tr[i].style.display = "";
-				} else {
-					tr[i].style.display = "none";
+                    matched = true
+                    break;
 				}
+                if (!matched)
+					tr[i].style.display = "none";
 			} 
 		}
     }
