@@ -29,6 +29,14 @@ from collections import defaultdict
 from IPython.core.display import HTML
 import json
 
+from itertools import tee
+import operator
+
+def is_sorted(iterable, compare=operator.le):
+  a, b = tee(iterable)
+  next(b, None)
+  return all(map(compare, a, b))
+
 class Visualizer:
     def __init__(self, kernel, style):
         self.kernel = kernel
@@ -105,16 +113,17 @@ class Visualizer:
     def _get_scatterplot_parser(self):
         parser = argparse.ArgumentParser(prog='%preview -s scatterplot')
         parser.add_argument('cols', nargs='*', help='''Columns to plot, which should all be numeric. If one
-            column is specified, it is assumed to be a x-y plot with x being 1, 2, 3, .... If two or
+            column is specified, it is assumed to be a x-y plot with x being 0, 1, 2, 3, .... If two or
             more columns (n) are specified, n-1 series will be plotted with the first column being the
-            x axis, in which case an "_index" name can be used to specify 1, 2, 3, .... This option can be
+            x axis, in which case an "_index" name can be used to specify 0, 1, 2, 3, .... This option can be
             igured if the dataframe has only one or two columns.''')
         parser.add_argument('--ylim', nargs=2, help='''Range of y-axis''')
         parser.add_argument('--xlim', nargs=2, help='''Range of x-axis''')
         parser.add_argument('--width', default='90%', help='''Width of the plot.''')
         parser.add_argument('--height', default='400px', help='''Height of the plot.''')
         parser.add_argument('--show', nargs='+', help='''What to show in the plot,
-            can be 'lines', 'points'. Default to both.''')
+            can be 'lines', 'points' or both. Default to points, and lines if x-axis is
+            sorted.''')
         parser.add_argument('-t', '--tooltip', nargs='*', help='''Fields to be shown in tooltip, in addition to
             the row index and point values that would be shown by default.''')
         parser.add_argument('-l', '--limit', default=2000, help='''Maximum number
@@ -175,13 +184,13 @@ class Visualizer:
                 raise ValueError("Column {} is not of numeric type".format(col))
 
         all_series = []
+        if args.cols[0] == '_index':
+            val_x = list(range(0, nrow))
+        else:
+            val_x = self._to_list(data[args.cols[0]])
         for col in args.cols[1:]:
             series = {}
             series['label'] = col
-            if args.cols[0] == '_index':
-                val_x = list(range(1, nrow + 1))
-            else:
-                val_x = self._to_list(data[args.cols[0]])
             if col == '_index':
                 val_y = list(range(1, nrow + 1))
             else:
@@ -196,10 +205,30 @@ class Visualizer:
             all_series.append(series)
 
         options = defaultdict(dict)
-        options['series']['lines'] = {'show': True if not args.show or 'lines' in args.show else False }
+        options['series']['lines'] = {'show': is_sorted(val_x) if not args.show or 'lines' in args.show else False }
         options['series']['points'] = {'show': True if not args.show or 'points' in args.show else False }
         options['grid']['hoverable'] = True
         options['grid']['clickable'] = True
+
+        # if there are actual indexes... and plot by x
+        optional_style = ''
+        if args.cols[0] == '_index' and not isinstance(df.index, pandas.indexes.range.RangeIndex):
+            options['xaxis']['ticks'] = [[x,str(y)] for x,y in enumerate(df.index)]
+            optional_style = r'''
+var css = document.createElement("style");
+css.type = "text/css";
+css.innerHTML = '' +
+   '#dataframe_scatterplot_{0} div.xAxis div.tickLabel {{\n' +
+   '  transform: translateY(15px) translateX(15px) rotate(45deg);\n' +
+   '  -ms-transform: translateY(15px) translateX(15px) rotate(45deg);\n' +
+   '  -moz-transform: translateY(15px) translateX(15px) rotate(45deg);\n' +
+   '  -webkit-transform: translateY(15px) translateX(15px) rotate(45deg);\n' +
+   '  -o-transform: translateY(15px) translateX(15px) rotate(45deg);\n' +
+   '  /*rotation-point:50% 50%;*/\n' +
+   '  /*rotation:270deg;*/\n' +
+   '}}\n'
+document.body.appendChild(css);
+'''.format(tid)
 
         if args.xlim:
             options['xaxis']['min'] = args.xlim[0]
@@ -248,7 +277,7 @@ class Visualizer:
 var dt = 100;
 // the frontend might be notified before the table is inserted as results.
 function showFigure{0}() {{
-    if ( $('#dataframe_scatterplot_{0}').length === 0 ) {{
+    if ( $('#dataframe_scatterplot_{0}').length === 0 || $.plot === undefined ) {{
           dt = dt * 1.5; // slow-down checks for datatable as time goes on;
           setTimeout("showFigure{0}", dt);
           return;
@@ -257,7 +286,8 @@ function showFigure{0}() {{
         plotScatterPlot{0}();
     }}
 }}
+{3}
 showFigure{0}()
 </script>
-</div>""".format(tid, args.width, args.height)
+</div>""".format(tid, args.width, args.height, optional_style)
         return {'text/html': HTML(code).data}, {}
