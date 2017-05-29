@@ -246,26 +246,26 @@ document.body.appendChild(css);
         plot = $.plot('#dataframe_scatterplot_{0}', """.format(tid, args.width, args.height) + \
         json.dumps(all_series) + """, """ + json.dumps(options) + """)
 
-    if ($('#tooltip').length == 0) {{
-        $('#dataframe_scatterplot_{0}')""".format(tid) + """.append($("<div id='tooltip'></div>").css({
-        position: "absolute",
-        display: "none",
-        border: "1px solid #fdd",
-        padding: "2px",
-        "background-color": "#fee",
-        opacity: 0.80
-        }));
+    if ($('#dftooltip').length == 0) {
+        $("<div id='dftooltip'></div>").css({
+            position: "fixed",
+            display: "none",
+            border: "1px solid #fdd",
+            padding: "2px",
+            "background-color": "#fee",
+            opacity: 0.80
+            }).appendTo("body");
     }
     """ + """
     $("#dataframe_scatterplot_{0}")""".format(tid) + """.bind("plothover", function (event, pos, item) {
             if (item) {
-                $("#tooltip").html((item.series.label + ": (" + 
+                $("#dftooltip").html((item.series.label + ": (" + 
                     item.series.data[item.dataIndex][0].toString() + ", " +
                     item.series.data[item.dataIndex][1].toString() + ")<br>" +
                     item.series.data[item.dataIndex][2]).trim()).css({top: item.pageY+5, left: item.pageX+5})
-                    .css('display', 'inline').fadeIn(200);
+                    .fadeIn(200);
             } else {
-                $("#tooltip").hide();
+                $("#dftooltip").hide();
             }
     });
     }
