@@ -185,7 +185,7 @@ class Visualizer:
             else:
                 val_y = self._to_list(data[col])
 
-            tooltip = ['<br>'.join(['{}: {}'.format('index' if t == '_index' else x,
+            tooltip = ['<br>'.join(['{}: {}'.format('index' if t == '_index' else t,
                 idxvalue if t == '_index' else df[t][idx] ) for t in args.tooltip])
                 for idx,idxvalue in enumerate(indexes)]
             series['data'] = [(x, y, z) for x, y, z in zip(val_x, val_y, tooltip)]
