@@ -515,29 +515,6 @@ define([
                         }
                     });
                 });
-            } else if (msg_type == 'show_table') {
-
-                var dt = 100;
-                // the frontend might be notified before the table is inserted as results.
-                function tablify() {
-                    if (  $().DataTable === undefined || $('#' + data).length === 0 ) {
-                          console.log('wait for ' +  ($().DataTable === undefined).toString() + " t " +  $('#' + data).length.toString());
-                          dt = dt * 1.5; // slow-down checks for datatable as time goes on;
-                          setTimeout(tablify, dt);
-                          return;
-                    } else {
-                        console.log('show table ' + data);
-                        $('#' + data).DataTable( {
-                            paging: false,
-                            scrollY: 400,
-                            compact: true,
-                            over: true,
-                            nowrap: true });
-                    }
-                }
-                //loadFiles(["//cdn.datatables.net/1.10.15/css/jquery.dataTables.css",
-                //    "//cdn.datatables.net/1.10.15/js/jquery.dataTables.js"], tablify);
-                tablify();
             } else if (msg_type == 'show_toc') {
                 show_toc();
             } else {

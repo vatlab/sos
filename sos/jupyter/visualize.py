@@ -200,7 +200,8 @@ class Visualizer:
     <div id="dataframe_scatterplot_{0}" width="{1}" height="{2}"></div>
     <script language="javascript" type="text/javascript" src="http://www.flotcharts.org/flot/jquery.flot.js"></script>
     <script>
-    var plot = $.plot('dataframe_scatterplot_{0}', """.format(tid, args.width, args.height) + \
+    function plotScatterPlot{0}() {{
+        $.plot('#dataframe_scatterplot_{0}', """.format(tid, args.width, args.height) + \
         json.dumps(all_series) + """, """ + json.dumps(options) + """)
 
         $("#dataframe_scatter_plot_{0}")""".format(tid) + """.bind("plothover", function (event, pos, item) {
@@ -224,8 +225,25 @@ class Visualizer:
             showTooltip(item.pageX, item.pageY, tooltip);
         }
     });
+    }
+    """ + """
+    // we will need to wait for the div to be displayed on the HTML/Jupyter side before we plot
+    // the figure
 
+    var dt = 100;
+    // the frontend might be notified before the table is inserted as results.
+    function showFigure{0}() {{
+        if ( $('#dataframe_scatterplot_{0}').length === 0 ) {{
+              dt = dt * 1.5; // slow-down checks for datatable as time goes on;
+              setTimeout("showFigure{0}", dt);
+              return;
+        }} else {{
+            $('#dataframe_scatterplot_{0}').css('width', "{1}").css('height', "{2}");
+            plotScatterPlot{0}();
+        }}
+    }}
+    showFigure{0}()
         </script>
-        </div>"""
+        </div>""".format(tid, args.width, args.height)
         self.kernel.warn(code)
         return {'text/html': HTML(code).data}, {}
