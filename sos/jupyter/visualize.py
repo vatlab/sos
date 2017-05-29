@@ -109,10 +109,12 @@ class Visualizer:
             igured if the dataframe has only one or two columns.''')
         parser.add_argument('--ylim', nargs=2, help='''Range of y-axis''')
         parser.add_argument('--xlim', nargs=2, help='''Range of x-axis''')
-        parser.add_argument('--width', default='800px', help='''Width of the plot.''')
-        parser.add_argument('--height', default='600px', help='''Height of the plot.''')
+        parser.add_argument('--width', default='90%', help='''Width of the plot.''')
+        parser.add_argument('--height', default='400px', help='''Height of the plot.''')
         parser.add_argument('--show', nargs='+', help='''What to show in the plot,
             can be 'lines', 'points'. Default to both.''')
+        parser.add_argument('-t', '--tooltip', nargs='*', help='''Fields to be shown in tooltip, in addition to
+            the row index and point values that would be shown by default.''')
         parser.add_argument('-l', '--limit', default=2000, help='''Maximum number
             of records to plot.''')
         parser.error = self._parse_error
@@ -143,7 +145,7 @@ class Visualizer:
             if df.shape[1] == 1:
                 args.cols = ['_index', df.columns[0]]
             elif df.shape[1] == 2:
-                args.cols = df.columns
+                args.cols = list(df.columns)
             else:
                 raise ValueError('Please specify columns for plot. Available columns are {}'.format(
                     ' '.join(df.columns)))
@@ -156,8 +158,13 @@ class Visualizer:
         nrow = data.shape[0]
         series = []
 
+        if args.tooltip:
+            args.tooltip = ['_index'] + args.tooltip
+        else:
+            args.tooltip = ['_index']
+
         # check datatype
-        for col in args.cols:
+        for col in args.cols + args.tooltip:
             if col == '_index':
                 continue
             if col not in data.columns:
@@ -170,14 +177,18 @@ class Visualizer:
             series = {}
             series['label'] = col
             if args.cols[0] == '_index':
-                x = list(range(1, nrow + 1))
+                val_x = list(range(1, nrow + 1))
             else:
-                x = self._to_list(data[args.cols[0]])
+                val_x = self._to_list(data[args.cols[0]])
             if col == '_index':
-                y = list(range(1, nrow + 1))
+                val_y = list(range(1, nrow + 1))
             else:
-                y = self._to_list(data[col])
-            series['data'] = [(_x,_y,_z) for _x,_y,_z in zip(x,y,indexes)]
+                val_y = self._to_list(data[col])
+
+            tooltip = ['<br>'.join(['{}: {}'.format('index' if t == '_index' else x,
+                idxvalue if t == '_index' else df[t][idx] ) for t in args.tooltip])
+                for idx,idxvalue in enumerate(indexes)]
+            series['data'] = [(x, y, z) for x, y, z in zip(val_x, val_y, tooltip)]
             series['clickable'] = True
             series['hoverable'] = True
             all_series.append(series)
@@ -196,35 +207,55 @@ class Visualizer:
             options['yaxis']['max'] = args.ylim[1]
 
         code = """
-    <div class='dataframe_container'>
-    <div id="dataframe_scatterplot_{0}" width="{1}" height="{2}"></div>
-    <script language="javascript" type="text/javascript" src="http://www.flotcharts.org/flot/jquery.flot.js"></script>
-    <script>
-        $.plot('#dataframe_scatterplot_{0}', """.format(tid, args.width, args.height) + \
+<div class='dataframe_container'>
+<div id="dataframe_scatterplot_{0}" width="{1}" height="{2}"></div>
+<script language="javascript" type="text/javascript" src="http://www.flotcharts.org/flot/jquery.flot.js"></script>
+<script>
+    function plotScatterPlot{0}() {{
+        plot = $.plot('#dataframe_scatterplot_{0}', """.format(tid, args.width, args.height) + \
         json.dumps(all_series) + """, """ + json.dumps(options) + """)
 
-        $("#dataframe_scatter_plot_{0}")""".format(tid) + """.bind("plothover", function (event, pos, item) {
-        $("#tooltip").remove();
-        if (item) {
-            var tooltip = item.series.data[item.dataIndex][2];
-
-            $('<div id="tooltip">' + tooltip + '</div>')
-                .css({
-                    position: 'absolute',
-                    display: 'none',
-                    top: item.pageY + 5,
-                    left: item.pageX + 5,
-                    border: '1px solid #fdd',
-                    padding: '2px',
-                    'background-color': '#fee',
-                    opacity: 0.80 })
-                .appendTo("body").fadeIn(200);
-
-
-            showTooltip(item.pageX, item.pageY, tooltip);
-        }
+    if ($('#tooltip').length == 0) {{
+        $('#dataframe_scatterplot_{0}')""".format(tid) + """.append($("<div id='tooltip'></div>").css({
+        position: "absolute",
+        display: "none",
+        border: "1px solid #fdd",
+        padding: "2px",
+        "background-color": "#fee",
+        opacity: 0.80
+        }));
+    }
+    """ + """
+    $("#dataframe_scatterplot_{0}")""".format(tid) + """.bind("plothover", function (event, pos, item) {
+            if (item) {
+                $("#tooltip").html((item.series.label + ": (" + 
+                    item.series.data[item.dataIndex][0].toString() + ", " +
+                    item.series.data[item.dataIndex][1].toString() + ")<br>" +
+                    item.series.data[item.dataIndex][2]).trim()).css({top: item.pageY+5, left: item.pageX+5})
+                    .css('display', 'inline').fadeIn(200);
+            } else {
+                $("#tooltip").hide();
+            }
     });
-        </script>
-        </div>"""
-        self.kernel.warn(code)
+    }
+""" + """
+// we will wait for the div to be displayed on the HTML/Jupyter side before we plot
+// the figure. This might not be necessary but at least this is a chance for us
+// to resize the div and avoid some flot error
+
+var dt = 100;
+// the frontend might be notified before the table is inserted as results.
+function showFigure{0}() {{
+    if ( $('#dataframe_scatterplot_{0}').length === 0 ) {{
+          dt = dt * 1.5; // slow-down checks for datatable as time goes on;
+          setTimeout("showFigure{0}", dt);
+          return;
+    }} else {{
+        $('#dataframe_scatterplot_{0}').css('width', "{1}").css('height', "{2}");
+        plotScatterPlot{0}();
+    }}
+}}
+showFigure{0}()
+</script>
+</div>""".format(tid, args.width, args.height)
         return {'text/html': HTML(code).data}, {}
