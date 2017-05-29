@@ -23,7 +23,7 @@ import base64
 from IPython.core.display import HTML
 from sos.utils import env, dehtml
 
-def preview_img(filename, kernel=None):
+def preview_img(filename, kernel=None, style=None):
     with open(filename, 'rb') as f:
         image = f.read()
 
@@ -41,7 +41,7 @@ def preview_img(filename, kernel=None):
     else:
         return { 'image/' + image_type: image_data }
 
-def preview_pdf(filename, kernel=None):
+def preview_pdf(filename, kernel=None, style=None):
     try:
         # this import will fail even if wand is installed
         # if imagemagick is not installed properly.
@@ -56,13 +56,13 @@ def preview_pdf(filename, kernel=None):
         return { 'text/html':
             HTML('<iframe src={0} width="100%"></iframe>'.format(filename)).data}
 
-def preview_html(filename, kernel=None):
+def preview_html(filename, kernel=None, style=None):
     with open(filename) as html:
         content = html.read()
     return { 'text/html': content,
         'text/plain': dehtml(content) }
 
-def preview_txt(filename, kernel=None):
+def preview_txt(filename, kernel=None, style=None):
     try:
         content = ''
         with open(filename, 'r') as fin:
@@ -72,39 +72,40 @@ def preview_txt(filename, kernel=None):
     except:
         return ''
 
-def preview_csv(filename, kernel=None):
+def preview_csv(filename, kernel=None, style=None):
     try:
         import pandas
+        from .visualize import Visualizer
         data = pandas.read_csv(filename)
-        return kernel.preview_dataframe(data)
+        return Visualizer(kernel, style).preview(data)
     except Exception as e:
         env.logger.warning(e)
         return ''
 
-def preview_xls(filename, kernel=None):
+def preview_xls(filename, kernel=None, style=None):
     try:
         import pandas
+        from .visualize import Visualizer
         data = pandas.read_excel(filename)
-        html = data._repr_html_()
-        return kernel.preview_dataframe(data)
+        return Visualizer(kernel, style).preview(data)
     except Exception as e:
         env.logger.warning(e)
         return ''
 
-def preview_zip(filename, kernel=None):
+def preview_zip(filename, kernel=None, style=None):
     import zipfile
     zip = zipfile.ZipFile(filename)
     names = zip.namelist()
     return '{} files\n'.format(len(names)) + '\n'.join(names[:5]) + ('\n...' if len(names) > 5 else '')
 
-def preview_tar(filename, kernel=None):
+def preview_tar(filename, kernel=None, style=None):
     import tarfile
     with tarfile.open(filename, 'r:*') as tar:
         # only extract files
         names = [x.name for x in tar.getmembers() if x.isfile()]
     return '{} files\n'.format(len(names)) + '\n'.join(names[:5]) + ('\n...' if len(names) > 5 else '')
 
-def preview_gz(filename, kernel=None):
+def preview_gz(filename, kernel=None, style=None):
     import gzip
     content = b''
     with gzip.open(filename, 'rb') as fin:
@@ -115,7 +116,7 @@ def preview_gz(filename, kernel=None):
     except:
         return 'binary data'
 
-def preview_md(filename, kernel=None):
+def preview_md(filename, kernel=None, style=None):
     import markdown
     try:
         with open(filename) as fin:
@@ -125,7 +126,7 @@ def preview_md(filename, kernel=None):
     except:
         return ''
     
-def preview_dot(filename, kernel=None):
+def preview_dot(filename, kernel=None, style=None):
     from graphviz import Source
     with open(filename) as dot:
         src = Source(dot.read())

@@ -327,13 +327,18 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('-w', '--workflow', action='store_true',
             help='''Preview notebook workflow''')
         # this option is currently hidden
-        parser.add_argument('-s', '--style',
-            help=argparse.SUPPRESS)
+        parser.add_argument('-s', '--style', choices=['table', 'scatterplot'],
+            help='''Option to visualize dataframe, which by default is "table".
+            The %%preview magic also accepts arbitrary additional keyword
+            arguments, which would be interpreted by individual style. Passing
+            '-h' with '--style' would display the usage information of particular
+            style.''')
         parser.add_argument('--off', action='store_true',
             help='''Turn off file preview''')
-        parser.add_argument('-p', '--panel', action='store_true',
+        loc = parser.add_mutually_exclusive_group()
+        loc.add_argument('-p', '--panel', action='store_true',
             help='''Preview in side panel even if the panel is currently closed''')
-        parser.add_argument('-n', '--notebook', action='store_true',
+        loc.add_argument('-n', '--notebook', action='store_true',
             help='''Preview in the main notebook.''')
         parser.error = self._parse_error
         return parser
@@ -1457,14 +1462,14 @@ class SoS_Kernel(IPythonKernel):
             try:
                 if os.path.isfile(item):
                     handled[idx] = True
-                    self.preview_file(item)
+                    self.preview_file(item, style)
                     continue
                 else:
                     import glob
                     files = glob.glob(item)
                     if files:
                         for pfile in files:
-                            self.preview_file(pfile)
+                            self.preview_file(pfile, style)
                         handled[idx] = True
                         continue
             except Exception as e:
@@ -1493,7 +1498,11 @@ class SoS_Kernel(IPythonKernel):
                         except:
                             pass
                     if use_sos:
-                        obj_desc, (format_dict, md_dict) = self.preview_var(item, style)
+                        obj_desc, preview = self.preview_var(item, style)
+                        if preview is None:
+                            continue
+                        else:
+                            format_dict, md_dict = preview
                         self.send_frontend_msg('display_data',
                             {'metadata': {},
                             'data': {'text/plain': '>>> ' + item + ':\n',
@@ -1646,7 +1655,7 @@ class SoS_Kernel(IPythonKernel):
                             }
                         })
                 for filename in output_files:
-                    self.preview_file(filename)
+                    self.preview_file(filename, style=None)
 
     def preview_var(self, item, style=None):
         if item in env.sos_dict:
@@ -1665,39 +1674,15 @@ class SoS_Kernel(IPythonKernel):
             return txt, ({'text/plain': pydoc.render_doc(obj, title='SoS Documentation: %s')}, {})
         elif hasattr(obj, 'to_html'):
             try:
-                return txt, self.preview_dataframe(obj)
+                from .visualize import Visualizer
+                return txt, Visualizer(self, style).preview(obj)
             except Exception as e:
+                self.warn(e)
                 return txt, self.format_obj(obj)
         else:
             return txt, self.format_obj(obj)
 
-    def preview_dataframe(self, df):
-        import pandas
-        import numpy
-        if not isinstance(df, pandas.core.frame.DataFrame):
-            raise ValuError('Not of DataFrame type')
-        if not hasattr(self, '_tid'):
-            self._tid = 1
-        else:
-            self._tid += 1
-        if df.shape[0] > 2000:
-            self.warn("Only the first 2000 of the {} rows are previewed.".format(df.shape[0]))
-        code = df.head(2000).to_html(index=True).replace('class=', 'id="dataframe_{}" class='.format(self._tid), 1)
-        hr, rest = code.split('</tr>', 1)
-        index_type = 'numeric' if isinstance(df.index, pandas.indexes.range.RangeIndex) else 'alphabetic'
-        col_type = ['numeric' if numpy.issubdtype(x, numpy.number) else 'alphabetic' for x in df.dtypes]
-        code = ''.join('''{} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{}', {}, '{}')"></th>'''.format(x,
-            self._tid, idx,
-            index_type if idx == 0 else col_type[idx-1]) if '<th' in x else x for idx,x in enumerate(hr.split('</th>')  )) + '</tr>' + rest
-
-        code = """
-    <div class='dataframe_container'>
-    <input type="text" class='dataframe_input' id="search_{}" """.format(self._tid) + \
-    """onkeyup="filterDataFrame('{}""".format(self._tid) + """')" placeholder="Search for names..">
-    """ + code + '''</div>'''
-        return {'text/html': HTML(code).data}, {}
-
-    def preview_file(self, filename):
+    def preview_file(self, filename, style=None):
         if not os.path.isfile(filename):
             self.warn('\n> ' + filename + ' does not exist')
             return
@@ -1743,7 +1728,7 @@ class SoS_Kernel(IPythonKernel):
         if previewer_func is None:
             return
         try:
-            result = previewer_func(filename, self)
+            result = previewer_func(filename, self, style)
             if not result:
                 return
             if isinstance(result, str):
@@ -1825,8 +1810,17 @@ class SoS_Kernel(IPythonKernel):
         # a flag for if the kernel is hard switched (by %use)
         self.hard_switch_kernel = False
         # evaluate user expression
-        ret = self._do_execute(code=code, silent=silent, store_history=store_history,
-            user_expressions=user_expressions, allow_stdin=allow_stdin)
+        try:
+            ret = self._do_execute(code=code, silent=silent, store_history=store_history,
+                user_expressions=user_expressions, allow_stdin=allow_stdin)
+        except Exception as e:
+            return {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self._execution_count,
+                   }
+
         if ret is None:
             ret = {'status': 'ok',
                    'payload': [], 'user_expressions': {},
@@ -2254,10 +2248,20 @@ class SoS_Kernel(IPythonKernel):
             options, remaining_code = self.get_magic_and_code(code, False)
             options = self._interpolate_option(options, quiet=True)
             parser = self.get_preview_parser()
+            options = shlex.split(options, posix=False)
+            help_option = []
+            if ('-s' in options or '--style' in options) and '-h' in options:
+                # defer -h to subparser
+                options.remove('-h')
+                help_option = ['-h']
             try:
-                args = parser.parse_args(shlex.split(options, posix=False))
+                args, style_options = parser.parse_known_args(options)
             except SystemExit:
                 return
+            #
+            style_options.extend(help_option)
+            style = {'style': args.style, 'options': style_options }
+            #
             if args.off:
                 self.preview_output = False
             else:
@@ -2276,7 +2280,7 @@ class SoS_Kernel(IPythonKernel):
                     self.send_frontend_msg('stream',
                         {'name': 'stdout', 'text': self._workflow})
                 if not args.off and args.items:
-                    self.handle_magic_preview(args.items, args.kernel, args.style)
+                    self.handle_magic_preview(args.items, args.kernel, style)
         elif self.MAGIC_CD.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
             self.handle_magic_cd(options)
