@@ -24,7 +24,10 @@
 import argparse
 import pandas
 import numpy
+
+from collections import defaultdict
 from IPython.core.display import HTML
+import json
 
 class Visualizer:
     def __init__(self, kernel, style):
@@ -97,10 +100,132 @@ class Visualizer:
     #
     # SCATTERPLOT
     #
-    def get_scatterplot_parser(self):
+    def _get_scatterplot_parser(self):
         parser = argparse.ArgumentParser(prog='%preview -s scatterplot')
-
+        parser.add_argument('cols', nargs='*', help='''Columns to plot, which should all be numeric. If one
+            column is specified, it is assumed to be a x-y plot with x being 1, 2, 3, .... If two or
+            more columns (n) are specified, n-1 series will be plotted with the first column being the
+            x axis, in which case an "_index" name can be used to specify 1, 2, 3, .... This option can be
+            igured if the dataframe has only one or two columns.''')
+        parser.add_argument('--ylim', nargs=2, help='''Range of y-axis''')
+        parser.add_argument('--xlim', nargs=2, help='''Range of x-axis''')
+        parser.add_argument('--width', default='800px', help='''Width of the plot.''')
+        parser.add_argument('--height', default='600px', help='''Height of the plot.''')
+        parser.add_argument('--show', nargs='+', help='''What to show in the plot,
+            can be 'lines', 'points'. Default to both.''')
+        parser.add_argument('-l', '--limit', default=2000, help='''Maximum number
+            of records to plot.''')
         parser.error = self._parse_error
         return parser
 
+    def _to_list(self, arr):
+        if 'int' in arr.dtype.name:
+            return [int(x) for x in arr]
+        else:
+            return [float(x) for x in arr]
 
+    def _handle_scatterplot(self, df):
+        parser = self._get_scatterplot_parser()
+        try:
+            args = parser.parse_args(self.options)
+        except SystemExit:
+            return
+
+        if not isinstance(df, pandas.core.frame.DataFrame):
+            raise ValuError('Not of DataFrame type')
+
+        tid = self.get_tid()
+
+        if df.shape[0] > args.limit:
+            self.kernel.warn("Only the first {} of the {} records are plotted. Use option --limit to set a new limit.".format(args.limit, df.shape[0]))
+
+        if not args.cols:
+            if df.shape[1] == 1:
+                args.cols = ['_index', df.columns[0]]
+            elif df.shape[1] == 2:
+                args.cols = df.columns
+            else:
+                raise ValueError('Please specify columns for plot. Available columns are {}'.format(
+                    ' '.join(df.columns)))
+        if len(args.cols) == 1:
+            args.cols = ['_index', args.cols[0]]
+
+        indexes = [str(x) for x in df.index]
+
+        data = df.head(args.limit)
+        nrow = data.shape[0]
+        series = []
+
+        # check datatype
+        for col in args.cols:
+            if col == '_index':
+                continue
+            if col not in data.columns:
+                raise ValueError("Invalid column name {}".format(col))
+            if not numpy.issubdtype(data[col].dtype, numpy.number):
+                raise ValueError("Column {} is not of numeric type".format(col))
+
+        all_series = []
+        for col in args.cols[1:]:
+            series = {}
+            series['label'] = col
+            if args.cols[0] == '_index':
+                x = list(range(1, nrow + 1))
+            else:
+                x = self._to_list(data[args.cols[0]])
+            if col == '_index':
+                y = list(range(1, nrow + 1))
+            else:
+                y = self._to_list(data[col])
+            series['data'] = [(_x,_y,_z) for _x,_y,_z in zip(x,y,indexes)]
+            series['clickable'] = True
+            series['hoverable'] = True
+            all_series.append(series)
+
+        options = defaultdict(dict)
+        options['series']['lines'] = {'show': True if not args.show or 'lines' in args.show else False }
+        options['series']['points'] = {'show': True if not args.show or 'points' in args.show else False }
+        options['grid']['hoverable'] = True
+        options['grid']['clickable'] = True
+
+        if args.xlim:
+            options['xaxis']['min'] = args.xlim[0]
+            options['xaxis']['max'] = args.xlim[1]
+        if args.ylim:
+            options['yaxis']['min'] = args.ylim[0]
+            options['yaxis']['max'] = args.ylim[1]
+
+        code = """
+    <div class='dataframe_container'>
+    <div id="dataframe_scatterplot_{0}" width="{1}" height="{2}"></div>
+    <script language="javascript" type="text/javascript" src="http://www.flotcharts.org/flot/jquery.flot.js"></script>
+    <script>
+    var plot = $.plot('dataframe_scatterplot_{0}', """.format(tid, args.width, args.height) + \
+        json.dumps(all_series) + """, """ + json.dumps(options) + """)
+
+        $("#dataframe_scatter_plot_{0}")""".format(tid) + """.bind("plothover", function (event, pos, item) {
+        $("#tooltip").remove();
+        if (item) {
+            var tooltip = item.series.data[item.dataIndex][2];
+
+            $('<div id="tooltip">' + tooltip + '</div>')
+                .css({
+                    position: 'absolute',
+                    display: 'none',
+                    top: item.pageY + 5,
+                    left: item.pageX + 5,
+                    border: '1px solid #fdd',
+                    padding: '2px',
+                    'background-color': '#fee',
+                    opacity: 0.80 })
+                .appendTo("body").fadeIn(200);
+
+
+            showTooltip(item.pageX, item.pageY, tooltip);
+        }
+    });
+
+        </script>
+        </div>"""
+        self.kernel.warn(code)
+        return {'text/html': HTML(code).data}, {}
