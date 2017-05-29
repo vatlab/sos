@@ -31,6 +31,12 @@ table tr th :first-child, table tr td :first-child {
 table tr th :last-child, table tr td :last-child {
    margin-bottom: 0; }
 
+.dataframe_container { max-height: 400px }
+.dataframe_input {
+    border: 1px solid #ddd;
+    margin-bottom: 5px;
+}
+
 div.input {
     display: none;
 }

@@ -96,6 +96,69 @@ define([
         KernelList.push([data[i][0], data[i][0]])
     }
 
+    window.filterDataFrame = function(id) {
+		var input = document.getElementById("search_" + id);
+		var filter = input.value.toUpperCase();
+		var table = document.getElementById("dataframe_" + id);
+		var tr = table.getElementsByTagName("tr");
+
+		// Loop through all table rows, and hide those who don't match the search query
+		for (var i = 0; i < tr.length; i++) {
+			var td = tr[i].getElementsByTagName("td")[0];
+			if (td) {
+				if (td.innerHTML.toUpperCase().indexOf(filter) > -1) {
+					tr[i].style.display = "";
+				} else {
+					tr[i].style.display = "none";
+				}
+			} 
+		}
+    }
+
+	window.sortDataFrame = function(id, n, dtype) {
+		var table = document.getElementById("dataframe_" + id);
+
+		var tb = table.tBodies[0]; // use `<tbody>` to ignore `<thead>` and `<tfoot>` rows
+        var tr = Array.prototype.slice.call(tb.rows, 0); // put rows into array
+
+		if (dtype === 'numeric') {
+			var fn = function(a, b) { 
+				return parseFloat(a.cells[n].textContent) <= parseFloat(b.cells[n].textContent) ? -1 : 1;
+			}
+		} else {
+			var fn = function(a, b) {
+				var c = a.cells[n].textContent.trim().localeCompare(b.cells[n].textContent.trim()); 
+				return c > 0 ? 1 : (c < 0 ? -1 : 0) }
+		}
+		var isSorted = function(array, fn) {
+			if (array.length < 2)
+				return 1;
+			var direction = fn(array[0], array[1]); 
+			for (var i = 1; i < array.length - 1; ++i) {
+				var d = fn(array[i], array[i+1]);
+				if (d == 0)
+					continue;
+				else if (direction == 0)
+					direction = d;
+				else if (direction != d)
+					return 0;
+				}
+			return direction;
+		}
+
+		var sorted = isSorted(tr, fn);
+
+		if (sorted == 1 || sorted == -1) {
+			// if sorted already, reverse it
+			for(var i = tr.length - 1; i >= 0; --i)
+				tb.appendChild(tr[i]); // append each row in order
+		} else {
+			tr = tr.sort(fn);
+			for(var i = 0; i < tr.length; ++i)
+				tb.appendChild(tr[i]); // append each row in order
+		}
+	}
+
     var my_execute = function(code, callbacks, options) {
         "use strict"
         /* check if the code is a workflow call, which is marked by
@@ -1484,6 +1547,12 @@ define([
                 '' +
                 '.show_output {' +
                 '    box-shadow: 13px 0px 0px #aaaaaa;' +
+                '}' +
+                '' +
+                '.dataframe_container { max-height: 400px } ' +
+                '.dataframe_input {' +
+                '    border: 1px solid #ddd; ' +
+                '    margin-bottom: 5px;' +
                 '}' +
                 '' +
                 '.toc-item-highlight-select  {background-color: Gold}' +

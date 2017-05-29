@@ -34,7 +34,7 @@ before_install:
     # add docker
     - pip install docker
     # packages required by SoS
-    - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm
+    - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm 
     - pip install fasteners pygments ipython ptpython networkx pydotplus
     # for testing purposes
     - pip install nose

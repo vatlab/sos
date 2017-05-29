@@ -170,7 +170,7 @@ setup(name = "sos",
           'pygments',
           # for jupyter notebook format conversion
           'nbformat',
-          'nbconvert>=4.2.0',
+          'nbconvert',
           'ipython',
           'ipykernel',
           'notebook',
