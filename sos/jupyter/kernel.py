@@ -242,6 +242,8 @@ class SoS_Kernel(IPythonKernel):
             help='''Background color of new or existing kernel, which overrides
             the default color of the language. A special value "default" can be
             used to reset color to default.''')
+        parser.add_argument('-r', '--restart', action='store_true',
+            help='''Restart the kernel if it is running.''')
         parser.add_argument('-i', '--in', nargs='*', dest='in_vars',
             help='Input variables (variables to get from SoS kernel)')
         parser.add_argument('-o', '--out', nargs='*', dest='out_vars',
@@ -276,6 +278,8 @@ class SoS_Kernel(IPythonKernel):
             help='''Background color of existing or new kernel, which overrides
             the default color of the language. A special value "default" can be
             used to reset color to default.''')
+        parser.add_argument('-r', '--restart', action='store_true',
+            help='''Restart the kernel if it is running.''')
         parser.add_argument('-i', '--in', nargs='*', dest='in_vars',
             help='Input variables (variables to get from SoS kernel)')
         parser.add_argument('-o', '--out', nargs='*', dest='out_vars',
@@ -1181,7 +1185,7 @@ class SoS_Kernel(IPythonKernel):
             #
             self.handle_magic_get(in_vars)
 
-    def restart_kernel(self, kernel):
+    def shutdown_kernel(self, kernel):
         kernel = self.find_kernel(kernel)[0]
         if kernel == 'SoS':
             # cannot restart myself ...
@@ -1194,20 +1198,14 @@ class SoS_Kernel(IPythonKernel):
                     self.warn('Failed to shutdown kernel {}: {}\n'.format(kernel, e))
                 finally:
                     self.kernels.pop(kernel)
-            #
-            cur_kernel = self.kernel
-            try:
-                self.switch_kernel(kernel)
+                if self.kernel == kernel:
+                    self.kernel = 'SoS'
+            else:
                 self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': 'Kernel {} {}started\n'.format(kernel, 're' if kernel in self.kernels else '')})
-            except Exception as e:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': 'Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}\n'.format(kernel, e)})
-            finally:
-                self.switch_kernel(cur_kernel)
+                    {'name': 'stdout', 'text': '{} is not running'.format(kernel) })
         else:
             self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': 'Specify one of the kernels to restart: sos{}\n'
+                {'name': 'stdout', 'text': 'Specify one of the kernels to shutdown: SoS{}\n'
                     .format(''.join(', {}'.format(x) for x in self.kernels))})
 
     def _parse_error(self, msg):
@@ -2001,6 +1999,8 @@ class SoS_Kernel(IPythonKernel):
                     'execution_count': self._execution_count,
                    }
             original_kernel = self.kernel
+            if args.restart and args.name in self.kernels:
+                self.shutdown_kernel(args.name)
             try:
                 self.switch_kernel(args.name, args.in_vars, args.out_vars,
                     args.kernel, args.language, args.color)
@@ -2033,6 +2033,9 @@ class SoS_Kernel(IPythonKernel):
                     'traceback': [],
                     'execution_count': self._execution_count,
                    }
+            if args.restart and args.name in self.kernels:
+                self.shutdown_kernel(args.name)
+                self.warn('{} is shutdown'.format(args.name))
             try:
                 self.switch_kernel(args.name, args.in_vars, args.out_vars,
                     args.kernel, args.language, args.color)
