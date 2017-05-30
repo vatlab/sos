@@ -85,7 +85,7 @@ class Visualizer:
             return
 
         if not isinstance(df, pandas.core.frame.DataFrame):
-            raise ValuError('Not of DataFrame type')
+            raise ValueError('Not of DataFrame type')
 
         tid = self.get_tid()
 
@@ -145,7 +145,7 @@ class Visualizer:
             return
 
         if not isinstance(df, pandas.core.frame.DataFrame):
-            raise ValuError('Not of DataFrame type')
+            raise ValueError('Not of DataFrame type')
 
         tid = self.get_tid()
 
@@ -163,7 +163,9 @@ class Visualizer:
         if len(args.cols) == 1:
             args.cols = ['_index', args.cols[0]]
 
-        indexes = [str(x) for x in df.index]
+        # replacing ' ' with &nbsp will disallow webpage to separate words
+        # into lines
+        indexes = [str(x).replace(' ', '&nbsp;') for x in df.index]
 
         data = df.head(args.limit)
         nrow = data.shape[0]
@@ -213,7 +215,7 @@ class Visualizer:
         # if there are actual indexes... and plot by x
         optional_style = ''
         if args.cols[0] == '_index' and not isinstance(df.index, pandas.indexes.range.RangeIndex):
-            options['xaxis']['ticks'] = [[x,str(y)] for x,y in enumerate(df.index)]
+            options['xaxis']['ticks'] = [[x,str(y)] for x,y in enumerate(indexes)]
             optional_style = r'''
 var css = document.createElement("style");
 css.type = "text/css";
@@ -260,9 +262,8 @@ document.body.appendChild(css);
     """ + """
     $("#dataframe_scatterplot_{0}")""".format(tid) + """.bind("plothover", function (event, pos, item) {
             if (item) {
-                $("#dftooltip").html((item.series.label + ": (" + 
-                    item.series.data[item.dataIndex][0].toString() + ", " +
-                    item.series.data[item.dataIndex][1].toString() + ")<br>" +
+                $("#dftooltip").html((item.series.label + ": " +
+                    item.series.data[item.dataIndex][1].toString() + "<br>" +
                     item.series.data[item.dataIndex][2]).trim()).css({top: item.pageY+5, left: item.pageX+5})
                     .fadeIn(200);
             } else {
