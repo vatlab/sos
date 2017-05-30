@@ -196,7 +196,7 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_MATPLOTLIB = re.compile('^%matplotlib(\s|$)')
     MAGIC_CD = re.compile('^%cd(\s|$)')
     MAGIC_SET = re.compile('^%set(\s|$)')
-    MAGIC_RESTART = re.compile('^%restart(\s|$)')
+    MAGIC_SHUTDOWN = re.compile('^%shutdown(\s|$)')
     MAGIC_WITH = re.compile('^%with(\s|$)')
     MAGIC_FRONTEND = re.compile('^%frontend(\s|$)')
     MAGIC_USE = re.compile('^%use(\s|$)')
@@ -353,11 +353,13 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
-    def get_restart_parser(self):
-        parser = argparse.ArgumentParser(prog='%restart',
-            description='''Restart specified subkernel''')
+    def get_shutdown_parser(self):
+        parser = argparse.ArgumentParser(prog='%shutdown',
+            description='''Shutdown or restart specified subkernel''')
         parser.add_argument('kernel',
             help='''Name of the kernel to be restarted.''')
+        parser.add_argument('-r', '--restart', action='store_true',
+            help='''Restart the kernel''')
         parser.error = self._parse_error
         return parser
 
@@ -1185,24 +1187,35 @@ class SoS_Kernel(IPythonKernel):
             #
             self.handle_magic_get(in_vars)
 
-    def shutdown_kernel(self, kernel):
+    def shutdown_kernel(self, kernel, restart=False):
         kernel = self.find_kernel(kernel)[0]
         if kernel == 'SoS':
             # cannot restart myself ...
             self.warn('Cannot restart sos kernel from within sos.')
         elif kernel:
-            if kernel in self.kernels:
+            if kernel not in self.kernels:
+                self.send_response(self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': '{} is not running'.format(kernel) })
+            elif restart:
+                orig_kernel = self.kernel
+                try:
+                    # shutdown
+                    self.shutdown_kernel(kernel)
+                    # switch back to kernel (start a new one)
+                    self.switch_kernel(kernel)
+                finally:
+                    # finally switch to starting kernel
+                    self.switch_kernel(orig_kernel)
+            else:
+                # shutdown
+                if self.kernel == kernel:
+                    self.switch_kernel('SoS')
                 try:
                     self.kernels[kernel][0].shutdown_kernel(restart=False)
                 except Exception as e:
                     self.warn('Failed to shutdown kernel {}: {}\n'.format(kernel, e))
                 finally:
                     self.kernels.pop(kernel)
-                if self.kernel == kernel:
-                    self.kernel = 'SoS'
-            else:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': '{} is not running'.format(kernel) })
         else:
             self.send_response(self.iopub_socket, 'stream',
                 {'name': 'stdout', 'text': 'Specify one of the kernels to shutdown: SoS{}\n'
@@ -1921,14 +1934,14 @@ class SoS_Kernel(IPythonKernel):
             self.handle_magic_set(options)
             # self.options will be set to inflence the execution of remaing_code
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
-        elif self.MAGIC_RESTART.match(code):
+        elif self.MAGIC_SHUTDOWN.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
-            parser = self.get_restart_parser()
+            parser = self.get_shutdown_parser()
             try:
                 args = parser.parse_args(shlex.split(options))
             except SystemExit:
                 return
-            self.restart_kernel(args.kernel)
+            self.shutdown_kernel(args.kernel, args.restart)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_FRONTEND.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
