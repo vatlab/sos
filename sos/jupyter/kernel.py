@@ -1685,7 +1685,13 @@ Available subkernels:\n{}'''.format(
         elif hasattr(obj, 'to_html'):
             try:
                 from .visualize import Visualizer
-                return txt, Visualizer(self, style).preview(obj)
+                result = Visualizer(self, style).preview(obj)
+                if isinstance(result, (list, tuple)) and len(result) == 2:
+                    return txt, result
+                elif isinstance(result, dict):
+                    return txt, (result, {})
+                else:
+                    raise ValueError('Unrecognized return value from visualizer: {}.'.format(short_repr(result)))
             except Exception as e:
                 self.warn(e)
                 return txt, self.format_obj(obj)
@@ -1747,6 +1753,9 @@ Available subkernels:\n{}'''.format(
             elif isinstance(result, dict):
                 self.send_frontend_msg('display_data',
                     {'source': filename, 'data': result, 'metadata': {}})
+            elif isinstance(result, [list, tuple]) and len(result) == 2:
+                self.send_frontend_msg('display_data',
+                    {'source': filename, 'data': result[0], 'metadata': result[1]})
             else:
                 self.send_frontend_msg('stream', {
                     'name': 'stderr',

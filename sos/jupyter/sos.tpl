@@ -66,6 +66,20 @@ div.input {
    color: blue;
 }
 
+.dataframe_scatterplot div.xAxis div.tickLabel {
+    transform: translateY(15px) translateX(15px) rotate(45deg);
+    -ms-transform: translateY(15px) translateX(15px) rotate(45deg);
+    -moz-transform: translateY(15px) translateX(15px) rotate(45deg);
+    -webkit-transform: translateY(15px) translateX(15px) rotate(45deg);
+    -o-transform: translateY(15px) translateX(15px) rotate(45deg);
+    /*rotation-point:50% 50%;*/
+    /*rotation:270deg;*/
+}
+
+.sos_dataframe td, .sos_dataframe th {
+    white-space: nowrap;
+}
+
 </style>
 
 <script>

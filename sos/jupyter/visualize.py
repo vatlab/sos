@@ -58,12 +58,14 @@ class Visualizer:
         else:
             raise ValueError('Unknown style {}'.format(self.style))
 
-    def get_tid(self):
+    def get_tid(self, vis_type):
         if not hasattr(self.kernel, '_tid'):
-            self.kernel._tid = 1
+            self.kernel._tid = { vis_type: 1 }
+        elif vis_type not in self.kernel._tid:
+            self.kernel._tid[vis_type] = 1
         else:
-            self.kernel._tid += 1
-        return self.kernel._tid
+            self.kernel._tid[vis_type] += 1
+        return self.kernel._tid[vis_type]
 
     #
     # TABLE
@@ -87,11 +89,11 @@ class Visualizer:
         if not isinstance(df, pandas.core.frame.DataFrame):
             raise ValueError('Not of DataFrame type')
 
-        tid = self.get_tid()
+        tid = self.get_tid('table')
 
         if df.shape[0] > args.limit:
             self.kernel.warn("Only the first {} of the {} records are previewed. Use option --limit to set a new limit.".format(args.limit, df.shape[0]))
-        code = df.head(args.limit).to_html(index=True).replace('class=', 'id="dataframe_{}" class='.format(tid), 1)
+        code = df.head(args.limit).to_html(index=True).replace('class="', 'id="dataframe_{}" class="sos_dataframe '.format(tid), 1)
 
         hr, rest = code.split('</tr>', 1)
         index_type = 'numeric' if isinstance(df.index, pandas.indexes.range.RangeIndex) else 'alphabetic'
@@ -105,7 +107,7 @@ class Visualizer:
     <input type="text" class='dataframe_input' id="search_{}" """.format(tid) + \
     """onkeyup="filterDataFrame('{}""".format(tid) + """')" placeholder="Search for names..">
     """ + code + '''</div>'''
-        return {'text/html': HTML(code).data}, {}
+        return {'text/html': HTML(code).data}
 
     #
     # SCATTERPLOT
@@ -147,7 +149,7 @@ class Visualizer:
         if not isinstance(df, pandas.core.frame.DataFrame):
             raise ValueError('Not of DataFrame type')
 
-        tid = self.get_tid()
+        tid = self.get_tid('scatterplot')
 
         if df.shape[0] > args.limit:
             self.kernel.warn("Only the first {} of the {} records are plotted. Use option --limit to set a new limit.".format(args.limit, df.shape[0]))
@@ -213,24 +215,8 @@ class Visualizer:
         options['grid']['clickable'] = True
 
         # if there are actual indexes... and plot by x
-        optional_style = ''
         if args.cols[0] == '_index' and not isinstance(df.index, pandas.indexes.range.RangeIndex):
             options['xaxis']['ticks'] = [[x,str(y)] for x,y in enumerate(indexes)]
-            optional_style = r'''
-var css = document.createElement("style");
-css.type = "text/css";
-css.innerHTML = '' +
-   '#dataframe_scatterplot_{0} div.xAxis div.tickLabel {{\n' +
-   '  transform: translateY(15px) translateX(15px) rotate(45deg);\n' +
-   '  -ms-transform: translateY(15px) translateX(15px) rotate(45deg);\n' +
-   '  -moz-transform: translateY(15px) translateX(15px) rotate(45deg);\n' +
-   '  -webkit-transform: translateY(15px) translateX(15px) rotate(45deg);\n' +
-   '  -o-transform: translateY(15px) translateX(15px) rotate(45deg);\n' +
-   '  /*rotation-point:50% 50%;*/\n' +
-   '  /*rotation:270deg;*/\n' +
-   '}}\n'
-document.body.appendChild(css);
-'''.format(tid)
 
         if args.xlim:
             options['xaxis']['min'] = args.xlim[0]
@@ -241,7 +227,7 @@ document.body.appendChild(css);
 
         code = """
 <div class='dataframe_container'>
-<div id="dataframe_scatterplot_{0}" width="{1}" height="{2}"></div>
+<div class="dataframe_scatterplot" id="dataframe_scatterplot_{0}" width="{1}" height="{2}"></div>
 <script language="javascript" type="text/javascript" src="http://www.flotcharts.org/flot/jquery.flot.js"></script>
 <script>
     function plotScatterPlot{0}() {{
@@ -288,8 +274,7 @@ function showFigure{0}() {{
         plotScatterPlot{0}();
     }}
 }}
-{3}
 showFigure{0}()
 </script>
-</div>""".format(tid, args.width, args.height, optional_style)
-        return {'text/html': HTML(code).data}, {}
+</div>""".format(tid, args.width, args.height)
+        return {'text/html': HTML(code).data}
