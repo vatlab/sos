@@ -1577,6 +1577,21 @@ define([
         }
     };
 
+    /*
+    function add_download_menu() {
+        if ($("sos_download").length === 0) {
+            menu = $('<li id="sos_download"></li>')
+                .append($('<a href="#"></a>').html('Report (.html)').onclick(
+                    function(){
+                        alert('selected');
+                    }
+                ))
+            download_menu = document.getElementById('download_html');
+            download_menu.parentNode.insertBefore(menu[0], download_menu.nextSibling);
+        }
+    }
+    */
+
     function adjustPanel() {
         if ($('#panel-wrapper').css('display') != "none") {
 
@@ -1731,6 +1746,7 @@ define([
 
         load_panel();
         add_panel_button();
+        // add_download_menu();
         patch_CodeCell_get_callbacks();
 
         $("#to_markdown").click(function() {
