@@ -356,8 +356,9 @@ class SoS_Kernel(IPythonKernel):
     def get_shutdown_parser(self):
         parser = argparse.ArgumentParser(prog='%shutdown',
             description='''Shutdown or restart specified subkernel''')
-        parser.add_argument('kernel',
-            help='''Name of the kernel to be restarted.''')
+        parser.add_argument('kernel', nargs='?',
+            help='''Name of the kernel to be restarted, default to the
+            current running kernel.''')
         parser.add_argument('-r', '--restart', action='store_true',
             help='''Restart the kernel''')
         parser.error = self._parse_error
@@ -1119,17 +1120,15 @@ class SoS_Kernel(IPythonKernel):
     def switch_kernel(self, kernel, in_vars=[], ret_vars=[], kernel_name=None, language=None, color=None):
         # switching to a non-sos kernel
         if not kernel:
-            # all kernel names
-            available_kernels = {self.find_kernel(x)[0]:x for x in self.supported_languages.keys()}
-            # remove aliases
-            available_kernels = {x:y for x,y in available_kernels.items() if x not in available_kernels.values()}
-
             kinfo = self.find_kernel(self.kernel)
             self.send_response(self.iopub_socket, 'stream',
-                {'name': 'stdout', 'text': 'Subkernel "{}" is used (kernel={}, language={}, color="{}").\nAvailable subkernels are: SoS (sos), {}.'
-                    .format(kinfo[0], kinfo[1], kinfo[2] if kinfo[2] else "undefined", kinfo[3], ', '.join(
-                    [x if x == y else '{} ({})'.format(x, y)
-                    for x,y in available_kernels.items()]))})
+                {'name': 'stdout', 'text': '''\
+Current subkernel: {} (kernel={}, language={}, color="{}")
+Active subkernels: {}
+Available subkernels:\n{}'''.format(
+        kinfo[0], kinfo[1], kinfo[2] if kinfo[2] else "undefined", kinfo[3],
+        ', '.join(self.kernels.keys()),
+        '\n'.join(['    {} ({})'.format(x[0], x[1]) for x in self.get_kernel_list()]))})
             return
         kinfo = self.find_kernel(kernel, kernel_name, language, color)
         if kinfo[0] == self.kernel:
@@ -1191,7 +1190,7 @@ class SoS_Kernel(IPythonKernel):
         kernel = self.find_kernel(kernel)[0]
         if kernel == 'SoS':
             # cannot restart myself ...
-            self.warn('Cannot restart sos kernel from within sos.')
+            self.warn('Cannot restart SoS kernel from within SoS.')
         elif kernel:
             if kernel not in self.kernels:
                 self.send_response(self.iopub_socket, 'stream',
@@ -1941,7 +1940,7 @@ class SoS_Kernel(IPythonKernel):
                 args = parser.parse_args(shlex.split(options))
             except SystemExit:
                 return
-            self.shutdown_kernel(args.kernel, args.restart)
+            self.shutdown_kernel(args.kernel if args.kernel else self.kernel, args.restart)
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_FRONTEND.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
