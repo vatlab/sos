@@ -983,7 +983,7 @@ class SoS_Kernel(IPythonKernel):
                     {
                         'source': 'SoS',
                         'metadata': {},
-                        'data': { 'text/html': HTML('<pre><font color="green">{}</font></pre>'.format(msg)).data}
+                        'data': { 'text/html': HTML('<div class="sos_hint">{}</div>'.format(msg)).data}
                     })
         else:
             self.frontend_comm.send(msg, {'msg_type': msg_type})
@@ -1516,7 +1516,7 @@ Available subkernels:\n{}'''.format(
                         self.send_frontend_msg('display_data',
                             {'metadata': {},
                             'data': {'text/plain': '>>> ' + item + ':\n',
-                                'text/html': HTML('<pre><font color="green">> {}:</font> {}</pre>'
+                                'text/html': HTML('<div class="sos_hint">> {}: {}</div>'
                                     .format(item, obj_desc)).data
                                 }
                             })
@@ -1527,7 +1527,7 @@ Available subkernels:\n{}'''.format(
                         self.send_frontend_msg('display_data',
                             {'metadata': {},
                             'data': {'text/plain': '>>> ' + item + ':\n',
-                                'text/html': HTML('<pre><font color="green">> {}:</font></pre>'.format(item)).data
+                                'text/html': HTML('<div class="sos_hint">> {}:</div>'.format(item)).data
                                 }
                             })
                         # evaluate
@@ -1700,7 +1700,7 @@ Available subkernels:\n{}'''.format(
              {'metadata': {},
              'data': {
                  'text/plain': '\n> {} ({}):'.format(filename, pretty_size(os.path.getsize(filename))),
-                 'text/html': HTML('<pre><font color="green">> {} ({}):</font></pre>'.format(filename, pretty_size(os.path.getsize(filename)))).data,
+                 'text/html': HTML('<div class="sos_hint">> {} ({}):</div>'.format(filename, pretty_size(os.path.getsize(filename)))).data,
                 }
              })
         previewer_func = None

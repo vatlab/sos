@@ -37,6 +37,15 @@ table tr th :last-child, table tr td :last-child {
     margin-bottom: 5px;
 }
 
+.sos_hint {
+  color: rgba(0,0,0,.4);
+  font-family: monospace;
+  display: none;
+}
+
+.output_stderr {
+  display: none;
+}
 div.input {
     display: none;
 }
@@ -142,21 +151,16 @@ function toggle_source() {
 	    hide = false;
         btn.textContent = "Show Less";
 	}
-    var x = document.getElementsByClassName("input");
-    for (i = 0; i < x.length; i++) {
-        if (hide) {
-		    x[i].style.display = 'none';
-		} else {
-		    x[i].style.display = 'flex';
-		}
-    }
-	var x = document.getElementsByClassName("hidden_output");
-    for (i = 0; i < x.length; i++) {
-        if (hide) {
-		    x[i].style.display = 'none';
-		} else {
-		    x[i].style.display = 'block';
-		}
+    if (hide) {
+        $('.input').hide();
+        $('.hidden_output').hide();
+        $('.sos_hint').hide();
+        $('.output_stderr').hide();
+    } else {
+        $('.input').show();
+        $('.hidden_output').show();
+        $('.sos_hint').show();
+        $('.output_stderr').show();
     }
 }
 </script>
