@@ -1224,7 +1224,7 @@ define([
             cell.metadata.show_output = false;
             $('.output_subarea', cell.element).removeClass('show_output');
         }
-        evt.notebook.select_next(true);
+        // evt.notebook.select_next(true);
         evt.notebook.focus_cell();
     }
 
