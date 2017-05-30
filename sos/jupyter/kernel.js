@@ -1644,8 +1644,7 @@ define([
                     .attr("value", DisplayName[KernelList[i][0]])
                     .text(DisplayName[KernelList[i][0]]));
             }
-            if (kernel)
-                select.val(kernel);
+            select.val(kernel ? kernel : '');
             return;
         }
         // add a new one
@@ -1657,8 +1656,7 @@ define([
                 .attr("value", DisplayName[KernelList[i][0]])
                 .text(DisplayName[KernelList[i][0]]));
         }
-        if (kernel)
-            select.val(kernel);
+        select.val(kernel ? kernel : '');
 
         select.change(function() {
             cell.metadata.kernel = DisplayName[this.value];
