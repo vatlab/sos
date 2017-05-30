@@ -248,7 +248,7 @@ document.body.appendChild(css);
 
     if ($('#dftooltip').length == 0) {
         $("<div id='dftooltip'></div>").css({
-            position: "fixed",
+            position: "absolute",
             display: "none",
             border: "1px solid #fdd",
             padding: "2px",
