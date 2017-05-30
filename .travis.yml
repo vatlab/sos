@@ -43,6 +43,7 @@ before_install:
     - conda install -c r r-essentials r-feather
     - conda install -c conda-forge feather-format
     # install JavaScript kernel
+    - sudo apt-get uninstall -y nodejs
     - sudo apt-get install -y nodejs-legacy
     - sudo npm install -g ijavascript
     - ijsinstall
