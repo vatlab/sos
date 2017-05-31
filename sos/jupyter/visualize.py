@@ -79,6 +79,13 @@ class Visualizer:
         parser.error = self._parse_error
         return parser
 
+    def _is_numeric_type(self, x):
+        try:
+            return numpy.issubdtype(x, numpy.number)
+        except:
+            # this includes Pandas category type
+            return False
+
     def _handle_table(self, df):
         parser = self._get_table_parser()
         try:
@@ -97,7 +104,7 @@ class Visualizer:
 
         hr, rest = code.split('</tr>', 1)
         index_type = 'numeric' if isinstance(df.index, pandas.indexes.range.RangeIndex) else 'alphabetic'
-        col_type = ['numeric' if numpy.issubdtype(x, numpy.number) else 'alphabetic' for x in df.dtypes]
+        col_type = ['numeric' if self._is_numeric_type(x) else 'alphabetic' for x in df.dtypes]
         code = ''.join('''{} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{}', {}, '{}')"></th>'''.format(x,
             tid, idx,
             index_type if idx == 0 else col_type[idx-1]) if '<th' in x else x for idx,x in enumerate(hr.split('</th>')  )) + '</tr>' + rest
@@ -185,7 +192,12 @@ class Visualizer:
                 continue
             if col not in data.columns:
                 raise ValueError("Invalid column name {}".format(col))
-            if not numpy.issubdtype(data[col].dtype, numpy.number):
+
+        # tooltip and --by columns does not have to be numeric
+        for col in args.cols:
+            if col == '_index':
+                continue
+            if not self._is_numeric_type(data[col].dtype):
                 raise ValueError("Column {} is not of numeric type".format(col))
 
         if args.cols[0] == '_index':
