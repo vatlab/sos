@@ -86,7 +86,8 @@ class SoS_String:
     CONVERTERS = {
         'u': os.path.expanduser,
         'e': lambda x: x.replace(' ', '\\ '),
-        'a': lambda x: os.path.realpath(os.path.abspath(os.path.expanduser(x))),
+        'a': lambda x: os.path.abspath(os.path.expanduser(x)),
+        'l': lambda x: os.path.realpath(os.path.expanduser(x)),
         'd': os.path.dirname,
         'b': os.path.basename,
         'n': lambda x: os.path.splitext(x)[0],
