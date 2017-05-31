@@ -211,6 +211,8 @@ run:
     def testSendSymbolicLink(self):
         '''Test to_host symbolic link or directories that contain symbolic link. #508'''
         # create a symbloc link
+        if os.path.exists('ll'):
+            os.remove('ll')
         subprocess.call('ln -s scripts ll', shell=True)
         script = SoS_Script('''
 [10]
