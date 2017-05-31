@@ -128,8 +128,8 @@ class Visualizer:
             igured if the dataframe has only one or two columns.''')
         parser.add_argument('--ylim', nargs=2, help='''Range of y-axis''')
         parser.add_argument('--xlim', nargs=2, help='''Range of x-axis''')
-        parser.add_argument('--width', default='90%', help='''Width of the plot.''')
-        parser.add_argument('--height', default='400px', help='''Height of the plot.''')
+        parser.add_argument('--width', default='50vw', help='''Width of the plot.''')
+        parser.add_argument('--height', default='38vw', help='''Height of the plot.''')
         parser.add_argument('-b', '--by', nargs='+', help='''columns by which the data points are stratified.''')
         parser.add_argument('--show', nargs='+', help='''What to show in the plot,
             can be 'lines', 'points' or both. Default to points, and lines if x-axis is

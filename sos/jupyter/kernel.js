@@ -1072,7 +1072,8 @@ define([
                         dropdown.show();
                         dropdown[0].size = len;
                         setTimeout(function() {
-                            dropdown.hide()
+                            dropdown.hide();
+                            dropdown.val('');
                         }, 8000);
                     } else {
                         dropdown.hide();
