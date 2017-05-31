@@ -1270,14 +1270,16 @@ define([
             col = changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
         }
         // if in sos mode and is single line, enable automatic preview
-        if ((cell.metadata.kernel == 'sos' || cell.metadata.kernel == 'SoS' || cell.metadata.kernel === undefined) && text.indexOf('\n') == -1 && text.indexOf('%') !== 0) {
+        if ((cell.metadata.kernel == 'SoS' || (cell.metadata.kernel === undefined && window.default_kernel == 'SoS')) 
+            && text.indexOf('\n') == -1 && text.indexOf('%') !== 0) {
             // if it is expression without space
             if (text.indexOf('=') == -1) {
-                if (text.indexOf(' ') == -1)
+                if (text.trim().match(/^[_A-Za-z0-9\.]+$/))
                     text = '%preview ' + text;
             } else {
                 var varname = text.substring(0, text.indexOf('=')).trim();
-                if (varname.indexOf(' ') == -1)
+                // if there is no space and special characters.
+                if (varname.trim().match(/^[_A-Za-z0-9\.]+$/))
                     text = '%preview ' + varname + '\n' + text;
             }
         }
