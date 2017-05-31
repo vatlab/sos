@@ -967,8 +967,8 @@ class TaskEngine(threading.Thread):
                                 if hasattr(env, '__task_notifier__'):
                                     env.__task_notifier__(['change-status', self.agent.alias, k, 'failed'])
                                 self.task_status[k] = 'failed'
-                        else:
-                            env.logger.trace('{} is still being submitted.'.format(k))
+                        #else:
+                        #    env.logger.trace('{} is still being submitted.'.format(k))
                     for k in submitted:
                         self.submitting_tasks.pop(k)
 
