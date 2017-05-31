@@ -387,11 +387,11 @@ define([
                     cell.metadata.kernel = DisplayName[data[1]];
                     // set meta information
                     changeStyleOnKernel(cell, data[1])
-                } else if (cell.metadata.show_output === true) {
+                } else if (cell.metadata.tags && cell.metadata.tags.indexOf('prominent') >= 0) {
                     // #639
-                    // if kernel is different, changeStyleOnKernel would set show_output.
-                    // otherwise we mark show_output
-                    $('.output_subarea', cell.element).addClass('show_output');
+                    // if kernel is different, changeStyleOnKernel would set prominent.
+                    // otherwise we mark prominent
+                    $('.output_subarea', cell.element).addClass('prominent');
                 }
             } else if (msg_type == 'preview-input') {
                 cell = window.my_panel.cell;
@@ -590,10 +590,10 @@ define([
             }
         }
 
-        if (cell.metadata.show_output === undefined || cell.metadata.show_output === false) {
-            $('.output_subarea', cell.element).removeClass('show_output');
+        if (cell.metadata.tags && cell.metadata.tags.indexOf('prominent') >= 0) {
+            $('.output_subarea', cell.element).addClass('prominent');
         } else {
-            $('.output_subarea', cell.element).addClass('show_output');
+            $('.output_subarea', cell.element).removeClass('prominent');
         }
 
         // cell in panel does not have prompt area
@@ -1218,12 +1218,32 @@ define([
 
     var toggle_display_output = function(evt) {
         var cell = evt.notebook.get_selected_cell();
-        if (cell.metadata.show_output === undefined || cell.metadata.show_output === false) {
-            cell.metadata.show_output = true;
-            $('.output_subarea', cell.element).addClass('show_output');
+        if (cell.metadata.tags && cell.metadata.tags.indexOf('prominent') >= 0) {
+            // if the toolbar exists, use the button ...
+            if ($('.cell-tag', cell.element).length > 0) {
+                // find the button and click
+                var tag = $('.cell-tag', cell.element).filter(function(idx, y) { return y.innerText === 'prominent'; });
+                $('.remove-tag-btn', tag).click();
+            } else {
+                // otherwise just remove the metadata
+                var idx = cell.metadata.tags.indexOf('prominent');
+                cell.metadata.tags.splice(idx, 1);
+            }
+            $('.output_subarea', cell.element).removeClass('prominent');
         } else {
-            cell.metadata.show_output = false;
-            $('.output_subarea', cell.element).removeClass('show_output');
+            if ($('.cell-tag', cell.element).length > 0) {
+                var taginput = $('.tags-input', cell.element);
+                taginput.children()[1].value = 'prominent';
+                $('.btn', taginput)[1].click();
+            } else {
+                // if tag toolbar not exist
+                if (! cell.metadata.tags) {
+                    cell.metadata.tags = ['prominent'];
+                } else {
+                    cell.metadata.tags.push('prominent');
+                }
+            }
+            $('.output_subarea', cell.element).addClass('prominent');
         }
         // evt.notebook.select_next(true);
         evt.notebook.focus_cell();
@@ -1534,7 +1554,7 @@ define([
     font-size: 120%;
 }
 
-.show_output {
+.prominent {
     box-shadow: 13px 0px 0px #aaaaaa;
 }
 
