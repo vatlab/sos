@@ -123,6 +123,7 @@ class Visualizer:
         parser.add_argument('--xlim', nargs=2, help='''Range of x-axis''')
         parser.add_argument('--width', default='90%', help='''Width of the plot.''')
         parser.add_argument('--height', default='400px', help='''Height of the plot.''')
+        parser.add_argument('-b', '--by', nargs='+', help='''columns by which the data points are stratified.''')
         parser.add_argument('--show', nargs='+', help='''What to show in the plot,
             can be 'lines', 'points' or both. Default to points, and lines if x-axis is
             sorted.''')
@@ -154,6 +155,13 @@ class Visualizer:
         if df.shape[0] > args.limit:
             self.kernel.warn("Only the first {} of the {} records are plotted. Use option --limit to set a new limit.".format(args.limit, df.shape[0]))
 
+        # replacing ' ' with &nbsp will disallow webpage to separate words
+        # into lines
+        indexes = [str(x).replace(' ', '&nbsp;') for x in df.index]
+
+        data = df.head(args.limit)
+        nrow = data.shape[0]
+
         if not args.cols:
             if df.shape[1] == 1:
                 args.cols = ['_index', df.columns[0]]
@@ -162,24 +170,17 @@ class Visualizer:
             else:
                 raise ValueError('Please specify columns for plot. Available columns are {}'.format(
                     ' '.join(df.columns)))
+
         if len(args.cols) == 1:
             args.cols = ['_index', args.cols[0]]
 
-        # replacing ' ' with &nbsp will disallow webpage to separate words
-        # into lines
-        indexes = [str(x).replace(' ', '&nbsp;') for x in df.index]
-
-        data = df.head(args.limit)
-        nrow = data.shape[0]
-        series = []
-
-        if args.tooltip:
-            args.tooltip = ['_index'] + args.tooltip
+        if args.cols[0] == '_index':
+            args.tooltip = [args.cols[0]] + (args.tooltip if args.tooltip else [])
         else:
-            args.tooltip = ['_index']
+            args.tooltip = ['_index', args.cols[0]] + (args.tooltip if args.tooltip else [])
 
         # check datatype
-        for col in args.cols + args.tooltip:
+        for col in args.cols + args.tooltip + (args.by if args.by else []):
             if col == '_index':
                 continue
             if col not in data.columns:
@@ -187,14 +188,27 @@ class Visualizer:
             if not numpy.issubdtype(data[col].dtype, numpy.number):
                 raise ValueError("Column {} is not of numeric type".format(col))
 
-        all_series = []
         if args.cols[0] == '_index':
             val_x = list(range(0, nrow))
         else:
             val_x = self._to_list(data[args.cols[0]])
+
+        all_series = []
+
+        if args.by:
+            # create seris with _by
+            vals = []
+            for by_col in args.by:
+                vals.append(sorted(list(set(data[by_col]))))
+            # outer product
+            import itertools
+            categories = list(itertools.product(*vals))
+
         for col in args.cols[1:]:
             series = {}
-            series['label'] = col
+            series['clickable'] = True
+            series['hoverable'] = True
+
             if col == '_index':
                 val_y = list(range(1, nrow + 1))
             else:
@@ -203,13 +217,27 @@ class Visualizer:
             tooltip = ['<br>'.join(['{}: {}'.format('index' if t == '_index' else t,
                 idxvalue if t == '_index' else df[t][idx] ) for t in args.tooltip])
                 for idx,idxvalue in enumerate(indexes)]
-            series['data'] = [(x, y, z) for x, y, z in zip(val_x, val_y, tooltip)]
-            series['clickable'] = True
-            series['hoverable'] = True
-            all_series.append(series)
+
+            all_data = [(x, y, z) for x, y, z in zip(val_x, val_y, tooltip)]
+
+            if args.by:
+                for cat in categories:
+                    series = {}
+                    series['label'] = col + ' (' + ' '.join('{}={}'.format(x,y) for x,y in zip(args.by, cat)) + ')'
+                    # find index of values that falls into the category
+                    series['data'] = [
+                            all_data[i] for i in range(len(all_data)) if 
+                                all(data[b][i]==v for b,v in zip(args.by, cat))
+                            ]
+                    if len(series['data']) > 0:
+                        all_series.append(series)
+            else:
+                series['label'] = col
+                series['data'] = all_data
+                all_series.append(series)
 
         options = defaultdict(dict)
-        options['series']['lines'] = {'show': is_sorted(val_x) if not args.show or 'lines' in args.show else False }
+        options['series']['lines'] = {'show': is_sorted(val_x) and not args.by if not args.show or 'lines' in args.show else False }
         options['series']['points'] = {'show': True if not args.show or 'points' in args.show else False }
         options['grid']['hoverable'] = True
         options['grid']['clickable'] = True
