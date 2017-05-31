@@ -309,7 +309,7 @@ var dt = 100;
 function showFigure{0}() {{
     if ( $('#dataframe_scatterplot_{0}').length === 0 || $.plot === undefined ) {{
           dt = dt * 1.5; // slow-down checks for datatable as time goes on;
-          setTimeout("showFigure{0}", dt);
+          setTimeout(showFigure{0}, dt);
           return;
     }} else {{
         $('#dataframe_scatterplot_{0}').css('width', "{1}").css('height', "{2}");
