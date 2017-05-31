@@ -1541,7 +1541,7 @@ define([
     margin-bottom: 5px;
 }
 
-.dataframe_scatterplot div.xAxis div.tickLabel {
+.scatterplot_by_rowname div.xAxis div.tickLabel {
     transform: translateY(15px) translateX(15px) rotate(45deg);
     -ms-transform: translateY(15px) translateX(15px) rotate(45deg);
     -moz-transform: translateY(15px) translateX(15px) rotate(45deg);

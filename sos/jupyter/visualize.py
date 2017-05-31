@@ -243,8 +243,10 @@ class Visualizer:
         options['grid']['clickable'] = True
 
         # if there are actual indexes... and plot by x
+        class_name = 'scatterplot'
         if args.cols[0] == '_index' and not isinstance(df.index, pandas.indexes.range.RangeIndex):
             options['xaxis']['ticks'] = [[x,str(y)] for x,y in enumerate(indexes)]
+            class_name = 'scatterplot_by_rowname'
 
         if args.xlim:
             options['xaxis']['min'] = args.xlim[0]
@@ -255,11 +257,11 @@ class Visualizer:
 
         code = """
 <div class='dataframe_container'>
-<div class="dataframe_scatterplot" id="dataframe_scatterplot_{0}" width="{1}" height="{2}"></div>
+<div class="{3}" id="dataframe_scatterplot_{0}" width="{1}" height="{2}"></div>
 <script language="javascript" type="text/javascript" src="http://www.flotcharts.org/flot/jquery.flot.js"></script>
 <script>
     function plotScatterPlot{0}() {{
-        plot = $.plot('#dataframe_scatterplot_{0}', """.format(tid, args.width, args.height) + \
+        plot = $.plot('#dataframe_scatterplot_{0}', """.format(tid, args.width, args.height, class_name) + \
         json.dumps(all_series) + """, """ + json.dumps(options) + """)
 
     if ($('#dftooltip').length == 0) {
