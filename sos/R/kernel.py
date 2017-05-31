@@ -248,9 +248,8 @@ class sos_R:
 
     def lan_to_sos(self, items):
         # first let us get all variables with names starting with sos
-        response = self.sos_kernel.get_response('..py.repr(ls())', ('display_data', 'execute_result'))[0][1]
-        expr = response['data']['text/plain']
-        all_vars = eval(eval(expr.split(' ', 1)[-1]))
+        response = self.sos_kernel.get_response('cat(..py.repr(ls()))', ('stream',))[0][1]
+        all_vars = eval(response['text'])
         all_vars = [all_vars] if isinstance(all_vars, str) else all_vars
 
         items += [x for x in all_vars if x.startswith('sos')]
@@ -262,21 +261,19 @@ class sos_R:
         if not items:
             return {}
 
-        py_repr = '..py.repr(list({}))'.format(','.join('{0}={0}'.format(x) for x in items))
+        py_repr = 'cat(..py.repr(list({})))'.format(','.join('{0}={0}'.format(x) for x in items))
 
         # irkernel (since the new version) does not produce execute_result, only
         # display_data
-        response = self.sos_kernel.get_response(py_repr, ('display_data', 'execute_result'))[0][1]
-        expr = response['data']['text/plain']
+        response = self.sos_kernel.get_response(py_repr, ('stream',))[0][1]
+        expr = response['text']
         try:
             if 'read_dataframe' in expr:
                 # imported to be used by eval
                 from feather import read_dataframe
                 # suppress flakes warning
                 read_dataframe
-            # the result is something like
-            # [1] "{'a': 1}"
-            return eval(eval(expr.split(' ', 1)[-1]))
+            return eval(expr)
         except Exception as e:
             raise UsageError('Failed to convert {} to Python object: {}'.format(expr, e))
 
