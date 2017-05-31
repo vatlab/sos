@@ -1963,7 +1963,7 @@ Available subkernels:\n{}'''.format(
                 # for panel cell, we return a non-informative execution count
                 if self.cell_idx is None or self.cell_idx < 0:
                     self._execution_count = '-'
-                self._notebook_name = args.filename
+                self._notebook_name = args.filename if args.filename else 'Untitled'
                 if args.workflow is not None:
                     self._workflow = '#!/usr/bin/env sos-runner\n#fileformat=SOS1.0\n\n' + \
                         base64.b64decode(args.workflow).decode()
@@ -2192,6 +2192,7 @@ Available subkernels:\n{}'''.format(
                     arg = argparse.Namespace()
                     arg.template = 'sos'
                     notebook_to_html(self._notebook_name + '.ipynb', filename, sargs=arg, unknown_args=[])
+
                 self.send_response(self.iopub_socket, 'display_data',
                     {'source': 'SoS', 'metadata': {},
                      'data': {
