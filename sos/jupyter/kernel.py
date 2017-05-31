@@ -1690,6 +1690,8 @@ Available subkernels:\n{}'''.format(
                     return txt, result
                 elif isinstance(result, dict):
                     return txt, (result, {})
+                elif result is None:
+                    return txt, None
                 else:
                     raise ValueError('Unrecognized return value from visualizer: {}.'.format(short_repr(result)))
             except Exception as e:
