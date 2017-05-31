@@ -44,8 +44,8 @@ before_install:
     - conda install -c conda-forge feather-format
     # install JavaScript kernel
     - sudo apt-get remove -y nodejs
-    - sudo apt-get install -y nodejs-legacy npm
-    - sudo npm install -g ijavascript npm
+    - sudo apt-get install -y nodejs-legacy
+    - sudo npm install -g ijavascript
     - ijsinstall
     # install bash kernel
     - pip install bash_kernel
