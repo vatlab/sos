@@ -162,9 +162,9 @@ class Visualizer:
         if df.shape[0] > args.limit:
             self.kernel.warn("Only the first {} of the {} records are plotted. Use option --limit to set a new limit.".format(args.limit, df.shape[0]))
 
-        # replacing ' ' with &nbsp will disallow webpage to separate words
+        # replacing ' ' with &nbsp and '-' with unicode hyphen will disallow webpage to separate words
         # into lines
-        indexes = [str(x).replace(' ', '&nbsp;') for x in df.index]
+        indexes = [str(x).replace(' ', '&nbsp;').replace('-', '&#8209;') for x in df.index]
 
         data = df.head(args.limit)
         nrow = data.shape[0]
