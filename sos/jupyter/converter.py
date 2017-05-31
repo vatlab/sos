@@ -367,7 +367,7 @@ def get_notebook_to_html_parser():
     parser.add_argument('--template',
         help='''Template to export Jupyter notebook with sos kernel. SoS provides a
         template called sos that displays markdown cells and only output of cells with
-        show_output metadata, and a "Show More" button to display all input and output
+        prominent tag, and a "Show More" button to display all input and output
         cells.''')
     return parser
 
@@ -377,7 +377,7 @@ def notebook_to_html(notebook_file, output_file, sargs=None, unknown_args=[]):
     if sargs.template == 'sos':
         # use the default sos template
         unknown_args = ['--template', os.path.join(os.path.split(__file__)[0], 'sos.tpl') ] + unknown_args
-    else:
+    elif sargs.template:
         unknown_args = ['--template', sargs.template] + unknown_args
     export_notebook(HTMLExporter, 'html', notebook_file, output_file, unknown_args)
 
