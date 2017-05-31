@@ -822,11 +822,11 @@ class SoS_Kernel(IPythonKernel):
             for item in items:
                 res += '<tr>\n'
                 if isinstance(item, str):
-                    res += '<td colspan="2">{}</td>\n'.format(item)
+                    res += '<td colspan="2"><pre>{}</pre></td>\n'.format(item)
                 elif len(item) == 1:
-                    res += '<td colspan="2">{}</td>\n'.format(item[0])
+                    res += '<td colspan="2"><pre>{}</pre></td>\n'.format(item[0])
                 elif len(item) == 2:
-                    res += '<th>{}</th><td>{}</td>\n'.format(item[0], item[1])
+                    res += '<th>{}</th><td><pre>{}</pre></td>\n'.format(item[0], item[1])
                 else:
                     self.warn('Invalid session info item of type {}: {}'.format(item.__class__.__name__, short_repr(item)))
                 res += '</tr>\n'
