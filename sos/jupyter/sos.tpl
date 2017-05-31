@@ -195,7 +195,7 @@ function toggle_source() {
 
 
 {% block output %}
-	{%- if cell.metadata.show_output -%}
+	{%- if 'prominent' in cell.metadata.tags -%}
 	    {{ super() }}
     {%- else -%}
 	    <div class="hidden_output">
