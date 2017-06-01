@@ -189,17 +189,27 @@ function toggle_source() {
 
 {%- block input -%}
 
-	{{ super() }}
-
+	{%- if 'scratch' in cell.metadata.tags -%}
+    {%- else -%}
+	    {{ super() }}
+   {%- endif -%}
 {%- endblock input -%}
 
 
 {% block output %}
 	{%- if 'prominent' in cell.metadata.tags -%}
 	    {{ super() }}
+	{%- elif 'scratch' in cell.metadata.tags -%}
     {%- else -%}
 	    <div class="hidden_output">
 	    {{ super() }}
 		</div>
    {%- endif -%}
 {% endblock output %}
+
+{% block markdowncell %}
+	{%- if 'scratch' in cell.metadata.tags -%}
+    {%- else -%}
+	    {{ super() }}
+   {%- endif -%}
+{%- endblock markdowncell -%}
