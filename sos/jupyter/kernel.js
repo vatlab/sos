@@ -391,7 +391,7 @@ define([
                     // #639
                     // if kernel is different, changeStyleOnKernel would set prominent.
                     // otherwise we mark prominent
-                    $('.output_subarea', cell.element).addClass('prominent');
+                    $('.output_wrapper', cell.element).addClass('prominent');
                 }
             } else if (msg_type == 'preview-input') {
                 cell = window.my_panel.cell;
@@ -591,9 +591,9 @@ define([
         }
 
         if (cell.metadata.tags && cell.metadata.tags.indexOf('prominent') >= 0) {
-            $('.output_subarea', cell.element).addClass('prominent');
+            $('.output_wrapper', cell.element).addClass('prominent');
         } else {
-            $('.output_subarea', cell.element).removeClass('prominent');
+            $('.output_wrapper', cell.element).removeClass('prominent');
         }
 
         // cell in panel does not have prompt area
@@ -1219,8 +1219,9 @@ define([
     var toggle_display_output = function(evt) {
         var cell = evt.notebook.get_selected_cell();
         if (cell.metadata.tags && cell.metadata.tags.indexOf('prominent') >= 0) {
+            $('.output_wrapper', cell.element).removeClass('prominent');
             // if the toolbar exists, use the button ...
-            if ($('.cell-tag', cell.element).length > 0) {
+            if ($('.tags-input', cell.element).length > 0) {
                 // find the button and click
                 var tag = $('.cell-tag', cell.element).filter(function(idx, y) { return y.innerText === 'prominent'; });
                 $('.remove-tag-btn', tag).click();
@@ -1229,9 +1230,9 @@ define([
                 var idx = cell.metadata.tags.indexOf('prominent');
                 cell.metadata.tags.splice(idx, 1);
             }
-            $('.output_subarea', cell.element).removeClass('prominent');
         } else {
-            if ($('.cell-tag', cell.element).length > 0) {
+            $('.output_wrapper', cell.element).addClass('prominent');
+            if ($('.tags-input', cell.element).length > 0) {
                 var taginput = $('.tags-input', cell.element);
                 taginput.children()[1].value = 'prominent';
                 $('.btn', taginput)[1].click();
@@ -1243,7 +1244,6 @@ define([
                     cell.metadata.tags.push('prominent');
                 }
             }
-            $('.output_subarea', cell.element).addClass('prominent');
         }
         // evt.notebook.select_next(true);
         evt.notebook.focus_cell();
@@ -1555,7 +1555,10 @@ define([
 }
 
 .prominent {
-    box-shadow: 13px 0px 0px #aaaaaa;
+    border-right-width: 13px;
+    border-right-color: #aaaaaa;
+    border-right-style: solid;
+ /*   box-shadow: 13px 0px 0px #aaaaaa; */
 }
 
 .dataframe_container { max-height: 400px } 
