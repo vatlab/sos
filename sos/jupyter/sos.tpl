@@ -255,7 +255,7 @@ Display content:<br>
 
 
 {% block output %}
-	{%- if 'prominent' in cell.metadata.tags -%}
+	{%- if 'report_output' in cell.metadata.tags -%}
 	    {{ super() }}
 	{%- elif 'scratch' in cell.metadata.tags -%}
     {%- else -%}
