@@ -184,7 +184,6 @@ class SoS_Kernel(IPythonKernel):
         'sosrun',
         'sossave',
         'shutdown',
-        'skip',
         'taskinfo',
         'tasks',
         'toc',
@@ -1892,6 +1891,7 @@ Available subkernels:\n{}'''.format(
             # so that vim-python can get the pid.
             return
         if self.MAGIC_SKIP.match(code):
+            self.warn('The %skip magic is deprecated and will be removed later.')
             return {'status': 'ok', 'payload': [], 'user_expressions': {}, 'execution_count': self._execution_count}
         elif self.MAGIC_RENDER.match(code):
             options, remaining_code = self.get_magic_and_code(code, False)
