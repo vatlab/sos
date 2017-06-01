@@ -1380,7 +1380,7 @@ Available subkernels:\n{}'''.format(
                 self.handle_magic_get(items)
 
 
-    def get_response(self, statement, msg_types):
+    def get_response(self, statement, msg_types, name=None):
         # get response of statement of specific msg types.
         responses = []
         self.KC.execute(statement, silent=False, store_history=False)
@@ -1394,7 +1394,7 @@ Available subkernels:\n{}'''.format(
                 if msg_type == 'status':
                     _execution_state = sub_msg["content"]["execution_state"]
                 else:
-                    if msg_type in msg_types:
+                    if msg_type in msg_types and (name is None or sub_msg['content'].get('name', None) in name):
                         responses.append([msg_type, sub_msg['content']])
                     else:
                         if self._debug_mode:

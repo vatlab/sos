@@ -248,7 +248,7 @@ class sos_R:
 
     def lan_to_sos(self, items):
         # first let us get all variables with names starting with sos
-        response = self.sos_kernel.get_response('cat(..py.repr(ls()))', ('stream',))[0][1]
+        response = self.sos_kernel.get_response('cat(..py.repr(ls()))', ('stream',), name=('stdout',))[0][1]
         all_vars = eval(response['text'])
         all_vars = [all_vars] if isinstance(all_vars, str) else all_vars
 
@@ -265,7 +265,7 @@ class sos_R:
 
         # irkernel (since the new version) does not produce execute_result, only
         # display_data
-        response = self.sos_kernel.get_response(py_repr, ('stream',))[0][1]
+        response = self.sos_kernel.get_response(py_repr, ('stream',), name=('stdout',))[0][1]
         expr = response['text']
         try:
             if 'read_dataframe' in expr:
@@ -278,5 +278,5 @@ class sos_R:
             raise UsageError('Failed to convert {} to Python object: {}'.format(expr, e))
 
     def sessioninfo(self):
-        response = self.sos_kernel.get_response(r'cat(paste(capture.output(sessionInfo()), collapse="\n"))', ('stream',))[0]
+        response = self.sos_kernel.get_response(r'cat(paste(capture.output(sessionInfo()), collapse="\n"))', ('stream',), name=('stdout',))[0]
         return response[1]['text']
