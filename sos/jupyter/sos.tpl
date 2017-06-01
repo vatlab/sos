@@ -44,8 +44,9 @@ table tr th :last-child, table tr td :last-child {
 }
 
 .output_stderr {
-  display: none;
+    display: none;
 }
+
 div.input {
     display: none;
 }
@@ -55,6 +56,10 @@ div.input {
 }
 
 .input_prompt {
+    display: none;
+}
+
+.output_area .prompt {
     display: none;
 }
 
@@ -79,6 +84,31 @@ div.input {
 .sos_dataframe td, .sos_dataframe th {
     white-space: nowrap;
 }
+
+
+.display_control_panel  {
+	padding: 10pt;
+    left: 5px;
+	top: 5px;
+	position: fixed;
+	z-index: 1000;
+}
+
+.display_control_panel:hover {
+	background: rgb(224, 234, 241);
+}
+.display_checkboxes {
+	margin-top: 5pt;
+}
+.display_control_panel:hover .display_control {
+	display: block;
+	opacity: 100;
+}
+.display_control_panel .display_control {
+	opacity: 0;
+}
+
+
 
 </style>
 
@@ -151,35 +181,63 @@ function sortDataFrame(id, n, dtype) {
 }
 
 
-function toggle_vis(o) {
-    var d = o.style.display;
-    o.style.display = (d == "flex" || d == "" || d == "block" | d == "-webkit-box") ? "none": "-webkit-box";
-}
+
 
 function toggle_source() {
-    var btn = document.getElementById("show_1");
-	var hide = true;
-    if (btn.textContent.indexOf("Less") > 0) {
-        btn.textContent = "Show More";
-    } else {
-	    hide = false;
-        btn.textContent = "Show Less";
-	}
-    if (hide) {
-        $('.input').hide();
-        $('.hidden_output').hide();
-        $('.sos_hint').hide();
-        $('.output_stderr').hide();
-    } else {
-        $('.input').show();
+    var btn = document.getElementById("show_cells");
+    if (btn.checked) {
+        $('div.input').css('display', 'flex');
         $('.hidden_output').show();
         $('.sos_hint').show();
-        $('.output_stderr').show();
+    } else {
+        $('div.input').hide();
+        $('.hidden_output').hide();
+        $('.sos_hint').hide();
     }
 }
+
+function toggle_prompt() {
+    var btn = document.getElementById("show_prompt");
+    if (btn.checked) {
+        $('.output_prompt').show();
+        $('.input_prompt').show();
+        $('.output_area .prompt').show();
+    } else {
+        $('.output_prompt').hide();
+        $('.input_prompt').hide();
+        $('.output_area .prompt').hide();
+    }
+}
+
+function toggle_error() {
+    var btn = document.getElementById("show_error");
+    if (btn.checked) {
+        $('.output_stderr').show();
+    } else {
+        $('.output_stderr').hide();
+    }
+}
+
 </script>
 
-<button id="show_1" type="button" onclick="toggle_source();" >Show More</button> 
+
+<div class='display_control_panel'>
+	<div class="display_control">
+Display content:<br>
+<div class="display_checkboxes">
+<input type="checkbox" id="show_cells" name="show_cells" onclick="toggle_source()">
+<label for="show_cells">All cells</label>
+<br>
+<input type="checkbox" id="show_prompt" name="show_prompt" onclick="toggle_prompt()">
+<label for="show_prompt">Prompt</label>
+<br>
+<input type="checkbox" id="show_error" name="show_error" onclick="toggle_error()">
+<label for="show_error">Error</label>
+</div>
+   </div>
+
+</div>
+
 
 </script>
 

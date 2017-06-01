@@ -690,7 +690,8 @@ define([
 
         var cells = IPython.notebook.get_cells();
         for (var i = 0; i < cells.length; i++) {
-            changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
+			if (cells[i].cell_type == 'code')
+	            changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
         }
         // update droplist of panel cell
         if (window.my_panel) {

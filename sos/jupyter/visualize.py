@@ -268,7 +268,7 @@ class Visualizer:
             options['yaxis']['max'] = args.ylim[1]
 
         code = """
-<div class='dataframe_container'>
+<div class='scatterplot_container'>
 <div class="{3}" id="dataframe_scatterplot_{0}" width="{1}" height="{2}"></div>
 <script language="javascript" type="text/javascript" src="http://www.flotcharts.org/flot/jquery.flot.js"></script>
 <script>
