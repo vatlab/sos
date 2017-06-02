@@ -110,7 +110,26 @@ div.input {
 
 
 
+
+{%- if nb['metadata'].get('sos',{}).get('kernels',none) is not none -%}
+
+{% for item in nb['metadata'].get('sos',{}).get('kernels',{}) %}
+
+{%- if item[2] -%}
+.lan_{{item[0]}} .input_prompt { background-color: {{item[3]}} !important }  
+
+{%- else -%}
+.lan_{{item[0]}} {}
+
+{%- endif -%}
+
+{% endfor %}
+
+{%- endif -%}
 </style>
+
+
+
 
 <script>
 
@@ -188,11 +207,9 @@ function toggle_source() {
     if (btn.checked) {
         $('div.input').css('display', 'flex');
         $('.hidden_output').show();
-        $('.sos_hint').show();
     } else {
         $('div.input').hide();
         $('.hidden_output').hide();
-        $('.sos_hint').hide();
     }
 }
 
@@ -209,12 +226,14 @@ function toggle_prompt() {
     }
 }
 
-function toggle_error() {
-    var btn = document.getElementById("show_error");
+function toggle_messages() {
+    var btn = document.getElementById("show_messages");
     if (btn.checked) {
+        $('.sos_hint').show();
         $('.output_stderr').show();
     } else {
         $('.output_stderr').hide();
+        $('.sos_hint').hide();
     }
 }
 
@@ -231,8 +250,8 @@ Display content:<br>
 <input type="checkbox" id="show_prompt" name="show_prompt" onclick="toggle_prompt()">
 <label for="show_prompt">Prompt</label>
 <br>
-<input type="checkbox" id="show_error" name="show_error" onclick="toggle_error()">
-<label for="show_error">Error</label>
+<input type="checkbox" id="show_messages" name="show_messages" onclick="toggle_messages()">
+<label for="show_messages">Messages</label>
 </div>
    </div>
 
@@ -271,3 +290,16 @@ Display content:<br>
 	    {{ super() }}
    {%- endif -%}
 {%- endblock markdowncell -%}
+
+
+{% block codecell %}
+
+{%- if cell['metadata'].get('kernel',none) is not none -%}
+	<div class="cell border-box-sizing code_cell rendered lan_{{cell['metadata'].get('kernel', none)}}">
+	{{ super() }}
+	</div>
+{%- else -%}
+	{{ super() }}
+{%- endif -%}
+
+{%- endblock codecell %}
