@@ -9,9 +9,10 @@
 <style type="text/css">
 
 table {
-   padding: 0;border-collapse: collapse; }
+   padding: 0;
+   border-collapse: collapse; }
 table tr {
-   border-top: 1px solid #cccccc;
+   border: none;
    background-color: white;
    margin: 0;
    padding: 0; }
@@ -19,11 +20,11 @@ table tr:nth-child(2n) {
    background-color: #f8f8f8; }
 table tr th {
    font-weight: bold;
-   border: 1px solid #cccccc;
+   border: none;
    margin: 0;
    padding: 6px 13px; }
 table tr td {
-   border: 1px solid #cccccc;
+   border: none;
    margin: 0;
    padding: 6px 13px; }
 table tr th :first-child, table tr td :first-child {
@@ -35,6 +36,10 @@ table tr th :last-child, table tr td :last-child {
 .dataframe_input {
     border: 1px solid #ddd;
     margin-bottom: 5px;
+}
+
+.rendered_html table {
+  border: none;
 }
 
 .sos_hint {
@@ -81,10 +86,14 @@ div.input {
     /*rotation:270deg;*/
 }
 
-.sos_dataframe td, .sos_dataframe th {
+.sos_dataframe td, .sos_dataframe th, .sos_dataframe tr {
     white-space: nowrap;
+	border: none;
 }
 
+.sos_dataframe tr:hover {
+    background-color: #e6f2ff;
+}
 
 .display_control_panel  {
 	padding: 10pt;
