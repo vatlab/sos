@@ -11,6 +11,11 @@
 table {
    padding: 0;
    border-collapse: collapse; }
+thead {
+	border-bottom-width: 1px;
+	border-bottom-color: rgb(0,0,0);
+	border-bottom-style: solid;
+}
 table tr {
    border: none;
    background-color: white;
