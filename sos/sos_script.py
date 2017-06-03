@@ -288,7 +288,7 @@ class SoS_Step:
             raise RuntimeError('Failed to parse script')
         # under window, the lines will be ended with \r\n, which will cause
         # trouble with textwrap.dedent.
-        self._script = '\n'.join(self._script.splitlines())
+        self._script = '\n'.join(self._script.splitlines()) + '\n'
         self.statements[-1] = ['!', '{}({}{})\n'.format(self._action, text_repr(textwrap.dedent(self._script)), (', ' + opt) if opt else '')]
         self.values = []
         self._action = None
