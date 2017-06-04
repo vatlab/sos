@@ -151,9 +151,6 @@ var = 1
         # allowed names with alias
         for name in ['a5 (p1)', 'a_5 (something fun)', '*_0 (no way)', 'a*1_100']:
             SoS_Script('[{}]'.format(name))
-        # no directive in global section
-        self.assertRaises(ParsingError, SoS_Script,
-            '''input: 'filename' ''')
         # duplicate sections
         self.assertRaises(ParsingError, SoS_Script,
             '''[1]\n[1]''')
@@ -173,9 +170,6 @@ var = 1
 
     def testGlobalVariables(self):
         '''Test definition of variables'''
-        # global section cannot have directive
-        self.assertRaises(ParsingError, SoS_Script,
-            '''input: 'filename' ''')
         # allow definition
         SoS_Script('''a = '1' ''')
         SoS_Script('''a = ['a', 'b'] ''')
@@ -447,8 +441,6 @@ depends='a.txt' ''')
     def testSectionDirectives(self):
         '''Test directives of sections'''
         # cannot be in the global section
-        self.assertRaises(ParsingError, SoS_Script,
-            '''input: 'filename' ''')
         # multi-line OK
         SoS_Script('''
 [0]
