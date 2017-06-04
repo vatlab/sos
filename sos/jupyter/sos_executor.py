@@ -310,7 +310,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
             'sig_mode': args.__sig_mode__,
             'default_queue': '' if args.__queue__ is None else args.__queue__,
             'wait_for_task': True if args.__wait__ is True or args.dryrun else (False if args.__no_wait__ else None),
-            'resume_mode': getattr(args, '__resume__', False),
+            'resume_mode': kernel is not None and kernel._resume_execution,
             'run_mode': 'dryrun' if args.dryrun else 'interactive',
             'verbosity': args.verbosity,
 

@@ -420,7 +420,8 @@ define([
                 window.pending_cells[cell.cell_id] = data[1];
             } else if (msg_type == 'remove-task') {
                 var item = document.getElementById("table_" + data[0] + "_" + data[1]);
-                item.parentNode.removeChild(item);
+				if (item)
+					item.parentNode.removeChild(item);
             } else if (msg_type == 'update-duration') {
                 if (window._duration_updater === undefined) {
                     window._duration_updater = window.setInterval(function() {

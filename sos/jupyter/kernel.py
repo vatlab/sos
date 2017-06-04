@@ -700,7 +700,7 @@ class SoS_Kernel(IPythonKernel):
         self._execution_count = 1
         self._debug_mode = False
         self._use_panel = None
-        self._frontend_options = ''
+        self._resume_execution = False
 
         self.frontend_comm = None
         self.comm_manager.register_target('sos_comm', self.sos_comm)
@@ -1581,10 +1581,6 @@ Available subkernels:\n{}'''.format(
             try:
                 # record input and output
                 fopt = ''
-                if self._frontend_options:
-                    for opt in shlex.split(self._frontend_options):
-                        if opt not in shlex.split(self.options):
-                            fopt += ' ' + opt
                 res = runfile(code=code, args=self.options + fopt, kernel=self)
                 self.send_result(res, silent)
             except PendingTasks as e:
@@ -1999,10 +1995,10 @@ Available subkernels:\n{}'''.format(
                 self.switch_kernel(args.cell_kernel)
             try:
                 if args.resume:
-                    self._frontend_options = '-r'
+                    self._resume_execution = True
                 return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
             finally:
-                self._frontend_options = ''
+                self._resume_execution = False
                 if not self.hard_switch_kernel:
                     self.switch_kernel(original_kernel)
         elif self.MAGIC_WITH.match(code):
