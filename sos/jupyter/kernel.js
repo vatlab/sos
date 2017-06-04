@@ -444,11 +444,12 @@ define([
                 if (data[2] === "completed") {
                     /* if successful, let us re-run the cell to submt another task
                        or get the result */
-                    for (cell in window.pending_cells) {
+                    for (var cell in window.pending_cells) {
                         /* remove task from pending_cells */
-                        var idx = window.pending_cells[cell].indexOf(data[1]);
-                        // $("#"+data[0]).css("background-color","#98FB98")
-                        if (idx >= 0) {
+                        for (var idx = 0; idx < window.pending_cells[cell].length; ++idx) {
+                            if (window.pending_cells[cell][idx][0] != data[0] ||
+                                window.pending_cells[cell][idx][1] != data[1])
+                                continue;
                             window.pending_cells[cell].splice(idx, 1);
                             if (window.pending_cells[cell].length === 0) {
                                 delete window.pending_cells[cell];
@@ -465,6 +466,7 @@ define([
                                     window._auto_resume = true;
                                     rerun.execute();
                                 }
+                                break;
                             }
                         }
                     }
@@ -690,8 +692,8 @@ define([
 
         var cells = IPython.notebook.get_cells();
         for (var i = 0; i < cells.length; i++) {
-			if (cells[i].cell_type == 'code')
-	            changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
+            if (cells[i].cell_type == 'code')
+                changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
         }
         // update droplist of panel cell
         if (window.my_panel) {
@@ -1058,7 +1060,7 @@ define([
 
         // remove cell toolbar
         $('.celltoolbar', cell.element).remove()
-		$('.ctb_hideshow', cell.element).remove()
+        $('.ctb_hideshow', cell.element).remove()
         //this.cell.element.find('code_cell').css('position', 'absolute').css('top', '1.5em');
         this.cell.element.find('div.input_prompt').addClass('panel_input_prompt').text('In [-]:');
         this.cell.element.find('div.input_area').css('margin-top', '20pt')
