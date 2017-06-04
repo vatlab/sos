@@ -1005,7 +1005,6 @@ for __n, __v in {}.items():
                     # allow multiple process-style actions
                     cursect.wrap_script()
                 else:
-                    # start a global section for the new statement
                     self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
                     cursect = self.sections[-1]
                 #
@@ -1128,20 +1127,25 @@ for __n, __v in {}.items():
         if parsing_errors.errors:
             raise parsing_errors
         #
-        # as the last step, let us insert the global section to all sections
-        for idx,sec in [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]:
-            for statement in sec.statements:
-                if statement[0] == '=':
-                    self.global_def += '{} = {}\n'.format(statement[1], statement[2])
-                else:
-                    self.global_def += statement[1]
         # if there is no section in the script, we create a default section with global
         # definition being the content.
         if not [x for x in self.sections if not x.is_global]:
             self.sections.append(SoS_Step(self.content, [('default', None, None)], global_sigil=self.global_sigil))
             for section in [x for x in self.sections if x.is_global]:
                 self.sections[-1].statements.extend(section.statements)
+                self.sections[-1].task = section.task
                 self.global_def = ''
+        else:
+            # as the last step, let us insert the global section to all sections
+            for idx,sec in [(idx,x) for idx,x in enumerate(self.sections) if x.is_global]:
+                for statement in sec.statements:
+                    if statement[0] == '=':
+                        self.global_def += '{} = {}\n'.format(statement[1], statement[2])
+                    elif statement[0] == ':':
+                        parsing_errors.append(cursect.lineno, '{}:{}'.format(statement[1], statement[2]),
+                                'Global section cannot contain sos input, ouput, and task statements')
+                    else:
+                        self.global_def += statement[1]
         # remove the global section after inserting it to each step of the process
         self.sections = [x for x in self.sections if not x.is_global]
         #
