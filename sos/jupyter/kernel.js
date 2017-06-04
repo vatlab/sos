@@ -1058,6 +1058,7 @@ define([
 
         // remove cell toolbar
         $('.celltoolbar', cell.element).remove()
+		$('.ctb_hideshow', cell.element).remove()
         //this.cell.element.find('code_cell').css('position', 'absolute').css('top', '1.5em');
         this.cell.element.find('div.input_prompt').addClass('panel_input_prompt').text('In [-]:');
         this.cell.element.find('div.input_area').css('margin-top', '20pt')
@@ -1525,10 +1526,10 @@ define([
     width:70pt;
     background: none;
     z-index: 1000;
-    float:right;
+    position: absolute;
     height: 1.7em;
-    margin-top: 5pt;
-    margin-right: 5pt;
+    margin-top: 3pt;
+    right: 8pt;
     font-size: 80%;
 }
 
