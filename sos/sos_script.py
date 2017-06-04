@@ -1004,6 +1004,10 @@ for __n, __v in {}.items():
                     cursect.values = []
                     # allow multiple process-style actions
                     cursect.wrap_script()
+                else:
+                    # start a global section for the new statement
+                    self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
+                    cursect = self.sections[-1]
                 #
                 directive_name = mo.group('directive_name')
                 # newline should be kept in case of multi-line directive
@@ -1026,10 +1030,6 @@ for __n, __v in {}.items():
                     if self.transcript:
                         self.transcript.write('DIRECTIVE\t{}\t{}'.format(lineno, line))
                 else:
-                    # should be in script or parameter mode, which is ok for global section
-                    if cursect is None:
-                        self.sections.append(SoS_Step(is_global=True, global_sigil=self.global_sigil))
-                        cursect = self.sections[-1]
                     if directive_name == 'parameter':
                         cursect.add_directive(directive_name, directive_value, lineno)
                         if self.transcript:
