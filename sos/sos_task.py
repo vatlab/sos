@@ -798,7 +798,7 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, verbosity=2):
     to_be_removed = defaultdict(list)
     for dirname, dirlist, filelist in os.walk(os.path.join(os.path.expanduser('~'), '.sos', 'tasks')):
         for f in filelist:
-            ID = os.path.basename(f)[:32]
+            ID = os.path.basename(f).split('.', 1)[0]
             if ID in all_tasks:
                 to_be_removed[ID].append(os.path.join(dirname, f))
     #
