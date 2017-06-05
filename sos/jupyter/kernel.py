@@ -1870,7 +1870,7 @@ Available subkernels:\n{}'''.format(
         lines = code.splitlines()
         try:
             idx = [x.startswith('#') or not x.strip() for x in lines].index(False)
-            return os.linesep.join(lines[idx:])
+            return '\n'.join(lines[idx:])
         except Exception:
             # if all line is empty
             return ''
