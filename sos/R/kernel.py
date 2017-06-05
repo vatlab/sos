@@ -104,7 +104,9 @@ def _R_repr(obj):
                     if not homogeneous_type(data[c]):
                         data[c] = [str(x) for x in data[c]]
                 feather.write_dataframe(data, feather_tmp_)
-            return '..read.feather("{}", index={})'.format(feather_tmp_, _R_repr(df_index))
+                # use {!r} for path because the string might contain c:\ which needs to be
+                # double quoted.
+            return '..read.feather({!r}, index={})'.format(feather_tmp_, _R_repr(df_index))
         else:
             return repr('Unsupported datatype {}'.format(short_repr(obj)))
 
