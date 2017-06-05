@@ -177,8 +177,14 @@ def collect_task_result(task_id, sigil, sos_dict):
         env.logger.debug('task {} (index={}) return shared variable {}'.format(task_id, env.sos_dict['_index'], shared))
     # the difference between sos_dict and env.sos_dict is that sos_dict (the original version) can have remote() targets
     # which should not be reported.
+    if env.sos_dict['_output'] is None:
+        output = {}
+    elif sos_dict['_output'] is None:
+        output = {}
+    else:
+        output = {x:FileTarget(x).signature() for x in sos_dict['_output'] if isinstance(x, str)}
     return {'ret_code': 0, 'task': task_id,
-            'output': {} if env.sos_dict['_output'] is None else {x:FileTarget(x).signature() for x in sos_dict['_output'] if isinstance(x, str)},
+            'output': output,
             'shared': {env.sos_dict['_index']: shared} }
 
 

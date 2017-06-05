@@ -335,7 +335,7 @@ sh:
     touch a${a}.txt
 ''')
         wf = script.workflow()
-        Base_Executor(wf).run()
+        Base_Executor(wf, config={'sig_mode': 'force'}).run()
         self.assertTrue(os.path.isfile("a100.txt"))
 
     def testTrunkSizeOption(self):
