@@ -1104,7 +1104,7 @@ class TaskEngine(threading.Thread):
                 ' '.join(tasks), verbosity, '--html' if html else '',
                 '--start-time' if start_time else '', '--age {}'.format(age) if age else ''))
         except subprocess.CalledProcessError as e:
-            env.logger.error('Failed to query status of tasks {}'.format(tasks))
+            env.logger.error('Failed to query status of tasks {}: {}'.format(tasks, e))
             return ''
 
     def kill_tasks(self, tasks, all_tasks=False):

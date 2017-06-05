@@ -249,7 +249,7 @@ class RemoteHost:
 
     def _get_receive_cmd(self):
         return self.config.get('receive_cmd',
-            '''mkdir -p ${dest!adpq} && rsync -av -e 'ssh -p ${port}' ${host}:${source!aep} "${dest!adep}"''')
+            '''rsync -av -e 'ssh -p ${port}' ${host}:${source!e} "${dest!adep}"''')
 
     def _get_execute_cmd(self):
         return self.config.get('execute_cmd',
@@ -285,7 +285,7 @@ class RemoteHost:
                 dest = self.path_map[k] + dest[len(k):]
             else:
                 env.logger.warning('Path {} is not under any specified paths of localhost and is mapped to {} on remote host.'.format(source, dest))
-            result[source] = dest
+            result[source] = dest.replace('\\', '/')
         elif isinstance(source, Sequence):
             for src in source:
                 result.update(self._map_path(src))
@@ -315,7 +315,7 @@ class RemoteHost:
                 dest = self.path_map[k] + dest[len(k):]
             else:
                 env.logger.warning('Path {} is not under any specified paths of localhost and is mapped to {} on remote host.'.format(source, dest))
-            return dest
+            return dest.replace('\\', '/')
         elif isinstance(source, Sequence):
             ret = [self._map_var(x) for x in source]
             return [x for x in ret if x is not None]
@@ -356,6 +356,12 @@ class RemoteHost:
         #
         for source in sorted(receiving.keys()):
             dest = receiving[source]
+            dest_dir = os.path.dirname(dest)
+            if dest_dir and not os.path.isdir(dest_dir):
+                try:
+                    os.path.makedirs(dest_dir)
+                except Exception as e:
+                    env.logger.error('Failed to create destination directory {}'.format(dest_dir))
             if self.is_shared(dest):
                 env.logger.debug('Skip retrieving ``{}`` from shared file system'.format(dest))
             else:
@@ -364,9 +370,9 @@ class RemoteHost:
                 try:
                     ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                     if (ret != 0):
-                        raise RuntimeError('Failed to copy {} from {}'.format(source, self.alias))
+                        raise RuntimeError('command return {}'.format(ret))
                 except Exception as e:
-                    raise  RuntimeError('Failed to copy {} from {}: {}'.format(source, self.alias, e))
+                    raise  RuntimeError('Failed to copy {} from {} using command "{}": {}'.format(source, self.alias, cmd, e))
 
     #
     # Interface
@@ -466,8 +472,9 @@ class RemoteHost:
 
     def send_task_file(self, task_file):
         job_file = os.path.join(self.task_dir, task_file)
-        send_cmd = 'ssh -q {1} -p {2} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P {2} {0} {1}:.sos/tasks/'.format(job_file,
-                self.address, self.port)
+        send_cmd = interpolate('ssh -q ${address} -p ${port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P ${port} ${job_file!ap} ${address}:.sos/tasks/',
+                '${ }', {'job_file': job_file, 'address': self.address, 'port': self.port})
+        env.logger.warning(send_cmd)
         # use scp for this simple case
         try:
             subprocess.check_output(send_cmd, shell=True)
@@ -509,7 +516,8 @@ class RemoteHost:
         # for filetype in ('res', 'status', 'out', 'err'):
         sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
         # use -p to preserve modification times so that we can keep the job status locally.
-        receive_cmd = "scp -P {0} -p -q {1}:.sos/tasks/{2}.* {3}".format(self.port, self.address, task_id, sys_task_dir)
+        receive_cmd = interpolate("scp -P ${port} -p -q ${address}:.sos/tasks/${task}.* ${sys_task_dir}",
+                '${ }', {'port': self.port, 'address': self.address, 'task': task_id, 'sys_task_dir': sys_task_dir})
         # it is possible that local files are readonly (e.g. a pluse file) so we first need to
         # make sure the files are readable and remove them. Also, we do not want any file that is
         # obsolete to appear as new after copying
