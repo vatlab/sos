@@ -141,7 +141,7 @@ R_init_statements = r'''
     as.character(obj)
 }
 ..py.repr.character.1 <- function(obj) {
-    shQuote(obj)
+    paste0('r', shQuote(obj))
 }
 ..has.row.names <- function(df) {
   !all(row.names(df)==seq(1, nrow(df)))
@@ -154,9 +154,9 @@ R_init_statements = r'''
     tf = tempfile('feather')
     write_feather(obj, tf)
     if (..has.row.names(obj)) {
-        paste0("read_dataframe('", tf, "').set_index([", ..py.repr(row.names(obj)),"])")
+        paste0("read_dataframe(r'", tf, "').set_index([", ..py.repr(row.names(obj)),"])")
     } else {
-        paste0("read_dataframe('", tf, "')")
+        paste0("read_dataframe(r'", tf, "')")
     }
 }
 ..py.repr.matrix <- function(obj) {
@@ -275,9 +275,11 @@ class sos_R:
                 from feather import read_dataframe
                 # suppress flakes warning
                 read_dataframe
+            # evaluate as raw string to correctly handle \\ etc
             return eval(expr)
         except Exception as e:
-            raise UsageError('Failed to convert {} to Python object: {}'.format(expr, e))
+            self.sos_kernel.warn('Failed to evaluate {!r}: {}'.format(expr, e))
+            return None
 
     def sessioninfo(self):
         response = self.sos_kernel.get_response(r'cat(paste(capture.output(sessionInfo()), collapse="\n"))', ('stream',), name=('stdout',))[0]
