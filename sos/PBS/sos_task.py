@@ -67,6 +67,14 @@ class PBS_TaskEngine(TaskEngine):
         #
         if not super(PBS_TaskEngine, self).execute_task(task_id):
             return False
+
+        try:
+            self._prepare_script(task_id)
+        except Exception as e:
+            env.logger.error(e)
+            return False
+
+    def _prepare_script(self, task_id):
         # read the task file and look for runtime info
         # 
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.task')
