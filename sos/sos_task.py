@@ -930,7 +930,7 @@ class TaskEngine(threading.Thread):
                     status_output = self._status_checker.result()
                     self._status_checker = None
                 #
-                for line in status_output.split('\n'):
+                for line in status_output.splitlines():
                     if not line.strip():
                         continue
                     try:
