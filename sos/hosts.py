@@ -474,7 +474,6 @@ class RemoteHost:
         job_file = os.path.join(self.task_dir, task_file)
         send_cmd = interpolate('ssh -q ${address} -p ${port} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P ${port} ${job_file!ap} ${address}:.sos/tasks/',
                 '${ }', {'job_file': job_file, 'address': self.address, 'port': self.port})
-        env.logger.warning(send_cmd)
         # use scp for this simple case
         try:
             subprocess.check_output(send_cmd, shell=True)
