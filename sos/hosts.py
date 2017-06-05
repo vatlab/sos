@@ -245,11 +245,11 @@ class RemoteHost:
 
     def _get_send_cmd(self):
         return self.config.get('send_cmd',
-            '''ssh -q ${host} -p ${port} "mkdir -p ${dest!dq}"; rsync -av -e 'ssh -p ${port}' ${source!ae} "${host}:${dest!de}"''')
+            '''ssh -q ${host} -p ${port} "mkdir -p ${dest!dpq}" && rsync -av -e 'ssh -p ${port}' ${source!aep} "${host}:${dest!dep}"''')
 
     def _get_receive_cmd(self):
         return self.config.get('receive_cmd',
-            '''mkdir -p ${dest!adq}; rsync -av -e 'ssh -p ${port}' ${host}:${source!ae} "${dest!ade}"''')
+            '''mkdir -p ${dest!adpq} && rsync -av -e 'ssh -p ${port}' ${host}:${source!aep} "${dest!adep}"''')
 
     def _get_execute_cmd(self):
         return self.config.get('execute_cmd',
@@ -466,7 +466,7 @@ class RemoteHost:
 
     def send_task_file(self, task_file):
         job_file = os.path.join(self.task_dir, task_file)
-        send_cmd = 'ssh -q {1} -p {2} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks"; scp -q -P {2} {0} {1}:.sos/tasks/'.format(job_file,
+        send_cmd = 'ssh -q {1} -p {2} "[ -d ~/.sos/tasks ] || mkdir -p ~/.sos/tasks" && scp -q -P {2} {0} {1}:.sos/tasks/'.format(job_file,
                 self.address, self.port)
         # use scp for this simple case
         try:
