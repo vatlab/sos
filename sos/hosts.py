@@ -349,7 +349,7 @@ class RemoteHost:
                 env.logger.debug(cmd)
                 ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 if (ret != 0):
-                    raise RuntimeError('Failed to copy {} to {}'.format(source, self.alias))
+                    raise RuntimeError('Failed to copy {} to {}. The remote host might be unavailable.'.format(source, self.alias))
 
     def _receive_from_host(self, items):
         receiving = {y:x for x,y in self._map_path(items).items()}
