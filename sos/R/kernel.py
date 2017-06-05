@@ -198,7 +198,7 @@ R_init_statements = r'''
         if (length(obj) == 1)
             ..py.repr.character.1(obj)
         else {
-            paste("[", paste(sapply(obj, shQuote), collapse=','), "]")
+            paste("[", paste(sapply(obj, ..py.repr.character.1), collapse=','), "]")
         }
     } else if (is.logical(obj)) {
         if (length(obj) == 1)
