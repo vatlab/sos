@@ -643,6 +643,8 @@ define([
         for (var i = 0; i < cells.length; i++) {
             add_lan_selector(cells[i], cells[i].metadata.kernel);
         }
+        if (window.my_panel)
+            add_lan_selector(window.my_panel.cell, 'SoS');
 
         var cells = IPython.notebook.get_cells();
         for (var i = 0; i < cells.length; i++) {
