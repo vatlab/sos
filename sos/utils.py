@@ -1008,7 +1008,7 @@ def tail_of_file(filename, n, offset=None, ansi2html=False):
             lines = f.read().splitlines()
             if len(lines) >= to_read or pos == 0:
                 if ansi2html:
-                    return ansi2html('\n'.join(lines[-to_read:offset and -offset or None]))
+                    return convertAnsi2html('\n'.join(lines[-to_read:offset and -offset or None]))
                 else:
                     return '\n'.join(lines[-to_read:offset and -offset or None])
             avg_line_length *= 1.3
@@ -1083,7 +1083,7 @@ def loaded_modules(namespace={}):
             res[value.__name__] = version_info(value.__name__)
     return [(x,y) for x,y in res.items() if y != 'na']
 
-def ansi2html(txt):
+def convertAnsi2html(txt):
     # 94 is blue, debug
     # 32 is darkgreen, emphasize
     # 95 is purple, warning

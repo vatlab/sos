@@ -446,6 +446,7 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         # task output
         env.sos_dict.set('__std_out__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out'))
         env.sos_dict.set('__std_err__', os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err'))
+        env.logfile = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
 
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
@@ -706,9 +707,9 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                 numLines = linecount_of_file(f)
                 row(os.path.basename(f), '(empty)' if numLines == 0 else '{} lines{}'.format(numLines, '' if numLines < 200 else ' (showing last 200)'))
                 try:
-                    row(td='<pre style="text-align:left">{}</pre>'.format(tail_of_file(f, 200, ansi2html=True)))
+                    row(td='<small><pre style="text-align:left">{}</pre></small>'.format(tail_of_file(f, 200, ansi2html=True)))
                 except:
-                    row(td='<pre style="text-align:left">ignored.</pre>')
+                    row(td='<small><pre style="text-align:left">ignored.</pre><small>')
             print('</table>')
             #
             # supplement run time information
