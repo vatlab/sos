@@ -716,43 +716,19 @@ class SoS_Kernel(IPythonKernel):
         from sos.hosts import Host
         host = Host(task_queue)
         result = host._task_engine.query_tasks([task_id], verbosity=2, html=True)
-        try:
-            table, pulse = result.split('\nTASK PULSE\n')
-        except Exception as e:
-            self.warn('status info does not contain TASK PULSE')
-            table = result
-            pulse = ''
+        #log_to_file(result)
         if side_panel is True:
             self.send_frontend_msg('display_data',
                 {'metadata': {},
-                 'data': {'text/plain': table,
-                 'text/html': HTML(table).data
+                 'data': {'text/plain': result,
+                 'text/html': HTML(result).data
                  }})
         else:
             self.send_response(self.iopub_socket, 'display_data',
                 {'metadata': {},
-                 'data': {'text/plain': table,
-                 'text/html': HTML(table).data
+                 'data': {'text/plain': result,
+                 'text/html': HTML(result).data
                  }})
-        if pulse.strip():
-            # read the pulse file and plot it
-            #time   proc_cpu        proc_mem        children        children_cpu    children_mem
-            try:
-                etime = []
-                cpu = []
-                mem = []
-                for line in pulse.split('\n'):
-                    if line.startswith('#') or not line.strip():
-                        continue
-                    fields = line.split()
-                    etime.append(float(fields[0]))
-                    cpu.append(float(fields[1]) + float(fields[4]))
-                    mem.append(float(fields[2]) / 1e6 + float(fields[5]) / 1e6)
-                if etime:
-                    self.send_frontend_msg('resource-plot', ["res_" + task_id, etime, cpu, mem])
-            except Exception as e:
-                self.warn('Failed to generate resource plot: {}'.format(e))
-        #
         # now, there is a possibility that the status of the task is different from what
         # task engine knows (e.g. a task is rerun outside of jupyter). In this case, since we
         # already get the status, we should update the task engine...

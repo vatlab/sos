@@ -711,13 +711,122 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                     row(td='<pre style="text-align:left">ignored.</pre>')
             print('</table>')
             #
-            print('\nTASK PULSE\n')
             # supplement run time information
             pulse_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', t + '.pulse')
-            if os.path.isfile(pulse_file):
+            if not os.path.isfile(pulse_file):
+                return
+            else:
                 # A sample of 400 point should be enough to show the change of resources
-                print(sample_of_file(pulse_file, 400))
+                lines = sample_of_file(pulse_file, 400).splitlines()
+                if len(lines) <= 2:
+                    return
+            # read the pulse file and plot it
+            #time   proc_cpu        proc_mem        children        children_cpu    children_mem
+            try:
+                etime = []
+                cpu = []
+                mem = []
+                for line in lines:
+                    if line.startswith('#') or not line.strip():
+                        continue
+                    fields = line.split()
+                    etime.append(float(fields[0]))
+                    cpu.append(float(fields[1]) + float(fields[4]))
+                    mem.append(float(fields[2]) / 1e6 + float(fields[5]) / 1e6)
+                if not etime:
+                    return
+            except:
+                return
+            #
+            print('''
+<script>
+    function loadFiles(files, fn) {
+        if (!files.length) {
+            files = [];
+        }
+        var head = document.head || document.getElementsByTagName('head')[0];
 
+        function loadFile(index) {
+            if (files.length > index) {
+                if (files[index].endsWith('.css')) {
+                    var fileref = document.createElement('link');
+                    fileref.setAttribute("rel", "stylesheet");
+                    fileref.setAttribute("type", "text/css");
+                    fileref.setAttribute("href", files[index]);
+                } else {
+                    var fileref = document.createElement('script');
+                    fileref.setAttribute("type", "text/javascript");
+                    fileref.setAttribute("src", files[index]);
+                }
+                console.log('Load ' + files[index]);
+                head.appendChild(fileref);
+                index = index + 1;
+                // Used to call a callback function
+                fileref.onload = function() {
+                    loadFile(index);
+                }
+            } else if (fn) {
+                fn();
+            }
+        }
+        loadFile(0);
+    }
+
+function plotResourcePlot_''' + t + '''() {
+    // get the item
+    // parent element is a table cell, needs enlarge
+    document.getElementById("res_''' + t + '''").parentElement.setAttribute("height", "300px;");
+    $("#res_''' + t + '''").css("height", "300px");
+    $("#res_''' + t + '''").css("width", "100%");
+    $("#res_''' + t + '''").css("min-height", "300px");
+
+    var cpu = [''' + ','.join(['[{},{}]'.format(x*1000,y) for x,y in zip(etime, cpu)]) + '''];
+    var mem = [''' + ','.join(['[{},{}]'.format(x*1000,y) for x,y in zip(etime, mem)]) + '''];
+
+    $.plot('#res_''' + t + '''', [{
+                data: cpu,
+                label: "CPU (%)"
+            },
+            {
+                data: mem,
+                label: "mem (M)",
+                yaxis: 2
+            }
+        ], {
+            xaxes: [{
+                mode: "time"
+            }],
+            yaxes: [{
+                min: 0
+            }, {
+                position: "right",
+                tickFormatter: function(v, axis) {
+                    return v.toFixed(1) + 'M';
+                }
+            }],
+            legend: {
+                position: "nw"
+            }
+        });
+}
+
+var dt = 100;
+// the frontend might be notified before the table is inserted as results.
+function showResourceFigure_''' + t + '''() {
+    if ( $("#res_''' + t + '''").length === 0) {
+          dt = dt * 1.5; // slow-down checks for datatable as time goes on;
+          setTimeout(showResourceFigure_''' + t + ''', dt);
+          return;
+    } else {
+        $("#res_''' + t + '''").css('width', "100%").css('height', "300px");
+        loadFiles(["http://www.flotcharts.org/flot/jquery.flot.js",
+             "http://www.flotcharts.org/flot/jquery.flot.time.js"
+            ], plotResourcePlot_''' + t + ''');
+    }
+}
+showResourceFigure_''' + t + '''()
+</script>
+''')
 
 
 def kill_tasks(tasks):
