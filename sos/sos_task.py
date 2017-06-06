@@ -797,7 +797,7 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, verbosity=2):
     all_tasks = set([x[0] for x in all_tasks])
     if not all_tasks:
         env.logger.warning('No matching tasks')
-        return
+        return ''
     #
     # find all related files, including those in nested directories
     from collections import defaultdict
