@@ -1619,7 +1619,7 @@ Available subkernels:\n{}'''.format(
                             'source': 'SoS',
                             'metadata': {},
                             'data': { 'text/html':
-                                HTML('''<pre> input: {}\noutput: {}\n</pre>'''.format(
+                                HTML('''<div class="sos_hint"> input: {}<br>output: {}\n</div>'''.format(
                                 ', '.join(x for x in input_files),
                                 ', '.join(x for x in output_files))).data
                             }
@@ -1630,7 +1630,7 @@ Available subkernels:\n{}'''.format(
                             'source': 'SoS',
                             'metadata': {},
                             'data': { 'text/html':
-                                HTML('''<pre> input: {}\noutput: {}\n</pre>'''.format(
+                                HTML('''<div class="sos_hint"> input: {}<br>output: {}\n</div>'''.format(
                                 ', '.join('<a target="_blank" href="{0}">{0}</a>'.format(x) for x in input_files),
                                 ', '.join('<a target="_blank" href="{0}">{0}</a>'.format(x) for x in output_files))).data
                             }
