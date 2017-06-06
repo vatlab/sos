@@ -12,9 +12,9 @@ table {
    padding: 0;
    border-collapse: collapse; }
 thead {
-	border-bottom-width: 1px;
-	border-bottom-color: rgb(0,0,0);
-	border-bottom-style: solid;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(0,0,0);
+    border-bottom-style: solid;
 }
 table tr {
    border: none;
@@ -93,11 +93,11 @@ div.input {
 
 div.cell {
     padding: 0pt;
-	border-width: 0pt;
+    border-width: 0pt;
 }
 .sos_dataframe td, .sos_dataframe th, .sos_dataframe tr {
     white-space: nowrap;
-	border: none;
+    border: none;
 }
 
 .sos_dataframe tr:hover {
@@ -105,25 +105,25 @@ div.cell {
 }
 
 .display_control_panel  {
-	padding: 10pt;
+    padding: 10pt;
     left: 5px;
-	top: 5px;
-	position: fixed;
-	z-index: 1000;
+    top: 5px;
+    position: fixed;
+    z-index: 1000;
 }
 
 .display_control_panel:hover {
-	background: rgb(224, 234, 241);
+    background: rgb(224, 234, 241);
 }
 .display_checkboxes {
-	margin-top: 5pt;
+    margin-top: 5pt;
 }
 .display_control_panel:hover .display_control {
-	display: block;
-	opacity: 100;
+    display: block;
+    opacity: 100;
 }
 .display_control_panel .display_control {
-	opacity: 0;
+    opacity: 0;
 }
 
 
@@ -225,9 +225,12 @@ function toggle_source() {
     if (btn.checked) {
         $('div.input').css('display', 'flex');
         $('.hidden_output').show();
+        // this somehow does not work.
+        $('div.cell').css('padding', '5pt').css('border-width', '1pt');
     } else {
         $('div.input').hide();
         $('.hidden_output').hide();
+        $('div.cell').css('padding', '0pt').css('border-width', '0pt');
     }
 }
 
@@ -259,7 +262,7 @@ function toggle_messages() {
 
 
 <div class='display_control_panel'>
-	<div class="display_control">
+    <div class="display_control">
 Display content:<br>
 <div class="display_checkboxes">
 <input type="checkbox" id="show_cells" name="show_cells" onclick="toggle_source()">
@@ -284,28 +287,28 @@ Display content:<br>
 
 {%- block input -%}
 
-	{%- if 'scratch' in cell.metadata.tags -%}
+    {%- if 'scratch' in cell.metadata.tags -%}
     {%- else -%}
-	    {{ super() }}
+        {{ super() }}
    {%- endif -%}
 {%- endblock input -%}
 
 
 {% block output %}
-	{%- if 'report_output' in cell.metadata.tags -%}
-	    {{ super() }}
-	{%- elif 'scratch' in cell.metadata.tags -%}
+    {%- if 'report_output' in cell.metadata.tags -%}
+        {{ super() }}
+    {%- elif 'scratch' in cell.metadata.tags -%}
     {%- else -%}
-	    <div class="hidden_output">
-	    {{ super() }}
-		</div>
+        <div class="hidden_output">
+        {{ super() }}
+        </div>
    {%- endif -%}
 {% endblock output %}
 
 {% block markdowncell %}
-	{%- if 'scratch' in cell.metadata.tags -%}
+    {%- if 'scratch' in cell.metadata.tags -%}
     {%- else -%}
-	    {{ super() }}
+        {{ super() }}
    {%- endif -%}
 {%- endblock markdowncell -%}
 
@@ -313,11 +316,11 @@ Display content:<br>
 {% block codecell %}
 
 {%- if cell['metadata'].get('kernel',none) is not none -%}
-	<div class="cell border-box-sizing code_cell rendered lan_{{cell['metadata'].get('kernel', none)}}">
-	{{ super() }}
-	</div>
+    <div class="cell border-box-sizing code_cell rendered lan_{{cell['metadata'].get('kernel', none)}}">
+    {{ super() }}
+    </div>
 {%- else -%}
-	{{ super() }}
+    {{ super() }}
 {%- endif -%}
 
 {%- endblock codecell %}
