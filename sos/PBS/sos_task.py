@@ -37,7 +37,7 @@ class PBS_TaskEngine(TaskEngine):
         # => status_cmd (perhaps not needed)
         # => kill_cmd (perhaps not needed)
         if 'job_template' in self.config:
-            self.job_template = self.config['job_template']
+            self.job_template = self.config['job_template'].replace('\r\n', '\n')
         elif 'template_file' in self.config:
             if not os.path.isfile(os.path.expanduser(self.config['template_file'])):
                 raise ValueError('Missing job_template file {} for queue {}'.format(self.config['job_template'], self.alias))
@@ -113,7 +113,9 @@ class PBS_TaskEngine(TaskEngine):
 
         # now we need to write a job file
         job_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.sh')
-        with open(job_file, 'w') as job:
+        # do not translate newline under windows because the script will be executed
+        # under linux/mac
+        with open(job_file, 'w', newline='') as job:
             job.write(job_text)
 
         # then copy the job file to remote host if necessary
