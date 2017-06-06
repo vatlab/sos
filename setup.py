@@ -170,10 +170,10 @@ setup(name = "sos",
           'pygments',
           # for jupyter notebook format conversion
           'nbformat',
-          'nbconvert',
+          'nbconvert>=5.1.1',
           'ipython',
           'ipykernel',
-          'notebook',
+          'notebook>=5.0.0',
           'ptpython',
           # for DAG
           'networkx',
