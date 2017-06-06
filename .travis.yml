@@ -39,6 +39,9 @@ before_install:
     # for testing purposes
     - pip install nose
     - pip install sklearn scipy
+    # https://github.com/jupyter/jupyter/issues/150
+    - pip install entrypoints
+    - pip install jupyter
     # install r kernel
     - conda install -c r r-essentials r-feather
     - conda install -c conda-forge feather-format
