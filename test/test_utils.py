@@ -56,7 +56,7 @@ class TestUtils(unittest.TestCase):
 
     def testLogger(self):
         '''Test logging level'''
-        for verbosity in ['0', '1', '2', '3', '4']:
+        for verbosity in [0, 1, 2, 3, 4]:
             env.verbosity = verbosity
             logger.trace('Verbosity {}:trace message with ``empahsized text`` in between'.format(env.verbosity))
             logger.debug('Verbosity {}:debug message with ``empahsized text`` in between'.format(env.verbosity))

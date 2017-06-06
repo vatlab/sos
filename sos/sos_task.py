@@ -706,7 +706,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                 numLines = linecount_of_file(f)
                 row(os.path.basename(f), '(empty)' if numLines == 0 else '{} lines{}'.format(numLines, '' if numLines < 200 else ' (showing last 200)'))
                 try:
-                    row(td='<pre style="text-align:left">{}</pre>'.format(tail_of_file(f, 200)))
+                    row(td='<pre style="text-align:left">{}</pre>'.format(tail_of_file(f, 200, ansi2html=True)))
                 except:
                     row(td='<pre style="text-align:left">ignored.</pre>')
             print('</table>')

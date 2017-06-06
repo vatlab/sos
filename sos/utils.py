@@ -111,22 +111,23 @@ class ColoredFormatter(logging.Formatter):
         if sys.platform == 'win32':
             return astr
         else:
-            return '\033[{}m{}\033[{}m'.format(color, astr,
-                self.COLOR_CODE['ENDC'])
+            return '\033[{}m{}\033[0m'.format(color, astr)
 
     def emphasize(self, msg, level_color=0):
         # display text within `` and `` in green
         if sys.platform == 'win32':
             return str(msg).replace('``', '')
+        elif level_color == 0:
+            return re.sub(r'``([^`]*)``', '\033[32m\\1\033[0m', str(msg))
         else:
-            return re.sub(r'``([^`]*)``', '\033[32m\\1\033[{}m'.format(level_color), str(msg))
+            return re.sub(r'``([^`]*)``', '\033[0m\033[32m\\1\033[0m\033[{}m'.format(level_color), str(msg))
 
     def format(self, record):
         level_name = record.levelname
         if level_name in self.LEVEL_COLOR:
             level_color = self.COLOR_CODE[self.LEVEL_COLOR[level_name]]
             record.color_levelname = self.colorstr(level_name, level_color)
-            record.color_name = self.colorstr(record.name, self.COLOR_CODE['BOLD'])
+            record.color_name = self.colorstr(record.name, level_color)
             record.color_msg = self.colorstr(self.emphasize(record.msg, level_color), level_color)
         else:
             # for INFO, use default color
@@ -987,7 +988,7 @@ def expand_time(v, default_unit='s'):
 
 
 
-def tail_of_file(filename, n, offset=None):
+def tail_of_file(filename, n, offset=None, ansi2html=False):
     """Reads a n lines from f with an offset of offset lines.  The return
     value is a tuple in the form ``(lines, has_more)`` where `has_more` is
     an indicator that is `True` if there are more lines in the file.
@@ -1006,7 +1007,10 @@ def tail_of_file(filename, n, offset=None):
             pos = f.tell()
             lines = f.read().splitlines()
             if len(lines) >= to_read or pos == 0:
-                return '\n'.join(lines[-to_read:offset and -offset or None])
+                if ansi2html:
+                    return ansi2html('\n'.join(lines[-to_read:offset and -offset or None]))
+                else:
+                    return '\n'.join(lines[-to_read:offset and -offset or None])
             avg_line_length *= 1.3
 
 def sample_of_file(filename, n):
@@ -1078,3 +1082,17 @@ def loaded_modules(namespace={}):
         if isinstance(value, ModuleType):
             res[value.__name__] = version_info(value.__name__)
     return [(x,y) for x,y in res.items() if y != 'na']
+
+def ansi2html(txt):
+    # 94 is blue, debug
+    # 32 is darkgreen, emphasize
+    # 95 is purple, warning
+    # 91 is red, error
+    # 36 is cray, trace
+    return txt.replace('\033[94m', '<font color="">'). \
+        replace('\033[32m', '<font color="DarkGreen">'). \
+        replace('\033[36m', '<font color="cyan">'). \
+        replace('\033[95m', '<font color="purple">'). \
+        replace('\033[91m', '<font color="red">'). \
+        replace('\033[0m', '</font>'). \
+        replace('\n', '<br>')
