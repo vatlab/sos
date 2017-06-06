@@ -91,6 +91,10 @@ div.input {
     /*rotation:270deg;*/
 }
 
+div.cell {
+    padding: 0pt;
+	border-width: 0pt;
+}
 .sos_dataframe td, .sos_dataframe th, .sos_dataframe tr {
     white-space: nowrap;
 	border: none;
