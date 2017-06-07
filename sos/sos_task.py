@@ -207,6 +207,14 @@ def execute_task(task_id, verbosity=None, runmode='run', sigmode=None, monitor_i
         env.logger.trace('Executing subtask {}'.format(task_id))
 
     if hasattr(params, 'task_stack'):
+        # pulse thread
+        m = ProcessMonitor(task_id, monitor_interval=monitor_interval,
+            resource_monitor_interval=resource_monitor_interval,
+            max_walltime=params.sos_dict['_runtime'].get('max_walltime', None),
+            max_mem=params.sos_dict['_runtime'].get('max_mem', None),
+            max_procs=params.sos_dict['_runtime'].get('max_procs', None))
+        m.start()
+
         master_out = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.out')
         master_err = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.err')
         # if this is a master task, calling each sub task
@@ -905,27 +913,47 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, verbosity=2):
     #
     # remoe all task files
     all_tasks = set([x[0] for x in all_tasks])
-    if not all_tasks:
-        env.logger.warning('No matching tasks')
-        return ''
-    #
-    # find all related files, including those in nested directories
-    from collections import defaultdict
-    to_be_removed = defaultdict(list)
-    for dirname, dirlist, filelist in os.walk(os.path.join(os.path.expanduser('~'), '.sos', 'tasks')):
-        for f in filelist:
-            ID = os.path.basename(f).split('.', 1)[0]
-            if ID in all_tasks:
-                to_be_removed[ID].append(os.path.join(dirname, f))
-    #
-    for task in all_tasks:
-        for f in to_be_removed[task]:
-            try:
-                env.logger.trace('Remove {}'.format(f))
-                os.remove(f)
-            except Exception as e:
-                env.logger.warning('Failed to purge task {}'.format(task[0]))
-        env.logger.info('Task ``{}`` removed.'.format(task))
+    if all_tasks:
+        #
+        # find all related files, including those in nested directories
+        from collections import defaultdict
+        to_be_removed = defaultdict(list)
+        for dirname, dirlist, filelist in os.walk(os.path.join(os.path.expanduser('~'), '.sos', 'tasks')):
+            for f in filelist:
+                ID = os.path.basename(f).split('.', 1)[0]
+                if ID in all_tasks:
+                    to_be_removed[ID].append(os.path.join(dirname, f))
+        #
+        for task in all_tasks:
+            for f in to_be_removed[task]:
+                try:
+                    env.logger.trace('Remove {}'.format(f))
+                    os.remove(f)
+                except Exception as e:
+                    env.logger.warning('Failed to purge task {}'.format(task[0]))
+            env.logger.info('Task ``{}`` removed.'.format(task))
+    else:
+        env.logger.info('No matching tasks')
+    if purge_all:
+        matched = glob.glob(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', '*'))
+        count = 0
+        for f in matched:
+            if os.path.isdir(f):
+                import shutil
+                try:
+                    shutil.rmtree(f)
+                    count += 1
+                except Exception as e:
+                    env.logger.warning('Failed to remove {}'.format(f))
+            else:
+                try:
+                    os.remove(f)
+                    count += 1
+                except Exception as e:
+                    env.logger.warning('Failed to remove {}'.format(e))
+        if count > 0:
+            env.logger.info('{} other files and directories are removed.'.format(count))
+    return ''
 
 class TaskEngine(threading.Thread):
     def __init__(self, agent):
