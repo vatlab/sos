@@ -48,11 +48,13 @@ class UnavailableLock(Error):
     immediately, but will be collected and raised at the end """
 
     def __init__(self, signature):
-        Error.__init__(self, ('Failed to obtain a lock for output {}. It is likely ' +
+        Error.__init__(self, ('Failed to obtain a lock for input {} and output {}. It is likely ' +
             'that these files are protected by another SoS process or concurrant task ' +
-            'that is generating the same set of files.').format(short_repr(signature[0])))
-        self.output = signature[0]
-        self.sig_file = signature[1]
+            'that is generating the same set of files.').format(short_repr(signature[0]),
+                short_repr(signature[1])))
+        self.input = signature[0]
+        self.output = signature[1]
+        self.sig_file = signature[2]
 
 #
 # Runtime signature
@@ -564,7 +566,7 @@ class RuntimeInfo:
         self._lock = fasteners.InterProcessLock(self.proc_info + '_')
         if not self._lock.acquire(blocking=False):
             self._lock = None
-            raise UnavailableLock((self.output_files, self.proc_info))
+            raise UnavailableLock((self.input_files, self.output_files, self.proc_info))
         else:
             env.logger.trace('Lock acquired for output files {}'.format(short_repr(self.output_files)))
 
