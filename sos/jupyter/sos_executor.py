@@ -328,6 +328,10 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         return executor.run(args.__targets__)
     except PendingTasks as e:
         raise
+    except SystemExit:
+        # this happens because the executor is in resume mode but nothing
+        # needs to be resumed, we simply pass
+        return
     except Exception:
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
