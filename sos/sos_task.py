@@ -1323,7 +1323,7 @@ class TaskEngine(threading.Thread):
 
     def purge_tasks(self, tasks, purge_all=False, age=None, status=None, verbosity=2):
         try:
-            self.agent.check_output("sos purge {} {} {} {} -v {}".format(
+            return self.agent.check_output("sos purge {} {} {} {} -v {}".format(
                 ' '.join(tasks), '--all' if purge_all else '',
                 '--age {}'.format(age) if age is not None else '',
                 '--status {}'.format(' '.join(status)) if status is not None else '',
