@@ -149,7 +149,10 @@ def get_previewers():
             result.append((name, entrypoint, priority))
     #
     result.sort(key=lambda x: -x[2])
-    return result
+    # we put string infront of functions so that filename matching will be used before
+    # content matching. For example, the xlsx file is actually a zip file so it could be
+    # previewed as a zip file first.
+    return [x for x in result if isinstance(x[0], str)] + [x for x in result if not isinstance(x[0], str)]
 
 class SoS_Kernel(IPythonKernel):
     implementation = 'SOS'
