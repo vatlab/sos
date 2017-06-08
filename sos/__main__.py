@@ -456,10 +456,10 @@ def cmd_resume(args, workflow_args):
     #
     res = workflow_status(workflow)
     if not res['task_status']:
-        env.logger.warn('Removing workflow {} because it does not have any pending task. The workflow might have been interrupted.'.format(os.path.basename(wworkflow)[:-4]))
+        env.logger.warn('Removing workflow {} because it does not have any pending task. The workflow might have been interrupted.'.format(os.path.basename(workflow)[:-4]))
         os.remove(workflow)
         sys.exit(1)
-    if all(x == 'running' for x in res['task_status']):
+    if all(x == 'running' for x in res['task_status']) and args.__wait__ is not True:
         env.logger.info('Cannot resume workflow {} because all tasks are still running'.format(
             os.path.basename(workflow)[:-7]))
         sys.exit(0)

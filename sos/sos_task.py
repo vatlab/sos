@@ -1153,6 +1153,7 @@ class TaskEngine(threading.Thread):
             #
             if task_id in self.task_status and self.task_status[task_id]:
                 if self.task_status[task_id] == 'running':
+                    self.running_tasks.append(task_id)
                     env.logger.info('{} ``already runnng``'.format(task_id))
                     if hasattr(env, '__task_notifier__'):
                         env.__task_notifier__(['new-status', self.agent.alias, task_id, 'running',
