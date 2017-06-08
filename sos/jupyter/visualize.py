@@ -109,8 +109,10 @@ class Visualizer:
             tid, idx,
             index_type if idx == 0 else col_type[idx-1]) if '<th' in x else x for idx,x in enumerate(hr.split('</th>')  )) + '</tr>' + rest
 
+        # we put max-height 400px here because the notebook could be exported without using sos template
+        # and associated css, resulting in very long table.
         code = """
-    <div class='dataframe_container'>
+    <div class='dataframe_container' style="max-height:400px">
     <input type="text" class='dataframe_input' id="search_{}" """.format(tid) + \
     """onkeyup="filterDataFrame('{}""".format(tid) + """')" placeholder="Search for names..">
     """ + code + '''</div>'''
