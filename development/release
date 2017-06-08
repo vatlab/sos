@@ -94,13 +94,21 @@ run:
 	cd ../docs/src/tutorials
 	sos convert ${_input!a} ${_output!a} --template basic
 
-[convert-examples]
+[convert-example-scripts]
 input:  '../docs/src/examples/*.sos', 'release', group_by=1
 output: "../docs/doc/examples/${_input!bn}.html"
 
 run: workdir='../docs/doc/examples'
 	cp ${_input!a} .
 	sos convert ${_input!b} ${_output!b} --raw ${_input!b}
+
+[convert-example-notebooks]
+input:  '../docs/src/examples/*.ipynb', 'release', group_by=1
+output: "../docs/doc/examples/${_input!bn}.html"
+
+run: workdir='../docs/doc/examples'
+	cp ${_input!a} .
+	sos convert ${_input!b} ${_output!b}
 
 [convert-large-examples]
 input:  '../docs/src/examples/*/*.sos', group_by=1
@@ -120,7 +128,8 @@ sos_run('getFileNames')
 sos_run('convert-documentation')
 sos_run('convert-tutorials')
 sos_run('convert-homepage')
-sos_run('convert-examples')
+sos_run('convert-example-scripts')
+sos_run('convert-example-notebooks')
 sos_run('convert-large-examples')
 
 # push changes to website
