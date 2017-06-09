@@ -278,11 +278,18 @@ class Visualizer:
                 options['xaxis']['transform'] = function(v) { return Math.log(v); }
                 options['xaxis']['inverseTransform'] = function(v) { return Math.exp(v); }
             '''
+            if not args.xlim:
+                options['xaxis']['min'] = min(val_x)
+                options['xaxis']['max'] = max(val_x)
         if args.log and 'y' in args.log:
-            optfunc = '''
+            optfunc += '''
                 options['yaxis']['transform'] = function(v) { return Math.log(v); }
                 options['yaxis']['inverseTransform'] = function(v) { return Math.exp(v); }
             '''
+            # flot does not seems to scale correctly without min/max
+            if not args.ylim:
+                options['yaxis']['min'] = min([min([x[1] for x in series['data']]) for series in all_series])
+                options['yaxis']['max'] = max([max([x[1] for x in series['data']]) for series in all_series])
         code = """
 <div class='scatterplot_container'>
 <div class='""" + class_name + """' id='dataframe_scatterplot_""" + tid + """' width='""" + args.width + """' height='""" + args.height + """'></div>
