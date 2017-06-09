@@ -1602,12 +1602,16 @@ Available subkernels:\n{}'''.format(
                 input_files = env.sos_dict['input']
                 if input_files is None:
                     input_files = []
+                else:
+                    input_files = [x for x in input_files if isinstance(x, str)]
             else:
                 input_files = []
             if 'output' in env.sos_dict:
                 output_files = env.sos_dict['output']
                 if output_files is None:
                     output_files = []
+                else:
+                    output_files = [x for x in output_files if isinstance(x, str)]
             else:
                 output_files = []
             # use a table to list input and/or output file if exist
