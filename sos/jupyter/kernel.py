@@ -208,6 +208,7 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_RUN = re.compile('^%run(\s|$)')
     MAGIC_SOSRUN = re.compile('^%sosrun(\s|$)')
     MAGIC_SOSSAVE = re.compile('^%sossave(\s|$)')
+    MAGIC_SAVE = re.compile('^%save(\s|$)')
     MAGIC_RERUN = re.compile('^%rerun(\s|$)')
     MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
     MAGIC_SANDBOX = re.compile('^%sandbox(\s|$)')
@@ -380,6 +381,19 @@ class SoS_Kernel(IPythonKernel):
             cells (cells with SoS kernel) with section header, with specified command
             line arguments. Arguments set by magic %set will be appended at the
             end of command line''')
+        parser.error = self._parse_error
+        return parser
+
+   def get_save_parser(self):
+        parser = argparse.ArgumentParser(prog='%sossave',
+            description='''Save the jupyter notebook as workflow (consisting of all sos
+            steps defined in cells starting with section header) or a HTML report to
+            specified file.''')
+        parser.add_argument('filename', nargs='?',
+            help='''Filename of saved report or script. Default to notebookname with file
+            extension determined by option --to.''')
+        # -a for append? ipython has it.
+        # -f for overwrite
         parser.error = self._parse_error
         return parser
 
@@ -2128,6 +2142,16 @@ Available subkernels:\n{}'''.format(
             finally:
                 self._workflow_mode = False
                 self.options = old_options
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+        elif self.MAGIC_SAVE.match(code):
+            if self.kernel != 'SoS':
+                # pass the %save magic to underlying kernel
+                return self._do_execute(code, silent, store_history, user_expressions, allow_stdin)
+            # if sos kernel ...
+            options, remaining_code = self.get_magic_and_code(code, False)
+            # parse options
+            # save
+            # execute the rest
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_SOSSAVE.match(code):
             # get the saved filename
