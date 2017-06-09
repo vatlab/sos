@@ -150,6 +150,17 @@ class Visualizer:
         else:
             return [float(x) for x in arr]
 
+    def _natural_ticks(self, rg):
+        # given a range, get natural ticks such as 0.1, 1, 10, 100, ...
+        import math
+        # get integer by 1 or 2 (1, 10) or (1, 100)
+        logl = math.floor(math.log10(rg[0]))
+        logh = math.ceil(math.log10(rg[1]))
+        # small scale, let flop decide
+        if logh - logl < 3:
+            return None
+        return list(10**x for x in range(logl, logh + 1))
+
     def _handle_scatterplot(self, df):
         parser = self._get_scatterplot_parser()
         try:
@@ -274,22 +285,35 @@ class Visualizer:
 
         optfunc = ''
         if args.log and 'x' in args.log:
+            range_x = [min(val_x),  min(val_x)]
             optfunc = '''
                 options['xaxis']['transform'] = function(v) { return Math.log(v); }
                 options['xaxis']['inverseTransform'] = function(v) { return Math.exp(v); }
             '''
+            ticks = self._natural_ticks(range_x)
+            if ticks:
+                optfunc += '''
+                    options['xaxis']['ticks'] = {!r};
+                    '''.format(ticks)
             if not args.xlim:
-                options['xaxis']['min'] = min(val_x)
-                options['xaxis']['max'] = max(val_x)
+                options['xaxis']['min'] = range_x[0]
+                options['xaxis']['max'] = range_x[1]
         if args.log and 'y' in args.log:
+            range_y = [min([min([x[1] for x in series['data']]) for series in all_series]), 
+                max([max([x[1] for x in series['data']]) for series in all_series])]
             optfunc += '''
-                options['yaxis']['transform'] = function(v) { return Math.log(v); }
-                options['yaxis']['inverseTransform'] = function(v) { return Math.exp(v); }
+                options['yaxis']['transform'] = function(v) { return Math.log(v); };
+                options['yaxis']['inverseTransform'] = function(v) { return Math.exp(v); };
             '''
+            ticks = self._natural_ticks(range_y)
+            if ticks:
+                optfunc += '''
+                    options['yaxis']['ticks'] = {!r};
+                    '''.format(ticks)
             # flot does not seems to scale correctly without min/max
             if not args.ylim:
-                options['yaxis']['min'] = min([min([x[1] for x in series['data']]) for series in all_series])
-                options['yaxis']['max'] = max([max([x[1] for x in series['data']]) for series in all_series])
+                options['yaxis']['min'] = range_y[0]
+                options['yaxis']['max'] = range_y[1]
         code = """
 <div class='scatterplot_container'>
 <div class='""" + class_name + """' id='dataframe_scatterplot_""" + tid + """' width='""" + args.width + """' height='""" + args.height + """'></div>
