@@ -354,6 +354,7 @@ class RemoteHost:
     def _receive_from_host(self, items):
         receiving = {y:x for x,y in self._map_path(items).items()}
         #
+        received = []
         for source in sorted(receiving.keys()):
             dest = receiving[source]
             dest_dir = os.path.dirname(dest)
@@ -371,8 +372,10 @@ class RemoteHost:
                     ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                     if (ret != 0):
                         raise RuntimeError('command return {}'.format(ret))
+                    received.append(dest)
                 except Exception as e:
                     raise  RuntimeError('Failed to copy {} from {} using command "{}": {}'.format(source, self.alias, cmd, e))
+        return received
 
     #
     # Interface
@@ -564,11 +567,13 @@ class RemoteHost:
             job_dict = params.sos_dict
             #
             if job_dict['_output'] and not isinstance(job_dict['_output'], Undetermined):
-                self._receive_from_host([x for x in job_dict['_output'] if isinstance(x, str)])
-                env.logger.info('{} ``received`` {}'.format(task_id, short_repr(job_dict['_output'])))
+                received = self._receive_from_host([x for x in job_dict['_output'] if isinstance(x, str)])
+                if received:
+                    env.logger.info('{} ``received`` {}'.format(task_id, short_repr(received)))
             if 'from_host' in job_dict['_runtime']:
-                self._receive_from_host(job_dict['_runtime']['from_host'])
-                env.logger.info('{} ``received`` {}'.format(task_id, short_repr(job_dict['_runtime']['from_host'])))
+                received = self._receive_from_host(job_dict['_runtime']['from_host'])
+                if received:
+                    env.logger.info('{} ``received`` {}'.format(task_id, short_repr(received)))
         return res
 
 
