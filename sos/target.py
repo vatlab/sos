@@ -605,7 +605,7 @@ class RuntimeInfo:
                 elif not rebuild and f.exists('signature'):
                     md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
-                    env.logger.warning('{} does not exist'.format(f))
+                    env.logger.warning('Failed to create signature: input target {} does not exist'.format(f))
                     return False
             md5.write('# output\n')
             for f in self.output_files:
@@ -616,7 +616,7 @@ class RuntimeInfo:
                 elif not rebuild and f.exists('signature'):
                     md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
-                    env.logger.warning('{} does not exist'.format(f))
+                    env.logger.warning('Failed to create signature: output target {} does not exist'.format(f))
                     return False
             md5.write('# dependent\n')
             for f in self.dependent_files:
@@ -627,7 +627,7 @@ class RuntimeInfo:
                 elif not rebuild and f.exists('signature'):
                     md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
-                    env.logger.warning('{} does not exist'.format(f))
+                    env.logger.warning('Failed to create signature: dependent target {} does not exist'.format(f))
                     return False
             md5.write('# local input\n')
             for f in [FileTarget(x) if isinstance(x, str) else x for x in local_input_files]:
@@ -638,7 +638,7 @@ class RuntimeInfo:
                 elif not rebuild and f.exists('signature'):
                     md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
-                    env.logger.warning('{} does not exist'.format(f))
+                    env.logger.warning('Failed to create signature: local input target {} does not exist'.format(f))
                     return False
             md5.write('# local output\n')
             for f in [FileTarget(x) if isinstance(x, str) else x for x in local_output_files]:
@@ -649,7 +649,7 @@ class RuntimeInfo:
                 elif not rebuild and f.exists('signature'):
                     md5.write('{}\t{}\n'.format(f, f.signature()))
                 else:
-                    env.logger.warning('{} does not exist'.format(f))
+                    env.logger.warning('Failed to create signature: local output target {} does not exist'.format(f))
                     return False
             # context that will be needed for validation
             md5.write('# init context\n')
