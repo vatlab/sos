@@ -361,7 +361,7 @@ _FORMAT_SPECIFIER_TMPL = r'''
     ^                                   # start of expression
     (?P<expr>.*?)                       # any expression
     (?P<conversion>!\s*                 # conversion starting with !
-    [srqabdenulp,]+                     # conversion, q, a, b, n, e, u, l, p, and , are added by SoS
+    [srqabdenulpRx,]+                   # conversion, q, a, b, n, e, u, l, R, x, p, and , are added by SoS
     )?
     (?P<format_spec>:\s*                # format_spec starting with :
     (?P<fill>.?[<>=^])?                 # optional fill|align
@@ -393,7 +393,7 @@ _SIMPLE_SUB_TMPL = r'''
     \]
     )?
     (?:!\s*                             # conversion starting with !
-    [srqabdenulp,]+                     # conversion, q, a, b, n, e, u, l, p, and , are added by SoS
+    [srqabdenulpRx,]+                   # conversion, q, a, b, n, e, u, l, p, R, x, and , are added by SoS
     )?
     (?::\s*                             # format_spec starting with :
     (?:.?[<>=^])?                       # optional fill|align

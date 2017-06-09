@@ -91,6 +91,7 @@ class SoS_String:
         'd': os.path.dirname,
         'b': os.path.basename,
         'n': lambda x: os.path.splitext(x)[0],
+        'x': lambda x: os.path.splitext(x)[1],
         'q': (lambda x: list2cmdline([x])) if sys.platform == 'win32' else quote,
         'p': lambda x: ('/' if len(x) > 1 and x[1] == ':' else '') + x.replace('\\', '/').replace(':', '/'),
         'r': repr,
@@ -98,6 +99,7 @@ class SoS_String:
         # these are handled elsewhere
         ',': lambda x: x,
         '!': lambda x: x,
+        'R': lambda x: x,
         }
 
     def __init__(self, sigil, local_dict={}, trace_vars=False):
@@ -305,7 +307,10 @@ class SoS_String:
         elif callable(obj):
             raise InterpolationError(repr(obj), '{} cannot be used as interpolation variable'.format(obj))
         elif hasattr(obj, '__unresolvable_object__'):
-            raise UnresolvableObject(obj)
+            if conversion is not None and 'R' in conversion:
+                return self._repr(obj.resolve(), fmt, conversion)
+            else:
+                raise UnresolvableObject(obj)
         else:
             return repr(obj) if fmt is None and conversion is None else self._format(obj, fmt, conversion)
 
