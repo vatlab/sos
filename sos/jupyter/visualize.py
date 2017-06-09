@@ -130,6 +130,7 @@ class Visualizer:
             igured if the dataframe has only one or two columns.''')
         parser.add_argument('--ylim', nargs=2, help='''Range of y-axis''')
         parser.add_argument('--xlim', nargs=2, help='''Range of x-axis''')
+        parser.add_argument('--log', choices=['x', 'y', 'xy', 'yx'], help='''Make x-axis, y-axis, or both to logarithmic''')
         parser.add_argument('--width', default='50vw', help='''Width of the plot.''')
         parser.add_argument('--height', default='38vw', help='''Height of the plot.''')
         parser.add_argument('-b', '--by', nargs='+', help='''columns by which the data points are stratified.''')
@@ -159,7 +160,7 @@ class Visualizer:
         if not isinstance(df, pandas.core.frame.DataFrame):
             raise ValueError('Not of DataFrame type')
 
-        tid = self.get_tid('scatterplot')
+        tid = str(self.get_tid('scatterplot'))
 
         if df.shape[0] > args.limit:
             self.kernel.warn("Only the first {} of the {} records are plotted. Use option --limit to set a new limit.".format(args.limit, df.shape[0]))
@@ -251,6 +252,8 @@ class Visualizer:
                 all_series.append(series)
 
         options = defaultdict(dict)
+        options['xaxis'] = {}
+        options['yaxis'] = {}
         options['series']['lines'] = {'show': is_sorted(val_x) and not args.by if not args.show or 'lines' in args.show else False }
         options['series']['points'] = {'show': True if not args.show or 'points' in args.show else False }
         options['grid']['hoverable'] = True
@@ -269,14 +272,25 @@ class Visualizer:
             options['yaxis']['min'] = args.ylim[0]
             options['yaxis']['max'] = args.ylim[1]
 
+        optfunc = ''
+        if args.log and 'x' in args.log:
+            optfunc = '''
+                options['xaxis']['transform'] = function(v) { return Math.log(v); }
+                options['xaxis']['inverseTransform'] = function(v) { return Math.exp(v); }
+            '''
+        if args.log and 'y' in args.log:
+            optfunc = '''
+                options['yaxis']['transform'] = function(v) { return Math.log(v); }
+                options['yaxis']['inverseTransform'] = function(v) { return Math.exp(v); }
+            '''
         code = """
 <div class='scatterplot_container'>
-<div class="{3}" id="dataframe_scatterplot_{0}" width="{1}" height="{2}"></div>
+<div class='""" + class_name + """' id='dataframe_scatterplot_""" + tid + """' width='""" + args.width + """' height='""" + args.height + """'></div>
 <script language="javascript" type="text/javascript" src="http://www.flotcharts.org/flot/jquery.flot.js"></script>
 <script>
-    function plotScatterPlot{0}() {{
-        plot = $.plot('#dataframe_scatterplot_{0}', """.format(tid, args.width, args.height, class_name) + \
-        json.dumps(all_series) + """, """ + json.dumps(options) + """)
+    var options = """ + json.dumps(options) + """;""" + optfunc + """
+    function plotScatterPlot""" + tid + """() {
+        plot = $.plot('#dataframe_scatterplot_""" + tid + """', """ + json.dumps(all_series) + """, options)
 
     if ($('#dftooltip').length == 0) {
         $("<div id='dftooltip'></div>").css({
@@ -289,8 +303,7 @@ class Visualizer:
             opacity: 0.80
             }).appendTo("body");
     }
-    """ + """
-    $("#dataframe_scatterplot_{0}")""".format(tid) + """.bind("plothover", function (event, pos, item) {
+    $('#dataframe_scatterplot_""" + tid + """').bind("plothover", function (event, pos, item) {
             if (item) {
                 $("#dftooltip").html((item.series.label + ": " +
                     item.series.data[item.dataIndex][1].toString() + "<br>" +
@@ -308,17 +321,17 @@ class Visualizer:
 
 var dt = 100;
 // the frontend might be notified before the table is inserted as results.
-function showFigure{0}() {{
-    if ( $('#dataframe_scatterplot_{0}').length === 0 || $.plot === undefined ) {{
+function showFigure""" + tid + """() {
+    if ( $('#dataframe_scatterplot_""" + tid + """').length === 0 || $.plot === undefined ) {
           dt = dt * 1.5; // slow-down checks for datatable as time goes on;
-          setTimeout(showFigure{0}, dt);
+          setTimeout(showFigure""" + tid + """, dt);
           return;
-    }} else {{
-        $('#dataframe_scatterplot_{0}').css('width', "{1}").css('height', "{2}");
-        plotScatterPlot{0}();
-    }}
-}}
-showFigure{0}()
+   } else {
+        $('#dataframe_scatterplot_""" + tid + """').css('width', '""" + args.width + """').css('height', '""" + args.height + """');
+        plotScatterPlot""" + tid + """();
+    }
+}
+showFigure""" + tid + """()
 </script>
-</div>""".format(tid, args.width, args.height)
+</div>"""
         return {'text/html': HTML(code).data}
