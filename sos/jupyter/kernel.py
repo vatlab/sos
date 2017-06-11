@@ -384,7 +384,7 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
-   def get_save_parser(self):
+    def get_save_parser(self):
         parser = argparse.ArgumentParser(prog='%sossave',
             description='''Save the jupyter notebook as workflow (consisting of all sos
             steps defined in cells starting with section header) or a HTML report to
