@@ -47,11 +47,11 @@ class PendingTasks(Exception):
 def parse_stmt(stmt, sigil, force_remote):
     if force_remote:
         args, kwargs = SoS_eval('__null_func__({})'.format(stmt), sigil, convert=False)
-        args = [remote(x) if isinstance(x, str) else (x.resolve() if isinstance(x, local) else x) for x in args]
+        args = [x.resolve() if isinstance(x, local) else remote(x) for x in args]
         # now if local, we need to interpolate
-        args = [interpolate(x, section.sigil, env.sos_dict._dict) if isinstance(str) else x for x in args]
+        args = [interpolate(x, sigil, env.sos_dict._dict) if isinstance(x, str) else x for x in args]
     else:
-        args, kwargs = SoS_eval('__null_func__({})'.format(stmt), section.sigil) 
+        args, kwargs = SoS_eval('__null_func__({})'.format(stmt), sigil) 
     return args, kwargs
 
 def analyze_section(section, default_input=None):
@@ -989,7 +989,7 @@ class Base_Step_Executor:
                         key, value = statement[1:]
                         # output, depends, and process can be processed multiple times
                         try:
-                            args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
+                            args, kwargs = parse_stmt(value, self.step.sigil, self.force_remote)
                             # dynamic output or dependent files
                             if key == 'output':
                                 # if output is defined, its default value needs to be cleared
