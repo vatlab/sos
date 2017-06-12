@@ -58,7 +58,7 @@ run:
 # update docker on ec2
 
 [update-ec2]
-parameter: pem=glob.glob('*.pem')
+parameter: pem=glob.glob('mda*.pem')
 run:
    ssh -i ${pem} ubuntu@ec2-34-192-184-206.compute-1.amazonaws.com 'bash -s '< update_ec2_docker.sh
 
