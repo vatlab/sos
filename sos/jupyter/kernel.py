@@ -385,7 +385,7 @@ class SoS_Kernel(IPythonKernel):
         return parser
 
     def get_save_parser(self):
-        parser = argparse.ArgumentParser(prog='%sossave',
+        parser = argparse.ArgumentParser(prog='%save',
             description='''Save the jupyter notebook as workflow (consisting of all sos
             steps defined in cells starting with section header) or a HTML report to
             specified file.''')
@@ -422,6 +422,9 @@ class SoS_Kernel(IPythonKernel):
             help='''If destination file already exists, overwrite it.''')
         parser.add_argument('-x', '--set-executable', dest = "setx", action='store_true',
             help='''Sdd `executable` permission to saved script.''')
+        parser.add_argument('--template', default='sos-report',
+            help='''Template to generate HTML output, default to sos-report,
+            which uses a control panel to control the display of contents.''')
         parser.error = self._parse_error
         return parser
 
@@ -2195,7 +2198,7 @@ Available subkernels:\n{}'''.format(
                     # convert to sos report
                     from sos.jupyter.converter import notebook_to_html
                     arg = argparse.Namespace()
-                    arg.template = 'sos'
+                    arg.template = args.template
                     notebook_to_html(self._notebook_name + '.ipynb', filename, sargs=arg, unknown_args=[])
 
                 self.send_response(self.iopub_socket, 'display_data',
