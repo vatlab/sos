@@ -21,7 +21,7 @@
 #
 
 import pickle
-import sys
+from sos.utils import env, short_repr
 
 __init_statement__ = '''
 def __version_info__(module):
@@ -49,34 +49,35 @@ def __loaded_modules__():
 '''
 
 
-def load_pickled(item):
-    if isinstance(item, bytes):
-        return pickle.loads(item)
-    elif isinstance(item, str):
-        return pickle.loads(item.encode('utf-8'))
-    else:
-        self.warn('Cannot restore from result of pickle.dumps: {}'.format(short_repr(item)))
-        return {}
-
 class sos_Python2:
+
     def __init__(self, sos_kernel):
         self.sos_kernel = sos_kernel
         self.kernel_name = 'python2'
         self.background_color = '#F6FAEA'
         self.init_statements = __init_statement__
 
-    def sos_to_lan(self, name, obj):
-        # try to dump data in a python 2 compatible fashion so that python 2 can load it
-        if self.sos_kernel._debug_mode:
-            self.sos_kernel.warn("RUN import pickle\nglobals().update(pickle.loads({!r}))".format(pickle.dumps({name:obj}, protocol=2, fix_imports=True)))
-        return name, "import pickle\nglobals().update(pickle.loads({!r}))".format(pickle.dumps({name:obj}, protocol=2, fix_imports=True))
+    def get_vars(self, names):
+        self.sos_kernel.run_cell("import pickle", True, False)
+        for name in names:
+            stmt = "globals().update(pickle.loads({!r}))\n".format(pickle.dumps({name: env.sos_dict[name]}, protocol=2, fix_imports=True))
+            self.sos_kernel.run_cell(stmt, True, False, on_error='Failed to get variable {} from SoS to Python2'.format(name))
+
+    def load_pickled(self, item):
+        if isinstance(item, bytes):
+            return pickle.loads(item)
+        elif isinstance(item, str):
+            return pickle.loads(item.encode('utf-8'))
+        else:
+            self.warn('Cannot restore from result of pickle.dumps: {}'.format(short_repr(item)))
+            return {}
 
     def put_vars(self, items, to_kernel=None):
         # python 2 uses protocol 2, which python 3 should be able to pick up
         stmt = 'import pickle\n__vars__={{ {} }}\n__vars__.update({{x:y for x,y in locals().items() if x.startswith("sos")}})\npickle.dumps(__vars__)'.format(','.join('"{0}":{0}'.format(x) for x in items))
         response = self.sos_kernel.get_response(stmt, ['execute_result'])[0][1]
         try:
-            ret = load_pickled(eval(response['data']['text/plain']))
+            ret = self.load_pickled(eval(response['data']['text/plain']))
             if self.sos_kernel._debug_mode:
                 self.sos_kernel.warn('Get: {}'.format(ret))
             return ret
@@ -86,4 +87,4 @@ class sos_Python2:
 
     def sessioninfo(self):
         modules = self.sos_kernel.get_response('import pickle;import sys;res=[("Version", sys.version)];res.extend(__loaded_modules__());pickle.dumps(res)', ['execute_result'])[0][1]
-        return load_pickled(eval(modules['data']['text/plain']))
+        return self.load_pickled(eval(modules['data']['text/plain']))

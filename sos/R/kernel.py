@@ -22,7 +22,7 @@
 
 from collections import Sequence
 import tempfile
-from sos.utils import short_repr
+from sos.utils import short_repr, env
 from IPython.core.error import UsageError
 
 def homogeneous_type(seq):
@@ -242,11 +242,13 @@ class sos_R:
         self.background_color = '#FDEDEC'
         self.init_statements = R_init_statements
 
-    def sos_to_lan(self, name, obj):
-        new_name = '.' + name[1:] if name.startswith('_') else name
-        r_repr = _R_repr(obj)
-        #
-        return new_name, '{} <- {}'.format(new_name, r_repr)
+    def get_vars(self, names):
+        for name in names:
+            if name.startswith('_'):
+                self.sos_kernel.warn('Variable {} is passed from SoS to kernel {} as {}'.format(name, self.kernel_name, '.' + name[1:]))
+                name = '.' + name[1:]
+            r_repr = _R_repr(env.sos_dict[name])
+            self.sos_kernel.run_cell('{} <- {}'.format(name, r_repr), True, False, on_error='Failed to get variable {} to R'.format(name))
 
     def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos

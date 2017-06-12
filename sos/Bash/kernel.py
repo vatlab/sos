@@ -21,7 +21,7 @@
 #
 
 from collections.abc import Sequence
-from sos.utils import short_repr
+from sos.utils import short_repr, env
 
 #
 #  support for %get
@@ -57,12 +57,10 @@ class sos_Bash:
         self.background_color = '#E6EEFF'
         self.init_statements = ''
 
-    def sos_to_lan(self, name, obj):
-        new_name = name.replace('.', '')
-        stmt = 'export {}={!r}'.format(name, _Bash_repr(obj))
-        if self.sos_kernel._debug_mode:
-            self.sos_kernel.warn('Execute {}'.format(stmt))
-        return new_name, stmt
+    def get_vars(self, names):
+        for name in names:
+            stmt = 'export {}={!r}'.format(name, _Bash_repr(env.sos_dict[name]))
+            self.sos_kernel.run_cell(stmt, True, False, on_error='Failed to get variable {}'.format(name))
 
     def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos

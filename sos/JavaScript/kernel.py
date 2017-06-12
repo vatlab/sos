@@ -20,9 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import tempfile
-from sos.utils import short_repr
-from IPython.core.error import UsageError
+from sos.utils import short_repr, env
 import json
 
 JS_init_statement = '''
@@ -70,8 +68,9 @@ class sos_JavaScript:
         self.background_color = '#00ff80'
         self.init_statements = JS_init_statement
 
-    def sos_to_lan(self, name, obj):
-        return name, '{} = {}'.format(name, _JS_repr(obj))
+    def get_vars(self, names):
+        for name in names:
+            self.sos_kernel.run_cell('{} = {}'.format(name, _JS_repr(env.sos_dict[name])), True, False)
 
     def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos

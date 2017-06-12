@@ -21,9 +21,7 @@
 #
 
 import pickle
-import sys
-from collections import OrderedDict
-from sos.utils import short_repr
+from sos.utils import short_repr, env
 
 __init_statement__ = '''
 def __version_info__(module):
@@ -51,14 +49,7 @@ def __loaded_modules__():
     return [(x,y) for x,y in res if y != 'na']
 '''
 
-def load_pickled(item):
-    if isinstance(item, bytes):
-        return pickle.loads(item)
-    elif isinstance(item, str):
-        return pickle.loads(item.encode('utf-8'))
-    else:
-        self.warn('Cannot restore from result of pickle.dumps: {}'.format(short_repr(item)))
-        return {}
+
 
 class sos_Python3:
     def __init__(self, sos_kernel):
@@ -67,14 +58,26 @@ class sos_Python3:
         self.background_color = '#EAFAF1'
         self.init_statements = __init_statement__
 
-    def sos_to_lan(self, name, obj):
-        return name, "import pickle\nglobals().update(pickle.loads({!r}))".format(pickle.dumps({name:obj}))
+    def get_vars(self, names):
+        stmt = "import pickle\n"
+        for name in names:
+            stmt += "globals().update(pickle.loads({!r}))\n".format(pickle.dumps({name:env.sos_dict[name]}))
+        self.sos_kernel.run_cell(stmt, True, False)
+
+    def load_pickled(self, item):
+        if isinstance(item, bytes):
+            return pickle.loads(item)
+        elif isinstance(item, str):
+            return pickle.loads(item.encode('utf-8'))
+        else:
+            self.warn('Cannot restore from result of pickle.dumps: {}'.format(short_repr(item)))
+            return {}
 
     def put_vars(self, items, to_kernel=None):
         stmt = 'import pickle\n__vars__={{ {} }}\n__vars__.update({{x:y for x,y in locals().items() if x.startswith("sos")}})\npickle.dumps(__vars__)'.format(','.join('"{0}":{0}'.format(x) for x in items))
         response = self.sos_kernel.get_response(stmt, ['execute_result'])[0][1]
         try:
-            ret = load_pickled(eval(response['data']['text/plain']))
+            ret = self.load_pickled(eval(response['data']['text/plain']))
             return ret
         except Exception as e:
             self.sos_kernel.warn('Failed to import variables {}: {}'.format(items, e))
@@ -82,4 +85,4 @@ class sos_Python3:
 
     def sessioninfo(self):
         modules = self.sos_kernel.get_response('import pickle;import sys;res=[("Version", sys.version)];res.extend(__loaded_modules__());pickle.dumps(res)', ['execute_result'])[0][1]
-        return load_pickled(eval(modules['data']['text/plain']))
+        return self.load_pickled(eval(modules['data']['text/plain']))
