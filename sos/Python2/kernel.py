@@ -71,7 +71,7 @@ class sos_Python2:
             self.sos_kernel.warn("RUN import pickle\nglobals().update(pickle.loads({!r}))".format(pickle.dumps({name:obj}, protocol=2, fix_imports=True)))
         return name, "import pickle\nglobals().update(pickle.loads({!r}))".format(pickle.dumps({name:obj}, protocol=2, fix_imports=True))
 
-    def lan_to_sos(self, items):
+    def put_vars(self, items, to_kernel=None):
         # python 2 uses protocol 2, which python 3 should be able to pick up
         stmt = 'import pickle\n__vars__={{ {} }}\n__vars__.update({{x:y for x,y in locals().items() if x.startswith("sos")}})\npickle.dumps(__vars__)'.format(','.join('"{0}":{0}'.format(x) for x in items))
         response = self.sos_kernel.get_response(stmt, ['execute_result'])[0][1]

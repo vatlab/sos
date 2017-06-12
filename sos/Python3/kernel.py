@@ -70,7 +70,7 @@ class sos_Python3:
     def sos_to_lan(self, name, obj):
         return name, "import pickle\nglobals().update(pickle.loads({!r}))".format(pickle.dumps({name:obj}))
 
-    def lan_to_sos(self, items):
+    def put_vars(self, items, to_kernel=None):
         stmt = 'import pickle\n__vars__={{ {} }}\n__vars__.update({{x:y for x,y in locals().items() if x.startswith("sos")}})\npickle.dumps(__vars__)'.format(','.join('"{0}":{0}'.format(x) for x in items))
         response = self.sos_kernel.get_response(stmt, ['execute_result'])[0][1]
         try:

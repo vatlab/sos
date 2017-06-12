@@ -64,7 +64,7 @@ class sos_Bash:
             self.sos_kernel.warn('Execute {}'.format(stmt))
         return new_name, stmt
 
-    def lan_to_sos(self, items):
+    def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos
         response = self.sos_kernel.get_response('env', ('stream'))
         if self.sos_kernel._debug_mode:

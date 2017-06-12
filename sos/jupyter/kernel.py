@@ -1402,29 +1402,10 @@ Available subkernels:\n{}'''.format(
         return responses
 
     def handle_magic_put(self, items, to_kernel=None, explicit=False):
-        if to_kernel is None or to_kernel.lower() == 'sos':
-            # put to sos kernel
-            # items can be None if unspecified
-            if not items:
-                # we do not simply return because we need to return default variables (with name startswith sos
-                items = []
-            if self.kernel in self.supported_languages:
-                lan = self.supported_languages[self.kernel]
-                objects = lan.lan_to_sos(items)
-                if not isinstance(objects, dict):
-                    self.warn('Failed to execute %put {}: subkernel returns {}, which is not a dict.'
-                        .format(' '.join(items), short_repr(objects)))
-                else:
-                    try:
-                        env.sos_dict.update(objects)
-                    except Exception as e:
-                        self.warn('Failed to execute %put: {}'.format(e))
-            elif self.kernel == 'SoS':
+        if self.kernel.lower() == 'sos':
+            if to_kernel is None:
                 self.warn('Magic %put without option --kernel can only be executed by subkernels')
-            else:
-                if explicit:
-                    self.warn('Subkernel {} does not support magic %put.'.format(self.kernel))
-        elif self.kernel.lower() == 'sos':
+                return
             # if another kernel is specified and the current kernel is sos
             try:
                 # switch to kernel and bring in items
@@ -1433,17 +1414,57 @@ Available subkernels:\n{}'''.format(
                 # switch back
                 self.switch_kernel('SoS')
         else:
-            # if another kernel is specified and the current kernel is not sos
-            # we need to first put to sos then to another kernel
-            try:
-                my_kernel = self.kernel
-                # switch to sos, bring in vars
-                self.handle_magic_put(items)
-                # switch to the destination kernel and bring in vars
-                self.switch_kernel(to_kernel, in_vars=items)
-            finally:
-                # switch back to the original kernel
-                self.switch_kernel(my_kernel)
+            # put to sos kernel or another kernel
+            #
+            # items can be None if unspecified
+            if not items:
+                # we do not simply return because we need to return default variables (with name startswith sos
+                items = []
+            if self.kernel not in self.supported_languages:
+                if explicit:
+                    self.warn('Subkernel {} does not support magic %put.'.format(self.kernel))
+                return
+            #
+            lan = self.supported_languages[self.kernel]
+            self.warn('put {}'.format(items))
+            objects = lan.put_vars(items, to_kernel=to_kernel)
+            if isinstance(objects, dict):
+                # returns a SOS dictionary
+                try:
+                    env.sos_dict.update(objects)
+                except Exception as e:
+                    self.warn('Failed to execute %put: {}'.format(e))
+                    return
+
+                if to_kernel is None:
+                    return
+                # if another kernel is specified and the current kernel is not sos
+                # we need to first put to sos then to another kernel
+                try:
+                    my_kernel = self.kernel
+                    # switch to the destination kernel and bring in vars
+                    self.switch_kernel(to_kernel, in_vars=items)
+                finally:
+                    # switch back to the original kernel
+                    self.switch_kernel(my_kernel)
+            elif isinstance(objects, str):
+                # an statement that will be executed in the destination kernel
+                if to_kernel is None:
+                    self.warn('A dictionary must be returned to put variables to SoS kernel')
+                    return
+                try:
+                    my_kernel = self.kernel
+                    # switch to the destination kernel
+                    self.switch_kernel(to_kernel)
+                    # execute the statement to pass variables directly to destination kernel
+                    self.run_cell(objects, True, False)
+                finally:
+                    # switch back to the original kernel
+                    self.switch_kernel(my_kernel)
+            else:
+                self.warn('Unrecognized return value of type {} for action %put'.format(object.__class__.__name__))
+                return
+
 
     def _interpolate_option(self, option, quiet=False):
         # interpolate command
