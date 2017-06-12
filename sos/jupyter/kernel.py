@@ -1307,8 +1307,8 @@ Available subkernels:\n{}'''.format(
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Usage: set persistent sos command line options such as "-v 3" (debug output)\n'})
 
-    def handle_magic_get(self, items, kernel=None, explicit=False):
-        if kernel is None or kernel.lower() == 'sos':
+    def handle_magic_get(self, items, from_kernel=None, explicit=False):
+        if from_kernel is None or from_kernel.lower() == 'sos':
             # autmatically get all variables with names start with 'sos'
             default_items = [x for x in env.sos_dict.keys() if x.startswith('sos') and x not in self.original_keys]
             items = default_items if not items else items + default_items
@@ -1356,7 +1356,7 @@ Available subkernels:\n{}'''.format(
             # if another kernel is specified and the current kernel is sos
             # we get from subkernel
             try:
-                self.switch_kernel(kernel)
+                self.switch_kernel(from_kernel)
                 self.handle_magic_put(items)
             finally:
                 self.switch_kernel('SoS')
@@ -1365,7 +1365,7 @@ Available subkernels:\n{}'''.format(
             # we need to first get from another kernel (to sos) and then to this kernel
             try:
                 my_kernel = self.kernel
-                self.switch_kernel(kernel)
+                self.switch_kernel(from_kernel)
                 # put stuff to sos
                 self.handle_magic_put(items)
             finally:
@@ -1401,8 +1401,8 @@ Available subkernels:\n{}'''.format(
 
         return responses
 
-    def handle_magic_put(self, items, kernel=None, explicit=False):
-        if kernel is None or kernel.lower() == 'sos':
+    def handle_magic_put(self, items, to_kernel=None, explicit=False):
+        if to_kernel is None or to_kernel.lower() == 'sos':
             # put to sos kernel
             # items can be None if unspecified
             if not items:
@@ -1428,7 +1428,7 @@ Available subkernels:\n{}'''.format(
             # if another kernel is specified and the current kernel is sos
             try:
                 # switch to kernel and bring in items
-                self.switch_kernel(kernel, in_vars=items)
+                self.switch_kernel(to_kernel, in_vars=items)
             finally:
                 # switch back
                 self.switch_kernel('SoS')
@@ -1440,7 +1440,7 @@ Available subkernels:\n{}'''.format(
                 # switch to sos, bring in vars
                 self.handle_magic_put(items)
                 # switch to the destination kernel and bring in vars
-                self.switch_kernel(kernel, in_vars=items)
+                self.switch_kernel(to_kernel, in_vars=items)
             finally:
                 # switch back to the original kernel
                 self.switch_kernel(my_kernel)
