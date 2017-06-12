@@ -1348,19 +1348,16 @@ Available subkernels:\n{}'''.format(
             finally:
                 self.switch_kernel('SoS')
         else:
-            # if another kernel is specified and the current kernel is not sos
-            # we need to first get from another kernel (to sos) and then to this kernel
+            # if another kernel is specified, we should try to let that kernel pass
+            # the variables to this one directly
             try:
                 my_kernel = self.kernel
                 self.switch_kernel(from_kernel)
-                # put stuff to sos
-                self.handle_magic_put(items)
+                # put stuff to sos or my_kernel directly
+                self.handle_magic_put(items, to_kernel=my_kernel, explicit=explicit)
             finally:
                 # then switch back
                 self.switch_kernel(my_kernel)
-                # and get from sos
-                self.handle_magic_get(items)
-
 
     def get_response(self, statement, msg_types, name=None):
         # get response of statement of specific msg types.
@@ -1413,7 +1410,11 @@ Available subkernels:\n{}'''.format(
                 return
             #
             lan = self.supported_languages[self.kernel]
-            objects = lan.put_vars(items, to_kernel=to_kernel)
+            # pass language name to to_kernel
+            if to_kernel:
+                objects = lan.put_vars(items, to_kernel=self.find_kernel(to_kernel)[2])
+            else:
+                objects = lan.put_vars(items, to_kernel='SoS')
             if isinstance(objects, dict):
                 # returns a SOS dictionary
                 try:
@@ -1435,9 +1436,14 @@ Available subkernels:\n{}'''.format(
                     self.switch_kernel(my_kernel)
             elif isinstance(objects, str):
                 # an statement that will be executed in the destination kernel
-                if to_kernel is None:
-                    self.warn('A dictionary must be returned to put variables to SoS kernel')
-                    return
+                if to_kernel is None or to_kernel == 'SoS':
+                    # evaluate in SoS, this should not happen or rarely happen
+                    # because the subkernel should return a dictionary for SoS kernel
+                    try:
+                        exec(objects, env.sos_dict._dict)
+                    except Exception as e:
+                        self.warn('Failed to put variables {} to SoS kernel: {}'.format(items, e))
+                        return
                 try:
                     my_kernel = self.kernel
                     # switch to the destination kernel

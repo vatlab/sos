@@ -268,22 +268,27 @@ class sos_R:
             return {}
 
         py_repr = 'cat(..py.repr(list({})))'.format(','.join('{0}={0}'.format(x) for x in items))
-
-        # irkernel (since the new version) does not produce execute_result, only
-        # display_data
         response = self.sos_kernel.get_response(py_repr, ('stream',), name=('stdout',))[0][1]
         expr = response['text']
-        try:
-            if 'read_dataframe' in expr:
-                # imported to be used by eval
-                from feather import read_dataframe
-                # suppress flakes warning
-                read_dataframe
-            # evaluate as raw string to correctly handle \\ etc
-            return eval(expr)
-        except Exception as e:
-            self.sos_kernel.warn('Failed to evaluate {!r}: {}'.format(expr, e))
-            return None
+
+        if to_kernel in ('Python2', 'Python3'):
+            # directly to python3
+            return '{}\nglobals().update({})'.format('from feather import read_dataframe\n' if 'read_dataframe' in expr else '', expr)
+        # to sos or any other kernel
+        else:
+            # irkernel (since the new version) does not produce execute_result, only
+            # display_data
+            try:
+                if 'read_dataframe' in expr:
+                    # imported to be used by eval
+                    from feather import read_dataframe
+                    # suppress flakes warning
+                    read_dataframe
+                # evaluate as raw string to correctly handle \\ etc
+                return eval(expr)
+            except Exception as e:
+                self.sos_kernel.warn('Failed to evaluate {!r}: {}'.format(expr, e))
+                return None
 
     def sessioninfo(self):
         response = self.sos_kernel.get_response(r'cat(paste(capture.output(sessionInfo()), collapse="\n"))', ('stream',), name=('stdout',))[0]

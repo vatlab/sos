@@ -76,6 +76,10 @@ class sos_Python3:
     def put_vars(self, items, to_kernel=None):
         stmt = 'import pickle\n__vars__={{ {} }}\n__vars__.update({{x:y for x,y in locals().items() if x.startswith("sos")}})\npickle.dumps(__vars__)'.format(','.join('"{0}":{0}'.format(x) for x in items))
         response = self.sos_kernel.get_response(stmt, ['execute_result'])[0][1]
+        # Python3 -> Python3
+        if to_kernel == 'Python3':
+            # to self, this should allow all variables to be passed
+            return 'import pickle\nglobals().update(pickle.loads({}))'.format(response['data']['text/plain'])
         try:
             ret = self.load_pickled(eval(response['data']['text/plain']))
             return ret

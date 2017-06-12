@@ -76,14 +76,18 @@ class sos_Python2:
         # python 2 uses protocol 2, which python 3 should be able to pick up
         stmt = 'import pickle\n__vars__={{ {} }}\n__vars__.update({{x:y for x,y in locals().items() if x.startswith("sos")}})\npickle.dumps(__vars__)'.format(','.join('"{0}":{0}'.format(x) for x in items))
         response = self.sos_kernel.get_response(stmt, ['execute_result'])[0][1]
-        try:
-            ret = self.load_pickled(eval(response['data']['text/plain']))
-            if self.sos_kernel._debug_mode:
-                self.sos_kernel.warn('Get: {}'.format(ret))
-            return ret
-        except Exception as e:
-            self.sos_kernel.warn('Failed to import variables {}: {}'.format(items, e))
-            return {}
+        if to_kernel == 'Python2':
+            # to self, this should allow all variables to be passed
+            return 'import pickle\nglobals().update(pickle.loads({}))'.format(response['data']['text/plain'])
+        else:
+            try:
+                ret = self.load_pickled(eval(response['data']['text/plain']))
+                if self.sos_kernel._debug_mode:
+                    self.sos_kernel.warn('Get: {}'.format(ret))
+                return ret
+            except Exception as e:
+                self.sos_kernel.warn('Failed to import variables {}: {}'.format(items, e))
+                return {}
 
     def sessioninfo(self):
         modules = self.sos_kernel.get_response('import pickle;import sys;res=[("Version", sys.version)];res.extend(__loaded_modules__());pickle.dumps(res)', ['execute_result'])[0][1]
