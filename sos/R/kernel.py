@@ -246,9 +246,11 @@ class sos_R:
         for name in names:
             if name.startswith('_'):
                 self.sos_kernel.warn('Variable {} is passed from SoS to kernel {} as {}'.format(name, self.kernel_name, '.' + name[1:]))
-                name = '.' + name[1:]
+                newname = '.' + name[1:]
+            else:
+                newname = name
             r_repr = _R_repr(env.sos_dict[name])
-            self.sos_kernel.run_cell('{} <- {}'.format(name, r_repr), True, False, on_error='Failed to get variable {} to R'.format(name))
+            self.sos_kernel.run_cell('{} <- {}'.format(newname, r_repr), True, False, on_error='Failed to get variable {} to R'.format(name))
 
     def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos
