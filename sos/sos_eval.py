@@ -50,7 +50,7 @@ class InterpolationError(Error):
 
 class UnresolvableObject(Error):
     def __init__(self, obj):
-        super(UnresolvableObject, self).__init__('Unresolvable object: {}'.format(obj))
+        super(UnresolvableObject, self).__init__('Unresolvable object ({}) during string interpolation, use converter R if needed.'.format(obj))
 
 def sos_compile(expr, *args, **kwargs):
     ''' Compiling an statement but ignores tab error (mixed tab and space'''
@@ -174,11 +174,7 @@ class SoS_String:
                     expr = pieces[i]
                     fmt = None
                     conversion = None
-                try:
-                    pieces[i] = self._repr(eval(expr, env.sos_dict._dict, self.local_dict), fmt, conversion)
-                except UnresolvableObject:
-                    # pieces[i] is kept untoubhed.
-                    pieces[i] = self.l + pieces[i] + self.r
+                pieces[i] = self._repr(eval(expr, env.sos_dict._dict, self.local_dict), fmt, conversion)
         return ''.join(pieces)
 
     def _interpolate(self, text, start_nested=0):
@@ -257,11 +253,7 @@ class SoS_String:
                             return self.interpolate(text[j+len(self.r):])
                         else:
                             result = eval(expr, env.sos_dict._dict, self.local_dict)
-                            try:
-                                return self._repr(result, fmt, conversion) + self.interpolate(text[j+len(self.r):])
-                            except UnresolvableObject:
-                                # keep expression with remote() intact
-                                return self.l + text[:j] + self.r + self.interpolate(text[j+len(self.r):])
+                            return self._repr(result, fmt, conversion) + self.interpolate(text[j+len(self.r):])
                     except Exception as e:
                         raise InterpolationError(expr, e)
                     # evaluate the expression and interpolate the next expression
@@ -433,10 +425,11 @@ def param_of(name, text):
             continue
     return exprs
 
-def SoS_eval(expr, sigil):
+def SoS_eval(expr, sigil, convert=True):
     '''Evaluate an expression after modifying (convert ' ' string to raw string,
     interpolate expressions) strings.'''
-    expr = ConvertString(expr, sigil)
+    if convert:
+        expr = ConvertString(expr, sigil)
     return eval(expr, env.sos_dict._dict)
 
 def _is_expr(expr):

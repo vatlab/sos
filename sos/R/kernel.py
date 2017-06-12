@@ -248,7 +248,7 @@ class sos_R:
         #
         return new_name, '{} <- {}'.format(new_name, r_repr)
 
-    def lan_to_sos(self, items):
+    def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos
         response = self.sos_kernel.get_response('cat(..py.repr(ls()))', ('stream',), name=('stdout',))[0][1]
         all_vars = eval(response['text'])

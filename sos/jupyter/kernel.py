@@ -208,6 +208,7 @@ class SoS_Kernel(IPythonKernel):
     MAGIC_RUN = re.compile('^%run(\s|$)')
     MAGIC_SOSRUN = re.compile('^%sosrun(\s|$)')
     MAGIC_SOSSAVE = re.compile('^%sossave(\s|$)')
+    MAGIC_SAVE = re.compile('^%save(\s|$)')
     MAGIC_RERUN = re.compile('^%rerun(\s|$)')
     MAGIC_PREVIEW = re.compile('^%preview(\s|$)')
     MAGIC_SANDBOX = re.compile('^%sandbox(\s|$)')
@@ -383,6 +384,19 @@ class SoS_Kernel(IPythonKernel):
         parser.error = self._parse_error
         return parser
 
+    def get_save_parser(self):
+        parser = argparse.ArgumentParser(prog='%save',
+            description='''Save the jupyter notebook as workflow (consisting of all sos
+            steps defined in cells starting with section header) or a HTML report to
+            specified file.''')
+        parser.add_argument('filename', nargs='?',
+            help='''Filename of saved report or script. Default to notebookname with file
+            extension determined by option --to.''')
+        # -a for append? ipython has it.
+        # -f for overwrite
+        parser.error = self._parse_error
+        return parser
+
     def get_sossave_parser(self):
         parser = argparse.ArgumentParser(prog='%sossave',
             description='''Save the jupyter notebook as workflow (consisting of all sos
@@ -408,6 +422,9 @@ class SoS_Kernel(IPythonKernel):
             help='''If destination file already exists, overwrite it.''')
         parser.add_argument('-x', '--set-executable', dest = "setx", action='store_true',
             help='''Sdd `executable` permission to saved script.''')
+        parser.add_argument('--template', default='sos-report',
+            help='''Template to generate HTML output, default to sos-report,
+            which uses a control panel to control the display of contents.''')
         parser.error = self._parse_error
         return parser
 
@@ -1290,8 +1307,8 @@ Available subkernels:\n{}'''.format(
                 self.send_response(self.iopub_socket, 'stream',
                     {'name': 'stdout', 'text': 'Usage: set persistent sos command line options such as "-v 3" (debug output)\n'})
 
-    def handle_magic_get(self, items, kernel=None, explicit=False):
-        if kernel is None or kernel.lower() == 'sos':
+    def handle_magic_get(self, items, from_kernel=None, explicit=False):
+        if from_kernel is None or from_kernel.lower() == 'sos':
             # autmatically get all variables with names start with 'sos'
             default_items = [x for x in env.sos_dict.keys() if x.startswith('sos') and x not in self.original_keys]
             items = default_items if not items else items + default_items
@@ -1339,7 +1356,7 @@ Available subkernels:\n{}'''.format(
             # if another kernel is specified and the current kernel is sos
             # we get from subkernel
             try:
-                self.switch_kernel(kernel)
+                self.switch_kernel(from_kernel)
                 self.handle_magic_put(items)
             finally:
                 self.switch_kernel('SoS')
@@ -1348,7 +1365,7 @@ Available subkernels:\n{}'''.format(
             # we need to first get from another kernel (to sos) and then to this kernel
             try:
                 my_kernel = self.kernel
-                self.switch_kernel(kernel)
+                self.switch_kernel(from_kernel)
                 # put stuff to sos
                 self.handle_magic_put(items)
             finally:
@@ -1384,49 +1401,70 @@ Available subkernels:\n{}'''.format(
 
         return responses
 
-    def handle_magic_put(self, items, kernel=None, explicit=False):
-        if kernel is None or kernel.lower() == 'sos':
-            # put to sos kernel
-            # items can be None if unspecified
-            if not items:
-                # we do not simply return because we need to return default variables (with name startswith sos
-                items = []
-            if self.kernel in self.supported_languages:
-                lan = self.supported_languages[self.kernel]
-                objects = lan.lan_to_sos(items)
-                if not isinstance(objects, dict):
-                    self.warn('Failed to execute %put {}: subkernel returns {}, which is not a dict.'
-                        .format(' '.join(items), short_repr(objects)))
-                else:
-                    try:
-                        env.sos_dict.update(objects)
-                    except Exception as e:
-                        self.warn('Failed to execute %put: {}'.format(e))
-            elif self.kernel == 'SoS':
+    def handle_magic_put(self, items, to_kernel=None, explicit=False):
+        if self.kernel.lower() == 'sos':
+            if to_kernel is None:
                 self.warn('Magic %put without option --kernel can only be executed by subkernels')
-            else:
-                if explicit:
-                    self.warn('Subkernel {} does not support magic %put.'.format(self.kernel))
-        elif self.kernel.lower() == 'sos':
+                return
             # if another kernel is specified and the current kernel is sos
             try:
                 # switch to kernel and bring in items
-                self.switch_kernel(kernel, in_vars=items)
+                self.switch_kernel(to_kernel, in_vars=items)
             finally:
                 # switch back
                 self.switch_kernel('SoS')
         else:
-            # if another kernel is specified and the current kernel is not sos
-            # we need to first put to sos then to another kernel
-            try:
-                my_kernel = self.kernel
-                # switch to sos, bring in vars
-                self.handle_magic_put(items)
-                # switch to the destination kernel and bring in vars
-                self.switch_kernel(kernel, in_vars=items)
-            finally:
-                # switch back to the original kernel
-                self.switch_kernel(my_kernel)
+            # put to sos kernel or another kernel
+            #
+            # items can be None if unspecified
+            if not items:
+                # we do not simply return because we need to return default variables (with name startswith sos
+                items = []
+            if self.kernel not in self.supported_languages:
+                if explicit:
+                    self.warn('Subkernel {} does not support magic %put.'.format(self.kernel))
+                return
+            #
+            lan = self.supported_languages[self.kernel]
+            self.warn('put {}'.format(items))
+            objects = lan.put_vars(items, to_kernel=to_kernel)
+            if isinstance(objects, dict):
+                # returns a SOS dictionary
+                try:
+                    env.sos_dict.update(objects)
+                except Exception as e:
+                    self.warn('Failed to execute %put: {}'.format(e))
+                    return
+
+                if to_kernel is None:
+                    return
+                # if another kernel is specified and the current kernel is not sos
+                # we need to first put to sos then to another kernel
+                try:
+                    my_kernel = self.kernel
+                    # switch to the destination kernel and bring in vars
+                    self.switch_kernel(to_kernel, in_vars=items)
+                finally:
+                    # switch back to the original kernel
+                    self.switch_kernel(my_kernel)
+            elif isinstance(objects, str):
+                # an statement that will be executed in the destination kernel
+                if to_kernel is None:
+                    self.warn('A dictionary must be returned to put variables to SoS kernel')
+                    return
+                try:
+                    my_kernel = self.kernel
+                    # switch to the destination kernel
+                    self.switch_kernel(to_kernel)
+                    # execute the statement to pass variables directly to destination kernel
+                    self.run_cell(objects, True, False)
+                finally:
+                    # switch back to the original kernel
+                    self.switch_kernel(my_kernel)
+            else:
+                self.warn('Unrecognized return value of type {} for action %put'.format(object.__class__.__name__))
+                return
+
 
     def _interpolate_option(self, option, quiet=False):
         # interpolate command
@@ -2129,6 +2167,16 @@ Available subkernels:\n{}'''.format(
                 self._workflow_mode = False
                 self.options = old_options
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
+        elif self.MAGIC_SAVE.match(code):
+            if self.kernel != 'SoS':
+                # pass the %save magic to underlying kernel
+                return self._do_execute(code, silent, store_history, user_expressions, allow_stdin)
+            # if sos kernel ...
+            options, remaining_code = self.get_magic_and_code(code, False)
+            # parse options
+            # save
+            # execute the rest
+            return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_SOSSAVE.match(code):
             # get the saved filename
             options, remaining_code = self.get_magic_and_code(code, False)
@@ -2171,7 +2219,7 @@ Available subkernels:\n{}'''.format(
                     # convert to sos report
                     from sos.jupyter.converter import notebook_to_html
                     arg = argparse.Namespace()
-                    arg.template = 'sos'
+                    arg.template = args.template
                     notebook_to_html(self._notebook_name + '.ipynb', filename, sargs=arg, unknown_args=[])
 
                 self.send_response(self.iopub_socket, 'display_data',

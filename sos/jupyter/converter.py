@@ -365,18 +365,18 @@ def get_notebook_to_html_parser():
         command "jupyter nbconvert --to html" so please refer to nbconvert manual for
         available options.''')
     parser.add_argument('--template',
-        help='''Template to export Jupyter notebook with sos kernel. SoS provides a
-        template called sos that displays markdown cells and only output of cells with
-        prominent tag, and a "Show More" button to display all input and output
-        cells.''')
+        help='''Template to export Jupyter notebook with sos kernel. SoS provides a number
+        of templates, with sos-report displays markdown cells and only output of cells with
+        prominent tag, and a control panel to control the display of the rest of the content
+        ''')
     return parser
 
 def notebook_to_html(notebook_file, output_file, sargs=None, unknown_args=[]):
     from nbconvert.exporters.html import HTMLExporter
     import os
-    if sargs.template == 'sos':
+    if sargs.template.startswith('sos') and not os.path.isfile(sargs.template):
         # use the default sos template
-        unknown_args = ['--template', os.path.join(os.path.split(__file__)[0], 'sos.tpl') ] + unknown_args
+        unknown_args = ['--template', os.path.join(os.path.split(__file__)[0], sargs.template + ('' if sargs.template.endswith('.tpl') else '.tpl')) ] + unknown_args
     elif sargs.template:
         unknown_args = ['--template', sargs.template] + unknown_args
     export_notebook(HTMLExporter, 'html', notebook_file, output_file, unknown_args)

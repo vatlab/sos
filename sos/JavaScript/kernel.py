@@ -73,7 +73,7 @@ class sos_JavaScript:
     def sos_to_lan(self, name, obj):
         return name, '{} = {}'.format(name, _JS_repr(obj))
 
-    def lan_to_sos(self, items):
+    def put_vars(self, items, to_kernel=None):
         # first let us get all variables with names starting with sos
         response = self.sos_kernel.get_response('__get_sos_vars()', ('execute_result'))[0][1]
         expr = response['data']['text/plain']

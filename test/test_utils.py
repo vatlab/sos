@@ -35,7 +35,7 @@ from sos.sos_eval import interpolate, SoS_eval, InterpolationError, accessed_var
     Undetermined, on_demand_options
 from sos.sos_script import SoS_Script
 from sos.sos_executor import Base_Executor, analyze_section
-from sos.target import executable
+from sos.target import executable, remote
 
 import socket
 def internet_on(host='8.8.8.8', port=80, timeout=3):
@@ -99,7 +99,8 @@ class TestUtils(unittest.TestCase):
             'var2': [1, 2, 3.1],
             'file': 'a/b.txt',
             'files2': ['a/b.txt', 'c.d.txt'],
-            'file_ws': ['d i r/f .txt']
+            'file_ws': ['d i r/f .txt'],
+            'remote': remote
             })
         for sigil in ('${ }', '{ }', '[ ]', '%( )', '[[ ]]', '%( )s', '# #', '` `'):
             l, r = sigil.split(' ')
@@ -164,11 +165,13 @@ class TestUtils(unittest.TestCase):
                 # full name by 'a'
                 ('{0}"test_utils.py"!a{1}', os.path.abspath('test_utils.py'), False, []),
                 ('{0}"a/b/c/test_utils.py"!b{1}', 'test_utils.py', False, []),
+                ('{0}"a/b/c/test_utils.py"!x{1}', '.py', False, []),
                 ('{0}"a/b/c/test_utils.py"!d{1}', 'a/b/c', False, []),
                 ('{0}"a/b/c/test_utils.py"!dd{1}', 'a/b', False, []),
                 ('{0}"a/b/c/test_utils.py"!ddb{1}', 'b', False, []),
                 ('{0}"a/b/c/test_utils.py"!n{1}', 'a/b/c/test_utils', False, []),
                 ('{0}"a/b/c/test_utils.py"!bn{1}', 'test_utils', False, []),
+                ('{0}remote("a/b/c/test_utils.py")!Rbn{1}', 'test_utils', False, []),
                 ('{0}"~/test_utils.py"!a{1}', os.path.abspath(os.path.expanduser('~/test_utils.py')), False, []),
                 ('{0}"~/test_utils.py"!u{1}', os.path.expanduser('~/test_utils.py'), False, []),
                 ('{0}"test/test_utils.py"!b{1}', "test_utils.py", False, []),

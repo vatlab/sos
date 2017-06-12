@@ -31,7 +31,7 @@ from itertools import tee, combinations
 from .utils import env, AbortExecution, short_repr, stable_repr,\
     get_traceback, transcribe, ActivityNotifier, expand_size, format_HHMMSS
 from .pattern import extract_pattern
-from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of
+from .sos_eval import SoS_eval, SoS_exec, Undetermined, param_of, interpolate
 from .target import BaseTarget, FileTarget, remote, local, dynamic, RuntimeInfo, UnknownTarget, RemovedTarget, UnavailableLock
 from .sos_syntax import SOS_INPUT_OPTIONS, SOS_DEPENDS_OPTIONS, SOS_OUTPUT_OPTIONS, \
     SOS_RUNTIME_OPTIONS
@@ -43,6 +43,16 @@ class PendingTasks(Exception):
     def __init__(self, tasks, *args, **kwargs):
         super(PendingTasks, self).__init__(*args, **kwargs)
         self.tasks = tasks
+
+def parse_stmt(stmt, sigil, force_remote):
+    if force_remote:
+        args, kwargs = SoS_eval('__null_func__({})'.format(stmt), sigil, convert=False)
+        args = [x.resolve() if isinstance(x, local) else remote(x) for x in args]
+        # now if local, we need to interpolate
+        args = [interpolate(x, sigil, env.sos_dict._dict) if isinstance(x, str) else x for x in args]
+    else:
+        args, kwargs = SoS_eval('__null_func__({})'.format(stmt), sigil) 
+    return args, kwargs
 
 def analyze_section(section, default_input=None):
     '''Analyze a section for how it uses input and output, what variables
@@ -81,10 +91,11 @@ def analyze_section(section, default_input=None):
         SoS_exec('import os, sys, glob', None)
         SoS_exec('from sos.runtime import *', None)
 
-    force_local = 'local' in section.options
-    force_remote = 'remote' in section.options
-    if force_local and force_remote:
+    if 'local' in section.options and 'remote' in section.options:
         raise ValueError('Conflicting section option local and remote')
+
+    force_remote = (env.config.get('remote_targets', False) and 'local' not in section.options) or 'remote' in section.options
+
     #
     # Here we need to get "contant" values from the global section
     # Because parameters are considered variable, they has to be
@@ -149,14 +160,14 @@ def analyze_section(section, default_input=None):
         stmt = section.statements[input_statement_idx][2]
         try:
             environ_vars |= accessed_vars(stmt, section.sigil)
-            args, kwargs = SoS_eval('__null_func__({})'.format(stmt), section.sigil)
+            args, kwargs = parse_stmt(stmt, section.sigil, force_remote)
             if not args:
                 if default_input is None:
                     step_input = []
                 else:
                     step_input = default_input
             elif not any(isinstance(x, dynamic) for x in args):
-                step_input = _expand_file_list(True, force_local, force_remote, *args)
+                step_input = _expand_file_list(True, *args)
             if 'paired_with' in kwargs:
                 pw = kwargs['paired_with']
                 if pw is None or not pw:
@@ -201,12 +212,12 @@ def analyze_section(section, default_input=None):
             key, value = statement[1:]
             # output, depends, and process can be processed multiple times
             try:
-                args, kwargs = SoS_eval('__null_func__({})'.format(value), section.sigil)
+                args, kwargs = parse_stmt(value, section.sigil, force_remote)
                 if not any(isinstance(x, dynamic) for x in args):
                     if key == 'output':
-                        step_output = _expand_file_list(True, force_local, force_remote, *args)
+                        step_output = _expand_file_list(True, *args)
                     elif key == 'depends':
-                        step_depends = _expand_file_list(True, force_local, force_remote, *args)
+                        step_depends = _expand_file_list(True, *args)
             except Exception as e:
                 env.logger.debug("Args {} cannot be determined: {}".format(value, e))
         else: # statement
@@ -263,10 +274,7 @@ class Base_Step_Executor:
     def __init__(self, step):
         self.step = step
         self._task_defs = []
-        self.force_local = 'local' in self.step.options
-        self.force_remote = 'remote' in self.step.options
-        if self.force_local and self.force_remote:
-            raise ValueError('Conflicting section option local and remote')
+        self.force_remote = (env.config.get('remote_targets', False) and 'local' not in self.step.options) or 'remote' in self.step.options
 
     def expand_input_files(self, value, *args):
         if self.run_mode == 'dryrun' and any(isinstance(x, dynamic) for x in args):
@@ -278,7 +286,7 @@ class Base_Step_Executor:
         if not args:
             return env.sos_dict['input']
         else:
-            return _expand_file_list(False, self.force_local, self.force_remote, *args)
+            return _expand_file_list(False, *args)
 
     def expand_depends_files(self, *args, **kwargs):
         '''handle directive depends'''
@@ -289,7 +297,7 @@ class Base_Step_Executor:
             return Undetermined()
 
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-        return _expand_file_list(False, self.force_local, self.force_remote, *args)
+        return _expand_file_list(False, *args)
 
     def expand_output_files(self, value, *args):
         '''Process output files (perhaps a pattern) to determine input files.
@@ -297,7 +305,7 @@ class Base_Step_Executor:
         if any(isinstance(x, dynamic) for x in args):
             return Undetermined(value)
         else:
-            return _expand_file_list(True, self.force_local, self.force_remote, *args)
+            return _expand_file_list(True, *args)
 
     def verify_input(self):
         if self.run_mode == 'dryrun':
@@ -620,7 +628,7 @@ class Base_Step_Executor:
 
     def reevaluate_output(self):
         # re-process the output statement to determine output files
-        args, kwargs = SoS_eval('__null_func__({})'.format(env.sos_dict['output'].expr), self.step.sigil)
+        args, kwargs = parse_stmt(env.sos_dict['output'].expr, self.step.sigil, self.force_remote)
         # handle dynamic args
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         env.sos_dict.set('output', self.expand_output_files('', *args))
@@ -906,7 +914,7 @@ class Base_Step_Executor:
                     if key != 'depends':
                         raise ValueError('Step input should be specified before {}'.format(key))
                     try:
-                        args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
+                        args, kwargs = parse_stmt(value, self.step.sigil, self.force_remote)
                         dfiles = self.expand_depends_files(*args)
                         # dfiles can be Undetermined
                         self.process_depends_args(dfiles, **kwargs)
@@ -923,7 +931,7 @@ class Base_Step_Executor:
             stmt = self.step.statements[input_statement_idx][2]
             self.log('input statement', stmt)
             try:
-                args, kwargs = SoS_eval('__null_func__({})'.format(stmt), self.step.sigil)
+                args, kwargs = parse_stmt(stmt, self.step.sigil, self.force_remote)
                 # Files will be expanded differently with different running modes
                 input_files = self.expand_input_files(stmt, *args)
                 self._groups, self._vars = self.process_input_args(input_files, **kwargs)
@@ -981,7 +989,7 @@ class Base_Step_Executor:
                         key, value = statement[1:]
                         # output, depends, and process can be processed multiple times
                         try:
-                            args, kwargs = SoS_eval('__null_func__({})'.format(value), self.step.sigil)
+                            args, kwargs = parse_stmt(value, self.step.sigil, self.force_remote)
                             # dynamic output or dependent files
                             if key == 'output':
                                 # if output is defined, its default value needs to be cleared
@@ -1203,20 +1211,8 @@ class Base_Step_Executor:
                     sig.release()
 
 
-def _expand_file_list(ignore_unknown, force_local=False, force_remote=False, *args):
+def _expand_file_list(ignore_unknown, *args):
     ifiles = []
-    if (env.config.get('remote_targets', False) or force_remote) and not force_local:
-        # remote mode:
-        # remote --> remote
-        # local -> resolve
-        # other -> remote
-        args = [x if isinstance(x, remote) else (x.resolve() if isinstance(x, local) else remote(x)) for x in args]
-    else:
-        # local mode:
-        # remote -> remote
-        # local -> resolve
-        # other -> local
-        args = [x.resolve() if isinstance(x, local) else x for x in args]
 
     for arg in args:
         if arg is None:

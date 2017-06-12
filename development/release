@@ -103,12 +103,12 @@ run: workdir='../docs/doc/examples'
 	sos convert ${_input!b} ${_output!b} --raw ${_input!b}
 
 [convert-example-notebooks]
-input:  '../docs/src/examples/*.ipynb', 'release', group_by=1
+input:  '../docs/src/examples/*.ipynb', group_by=1
 output: "../docs/doc/examples/${_input!bn}.html"
 
 run: workdir='../docs/doc/examples'
 	cp ${_input!a} .
-	sos convert ${_input!b} ${_output!b}
+	sos convert ${_input!b} ${_output!b} --template sos-full
 
 [convert-large-examples]
 input:  '../docs/src/examples/*/*.sos', group_by=1
