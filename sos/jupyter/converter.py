@@ -350,7 +350,7 @@ def export_notebook(exporter_class, to_format, notebook_file, output_file, unkno
         except:
             pass
     else:
-        ret = subprocess.call(['jupyter', 'nbconvert', notebook_file, '--to', to_format,
+        ret = subprocess.call(['jupyter', 'nbconvert', os.path.abspath(notebook_file), '--to', to_format,
             '--output', os.path.abspath(output_file)] + unknown_args)
         if ret != 0:
             env.logger.error('Failed to convert {} to {} format'.format(notebook_file, to_format))
@@ -374,7 +374,7 @@ def get_notebook_to_html_parser():
 def notebook_to_html(notebook_file, output_file, sargs=None, unknown_args=[]):
     from nbconvert.exporters.html import HTMLExporter
     import os
-    if sargs.template.startswith('sos') and not os.path.isfile(sargs.template):
+    if sargs.template and sargs.template.startswith('sos') and not os.path.isfile(sargs.template):
         # use the default sos template
         unknown_args = ['--template', os.path.join(os.path.split(__file__)[0], sargs.template + ('' if sargs.template.endswith('.tpl') else '.tpl')) ] + unknown_args
     elif sargs.template:
@@ -387,10 +387,21 @@ def get_notebook_to_pdf_parser():
         .pdf file. Additional command line arguments are passed directly to 
         command "jupyter nbconvert --to pdf" so please refer to nbconvert manual for
         available options.''')
+    parser.add_argument('--template',
+        help='''Template to export Jupyter notebook with sos kernel. SoS provides a number
+        of templates, with sos-report displays markdown cells and only output of cells with
+        prominent tag, and a control panel to control the display of the rest of the content
+        ''')
     return parser
 
 def notebook_to_pdf(notebook_file, output_file, sargs=None, unknown_args=[]):
     from nbconvert.exporters.pdf import PDFExporter
+    import os
+    if sargs.template and sargs.template.startswith('sos') and not os.path.isfile(sargs.template):
+        # use the default sos template
+        unknown_args = ['--template', os.path.join(os.path.split(__file__)[0], sargs.template + ('' if sargs.template.endswith('.tpl') else '.tpl')) ] + unknown_args
+    elif sargs.template:
+        unknown_args = ['--template', sargs.template] + unknown_args
     export_notebook(PDFExporter, 'pdf', notebook_file, output_file, unknown_args)
 
 def get_notebook_to_md_parser():
