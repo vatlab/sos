@@ -255,18 +255,23 @@ class SoS_ExecuteScript:
                     # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
                     p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
                     out, err = p.communicate()
-                    sys.stdout.write(out.decode())
-                    sys.stderr.write(err.decode())
+                    if out and env.verbosity > 1:
+                        sys.stdout.write(out.decode())
+                    if err and env.verbosity > 0:
+                        sys.stderr.write(err.decode())
                     ret = p.returncode
                     sys.stdout.flush()
                     sys.stderr.flush()
                 elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
-                    with open(env.sos_dict['__std_out__'], 'ab') as so, open(env.sos_dict['__std_err__'], 'ab') as se:
-                        p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
+                    if env.verbosity > 1:
+                        with open(env.sos_dict['__std_out__'], 'ab') as so, open(env.sos_dict['__std_err__'], 'ab') as se:
+                            p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
+                    else:
+                        p = subprocess.Popen(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                     ret = p.wait()
                 else:
                     p = subprocess.Popen(cmd, shell=True,
-                                         stderr=None if env.verbosity > 1 else subprocess.DEVNULL,
+                                         stderr=None if env.verbosity > 0 else subprocess.DEVNULL,
                                          stdout=None if env.verbosity > 1 else subprocess.DEVNULL)
                     ret = p.wait()
                 if ret != 0:
