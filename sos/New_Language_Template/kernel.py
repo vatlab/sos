@@ -21,40 +21,6 @@
 #
 
 
-###############################################################################
-#                                                                             #
-# To define new language for your particular language                         #
-#                                                                             #
-# 1. Define a class with                                                      #
-#    * an __init__ function that accepts the SoS kernel.                      #
-#    * an member kernel_name, which should be the kernel name for the         #
-#      language that you can see from the output of command 'jupyter          #
-#      kernerlspec list'                                                      #
-#    * a background color in HTML hex format. This will be the background     #
-#      color of the prompt area of the cells using this language. You can     #
-#      set it to blank to stop highlighting the cells.                        #
-#    * an init_statements that will be executed in the subkernel when the     #
-#      kernel is started.                                                     #
-#    * a function sos_to_lan that accepts an Python object and its name.      #
-#      The function should return a new_name (can be the same if the name     #
-#      is acceptable in LAN), and a statement to be executed in the subkernel #
-#      to create the variable in the subkernel.                               #
-#    * a function lan_to_sos that accepts a list of names from the subkernel. #
-#      This function is responsible of getting a Python dictionary of name    #
-#      (key) and object (value) for the specified items, and all variables    #
-#      in the subkernel with names starting with sos. You will need to use    #
-#      function get_response of the sos kernel to execute one or more         #
-#      statements in the subkernel to achive this.                            #
-# 2. Modify setup.py and add the language to the [sos_languages] section      #
-#    of entry_points.                                                         #
-#                                                                             #
-# The following is a placeholder class for a new language. Please refer to    #
-# implementation of existing languages and the 'Extending_SoS' section of     #
-# the SoS documentation (vatlab.github.io/SOS/) for details.                  #
-#                                                                             #
-###############################################################################
-
-
 # class sos_LAN:
 #     def __init__(self, sos_kernel):
 #         self.sos_kernel = sos_kernel
@@ -62,11 +28,18 @@
 #         self.background_color = '#XXXXXX'
 #         self.init_statements = ''
 #
-#     def sos_to_lan(self, name, obj):
-#         return name, ''
+#     def get_vars(self, names):
+#         #
+#         # get variables with names from env.sos_dict and
+#         # create them in the subkernel
 #
-#     def lan_to_sos(self, items):
+#     def put_vars(self, items, to_kernel=None):
+#         # put variables listed in item, and also variables with names starting
+#         # with sos, to SoS, or kernel specified by to_kernel.
 #         return {}
+#
+#     def sessioninfo(self):
+#         # return information of the kernel
 
 
 
