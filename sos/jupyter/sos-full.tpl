@@ -51,6 +51,11 @@ table tr th :last-child, table tr td :last-child {
    color: blue;
 }
 
+.sos_hint {
+    color: rgba(0,0,0,.4);
+    font-family: monospace;
+}
+
 .scatterplot_by_rowname div.xAxis div.tickLabel {
     transform: translateY(15px) translateX(15px) rotate(45deg);
     -ms-transform: translateY(15px) translateX(15px) rotate(45deg);
