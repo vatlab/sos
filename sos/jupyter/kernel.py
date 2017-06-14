@@ -1463,9 +1463,14 @@ Available subkernels:\n{}'''.format(
         try:
             new_option = interpolate(option, sigil='${ }', local_dict=env.sos_dict._dict)
             if new_option != option and not quiet:
-                self.send_response(self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text':
-                    new_option.strip() + '\n## -- End interpolated command --\n'})
+                self.send_response(self.iopub_socket, 'display_data',
+                    {
+                        'source': 'SoS',
+                        'metadata': {},
+                        'data': {
+                            'text/html': HTML('<div class="sos_hint">{}</div>'.format(
+                            new_option.strip() + '<br>## -- End interpolated command --<br>')).data }
+                        })
             return new_option
         except Exception as e:
             self.warn('Failed to interpolate {}: {}\n'.format(short_repr(option), e))
