@@ -508,5 +508,79 @@ run:
         self.assertFalse(os.path.isfile('test.py.bak'))
 
 
+    def testFromHostOption(self):
+        '''Test from_remote option'''
+        if os.path.isfile('llp'):
+            os.remove('llp')
+        script = SoS_Script('''
+[10]
+task: from_host='llp'
+sh:
+    echo "LLP" > llp
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                }).run()
+        self.assertTrue(os.path.isfile('llp'))
+        os.remove('llp')
+        # dict form
+        script = SoS_Script('''
+[10]
+task: from_host={'llp': 'll'}
+sh:
+    echo "LLP" > ll
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'default_queue': 'docker',
+                }).run()
+        self.assertTrue(os.path.isfile('llp'))
+        os.remove('llp')
+
+    def testLocalFromHostOption(self):
+        '''Test from_remote option'''
+        if os.path.isfile('llp'):
+            os.remove('llp')
+        script = SoS_Script('''
+[10]
+task: from_host='llp'
+sh:
+    echo "LLP" > llp
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'sig_mode': 'force',
+                'default_queue': 'localhost',
+                }).run()
+        self.assertTrue(os.path.isfile('llp'))
+        os.remove('llp')
+        # dict form
+        script = SoS_Script('''
+[10]
+task: from_host={'llp': 'll'}
+sh:
+    echo "LLP" > ll
+''')
+        wf = script.workflow()
+        Base_Executor(wf, config={
+                'config_file': 'docker.yml',
+                # do not wait for jobs
+                'wait_for_task': True,
+                'sig_mode': 'force',
+                'default_queue': 'localhost',
+                }).run()
+        self.assertTrue(os.path.isfile('llp'))
+        os.remove('llp')
+
 if __name__ == '__main__':
     unittest.main()

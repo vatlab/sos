@@ -125,12 +125,13 @@ class LocalHost:
     def prepare_task(self, task_id):
         def_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.def')
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', task_id + '.task')
+        # add server restriction on task file
+        params = loadTask(def_file)
+        task_vars = params.sos_dict
+
         if 'max_mem' not in self.config and 'max_cores' not in self.config and 'max_walltime' not in self.config:
             shutil.copyfile(def_file, task_file)
         else:
-            # add server restriction on task file
-            params = loadTask(def_file)
-            task_vars = params.sos_dict
 
             task_vars['_runtime']['max_mem'] = self.config.get('max_mem', None)
             task_vars['_runtime']['max_cores'] = self.config.get('max_cores', None)
@@ -158,6 +159,11 @@ class LocalHost:
                 sigil = params.sigil
             )
             new_param.save(task_file)
+        #
+        if 'to_host' in task_vars['_runtime'] and isinstance(task_vars['_runtime']['to_host'], dict):
+            for l, r in task_vars['_runtime']['to_host'].items():
+                if l != r:
+                    shutil.copy(l, r)
         return True
 
     def send_task_file(self, task_file):
@@ -189,6 +195,16 @@ class LocalHost:
         except Exception as e:
             env.logger.warning('Failed to receive result for task {}: {}'.format(task_id, e))
             return {'ret_code': 1, 'output': {}}
+
+        sys_task_dir = os.path.join(os.path.expanduser('~'), '.sos', 'tasks')
+        task_file = os.path.join(sys_task_dir, task_id + '.def')
+        params = loadTask(task_file)
+        job_dict = params.sos_dict
+
+        if 'from_host' in job_dict['_runtime'] and isinstance(job_dict['_runtime']['from_host'], dict):
+            for l, r in job_dict['_runtime']['from_host'].items():
+                if l != r:
+                    shutil.copy(r, l)
         return res
 
 
@@ -202,8 +218,6 @@ class RemoteHost:
         self.port = self.config.get('port', 22)
         self.shared_dirs = self._get_shared_dirs()
         self.path_map = self._get_path_map()
-        self.send_cmd = self._get_send_cmd()
-        self.receive_cmd = self._get_receive_cmd()
         self.execute_cmd = self._get_execute_cmd()
         self._procs = []
 
@@ -243,13 +257,20 @@ class RemoteHost:
             raise ValueError('Unacceptable path_mapue for configuration path_map: {}'.format(path_map))
         return res
 
-    def _get_send_cmd(self):
-        return self.config.get('send_cmd',
-            '''ssh -q ${host} -p ${port} "mkdir -p ${dest!dpq}" && rsync -av -e 'ssh -p ${port}' ${source!aep} "${host}:${dest!dep}"''')
+    def _get_send_cmd(self, rename=False):
+        if rename:
+            return '''ssh -q ${host} -p ${port} "mkdir -p ${dest!dpq}" && ''' + \
+                   '''rsync -av -e 'ssh -p ${port}' ${source!aep} "${host}:${dest!dep}" && ''' + \
+                   '''ssh -q ${host} -p ${port} "mv ${dest!dep}/${source!b} ${dest!ep}" '''
+        else:
+            return '''ssh -q ${host} -p ${port} "mkdir -p ${dest!dpq}" && rsync -av -e 'ssh -p ${port}' ${source!aep} "${host}:${dest!dep}"'''
 
-    def _get_receive_cmd(self):
-        return self.config.get('receive_cmd',
-            '''rsync -av -e 'ssh -p ${port}' ${host}:${source!e} "${dest!adep}"''')
+    def _get_receive_cmd(self, rename=False):
+        if rename:
+            return '''rsync -av -e 'ssh -p ${port}' ${host}:${source!e} "${dest!adep}" && ''' + \
+                    '''mv "${dest!adep}/${source!b}" "${dest!aep}"'''
+        else:
+            return '''rsync -av -e 'ssh -p ${port}' ${host}:${source!e} "${dest!adep}"'''
 
     def _get_execute_cmd(self):
         return self.config.get('execute_cmd',
@@ -325,34 +346,55 @@ class RemoteHost:
 
     def _send_to_host(self, items):
         # we only copy files and directories, not other types of targets
-        if not isinstance(items, str):
-            items = [x for x in items if isinstance(x, str)]
-        else:
+        if isinstance(items, str):
             items = [items]
-        from .utils import find_symbolic_links
-        new_items = []
-        for item in items:
-            links = find_symbolic_links(item)
-            for link, realpath in links.items():
-                env.logger.info('Adding {} for symbolic link {}'.format(realpath, link))
-            new_items.extend(links.values())
-        items.extend(new_items)
+        elif isinstance(items, Sequence):
+            items = [x for x in items if isinstance(x, str)]
+        elif isinstance(items, dict):
+            for x,y in items.items():
+                if not isinstance(x, str):
+                    env.logger.warning('Unrecognized item to be sent to host: {}'.format(x))
+                if not isinstance(y, str):
+                    env.logger.warning('Unrecognized item to be sent to host: {}'.format(y))
+            items = {x:y for x,y in items.items() if isinstance(x, str) and isinstance(y, str)}
+        else:
+            env.logger.warning('Unrecognized items to be sent to host: {}'.format(items))
+            return
 
-        sending = self._map_path(items)
+        if isinstance(items, Sequence):
+            from .utils import find_symbolic_links
+            new_items = []
+            for item in items:
+                links = find_symbolic_links(item)
+                for link, realpath in links.items():
+                    env.logger.info('Adding {} for symbolic link {}'.format(realpath, link))
+                new_items.extend(links.values())
+            items.extend(new_items)
+
+            sending = self._map_path(items)
+        else:
+            sending = items
+
         for source in sorted(sending.keys()):
             if self.is_shared(source):
                 env.logger.debug('Skip sending {} on shared file system'.format(source))
             else:
                 dest = sending[source]
                 env.logger.info('Sending ``{}`` to {}:{}'.format(source, self.alias, dest))
-                cmd = interpolate(self.send_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address, 'port': self.port})
+                cmd = interpolate(self._get_send_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
+                        '${ }', {'source': source.rstrip('/'), 'dest': dest, 'host': self.address, 'port': self.port})
                 env.logger.debug(cmd)
                 ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 if (ret != 0):
                     raise RuntimeError('Failed to copy {} to {} using command "{}". The remote host might be unavailable.'.format(source, self.alias, cmd))
 
     def _receive_from_host(self, items):
-        receiving = {y:x for x,y in self._map_path(items).items()}
+        if isinstance(items, dict):
+            # specify as local:remote
+            # needs remote:local
+            receiving = {y:x for x,y in items.items()}
+        else:
+            receiving = {y:x for x,y in self._map_path(items).items()}
         #
         received = []
         for source in sorted(receiving.keys()):
@@ -363,10 +405,11 @@ class RemoteHost:
                     os.path.makedirs(dest_dir)
                 except Exception as e:
                     env.logger.error('Failed to create destination directory {}'.format(dest_dir))
-            if self.is_shared(dest):
+            if self.is_shared(dest) and os.path.basename(source) == os.path.basename(dest):
                 env.logger.debug('Skip retrieving ``{}`` from shared file system'.format(dest))
             else:
-                cmd = interpolate(self.receive_cmd, '${ }', {'source': source, 'dest': dest, 'host': self.address, 'port': self.port})
+                cmd = interpolate(self._get_receive_cmd(rename=os.path.basename(source) != os.path.basename(dest)),
+                    '${ }', {'source': source.rstrip('/'), 'dest': dest, 'host': self.address, 'port': self.port})
                 env.logger.debug(cmd)
                 try:
                     ret = subprocess.call(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
@@ -413,7 +456,18 @@ class RemoteHost:
             self._send_to_host(task_vars['_depends'])
             env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_depends'])))
         if 'to_host' in task_vars['_runtime']:
-            self._send_to_host(task_vars['_runtime']['to_host'])
+            if isinstance(task_vars['_runtime']['to_host'], dict):
+                th = {}
+                for x,y in task_vars['_runtime']['to_host'].items():
+                    if y.startswith('/'):
+                        th[x] = y
+                    elif y.startswith('~'):
+                        th[x] = self._map_var(task_vars['_runtime']['home_dir']) + y[1:]
+                    else:
+                        th[x] = self._map_var(task_vars['_runtime']['cur_dir']) + '/' + y
+                self._send_to_host(th)
+            else:
+                self._send_to_host(task_vars['_runtime']['to_host'])
             env.logger.info('{} ``send`` {}'.format(task_id, short_repr(task_vars['_runtime']['to_host'])))
 
         # map variables
@@ -571,7 +625,18 @@ class RemoteHost:
                 if received:
                     env.logger.info('{} ``received`` {}'.format(task_id, short_repr(received)))
             if 'from_host' in job_dict['_runtime']:
-                received = self._receive_from_host(job_dict['_runtime']['from_host'])
+                if isinstance(job_dict['_runtime']['from_host'], dict):
+                    fh = {}
+                    for x,y in job_dict['_runtime']['from_host'].items():
+                        if y.startswith('/'):
+                            fh[x] = y
+                        elif y.startswith('~'):
+                            fh[x] = self._map_var(job_dict['_runtime']['home_dir']) + y[1:]
+                        else:
+                            fh[x] = self._map_var(job_dict['_runtime']['cur_dir']) + '/' + y
+                    received = self._receive_from_host(fh)
+                else:
+                    received = self._receive_from_host(job_dict['_runtime']['from_host'])
                 if received:
                     env.logger.info('{} ``received`` {}'.format(task_id, short_repr(received)))
         return res
