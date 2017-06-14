@@ -392,8 +392,12 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('filename', nargs='?',
             help='''Filename of saved report or script. Default to notebookname with file
             extension determined by option --to.''')
-        # -a for append? ipython has it.
-        # -f for overwrite
+        parser.add_argument('-f', '--force', action='store_true',
+            help='''If destination file already exists, overwrite it.''')
+        parser.add_argument('-a', '--append', action='store_true',
+            help='''If destination file already exists, append to it.''')
+        parser.add_argument('-x', '--set-executable', dest = "setx", action='store_true',
+            help='''Set `executable` permission to saved script.''')
         parser.error = self._parse_error
         return parser
 
@@ -421,7 +425,7 @@ class SoS_Kernel(IPythonKernel):
         parser.add_argument('-f', '--force', action='store_true',
             help='''If destination file already exists, overwrite it.''')
         parser.add_argument('-x', '--set-executable', dest = "setx", action='store_true',
-            help='''Sdd `executable` permission to saved script.''')
+            help='''Set `executable` permission to saved script.''')
         parser.add_argument('--template', default='sos-report',
             help='''Template to generate HTML output, default to sos-report,
             which uses a control panel to control the display of contents.''')

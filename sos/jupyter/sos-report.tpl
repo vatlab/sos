@@ -306,7 +306,11 @@ Display content:<br>
 {% endblock output %}
 
 {% block markdowncell %}
-    {%- if 'scratch' in cell.metadata.tags -%}
+    {%- if 'hide_output' in cell.metadata.tags -%}
+		<div class="hidden_output">
+        {{ super() }}
+		</div>
+    {%- elif 'scratch' in cell.metadata.tags -%}
     {%- else -%}
         {{ super() }}
    {%- endif -%}
@@ -316,7 +320,7 @@ Display content:<br>
 {% block codecell %}
 
 {%- if cell['metadata'].get('kernel',none) is not none -%}
-    <div class="cell border-box-sizing code_cell rendered lan_{{cell['metadata'].get('kernel', none)}}">
+    <div class="rendered lan_{{cell['metadata'].get('kernel', none)}}">
     {{ super() }}
     </div>
 {%- else -%}
