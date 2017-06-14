@@ -420,8 +420,8 @@ define([
                 window.pending_cells[cell.cell_id] = data[1];
             } else if (msg_type == 'remove-task') {
                 var item = document.getElementById("table_" + data[0] + "_" + data[1]);
-				if (item)
-					item.parentNode.removeChild(item);
+                if (item)
+                    item.parentNode.removeChild(item);
             } else if (msg_type == 'update-duration') {
                 if (window._duration_updater === undefined) {
                     window._duration_updater = window.setInterval(function() {
@@ -1176,33 +1176,53 @@ define([
         return re;
     }
 
+    var remove_tag = function(cell, tag) {
+        // if the toolbar exists, use the button ...
+        $('.output_wrapper', cell.element).removeClass(tag);
+        if ($('.tags-input', cell.element).length > 0) {
+            // find the button and click
+            var tag = $('.cell-tag', cell.element).filter(function(idx, y) { return y.innerText === tag; });
+            $('.remove-tag-btn', tag).click();
+        } else {
+            // otherwise just remove the metadata
+            var idx = cell.metadata.tags.indexOf(tag);
+            cell.metadata.tags.splice(idx, 1);
+        }
+    }
+
+    var add_tag = function(cell, tag) {
+        $('.output_wrapper', cell.element).addClass(tag);
+        if ($('.tags-input', cell.element).length > 0) {
+            var taginput = $('.tags-input', cell.element);
+            taginput.children()[1].value = tag;
+            $('.btn', taginput)[1].click();
+        } else {
+            // if tag toolbar not exist
+            if (! cell.metadata.tags) {
+                cell.metadata.tags = [tag];
+            } else {
+                cell.metadata.tags.push(tag);
+            }
+        }
+    }
+
     var toggle_display_output = function(evt) {
         var cell = evt.notebook.get_selected_cell();
-        if (cell.metadata.tags && cell.metadata.tags.indexOf('report_output') >= 0) {
-            $('.output_wrapper', cell.element).removeClass('report_output');
-            // if the toolbar exists, use the button ...
-            if ($('.tags-input', cell.element).length > 0) {
-                // find the button and click
-                var tag = $('.cell-tag', cell.element).filter(function(idx, y) { return y.innerText === 'report_output'; });
-                $('.remove-tag-btn', tag).click();
+        if (cell.cell_type == 'markdown') {
+            // switch between hide_output and ''
+            if (cell.metadata.tags && cell.metadata.tags.indexOf('hide_output') >= 0) {
+                // if report_output on, remove it
+                remove_tag(cell, 'hide_output');
             } else {
-                // otherwise just remove the metadata
-                var idx = cell.metadata.tags.indexOf('report_output');
-                cell.metadata.tags.splice(idx, 1);
+                add_tag(cell, 'hide_output');
             }
-        } else {
-            $('.output_wrapper', cell.element).addClass('report_output');
-            if ($('.tags-input', cell.element).length > 0) {
-                var taginput = $('.tags-input', cell.element);
-                taginput.children()[1].value = 'report_output';
-                $('.btn', taginput)[1].click();
+        } else if (cell.cell_type == 'code') {
+            // switch between report_output and ''
+            if (cell.metadata.tags && cell.metadata.tags.indexOf('report_output') >= 0) {
+                // if report_output on, remove it
+                remove_tag(cell, 'report_output');
             } else {
-                // if tag toolbar not exist
-                if (! cell.metadata.tags) {
-                    cell.metadata.tags = ['report_output'];
-                } else {
-                    cell.metadata.tags.push('report_output');
-                }
+                add_tag(cell, 'report_output');
             }
         }
         // evt.notebook.select_next(true);
