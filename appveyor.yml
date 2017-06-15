@@ -44,20 +44,20 @@ install:
     - conda install -c r r-essentials r-feather
     - conda install -c conda-forge feather-format
     # install bash kernel
-    - pip install bash_kernel
-    - python -m bash_kernel.install
+    #- pip install bash_kernel
+    #- python -m bash_kernel.install
 
     # install sos
     - python setup.py install
       
 test_script:
     - cd test
-    - python run_tests ..\test
-    - python run_tests ..\sos\Bash\test
+    - python run_tests ..\sos\jupyter\test 
     - python run_tests ..\sos\Python3\test
     - python run_tests ..\sos\R\test
-    - python run_tests ..\sos\jupyter\test 
-    - python run_tests ..\sos\docker\test
+    - python run_tests ..\test
+    #- python run_tests ..\sos\docker\test
+    #- python run_tests ..\sos\Bash\test
     # - ./run_tests ../sos/JavaScript/test 
     #- ./run_tests ../sos/rq/test
 notifications:
