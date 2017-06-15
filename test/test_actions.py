@@ -119,7 +119,8 @@ ret = get_output('echo blah')
         wf = script.workflow()
         # should be ok
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['ret'], 'blah\n')
+        # use strip because there would be \r\n under windows
+        self.assertEqual(env.sos_dict['ret'].strip(), 'blah')
         #
         script = SoS_Script(r"""
 [0: shared='ret']
@@ -128,7 +129,7 @@ ret = get_output('echo blah', show_command=True)
         wf = script.workflow()
         # should be ok
         Base_Executor(wf).run()
-        self.assertEqual(env.sos_dict['ret'], '$ echo blah\nblah\n')
+        self.assertEqual(env.sos_dict['ret'], '$ echo blah' + os.linesep + 'blah' + os.linesep)
         #
         script = SoS_Script(r"""
 [0: shared='ret']
