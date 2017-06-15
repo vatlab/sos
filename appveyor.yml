@@ -37,10 +37,7 @@ install:
     - pip install docker
     # packages required by SoS
     - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm 
-    - pip install fasteners pygments ipython ptpython networkx pydotplus
-    # for testing purposes
-    - pip install nose
-    - pip install sklearn scipy
+    - pip install fasteners pygments ipython ptpython networkx pydotplus nose scipy
     # https://github.com/jupyter/jupyter/issues/150
     - pip install entrypoints
     - pip install jupyter
