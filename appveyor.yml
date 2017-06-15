@@ -27,11 +27,6 @@ install:
     - conda update -q conda
     # Useful for debugging any issues with conda
     - conda info -a
-    # install python 2.x kernel
-    - conda create -n ipykernel_py2 python=2 ipykernel
-    - activate ipykernel_py2
-    - python -m ipykernel install --user
-    - deactivate ipykernel_py2
     # 
     # add docker
     - pip install docker
@@ -55,7 +50,6 @@ test_script:
     - ./run_tests ../test
     - ./run_tests ../sos/docker/test
     - ./run_tests ../sos/Bash/test
-    - ./run_tests ../sos/Python2/test
     - ./run_tests ../sos/Python3/test
     - ./run_tests ../sos/R/test
     - ./run_tests ../sos/jupyter/test 
