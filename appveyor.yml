@@ -13,15 +13,22 @@ clone_folder: c:\projects\sos
 clone_depth: 50
 shallow_clone: false
 
-matrix:
-    - PYTHON: "C:\\Python35"
-      PYTHON_VERSION: 3.5
-      PYTHON_ARCH: 64
-      VCVARSALL: x64
+environment:
+    matrix:
+        - PYTHON: "C:\\Python35"
+          PYTHON_VERSION: 3.5
+          PYTHON_ARCH: 64
+          VCVARSALL: x64
+
+        - PYTHON: "C:\\Python36"
+          PYTHON_VERSION: 3.6
+          PYTHON_ARCH: 64
+          VCVARSALL: x64
+
 
 install:
     - set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%
-    - cmd: python setup.py install
+    - python setup.py install
 
 test_script:
     - ./run_tests ../test
@@ -38,3 +45,4 @@ notifications:
       to:
         - ben.bob@gmail.com
       on_build_status_changed: true
+
