@@ -47,12 +47,13 @@ install:
     - python setup.py install
       
 test_script:
-    - ./run_tests ../test
-    - ./run_tests ../sos/docker/test
-    - ./run_tests ../sos/Bash/test
-    - ./run_tests ../sos/Python3/test
-    - ./run_tests ../sos/R/test
-    - ./run_tests ../sos/jupyter/test 
+    - cd test
+    - run_tests ..\test
+    - run_tests ..\sos\Bash\test
+    - run_tests ..\sos\Python3\test
+    - run_tests ..\sos\R\test
+    - run_tests ..\sos\jupyter\test 
+    - run_tests ..\sos\docker\test
     # - ./run_tests ../sos/JavaScript/test 
     #- ./run_tests ../sos/rq/test
 notifications:
