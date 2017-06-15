@@ -79,8 +79,7 @@ class SoS_String:
     it can be used safely within a shell script. '''
 
     LEFT_PATTERNS = {
-        # if not preceded by a backslash
-        '${': re.compile(r'(?<!\\)\$\{')
+        '${': re.compile(r'\$\{')
         }
 
     CONVERTERS = {
@@ -108,7 +107,7 @@ class SoS_String:
         self.l, self.r = sigil.split(' ')
         self.default_sigil = sigil == '${ }'
         if self.l not in self.LEFT_PATTERNS:
-            self.LEFT_PATTERNS[self.l] = re.compile(r'(?<!\\){}'.format(re.escape(self.l)))
+            self.LEFT_PATTERNS[self.l] = re.compile(re.escape(self.l))
         self.left_pattern = self.LEFT_PATTERNS[self.l]
         self.error_count = 0
         self.local_dict = local_dict
@@ -154,10 +153,10 @@ class SoS_String:
         #
         pieces = self.left_pattern.split(text, 1)
         if len(pieces) == 1:
-            return pieces[0].replace('\\' + self.l, self.l)
+            return pieces[0]
         # the first piece must be before sigil and be completed text
         #env.logger.trace('"{}" interpolated to "{}"'.format(text, res))
-        return (pieces[0] + self._interpolate(pieces[1])).replace('\\' + self.l, self.l)
+        return (pieces[0] + self._interpolate(pieces[1]))
 
     def direct_interpolate(self, text):
         pieces = SIMPLE_SUB.split(text)
