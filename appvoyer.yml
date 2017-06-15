@@ -10,7 +10,7 @@ skip_commits:
 
 max_jobs: 1
 
-image: 
+build: off
 
 clone_folder: c:\projects\sos
 shallow_clone: false
