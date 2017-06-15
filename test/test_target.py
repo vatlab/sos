@@ -175,6 +175,7 @@ sh:
         self.assertTrue(os.path.isfile('a.txt'))
         FileTarget('a.txt').remove('both')
         
+    @unittest.skipIf(sys.platform == 'win32', 'Windows executable cannot be created with chmod.')
     def testOutputExecutable(self):
         '''Testing target executable.'''
         # change $PATH so that lls can be found at the current
