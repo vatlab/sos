@@ -235,8 +235,7 @@ files = os.listdir('ll')
                 }).run()
         os.remove('ll')
 
-    @unittest.skipIf(not os.path.exists(os.path.expanduser('~').upper()),
-            'Skip test for case sensitive file system')
+    @unittest.skipIf(not os.path.exists(os.path.expanduser('~').upper()), 'Skip test for case sensitive file system')
     def testCaseInsensitiveLocalPath(self):
         '''Test path_map from a case insensitive file system.'''
         FileTarget('test_remote.py.bak').remove('both')
