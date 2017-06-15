@@ -21,6 +21,7 @@
 #
 
 import os
+import sys
 import unittest
 import time
 import shutil
@@ -218,6 +219,10 @@ echo 'Echo'
 ''')
         wf = script.workflow()
         Base_Executor(wf).run()
+        #
+        # Under windows, echo 'Echo is perfectly OK
+        if sys.platform == 'win32':
+            return
         script = SoS_Script(r'''
 [0]
 run:

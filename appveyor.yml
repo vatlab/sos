@@ -1,4 +1,8 @@
 version: 1.0.{build}
+
+# docker support
+image: Windows Server 2016
+
 branches:
     only:
         - master
