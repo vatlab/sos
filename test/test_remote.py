@@ -31,6 +31,7 @@ from sos.target import FileTarget
 from sos.hosts import Host
 import subprocess
 
+has_docker = True
 try:
     subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
 except subprocess.CalledProcessError:
@@ -38,7 +39,8 @@ except subprocess.CalledProcessError:
     try:
         subprocess.check_output('docker ps | grep test_sos', shell=True).decode()
     except subprocess.CalledProcessError:
-        sys.exit('Failed to set up a docker machine with sos')
+        print('Failed to set up a docker machine with sos')
+        has_docker = False
 
 if sys.platform == 'win32':
     with open('docker.yml', 'r') as d:
@@ -60,6 +62,7 @@ class TestRemote(unittest.TestCase):
             FileTarget(f).remove('both')
 
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testRemoteExecute(self):
         script = SoS_Script('''
 [10]
@@ -81,6 +84,7 @@ run:
         with open('result.txt') as res:
             self.assertEqual(res.read(), 'a\n')
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testRemoteExecution(self):
         subprocess.check_output('sos purge --all', shell=True).decode()
         script = SoS_Script('''
@@ -123,6 +127,7 @@ run:
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testTaskSpooler(self):
         '''Test task spooler PBS engine'''
         subprocess.check_output('sos purge --all', shell=True).decode()
@@ -167,6 +172,7 @@ run:
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testTaskSpoolerWithForceSigMode(self):
         subprocess.check_output('sos purge --all', shell=True).decode()
         script = SoS_Script('''
@@ -214,7 +220,7 @@ run:
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
 
-    @unittest.skipIf(sys.platform == 'win32', 'No symbloc link problem under win32')
+    @unittest.skipIf(sys.platform == 'win32' or not has_docker, 'No symbloc link problem under win32 or no docker')
     def testSendSymbolicLink(self):
         '''Test to_host symbolic link or directories that contain symbolic link. #508'''
         # create a symbloc link
@@ -235,7 +241,7 @@ files = os.listdir('ll')
                 }).run()
         os.remove('ll')
 
-    @unittest.skipIf(not os.path.exists(os.path.expanduser('~').upper()), 'Skip test for case sensitive file system')
+    @unittest.skipIf(not os.path.exists(os.path.expanduser('~').upper()) or not has_docker, 'Skip test for case sensitive file system')
     def testCaseInsensitiveLocalPath(self):
         '''Test path_map from a case insensitive file system.'''
         FileTarget('test_remote.py.bak').remove('both')
@@ -260,6 +266,7 @@ shutil.copy("test_remote.py", "${{output}}")
             self.assertEqual(ori.read(), bak.read())
         FileTarget('test_remote.py.bak').remove('both')
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testMaxMem(self):
         '''Test server restriction max_mem'''
         script = SoS_Script('''
@@ -276,6 +283,7 @@ print('a')
                 'sig_mode': 'force',
                 }).run)
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testRuntimeMaxWalltime(self):
         '''Test server max_walltime option'''
         script = SoS_Script('''
@@ -293,6 +301,7 @@ time.sleep(15)
                 'sig_mode': 'force',
                 }).run)
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testMaxProcs(self):
         '''Test server restriction max_procs'''
         script = SoS_Script('''
@@ -309,6 +318,7 @@ print('a')
                 'sig_mode': 'force',
                 }).run)
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testMaxWalltime(self):
         '''Test server restriction max_walltime'''
         script = SoS_Script('''
@@ -325,6 +335,7 @@ print('a')
                 'sig_mode': 'force',
                 }).run)
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testSoSExecute(self):
         '''Test sos execute'''
         subprocess.check_output('sos purge --all -c docker.yml -q docker', shell=True)
@@ -350,6 +361,7 @@ run:
         for task in tasks:
             subprocess.check_output('sos execute {} -c docker.yml -q ts'.format(task), shell=True) 
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testSoSPurge(self):
         '''Test purge tasks'''
         # purge all previous tasks
@@ -392,6 +404,7 @@ run:
         self.assertEqual(out.strip().count('\n'), 0)
 
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testRemoteInput(self):
         '''Test remote target'''
         # purge all previous tasks
@@ -434,6 +447,7 @@ run:
         self.assertTrue(os.path.isfile('test1.txt'))
 
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testRemoteOutput(self):
         '''Test remote target'''
         # purge all previous tasks
@@ -459,6 +473,7 @@ run:
         self.assertFalse(os.path.isfile('test_file.txt'))
         self.assertTrue(os.path.isfile('test_file1.txt'))
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testRemoteSectionOption(self):
         '''Test remote target'''
         FileTarget('test1.txt').remove('both')
@@ -482,6 +497,7 @@ run:
         self.assertFalse(os.path.isfile('test_file.txt'))
         self.assertTrue(os.path.isfile('test1.txt'))
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testDelayedInterpolation(self):
         '''Test delayed interpolation with expression involving remote objects'''
         # purge all previous tasks
@@ -514,6 +530,7 @@ run:
         self.assertFalse(os.path.isfile('test.py.bak'))
 
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testFromHostOption(self):
         '''Test from_remote option'''
         if os.path.isfile('llp'):
@@ -550,6 +567,7 @@ sh:
         self.assertTrue(os.path.isfile('llp'))
         os.remove('llp')
 
+    @unittest.skipIf(not has_docker, "Docker container not usable")
     def testLocalFromHostOption(self):
         '''Test from_remote option'''
         if os.path.isfile('llp'):
