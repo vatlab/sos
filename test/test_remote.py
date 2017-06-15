@@ -40,6 +40,12 @@ except subprocess.CalledProcessError:
     except subprocess.CalledProcessError:
         sys.exit('Failed to set up a docker machine with sos')
 
+if sys.platform == 'win32':
+    with open('docker.yml', 'r') as d:
+        cfg = d.read()
+    with open('docker.yml', 'w') as d:
+        d.write(cfg.replace('/home/', 'c:\\Users\\'))
+
 class TestRemote(unittest.TestCase):
     def setUp(self):
         env.reset()
@@ -47,7 +53,7 @@ class TestRemote(unittest.TestCase):
         self.temp_files = []
         Host.reset()
         # remove .status file left by failed workflows.
-        subprocess.call('rm -f ~/.sos/*.status', shell=True)
+        subprocess.call('sos purge --all', shell=True)
 
     def tearDown(self):
         for f in self.temp_files:
@@ -76,7 +82,7 @@ run:
             self.assertEqual(res.read(), 'a\n')
 
     def testRemoteExecution(self):
-        subprocess.check_output('cd ~/.sos/tasks; rm -f *.res *.sh *.pulse', shell=True).decode()
+        subprocess.check_output('sos purge --all', shell=True).decode()
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(5)}
@@ -119,7 +125,7 @@ run:
 
     def testTaskSpooler(self):
         '''Test task spooler PBS engine'''
-        subprocess.check_output('cd ~/.sos/tasks; rm -f *.res *.sh *.pulse', shell=True).decode()
+        subprocess.check_output('sos purge --all', shell=True).decode()
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(3)}
@@ -162,7 +168,7 @@ run:
         self.assertEqual(out.count('completed'), len(res['pending_tasks']), 'Expect all completed jobs: ' + out)
 
     def testTaskSpoolerWithForceSigMode(self):
-        subprocess.check_output('cd ~/.sos/tasks; rm -f *.res *.sh *.pulse', shell=True).decode()
+        subprocess.check_output('sos purge --all', shell=True).decode()
         script = SoS_Script('''
 [10]
 input: for_each={'i': range(3)}
@@ -237,8 +243,8 @@ files = os.listdir('ll')
 [10]
 output: 'test_remote.py.bak'
 task: to_host='{}'
-run:
-    cat test_remote.py > ${{output}}
+import shutil
+shutil.copy("test_remote.py", "${{output}}")
 '''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
         wf = script.workflow()
         Base_Executor(wf, config={

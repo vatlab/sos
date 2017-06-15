@@ -196,7 +196,7 @@ touch temp/${ff}
                 shutil.rmtree('temp')
             os.mkdir('temp')
             # test first iteration
-            script = SoS_Script('''
+            script = SoS_Script(('''
 [1]
 rep = range(5)
 input: for_each = 'rep'
@@ -205,7 +205,7 @@ ff = "${_rep}.txt"
 run:  active=%s
 echo ${ff}
 touch temp/${ff}
-''' % active)
+''' % active).replace('/', os.sep))
             wf = script.workflow()
             env.config['sig_mode'] = 'force'
             env.config['wait_for_task'] = True
@@ -219,7 +219,7 @@ touch temp/${ff}
             #
             # test active option for task
             os.mkdir('temp')
-            script = SoS_Script('''
+            script = SoS_Script(('''
 [1]
 rep = range(5)
 input: for_each = 'rep'
@@ -229,14 +229,15 @@ task:  active=%s
 run:
 echo ${ff}
 touch temp/${ff}
-''' % active)
+''' % active).replace('/', os.sep))
             wf = script.workflow()
             env.config['sig_mode'] = 'force'
             env.config['wait_for_task'] = True
             Host.reset()
             Base_Executor(wf).run()
-            files = list(glob.glob('temp/*.txt'))
-            self.assertEqual(sorted(files), sorted([x.replace('/', os.sep) for x in result]), 'With option {}'.format(active))
+            files = list(glob.glob(os.path.join('temp', '*.txt')))
+            self.assertEqual(sorted(files), sorted([x.replace('/', os.sep) for x in result]),
+                    'With option {}'.format(active))
             #
             # test last iteration
             shutil.rmtree('temp')
@@ -316,9 +317,14 @@ run:
         env.config['wait_for_task'] = True
         env.config['resume_mode'] = True
         st = time.time()
-        Base_Executor(wf).run()
-        # sos should wait till everything exists
-        self.assertLess(time.time() - st, 15)
+        try:
+            Base_Executor(wf).run()
+            # sos should wait till everything exists
+            self.assertLess(time.time() - st, 15)
+        except SystemExit:
+            # ok if the task has already been completed and there is nothing
+            # to resume
+            pass
 
     def testSharedOption(self):
         '''Test shared option of task'''
