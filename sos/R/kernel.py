@@ -76,7 +76,7 @@ def _R_repr(obj):
                     'See https://github.com/wesm/feather/tree/master/python for details.')
             feather_tmp_ = tempfile.NamedTemporaryFile(suffix='.feather', delete=False).name
             feather.write_dataframe(pandas.DataFrame(obj).copy(), feather_tmp_)
-            return 'data.matrix(..read.feather("{}"))'.format(feather_tmp_)
+            return 'data.matrix(..read.feather({!r}))'.format(feather_tmp_)
         elif isinstance(obj, numpy.ndarray):
             return 'c(' + ','.join(_R_repr(x) for x in obj) + ')'
         elif isinstance(obj, pandas.DataFrame):
@@ -141,7 +141,7 @@ R_init_statements = r'''
     as.character(obj)
 }
 ..py.repr.character.1 <- function(obj) {
-    paste0('r', shQuote(obj))
+    paste0('r"""', obj, '"""')
 }
 ..has.row.names <- function(df) {
   !all(row.names(df)==seq(1, nrow(df)))
@@ -167,9 +167,9 @@ R_init_statements = r'''
     tf = tempfile('feather')
     write_feather(as.data.frame(obj), tf)
     if (..has.row.names(obj)) {
-       paste0("read_dataframe('", tf, "').set_index([", ..py.repr(row.names(obj)),"]).as_matrix()")
+       paste0("read_dataframe(r'", tf, "').set_index([", ..py.repr(row.names(obj)),"]).as_matrix()")
     } else {
-       paste0("read_dataframe('", tf, "').as_matrix()")
+       paste0("read_dataframe(r'", tf, "').as_matrix()")
     }
 }
 ..py.repr.n <- function(obj) {

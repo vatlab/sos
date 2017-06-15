@@ -214,6 +214,7 @@ run:
         out = subprocess.check_output('sos status {} -c docker.yml'.format(tasks), shell=True).decode()
         self.assertEqual(out.count('completed'), len(res['pending_tasks']))
 
+    @unittest.skipIf(sys.platform == 'win32', 'No symbloc link problem under win32')
     def testSendSymbolicLink(self):
         '''Test to_host symbolic link or directories that contain symbolic link. #508'''
         # create a symbloc link
@@ -242,7 +243,7 @@ files = os.listdir('ll')
         script = SoS_Script('''
 [10]
 output: 'test_remote.py.bak'
-task: to_host='{}'
+task: to_host=r'{}'
 import shutil
 shutil.copy("test_remote.py", "${{output}}")
 '''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
@@ -325,7 +326,7 @@ print('a')
                 'sig_mode': 'force',
                 }).run)
 
-    def testExecute(self):
+    def testSoSExecute(self):
         '''Test sos execute'''
         subprocess.check_output('sos purge --all -c docker.yml -q docker', shell=True)
         script = SoS_Script('''
@@ -350,7 +351,7 @@ run:
         for task in tasks:
             subprocess.check_output('sos execute {} -c docker.yml -q ts'.format(task), shell=True) 
 
-    def testPurge(self):
+    def testSoSPurge(self):
         '''Test purge tasks'''
         # purge all previous tasks
         subprocess.check_output('sos purge --all -c docker.yml -q ts', shell=True)
