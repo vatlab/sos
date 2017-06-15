@@ -70,8 +70,8 @@ output: 'temp/a.txt', 'temp/b.txt'
 task:
 import time
 time.sleep(1)
-run('''echo "a.txt" > 'temp/a.txt' ''')
-run('''echo "b.txt" > 'temp/b.txt' ''')
+run('''echo "a.txt" > temp/a.txt ''')
+run('''echo "b.txt" > temp/b.txt ''')
 
 [1: shared={'oa':'output'}]
 dest = ['temp/c.txt', 'temp/d.txt']
@@ -91,8 +91,8 @@ output: 'temp/a.txt', 'temp/b.txt'
 task:
 import time
 time.sleep(1)
-run('''echo "a.txt" > 'temp/a.txt' ''')
-run('''echo "b.txt" > 'temp/b.txt' ''')
+run('''echo "a.txt" > temp/a.txt ''')
+run('''echo "b.txt" > temp/b.txt ''')
 
 [1: shared={'oa':'output'}]
 dest = ['temp/c.txt', 'temp/d.txt']
@@ -112,11 +112,11 @@ output: 'temp/a.txt', 'temp/b.txt'
 
 run:
 sleep 1
-echo "a.txt" > 'temp/a.txt'
+echo "a.txt" > temp/a.txt
 
 run:
 
-echo "b.txt" > 'temp/b.txt'
+echo "b.txt" > temp/b.txt
 
 [1: shared={'oa':'output'}]
 dest = ['temp/c.txt', 'temp/d.txt']
@@ -170,11 +170,11 @@ output: []
 run:
 sleep 1
 [ -d temp ] || mkdir temp
-echo "a.txt" > 'temp/a.txt'
+echo "a.txt" > temp/a.txt
 
 run:
 
-echo "b.txt" > 'temp/b.txt'
+echo "b.txt" > temp/b.txt
 
 [1: shared={'oa':'output'}]
 dest = ['temp/c.txt', 'temp/d.txt']

@@ -585,26 +585,18 @@ sos_run('mse')
         '''Test if any action should exit in five seconds in dryrun mode'''
         sos_config_file = 'config.yml'
         #
-        with open(sos_config_file, 'w') as sos_config:
-            sos_config.write('''
-#
-# global sos configuration file
-#
-{{
-    "sos_path": ["{0}/crazy_path", "{0}/crazy_path/more_crazy/"]
-}}
-'''.format(os.getcwd()))
+        subprocess.call('sos config --set sos_path {0}/crazy_path {0}/crazy_path/more_crazy/'.format(os.getcwd()), shell=True)
         #
         if not os.path.isdir('crazy_path'):
             os.mkdir('crazy_path')
-            os.mkdir('crazy_path/more_crazy')
-        with open('crazy_path/crazy_master.sos', 'w') as crazy:
+            os.mkdir(os.path.join('crazy_path', 'more_crazy'))
+        with open(os.path.join('crazy_path', 'crazy_master.sos'), 'w') as crazy:
             crazy.write('''
 [0]
 sos_run('cc', source='crazy_slave.sos')
 
 ''')
-        with open('crazy_path/more_crazy/crazy_slave.sos', 'w') as crazy:
+        with open(os.path.join('crazy_path', 'more_crazy', 'crazy_slave.sos'), 'w') as crazy:
             crazy.write('''
 [cc_0]
 print('hay, I am crazy')

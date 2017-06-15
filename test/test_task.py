@@ -211,8 +211,8 @@ touch temp/${ff}
             env.config['wait_for_task'] = True
             Host.reset()
             Base_Executor(wf).run()
-            files = list(glob.glob('temp/*.txt'))
-            self.assertEqual(sorted(files), sorted(result))
+            files = list(glob.glob(os.path.join('temp', '*.txt')))
+            self.assertEqual(sorted(files), sorted([x.replace('/', os.sep) for x in result]))
             #
             # test last iteration
             shutil.rmtree('temp')
@@ -236,7 +236,7 @@ touch temp/${ff}
             Host.reset()
             Base_Executor(wf).run()
             files = list(glob.glob('temp/*.txt'))
-            self.assertEqual(sorted(files), sorted(result), 'With option {}'.format(active))
+            self.assertEqual(sorted(files), sorted([x.replace('/', os.sep) for x in result]), 'With option {}'.format(active))
             #
             # test last iteration
             shutil.rmtree('temp')
