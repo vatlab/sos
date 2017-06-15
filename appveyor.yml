@@ -15,10 +15,10 @@ shallow_clone: false
 
 environment:
     matrix:
-        - PYTHON: "C:\Miniconda36-x64"
+        - PYTHON: "C:\\Miniconda36-x64"
           PYTHON_VERSION: 3.6
 
-        - PYTHON: "C:\Miniconda35-x64"
+        - PYTHON: "C:\\Miniconda35-x64"
           PYTHON_VERSION: 3.5
 
 install:
@@ -69,4 +69,5 @@ notifications:
       to:
         - ben.bob@gmail.com
       on_build_status_changed: true
+
 
