@@ -15,21 +15,45 @@ shallow_clone: false
 
 environment:
     matrix:
-        - PYTHON: "C:\\Python35"
-          PYTHON_VERSION: 3.5
-          PYTHON_ARCH: 64
-          VCVARSALL: x64
-
-        - PYTHON: "C:\\Python36"
+        - PYTHON: "C:\Miniconda36-x64"
           PYTHON_VERSION: 3.6
-          PYTHON_ARCH: 64
-          VCVARSALL: x64
 
+        - PYTHON: "C:\Miniconda35-x64"
+          PYTHON_VERSION: 3.5
 
 install:
     - set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%
-    - python setup.py install
+    - conda config --set always_yes yes --set changeps1 no
+    - conda update -q conda
+    # Useful for debugging any issues with conda
+    - conda info -a
+    # install python 2.x kernel
+    - conda create -n ipykernel_py2 python=2 ipykernel
+    - source activate ipykernel_py2
+    - python -m ipykernel install --user
+    - source deactivate ipykernel_py2
+    # 
+    # add docker
+    - pip install docker
+    # packages required by SoS
+    - pip install spyder jedi notebook nbconvert nbformat pyyaml psutil tqdm 
+    - pip install fasteners pygments ipython ptpython networkx pydotplus
+    # for testing purposes
+    - pip install nose
+    - pip install sklearn scipy
+    # https://github.com/jupyter/jupyter/issues/150
+    - pip install entrypoints
+    - pip install jupyter
+    # install r kernel
+    - conda install -c r r-essentials r-feather
+    - conda install -c conda-forge feather-format
+    # install bash kernel
+    - pip install bash_kernel
+    - python -m bash_kernel.install
 
+    # install sos
+    - python setup.py install
+      
 test_script:
     - ./run_tests ../test
     - ./run_tests ../sos/docker/test
