@@ -1,7 +1,7 @@
 version: 1.0.{build}
 
 # docker support
-image: Windows Server 2016
+image: Visual Studio 2017
 
 branches:
     only:
