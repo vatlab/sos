@@ -77,7 +77,7 @@ class R_library(BaseTarget):
             options(warn=-1)
             package <- ${name!r}
             if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {
-                write(paste(package, packageVersion(package), "AVAILABLE"), file="${output_file}")
+                write(paste(package, packageVersion(package), "AVAILABLE"), file=${output_file!r})
             } else {
                 install.packages(package, repos="${repos}",
                     quiet=FALSE)
@@ -88,9 +88,9 @@ class R_library(BaseTarget):
                 }
                 # if it still does not exist, write the package name to output
                 if (suppressMessages(require(package, character.only=TRUE, quietly=TRUE))) {
-                    write(paste(package, packageVersion(package), "INSTALLED"), file="${output_file}")
+                    write(paste(package, packageVersion(package), "INSTALLED"), file=${output_file!r})
                 } else {
-                    write(paste(package, "NA", "MISSING"), file="${output_file}")
+                    write(paste(package, "NA", "MISSING"), file=${output_file!r})
                     quit("no")
                 }
             }
@@ -125,9 +125,8 @@ class R_library(BaseTarget):
         try:
             with open(script_file, 'w') as sfile:
                 sfile.write(install_script + version_script)
-            cmd = 'Rscript --default-packages=utils ' + shlex.quote(script_file)
             #
-            p = subprocess.Popen(cmd, shell=True)
+            p = subprocess.Popen(['Rscript', '--default-packages=utils', script_file])
             ret = p.wait()
             if ret != 0:
                 env.logger.warning('Failed to detect or install R library')
