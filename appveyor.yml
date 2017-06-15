@@ -52,10 +52,7 @@ install:
       
 test_script:
     - cd test
-    - python run_tests ..\sos\jupyter\test 
-    - python run_tests ..\sos\Python3\test
-    - python run_tests ..\sos\R\test
-    - python run_tests ..\test
+    - python run_tests ..\sos\jupyter\test ..\sos\Python3\test ..\sos\R\test ..\test
     #- python run_tests ..\sos\docker\test
     #- python run_tests ..\sos\Bash\test
     # - ./run_tests ../sos/JavaScript/test 
