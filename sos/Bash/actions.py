@@ -26,25 +26,25 @@ from sos.actions import SoS_Action, SoS_ExecuteScript
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def bash(script, args='', **kwargs):
     '''Execute specified script using bash.'''
-    return SoS_ExecuteScript(script, '/bin/bash', '.sh', args).run(**kwargs)
+    return SoS_ExecuteScript(script, ['/bin/bash', 'bash'], '.sh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def csh(script, args='', **kwargs):
     '''Execute specified script using csh.'''
-    return SoS_ExecuteScript(script, '/bin/csh', '.csh', args).run(**kwargs)
+    return SoS_ExecuteScript(script, ['/bin/csh', 'csh'], '.csh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def tcsh(script, args='', **kwargs):
     '''Execute specified script using tcsh.'''
-    return SoS_ExecuteScript(script, '/bin/tcsh', '.sh', args).run(**kwargs)
+    return SoS_ExecuteScript(script, ['/bin/tcsh', 'tcsh'], '.sh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def zsh(script, args='', **kwargs):
     '''Execute specified script using zsh.'''
-    return SoS_ExecuteScript(script, '/bin/zsh', '.zsh', args).run(**kwargs)
+    return SoS_ExecuteScript(script, ['/bin/zsh', 'zsh'], '.zsh', args).run(**kwargs)
 
 @SoS_Action(run_mode=['dryrun', 'run', 'interactive'], acceptable_args=['script', 'args'])
 def sh(script, args='', **kwargs):
     '''Execute specified script using sh.'''
-    return SoS_ExecuteScript(script, '/bin/sh', '.sh', args).run(**kwargs)
+    return SoS_ExecuteScript(script, ['/bin/sh', 'sh'], '.sh', args).run(**kwargs)
 
