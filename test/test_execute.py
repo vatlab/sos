@@ -607,17 +607,6 @@ e = d + 1
         self.assertEqual(env.sos_dict['shared'], 'c.txt')
         self.assertEqual(env.sos_dict['d'], 2)
 
-    def testSklearnImportFailure(self):
-        '''Test problem with Sklean when using Celery/multiprocessing'''
-        script = SoS_Script('''
-import sklearn
-
-[run]
-print(0)
-''')
-        wf = script.workflow()
-        Base_Executor(wf).run()
-
 #
 #    def testCollectionOfErrors(self):
 #        '''Test collection of errors when running in dryrun mode.'''
