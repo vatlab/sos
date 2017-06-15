@@ -175,9 +175,6 @@ class TestUtils(unittest.TestCase):
                 ('{0}"~/test_utils.py"!a{1}', os.path.abspath(os.path.expanduser('~/test_utils.py')), False, []),
                 ('{0}"~/test_utils.py"!u{1}', os.path.expanduser('~/test_utils.py'), False, []),
                 ('{0}"test/test_utils.py"!b{1}', "test_utils.py", False, []),
-                # preceded by \
-                (r'\{0}100{1}', '{0}100{1}'.format(l, r), True, []),
-                (r'\{0}100{1} {0}100+4{1}', '{0}100{1} 104'.format(l, r), True, []),
                 (r'''{0}{1}''', '', False, []),
             ]:
                 if l == r and nested:
