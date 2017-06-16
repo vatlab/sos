@@ -27,7 +27,7 @@ from distutils import log
 from setuptools.command.install import install
 
 # obtain version of SoS
-with open('sos/_version.py') as version:
+with open('src/_version.py') as version:
     for line in version:
         if line.startswith('__version__'):
             __version__ = eval(line.split('=')[1])
@@ -82,8 +82,8 @@ class InstallWithConfigurations(install):
         if not os.path.isdir(prof_dir):
             os.makedirs(prof_dir)
         #
-        shutil.copy('sos/jupyter/sos_magic.py', ext_file)
-        shutil.copy('sos/jupyter/sos_ipython_profile.py', prof_file)
+        shutil.copy('src/jupyter/sos_magic.py', ext_file)
+        shutil.copy('src/jupyter/sos_ipython_profile.py', prof_file)
         #
         log.info('\nSoS is installed and configured to use with vim, ipython, and Jupyter.')
         log.info('Use "set syntax=sos" to enable syntax highlighting.')
@@ -92,7 +92,7 @@ class InstallWithConfigurations(install):
         # Now write the kernelspec
         with TemporaryDirectory() as td:
             os.chmod(td, 0o755)  # Starts off as 700, not user readable
-            shutil.copy('sos/jupyter/kernel.js', os.path.join(td, 'kernel.js'))
+            shutil.copy('src/jupyter/kernel.js', os.path.join(td, 'kernel.js'))
             shutil.copy('misc/logo-64x64.png', os.path.join(td, 'logo-64x64.png'))
             with open(os.path.join(td, 'kernel.json'), 'w') as f:
                 json.dump(kernel_json, f, sort_keys=True)
@@ -101,7 +101,7 @@ class InstallWithConfigurations(install):
                 log.info('Use "jupyter notebook" to create or open SoS notebooks.')
             except:
                 log.error("\nWARNING: Could not install SoS Kernel as %s user." % self.user)
-        log.info('Run "python misc/patch_spyder.py" to patch spyder with sos support.')
+        #log.info('Run "python misc/patch_spyder.py" to patch spyder with sos support.')
         log.info('And "sos -h" to start using Script of Scripts.')
 
 dest = '''\
@@ -154,10 +154,13 @@ setup(name = "sos",
         'Natural Language :: English',
         'Operating System :: POSIX :: Linux',
         'Operating System :: MacOS :: MacOS X',
+        'Operating System :: Microsoft :: Windows',
         'Intended Audience :: Information Technology',
         'Intended Audience :: Science/Research',
         'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: Implementation :: CPython',
         ],
+    package_dir = {'sos': 'src'},
     packages = find_packages(),
     cmdclass={'install': InstallWithConfigurations},
     install_requires=[
@@ -184,9 +187,6 @@ setup(name = "sos",
 sos = sos.__main__:main
 sos-runner = sos.__main__:sosrunner
 
-[sos_addons]
-patch-spyder.parser = sos.addons.patch_spyder:get_patch_spyder_parser
-patch-spyder.func   = sos.addons.patch_spyder:patch_spyder
 
 [pygments.lexers]
 sos = sos.converter:SoS_Lexer
@@ -295,6 +295,15 @@ ipynb-md.parser = sos.jupyter.converter:get_notebook_to_md_parser
 ipynb-md.func = sos.jupyter.converter:notebook_to_md
 
 ''',
+#
+# remove patch-spyder addon because it is difficult and not really
+# necessary to use Spyder. We will wait for Spyder 4.0 for its support
+# for alternative kernel: https://github.com/spyder-ide/spyder/issues/3314
+#
+#[sos_addons]
+#patch-spyder.parser = sos.addons.patch_spyder:get_patch_spyder_parser
+#patch-spyder.func   = sos.addons.patch_spyder:patch_spyder
+#
     extras_require = {
         ':sys_platform=="win32"': ['colorama'],
         'image':    ['wand'],
