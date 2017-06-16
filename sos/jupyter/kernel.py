@@ -2418,6 +2418,11 @@ Available subkernels:\n{}'''.format(
             except Exception as e:
                 self.warn('Failed to shutdown kernel {}: {}'.format(name, e))
 
+    def __del__(self):
+        # upon releasing of sos kernel, kill all subkernels. This I thought would be
+        # called by the Jupyter cleanup code or the OS (because subkernels are subprocesses)
+        # but they are not.
+        self.do_shutdown(False)
 
 if __name__ == '__main__':
     from ipykernel.kernelapp import IPKernelApp
