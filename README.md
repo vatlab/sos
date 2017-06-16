@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/vatlab/SOS.svg?branch=master)](https://travis-ci.org/vatlab/SOS)
-[![Build Status](https://ci.appveyor.com/api/projects/status/github/BoPeng/sos?branch=master&svg=true)](https://ci.appveyor.com/project/BoPeng/sos)
+[![Build Status](https://ci.appveyor.com/api/projects/status/x092eusa0tta3msw?svg=true
+)](https://ci.appveyor.com/project/BoPeng/sos)
 
 **Script of Scripts (SoS)** is a **file format** for the inclusion of
 scripts in multiple languages into a single executable script, an
