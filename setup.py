@@ -160,7 +160,7 @@ setup(name = "sos",
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: Implementation :: CPython',
         ],
-    package_dir = {'sos': 'src'},
+    package_dir = {'': 'src'},
     packages = find_packages('src'),
     cmdclass={'install': InstallWithConfigurations},
     install_requires=[

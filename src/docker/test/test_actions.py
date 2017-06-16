@@ -34,7 +34,6 @@ from contextlib import contextmanager
 from sos.sos_script import SoS_Script
 from sos.utils import env
 from sos.docker.client import SoS_DockerClient
-from docker.errors import DockerException
 from sos.sos_executor import Base_Executor, ExecuteError
 from sos.target import FileTarget
 
@@ -78,7 +77,7 @@ def time_limit(seconds, msg=''):
 try:
     with time_limit(2, 'check docker daemon'):
         has_docker = SoS_DockerClient().client is not None
-except (TimeoutException, DockerException) as e:
+except Exception as e:
     print('Cannot connect to a docker daemon in 2 seconds. Assuming no docker environment.')
     print(e)
     has_docker = False
