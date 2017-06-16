@@ -174,4 +174,4 @@ else:
 
 
 [default]
-sos_run('patch + pip + update-docker + update-ec2 + update-website')
+sos_run('patch + pip + update-docker + update-website')
