@@ -56,11 +56,11 @@ install:
       
 test_script:
     - cd test
-    - python run_tests ..\src\jupyter\test ..\src\Python3\test ..\src\R\test ..\test
-    #- python run_tests ..\src\docker\test
-    #- python run_tests ..\src\Bash\test
-    # - ./run_tests ../src/JavaScript/test 
-    #- ./run_tests ../src/rq/test
+    - python run_tests ..\sos\jupyter\test ..\sos\Python3\test ..\sos\R\test ..\test
+    #- python run_tests ..\sos\docker\test
+    #- python run_tests ..\sos\Bash\test
+    # - ./run_tests ../sos/JavaScript/test 
+    #- ./run_tests ../sos/rq/test
 
 on_finish:
   - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
