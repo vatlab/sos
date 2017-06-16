@@ -80,14 +80,14 @@ install: "python setup.py install"
 before_script: cd test
 script:
     - ./run_tests ../test
-    - ./run_tests ../sos/docker/test
-    - ./run_tests ../sos/Bash/test
-    - ./run_tests ../sos/Python2/test
-    - ./run_tests ../sos/Python3/test
-    - ./run_tests ../sos/R/test
-    - ./run_tests ../sos/jupyter/test 
-    # - ./run_tests ../sos/JavaScript/test 
-    #- ./run_tests ../sos/rq/test
+    - ./run_tests ../src/docker/test
+    - ./run_tests ../src/Bash/test
+    - ./run_tests ../src/Python2/test
+    - ./run_tests ../src/Python3/test
+    - ./run_tests ../src/R/test
+    - ./run_tests ../src/jupyter/test 
+    # - ./run_tests ../src/JavaScript/test 
+    #- ./run_tests ../src/rq/test
 notifications:
     email:
         recipients:
