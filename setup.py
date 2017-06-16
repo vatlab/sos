@@ -161,7 +161,7 @@ setup(name = "sos",
         'Programming Language :: Python :: Implementation :: CPython',
         ],
     package_dir = {'sos': 'src'},
-    packages = find_packages(),
+    packages = find_packages('src'),
     cmdclass={'install': InstallWithConfigurations},
     install_requires=[
           'psutil',
