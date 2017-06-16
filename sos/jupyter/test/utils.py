@@ -79,7 +79,7 @@ def stop_sos_kernel():
     KC = None
     if KM is None:
         return
-    KM.shutdown_kernel(now=True)
+    KM.shutdown_kernel(now=False)
     KM = None
 
 def get_result(iopub):
