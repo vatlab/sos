@@ -151,8 +151,11 @@ def analyze_section(section, default_input=None):
                 # we do not get LHS because it must be local to the step
                 local_vars |= accessed_vars(statement[1], section.sigil)
                 environ_vars |= accessed_vars(statement[2], section.sigil)
-            elif statement[0] == ':' and statement[1] != 'depends':
-                raise RuntimeError('Step input should be specified before {}'.format(statement[1]))
+            elif statement[0] == ':':
+                if statement[1] == 'depends':
+                    environ_vars |= accessed_vars(statement[2], section.sigil)
+                else:
+                    raise RuntimeError('Step input should be specified before {}'.format(statement[1]))
             else:
                 environ_vars |= accessed_vars(statement[1], section.sigil)
         #
@@ -210,6 +213,7 @@ def analyze_section(section, default_input=None):
             signature_vars |= accessed_vars('='.join(statement[1:3]), section.sigil)
         elif statement[0] == ':':
             key, value = statement[1:]
+            environ_vars |= accessed_vars(value, section.sigil)
             # output, depends, and process can be processed multiple times
             try:
                 args, kwargs = parse_stmt(value, section.sigil, force_remote)

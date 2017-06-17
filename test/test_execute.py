@@ -1009,5 +1009,34 @@ input: for_each={'i': range(2)}
         subprocess.call('sos run test_script', shell=True)
         os.remove('test_script.sos')
 
+    def testDependsCausedDependency(self):
+        #test for #674
+        for tfile in ('1.txt', '2.txt', '3.txt'):
+            FileTarget(tfile).remove('all')
+        script = SoS_Script('''
+[1: shared = {'dfile':'output'}]
+output: '1.txt'
+run:
+	echo 1 > 1.txt
+
+[2: shared = {'ifile':'output'}]
+output: '2.txt'
+run:
+	echo ${input} > 2.txt
+
+[3]
+depends: ifile
+input: dfile
+output: '3.txt'
+run:
+	cat ${input} > ${output}
+''')
+        wf = script.workflow()
+        Base_Executor(wf).run()
+        for tfile in ('1.txt', '2.txt', '3.txt'):
+            self.assertTrue(FileTarget(tfile).exists())
+            FileTarget(tfile).remove('all')
+
+
 if __name__ == '__main__':
     unittest.main()
