@@ -529,9 +529,9 @@ class Base_Step_Executor:
                     for var_name, values in zip(fe_iter_names, fe_values):
                         if isinstance(values, Sequence):
                             _tmp_vars[idx][var_name] = values[vidx]
-                        elif isinstance(values, pd.DataFrame):
+                        elif isinstance(values, (pd.DataFrame, pd.Series)):
                             _tmp_vars[idx][var_name] = values.iloc[vidx]
-                        elif isinstance(values, (pd.Series, pd.Index)):
+                        elif isinstance(values, pd.Index):
                             _tmp_vars[idx][var_name] = values[vidx]
                         else:
                             raise ValueError('Failed to iterate through for_each variable {}'.format(short_repr(values)))

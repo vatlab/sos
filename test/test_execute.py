@@ -341,6 +341,20 @@ output: "${A}.txt"
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'], ['Hello.txt', 'World.txt'])
 
+        # test for each of Series
+        script = SoS_Script(r"""
+[0: shared={'res':'output'}]
+import pandas as pd
+data = pd.DataFrame([(0, 1, 'Ha'), (1, 2, 'Hello'), (2, 4, 'World')], columns=['A', 'B', 'C'])
+
+data.set_index('A', inplace=True)
+data = data.tail(2)
+input: for_each={'A': data['B']}
+output: "${A}.txt"
+""")
+        wf = script.workflow()
+        Base_Executor(wf).run(mode='dryrun')
+        self.assertEqual(env.sos_dict['res'], ['2.txt', '4.txt'])
 
 
     def testPairedWith(self):
