@@ -393,7 +393,7 @@ print(p1)
                 self.assertEqual(res['step_depends'], ['some.txt', executable('ls')])
                 self.assertTrue(isinstance(res['step_output'], Undetermined))
                 # for_each will not be used for DAG
-                self.assertEqual(res['environ_vars'], {'for_each'})
+                self.assertEqual(res['environ_vars'], {'for_each', 'executable'})
                 self.assertEqual(res['signature_vars'], {'import', 'r', 'time', 'random'})
                 self.assertEqual(res['changed_vars'], set())
 

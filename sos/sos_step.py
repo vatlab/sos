@@ -213,6 +213,7 @@ def analyze_section(section, default_input=None):
             signature_vars |= accessed_vars('='.join(statement[1:3]), section.sigil)
         elif statement[0] == ':':
             key, value = statement[1:]
+            #if key == 'depends':
             environ_vars |= accessed_vars(value, section.sigil)
             # output, depends, and process can be processed multiple times
             try:
