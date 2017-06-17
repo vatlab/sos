@@ -956,7 +956,7 @@ sh:
 
     def testStoppedOutput(self):
         '''test output with stopped step'''
-        for file in ["${a}.txt" for a in range(10)]:
+        for file in ["{}.txt".format(a) for a in range(10)]:
             FileTarget(file).remove('both')
 
         script = SoS_Script('''
@@ -1012,7 +1012,7 @@ input: for_each={'i': range(2)}
     def testDependsCausedDependency(self):
         #test for #674
         for tfile in ('1.txt', '2.txt', '3.txt'):
-            FileTarget(tfile).remove('all')
+            FileTarget(tfile).remove('both')
         script = SoS_Script('''
 [1: shared = {'dfile':'output'}]
 output: '1.txt'
@@ -1035,7 +1035,7 @@ run:
         Base_Executor(wf).run()
         for tfile in ('1.txt', '2.txt', '3.txt'):
             self.assertTrue(FileTarget(tfile).exists())
-            FileTarget(tfile).remove('all')
+            FileTarget(tfile).remove('both')
 
 
 if __name__ == '__main__':
