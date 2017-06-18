@@ -90,14 +90,14 @@ def Rmarkdown(script=None, input=None, output=None, args='${input!r}, output_fil
         if env.config['run_mode'] == 'interactive':
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
             p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            pid = p.pid
+            #pid = p.pid
             out, err = p.communicate()
             sys.stdout.write(out.decode())
             sys.stderr.write(err.decode())
             ret = p.returncode
         else:
             p = subprocess.Popen(cmd, shell=True)
-            pid = p.pid
+            #pid = p.pid
             ret = p.wait()
     except Exception as e:
         env.logger.error(e)

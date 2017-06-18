@@ -591,7 +591,6 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
             else:
                 all_tasks.extend(matched)
     if age is not None:
-        from sos.utils import expand_time
         age = expand_time(age, default_unit='d')
         if age > 0:
             all_tasks = [x for x in all_tasks if time.time() - x[1] >= age]
@@ -666,7 +665,6 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
         from .utils import PrettyRelativeTime, isPrimitive
         from .monitor import summarizeExecution
         import pprint
-        import glob
         print('<table width="100%">')
         def row(th=None, td=None):
             if td is None:
@@ -917,7 +915,7 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, verbosity=2):
         # find all related files, including those in nested directories
         from collections import defaultdict
         to_be_removed = defaultdict(list)
-        for dirname, dirlist, filelist in os.walk(os.path.join(os.path.expanduser('~'), '.sos', 'tasks')):
+        for dirname, _, filelist in os.walk(os.path.join(os.path.expanduser('~'), '.sos', 'tasks')):
             for f in filelist:
                 ID = os.path.basename(f).split('.', 1)[0]
                 if ID in all_tasks:
@@ -1276,7 +1274,7 @@ class TaskEngine(threading.Thread):
         try:
             ret = self.agent.check_output(cmd)
             env.logger.debug('"{}" executed with response "{}"'.format(cmd, ret))
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             env.logger.error('Failed to kill task {}'.format(tasks))
             return ''
         return ret

@@ -49,7 +49,7 @@ class TestAction(unittest.TestCase):
     def testInterpolation(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            msg_id, content = execute(kc=kc, code='''
+            execute(kc=kc, code='''
 %run
 [a]
 b=10
@@ -58,7 +58,7 @@ b=10
 sos_run('a')
 ''')
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="b")
+            execute(kc=kc, code="b")
             res = get_result(iopub)
             self.assertEqual(res, 10)
 

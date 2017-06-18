@@ -867,35 +867,6 @@ print(CONFIG.StoreOwner)
         self.assertEqual(env.sos_dict['CONFIG']['StoreOwner'], 'John Doe')
         self.assertEqual(env.sos_dict['CONFIG']['Fruits'], ['apple', 'banana', 'pear'])
 
-        return
-        #
-        # CONFIG is not readonly after frozendict is thawn
-        #
-        # configuration items should be readonly
-        with open('config.sos', 'w') as sos:
-            sos.write('''
-[0]
-CONFIG['a'] = 'b'
-'''
-)
-        # the command would fail with error message
-        # ERROR: Failed to process statement CONFIG['a'] = 'b'
-        # : Cannot modify a readonly dictionary.
-        self.assertEqual(subprocess.call('sos run config.sos -c myconfig.yml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
-        #
-        with open('config.sos', 'w') as sos:
-            sos.write('''
-[0]
-CONFIG.a = 'b'
-'''
-)
-        # the command would fail with error message
-        # ERROR: Failed to process statement CONFIG['a'] = 'b'
-        # : Cannot modify a readonly dictionary.
-        self.assertEqual(subprocess.call('sos run config.sos -c myconfig.yml', stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True), 1)
-        #
-        for filename in ['config.sos', 'myconfig.yml']:
-            os.remove(filename)
 
     def testVarOutput(self):
         '''Test early appearance of variable output'''

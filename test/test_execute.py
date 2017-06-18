@@ -868,7 +868,7 @@ time.sleep(3)
 with open('b.txt', 'w') as txt:
     txt.write('A2\n')
         ''')
-        st = time.time()
+        #st = time.time()
         ret1 = subprocess.Popen('sos run lock -j1', shell=True)
         ret2 = subprocess.Popen('sos run lock -j1', shell=True)
         ret1.wait()

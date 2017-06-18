@@ -32,7 +32,6 @@ from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
 
 import subprocess
-import multiprocessing as mp
 
 class TestDAG(unittest.TestCase):
     def setUp(self):
@@ -722,8 +721,7 @@ A_1 -> A_2;
 
 
     def testParallelExecution(self):
-        '''Test basic parallel execution'''
-        '''
+        '''Test basic parallel execution
         A1 <- None
         A2 <- B2
         '''
@@ -763,7 +761,7 @@ A_2;
 }
 ''')
         env.max_jobs = 4
-        st = time.time()
+        #st = time.time()
         #env.verbosity = 4
         Base_Executor(wf).run()
         # the process is slower after switching to spawn mode

@@ -108,7 +108,7 @@ def preview_gz(filename, kernel=None, style=None):
     import gzip
     content = b''
     with gzip.open(filename, 'rb') as fin:
-        for line in range(5):
+        for _ in range(5):
             content += fin.readline()
     try:
         return content.decode()[:2000]

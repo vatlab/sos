@@ -644,7 +644,7 @@ def locate_script(filename, start=''):
         if all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
             url = path + ('' if path.endswith('/') else '/') + filename
             try:
-                local_filename, headers = urllib.request.urlretrieve(url)
+                local_filename, _ = urllib.request.urlretrieve(url)
                 with open(local_filename) as script:
                     content = script.read()
                 return content, url
@@ -1072,7 +1072,7 @@ def version_info(module):
         import pkg_resources
         try:
             return pkg_resources.require(module)[0].version
-        except Exception as e:
+        except Exception:
             return 'na'
 
 def loaded_modules(namespace=None):

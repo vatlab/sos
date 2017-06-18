@@ -100,20 +100,17 @@ class SoS_Completer(object):
         doc = Document(code, cursor_pos)
 
         for c in self.completers:
-            try:
-                matched = c.get_completions(doc, CompleteEvent(completion_requested=True))
-                if matched is None:
-                    continue
-                elif isinstance(matched, tuple):
-                    if matched[1]:
-                        return matched
-                else:
-                    # iterator ...
-                    matched = list(matched)
-                    if matched:
-                        return code[matched[0].start_position:], [x.text for x in matched]
-            except Exception as e:
-                raise
+            matched = c.get_completions(doc, CompleteEvent(completion_requested=True))
+            if matched is None:
+                continue
+            elif isinstance(matched, tuple):
+                if matched[1]:
+                    return matched
+            else:
+                # iterator ...
+                matched = list(matched)
+                if matched:
+                    return code[matched[0].start_position:], [x.text for x in matched]
         # No match
         return '', []
 

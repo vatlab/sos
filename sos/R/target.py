@@ -45,7 +45,6 @@ class R_library(BaseTarget):
         from sos.pattern import glob_wildcards
         from sos.sos_eval import interpolate
         import tempfile
-        import shlex
         import subprocess
 
         output_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.txt', delete=False).name

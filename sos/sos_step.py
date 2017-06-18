@@ -412,7 +412,7 @@ class Base_Step_Executor:
         elif isinstance(paired_with, Iterable):
             try:
                 var_name = ['_'+x for x in paired_with]
-            except Exception as e:
+            except Exception:
                 raise ValueError('Invalud value for option paired_with {}'.format(paired_with))
             var_value = []
             for vn in var_name:
@@ -633,7 +633,7 @@ class Base_Step_Executor:
 
     def reevaluate_output(self):
         # re-process the output statement to determine output files
-        args, kwargs = parse_stmt(env.sos_dict['output'].expr, self.step.sigil, self.force_remote)
+        args, _ = parse_stmt(env.sos_dict['output'].expr, self.step.sigil, self.force_remote)
         # handle dynamic args
         args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
         env.sos_dict.set('output', self.expand_output_files('', *args))
@@ -728,7 +728,7 @@ class Base_Step_Executor:
                 self.proc_results[idx] = results[task]
             else:
                 # can be a subtask
-                for mid, mres in results.items():
+                for _, mres in results.items():
                     if 'subtasks' in mres and task in mres['subtasks']:
                         self.proc_results[idx] = mres['subtasks'][task]
         #

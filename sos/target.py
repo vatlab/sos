@@ -204,7 +204,7 @@ class sos_step(BaseTarget):
     def write_sig(self):
         pass
 
-def bundle(BaseTarget):
+class bundle(BaseTarget):
     '''a bundle of other targets'''
     def __init__(self, *args):
         super(sos_step, self).__init__()
@@ -662,7 +662,7 @@ class RuntimeInfo:
                 if not isinstance(value, Undetermined):
                     try:
                         md5.write(save_var(var, value))
-                    except Exception as e:
+                    except Exception:
                         env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, short_repr(value)))
             # context used to return context
             md5.write('# end context\n')
@@ -672,7 +672,7 @@ class RuntimeInfo:
                     value = env.sos_dict[var]
                     try:
                         md5.write(save_var(var, value))
-                    except Exception as e:
+                    except Exception:
                         env.logger.debug('Variable {} of value {} is ignored from step signature'.format(var, short_repr(value)))
             md5.write('# step process\n')
             md5.write(self.script)

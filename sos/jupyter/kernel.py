@@ -781,7 +781,6 @@ class SoS_Kernel(IPythonKernel):
         from sos.utils import loaded_modules
         result = OrderedDict()
         #
-        from sos._version import __version__
         result['SoS'] = [('SoS Version', __version__)]
         result['SoS'].extend(loaded_modules(env.sos_dict))
         #
@@ -1955,7 +1954,7 @@ Available subkernels:\n{}'''.format(
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
                 self.shell.enable_gui = lambda gui: None
-                gui, backend = self.shell.enable_matplotlib(options)
+               self.shell.enable_matplotlib(options)
             except Exception as e:
                 self.warn('Failed to set matplotlib backnd {}: {}'.format(options, e))
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
@@ -2414,7 +2413,7 @@ Available subkernels:\n{}'''.format(
 
     def do_shutdown(self, restart):
         #
-        for name, (km, kv) in self.kernels.items():
+        for name, (km, _) in self.kernels.items():
             try:
                 km.shutdown_kernel(restart=restart)
             except Exception as e:

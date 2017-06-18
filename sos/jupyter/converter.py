@@ -119,7 +119,7 @@ def notebook_to_script(notebook_file, sos_file, args=None, unknown_args=None):
     else:
         exporter = SoS_Exporter()
     notebook = nbformat.read(notebook_file, nbformat.NO_CONVERT)
-    output, resource = exporter.from_notebook_node(notebook, {})
+    output, _ = exporter.from_notebook_node(notebook, {})
     if not sos_file:
         sys.stdout.write(output)
     elif isinstance(sos_file, str):

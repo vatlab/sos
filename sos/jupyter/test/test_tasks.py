@@ -29,9 +29,8 @@
 #
 import os
 import unittest
-from ipykernel.tests.utils import assemble_output, execute, wait_for_idle
-from sos.jupyter.test.utils import sos_kernel, get_result, get_display_data
-from sos.target import FileTarget
+from ipykernel.tests.utils import execute, wait_for_idle
+from sos.jupyter.test.utils import sos_kernel, get_display_data
 
 import nose.tools as nt
 
