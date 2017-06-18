@@ -74,7 +74,7 @@ def get_convert_parser(desc_only=False):
         return parser
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
-            information to standard output (default to 2).'''),
+            information to standard output (default to 2).''')
     parser.set_defaults(func=cmd_convert)
     subparsers = parser.add_subparsers(title='converters (name of converter is not needed from command line)',
         dest='converter_name')

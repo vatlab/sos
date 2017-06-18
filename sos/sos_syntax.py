@@ -113,11 +113,11 @@ class LazyRegex(object):
             "kwargs": self._regex_kwargs,
             }
 
-    def __setstate__(self, dict):
+    def __setstate__(self, sdict):
         """Restore from a pickled state."""
         self._real_regex = None
-        setattr(self, "_regex_args", dict["args"])
-        setattr(self, "_regex_kwargs", dict["kwargs"])
+        setattr(self, "_regex_args", sdict["args"])
+        setattr(self, "_regex_kwargs", sdict["kwargs"])
 
     def __getattr__(self, attr):
         """Return a member from the proxied regex object.

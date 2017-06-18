@@ -518,7 +518,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 try:
                     file_size = int(u.getheader("Content-Length"))
                     prog = ProgressBar(total=file_size, desc=message, position=index, leave=False)
-                except:
+                except Exception:
                     file_size = None
                 file_size_dl = 0
                 block_sz = 8192
@@ -894,6 +894,6 @@ def pandoc(script=None, input=None, output=None, args='${input!q} --output ${out
         env.logger.info('Report saved to {}'.format(output))
     try:
         os.remove(input_file)
-    except:
+    except Exception:
         pass
 

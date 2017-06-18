@@ -273,7 +273,7 @@ shutil.copy("test_remote.py", "${{output}}")
 [10]
 task: mem='2G'
 print('a')
-'''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
+''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
                 'config_file': 'docker.yml',
@@ -291,7 +291,7 @@ print('a')
 task:
 import time
 time.sleep(15)
-'''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
+''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
                 'config_file': 'docker.yml',
@@ -308,7 +308,7 @@ time.sleep(15)
 [10]
 task: procs=8
 print('a')
-'''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
+''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
                 'config_file': 'docker.yml',
@@ -325,7 +325,7 @@ print('a')
 [10]
 task: walltime='1:00:00'
 print('a')
-'''.format(os.path.join(os.path.abspath('.').upper(), 'test_remote.py')))
+''')
         wf = script.workflow()
         self.assertRaises(Exception, Base_Executor(wf, config={
                 'config_file': 'docker.yml',

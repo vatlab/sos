@@ -82,7 +82,7 @@ class Visualizer:
     def _is_numeric_type(self, x):
         try:
             return numpy.issubdtype(x, numpy.number)
-        except:
+        except Exception:
             # this includes Pandas category type
             return False
 

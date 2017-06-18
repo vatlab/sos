@@ -46,6 +46,7 @@ class sos_SAS:
         #
         if to_kernel == 'R':
             # write to xport and let R read it
+            pass
         else:
             # others, write and read in Python
             pd.read_sas()

@@ -286,6 +286,7 @@ class executable(BaseTarget):
     def __init__(self, cmd, version=None):
         super(executable, self).__init__()
         self._cmd = cmd
+        self._md5 = None
         if version is None:
             self._version = ()
         elif isinstance(version, str):
@@ -323,7 +324,7 @@ class executable(BaseTarget):
             return self._cmd
 
     def signature(self, mode='any'):
-        if mode != 'target' and hasattr(self, '_md5'):
+        if mode != 'target' and self._md5:
             return self._md5
         exe_file = shutil.which(shlex.split(self._cmd)[0])
         if exe_file is None or not os.path.isfile(exe_file):
@@ -383,7 +384,7 @@ class FileTarget(BaseTarget):
                     line = md5.readline()
                     _, _, _, m = line.rsplit('\t', 3)
                     return m.strip()
-                except:
+                except Exception:
                     pass
         elif os.path.isfile(self.fullname() + '.zapped'):
             with open(self.fullname() + '.zapped') as md5:
@@ -748,7 +749,7 @@ class RuntimeInfo:
                 if cur_type == 'init context':
                     key, value = load_var(line)
                     if key not in env.sos_dict:
-                        return 'Variable {} not in running environment {}'.format(key)
+                        return 'Variable {} not in running environment'.format(key)
                     try:
                         try:
                             if env.sos_dict[key] != value:

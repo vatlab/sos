@@ -75,7 +75,7 @@ class SoS_Worker(mp.Process):
     '''
     Worker process to process SoS step or workflow in separate process.
     '''
-    def __init__(self,  pipe, config={}, args=[], **kwargs):
+    def __init__(self,  pipe, config=None, args=None, **kwargs):
         '''
         cmd_queue: a single direction queue for the master process to push
             items to the worker.
@@ -95,8 +95,8 @@ class SoS_Worker(mp.Process):
         super(SoS_Worker, self).__init__(**kwargs)
         #
         self.pipe = pipe
-        self.config = config
-        self.args = args
+        self.config = {} if config is None else config
+        self.args = [] if args is None else args
 
     def reset_dict(self):
         env.sos_dict = WorkflowDict()
@@ -203,12 +203,12 @@ class dummy_node:
 class Base_Executor:
     '''This is the base class of all executor that provides common
     set up and tear functions for all executors.'''
-    def __init__(self, workflow=None, args=[], shared={}, config={}):
+    def __init__(self, workflow=None, args=None, shared=None, config=None):
         self.workflow = workflow
-        self.args = args
-        self.shared = shared
-        self.config = config
-        env.config.update(config)
+        self.args = [] if args is None else args
+        self.shared = {} if shared is None else shared
+        self.config = {} if config is None else config
+        env.config.update(self.config)
         for key in ('config_file', 'output_dag'):
             if key not in self.config:
                 self.config[key] = None
@@ -993,7 +993,7 @@ class Base_Executor:
                         pending_tasks.extend(p)
                         running_tasks.extend([(n._host.alias, x) for x in r])
                     if not pending_tasks and running_tasks:
-                        env.logger.trace('Exit with {} running tasks: '.format(len(running_tasks), running_tasks))
+                        env.logger.trace('Exit with {} running tasks: {}'.format(len(running_tasks), running_tasks))
                         raise PendingTasks(running_tasks)
                 else:
                     time.sleep(0.1)

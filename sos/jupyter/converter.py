@@ -311,7 +311,7 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=None)
             nbformat.write(nb, notebook, 4)
         env.logger.info('Jupyter notebook saved to {}'.format(notebook_file))
     if err:
-        raise err
+        raise RuntimeError(repr(err))
 
 
 #

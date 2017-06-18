@@ -99,7 +99,7 @@ class InstallWithConfigurations(install):
             try:
                 KS().install_kernel_spec(td, 'sos', user=self.user, replace=True, prefix=sys.exec_prefix)
                 log.info('Use "jupyter notebook" to create or open SoS notebooks.')
-            except:
+            except Exception:
                 log.error("\nWARNING: Could not install SoS Kernel as %s user." % self.user)
         #log.info('Run "python misc/patch_spyder.py" to patch spyder with sos support.')
         log.info('And "sos -h" to start using Script of Scripts.')

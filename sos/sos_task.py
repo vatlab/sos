@@ -660,7 +660,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                     try:
                         with open(f) as fc:
                             print(fc.read())
-                    except:
+                    except Exception:
                         print('Binary file')
     else:
         # HTML output
@@ -716,7 +716,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                 row(os.path.basename(f), '(empty)' if numLines == 0 else '{} lines{}'.format(numLines, '' if numLines < 200 else ' (showing last 200)'))
                 try:
                     row(td='<small><pre style="text-align:left">{}</pre></small>'.format(tail_of_file(f, 200, ansi2html=True)))
-                except:
+                except Exception:
                     row(td='<small><pre style="text-align:left">ignored.</pre><small>')
             print('</table>')
             #
@@ -744,7 +744,7 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
                     mem.append(float(fields[2]) / 1e6 + float(fields[5]) / 1e6)
                 if not etime:
                     return
-            except:
+            except Exception:
                 return
             #
             print('''
@@ -872,7 +872,7 @@ def kill_task(task):
     if os.path.isfile(job_file):
         try:
             os.remove(job_file)
-        except:
+        except Exception:
             pass
     if status != 'running':
         return status
@@ -1014,7 +1014,7 @@ class TaskEngine(threading.Thread):
             # default
             self.wait_for_task = True
 
-    def monitor_tasks(self, tasks=[], status=None, age=None):
+    def monitor_tasks(self, tasks=None, status=None, age=None):
         '''Start monitoring specified or all tasks'''
         self.engine_ready.wait()
 
@@ -1203,7 +1203,7 @@ class TaskEngine(threading.Thread):
         try:
             with threading.Lock():
                 return self.task_status[task_id]
-        except:
+        except Exception:
             # job not yet submitted
             return unknown
 
@@ -1239,14 +1239,10 @@ class TaskEngine(threading.Thread):
                 #if task in self.running_tasks:
                 #    self.running_tasks.remove(task)
 
-    def pending_tasks(self):
-        with threading.Lock():
-            return self.pending_tasks()
-
     def query_tasks(self, tasks=None, verbosity=1, html=False, start_time=False, age=None):
         try:
             return self.agent.check_output("sos status {} -v {} {} {} {}".format(
-                ' '.join(tasks), verbosity, '--html' if html else '',
+                '' if tasks is None else ' '.join(tasks), verbosity, '--html' if html else '',
                 '--start-time' if start_time else '', '--age {}'.format(age) if age else ''))
         except subprocess.CalledProcessError as e:
             env.logger.error('Failed to query status of tasks {}: {}'.format(tasks, e))
@@ -1316,7 +1312,7 @@ class TaskEngine(threading.Thread):
             self.resuming_tasks.remove(task_id)
             try:
                 self.agent.prepare_task(task_id)
-            except:
+            except Exception:
                 pass
             return True
         else:

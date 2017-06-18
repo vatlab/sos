@@ -76,7 +76,7 @@ class SoS_DockerClient:
                 shell=True, stdin=subprocess.DEVNULL)
             # ret: MemTotal:       30208916 kB
             self.tot_mem = int(ret.split()[1])
-        except:
+        except Exception:
             # some system does not have cat or grep
             self.tot_mem = None
         return self.tot_mem
@@ -212,7 +212,7 @@ class SoS_DockerClient:
                 elif isinstance(kwargs['volumes_from'], list):
                     volumes_from_opt = ' '.join('--volumes_from={}'.format(x) for x in kwargs['volumes_from'])
                 else:
-                    raise RuntimeError('Option volumes_from only accept a string or list of string'.format(kwargs['volumes_from']))
+                    raise RuntimeError('Option volumes_from only accept a string or list of string: {} specified'.format(kwargs['volumes_from']))
             # we also need to mount the script
             cmd_opt = ''
             if script and interpreter:

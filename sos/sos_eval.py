@@ -419,9 +419,9 @@ def param_of(name, text):
                     compile(expr, '<string>', 'eval')
                     exprs.append(expr)
                     break
-                except:
+                except Exception:
                     continue
-        except:
+        except Exception:
             continue
     return exprs
 
@@ -436,7 +436,7 @@ def _is_expr(expr):
     try:
         sos_compile(expr, '<string>', 'eval')
         return True
-    except:
+    except Exception:
         return False
 
 def SoS_exec(stmts, sigil, _dict=None):
@@ -469,7 +469,7 @@ def SoS_exec(stmts, sigil, _dict=None):
             idx += 1
             if idx == len(code_group):
                 break
-        except:
+        except Exception:
             # error happens merge the next line
             if idx < len(code_group) - 1:
                 code_group[idx] += '\n' + code_group[idx + 1]

@@ -46,7 +46,7 @@ def _JS_repr(obj):
     try:
         # for JSON serlializable type, we simply dump it
         return json.dumps(obj)
-    except:
+    except Exception:
         import numpy
         import pandas
         if isinstance(obj, (numpy.intc, numpy.intp, numpy.int8, numpy.int16, numpy.int32, numpy.int64,\

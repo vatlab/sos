@@ -466,7 +466,7 @@ def get_traceback():
     try:
         traceback.print_exception(exc_type, exc_value, exc_traceback,
                               limit=5, file=output)
-    except:
+    except Exception:
         # the above function call can fail under Python 3.4 for some
         # exception but we do not really care if that happens
         pass
@@ -959,7 +959,7 @@ def expand_time(v, default_unit='s'):
         try:
             sign = {'+': 1, '-': -1}[v[1]]
             v = v[1:]
-        except:
+        except Exception:
             # if there is no sign, assume +
             sign = 1
 
@@ -974,12 +974,12 @@ def expand_time(v, default_unit='s'):
         try:
             unit = {'s': 1, 'm': 60, 'h': 3600, 'd': 3600*24}[v[-1]]
             v = v[:-1]
-        except:
+        except Exception:
             unit =  {'s': 1, 'm': 60, 'h': 3600, 'd': 3600*24}[default_unit]
         #
         try:
             return sign * unit * int(v)
-        except:
+        except Exception:
             raise ValueError('Unacceptable time for parameter age, expecting [+/-] num [s|m|h|d] or HH:MM:SS (e.g. +5h): {} provided'.format(v))
     elif isinstance(v, int):
         return v

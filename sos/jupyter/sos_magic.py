@@ -98,12 +98,12 @@ class SoS_Magics(Magics):
             # is it an expression?
             compile(block, '<string>', 'eval')
             return SoS_eval(block, get_default_global_sigil)
-        except:
+        except Exception:
             # is it a list of statement?
             try:
                 compile(block, '<string>', 'exec')
                 return SoS_exec(block, get_default_global_sigil)
-            except:
+            except Exception:
                 return runfile(code=block, args=self.options + line.strip())
 
     @line_magic

@@ -133,7 +133,7 @@ a = 1
         os.chdir('..')
         try:
             shutil.rmtree('temp')
-        except:
+        except Exception:
             pass
 
 if __name__ == '__main__':

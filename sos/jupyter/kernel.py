@@ -117,7 +117,7 @@ def clipboard_get():
     if sys.platform == 'darwin':
         try:
             return osx_clipboard_get()
-        except:
+        except Exception:
             return tkinter_clipboard_get()
     else:
         return tkinter_clipboard_get()
@@ -310,7 +310,7 @@ class SoS_Kernel(IPythonKernel):
         # the command. Use to set metadata of cell through frontend message
         parser.add_argument('--resume', action='store_true',
             help='''If the cell is automatically reresumed by frontend, in which
-            case -s force should be handled differently.'''),
+            case -s force should be handled differently.''')
         parser.add_argument('--cell', dest='cell_idx', type=int,
             help='Index of cell')
         parser.add_argument('--workflow', const='', nargs='?',
@@ -488,7 +488,7 @@ class SoS_Kernel(IPythonKernel):
             description='''Show a list of tasks from specified queue''')
         parser.add_argument('tasks', nargs='*', help='ID of tasks')
         parser.add_argument('-s', '--status', nargs='*',
-            help='''Display tasks of specified status. Default to all.'''),
+            help='''Display tasks of specified status. Default to all.''')
         parser.add_argument('-q', '--queue',
             help='''Task queue on which the tasks are retrived.''')
         parser.add_argument('--age', help='''Limit to tasks that is created more than
@@ -572,9 +572,9 @@ class SoS_Kernel(IPythonKernel):
                 if x[0] == kdef[0]:
                     self._kernel_list[idx] = kdef
                     return self._kernel_list[idx]
-            else:
-                self._kernel_list.append(kdef)
-                return self._kernel_list[-1]
+                else:
+                    self._kernel_list.append(kdef)
+                    return self._kernel_list[-1]
 
         if kernel is not None:
             # in this case kernel should have been defined in kernel list
@@ -730,6 +730,8 @@ class SoS_Kernel(IPythonKernel):
         self.comm_manager.register_target('sos_comm', self.sos_comm)
         self.cell_idx = None
         self.my_tasks = {}
+        self.last_executed_code = ''
+        self.RET_VARS = []
         #
         self._workflow_mode = False
         self._render_result = False
@@ -1123,7 +1125,7 @@ class SoS_Kernel(IPythonKernel):
         reply['content']['execution_count'] = self._execution_count
         return reply['content']
 
-    def switch_kernel(self, kernel, in_vars=[], ret_vars=[], kernel_name=None, language=None, color=None):
+    def switch_kernel(self, kernel, in_vars=None, ret_vars=None, kernel_name=None, language=None, color=None):
         # switching to a non-sos kernel
         if not kernel:
             kinfo = self.find_kernel(self.kernel)
@@ -1183,7 +1185,7 @@ Available subkernels:\n{}'''.format(
                     self.warn('Failed to start kernel "{}". Use "jupyter kernelspec list" to check if it is installed: {}'.format(kernel, e))
                     return
             self.KM, self.KC = self.kernels[kinfo[0]]
-            self.RET_VARS = ret_vars
+            self.RET_VARS = [] if ret_vars is None else ret_vars
             self.kernel = kinfo[0]
             if new_kernel and self.kernel in self.supported_languages:
                 init_stmts = self.supported_languages[self.kernel].init_statements
@@ -2212,7 +2214,7 @@ Available subkernels:\n{}'''.format(
                         from sos.jupyter.converter import notebook_to_script
                         arg = argparse.Namespace()
                         arg.all = True
-                        notebook_to_script(self._notebook_name + '.ipynb', filename, sargs=arg, unknown_args=[])
+                        notebook_to_script(self._notebook_name + '.ipynb', filename, args=arg, unknown_args=[])
                     if args.setx:
                         import stat
                         os.chmod(filename, os.stat(filename).st_mode | stat.S_IEXEC)
@@ -2251,7 +2253,7 @@ Available subkernels:\n{}'''.format(
             self.options = options + ' ' + self.options
             try:
                 self._workflow_mode = True
-                if not hasattr(self, 'last_executed_code') or not self.last_executed_code:
+                if not self.last_executed_code:
                     self.warn('No saved script')
                     self.last_executed_code = ''
                 return self._do_execute(self.last_executed_code, silent, store_history, user_expressions, allow_stdin)

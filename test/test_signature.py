@@ -268,7 +268,7 @@ run("touch ${output}")
         try:
             # remove existing output if exists
             FileTarget('a.txt').remove('both')
-        except:
+        except Exception:
             pass
         start = time.time()
         Base_Executor(wf).run()
@@ -289,7 +289,7 @@ run("touch ${output}")
         try:
             # remove existing output if exists
             os.remove('a.txt')
-        except:
+        except Exception:
             pass
 
     def testSignatureAfterRemovalOfFiles(self):
