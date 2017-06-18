@@ -21,64 +21,64 @@
 // is required to make it work for other langauges that SoS supports.
 //
 define([
-    'jquery',
-    'base/js/utils',
-    'codemirror/lib/codemirror',
-    'codemirror/addon/selection/active-line'
+    "jquery",
+    "base/js/utils",
+    "codemirror/lib/codemirror",
+    "codemirror/addon/selection/active-line"
 ], function($) {
 
     "use strict";
     //variables defined as global which enable access from imported scripts.
-    window.BackgroundColor = {}
-    window.DisplayName = {}
-    window.KernelName = {}
-    window.KernelList = []
-    window.events = require('base/js/events');
-    window.utils = require('base/js/utils');
-    window.Jupyter = require('base/js/namespace');
-    window.CodeCell = require('notebook/js/codecell').CodeCell;
+    window.BackgroundColor = {};
+    window.DisplayName = {};
+    window.KernelName = {};
+    window.KernelList = [];
+    window.events = require("base/js/events");
+    window.utils = require("base/js/utils");
+    window.Jupyter = require("base/js/namespace");
+    window.CodeCell = require("notebook/js/codecell").CodeCell;
 
-    window.default_kernel = 'SoS';
+    window.default_kernel = "SoS";
     window.my_panel = null;
     window.pending_cells = {};
 
     window.sos_comm = null;
 
     // initialize BackgroundColor etc from cell meta data
-    if (!('sos' in IPython.notebook.metadata))
-        IPython.notebook.metadata['sos'] = {
-            'kernels': [
+    if (!("sos" in IPython.notebook.metadata))
+        IPython.notebook.metadata["sos"] = {
+            "kernels": [
                 // displayed name, kernel name, language, color
-                ['SoS', 'sos', '', '']
+                ["SoS", "sos", "", ""]
             ],
             // panel displayed, position (float or side), old panel height
-            'panel': {
-                'displayed': true,
-                'style': 'side',
-                'height': 0
+            "panel": {
+                "displayed": true,
+                "style": "side",
+                "height": 0
             },
         };
     // for older notebook without panel attribute
-    else if (!IPython.notebook.metadata['sos'].panel) {
-        IPython.notebook.metadata['sos'].panel = {
-            'displayed': true,
-            'style': 'side',
-            'height': 0
+    else if (!IPython.notebook.metadata["sos"].panel) {
+        IPython.notebook.metadata["sos"].panel = {
+            "displayed": true,
+            "style": "side",
+            "height": 0
         };
     }
     // Initial style is always side but the style is saved and we can honor this
     // configuration later on.
-    IPython.notebook.metadata['sos']['panel'].style = 'side';
+    IPython.notebook.metadata["sos"]["panel"].style = "side";
 
-    window.data = IPython.notebook.metadata['sos']['kernels'];
+    window.data = IPython.notebook.metadata["sos"]["kernels"];
     // upgrade existing meta data if it uses the old 3 item format
-    if (IPython.notebook.metadata['sos']['kernels'].length > 0 &&
-        IPython.notebook.metadata['sos']['kernels'][0].length === 3) {
-        for (var j = 0; j < IPython.notebook.metadata['sos']['kernels'].length; j++) {
-            var def = IPython.notebook.metadata['sos']['kernels'][j];
+    if (IPython.notebook.metadata["sos"]["kernels"].length > 0 &&
+        IPython.notebook.metadata["sos"]["kernels"][0].length === 3) {
+        for (var j = 0; j < IPython.notebook.metadata["sos"]["kernels"].length; j++) {
+            var def = IPython.notebook.metadata["sos"]["kernels"][j];
             // original format, kernel, name, color
             // new format, name, kenel, lan, color
-            IPython.notebook.metadata['sos']['kernels'][j] = [def[1], def[0], def[1], def[2]];
+            IPython.notebook.metadata["sos"]["kernels"][j] = [def[1], def[0], def[1], def[2]];
         }
     }
 
@@ -102,7 +102,7 @@ define([
         var table = document.getElementById("dataframe_" + id);
         var tr = table.getElementsByTagName("tr");
 
-        // Loop through all table rows, and hide those who don't match the search query
+        // Loop through all table rows, and hide those who do not match the search query
         for (var i = 1; i < tr.length; i++) {
             for (var j = 0; j < tr[i].cells.length; ++j) {
                 var matched = false;
@@ -123,7 +123,7 @@ define([
         var tb = table.tBodies[0]; // use `<tbody>` to ignore `<thead>` and `<tfoot>` rows
         var tr = Array.prototype.slice.call(tb.rows, 0); // put rows into array
 
-        if (dtype === 'numeric') {
+        if (dtype === "numeric") {
             var fn = function(a, b) {
                 return parseFloat(a.cells[n].textContent) <= parseFloat(b.cells[n].textContent) ? -1 : 1;
             }
@@ -167,14 +167,14 @@ define([
         /* check if the code is a workflow call, which is marked by
          * %sosrun or %sossave workflowname with options
          */
-        var workflow = '';
+        var workflow = "";
         var run_notebook = false;
-        var lines = code.split('\n');
+        var lines = code.split("\n");
         for (var l = 0; l < lines.length; ++l) {
-            if (lines[l].startsWith('#') || lines[l].trim() == '' || lines[l].startsWith('!'))
+            if (lines[l].startsWith("#") || lines[l].trim() == "" || lines[l].startsWith("!"))
                 continue
             // other magic
-            if (lines[l].startsWith('%')) {
+            if (lines[l].startsWith("%")) {
                 if (lines[l].match(/^%sosrun($|\s)|^%sossave($|\s)|^%preview\s.*(-w|--workflow).*$/)) {
                     run_notebook = true;
                     break;
@@ -192,23 +192,23 @@ define([
             var cells = IPython.notebook.get_cells();
             for (var i = 0; i < cells.length; ++i) {
                 // older version of the notebook might have sos in metadata
-                if (cells[i].cell_type == 'code' && (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === 'SoS' ||
-                        cells[i].metadata.kernel === 'sos')) {
+                if (cells[i].cell_type == "code" && (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === "SoS" ||
+                        cells[i].metadata.kernel === "sos")) {
                     workflow += get_workflow_from_cell(cells[i])
                 }
             }
         }
-        var rerun_option = '';
+        var rerun_option = "";
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i) {
             // this is the cell that is being executed...
-            // according to this.set_input_prompt('*') before execute is called.
+            // according to this.set_input_prompt("*") before execute is called.
             // also, because a cell might be starting without a previous cell
             // being finished, we should start from reverse and check actual code
-            if (cells[i].input_prompt_number == '*' && code == cells[i].get_text()) {
+            if (cells[i].input_prompt_number == "*" && code == cells[i].get_text()) {
                 // use cell kernel if meta exists, otherwise use window.default_kernel
                 if (window._auto_resume) {
-                    rerun_option = ' --resume ';
+                    rerun_option = " --resume ";
                     window._auto_resume = false;
                 }
                 return this.orig_execute(
@@ -217,11 +217,11 @@ define([
                     // 2. cell kernel (might be unspecified for new cell)
                     // 3. cell index (for setting style after execution)
                     "%frontend " +
-                    (IPython.notebook.metadata['sos']['panel'].displayed ? " --use-panel" : "") +
+                    (IPython.notebook.metadata["sos"]["panel"].displayed ? " --use-panel" : "") +
                     " --default-kernel " + window.default_kernel +
                     " --cell-kernel " + cells[i].metadata.kernel +
-                    (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'" : '') +
-                    (run_notebook ? " --workflow " + btoa(workflow) : '') + rerun_option +
+                    (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'" : "") +
+                    (run_notebook ? " --workflow " + btoa(workflow) : "") + rerun_option +
                     " --cell " + i.toString() + "\n" + code,
                     callbacks, options)
             }
@@ -232,12 +232,12 @@ define([
             " --use-panel " +
             " --default-kernel " + window.default_kernel +
             " --cell-kernel " + window.my_panel.cell.metadata.kernel +
-            (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'" : '') +
-            (run_notebook ? " --workflow " + btoa(workflow) : '') + rerun_option +
+            (run_notebook ? " --filename '" + window.document.getElementById("notebook_name").innerHTML + "'" : "") +
+            (run_notebook ? " --workflow " + btoa(workflow) : "") + rerun_option +
             " --cell -1 " + "\n" + code,
             callbacks, {
-                'silent': false,
-                'store_history': false
+                "silent": false,
+                "store_history": false
             })
     }
 
@@ -246,21 +246,21 @@ define([
         if (!files.length) {
             files = [];
         }
-        var head = document.head || document.getElementsByTagName('head')[0];
+        var head = document.head || document.getElementsByTagName("head")[0];
 
         function loadFile(index) {
             if (files.length > index) {
-                if (files[index].endsWith('.css')) {
-                    var fileref = document.createElement('link');
+                if (files[index].endsWith(".css")) {
+                    var fileref = document.createElement("link");
                     fileref.setAttribute("rel", "stylesheet");
                     fileref.setAttribute("type", "text/css");
                     fileref.setAttribute("href", files[index]);
                 } else {
-                    var fileref = document.createElement('script');
+                    var fileref = document.createElement("script");
                     fileref.setAttribute("type", "text/javascript");
                     fileref.setAttribute("src", files[index]);
                 }
-                console.log('Load ' + files[index]);
+                console.log("Load " + files[index]);
                 head.appendChild(fileref);
                 index = index + 1;
                 // Used to call a callback function
@@ -276,7 +276,7 @@ define([
 
     function register_sos_comm() {
         // comm message sent from the kernel
-        window.sos_comm = Jupyter.notebook.kernel.comm_manager.new_comm('sos_comm', {});
+        window.sos_comm = Jupyter.notebook.kernel.comm_manager.new_comm("sos_comm", {});
         window.sos_comm.on_msg(function(msg) {
             // when the notebook starts it should receive a message in the format of
             // a nested array of elements such as
@@ -297,21 +297,21 @@ define([
             var data = msg.content.data;
             var msg_type = msg.metadata.msg_type;
 
-            if (msg_type == 'kernel-list') {
+            if (msg_type == "kernel-list") {
                 // upgrade existing meta data if it uses the old 3 item format
-                if (IPython.notebook.metadata['sos']['kernels'].length > 0 &&
-                    IPython.notebook.metadata['sos']['kernels'][0].length === 3) {
-                    for (var j = 0; j < IPython.notebook.metadata['sos']['kernels'].length; j++) {
-                        var def = IPython.notebook.metadata['sos']['kernels'][j];
+                if (IPython.notebook.metadata["sos"]["kernels"].length > 0 &&
+                    IPython.notebook.metadata["sos"]["kernels"][0].length === 3) {
+                    for (var j = 0; j < IPython.notebook.metadata["sos"]["kernels"].length; j++) {
+                        var def = IPython.notebook.metadata["sos"]["kernels"][j];
                         // original format, kernel, name, color
                         // new format, name, kenel, lan, color
-                        IPython.notebook.metadata['sos']['kernels'][j] = [def[1], def[0], def[1], def[2]];
+                        IPython.notebook.metadata["sos"]["kernels"][j] = [def[1], def[0], def[1], def[2]];
                     }
                 }
 
                 //
-                for (var j = 0; j < IPython.notebook.metadata['sos']['kernels'].length; j++) {
-                    var kdef = IPython.notebook.metadata['sos']['kernels'][j];
+                for (var j = 0; j < IPython.notebook.metadata["sos"]["kernels"].length; j++) {
+                    var kdef = IPython.notebook.metadata["sos"]["kernels"][j];
                     // if local environment has kernel, ok...
                     var k_idx = data.findIndex((item) => item[0] === kdef[0]);
                     // otherwise is the kernel actually used?
@@ -340,43 +340,43 @@ define([
                         KernelList.push([data[i][0], data[i][0]]);
 
                     // if the kernel is not in metadata, push it in
-                    var k_idx = IPython.notebook.metadata['sos']['kernels'].findIndex((item) => item[0] === data[i][0])
+                    var k_idx = IPython.notebook.metadata["sos"]["kernels"].findIndex((item) => item[0] === data[i][0])
                     if (k_idx == -1)
-                        IPython.notebook.metadata['sos']['kernels'].push(data[i])
+                        IPython.notebook.metadata["sos"]["kernels"].push(data[i])
                     else {
                         // if kernel exist update the rest of the information, but warn users first on
                         // inconsistency
-                        if (IPython.notebook.metadata['sos']['kernels'][k_idx][1] != data[i][1]) {
-                            var r = confirm("This notebook used Jupyter kernel " + IPython.notebook.metadata['sos']['kernels'][k_idx][1] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][1] + " instead?");
+                        if (IPython.notebook.metadata["sos"]["kernels"][k_idx][1] != data[i][1]) {
+                            var r = confirm("This notebook used Jupyter kernel " + IPython.notebook.metadata["sos"]["kernels"][k_idx][1] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][1] + " instead?");
                             if (r == true)
-                                IPython.notebook.metadata['sos']['kernels'][k_idx][1] = data[i][1];
+                                IPython.notebook.metadata["sos"]["kernels"][k_idx][1] = data[i][1];
                         } else {
-                            IPython.notebook.metadata['sos']['kernels'][k_idx][1] = data[i][1];
+                            IPython.notebook.metadata["sos"]["kernels"][k_idx][1] = data[i][1];
                         }
-                        if (IPython.notebook.metadata['sos']['kernels'][k_idx][2] != data[i][2]) {
-                            if (IPython.notebook.metadata['sos']['kernels'][k_idx][2] === '') {
-                                IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
-                            } else if (data[i][2] != '') {
-                                var r = confirm("This notebook used language definition " + IPython.notebook.metadata['sos']['kernels'][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
+                        if (IPython.notebook.metadata["sos"]["kernels"][k_idx][2] != data[i][2]) {
+                            if (IPython.notebook.metadata["sos"]["kernels"][k_idx][2] === "") {
+                                IPython.notebook.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
+                            } else if (data[i][2] != "") {
+                                var r = confirm("This notebook used language definition " + IPython.notebook.metadata["sos"]["kernels"][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
                                 if (r == true)
-                                    IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
+                                    IPython.notebook.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
                             }
                         } else {
-                            IPython.notebook.metadata['sos']['kernels'][k_idx][2] = data[i][2];
+                            IPython.notebook.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
                         }
-                        IPython.notebook.metadata['sos']['kernels'][k_idx][3] = data[i][3];
+                        IPython.notebook.metadata["sos"]["kernels"][k_idx][3] = data[i][3];
                     }
                 }
                 //add dropdown menu of kernels in frontend
                 load_select_kernel();
-                console.log('kernel list updated');
-            } else if (msg_type == 'default-kernel') {
+                console.log("kernel list updated");
+            } else if (msg_type == "default-kernel") {
                 // update the cells when the notebook is being opened.
                 // we also set a global kernel to be used for new cells
-                $('#kernel_selector').val(DisplayName[data]);
+                $("#kernel_selector").val(DisplayName[data]);
                 // a side effect of change is cells without metadata kernel info will change background
-                $('#kernel_selector').change();
-            } else if (msg_type == 'cell-kernel') {
+                $("#kernel_selector").change();
+            } else if (msg_type == "cell-kernel") {
                 // get cell from passed cell index, which was sent through the
                 // %frontend magic
                 if (data[0] == -1)
@@ -387,30 +387,30 @@ define([
                     cell.metadata.kernel = DisplayName[data[1]];
                     // set meta information
                     changeStyleOnKernel(cell, data[1])
-                } else if (cell.metadata.tags && cell.metadata.tags.indexOf('report_output') >= 0) {
+                } else if (cell.metadata.tags && cell.metadata.tags.indexOf("report_output") >= 0) {
                     // #639
                     // if kernel is different, changeStyleOnKernel would set report_output.
                     // otherwise we mark report_output
-                    $('.output_wrapper', cell.element).addClass('report_output');
+                    $(".output_wrapper", cell.element).addClass("report_output");
                 }
-            } else if (msg_type == 'preview-input') {
+            } else if (msg_type == "preview-input") {
                 cell = window.my_panel.cell;
                 cell.clear_input();
                 cell.set_text(data);
                 cell.clear_output();
-            } else if (msg_type == 'preview-kernel') {
+            } else if (msg_type == "preview-kernel") {
                 changeStyleOnKernel(window.my_panel.cell, data);
-            } else if (msg_type == 'preview-workflow') {
+            } else if (msg_type == "preview-workflow") {
                 var cell = window.my_panel.cell;
                 cell.clear_input();
-                cell.set_text('%preview --workflow');
+                cell.set_text("%preview --workflow");
                 cell.clear_output();
                 cell.output_area.append_output({
-                    'output_type': 'stream',
-                    'text': data,
-                    'name': 'stdout'
+                    "output_type": "stream",
+                    "text": data,
+                    "name": "stdout"
                 });
-            } else if (msg_type == 'tasks-pending') {
+            } else if (msg_type == "tasks-pending") {
                 // console.log(data);
                 /* we record the pending tasks of cells so that we could
                    rerun cells once all tasks have been completed */
@@ -418,19 +418,19 @@ define([
                    can still locate the cell once its tasks are completed. */
                 var cell = IPython.notebook.get_cell(data[0]);
                 window.pending_cells[cell.cell_id] = data[1];
-            } else if (msg_type == 'remove-task') {
+            } else if (msg_type == "remove-task") {
                 var item = document.getElementById("table_" + data[0] + "_" + data[1]);
                 if (item)
                     item.parentNode.removeChild(item);
-            } else if (msg_type == 'update-duration') {
+            } else if (msg_type == "update-duration") {
                 if (window._duration_updater === undefined) {
                     window._duration_updater = window.setInterval(function() {
-                        $('[id^=duration_]').text(function() {
-                            return durationFormatter($(this).attr('datetime'));
+                        $("[id^=duration_]").text(function() {
+                            return durationFormatter($(this).attr("datetime"));
                         })
                     }, 5000);
                 }
-            } else if (msg_type == 'task-status') {
+            } else if (msg_type == "task-status") {
                 // console.log(data);
                 var item = document.getElementById("status_" + data[0] + "_" + data[1]);
                 if (!item)
@@ -440,7 +440,7 @@ define([
                     item.className = "fa fa-fw fa-2x " + data[3];
                     item.setAttribute('onmouseover', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[4] + "').removeClass('" + data[3] + "')");
                     item.setAttribute('onmouseleave', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[3] + "').removeClass('" + data[4] + "')");
-                    item.setAttribute("onClick", data[5] + '("' + data[1] + '", "' + data[0] + '")');
+                    item.setAttribute("onClick", data[5] + '("' + data[1] + '", "' + data[0] + '")');                   
                 }
                 if (data[2] === "completed") {
                     /* if successful, let us re-run the cell to submt another task
@@ -472,7 +472,7 @@ define([
                         }
                     }
                 }
-            } else if (msg_type == 'show_toc') {
+            } else if (msg_type == "show_toc") {
                 show_toc();
             } else {
                 // this is preview output
@@ -485,17 +485,17 @@ define([
         var used_kernels = new Set();
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i) {
-            if (cells[i].cell_type == 'code' && cells[i].metadata.kernel)
+            if (cells[i].cell_type == "code" && cells[i].metadata.kernel)
                 used_kernels.add(cells[i].metadata.kernel);
         }
-        IPython.notebook.metadata['sos']['kernels'] = IPython.notebook.metadata['sos']['kernels'].filter(function(x) {
+        IPython.notebook.metadata["sos"]["kernels"] = IPython.notebook.metadata["sos"]["kernels"].filter(function(x) {
             return used_kernels.has(x[0])
         });
         window.sos_comm.send({
-            'list-kernel': IPython.notebook.metadata['sos']['kernels'],
-            'update-task-status': window.unknown_tasks,
+            "list-kernel": IPython.notebook.metadata["sos"]["kernels"],
+            "update-task-status": window.unknown_tasks,
         })
-        console.log('sos comm registered');
+        console.log("sos comm registered");
     }
 
     function send_kernel_msg(msg) {
@@ -509,22 +509,22 @@ define([
         if (IPython.notebook.kernel.orig_execute === undefined) {
             IPython.notebook.kernel.orig_execute = IPython.notebook.kernel.execute;
             IPython.notebook.kernel.execute = my_execute;
-            console.log('executor patched');
+            console.log("executor patched");
         }
     }
 
 
     function get_workflow_from_cell(cell) {
-        var lines = cell.get_text().split('\n');
-        var workflow = '';
+        var lines = cell.get_text().split("\n");
+        var workflow = "";
         for (var l = 0; l < lines.length; ++l) {
-            if (lines[l].startsWith('%include') || lines[l].startsWith('%from')) {
-                workflow += lines[l] + '\n';
+            if (lines[l].startsWith("%include") || lines[l].startsWith("%from")) {
+                workflow += lines[l] + "\n";
                 continue
-            } else if (lines[l].startsWith('#') || lines[l].startsWith('%') || lines[l].trim() == '' || lines[l].startsWith('!')) {
+            } else if (lines[l].startsWith("#") || lines[l].startsWith("%") || lines[l].trim() == "" || lines[l].startsWith("!")) {
                 continue
-            } else if (lines[l].startsWith('[') && lines[l].endsWith(']')) {
-                workflow += lines.slice(l).join('\n') + '\n\n';
+            } else if (lines[l].startsWith("[") && lines[l].endsWith("]")) {
+                workflow += lines.slice(l).join("\n") + "\n\n";
             }
             break;
         }
@@ -533,7 +533,7 @@ define([
 
     function changeStyleOnKernel(cell, type) {
         // type should be  displayed name of kernel
-        var sel = cell.element[0].getElementsByClassName('cell_kernel_selector')[0]
+        var sel = cell.element[0].getElementsByClassName("cell_kernel_selector")[0]
         if (!type) {
             sel.selectedIndex = -1;
         } else {
@@ -546,30 +546,30 @@ define([
             }
         }
 
-        if (cell.metadata.tags && cell.metadata.tags.indexOf('report_output') >= 0) {
-            $('.output_wrapper', cell.element).addClass('report_output');
+        if (cell.metadata.tags && cell.metadata.tags.indexOf("report_output") >= 0) {
+            $(".output_wrapper", cell.element).addClass("report_output");
         } else {
-            $('.output_wrapper', cell.element).removeClass('report_output');
+            $(".output_wrapper", cell.element).removeClass("report_output");
         }
 
         // cell in panel does not have prompt area
-        var col = '';
+        var col = "";
         if (cell.is_panel !== undefined) {
             if (type && BackgroundColor[type]) {
                 col = BackgroundColor[type];
             }
-            cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = col;
+            cell.element[0].getElementsByClassName("input")[0].style.backgroundColor = col;
             return col;
         }
 
 
-        if (type == 'sos' && get_workflow_from_cell(cell)) {
-            col = '#F0F0F0';
+        if (type == "sos" && get_workflow_from_cell(cell)) {
+            col = "#F0F0F0";
         } else if (type && BackgroundColor[type]) {
             col = BackgroundColor[type];
         }
-        var ip = cell.element[0].getElementsByClassName('input_prompt');
-        var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
+        var ip = cell.element[0].getElementsByClassName("input_prompt");
+        var op = cell.element[0].getElementsByClassName("out_prompt_overlay");
         if (ip.length > 0)
             ip[0].style.backgroundColor = col;
         if (op.length > 0)
@@ -578,27 +578,27 @@ define([
     }
 
     window.kill_task = function(task_id, task_queue) {
-        console.log('Kill ' + task_id);
+        console.log("Kill " + task_id);
         send_kernel_msg({
-            'kill-task': [task_id, task_queue],
+            "kill-task": [task_id, task_queue],
         });
     }
 
     window.resume_task = function(task_id, task_queue) {
-        console.log('Resume ' + task_id);
+        console.log("Resume " + task_id);
         send_kernel_msg({
-            'resume-task': [task_id, task_queue],
+            "resume-task": [task_id, task_queue],
         });
     }
 
     window.task_info = function(task_id, task_queue) {
-        console.log('Request info on ' + task_id);
+        console.log("Request info on " + task_id);
         send_kernel_msg({
-            'task-info': [task_id, task_queue],
+            "task-info": [task_id, task_queue],
         });
         var cell = window.my_panel.cell;
         cell.clear_input();
-        cell.set_text('%taskinfo ' + task_id + ' -q ' + task_queue);
+        cell.set_text("%taskinfo " + task_id + " -q " + task_queue);
         cell.clear_output();
     }
 
@@ -608,19 +608,19 @@ define([
         var seconds = parseInt(ms / 1000);
         var day = Math.floor(seconds / 86400);
         if (day > 0)
-            res.push(day + ' day');
+            res.push(day + " day");
         var hh = Math.floor((seconds % 86400) / 3600);
         if (hh > 0)
-            res.push(hh + ' hr');
+            res.push(hh + " hr");
         var mm = Math.floor((seconds % 3600) / 60);
         if (mm > 0)
-            res.push(mm + ' min');
+            res.push(mm + " min");
         var ss = seconds % 60;
         if (ss > 0)
-            res.push(ss + ' sec');
-        res = res.join(' ');
-        if (res === '')
-            return '0 sec'
+            res.push(ss + " sec");
+        res = res.join(" ");
+        if (res === "")
+            return "0 sec"
         else
             return res;
     };
@@ -628,7 +628,7 @@ define([
     function set_codemirror_option(evt, param) {
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i)
-            cells[i].code_mirror.setOption('styleActiveLine', cells[i].selected);
+            cells[i].code_mirror.setOption("styleActiveLine", cells[i].selected);
         return true;
     }
 
@@ -644,11 +644,11 @@ define([
             add_lan_selector(cells[i], cells[i].metadata.kernel);
         }
         if (window.my_panel)
-            add_lan_selector(window.my_panel.cell, 'SoS');
+            add_lan_selector(window.my_panel.cell, "SoS");
 
         var cells = IPython.notebook.get_cells();
         for (var i = 0; i < cells.length; i++) {
-            if (cells[i].cell_type == 'code')
+            if (cells[i].cell_type == "code")
                 changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
         }
         // update droplist of panel cell
@@ -660,25 +660,25 @@ define([
             .css("margin-left", "0.75em")
             .attr("class", "form-control select-xs")
         // .change(select_kernel);
-        if (Jupyter.toolbar.element.has('#kernel_selector').length == 0)
+        if (Jupyter.toolbar.element.has("#kernel_selector").length == 0)
             Jupyter.toolbar.element.append(dropdown);
         // remove any existing items
-        $('#kernel_selector').empty();
+        $("#kernel_selector").empty();
         $.each(KernelList, function(key, value) {
-            $('#kernel_selector')
+            $("#kernel_selector")
                 .append($("<option/>")
                     .attr("value", DisplayName[value[0]])
                     .text(DisplayName[value[0]]));
         });
-        $('#kernel_selector').val("SoS");
-        $('#kernel_selector').change(function() {
+        $("#kernel_selector").val("SoS");
+        $("#kernel_selector").change(function() {
             var kernel_type = $("#kernel_selector").val();
 
             window.default_kernel = kernel_type;
 
             var cells = IPython.notebook.get_cells();
             for (var i in cells) {
-                if (cells[i].cell_type == 'code' && !cells[i].metadata.kernel) {
+                if (cells[i].cell_type == "code" && !cells[i].metadata.kernel) {
                     changeStyleOnKernel(cells[i], undefined);
                 }
             }
@@ -689,17 +689,17 @@ define([
         var cells = IPython.notebook.get_cells();
         // setting up background color and selection according to notebook metadata
         for (var i in cells) {
-            if (cells[i].cell_type == 'code') {
+            if (cells[i].cell_type == "code") {
                 changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
             }
         }
-        $('[id^=status_]').removeAttr('onClick').removeAttr('onmouseover').removeAttr('onmouseleave');
-        var tasks = $('[id^=status_]');
+        $("[id^=status_]").removeAttr("onClick").removeAttr("onmouseover").removeAttr("onmouseleave");
+        var tasks = $("[id^=status_]");
         window.unknown_tasks = [];
         for (var i = 0; i < tasks.length; ++i) {
             // status_localhost_5ea9232779ca19591819072642646d16
-            if (tasks[i].id.match('^status_[^_]+_[0-9a-f]{32}$')) {
-                tasks[i].className = 'fa fa-fw fa-2x fa-refresh fa-spin';
+            if (tasks[i].id.match("^status_[^_]+_[0-9a-f]{32}$")) {
+                tasks[i].className = "fa fa-fw fa-2x fa-refresh fa-spin";
                 window.unknown_tasks.push(tasks[i].id);
             }
         }
@@ -717,34 +717,34 @@ define([
     function removeMathJaxPreview(elt) {
         elt.find("script[type='math/tex']").each(
             function(i, e) {
-                $(e).replaceWith('$' + $(e).text() + '$')
+                $(e).replaceWith("$" + $(e).text() + "$")
             })
-        elt.find("span.MathJax_Preview").remove()
-        elt.find("span.MathJax").remove()
+        elt.find("span.MathJax_Preview").remove();
+        elt.find("span.MathJax").remove();
         return elt
     }
 
 
     function highlight_toc_item(evt, data) {
-        if ($('.toc').length === 0)
+        if ($(".toc").length === 0)
             return;
         var c = data.cell.element; //
         if (c) {
-            var ll = $(c).find(':header')
+            var ll = $(c).find(":header")
             if (ll.length == 0) {
-                var ll = $(c).prevAll().find(':header')
+                var ll = $(c).prevAll().find(":header");
             }
             var elt = ll[ll.length - 1]
             if (elt) {
-                var highlighted_item = $('.toc').find('a[href="#' + elt.id + '"]')
+                var highlighted_item = $('.toc').find('a[href="#' + elt.id + '"]');
                 if (evt.type == "execute") {
                     // remove the selected class and add execute class
                     // il the cell is selected again, it will be highligted as selected+running
-                    highlighted_item.removeClass('toc-item-highlight-select').addClass('toc-item-highlight-execute')
-                    //console.log("->>> highlighted_item class",highlighted_item.attr('class'))
+                    highlighted_item.removeClass("toc-item-highlight-select").addClass("toc-item-highlight-execute")
+                    //console.log("->>> highlighted_item class",highlighted_item.attr("class"))
                 } else {
-                    $('.toc').find('.toc-item-highlight-select').removeClass('toc-item-highlight-select')
-                    highlighted_item.addClass('toc-item-highlight-select')
+                    $(".toc").find(".toc-item-highlight-select").removeClass("toc-item-highlight-select")
+                    highlighted_item.addClass("toc-item-highlight-select")
                 }
             }
         }
@@ -753,21 +753,21 @@ define([
 
     var make_link = function(h) {
         var a = $("<a/>");
-        a.attr("href", '#' + h.attr('id'));
+        a.attr("href", "#" + h.attr("id"));
         // get the text *excluding* the link text, whatever it may be
         var hclone = h.clone();
         hclone = removeMathJaxPreview(hclone);
         hclone.children().last().remove(); // remove the last child (that is the automatic anchor)
         hclone.find("a[name]").remove(); //remove all named anchors
         a.html(hclone.html());
-        a.on('click', function() {
+        a.on("click", function() {
             setTimeout(function() {
                 $.ajax()
             }, 100); //workaround for  https://github.com/jupyter/notebook/issues/699
             IPython.notebook.get_selected_cell().unselect(); //unselect current cell
             var new_selected_cell = $("[id='" + h.attr('id') + "']").parents('.unselected').switchClass('unselected', 'selected')
-            new_selected_cell.data('cell').selected = true;
-            var cell = new_selected_cell.data('cell') // IPython.notebook.get_selected_cell()
+            new_selected_cell.data("cell").selected = true;
+            var cell = new_selected_cell.data("cell") // IPython.notebook.get_selected_cell()
             highlight_toc_item("toc_link_click", {
                 cell: cell
             });
@@ -780,8 +780,8 @@ define([
 
         //process_cell_toc();
 
-        var toc = $('<div class="toc"/>');
-        var ul = $("<ul/>").addClass("toc-item").addClass("lev1").attr('id', 'toc-level0');
+        var toc = $("<div class='toc'/>");
+        var ul = $("<ul/>").addClass("toc-item").addClass("lev1").attr("id", "toc-level0");
         toc.append(ul);
         var depth = 1; //var depth = ol_depth(ol);
         var li = ul; //yes, initialize li with ul! 
@@ -789,7 +789,7 @@ define([
         var min_lvl = 1,
             lbl_ary = [];
         for (; min_lvl <= 6; min_lvl++) {
-            if (all_headers.is('h' + min_lvl)) {
+            if (all_headers.is("h" + min_lvl)) {
                 break;
             }
         }
@@ -806,9 +806,9 @@ define([
             }
             //If h had already a number, remove it
             /* $(h).find(".toc-item-num").remove(); */
-            var num_str = incr_lbl(lbl_ary, level - 1).join('.'); // numbered heading labels
+            var num_str = incr_lbl(lbl_ary, level - 1).join("."); // numbered heading labels
             //var num_lbl = $("<span/>").addClass("toc-item-num")
-            //    .text(num_str).append('&nbsp;').append('&nbsp;');
+            //    .text(num_str).append("&nbsp;").append("&nbsp;");
 
             // walk down levels
             for (var elm = li; depth < level; depth++) {
@@ -820,7 +820,7 @@ define([
             for (; depth > level; depth--) {
                 // up twice: the enclosing <ol> and <li> it was inserted in
                 ul = ul.parent();
-                while (!ul.is('ul')) {
+                while (!ul.is("ul")) {
                     ul = ul.parent();
                 }
             }
@@ -830,17 +830,17 @@ define([
             // This anchor is automatically removed when building toc links. The original id is also preserved and an anchor is created 
             // using it. 
             // Finally a heading line can be linked to by [link](#initialID), or [link](#initialID-num_str) or [link](#myanchor)
-            h.id = h.id.replace(/\$/g, '').replace('\\', '')
+            h.id = h.id.replace(/\$/g, "").replace("\\", "")
             if (!$(h).attr("saveid")) {
                 $(h).attr("saveid", h.id)
             } //save original id
-            h.id = $(h).attr("saveid") + '-' + num_str.replace(/\./g, '');
+            h.id = $(h).attr("saveid") + "-" + num_str.replace(/\./g, "");
             // change the id to be "unique" and toc links to it 
-            // (and replace '.' with '' in num_str since it poses some pb with jquery)
-            var saveid = $(h).attr('saveid')
+            // (and replace "." with "" in num_str since it poses some pb with jquery)
+            var saveid = $(h).attr("saveid")
             //escape special chars: http://stackoverflow.com/questions/3115150/
             var saveid_search = saveid.replace(/[-[\]{}():\/!;&@=$£%§<>%"'*+?.,~\\^$|#\s]/g, "\\$&");
-            if ($(h).find("a[name=" + saveid_search + "]").length == 0) { //add an anchor with original id (if it doesnt't already exists)
+            if ($(h).find("a[name=" + saveid_search + "]").length == 0) { //add an anchor with original id (if it does not already exists)
                 $(h).prepend($("<a/>").attr("name", saveid));
             }
 
@@ -855,55 +855,55 @@ define([
     };
 
     var create_panel_div = function() {
-        var panel_wrapper = $('<div id="panel-wrapper"/>')
+        var panel_wrapper = $("<div id='panel-wrapper'/>")
             .append(
-                $("<div/>").attr("id", "panel").addClass('panel')
+                $("<div/>").attr("id", "panel").addClass("panel")
             )
 
         $("body").append(panel_wrapper);
 
         $([Jupyter.events]).on("resize-header.Page", function() {
-            if (IPython.notebook.metadata['sos']['panel'].style === 'side') {
-                $('#panel-wrapper').css('top', $('#header').height())
-                $('#panel-wrapper').css('height', $('#site').height());
+            if (IPython.notebook.metadata["sos"]["panel"].style === "side") {
+                $("#panel-wrapper").css("top", $("#header").height())
+                $("#panel-wrapper").css("height", $("#site").height());
             }
         });
         $([Jupyter.events]).on("toggle-all-headers", function() {
-            if (IPython.notebook.metadata['sos']['panel'].style === 'side') {
-                var headerVisibleHeight = $('#header').is(':visible') ? $('#header').height() : 0
-                $('#panel-wrapper').css('top', headerVisibleHeight)
-                $('#panel-wrapper').css('height', $('#site').height());
+            if (IPython.notebook.metadata["sos"]["panel"].style === "side") {
+                var headerVisibleHeight = $("#header").is(":visible") ? $("#header").height() : 0
+                $("#panel-wrapper").css("top", headerVisibleHeight)
+                $("#panel-wrapper").css("height", $("#site").height());
             }
         });
 
         // enable dragging and save position on stop moving
-        $('#panel-wrapper').draggable({
+        $("#panel-wrapper").draggable({
 
             drag: function(event, ui) {
 
                 // If dragging to the left side, then transforms in sidebar
-                if ((ui.position.left <= 0) && (IPython.notebook.metadata['sos']['panel'].style === 'float')) {
-                    IPython.notebook.metadata['sos']['panel'].style = 'side';
-                    IPython.notebook.metadata['sos']['panel'].height = $('#panel-wrapper').css('height');
-                    panel_wrapper.removeClass('float-wrapper').addClass('sidebar-wrapper');
-                    $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30);
-                    $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30);
-                    ui.position.top = $('#header').height();
+                if ((ui.position.left <= 0) && (IPython.notebook.metadata["sos"]["panel"].style === "float")) {
+                    IPython.notebook.metadata["sos"]["panel"].style = "side";
+                    IPython.notebook.metadata["sos"]["panel"].height = $("#panel-wrapper").css("height");
+                    panel_wrapper.removeClass("float-wrapper").addClass("sidebar-wrapper");
+                    $("#notebook-container").css("margin-left", $("#panel-wrapper").width() + 30);
+                    $("#notebook-container").css("width", $("#notebook").width() - $("#panel-wrapper").width() - 30);
+                    ui.position.top = $("#header").height();
                     ui.position.left = 0;
-                    $('#panel-wrapper').css('height', $('#site').height());
+                    $("#panel-wrapper").css("height", $("#site").height());
                 }
                 if (ui.position.left <= 0) {
                     ui.position.left = 0;
-                    ui.position.top = $('#header').height();
+                    ui.position.top = $("#header").height();
                 }
-                if ((ui.position.left > 0) && (IPython.notebook.metadata['sos']['panel'].style === 'side')) {
-                    IPython.notebook.metadata['sos']['panel'].style = 'float';
-                    if (IPython.notebook.metadata['sos']['panel'].height == 0)
-                        IPython.notebook.metadata['sos']['panel'].height = Math.max($('#site').height() / 2, 200)
-                    $('#panel-wrapper').css('height', IPython.notebook.metadata['sos']['panel'].height);
-                    panel_wrapper.removeClass('sidebar-wrapper').addClass('float-wrapper');
-                    $('#notebook-container').css('margin-left', 30);
-                    $('#notebook-container').css('width', $('#notebook').width() - 30);
+                if ((ui.position.left > 0) && (IPython.notebook.metadata["sos"]["panel"].style === "side")) {
+                    IPython.notebook.metadata["sos"]["panel"].style = "float";
+                    if (IPython.notebook.metadata["sos"]["panel"].height == 0)
+                        IPython.notebook.metadata["sos"]["panel"].height = Math.max($("#site").height() / 2, 200)
+                    $("#panel-wrapper").css("height", IPython.notebook.metadata["sos"]["panel"].height);
+                    panel_wrapper.removeClass("sidebar-wrapper").addClass("float-wrapper");
+                    $("#notebook-container").css("margin-left", 30);
+                    $("#notebook-container").css("width", $("#notebook").width() - 30);
                 }
 
             }, //end of drag function
@@ -912,80 +912,80 @@ define([
             },
             stop: function(event, ui) {
                 // Ensure position is fixed (again)
-                $('#panel-wrapper').css('position', 'fixed');
+                $("#panel-wrapper").css("position", "fixed");
             },
             // can only drag from the border, not the panel and the cell. This
             // allows us to, for example, copy/paste output area.
             cancel: "#panel, #input"
         });
 
-        $('#panel-wrapper').resizable({
+        $("#panel-wrapper").resizable({
             resize: function(event, ui) {
-                if (IPython.notebook.metadata['sos']['panel'].style === 'side') {
-                    $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
-                    $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
+                if (IPython.notebook.metadata["sos"]["panel"].style === "side") {
+                    $("#notebook-container").css("margin-left", $("#panel-wrapper").width() + 30)
+                    $("#notebook-container").css("width", $("#notebook").width() - $("#panel-wrapper").width() - 30)
                 }
             },
             start: function(event, ui) {
                 $(this).width($(this).width());
-                //$(this).css('position', 'fixed');
+                //$(this).css("position", "fixed");
             },
         })
 
         // Ensure position is fixed
-        $('#panel-wrapper').css('position', 'fixed');
+        $("#panel-wrapper").css("position", "fixed");
 
         // if panel-wrapper is undefined (first run(?), then hide it)
-        // if ($('#panel-wrapper').css('display') == undefined) $('#panel-wrapper').css('display', "none") //block
-        if ($('#panel-wrapper').css('display') == undefined) $('#panel-wrapper').css('display', "block") //block
-        $('#site').bind('siteHeight', function() {
-            $('#panel-wrapper').css('height', $('#site').height());
+        // if ($("#panel-wrapper").css("display") == undefined) $("#panel-wrapper").css("display", "none") //block
+        if ($("#panel-wrapper").css("display") == undefined) $("#panel-wrapper").css("display", "block") //block
+        $("#site").bind("siteHeight", function() {
+            $("#panel-wrapper").css("height", $("#site").height());
         })
 
-        $('#site').trigger('siteHeight');
+        $("#site").trigger("siteHeight");
 
 
-        if (IPython.notebook.metadata['sos']['panel'].style === 'side') {
-            $('#panel-wrapper').addClass('sidebar-wrapper');
+        if (IPython.notebook.metadata["sos"]["panel"].style === "side") {
+            $("#panel-wrapper").addClass("sidebar-wrapper");
             setTimeout(function() {
-                $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30);
-                $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30);
+                $("#notebook-container").css("width", $("#notebook").width() - $("#panel-wrapper").width() - 30);
+                $("#notebook-container").css("margin-left", $("#panel-wrapper").width() + 30);
             }, 500)
             setTimeout(function() {
-                $('#panel-wrapper').css('height', $('#site').height());
+                $("#panel-wrapper").css("height", $("#site").height());
             }, 500)
             setTimeout(function() {
-                $('#panel-wrapper').css('top', $('#header').height());
+                $("#panel-wrapper").css("top", $("#header").height());
             }, 500) //wait a bit
-            $('#panel-wrapper').css('left', 0);
+            $("#panel-wrapper").css("left", 0);
 
         }
 
 
         $(window).resize(function() {
-            $('#panel').css({
+            $("#panel").css({
                 maxHeight: $(window).height() - 30
             });
-            $('#panel-wrapper').css({
+            $("#panel-wrapper").css({
                 maxHeight: $(window).height() - 10
             });
 
-            if (IPython.notebook.metadata['sos']['panel'].style === 'side') {
-                if ($('#panel-wrapper').css('display') != 'block') {
-                    $('#notebook-container').css('margin-left', 30);
-                    $('#notebook-container').css('width', $('#notebook').width() - 30);
+            if (IPython.notebook.metadata["sos"]["panel"].style === "side") {
+                if ($("#panel-wrapper").css("display") != "block") {
+                    $("#notebook-container").css("margin-left", 30);
+                    $("#notebook-container").css("width", $("#notebook").width() - 30);
                 } else {
-                    $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30);
-                    $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30);
-                    $('#panel-wrapper').css('height', $('#site').height());
-                    $('#panel-wrapper').css('top', $('#header').height());
+                    $("#notebook-container").css("margin-left", $("#panel-wrapper").width() + 30);
+                    $("#notebook-container").css("width", $("#notebook").width() - $("#panel-wrapper").width() - 30);
+                    $("#panel-wrapper").css("height", $("#site").height());
+                    $("#panel-wrapper").css("top", $("#header").height());
                 }
             } else {
-                $('#notebook-container').css('margin-left', 30);
-                $('#notebook-container').css('width', $('#notebook').width() - 30);
+                $("#notebook-container").css("margin-left", 30);
+                $("#notebook-container").css("width", $("#notebook").width() - 30);
             }
         });
-        $(window).trigger('resize');
+        $(window).trigger("resize");
     }
 
     var panel = function(nb) {
@@ -995,7 +995,7 @@ define([
         this.km = nb.keyboard_manager;
 
         create_panel_div();
-        console.log('panel created');
+        console.log("panel created");
 
         // create my cell
         var cell = this.cell = new CodeCell(nb.kernel, {
@@ -1005,7 +1005,7 @@ define([
             notebook: nb,
             tooltip: nb.tooltip,
         });
-        add_lan_selector(cell).css('margin-top', '-17pt').css('margin-right', '0pt');
+        add_lan_selector(cell).css("margin-top", "-17pt").css("margin-right", "0pt");
         cell.set_input_prompt();
         cell.is_panel = true;
         $("#panel").append(this.cell.element);
@@ -1015,25 +1015,25 @@ define([
         this.cell.element.hide();
 
         // remove cell toolbar
-        $('.celltoolbar', cell.element).remove()
-        $('.ctb_hideshow', cell.element).remove()
-        //this.cell.element.find('code_cell').css('position', 'absolute').css('top', '1.5em');
-        this.cell.element.find('div.input_prompt').addClass('panel_input_prompt').text('In [-]:');
-        this.cell.element.find('div.input_area').css('margin-top', '20pt')
+        $(".celltoolbar", cell.element).remove()
+        $(".ctb_hideshow", cell.element).remove()
+        //this.cell.element.find("code_cell").css("position", "absolute").css("top", "1.5em");
+        this.cell.element.find("div.input_prompt").addClass("panel_input_prompt").text("In [-]:");
+        this.cell.element.find("div.input_area").css("margin-top", "20pt")
             .prepend(
-                $("<a/>").attr('href', '#').attr('id', 'input_dropdown').addClass('input_dropdown')
+                $("<a/>").attr("href", "#").attr("id", "input_dropdown").addClass("input_dropdown")
                 .append($("<i class='fa fa-caret-down'></i>"))
                 .click(function() {
-                    var dropdown = $('#panel_history');
-                    var len = $('#panel_history option').length;
+                    var dropdown = $("#panel_history");
+                    var len = $("#panel_history option").length;
                     if (len === 0)
                         return false;
-                    if (dropdown.css('display') === 'none') {
+                    if (dropdown.css("display") === "none") {
                         dropdown.show();
                         dropdown[0].size = len;
                         setTimeout(function() {
                             dropdown.hide();
-                            dropdown.val('');
+                            dropdown.val("");
                         }, 8000);
                     } else {
                         dropdown.hide();
@@ -1041,16 +1041,16 @@ define([
                     return false;
                 })
             ).parent().append(
-                $("<select></select>").attr("id", "panel_history").addClass('panel_history')
+                $("<select></select>").attr("id", "panel_history").addClass("panel_history")
                 .change(function() {
-                    var item = $('#panel_history').val();
+                    var item = $("#panel_history").val();
                     // separate kernel and input
-                    var sep = item.indexOf(':');
+                    var sep = item.indexOf(":");
                     var kernel = item.substring(0, sep);
                     var text = item.substring(sep + 1);
 
                     var panel_cell = window.my_panel.cell;
-                    $('#panel_history').hide();
+                    $("#panel_history").hide();
 
                     // set the kernel of the panel cell as the sending cell
                     if (panel_cell.metadata.kernel !== kernel) {
@@ -1065,63 +1065,63 @@ define([
                 })
             )
 
-        add_to_panel_history('sos', '%sossave --to html --force', '');
-        add_to_panel_history('sos', '%preview --workflow', '');
-        add_to_panel_history('sos', '%tasks', '');
-        add_to_panel_history('sos', '%toc', '');
+        add_to_panel_history("sos", "%sossave --to html --force", "");
+        add_to_panel_history("sos", "%preview --workflow", "");
+        add_to_panel_history("sos", "%tasks", "");
+        add_to_panel_history("sos", "%toc", "");
 
         // make the font of the panel slightly smaller than the main notebook
         // unfortunately the code mirror input cell has fixed font size that cannot
         // be changed.
-        this.cell.element[0].style.fontSize = '90%';
-        console.log('panel rendered');
+        this.cell.element[0].style.fontSize = "90%";
+        console.log("panel rendered");
 
         // override ctrl/shift-enter to execute me if I'm focused instead of the notebook's cell
         var execute_and_select_action = this.km.actions.register({
             handler: $.proxy(this.execute_and_select_event, this),
-        }, 'panel-execute-and-select');
+        }, "panel-execute-and-select");
         var execute_action = this.km.actions.register({
             handler: $.proxy(this.execute_event, this),
-        }, 'panel-execute');
+        }, "panel-execute");
         var toggle_action = this.km.actions.register({
             handler: $.proxy(toggle_panel, this),
-        }, 'panel-toggle');
+        }, "panel-toggle");
 
         var execute_selected_in_panel = this.km.actions.register({
-            help: 'run selected text in panel cell',
+            help: "run selected text in panel cell",
             handler: execute_in_panel,
-        }, 'execute-selected');
+        }, "execute-selected");
         var show_toc_in_panel = this.km.actions.register({
-            help: 'show toc in panel',
+            help: "show toc in panel",
             handler: show_toc,
-        }, 'show-toc');
+        }, "show-toc");
         var toggle_output = this.km.actions.register({
-            help: 'toggle display output in HTML',
+            help: "toggle display output in HTML",
             handler: toggle_display_output,
-        }, 'toggle-show-output');
+        }, "toggle-show-output");
         var toggle_markdown = this.km.actions.register({
-            help: 'toggle between markdown and code cells',
+            help: "toggle between markdown and code cells",
             handler: toggle_markdown_cell,
-        }, 'toggle-markdown');
+        }, "toggle-markdown");
         var shortcuts = {
-            'shift-enter': execute_and_select_action,
-            'ctrl-enter': execute_action,
-            'ctrl-b': toggle_action,
+            "shift-enter": execute_and_select_action,
+            "ctrl-enter": execute_action,
+            "ctrl-b": toggle_action,
             // It is very strange to me that other key bindings such as
             // Ctrl-e does not work as it will somehow make the
             // code_mirror.getSelection() line getting only blank string.
-            'ctrl-shift-enter': execute_selected_in_panel,
-            'ctrl-shift-t': show_toc_in_panel,
-            'ctrl-shift-o': toggle_output,
-            'ctrl-shift-m': toggle_markdown,
+            "ctrl-shift-enter": execute_selected_in_panel,
+            "ctrl-shift-t": show_toc_in_panel,
+            "ctrl-shift-o": toggle_output,
+            "ctrl-shift-m": toggle_markdown,
         }
         this.km.edit_shortcuts.add_shortcuts(shortcuts);
         this.km.command_shortcuts.add_shortcuts(shortcuts);
 
         this.cell.element.show();
         this.cell.focus_editor();
-        IPython.notebook.metadata['sos']['panel'].displayed = true;
-        console.log('display panel');
+        IPython.notebook.metadata["sos"]["panel"].displayed = true;
+        console.log("display panel");
     };
 
 
@@ -1150,18 +1150,18 @@ define([
     };
 
     var add_to_panel_history = function(kernel, text, col) {
-        // console.log('add ' + kernel + ' ' + col);
+        // console.log("add " + kernel + " " + col);
         var matched = false;
-        $('#panel_history option').each(function(index, element) {
-            if (element.value == kernel + ':' + text) {
+        $("#panel_history option").each(function(index, element) {
+            if (element.value == kernel + ":" + text) {
                 matched = true;
                 return false;
             }
         })
         if (!matched) {
-            $('#panel_history').prepend($('<option></option>')
-                    .css('background-color', col)
-                    .attr('value', kernel + ":" + text).text(text.split("\n").join(' .. ').truncate(40))
+            $("#panel_history").prepend($("<option></option>")
+                    .css("background-color", col)
+                    .attr("value", kernel + ":" + text).text(text.split("\n").join(" .. ").truncate(40))
                 )
                 .prop("selectedIndex", -1);
         }
@@ -1170,7 +1170,7 @@ define([
     String.prototype.truncate = function() {
         var re = this.match(/^.{0,25}[\S]*/);
         var l = re[0].length;
-        var re = re[0].replace(/\s$/, '');
+        var re = re[0].replace(/\s$/, "");
         if (l < this.length)
             re = re + "...";
         return re;
@@ -1178,11 +1178,11 @@ define([
 
     var remove_tag = function(cell, tag) {
         // if the toolbar exists, use the button ...
-        $('.output_wrapper', cell.element).removeClass(tag);
-        if ($('.tags-input', cell.element).length > 0) {
+        $(".output_wrapper", cell.element).removeClass(tag);
+        if ($(".tags-input", cell.element).length > 0) {
             // find the button and click
-            var tag = $('.cell-tag', cell.element).filter(function(idx, y) { return y.innerText === tag; });
-            $('.remove-tag-btn', tag).click();
+            var tag = $(".cell-tag", cell.element).filter(function(idx, y) { return y.innerText === tag; });
+            $(".remove-tag-btn", tag).click();
         } else {
             // otherwise just remove the metadata
             var idx = cell.metadata.tags.indexOf(tag);
@@ -1191,11 +1191,11 @@ define([
     }
 
     var add_tag = function(cell, tag) {
-        $('.output_wrapper', cell.element).addClass(tag);
-        if ($('.tags-input', cell.element).length > 0) {
-            var taginput = $('.tags-input', cell.element);
+        $(".output_wrapper", cell.element).addClass(tag);
+        if ($(".tags-input", cell.element).length > 0) {
+            var taginput = $(".tags-input", cell.element);
             taginput.children()[1].value = tag;
-            $('.btn', taginput)[1].click();
+            $(".btn", taginput)[1].click();
         } else {
             // if tag toolbar not exist
             if (! cell.metadata.tags) {
@@ -1208,21 +1208,21 @@ define([
 
     var toggle_display_output = function(evt) {
         var cell = evt.notebook.get_selected_cell();
-        if (cell.cell_type == 'markdown') {
-            // switch between hide_output and ''
-            if (cell.metadata.tags && cell.metadata.tags.indexOf('hide_output') >= 0) {
+        if (cell.cell_type == "markdown") {
+            // switch between hide_output and ""
+            if (cell.metadata.tags && cell.metadata.tags.indexOf("hide_output") >= 0) {
                 // if report_output on, remove it
-                remove_tag(cell, 'hide_output');
+                remove_tag(cell, "hide_output");
             } else {
-                add_tag(cell, 'hide_output');
+                add_tag(cell, "hide_output");
             }
-        } else if (cell.cell_type == 'code') {
-            // switch between report_output and ''
-            if (cell.metadata.tags && cell.metadata.tags.indexOf('report_output') >= 0) {
+        } else if (cell.cell_type == "code") {
+            // switch between report_output and ""
+            if (cell.metadata.tags && cell.metadata.tags.indexOf("report_output") >= 0) {
                 // if report_output on, remove it
-                remove_tag(cell, 'report_output');
+                remove_tag(cell, "report_output");
             } else {
-                add_tag(cell, 'report_output');
+                add_tag(cell, "report_output");
             }
         }
         // evt.notebook.select_next(true);
@@ -1231,7 +1231,7 @@ define([
 
     var toggle_markdown_cell = function(evt) {
         var idx = evt.notebook.get_selected_index();
-        if (evt.notebook.get_cell(idx).cell_type === 'markdown') {
+        if (evt.notebook.get_cell(idx).cell_type === "markdown") {
             evt.notebook.to_code(idx);
         } else {
             evt.notebook.to_markdown(idx);
@@ -1242,7 +1242,7 @@ define([
     var execute_in_panel = function(evt) {
         //var cell = IPython.notebook.get_selected_cell();
         var cell = evt.notebook.get_selected_cell();
-        if (cell.cell_type != 'code')
+        if (cell.cell_type != "code")
             return false;
         var text = cell.code_mirror.getSelection();
         if (text === "") {
@@ -1254,34 +1254,34 @@ define([
             // jump to the next non-empty line
             var line_cnt = cm.lineCount();
             while (++cur_line < line_cnt) {
-                if (cm.getLine(cur_line).replace(/^\s+|\s+$/gm, '').length != 0) {
+                if (cm.getLine(cur_line).replace(/^\s+|\s+$/gm, "").length != 0) {
                     cell.code_mirror.setCursor(cur_line, line_ch["ch"]);
                     break;
                 }
             }
         }
-        if (!IPython.notebook.metadata['sos']['panel'].displayed)
+        if (!IPython.notebook.metadata["sos"]["panel"].displayed)
             toggle_panel();
         //
         var panel_cell = window.my_panel.cell;
         // set the kernel of the panel cell as the sending cell
-        var col = cell.element[0].getElementsByClassName('input_prompt')[0].style.backgroundColor;
+        var col = cell.element[0].getElementsByClassName("input_prompt")[0].style.backgroundColor;
         if (panel_cell.metadata.kernel !== cell.metadata.kernel) {
             panel_cell.metadata.kernel = cell.metadata.kernel;
             col = changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
         }
         // if in sos mode and is single line, enable automatic preview
-        if ((cell.metadata.kernel == 'SoS' || (cell.metadata.kernel === undefined && window.default_kernel == 'SoS')) 
-            && text.indexOf('\n') == -1 && text.indexOf('%') !== 0) {
+        if ((cell.metadata.kernel == "SoS" || (cell.metadata.kernel === undefined && window.default_kernel == "SoS")) 
+            && text.indexOf("\n") == -1 && text.indexOf("%") !== 0) {
             // if it is expression without space
-            if (text.indexOf('=') == -1) {
+            if (text.indexOf("=") == -1) {
                 if (text.trim().match(/^[_A-Za-z0-9\.]+$/))
-                    text = '%preview ' + text;
+                    text = "%preview " + text;
             } else {
-                var varname = text.substring(0, text.indexOf('=')).trim();
+                var varname = text.substring(0, text.indexOf("=")).trim();
                 // if there is no space and special characters.
                 if (varname.trim().match(/^[_A-Za-z0-9\.]+$/))
-                    text = '%preview ' + varname + '\n' + text;
+                    text = "%preview " + varname + "\n" + text;
             }
         }
         panel_cell.clear_input();
@@ -1295,7 +1295,7 @@ define([
     var show_toc = function(evt) {
         var cell = window.my_panel.cell;
         cell.clear_input();
-        cell.set_text('%toc')
+        cell.set_text("%toc")
         cell.clear_output();
         var toc = cell.output_area.create_output_area().append(table_of_contents());
         cell.output_area._safe_append(toc);
@@ -1303,7 +1303,7 @@ define([
     }
 
     var update_toc = function(evt, data) {
-        if ($('.toc').length != 0) {
+        if ($(".toc").length != 0) {
             show_toc();
             highlight_toc_item(evt, data);
         }
@@ -1317,23 +1317,23 @@ define([
 
     function toggle_panel() {
         // toggle draw (first because of first-click behavior)
-        //$("#panel-wrapper").toggle({'complete':function(){
+        //$("#panel-wrapper").toggle({"complete":function(){
         $("#panel-wrapper").toggle({
-            'progress': function() {
-                if ($('#panel-wrapper').css('display') != 'block') {
-                    $('#notebook-container').css('margin-left', 15);
-                    $('#notebook-container').css('width', $('#site').width());
+            "progress": function() {
+                if ($("#panel-wrapper").css("display") != "block") {
+                    $("#notebook-container").css("margin-left", 15);
+                    $("#notebook-container").css("width", $("#site").width());
                 } else {
-                    $('#notebook-container').css('margin-left', $('#panel-wrapper').width() + 30)
-                    $('#notebook-container').css('width', $('#notebook').width() - $('#panel-wrapper').width() - 30)
+                    $("#notebook-container").css("margin-left", $("#panel-wrapper").width() + 30)
+                    $("#notebook-container").css("width", $("#notebook").width() - $("#panel-wrapper").width() - 30)
                 }
             },
-            'complete': function() {
-                IPython.notebook.metadata['sos']['panel'].displayed = $('#panel-wrapper').css('display') === 'block'
-                if (IPython.notebook.metadata['sos']['panel'].displayed) {
+            "complete": function() {
+                IPython.notebook.metadata["sos"]["panel"].displayed = $("#panel-wrapper").css("display") === "block"
+                if (IPython.notebook.metadata["sos"]["panel"].displayed) {
                     console.log("panel open toc close")
                     window.my_panel.cell.focus_editor();
-                    $('#panel-wrapper').css('z-index', 10)
+                    $("#panel-wrapper").css("z-index", 10)
                 }
             }
         });
@@ -1580,7 +1580,7 @@ define([
         if (Jupyter.notebook.kernel) {
             setup_panel();
         } else {
-            events.on('kernel_ready.Kernel', setup_panel);
+            events.on("kernel_ready.Kernel", setup_panel);
         }
     }
 
@@ -1591,10 +1591,10 @@ define([
         }
         if ($("#panel_button").length === 0) {
             IPython.toolbar.add_buttons_group([{
-                'label': 'scratch tab',
-                'icon': 'fa-cube',
-                'callback': toggle_panel,
-                'id': 'panel_button'
+                "label": "scratch tab",
+                "icon": "fa-cube",
+                "callback": toggle_panel,
+                "id": "panel_button"
             }]);
         }
     };
@@ -1602,37 +1602,37 @@ define([
     /*
     function add_download_menu() {
         if ($("sos_download").length === 0) {
-            menu = $('<li id="sos_download"></li>')
-                .append($('<a href="#"></a>').html('Report (.html)').onclick(
+            menu = $("<li id='sos_download'></li>")
+                .append($("<a href="#"></a>").html("Report (.html)").onclick(
                     function(){
-                        alert('selected');
+                        alert("selected");
                     }
                 ))
-            download_menu = document.getElementById('download_html');
+            download_menu = document.getElementById("download_html");
             download_menu.parentNode.insertBefore(menu[0], download_menu.nextSibling);
         }
     }
     */
 
     function adjustPanel() {
-        if ($('#panel-wrapper').css('display') != "none") {
+        if ($("#panel-wrapper").css("display") != "none") {
 
-            var panel_width = IPython.notebook.metadata['sos']['panel'].style == 'side' ? $('#panel-wrapper').width() : 0;
-            $('#notebook-container').css('margin-left', panel_width + 30);
-            $('#notebook-container').css('width', $('#site').width() - panel_width - 30);
+            var panel_width = IPython.notebook.metadata["sos"]["panel"].style == "side" ? $("#panel-wrapper").width() : 0;
+            $("#notebook-container").css("margin-left", panel_width + 30);
+            $("#notebook-container").css("width", $("#site").width() - panel_width - 30);
         }
         var cell = window.my_panel.cell;
-        $('.output_area .prompt', cell.element).remove()
-        $('.output_area .output_prompt', cell.element).remove()
-        $('.output_wrapper .out_prompt_overlay', cell.element).remove()
-        var ops = cell.element[0].getElementsByClassName('output_subarea');
+        $(".output_area .prompt", cell.element).remove()
+        $(".output_area .output_prompt", cell.element).remove()
+        $(".output_wrapper .out_prompt_overlay", cell.element).remove()
+        var ops = cell.element[0].getElementsByClassName("output_subarea");
         for (var op = 0; op < ops.length; op++)
-            ops[op].style.maxWidth = '100%';
+            ops[op].style.maxWidth = "100%";
         // this will create output_scroll if needed.
         cell.output_area.scroll_if_long();
-        var ops = cell.element[0].getElementsByClassName('output_scroll');
+        var ops = cell.element[0].getElementsByClassName("output_scroll");
         if (ops.length > 0)
-            ops[0].style.height = 'auto';
+            ops[0].style.height = "auto";
         cell.output_area.expand();
     }
 
@@ -1643,7 +1643,7 @@ define([
             var callbacks = previous_get_callbacks.apply(this, arguments);
             var prev_reply_callback = callbacks.shell.reply;
             callbacks.shell.reply = function(msg) {
-                if (msg.msg_type === 'execute_reply') {
+                if (msg.msg_type === "execute_reply") {
                     adjustPanel()
                 }
                 return prev_reply_callback(msg);
@@ -1673,15 +1673,15 @@ define([
 
     function add_lan_selector(cell, kernel) {
         //
-        if (cell.element[0].getElementsByClassName('cell_kernel_selector').length > 0) {
+        if (cell.element[0].getElementsByClassName("cell_kernel_selector").length > 0) {
             // update existing list
-            var select = $('.cell_kernel_selector', cell.element).empty();
+            var select = $(".cell_kernel_selector", cell.element).empty();
             for (var i = 0; i < KernelList.length; i++) {
                 select.append($("<option/>")
                     .attr("value", DisplayName[KernelList[i][0]])
                     .text(DisplayName[KernelList[i][0]]));
             }
-            select.val(kernel ? kernel : '');
+            select.val(kernel ? kernel : "");
             return;
         }
         // add a new one
@@ -1693,33 +1693,33 @@ define([
                 .attr("value", DisplayName[KernelList[i][0]])
                 .text(DisplayName[KernelList[i][0]]));
         }
-        select.val(kernel ? kernel : '');
+        select.val(kernel ? kernel : "");
 
         select.change(function() {
             cell.metadata.kernel = DisplayName[this.value];
             // cell in panel does not have prompt area
             if (cell.is_panel !== undefined) {
                 if (BackgroundColor[this.value])
-                    cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = BackgroundColor[this.value];
+                    cell.element[0].getElementsByClassName("input")[0].style.backgroundColor = BackgroundColor[this.value];
                 else
-                    cell.element[0].getElementsByClassName('input')[0].style.backgroundColor = '';
+                    cell.element[0].getElementsByClassName("input")[0].style.backgroundColor = "";
                 return;
             }
 
-            var ip = cell.element[0].getElementsByClassName('input_prompt');
-            var op = cell.element[0].getElementsByClassName('out_prompt_overlay');
+            var ip = cell.element[0].getElementsByClassName("input_prompt");
+            var op = cell.element[0].getElementsByClassName("out_prompt_overlay");
             if (BackgroundColor[this.value]) {
                 ip[0].style.backgroundColor = BackgroundColor[this.value];
                 op[0].style.backgroundColor = BackgroundColor[this.value];
             } else {
-                // Use '' to remove background-color?
-                ip[0].style.backgroundColor = '';
-                op[0].style.backgroundColor = '';
+                // Use "" to remove background-color?
+                ip[0].style.backgroundColor = "";
+                op[0].style.backgroundColor = "";
             }
 
         });
 
-        cell.element.find('div.input_area').prepend(select);
+        cell.element.find("div.input_area").prepend(select);
         return select;
     }
 
@@ -1739,12 +1739,12 @@ define([
             // this is needed for refreshing a page...
             register_sos_comm();
         }
-        events.on('kernel_connected.Kernel', function() {
+        events.on("kernel_connected.Kernel", function() {
             register_sos_comm();
             wrap_execute();
         });
-        events.on('rendered.MarkdownCell', update_toc);
-        events.on('create.Cell', function(evt, param) {
+        events.on("rendered.MarkdownCell", update_toc);
+        events.on("create.Cell", function(evt, param) {
             add_lan_selector(param.cell);
         });
         // I assume that Jupyter would load the notebook before it tries to connect
@@ -1754,17 +1754,17 @@ define([
         // burden to run show_toc twice but hopefully this provides a more consistent
         // user experience.
         //
-        events.on('notebook_loaded.Notebook', show_toc);
+        events.on("notebook_loaded.Notebook", show_toc);
         // restart kernel does not clear existing side panel.
-        events.on('kernel_connected.Kernel', function() {
+        events.on("kernel_connected.Kernel", function() {
             var cell = window.my_panel.cell;
             // do not clear existing content
             if (!cell.get_text())
                 show_toc()
         });
         // #550
-        events.on('select.Cell', set_codemirror_option);
-        events.on('select.Cell', highlight_toc_item);
+        events.on("select.Cell", set_codemirror_option);
+        events.on("select.Cell", highlight_toc_item);
 
         load_panel();
         add_panel_button();
@@ -1778,7 +1778,7 @@ define([
             adjustPanel();
             /* #524. syntax highlighting would be disabled after page reload. Note quite sure if this is
                a correct fix but it seems to work. */
-            IPython.notebook.set_codemirror_mode('sos');
+            IPython.notebook.set_codemirror_mode("sos");
         }, 1000);
 
 
@@ -1816,10 +1816,10 @@ define([
                 "type", "vars", "zip", "__import__", "NotImplemented",
                 "Ellipsis", "__debug__",
 
-                'group_by', 'filetype', 'paired_with', 'for_each', 'pattern', 'dynamic',
-                'pattern', 'workdir', 'concurrent', 'docker_image', 'docker_file',
-                'shared', 'skip', 'sigil', 'provides', 'input',
-                'output'
+                "group_by", "filetype", "paired_with", "for_each", "pattern", "dynamic",
+                "pattern", "workdir", "concurrent", "docker_image", "docker_file",
+                "shared", "skip", "sigil", "provides", "input",
+                "output"
             ];
             CodeMirror.registerHelper("hintWords", "sos", commonKeywords.concat(commonBuiltins));
 
