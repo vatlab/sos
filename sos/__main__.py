@@ -106,7 +106,7 @@ def get_converter_formats(argv):
     parser.add_argument('from_file', nargs='?')
     parser.add_argument('to_file', nargs='?')
     parser.add_argument('-t', '--to', dest='__to_format__')
-    args = parser.parse_args(argv)
+    args, _ = parser.parse_known_args(argv)
     from_format = args.from_file[1:] if args.from_file.startswith('.') and args.from_file.count('.') == 1 \
         else os.path.splitext(args.from_file)[-1][1:]
     if not from_format:
