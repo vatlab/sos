@@ -106,7 +106,7 @@ def get_converter_formats(argv):
     parser.add_argument('from_file', nargs='?')
     parser.add_argument('to_file', nargs='?')
     parser.add_argument('-t', '--to', dest='__to_format__')
-    args, unknown_args = parser.parse_known_args(argv)
+    args = parser.parse_args(argv)
     from_format = args.from_file[1:] if args.from_file.startswith('.') and args.from_file.count('.') == 1 \
         else os.path.splitext(args.from_file)[-1][1:]
     if not from_format:
@@ -595,7 +595,7 @@ def cmd_execute(args, workflow_args):
     import pickle
     from .sos_task import execute_task, check_task, monitor_interval, resource_monitor_interval
     from .monitor import summarizeExecution
-    from .utils import env
+    from .utils import env, load_config_files
     import glob
     if args.queue is None:
         # local machine ...
@@ -654,7 +654,6 @@ def cmd_execute(args, workflow_args):
         list_queues(args.config, args.verbosity)
     else:
         from .hosts import Host
-        from .utils import env, load_config_files
         import time
         # this is for local execution using a task queue. The task queue
         # will prepare the task, sync files, and execute this command remotely

@@ -326,7 +326,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
             'workflow_args': workflow_args
         })
         return executor.run(args.__targets__)
-    except PendingTasks as e:
+    except PendingTasks:
         raise
     except SystemExit:
         # this happens because the executor is in resume mode but nothing

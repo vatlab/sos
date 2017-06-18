@@ -520,7 +520,7 @@ class Base_Step_Executor:
             # expand
             _tmp_groups = copy.deepcopy(_groups)
             _groups.clear()
-            for i in range(loop_size):
+            for _ in range(loop_size):
                 _groups.extend(_tmp_groups)
             #
             _tmp_vars = copy.deepcopy(_vars)

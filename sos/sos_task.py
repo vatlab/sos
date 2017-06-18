@@ -629,7 +629,6 @@ def check_tasks(tasks, verbosity=1, html=False, start_time=False, age=None):
     elif verbosity > 2:
         from .utils import PrettyRelativeTime
         import pprint
-        import glob
         from .monitor import summarizeExecution
 
         for s, (t, d) in zip(status, all_tasks):

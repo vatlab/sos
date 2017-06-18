@@ -66,7 +66,7 @@ def preview_txt(filename, kernel=None, style=None):
     try:
         content = ''
         with open(filename, 'r') as fin:
-            for line in range(5):
+            for _ in range(5):
                 content += fin.readline()
         return content
     except:

@@ -60,7 +60,7 @@ class TestKernel(unittest.TestCase):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
-            msg_id, content = execute(kc=kc, code='''
+            execute(kc=kc, code='''
 import pandas as pd
 import numpy as np
 arr = np.random.randn(1000)
@@ -68,15 +68,15 @@ arr[::10] = np.nan
 df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
 ''')
             clear_channels(iopub)
-            msg_id, content = execute(kc=kc, code="%use JavaScript")
+            execute(kc=kc, code="%use JavaScript")
             stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
-            msg_id, content = execute(kc=kc, code="%get df")
+            execute(kc=kc, code="%get df")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="Object.keys(df).length")
+            execute(kc=kc, code="Object.keys(df).length")
             res = get_display_data(iopub)
             self.assertEqual(res, '1000')
-            msg_id, content = execute(kc=kc, code="%use sos")
+            execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 
     @unittest.skipIf(not with_feather, 'Skip test because of no feather module')
@@ -99,7 +99,7 @@ mat_var = numpy.matrix([[1,2],[3,4]])
 recursive_var = {'a': {'b': 123}, 'c': True}
 ''')
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code='''
+            execute(kc=kc, code='''
 %use JavaScript
 %get null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var recursive_var
 %dict -r
@@ -125,7 +125,7 @@ recursive_var = {'a': {'b': 123}, 'c': True}
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
-            msg_id, content = execute(kc=kc, code='''
+            execute(kc=kc, code='''
 %use JavaScript
 null_var = null
 num_var = 123
@@ -139,7 +139,7 @@ named_list_var = {a:1, b:2, c:3}
 recursive_var = {a:1, b: {c:3, d:'whatever'}}
 ''')
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="""
+            execute(kc=kc, code="""
 %put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var list_var named_list_var recursive_var
 %dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var list_var named_list_var recursive_var
 """)
@@ -154,7 +154,7 @@ recursive_var = {a:1, b: {c:3, d:'whatever'}}
             self.assertEqual(res['list_var'], [1,2,'3'])
             self.assertEqual(res['named_list_var'], {'a': 1, 'b': 2, 'c': 3})
             self.assertEqual(res['recursive_var'], {'a': 1, 'b': {'c': 3, 'd': 'whatever'}})
-            msg_id, content = execute(kc=kc, code="%use sos")
+            execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 
 

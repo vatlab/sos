@@ -57,7 +57,7 @@ class TestKernel(unittest.TestCase):
     def testGetDataFromBash(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            msg_id, content = execute(kc=kc, code='''
+            execute(kc=kc, code='''
 null_var = None
 num_var = 123
 logic_var = True
@@ -68,19 +68,19 @@ dict_var = dict(a=1, b=2, c='3')
 set_var = {1, 2, '3'}
 ''')
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%use Bash")
+            execute(kc=kc, code="%use Bash")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%get null_var num_var logic_var char_var char_arr_var list_var dict_var set_var")
+            execute(kc=kc, code="%get null_var num_var logic_var char_var char_arr_var list_var dict_var set_var")
             wait_for_idle(kc)
             # need to test passed values
             # but let us cheat by passing data back
-            msg_id, content = execute(kc=kc, code="%dict -r")
+            execute(kc=kc, code="%dict -r")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%put null_var num_var logic_var char_var char_arr_var list_var dict_var set_var")
+            execute(kc=kc, code="%put null_var num_var logic_var char_var char_arr_var list_var dict_var set_var")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%use sos")
+            execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%dict null_var num_var logic_var char_var char_arr_var list_var dict_var set_var")
+            execute(kc=kc, code="%dict null_var num_var logic_var char_var char_arr_var list_var dict_var set_var")
             res = get_result(iopub)
             self.assertEqual(res['null_var'], '')
             self.assertEqual(res['num_var'], '123')
@@ -96,19 +96,19 @@ set_var = {1, 2, '3'}
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
-            msg_id, content = execute(kc=kc, code='%use Bash')
+            execute(kc=kc, code='%use Bash')
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="export null_var=")
+            execute(kc=kc, code="export null_var=")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="export num_var=123")
+            execute(kc=kc, code="export num_var=123")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%put null_var num_var")
+            execute(kc=kc, code="%put null_var num_var")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%dict null_var num_var")
+            execute(kc=kc, code="%dict null_var num_var")
             res = get_result(iopub)
             self.assertEqual(res['null_var'], '')
             self.assertEqual(res['num_var'], '123')
-            msg_id, content = execute(kc=kc, code="%use sos")
+            execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 
 

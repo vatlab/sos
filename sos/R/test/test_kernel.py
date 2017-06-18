@@ -60,7 +60,7 @@ class TestKernel(unittest.TestCase):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
-            msg_id, content = execute(kc=kc, code='''
+            execute(kc=kc, code='''
 import pandas as pd
 import numpy as np
 arr = np.random.randn(1000)
@@ -68,15 +68,15 @@ arr[::10] = np.nan
 df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
 ''')
             clear_channels(iopub)
-            msg_id, content = execute(kc=kc, code="%use R")
+            execute(kc=kc, code="%use R")
             stdout, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
-            msg_id, content = execute(kc=kc, code="%get df")
+            execute(kc=kc, code="%get df")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="dim(df)")
+            execute(kc=kc, code="dim(df)")
             res = get_display_data(iopub)
             self.assertEqual(res, '[1] 1000   10')
-            msg_id, content = execute(kc=kc, code="%use sos")
+            execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
             #
 
@@ -84,7 +84,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
     def testGetPythonDataFromR(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            msg_id, content = execute(kc=kc, code='''
+            execute(kc=kc, code='''
 null_var = None
 num_var = 123
 import numpy
@@ -100,7 +100,7 @@ mat_var = numpy.matrix([[1,2],[3,4]])
 recursive_var = {'a': {'b': 123}, 'c': True}
 ''')
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code='''
+            execute(kc=kc, code='''
 %use R
 %get null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var recursive_var
 %dict -r
@@ -127,18 +127,18 @@ recursive_var = {'a': {'b': 123}, 'c': True}
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
-            msg_id, content = execute(kc=kc, code='%use R')
+            execute(kc=kc, code='%use R')
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%put mtcars")
+            execute(kc=kc, code="%put mtcars")
             stdout, stderr = assemble_output(iopub)
             # the message can contain "Loading required package feathre"
             #self.assertEqual(stderr, '')
-            msg_id, content = execute(kc=kc, code="%use sos")
+            execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="mtcars.shape")
+            execute(kc=kc, code="mtcars.shape")
             res = get_result(iopub)
             self.assertEqual(res, (32, 11))
-            msg_id, content = execute(kc=kc, code="mtcars.index[0]")
+            execute(kc=kc, code="mtcars.index[0]")
             res = get_result(iopub)
             self.assertEqual(res, 'Mazda RX4')
 
@@ -147,33 +147,33 @@ recursive_var = {'a': {'b': 123}, 'c': True}
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
             # create a data frame
-            msg_id, content = execute(kc=kc, code='%use R')
+            execute(kc=kc, code='%use R')
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="null_var = NULL")
+            execute(kc=kc, code="null_var = NULL")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="num_var = 123")
+            execute(kc=kc, code="num_var = 123")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="num_arr_var = c(1, 2, 3)")
+            execute(kc=kc, code="num_arr_var = c(1, 2, 3)")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="logic_var = TRUE")
+            execute(kc=kc, code="logic_var = TRUE")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="logic_arr_var = c(TRUE, FALSE, TRUE)")
+            execute(kc=kc, code="logic_arr_var = c(TRUE, FALSE, TRUE)")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="char_var = '1\"23'")
+            execute(kc=kc, code="char_var = '1\"23'")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="char_arr_var = c(1, 2, '3')")
+            execute(kc=kc, code="char_arr_var = c(1, 2, '3')")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="list_var = list(1, 2, '3')")
+            execute(kc=kc, code="list_var = list(1, 2, '3')")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="named_list_var = list(a=1, b=2, c='3')")
+            execute(kc=kc, code="named_list_var = list(a=1, b=2, c='3')")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="mat_var = matrix(c(1,2,3,4), nrow=2)")
+            execute(kc=kc, code="mat_var = matrix(c(1,2,3,4), nrow=2)")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="recursive_var = list(a=1, b=list(c=3, d='whatever'))")
+            execute(kc=kc, code="recursive_var = list(a=1, b=list(c=3, d='whatever'))")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var named_list_var recursive_var")
+            execute(kc=kc, code="%put null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var named_list_var recursive_var")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var named_list_var recursive_var")
+            execute(kc=kc, code="%dict null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var list_var named_list_var recursive_var")
             res = get_result(iopub)
             self.assertEqual(res['null_var'], None)
             self.assertEqual(res['num_var'], 123)
@@ -186,7 +186,7 @@ recursive_var = {'a': {'b': 123}, 'c': True}
             self.assertEqual(res['named_list_var'], {'a': 1, 'b': 2, 'c': '3'})
             self.assertEqual(res['mat_var'].shape, (2,2))
             self.assertEqual(res['recursive_var'], {'a': 1, 'b': {'c': 3, 'd': 'whatever'}})
-            msg_id, content = execute(kc=kc, code="%use sos")
+            execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
 
 

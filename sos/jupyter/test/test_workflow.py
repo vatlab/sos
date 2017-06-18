@@ -30,7 +30,6 @@
 import unittest
 import os
 import subprocess
-import tempfile
 
 class TestWorkflow(unittest.TestCase):
     #

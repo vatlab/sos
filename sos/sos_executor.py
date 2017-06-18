@@ -174,7 +174,7 @@ class SoS_Worker(mp.Process):
         # SoS namespace.
         try:
             SoS_exec(section.global_def, section.global_sigil)
-        except RuntimeError as e:
+        except RuntimeError:
             if env.verbosity > 2:
                 sys.stderr.write(get_traceback())
             raise
@@ -226,7 +226,7 @@ class Base_Executor:
                 sig.write('# workflow: {}\n'.format(self.workflow.name))
                 sig.write('# script: {}\n'.format(self.workflow.content.filename))
                 sig.write('# included: {}\n'.format(','.join([x[1] for x in self.workflow.content.included])))
-                sig.write('# configuration: {}\n'.format(config.get('config_file', '')))
+                sig.write('# configuration: {}\n'.format(self.config.get('config_file', '')))
                 sig.write('# start time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
                 sig.write(self.sig_content)
                 sig.write('# runtime signatures\n')
@@ -238,7 +238,7 @@ class Base_Executor:
                 with open(wf_status) as status:
                     for line in status:
                         if line.startswith('pending_task'):
-                            k, v = load_var(line)
+                            _, v = load_var(line)
                             env.config['resumed_tasks'].add(v[1])
             else:
                 env.logger.info('Workflow {} has been completed.'.format(self.md5))

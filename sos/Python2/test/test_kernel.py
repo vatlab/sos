@@ -58,7 +58,7 @@ class TestKernel(unittest.TestCase):
             iopub = kc.iopub_channel
             # create a data frame
 
-            msg_id, content = execute(kc=kc, code='''
+            execute(kc=kc, code='''
 null_var = None
 num_var = 123
 logic_var = True
@@ -80,16 +80,16 @@ df_var = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
 ''')
             clear_channels(iopub)
             #
-            msg_id, content = execute(kc=kc, code='''
+            execute(kc=kc, code='''
 %use Python2
 %get null_var num_var num_arr_var logic_var logic_arr_var char_var char_arr_var mat_var set_var list_var dict_var df_var
 %dict -r
 %put null_var num_var logic_var logic_arr_var char_var char_arr_var set_var list_var dict_var
 ''')
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%use sos")
+            execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
-            msg_id, content = execute(kc=kc, code="%dict null_var num_var logic_var logic_arr_var char_var char_arr_var set_var list_var dict_var")
+            execute(kc=kc, code="%dict null_var num_var logic_var logic_arr_var char_var char_arr_var set_var list_var dict_var")
             res = get_result(iopub)
             self.assertEqual(res['null_var'], None)
             self.assertEqual(res['num_var'], 123)

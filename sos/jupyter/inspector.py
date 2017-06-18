@@ -32,7 +32,7 @@ class SoS_VariableInspector(object):
         try:
             format_dict, _ = self.kernel.preview_var(name)
             return format_dict
-        except Exception as e:
+        except Exception:
             return {}
 
 class SoS_SyntaxInspector(object):

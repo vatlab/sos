@@ -601,7 +601,7 @@ def locate_script(filename, start=''):
     # if no scheme or netloc, the URL is not acceptable
     if all([getattr(token, qualifying_attr) for qualifying_attr in  ('scheme', 'netloc')]):
         try:
-            local_filename, headers = urllib.request.urlretrieve(filename)
+            local_filename, _ = urllib.request.urlretrieve(filename)
             with open(local_filename) as script:
                 content = script.read()
             #
@@ -888,7 +888,7 @@ def sos_handle_parameter_(key, defvalue):
                     default=defvalue)
     #
     parser.error = _parse_error
-    parsed, unknown = parser.parse_known_args(env.sos_dict['__args__']['__args__'] if isinstance(env.sos_dict['__args__'], dict) else env.sos_dict['__args__'])
+    parsed, _ = parser.parse_known_args(env.sos_dict['__args__']['__args__'] if isinstance(env.sos_dict['__args__'], dict) else env.sos_dict['__args__'])
     return vars(parsed)[key]
 
 
@@ -1068,7 +1068,7 @@ def version_info(module):
         ns_g = ns_l = {}
         exec(compile(code, "<string>", "exec"), ns_g, ns_l)
         return ns_l["version"]
-    except Exception as e:
+    except Exception:
         import pkg_resources
         try:
             return pkg_resources.require(module)[0].version

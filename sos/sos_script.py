@@ -597,7 +597,7 @@ class SoS_Script:
                 with StringIO() as script:
                     notebook_to_script(script_file, script)
                     content = script.getvalue()
-        except Exception as e:
+        except Exception:
             raise RuntimeError('Source file for nested workflow {} with extension .sos or .ipynb does not exist'.format(sos_file))
 
         return content, script_file
@@ -629,7 +629,7 @@ class SoS_Script:
         else:
             # if name_map, we only include selected names from the script
             for section in script.sections:
-                for name, index, _ in section.names:
+                for name, _, _ in section.names:
                     if any(fnmatch.fnmatch(x, name) for x in name_map):
                         # match ...
                         self.sections.append(section)
