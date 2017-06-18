@@ -252,7 +252,7 @@ class Visualizer:
                     series['label'] = col + ' (' + ' '.join('{}={}'.format(x,y) for x,y in zip(args.by, cat)) + ')'
                     # find index of values that falls into the category
                     series['data'] = [
-                            all_data[i] for i in range(len(all_data)) if 
+                            all_data[i] for i in range(len(all_data)) if
                                 all(data[b][i]==v for b,v in zip(args.by, cat))
                             ]
                     if len(series['data']) > 0:
@@ -299,7 +299,7 @@ class Visualizer:
                 options['xaxis']['min'] = range_x[0]
                 options['xaxis']['max'] = range_x[1]
         if args.log and 'y' in args.log:
-            range_y = [min([min([x[1] for x in series['data']]) for series in all_series]), 
+            range_y = [min([min([x[1] for x in series['data']]) for series in all_series]),
                 max([max([x[1] for x in series['data']]) for series in all_series])]
             optfunc += '''
                 options['yaxis']['transform'] = function(v) { return Math.log(v); };

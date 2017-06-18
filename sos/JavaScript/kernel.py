@@ -26,9 +26,9 @@ import json
 JS_init_statement = '''
 __get_sos_vars = function() {
     vars = []
-    for(v in this) { 
+    for(v in this) {
         if (v.startsWith('sos') )
-        { 
+        {
             vars.push(v);
         }
     }

@@ -65,7 +65,7 @@ class Interactive_Executor(Base_Executor):
         env.sos_dict.set('__args__', self.args)
         if self.md5:
             env.sos_dict.set('__workflow_sig__', os.path.join(env.exec_dir, '.sos', '{}.sig'.format(self.md5)))
-        
+
         self._base_symbols = set(dir(__builtins__)) | set(env.sos_dict['sos_symbols_']) | set(SOS_KEYWORDS) | set(keyword.kwlist)
         self._base_symbols -= {'dynamic'}
 

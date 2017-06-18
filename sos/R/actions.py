@@ -44,7 +44,7 @@ def Rmarkdown(script=None, input=None, output=None, args='${input!r}, output_fil
     '''Convert input file to output using Rmarkdown
 
     The input can be specified in three ways:
-    
+
     1. instant script, which is assumed to be in md format
 
     Rmarkdown:   output='report.html'
@@ -59,13 +59,13 @@ def Rmarkdown(script=None, input=None, output=None, args='${input!r}, output_fil
 
     If no output is specified, it is assumed to be in html format
     and is written to standard output.
-    
+
     You can specify more options using the args parameter of the action. The default value
     of args is `${input!r} --output ${output!ar}'
     '''
     if not R_library('rmarkdown').exists():
         raise UnknownTarget(R_library('rmarkdown'))
-             
+
     input_file = collect_input(script, input)
 
     write_to_stdout = False

@@ -83,7 +83,7 @@ class ProcessMonitor(threading.Thread):
                     # the job should be killed
                     p = psutil.Process(self.pid)
                     p.kill()
-                # most of the time we only update 
+                # most of the time we only update
                 if counter % self.resource_monitor_interval:
                     os.utime(self.pulse_file, None)
                 else:
@@ -166,5 +166,5 @@ def summarizeExecution(task_id, status='Unknown'):
         ]
     return '\n'.join('{:20s} {}'.format(x,y) for x,y in result)
 
-        
+
 

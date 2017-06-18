@@ -323,7 +323,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
             'no args' if not args_output else args_output))
 
         if not hasattr(env, '__pipe__'):
-            # if env has no __pipe__, this means the nested workflow is executed from 
+            # if env has no __pipe__, this means the nested workflow is executed from
             # within a task, and we can just use an executor to execute it.
             #         # tell the master process to receive a workflow
             shared = {x: (env.sos_dict[x] if x in env.sos_dict else None) for x in shared}
@@ -352,7 +352,7 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
                 executor = Interactive_Executor(wf, args=args, shared=shared, config=env.config)
                 res = executor.run(targets=targets)
             return res
-        
+
         else:
             # tell the master process to receive a workflow
             env.__pipe__.send('workflow {}'.format(uuid.uuid4()))

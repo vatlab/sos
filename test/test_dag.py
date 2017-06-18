@@ -373,7 +373,7 @@ input: 'a.txt'
         dag = Base_Executor(wf).initialize_dag()
         #
         # Ticket 363:
-        # 
+        #
         # we have two possibilities here, one is to ignore a.txt,
         # and one is to regenerate a.txt because it is not generated
         # by sos (without signature)        #

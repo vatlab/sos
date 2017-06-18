@@ -38,7 +38,7 @@ SOS_KEYWORDS = SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS + SOS_DEPENDS_OPTIONS + SO
 
 SOS_USAGES = {
     'input': '''
-input: filename, filename, ... [group_by=GROUP] [filetype=FILETYPE] 
+input: filename, filename, ... [group_by=GROUP] [filetype=FILETYPE]
           [paired_with=PAIRS] [for_each=VARS] [pattern=PATTEN]
 
 Specify input targets of a SoS step.
@@ -139,7 +139,7 @@ _SECTION_HEADER_TMPL = r'''
     (\s*,\s*                           # ,
     [a-zA-Z*0-9_]+                     # another name
     \s*(\([^)]*\))?                    # alias
-    )*                                 # optional second or more 
+    )*                                 # optional second or more
     )                                  # section names
     (:\s*                              # :
     (?P<section_option>.*)             # section options
@@ -319,13 +319,13 @@ _SOS_FROM_INCLUDE_TMPL = r'''
     [a-zA-Z][a-zA-Z0-9_]*               # additional workflow as aslias
     (\s+as\s+
     [a-zA-Z][a-zA-Z0-9_]*)?
-    )*)) 
+    )*))
     \s*$
     '''
 
 _SOS_AS_TMPL = r'''
     (?P<name>[a-zA-Z][a-zA-Z0-9_]*)     # name of item
-    (\s+as\s+                           #  as 
+    (\s+as\s+                           #  as
     (?P<alias>
     [a-zA-Z][a-zA-Z0-9_]*))?            # optional alias
     '''

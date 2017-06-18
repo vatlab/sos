@@ -76,5 +76,5 @@ class sos_Bash:
 
         return all_vars
 
-        
+
 

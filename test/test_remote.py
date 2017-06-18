@@ -210,7 +210,7 @@ run:
                 'wait_for_task': True,
                 'default_queue': 'ts',
                 #
-                # This is the only difference, because running with -s force would still 
+                # This is the only difference, because running with -s force would still
                 # skip some of the completed task.
                 'sig_mode': 'force',
                 'resume_mode': True,
@@ -359,7 +359,7 @@ run:
         tasks = res['pending_tasks']
         # re-run some tasks
         for task in tasks:
-            subprocess.check_output('sos execute {} -c docker.yml -q ts'.format(task), shell=True) 
+            subprocess.check_output('sos execute {} -c docker.yml -q ts'.format(task), shell=True)
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def testSoSPurge(self):

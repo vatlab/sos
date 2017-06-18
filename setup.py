@@ -116,10 +116,10 @@ With strong emphases on readability, practicality, and reproducibility, we have 
 a workflow system called “Script of Scripts” (SoS) with a web front-end and notebook format
 based on Jupyter. Major features of SoS for exploratory analysis include multi-language
 support, explicit and automatic data exchange between running sessions (kernels) in
-different languages, cell-specific kernel switch using frontend-UI or cell magics, 
+different languages, cell-specific kernel switch using frontend-UI or cell magics,
 a side-panel that allows scratch execution of statements, preview of files and expressions,
 and line-by-line execution of statements in cells. In particular, variable and file preview
-on the side panel makes it possible to trouble-shoot scripts in multiple languages without 
+on the side panel makes it possible to trouble-shoot scripts in multiple languages without
 contaminating the main notebook or interrupting the logic flow of the analysis. For large-scale
 data analysis, the SoS workflow engine provides a unified interface to executing and managing
 tasks on a variety of computing platforms such as PBS/Torch/LSF/Slurm clusters and RQ and

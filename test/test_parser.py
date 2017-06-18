@@ -26,7 +26,7 @@ import subprocess
 
 from sos.utils import env, ArgumentError
 from sos.sos_script import SoS_Script, ParsingError
-from sos.sos_executor import Base_Executor 
+from sos.sos_executor import Base_Executor
 from sos.target import FileTarget
 
 class TestParser(unittest.TestCase):

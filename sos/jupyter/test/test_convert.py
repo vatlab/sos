@@ -62,7 +62,7 @@ report('this is action report')
         '''Test sos show script --notebook'''
         for script_file in self.scripts:
             script_to_notebook(script_file, script_file + '.ipynb')
-            notebook_to_script(script_file + '.ipynb', script_file) 
+            notebook_to_script(script_file + '.ipynb', script_file)
 
     def testConvertAll(self):
         olddir = os.getcwd()

@@ -315,7 +315,7 @@ console.log('Hello ' + args.join(' ') + '!');
     def testR(self):
         '''Test action JavaScript'''
         if not shutil.which('R'):
-            return 
+            return
         script = SoS_Script(r'''
 [0]
 R:
@@ -368,7 +368,7 @@ download: dest_dir='tmp'
         Base_Executor(wf).run()
         self.assertTrue(os.path.isfile('tmp/hapmap_ASW_freq.ann'))
         #
-   
+
         # this will take a while
         script = SoS_Script(r'''
 [0]
@@ -376,7 +376,7 @@ download: dest_dir='tmp', decompress=True
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/non-existing.gz
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq.ann
     http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_ASW_freq-hg18_20100817.DB.gz
-    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_CHB_freq.ann	
+    http://bioinformatics.mdanderson.org/Software/VariantTools/repository/annoDB/hapmap_CHB_freq.ann
 ''')
         start = time.time()
         wf = script.workflow()
@@ -388,7 +388,7 @@ download: dest_dir='tmp', decompress=True
         wf = script.workflow()
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
         self.assertLess(time.time() - start, 3)
-        # 
+        #
         # test decompress tar.gz file
         script = SoS_Script(r'''
 [0]

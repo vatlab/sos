@@ -64,7 +64,7 @@ echo 'Echo
 ''')
         wf = script.workflow()
         self.assertRaises(ExecuteError, Base_Executor(wf).run)
-    
+
     def testSh(self):
         '''Test action run'''
         script = SoS_Script(r'''

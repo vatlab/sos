@@ -84,7 +84,7 @@ class SoS_PathCompleter(Completer):
                 return text, glob.glob(os.path.expanduser(text) + '/*')
             else:
                 return text, matches
-    
+
 class SoS_Completer(object):
     def __init__(self, kernel):
         self.completers = [
@@ -96,7 +96,7 @@ class SoS_Completer(object):
     def complete_text(self, code, cursor_pos = None):
         if cursor_pos is None:
             cursor_pos = len(code)
-        
+
         doc = Document(code, cursor_pos)
 
         for c in self.completers:

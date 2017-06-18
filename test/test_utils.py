@@ -27,7 +27,7 @@ import cProfile
 import timeit
 import textwrap
 
-# these functions are normally not available but can be imported 
+# these functions are normally not available but can be imported
 # using their names for testing purposes
 from sos.utils import env, logger, WorkflowDict, stable_repr
 from sos.pattern import extract_pattern, expand_pattern
@@ -302,7 +302,7 @@ run:
         #
         for text in ('"""a"""', '"b"',
             r'"""\na\\nb"""', r"'''a\nb'''",
-            """ "a'\\"='" """): 
+            """ "a'\\"='" """):
             script = SoS_Script(r'''
 a = 1
 python:
@@ -334,7 +334,7 @@ k = """b"""'''.format(text, '${a}')
         ni_stmt = '''eval("'{}_{}_{}.txt'.format(a, b, c)", env.sos_dict._dict)'''
         exec(setup_stmt)
         cProfile.run(stmt)
-        # 
+        #
         # original implementation takes ~12s on mac mini
         # No interpolation (python .format()) takes ~2.28 s
         #

@@ -63,14 +63,14 @@ class TestRQQueue(unittest.TestCase):
 # task: concurrent = True
 # run:
 #   touch ${_output}
-# 
+#
 # [work_2]
 # input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}', paired_with = ['data']
 # output: expand_pattern('{_name}.out2')
 # task: concurrent = True
 # run:
 #   touch ${_data} ${_output}
-# 
+#
 # [default]
 # sos_run("work:1+work:2")
 # ''')

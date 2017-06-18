@@ -22,7 +22,7 @@
 
 #
 # NOTE: for some namespace reason, this test can only be tested using
-# nose. 
+# nose.
 #
 # % nosetests test_kernel.py
 #
@@ -73,7 +73,7 @@ set_var = {1, 2, '3'}
 mat_var = numpy.matrix([[1,2],[3,4]])
 import pandas as pd
 import numpy as np
-arr = np.random.randn(1000) 
+arr = np.random.randn(1000)
 arr[::10] = np.nan
 df_var = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
 ''')

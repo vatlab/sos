@@ -22,7 +22,7 @@
 
 #
 # NOTE: for some namespace reason, this test can only be tested using
-# nose. 
+# nose.
 #
 # % nosetests test_kernel.py
 #
@@ -63,7 +63,7 @@ class TestKernel(unittest.TestCase):
             msg_id, content = execute(kc=kc, code='''
 import pandas as pd
 import numpy as np
-arr = np.random.randn(1000) 
+arr = np.random.randn(1000)
 arr[::10] = np.nan
 df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
 ''')

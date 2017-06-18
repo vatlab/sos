@@ -639,12 +639,12 @@ def transcribe_script(script_file):
 #
 #
 def get_script_to_html_parser():
-    parser = argparse.ArgumentParser('sos convert FILE.sos FILE.html (or --to html)', 
+    parser = argparse.ArgumentParser('sos convert FILE.sos FILE.html (or --to html)',
         description='''Convert sos file to html format with syntax highlighting,
         and save the output either to a HTML file or view it in a broaser.''')
     parser.add_argument('--raw', help='''URL to the raw sos file, which will be linked
         to filenames in the HTML output''')
-    parser.add_argument('--style', choices=list(get_all_styles()), 
+    parser.add_argument('--style', choices=list(get_all_styles()),
         help='''Pygments style for the HTML output.''',
         default='default')
     parser.add_argument('--linenos', action='store_true',
@@ -781,7 +781,7 @@ def markdown_content(content_type, content, fh):
 
 def get_script_to_markdown_parser():
     parser = argparse.ArgumentParser('sos convert FILE.sos FILE.md (or --to md)',
-        description='''Convert SOS scriot to a markdown format with scripts 
+        description='''Convert SOS scriot to a markdown format with scripts
             quoted in markdown syntax.''')
     return parser
 
@@ -880,7 +880,7 @@ def write_content(content_type, content, formatter, fh=sys.stdout):
         fh.write(highlight((''.join(content)), lexer, formatter))
 
 def get_script_to_term_parser():
-    parser = argparse.ArgumentParser('sos convert FILE.sos --to term', 
+    parser = argparse.ArgumentParser('sos convert FILE.sos --to term',
         description='Write script to terminal with syntax highlighting.')
     parser.add_argument('--bg', choices=['light', 'dark'],
         help='Color theme of the output',

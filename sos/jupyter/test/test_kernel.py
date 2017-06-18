@@ -22,7 +22,7 @@
 
 #
 # NOTE: for some namespace reason, this test can only be tested using
-# nose. 
+# nose.
 #
 # % nosetests test_kernel.py
 #
@@ -90,7 +90,7 @@ class TestKernel(unittest.TestCase):
             self.assertFalse(stdout.strip().endswith('test'))
             self.assertEqual(stderr, '')
             msg_id, content = execute(kc=kc, code="%cd test")
-        
+
     def testMagicUse(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
@@ -117,7 +117,7 @@ class TestKernel(unittest.TestCase):
             self.assertEqual(res, '[1] 1024')
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
-      
+
     def testSubKernel(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
@@ -131,7 +131,7 @@ class TestKernel(unittest.TestCase):
             self.assertEqual(res, '[1] 1024')
             msg_id, content = execute(kc=kc, code="%use sos")
             wait_for_idle(kc)
-    
+
     def testMagicPut(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
@@ -225,7 +225,7 @@ class TestKernel(unittest.TestCase):
             self.assertEqual(res, 122)
             # get from a third kernel
             msg_id, content = execute(kc=kc, code="%use Python3")
-            wait_for_idle(kc) 
+            wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="%get --from R c")
             wait_for_idle(kc)
             msg_id, content = execute(kc=kc, code="c")

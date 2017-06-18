@@ -51,7 +51,7 @@ def parse_stmt(stmt, sigil, force_remote):
         # now if local, we need to interpolate
         args = [interpolate(x, sigil, env.sos_dict._dict) if isinstance(x, str) else x for x in args]
     else:
-        args, kwargs = SoS_eval('__null_func__({})'.format(stmt), sigil) 
+        args, kwargs = SoS_eval('__null_func__({})'.format(stmt), sigil)
     return args, kwargs
 
 def analyze_section(section, default_input=None):
@@ -652,7 +652,7 @@ class Base_Step_Executor:
                     '_local_input_{}'.format(env.sos_dict['_index']),
                     '_local_output_{}'.format(env.sos_dict['_index']),
                     '_index', '__args__', 'step_name', '_runtime',
-                    'CONFIG', '__signature_vars__', '__step_context__', 
+                    'CONFIG', '__signature_vars__', '__step_context__',
                     })
 
         # save task to a file
@@ -751,7 +751,7 @@ class Base_Step_Executor:
                         shared[k] = {idx: v}
         env.sos_dict.update(shared)
 
-    
+
     def log(self, stage=None, msg=None):
         if stage == 'start':
             env.logger.info('{} ``{}``: {}'.format('Checking' if self.run_mode == 'dryrun' else 'Executing',

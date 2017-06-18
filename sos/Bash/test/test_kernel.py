@@ -22,7 +22,7 @@
 
 #
 # NOTE: for some namespace reason, this test can only be tested using
-# nose. 
+# nose.
 #
 # % nosetests test_kernel.py
 #

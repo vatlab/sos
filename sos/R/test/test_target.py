@@ -56,7 +56,7 @@ R:
         '''Testing depending on R_library'''
         # first remove xtable package
         if not shutil.which('R'):
-            return 
+            return
         subprocess.call('R CMD REMOVE xtable', shell=True)
         script = SoS_Script('''
 [0]

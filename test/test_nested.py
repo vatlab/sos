@@ -412,7 +412,7 @@ for num in range(2):
         FileTarget('5.txt').remove('both')
         #
         # test parameter shared to send and return vars
-        # 
+        #
         script = SoS_Script(r'''
 [A: shared='k']
 k += 10

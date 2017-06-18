@@ -440,7 +440,7 @@ define([
                     item.className = "fa fa-fw fa-2x " + data[3];
                     item.setAttribute('onmouseover', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[4] + "').removeClass('" + data[3] + "')");
                     item.setAttribute('onmouseleave', "$('#status_" + data[0] + "_" + data[1] + "').addClass('" + data[3] + "').removeClass('" + data[4] + "')");
-                    item.setAttribute("onClick", data[5] + '("' + data[1] + '", "' + data[0] + '")');                   
+                    item.setAttribute("onClick", data[5] + '("' + data[1] + '", "' + data[0] + '")');
                 }
                 if (data[2] === "completed") {
                     /* if successful, let us re-run the cell to submt another task
@@ -784,7 +784,7 @@ define([
         var ul = $("<ul/>").addClass("toc-item").addClass("lev1").attr("id", "toc-level0");
         toc.append(ul);
         var depth = 1; //var depth = ol_depth(ol);
-        var li = ul; //yes, initialize li with ul! 
+        var li = ul; //yes, initialize li with ul!
         var all_headers = $("#notebook").find(":header");
         var min_lvl = 1,
             lbl_ary = [];
@@ -824,18 +824,18 @@ define([
                     ul = ul.parent();
                 }
             }
-            // Change link id -- append current num_str so as to get a kind of unique anchor 
+            // Change link id -- append current num_str so as to get a kind of unique anchor
             // A drawback of this approach is that anchors are subject to change and thus external links can fail if toc changes
-            // Anyway, one can always add a <a name="myanchor"></a> in the heading and refer to that anchor, eg [link](#myanchor) 
-            // This anchor is automatically removed when building toc links. The original id is also preserved and an anchor is created 
-            // using it. 
+            // Anyway, one can always add a <a name="myanchor"></a> in the heading and refer to that anchor, eg [link](#myanchor)
+            // This anchor is automatically removed when building toc links. The original id is also preserved and an anchor is created
+            // using it.
             // Finally a heading line can be linked to by [link](#initialID), or [link](#initialID-num_str) or [link](#myanchor)
             h.id = h.id.replace(/\$/g, "").replace("\\", "")
             if (!$(h).attr("saveid")) {
                 $(h).attr("saveid", h.id)
             } //save original id
             h.id = $(h).attr("saveid") + "-" + num_str.replace(/\./g, "");
-            // change the id to be "unique" and toc links to it 
+            // change the id to be "unique" and toc links to it
             // (and replace "." with "" in num_str since it poses some pb with jquery)
             var saveid = $(h).attr("saveid")
             //escape special chars: http://stackoverflow.com/questions/3115150/
@@ -1271,7 +1271,7 @@ define([
             col = changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
         }
         // if in sos mode and is single line, enable automatic preview
-        if ((cell.metadata.kernel == "SoS" || (cell.metadata.kernel === undefined && window.default_kernel == "SoS")) 
+        if ((cell.metadata.kernel == "SoS" || (cell.metadata.kernel === undefined && window.default_kernel == "SoS"))
             && text.indexOf("\n") == -1 && text.indexOf("%") !== 0) {
             // if it is expression without space
             if (text.indexOf("=") == -1) {
@@ -1353,7 +1353,7 @@ define([
   white-space: nowrap;
   overflow-x: auto;
   height: 100%;
-} 
+}
 
 .float-wrapper {
   position: fixed !important;
@@ -1541,9 +1541,9 @@ define([
  /*   box-shadow: 13px 0px 0px #aaaaaa; */
 }
 
-.dataframe_container { max-height: 400px } 
+.dataframe_container { max-height: 400px }
 .dataframe_input {
-    border: 1px solid #ddd; 
+    border: 1px solid #ddd;
     margin-bottom: 5px;
 }
 

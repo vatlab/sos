@@ -50,7 +50,7 @@ class SoS_SpyderKernel(SoS_Kernel, SpyderKernel):
         # window starts. no idea why this does not work.
         self.namespace_view_settings = {'check_all': False,
             'exclude_private': True, 'remote_editing': False, 'autorefresh': False,
-            'exclude_capitalized': False, 'exclude_uppercase': True, 
+            'exclude_capitalized': False, 'exclude_uppercase': True,
             'excluded_names': ['nan', 'inf', 'infty', 'little_endian', \
                 'colorbar_doc', 'typecodes', '__builtins__', '__main__', '__doc__',\
                 'NaN', 'Inf', 'Infinity', 'sctypes', 'rcParams', 'rcParamsDefault', \

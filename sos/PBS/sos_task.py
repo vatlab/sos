@@ -76,7 +76,7 @@ class PBS_TaskEngine(TaskEngine):
 
     def _prepare_script(self, task_id):
         # read the task file and look for runtime info
-        # 
+        #
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.task')
         params = loadTask(task_file)
         sos_dict = params.sos_dict

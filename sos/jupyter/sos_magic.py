@@ -50,7 +50,7 @@ from IPython.core.error import UsageError
 from IPython.lib.clipboard import ClipboardEmpty
 from IPython.core.magic import Magics, magics_class, line_magic, line_cell_magic
 
-# cannot use relative import because the module will be copied to 
+# cannot use relative import because the module will be copied to
 # ~/.ipython/extensions
 from sos.jupyter.sos_executor import runfile
 

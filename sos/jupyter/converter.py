@@ -38,7 +38,7 @@ from sos.sos_syntax import SOS_SECTION_HEADER, SOS_CELL_LINE
 
 def get_notebook_to_script_parser():
     parser = argparse.ArgumentParser('sos convert FILE.ipynb FILE.sos (or --to sos)',
-        description='''Export Jupyter notebook with a SoS kernel to a 
+        description='''Export Jupyter notebook with a SoS kernel to a
         .sos file. The cells are presented in the .sos file as
         cell structure lines, which will be ignored if executed
         in batch mode ''')
@@ -334,7 +334,7 @@ def export_notebook(exporter_class, to_format, notebook_file, output_file, unkno
         with open(tmp_stderr) as err:
             err_msg = err.read()
         if ret != 0:
-            env.logger.error(err_msg) 
+            env.logger.error(err_msg)
             env.logger.error('Failed to convert {} to {} format'.format(notebook_file, to_format))
         else:
             # identify output files
@@ -357,11 +357,11 @@ def export_notebook(exporter_class, to_format, notebook_file, output_file, unkno
         else:
             env.logger.info('Output saved to {}'.format(output_file))
 
-  
+
 def get_notebook_to_html_parser():
     parser = argparse.ArgumentParser('sos convert FILE.ipynb FILE.html (or --to html)',
-        description='''Export Jupyter notebook with a SoS kernel to a 
-        .html file. Additional command line arguments are passed directly to 
+        description='''Export Jupyter notebook with a SoS kernel to a
+        .html file. Additional command line arguments are passed directly to
         command "jupyter nbconvert --to html" so please refer to nbconvert manual for
         available options.''')
     parser.add_argument('--template',
@@ -383,8 +383,8 @@ def notebook_to_html(notebook_file, output_file, sargs=None, unknown_args=[]):
 
 def get_notebook_to_pdf_parser():
     parser = argparse.ArgumentParser('sos convert FILE.ipynb FILE.pdf (or --to pdf)',
-        description='''Export Jupyter notebook with a SoS kernel to a 
-        .pdf file. Additional command line arguments are passed directly to 
+        description='''Export Jupyter notebook with a SoS kernel to a
+        .pdf file. Additional command line arguments are passed directly to
         command "jupyter nbconvert --to pdf" so please refer to nbconvert manual for
         available options.''')
     parser.add_argument('--template',
@@ -406,8 +406,8 @@ def notebook_to_pdf(notebook_file, output_file, sargs=None, unknown_args=[]):
 
 def get_notebook_to_md_parser():
     parser = argparse.ArgumentParser('sos convert FILE.ipynb FILE.md (or --to md)',
-        description='''Export Jupyter notebook with a SoS kernel to a 
-        markdown file. Additional command line arguments are passed directly to 
+        description='''Export Jupyter notebook with a SoS kernel to a
+        markdown file. Additional command line arguments are passed directly to
         command "jupyter nbconvert --to markdown" so please refer to nbconvert manual for
         available options.''')
     return parser

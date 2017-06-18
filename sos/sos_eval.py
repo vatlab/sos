@@ -29,7 +29,7 @@ from subprocess import list2cmdline
 from tokenize import generate_tokens, untokenize, NAME, STRING, INDENT
 
 from .utils import env, Error, short_repr, DelayedAction
-from .sos_syntax import FORMAT_SPECIFIER, SIMPLE_SUB 
+from .sos_syntax import FORMAT_SPECIFIER, SIMPLE_SUB
 
 # function interpolate is needed because it is required by the SoS
 # script (not seen but translated to have this function)
@@ -322,7 +322,7 @@ def set_default_global_sigil(val):
 def get_default_global_sigil():
     global default_global_sigil
     return default_global_sigil
-    
+
 def ConvertString(s, sigil):
     '''Convert a unicode string to a raw string and interpolate expressions
     within it by parsing the python expression and statement BEFORE they are

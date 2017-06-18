@@ -89,7 +89,7 @@ def _R_repr(obj):
             try:
                 data = obj.copy()
                 # if the dataframe has index, it would not be transferred due to limitations
-                # of feather. We will have to do something to save the index separately and 
+                # of feather. We will have to do something to save the index separately and
                 # recreate it. (#397)
                 if isinstance(data.index, pandas.Index):
                     df_index = list(data.index)

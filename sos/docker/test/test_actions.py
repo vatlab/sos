@@ -109,7 +109,7 @@ class TestActions(unittest.TestCase):
                 tmp.write('test')
         #
         self.temp_files.extend(files)
-    
+
     @unittest.skipIf(not has_docker, 'Skip test because docker is not installed.')
     def testBashInDocker(self):
         '''Test action bash in docker environment'''
@@ -154,7 +154,7 @@ print(a)
     def testPythonsInDocker(self):
         '''Test action pythons in docker environment'''
         script = SoS_Script(r'''
-[0] 
+[0]
 python3: docker_image='python'
 #!/usr/bin/env python3
 a = {'1', '2'}
@@ -259,7 +259,7 @@ fastq_files = glob.glob('data/*.fastq')
 input_volume = os.path.dirname(fastq_files[0])
 output_volume = os.getcwd()
 
-run: docker_image='compbio/ngseasy-fastqc:1.0-r001', 
+run: docker_image='compbio/ngseasy-fastqc:1.0-r001',
     volumes=["${input_volume}:/input_data", "${output_volume}:/output_data"]
 
     ls -l /input_data

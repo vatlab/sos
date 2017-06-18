@@ -28,11 +28,11 @@ class TestIpython(unittest.TestCase):
     def setUp(self):
         self.ipshell = InteractiveShellEmbed()
         self.ipshell.run_cell('%load_ext sos_magic')
-        
+
     def assertDictValue(self, key, value):
         self.ipshell.run_cell('__sos_dict__ = %sosdict')
         self.assertEqual(self.ipshell.user_ns['__sos_dict__'][key], value)
-        
+
     def testSoSDict(self):
         '''Test sos dict magic'''
         self.ipshell.run_cell('%sosdict')

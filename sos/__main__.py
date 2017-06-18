@@ -425,7 +425,7 @@ def workflow_status(workflow):
 def cmd_resume(args, workflow_args):
     if workflow_args:
         sys.exit('No additional parameter is allowed for command resume: {} provided'.format(workflow_args))
-    
+
     import glob
     import time
     from .utils import env, PrettyRelativeTime
@@ -763,7 +763,7 @@ def get_purge_parser(desc_only=False):
         description='''Remove local or remote tasks''')
     if desc_only:
         return parser
-    parser.add_argument('tasks', nargs='*', help='''ID of the tasks to be removed.  
+    parser.add_argument('tasks', nargs='*', help='''ID of the tasks to be removed.
         There is no need to specify compelete task IDs because SoS will match specified
         name with tasks starting with these names.''')
     parser.add_argument('-a', '--all', action='store_true',
@@ -915,7 +915,7 @@ def get_remove_parser(desc_only=False):
         s (second), m (minute), h (hour), or d (day, default), or in the foramt of
         HH:MM:SS, with optional prefix + for older (default) and - for newer than
         specified age.''')
-    parser.add_argument('-n', '--dryrun', action='store_true', 
+    parser.add_argument('-n', '--dryrun', action='store_true',
         help='''List files or directories to be removed, without actually
             removing them.''')
     parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',
@@ -1141,7 +1141,7 @@ def cmd_remove(args, unknown_args):
                     return True
             else:
                 env.logger.debug('No signature exists for tracked file {}'.format(filename))
-            return False        
+            return False
     else:
         # default behavior
         def func(filename):
@@ -1386,7 +1386,7 @@ def get_pack_parser(desc_only=False):
         help='''A short message to be included into the archive. Because the
         message would be lost during unpacking, it is highly recommended that
         you create a README file and include it with option --include.''')
-    parser.add_argument('-n', '--dryrun', action='store_true', 
+    parser.add_argument('-n', '--dryrun', action='store_true',
         help='''List files to be included and total file size without actually
         archiving them''')
     parser.add_argument('-y', '--yes', action='store_true', dest='__confirm__',

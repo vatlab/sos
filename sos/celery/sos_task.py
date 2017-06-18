@@ -57,14 +57,14 @@ class Celery_TaskEngine(TaskEngine):
 
     def execute_task(self, task_id):
         # read the task file and look for runtime info
-        # 
+        #
         task_file = os.path.join(os.path.expanduser('~'), '.sos', 'tasks', self.alias, task_id + '.task')
         with open(task_file, 'rb') as task:
             params = pickle.load(task)
             task, sos_dict, sigil = params.data
         # bioinformatics can be running for long time...
         # let me assume a longest running time of 1 month
-        walltime = sos_dict['_runtime']['walltime'] if 'walltime' in sos_dict['_runtime'] else 60*60*24*30 
+        walltime = sos_dict['_runtime']['walltime'] if 'walltime' in sos_dict['_runtime'] else 60*60*24*30
 
         if isinstance(walltime, str):
             if walltime.count(':') > 2:

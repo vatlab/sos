@@ -336,9 +336,9 @@ class RuntimeEnvironments(object):
             raise RuntimeError('Exec dir is not set')
         self._assure_runtime_dir(self._exec_dir)
         return self._exec_dir
-   
+
     exec_dir = property(_get_exec_dir, _set_exec_dir)
-        
+
     #
     # attribute logger
     #
@@ -707,7 +707,7 @@ def dict_merge(dct, merge_dct):
 def PrettyRelativeTime(time_diff_secs):
     secs = int(time_diff_secs)
     rec = [
-        (secs // (3600*24), 'day'), 
+        (secs // (3600*24), 'day'),
         (secs % (3600*24) // 3600, 'hr'),
         (secs % 3600 // 60, 'min'),
         (secs % 60, 'sec')]
@@ -938,12 +938,12 @@ def load_config_files(filename=None):
             except Exception as e:
                 raise RuntimeError('Failed to parse config file {}, is it in YAML/JSON format? ({})'.format(filename, e))
     return cfg
- 
+
 def format_HHMMSS(v):
     if isinstance(v, int):
         h, m, s = v // 3600, v %3600//60, v % 60
     elif isinstance(v, str):
-        # the time can be spacified as age. 
+        # the time can be spacified as age.
         try:
             return format_HHMMSS(expand_time(v))
         except Exception as e:

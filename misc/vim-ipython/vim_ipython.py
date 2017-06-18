@@ -358,7 +358,7 @@ def dehtml(text):
     accordingly. '''
     # added by BoPeng to handle html output from kernel
     #
-    # Do not understand why, but I cannot define the class outside of the 
+    # Do not understand why, but I cannot define the class outside of the
     # function.
     try:
         # python 2

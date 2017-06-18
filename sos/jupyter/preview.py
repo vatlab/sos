@@ -125,7 +125,7 @@ def preview_md(filename, kernel=None, style=None):
         return {'text/html': HTML(html).data, 'text/plain': text}
     except:
         return ''
-    
+
 def preview_dot(filename, kernel=None, style=None):
     from graphviz import Source
     with open(filename) as dot:

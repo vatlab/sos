@@ -390,7 +390,7 @@ class FileTarget(BaseTarget):
                     _, _, _, m = line.rsplit('\t', 3)
                     return m.strip()
                 except:
-                    pass                
+                    pass
         self._md5 = fileMD5(self.fullname())
         return self._md5
     #

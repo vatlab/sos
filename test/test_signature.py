@@ -134,7 +134,7 @@ cp ${_input} ${_dest}
     def testSignatureWithSharedVariable(self):
         '''Test restoration of signature from variables.'''
         FileTarget('a.txt').remove('both')
-        # shared 
+        # shared
         script = SoS_Script(r"""
 import time
 [0: shared='a']
@@ -238,7 +238,7 @@ cp ${_input} ${_dest}
         start = time.time()
         env.config['sig_mode'] = 'default'
         Base_Executor(wf).run()
-        
+
         #self.assertLess(time.time() - start, elapsed + 1)
         #
         # change script a little bit
@@ -323,7 +323,7 @@ python:
         Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 3)
         self.assertTrue(os.path.isfile('largefile.txt'))
-        # 
+        #
         # we discard the signature, the step would still be
         # skipped because file signature will be calculated
         # during verification
@@ -341,7 +341,7 @@ python:
         FileTarget('largefile.txt').remove('both')
 
     def testRemovalOfIntermediateFiles(self):
-        # if we zap the file, it 
+        # if we zap the file, it
         if os.path.isfile('midfile.txt'):
             os.remove('midfile.txt')
         if os.path.isfile('midfile.txt.zapped'):
@@ -371,14 +371,14 @@ sh:
         elapsed = time.time() - st
         # sleep 3
         self.assertGreater(elapsed, 3)
-        # 
+        #
         # remove middle file, rerun
         os.remove('midfile.txt')
         st = time.time()
         Base_Executor(wf).run()
         self.assertGreater(time.time() - st, 3)
         self.assertTrue(os.path.isfile('midfile.txt'))
-        # 
+        #
         # we discard the signature, and change midfile rerun
         st = time.time()
         FileTarget('midfile.txt').remove('signature')
@@ -509,7 +509,7 @@ python:
         Base_Executor(wf).run()
         ts = os.path.getmtime('myfile_10.txt')
         #
-        # now we modify the script 
+        # now we modify the script
         script = SoS_Script(r'''
 parameter: gvar = 10
 
@@ -577,7 +577,7 @@ run:
 
 input: group_by = 'single', pattern = '{name}.{ext}', paired_with = ['K']
 output: expand_pattern('{_name}.{_K}.out')
-run: 
+run:
   touch ${_output}
     ''')
         wf = script.workflow()
@@ -639,7 +639,7 @@ parameter: input_file = DB['input']
 parameter: output_file =  DB['output']
 
 [2]
-input: input_file, group_by = 1 
+input: input_file, group_by = 1
 output: output_file[_index]
 run:
   sleep 2

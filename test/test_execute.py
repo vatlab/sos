@@ -316,7 +316,7 @@ output: "${data['A']}_${data['B']}_${data['C']}.txt"
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
         self.assertEqual(env.sos_dict['res'], ['1_2_Hello.txt', '2_4_World.txt'])
-        # 
+        #
         # support for pands Series and Index types
         script = SoS_Script(r"""
 [0: shared={'res':'output'}]
@@ -757,7 +757,7 @@ for i in range(3):
         script = SoS_Script('''
 [0]
 bash('echo "A"')
-input: 
+input:
 ''')
         wf = script.workflow()
         Base_Executor(wf).run(mode='dryrun')
