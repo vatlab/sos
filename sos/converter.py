@@ -869,7 +869,7 @@ def write_content(content_type, content, formatter, fh=sys.stdout):
         elif content_type == 'node':
             content_type = 'JavaScript'
         elif content_type == 'report':
-            content_type == 'text'
+            content_type = 'text'
         try:
             lexer = get_lexer_by_name(content_type)
         except Exception:
@@ -908,7 +908,7 @@ def script_to_term(script_file, output_file, args, unknown_args=None):
         # content_number = None
         next_type = None
         for line in script:
-            line_type, line_no, script_line = line.split('\t', 2)
+            line_type, _, script_line = line.split('\t', 2)
             # Does not follow section because it has to be one line
             if line_type == 'FOLLOW' and content_type in (None, 'SECTION'):
                 line_type = 'COMMENT'

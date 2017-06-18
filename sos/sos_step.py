@@ -644,7 +644,7 @@ class Base_Step_Executor:
         if 'workdir' in env.sos_dict['_runtime'] and not os.path.isdir(os.path.expanduser(env.sos_dict['_runtime']['workdir'])):
             try:
                 os.makedirs(os.path.expanduser(env.sos_dict['_runtime']['workdir']))
-            except Exception as e:
+            except Exception:
                 raise RuntimeError('Failed to create workdir {}'.format(env.sos_dict['_runtime']['workdir']))
 
         task_vars = env.sos_dict.clone_selected_vars(env.sos_dict['__signature_vars__'] \

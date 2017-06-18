@@ -29,8 +29,8 @@
 #
 import os
 import unittest
-from ipykernel.tests.utils import execute, wait_for_idle
-from sos.jupyter.test.utils import sos_kernel, get_display_data
+from ipykernel.tests.utils import wait_for_idle
+from sos.jupyter.test.utils import sos_kernel
 
 import nose.tools as nt
 
@@ -71,7 +71,6 @@ class TestKernel(unittest.TestCase):
     def testForceTask(self):
         '''Test the execution of tasks with -s force'''
         with sos_kernel() as kc:
-            iopub = kc.iopub_channel
             # the cell will actually be executed several times
             # with automatic-reexecution
             code = """

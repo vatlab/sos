@@ -699,10 +699,10 @@ def dict_merge(dct, merge_dct):
     """
     for k, v in merge_dct.items():
         if (k in dct and isinstance(dct[k], dict)
-                and isinstance(merge_dct[k], dict)):
-            dict_merge(dct[k], merge_dct[k])
+                and isinstance(v, dict)):
+            dict_merge(dct[k], v)
         else:
-            dct[k] = merge_dct[k]
+            dct[k] = v
 
 def PrettyRelativeTime(time_diff_secs):
     secs = int(time_diff_secs)
@@ -1080,7 +1080,7 @@ def loaded_modules(namespace=None):
     if not namespace:
         return []
     res = {}
-    for key,value in namespace.items():
+    for value in namespace.values():
         if isinstance(value, ModuleType):
             res[value.__name__] = version_info(value.__name__)
     return [(x,y) for x,y in res.items() if y != 'na']

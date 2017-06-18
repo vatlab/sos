@@ -895,7 +895,6 @@ def purge_tasks(tasks, purge_all=False, age=None, status=None, verbosity=2):
     else:
         sys.exit('Please specify a list of tasks and/or option -all, --age, or --status')
     if age is not None:
-        from sos.utils import expand_time
         age = expand_time(age, default_unit='d')
         if age > 0:
             all_tasks = [x for x in all_tasks if time.time() - x[1] >= age]
@@ -1322,7 +1321,7 @@ class TaskEngine(threading.Thread):
                 '--age {}'.format(age) if age is not None else '',
                 '--status {}'.format(' '.join(status)) if status is not None else '',
                 verbosity))
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             env.logger.error('Failed to purge tasks {}'.format(tasks))
             return ''
 

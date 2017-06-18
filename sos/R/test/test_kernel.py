@@ -130,7 +130,7 @@ recursive_var = {'a': {'b': 123}, 'c': True}
             execute(kc=kc, code='%use R')
             wait_for_idle(kc)
             execute(kc=kc, code="%put mtcars")
-            stdout, stderr = assemble_output(iopub)
+            assemble_output(iopub)
             # the message can contain "Loading required package feathre"
             #self.assertEqual(stderr, '')
             execute(kc=kc, code="%use sos")

@@ -107,10 +107,10 @@ class SoS_DockerClient:
             raise RuntimeError('Cannot connect to the Docker daemon. Is the docker daemon running on this host?')
         if script is not None:
             f = BytesIO(script.encode('utf-8'))
-            image = self.client.images.build(fileobj=f, **kwargs)
+            self.client.images.build(fileobj=f, **kwargs)
             #self.stream(line.decode())
         else:
-            image = self.client.images.build(**kwargs)
+            self.client.images.build(**kwargs)
             #self.stream(line.decode())
         # if a tag is given, check if the image is built
         if 'tag' in kwargs and not self._is_image_avail(kwargs['tag']):
