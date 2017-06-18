@@ -343,7 +343,7 @@ def get_resume_parser(interactive=False, with_workflow=True, desc_only=False):
             overrides the default wait setting of task queues.''')
     parser.add_argument('-v', '--verbosity', type=int, choices=range(5), default=2,
         help='''Output error (0), warning (1), info (2), debug (3) and trace (4)
-            information to standard output (default to 2).'''),
+            information to standard output (default to 2).''')
     parser.add_argument('-j', type=int, metavar='JOBS',
         default=4, dest='__max_procs__',
         help='''Maximum number of worker processes for the execution of the

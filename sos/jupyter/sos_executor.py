@@ -39,7 +39,7 @@ from .sos_step import Interactive_Step_Executor
 
 class Interactive_Executor(Base_Executor):
     '''Interactive executor called from by iPython Jupyter or Spyder'''
-    def __init__(self, workflow=None, args=[], shared={}, config={}):
+    def __init__(self, workflow=None, args=None, shared=None, config=None):
         # we actually do not have our own workflow, everything is passed from ipython
         # by nested = True we actually mean no new dictionary
         if env.config['sig_mode'] is None:
@@ -54,7 +54,7 @@ class Interactive_Executor(Base_Executor):
                 # script is None because it is entered from notebook
                 sig.write('# script: __interactive__\n')
                 sig.write('# included: {}\n'.format(','.join(self.workflow.content.included)))
-                sig.write('# configuration: {}\n'.format(config.get('config_file', '')))
+                sig.write('# configuration: {}\n'.format(self.config.get('config_file', '')))
                 sig.write('# start time: {}\n'.format(time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())))
                 sig.write(self.sig_content)
                 sig.write('# runtime signatures\n')
@@ -87,7 +87,7 @@ class Interactive_Executor(Base_Executor):
                 if not key.startswith('__'):
                     env.sos_dict.set(key, value)
 
-    def run(self, targets=None, queue=None):
+    def run(self, targets=None, parent_pipe=None, my_workflow_id=None, mode='run'):
         '''Execute a block of SoS script that is sent by iPython/Jupyer/Spyer
         The code can be simple SoS/Python statements, one SoS step, or more
         or more SoS workflows with multiple steps. This executor,

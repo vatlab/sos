@@ -65,7 +65,7 @@ class SoS_Step:
     '''Parser of a SoS step. This class accepts strings sent by the parser, determine
     their types and add them to appropriate sections (directive, assignment, statement,
     scripts etc) '''
-    def __init__(self, context=None, names=[], options=None, is_global=False, global_sigil='${ }'):
+    def __init__(self, context=None, names=None, options=None, is_global=False, global_sigil='${ }'):
         '''A sos step '''
         self.context = context
         # A step will not have a name and index until it is copied to separate workflows
@@ -73,7 +73,7 @@ class SoS_Step:
         self.index = None
         self.alias = None
         # it initially hold multiple names with/without wildcard characters
-        self.names = names
+        self.names = [] if names is None else names
         self.comment = ''
         self.comment_ended = False
         # everything before step process
@@ -1225,7 +1225,7 @@ for __n, __v in {}.items():
             # the trivial change to make mdv compatible with python 3
             from mdv import main
             print(main(md=textwrap.dedent('\n'.join(description))))
-        except :
+        except Exception:
             print(textwrap.dedent('\n'.join(description)))
         #
         print('\nAvailable workflows')

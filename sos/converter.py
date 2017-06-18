@@ -765,11 +765,11 @@ def markdown_content(content_type, content, fh):
         fh.write('{}\n'.format(''.join(['**{}**  \n'.format(re.sub(r'(\$|_)', r'`\1`', x).strip())
                                         for x in content])))
     elif content_type == 'ASSIGNMENT':
-        fh.write('```python\n{}\n```\n'.format(''.join(content))),
+        fh.write('```python\n{}\n```\n'.format(''.join(content)))
     elif content_type == 'STATEMENT':
-        fh.write('```python\n{}\n```\n'.format(''.join(content))),
+        fh.write('```python\n{}\n```\n'.format(''.join(content)))
     elif content_type == 'ERROR':
-        fh.write('{}\n'.format(''.join(content))),
+        fh.write('{}\n'.format(''.join(content)))
     else:
         if content_type == 'run':
             content_type = 'bash'

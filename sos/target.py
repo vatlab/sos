@@ -207,7 +207,7 @@ class sos_step(BaseTarget):
 class bundle(BaseTarget):
     '''a bundle of other targets'''
     def __init__(self, *args):
-        super(sos_step, self).__init__()
+        super(bundle, self).__init__()
         self._targets = []
         for arg in args:
             if isinstance(arg, str):

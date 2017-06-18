@@ -1954,7 +1954,7 @@ Available subkernels:\n{}'''.format(
             options, remaining_code = self.get_magic_and_code(code, False)
             try:
                 self.shell.enable_gui = lambda gui: None
-               self.shell.enable_matplotlib(options)
+                self.shell.enable_matplotlib(options)
             except Exception as e:
                 self.warn('Failed to set matplotlib backnd {}: {}'.format(options, e))
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
