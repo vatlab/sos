@@ -41,6 +41,8 @@ before_install:
     # https://github.com/jupyter/jupyter/issues/150
     - pip install entrypoints
     - pip install jupyter
+    - pip install coverage
+    - pip install codacy-coverage
     # install r kernel
     - conda install -c r r-essentials r-feather
     - conda install -c conda-forge feather-format
@@ -79,6 +81,7 @@ services:
 install: "python setup.py install"
 before_script: cd test
 script:
+    # these will generate coverage information
     - ./run_tests ../test
     - ./run_tests ../sos/docker/test
     - ./run_tests ../sos/Bash/test
@@ -88,6 +91,11 @@ script:
     - ./run_tests ../sos/jupyter/test 
     # - ./run_tests ../sos/JavaScript/test 
     #- ./run_tests ../sos/rq/test
+      
+after_success:
+    - coverage xml
+    - python-codacy-coverage -r coverage.xml
+
 notifications:
     email:
         recipients:
@@ -95,5 +103,3 @@ notifications:
         on_success: never
         on_failure: always
 
-env:
-    CODECLIMATE_REPO_TOKEN: 8c518b1dd6ddf1a00d988cfdd14f8ccdac8ae153b685a01e73eb424a3b22c344

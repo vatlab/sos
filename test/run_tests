@@ -45,11 +45,11 @@ if __name__ == '__main__':
     import nose
     if len(sys.argv) > 1:
         print('Testing {}'.format(' '.join(sys.argv[1:])))
-        argv = [os.path.abspath(__file__), '--stop', '--verbose', '--failed'] + sys.argv[1:]
+        argv = [os.path.abspath(__file__), '--with-coverage', '--stop', '--verbose', '--failed'] + sys.argv[1:]
     else:
         test_dirs = find_tests()
         print('Testing {}'.format(' '.join(test_dirs)))
-        argv = [os.path.abspath(__file__), '--stop', '--verbose', '--failed'] + test_dirs
+        argv = [os.path.abspath(__file__), '--with-coverage', '--stop', '--verbose', '--failed'] + test_dirs
     ret = nose.run_exit(argv=argv)
     sys.exit(ret)
 
