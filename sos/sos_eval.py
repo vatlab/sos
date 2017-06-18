@@ -101,7 +101,7 @@ class SoS_String:
         'R': lambda x: x,
         }
 
-    def __init__(self, sigil, local_dict={}, trace_vars=False):
+    def __init__(self, sigil, local_dict=None, trace_vars=False):
         # do not check sigil here because the function will be called quite frequently
         # the sigil will be checked when it is entered in SoS script.
         self.l, self.r = sigil.split(' ')
@@ -110,7 +110,7 @@ class SoS_String:
             self.LEFT_PATTERNS[self.l] = re.compile(re.escape(self.l))
         self.left_pattern = self.LEFT_PATTERNS[self.l]
         self.error_count = 0
-        self.local_dict = local_dict
+        self.local_dict = {} if local_dict is None else local_dict
         self.my_eval = eval
         self.last_text = None
         if trace_vars:
@@ -305,7 +305,7 @@ class SoS_String:
         else:
             return repr(obj) if fmt is None and conversion is None else self._format(obj, fmt, conversion)
 
-def interpolate(text, sigil, local_dict={}):
+def interpolate(text, sigil, local_dict=None):
     '''Evaluate expressions in `text` marked by specified `sigil` using provided
     global and local dictionaries, and replace the expressions with their formatted strings.'''
     return SoS_String(sigil, local_dict).interpolate(text)
@@ -541,7 +541,8 @@ class on_demand_options(object):
     '''Expression that will be evaluated upon request.'''
     def __init__(self, items, sigil):
         self._expressions = {}
-        self._expressions.update(items)
+        if items:
+            self._expressions.update(items)
         self._sigil = sigil
 
     def set(self, key, value):

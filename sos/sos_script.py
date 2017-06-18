@@ -65,7 +65,7 @@ class SoS_Step:
     '''Parser of a SoS step. This class accepts strings sent by the parser, determine
     their types and add them to appropriate sections (directive, assignment, statement,
     scripts etc) '''
-    def __init__(self, context=None, names=[], options={}, is_global=False, global_sigil='${ }'):
+    def __init__(self, context=None, names=[], options=None, is_global=False, global_sigil='${ }'):
         '''A sos step '''
         self.context = context
         # A step will not have a name and index until it is copied to separate workflows

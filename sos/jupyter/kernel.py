@@ -970,13 +970,13 @@ class SoS_Kernel(IPythonKernel):
         else:
             raise RuntimeError('Unrecognized status change message {}'.format(task_status))
 
-    def send_frontend_msg(self, msg_type, msg={}):
+    def send_frontend_msg(self, msg_type, msg=None):
         # if comm is never created by frontend, the kernel is in test mode without frontend
         if not self.frontend_comm:
             return
         if self._use_panel is False and msg_type in ('display_data', 'stream', 'preview-input'):
             if msg_type in ('display_data', 'stream'):
-                self.send_response(self.iopub_socket, msg_type, msg)
+                self.send_response(self.iopub_socket, msg_type, {} if msg is None else msg)
             elif msg_type == 'preview-input':
                 self.send_response(self.iopub_socket, 'display_data',
                     {
@@ -985,7 +985,7 @@ class SoS_Kernel(IPythonKernel):
                         'data': { 'text/html': HTML('<div class="sos_hint">{}</div>'.format(msg)).data}
                     })
         else:
-            self.frontend_comm.send(msg, {'msg_type': msg_type})
+            self.frontend_comm.send({} if msg is None else msg, {'msg_type': msg_type})
 
     def _reset_dict(self):
         env.sos_dict = WorkflowDict()

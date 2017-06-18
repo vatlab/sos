@@ -65,7 +65,7 @@ def get_actions():
 # A decoration function that allows SoS to replace all SoS actions
 # with a null action.
 #
-def SoS_Action(run_mode=['run', 'interactive'], acceptable_args=['*']):
+def SoS_Action(run_mode=('run', 'interactive'), acceptable_args=('*',)):
     run_mode = [run_mode] if isinstance(run_mode, str) else run_mode
     def runtime_decorator(func):
         @wraps(func)
@@ -294,7 +294,7 @@ class SoS_ExecuteScript:
 
 
 @SoS_Action(run_mode=['run', 'interactive'])
-def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
+def sos_run(workflow=None, targets=None, shared=None, args=None, **kwargs):
     '''Execute a workflow from specified source, input, and output
     By default the workflow is defined in the existing SoS script, but
     extra sos files can be specified from paramter source. The workflow
@@ -307,9 +307,14 @@ def sos_run(workflow=None, targets=None, shared=[], args={}, **kwargs):
     if env.sos_dict['step_name'] in ['{}_{}'.format(x.name, x.index) for x in wf.sections]:
         raise RuntimeError('Nested workflow {} contains the current step {}'.format(workflow, env.sos_dict['step_name']))
     # args can be specified both as a dictionary or keyword arguments
-    args.update(kwargs)
+    if args is None:
+        args = kwargs
+    else:
+        args.update(kwargs)
     args['__args__'] = env.sos_dict['__args__']
-    if isinstance(shared, str):
+    if shared is None:
+        shared = []
+    elif isinstance(shared, str):
         shared = [shared]
 
     # for nested workflow, _input would becomes the input of workflow.

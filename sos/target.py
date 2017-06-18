@@ -283,10 +283,12 @@ class local(BaseTarget):
 class executable(BaseTarget):
     '''A target for an executable command.'''
 
-    def __init__(self, cmd, version=[]):
+    def __init__(self, cmd, version=None):
         super(executable, self).__init__()
         self._cmd = cmd
-        if isinstance(version, str):
+        if version is None:
+            self._version = ()
+        elif isinstance(version, str):
             self._version = (version,)
         else:
             self._version = tuple(version)
@@ -479,8 +481,8 @@ class RuntimeInfo:
     '''Record run time information related to a number of output files. Right now only the
     .exe_info files are used.
     '''
-    def __init__(self, step_md5, script, input_files=[], output_files=[], dependent_files = [],
-        signature_vars = [], sdict=None):
+    def __init__(self, step_md5, script, input_files=None, output_files=None, dependent_files = None,
+        signature_vars = None, sdict=None):
         '''Runtime information for specified output files
 
         output_files:
@@ -523,9 +525,9 @@ class RuntimeInfo:
         self.local_input_files = []
         self.local_output_files = []
 
-        self.signature_vars = {x: sdict[x] if x in sdict else Undetermined() for x in signature_vars}
+        self.signature_vars = {} if signature_vars is None else {x: sdict[x] if x in sdict else Undetermined() for x in signature_vars}
 
-        sig_vars = sorted([x for x in signature_vars if x in sdict and isPrimitive(sdict[x])])
+        sig_vars = [] if signature_vars is None else sorted([x for x in signature_vars if x in sdict and isPrimitive(sdict[x])])
         self.sig_id = textMD5('{} {} {} {} {}'.format(self.script, self.input_files, output_files, self.dependent_files,
             '\n'.join('{}:{}'.format(x, stable_repr(sdict[x])) for x in sig_vars)))
 

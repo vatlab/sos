@@ -108,12 +108,12 @@ class SoS_Exporter(Exporter):
         return content, resources
 
 
-def notebook_to_script(notebook_file, sos_file, args=None, unknown_args=[]):
+def notebook_to_script(notebook_file, sos_file, args=None, unknown_args=None):
     '''
     Convert a ipython notebook to sos format.
     '''
     if unknown_args:
-        raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
+        raise ValueError('Unrecognized parameter {}'.format(unknown_args))
     if args:
         exporter = SoS_Exporter(export_all=args.__all__)
     else:
@@ -179,13 +179,13 @@ class SoS_ExecutePreprocessor(ExecutePreprocessor):
         finally:
             cell.source = source
 
-def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
+def script_to_notebook(script_file, notebook_file, args=None, unknown_args=None):
     '''
     Convert a sos script to iPython notebook (.ipynb) so that it can be opened
     by Jupyter notebook.
     '''
     if unknown_args:
-        raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
+        raise ValueError('Unrecognized parameter {}'.format(unknown_args))
     cells = []
     cell_count = 1
     cell_type = 'code'
@@ -318,7 +318,7 @@ def script_to_notebook(script_file, notebook_file, args=None, unknown_args=[]):
 # notebook to HTML
 #
 
-def export_notebook(exporter_class, to_format, notebook_file, output_file, unknown_args=[]):
+def export_notebook(exporter_class, to_format, notebook_file, output_file, unknown_args=None):
 
     import os
     import subprocess
@@ -330,7 +330,7 @@ def export_notebook(exporter_class, to_format, notebook_file, output_file, unkno
         tmp_stderr = tempfile.NamedTemporaryFile(delete=False, suffix='.' + to_format).name
         with open(tmp_stderr, 'w') as err:
             ret = subprocess.call(['jupyter', 'nbconvert', notebook_file, '--to', to_format,
-                '--output', tmp] + unknown_args, stderr=err)
+                '--output', tmp] + ([] if unknown_args is None else unknown_args), stderr=err)
         with open(tmp_stderr) as err:
             err_msg = err.read()
         if ret != 0:
@@ -351,7 +351,7 @@ def export_notebook(exporter_class, to_format, notebook_file, output_file, unkno
             pass
     else:
         ret = subprocess.call(['jupyter', 'nbconvert', os.path.abspath(notebook_file), '--to', to_format,
-            '--output', os.path.abspath(output_file)] + unknown_args)
+            '--output', os.path.abspath(output_file)] + ([] if unknown_args is None else unknown_args))
         if ret != 0:
             env.logger.error('Failed to convert {} to {} format'.format(notebook_file, to_format))
         else:
@@ -371,9 +371,11 @@ def get_notebook_to_html_parser():
         ''')
     return parser
 
-def notebook_to_html(notebook_file, output_file, sargs=None, unknown_args=[]):
+def notebook_to_html(notebook_file, output_file, sargs=None, unknown_args=None):
     from nbconvert.exporters.html import HTMLExporter
     import os
+    if unknown_args is None:
+        unknown_args = []
     if sargs.template and sargs.template.startswith('sos') and not os.path.isfile(sargs.template):
         # use the default sos template
         unknown_args = ['--template', os.path.join(os.path.split(__file__)[0], sargs.template + ('' if sargs.template.endswith('.tpl') else '.tpl')) ] + unknown_args
@@ -394,9 +396,11 @@ def get_notebook_to_pdf_parser():
         ''')
     return parser
 
-def notebook_to_pdf(notebook_file, output_file, sargs=None, unknown_args=[]):
+def notebook_to_pdf(notebook_file, output_file, sargs=None, unknown_args=None):
     from nbconvert.exporters.pdf import PDFExporter
     import os
+    if unknown_args is None:
+        unknown_args = []
     if sargs.template and sargs.template.startswith('sos') and not os.path.isfile(sargs.template):
         # use the default sos template
         unknown_args = ['--template', os.path.join(os.path.split(__file__)[0], sargs.template + ('' if sargs.template.endswith('.tpl') else '.tpl')) ] + unknown_args
@@ -412,7 +416,7 @@ def get_notebook_to_md_parser():
         available options.''')
     return parser
 
-def notebook_to_md(notebook_file, output_file, sargs=None, unknown_args=[]):
+def notebook_to_md(notebook_file, output_file, sargs=None, unknown_args=None):
     from nbconvert.exporters.markdown import MarkdownExporter
     export_notebook(MarkdownExporter, 'markdown', notebook_file, output_file, unknown_args)
 

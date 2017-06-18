@@ -93,26 +93,26 @@ from .target import FileTarget, sos_variable, textMD5, sos_step
 #       be allowed.
 #
 class SoS_Node(object):
-    def __init__(self, step_uuid, node_name, node_index, input_targets=[], depends_targets=[],
-        output_targets=[], local_input_targets=[], local_output_targets=[], context={}):
+    def __init__(self, step_uuid, node_name, node_index, input_targets=None, depends_targets=None,
+        output_targets=None, local_input_targets=None, local_output_targets=None, context=None):
         self._step_uuid = step_uuid
         self._node_id = node_name
         self._node_index = node_index
         self._input_targets = Undetermined() if input_targets is None else copy.deepcopy(input_targets)
         self._depends_targets = [] if depends_targets is None else copy.deepcopy(depends_targets)
         self._output_targets = Undetermined() if output_targets is None else copy.deepcopy(output_targets)
-        self._local_input_targets = copy.deepcopy(local_input_targets)
-        self._local_output_targets = copy.deepcopy(local_output_targets)
+        self._local_input_targets = [] if local_input_targets is None else copy.deepcopy(local_input_targets)
+        self._local_output_targets = [] if local_output_targets is None else copy.deepcopy(local_output_targets)
         #env.logger.error('Note {}: Input: {} Depends: {} Output: {}'.format(self._node_id, self._input_targets,
         #      self._depends_targets,  self._output_targets))
-        self._context = copy.deepcopy(context)
+        self._context = {} if context is None else copy.deepcopy(context)
         if '__completed__' not in self._context:
             self._context['__completed__'] = []
         self._status = None
         # unique ID to avoid add duplicate nodes ...
         self._node_uuid = textMD5(pickle.dumps((step_uuid, node_name, node_index,
                 input_targets, depends_targets, output_targets,
-                [(k, sorted(list(context[k])) if isinstance(context[k], set) else context[k])
+                [] if context is None else [(k, sorted(list(context[k])) if isinstance(context[k], set) else context[k])
                     for k in sorted(context.keys())])))
 
     def __repr__(self):
@@ -133,7 +133,7 @@ class SoS_DAG(nx.DiGraph):
         return nx.number_of_nodes(self)
 
     def add_step(self, step_uuid, node_name, node_index, input_targets, depends_targets,
-        output_targets, local_input_targets, local_output_targets, context={}):
+        output_targets, local_input_targets, local_output_targets, context=None):
         node = SoS_Node(step_uuid, node_name, node_index, input_targets, depends_targets,
             output_targets, local_input_targets, local_output_targets, context)
         if node._node_uuid in [x._node_uuid for x in self.nodes()]:
@@ -156,8 +156,9 @@ class SoS_DAG(nx.DiGraph):
         if not isinstance(local_output_targets, (type(None), Undetermined)):
             for x in local_output_targets:
                 self._all_output_files[x].append(node)
-        for x in context['__changed_vars__']:
-            self._all_output_files[sos_variable(x)].append(node)
+        if context is not None:
+            for x in context['__changed_vars__']:
+                self._all_output_files[sos_variable(x)].append(node)
         self.add_node(node)
 
     def update_step(self, node, input_targets, depends_targets,

@@ -216,7 +216,7 @@ class WorkflowDict(object):
         if key.startswith('_') and not key.startswith('__') and key not in ('_input', '_output', '_step', '_index', '_depends', '_runtime'):
             env.logger.warning('{}: Variables with leading underscore is reserved for SoS temporary variables.'.format(key))
 
-    def clone_selected_vars(self, selected=[]):
+    def clone_selected_vars(self, selected=None):
         return {x:copy.deepcopy(y) for x,y in self._dict.items() if (not selected or x in selected) and pickleable(y, x)}
 
 #
@@ -1075,8 +1075,10 @@ def version_info(module):
         except Exception as e:
             return 'na'
 
-def loaded_modules(namespace={}):
+def loaded_modules(namespace=None):
     from types import ModuleType
+    if not namespace:
+        return []
     res = {}
     for key,value in namespace.items():
         if isinstance(value, ModuleType):

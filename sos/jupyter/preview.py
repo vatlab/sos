@@ -94,8 +94,7 @@ def preview_xls(filename, kernel=None, style=None):
 
 def preview_zip(filename, kernel=None, style=None):
     import zipfile
-    zip = zipfile.ZipFile(filename)
-    names = zip.namelist()
+    names = zipfile.ZipFile(filename).namelist()
     return '{} files\n'.format(len(names)) + '\n'.join(names[:5]) + ('\n...' if len(names) > 5 else '')
 
 def preview_tar(filename, kernel=None, style=None):

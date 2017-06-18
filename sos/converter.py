@@ -655,7 +655,7 @@ def get_script_to_html_parser():
         content to standard output.''')
     return parser
 
-def script_to_html(script_file, html_file, args=None, unknown_args=[]):
+def script_to_html(script_file, html_file, args=None, unknown_args=None):
     '''
     Convert sos file to html format with syntax highlighting, and
     either save the output either to a HTML file or view it in a broaser.
@@ -671,7 +671,7 @@ def script_to_html(script_file, html_file, args=None, unknown_args=[]):
         html_file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.html', delete=False).name
     #
     if unknown_args:
-        raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
+        raise ValueError('Unrecognized parameter {}'.format(unknown_args))
     if args:
         formatter = ContinuousHtmlFormatter(cssclass="source", full=False,
             **{x:y for x,y in vars(args).items() if x != ('raw', 'view')})
@@ -785,12 +785,12 @@ def get_script_to_markdown_parser():
             quoted in markdown syntax.''')
     return parser
 
-def script_to_markdown(script_file, markdown_file, style_args=None, unknown_args=[]):
+def script_to_markdown(script_file, markdown_file, style_args=None, unknown_args=None):
     '''
     Convert SOS scriot to a markdown file with syntax highlighting.
     '''
     if unknown_args:
-        raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
+        raise ValueError('Unrecognized parameter {}'.format(unknown_args))
 
     transcript_file = transcribe_script(script_file)
 
@@ -889,7 +889,7 @@ def get_script_to_term_parser():
         help='Display lineno to the left of the script')
     return parser
 
-def script_to_term(script_file, output_file, args, unknown_args=[]):
+def script_to_term(script_file, output_file, args, unknown_args=None):
     '''
     Write script to terminal. This converter accepts additional parameters
     --bg [light|dark] for light or dark theme, and --linenos for output
@@ -898,7 +898,7 @@ def script_to_term(script_file, output_file, args, unknown_args=[]):
     transcript_file = transcribe_script(script_file)
 
     if unknown_args:
-        raise ValueError('Unrecognized parameter {}'.format(' '.join(unknown_args)))
+        raise ValueError('Unrecognized parameter {}'.format(unknown_args))
 
     formatter = TerminalFormatter(**vars(args))
     # remove background definition so that we can use our own
