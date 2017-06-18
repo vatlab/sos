@@ -1,6 +1,8 @@
 [![Build Status](https://travis-ci.org/vatlab/SOS.svg?branch=master)](https://travis-ci.org/vatlab/SOS)
 [![Build Status](https://ci.appveyor.com/api/projects/status/x092eusa0tta3msw?svg=true
 )](https://ci.appveyor.com/project/BoPeng/sos)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/67b766a827fb491fa473032b4f70ebb7)](https://www.codacy.com/app/BoPeng/SOS?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=vatlab/SOS&amp;utm_campaign=Badge_Grade)
+[![Codacy Badge](https://api.codacy.com/project/badge/Coverage/67b766a827fb491fa473032b4f70ebb7)](https://www.codacy.com/app/BoPeng/SOS?utm_source=github.com&utm_medium=referral&utm_content=vatlab/SOS&utm_campaign=Badge_Coverage)
 
 **Script of Scripts (SoS)** is a **file format** for the inclusion of
 scripts in multiple languages into a single executable script, an
