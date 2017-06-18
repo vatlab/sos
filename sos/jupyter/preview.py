@@ -69,7 +69,7 @@ def preview_txt(filename, kernel=None, style=None):
             for _ in range(5):
                 content += fin.readline()
         return content
-    except:
+    except Exception:
         return ''
 
 def preview_csv(filename, kernel=None, style=None):
@@ -112,7 +112,7 @@ def preview_gz(filename, kernel=None, style=None):
             content += fin.readline()
     try:
         return content.decode()[:2000]
-    except:
+    except Exception:
         return 'binary data'
 
 def preview_md(filename, kernel=None, style=None):
@@ -122,7 +122,7 @@ def preview_md(filename, kernel=None, style=None):
             text = fin.read()
         html = markdown.markdown(text)
         return {'text/html': HTML(html).data, 'text/plain': text}
-    except:
+    except Exception:
         return ''
 
 def preview_dot(filename, kernel=None, style=None):

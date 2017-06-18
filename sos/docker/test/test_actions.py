@@ -27,7 +27,7 @@ import os
 import threading
 try:
     import _thread
-except:
+except Exception:
     import _dummy_thread as _thread
 from contextlib import contextmanager
 
@@ -89,7 +89,7 @@ class TestActions(unittest.TestCase):
             # this only works with nose, but is also
             # only needed by nose
             os.chdir(os.path.dirname(__file__))
-        except:
+        except Exception:
             pass
         env.reset()
         self.temp_files = []

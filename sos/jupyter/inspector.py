@@ -71,7 +71,7 @@ class SoS_Inspector(object):
                 data = c.inspect(name, line, pos)
                 if data:
                     return data
-            except:
+            except Exception:
                 continue
         # No match
         return {}

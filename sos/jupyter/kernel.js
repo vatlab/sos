@@ -105,7 +105,7 @@ define([
         for (var i = 1; i < tr.length; i++) {
             for (var j = 0; j < tr[i].cells.length; ++j) {
                 var matched = false;
-                if (tr[i].cells[j].innerHTML.toUpperCase().indexOf(filter) != -1) {
+                if (tr[i].cells[j].innerHTML.toUpperCase().indexOf(filter) !== -1) {
                     tr[i].style.display = "";
                     matched = true;
                     break;
@@ -138,11 +138,11 @@ define([
             var direction = fn(array[0], array[1]);
             for (var i = 1; i < array.length - 1; ++i) {
                 var d = fn(array[i], array[i + 1]);
-                if (d == 0) {
+                if (d === 0) {
                     continue;
-                } else if (direction == 0) {
+                } else if (direction === 0) {
                     direction = d;
-                } else if (direction != d) {
+                } else if (direction !== d) {
                     return 0;
                 }
             }
@@ -151,7 +151,7 @@ define([
 
         var sorted = isSorted(tr, fn);
 
-        if (sorted == 1 || sorted == -1) {
+        if (sorted === 1 || sorted === -1) {
             // if sorted already, reverse it
             for (var i = tr.length - 1; i >= 0; --i) {
                 tb.appendChild(tr[i]); // append each row in order
@@ -173,7 +173,7 @@ define([
         var run_notebook = false;
         var lines = code.split("\n");
         for (var l = 0; l < lines.length; ++l) {
-            if (lines[l].startsWith("#") || lines[l].trim() == "" || lines[l].startsWith("!"))
+            if (lines[l].startsWith("#") || lines[l].trim() === "" || lines[l].startsWith("!"))
                 continue
             // other magic
             if (lines[l].startsWith("%")) {
@@ -194,7 +194,7 @@ define([
             var cells = IPython.notebook.get_cells();
             for (var i = 0; i < cells.length; ++i) {
                 // older version of the notebook might have sos in metadata
-                if (cells[i].cell_type == "code" && (cells[i].metadata.kernel == undefined || cells[i].metadata.kernel === "SoS" ||
+                if (cells[i].cell_type === "code" && (cells[i].metadata.kernel === undefined || cells[i].metadata.kernel === "SoS" ||
                         cells[i].metadata.kernel === "sos")) {
                     workflow += get_workflow_from_cell(cells[i])
                 }
@@ -207,7 +207,7 @@ define([
             // according to this.set_input_prompt("*") before execute is called.
             // also, because a cell might be starting without a previous cell
             // being finished, we should start from reverse and check actual code
-            if (cells[i].input_prompt_number == "*" && code == cells[i].get_text()) {
+            if (cells[i].input_prompt_number === "*" && code === cells[i].get_text()) {
                 // use cell kernel if meta exists, otherwise use window.default_kernel
                 if (window._auto_resume) {
                     rerun_option = " --resume ";
@@ -299,7 +299,7 @@ define([
             var data = msg.content.data;
             var msg_type = msg.metadata.msg_type;
 
-            if (msg_type == "kernel-list") {
+            if (msg_type === "kernel-list") {
                 // upgrade existing meta data if it uses the old 3 item format
                 if (IPython.notebook.metadata["sos"]["kernels"].length > 0 &&
                     IPython.notebook.metadata["sos"]["kernels"][0].length === 3) {
@@ -317,7 +317,7 @@ define([
                     // if local environment has kernel, ok...
                     var k_idx = data.findIndex((item) => item[0] === kdef[0]);
                     // otherwise is the kernel actually used?
-                    if (k_idx == -1) {
+                    if (k_idx === -1) {
                         alert("subkernel " + kdef[0] + " defined in this notebook (kernel " + kdef[1] + " and language " + kdef[2] +
                             ") is unavailable.");
                     }
@@ -338,29 +338,29 @@ define([
                     if (!(data[i][1] in KernelName))
                         KernelName[data[i][1]] = data[i][1];
                     // KernelList, use displayed name
-                    if (KernelList.findIndex((item) => item[0] === data[i][0]) == -1)
+                    if (KernelList.findIndex((item) => item[0] === data[i][0]) === -1)
                         KernelList.push([data[i][0], data[i][0]]);
 
                     // if the kernel is not in metadata, push it in
                     var k_idx = IPython.notebook.metadata["sos"]["kernels"].findIndex((item) => item[0] === data[i][0])
-                    if (k_idx == -1)
+                    if (k_idx === -1)
                         IPython.notebook.metadata["sos"]["kernels"].push(data[i])
                     else {
                         // if kernel exist update the rest of the information, but warn users first on
                         // inconsistency
-                        if (IPython.notebook.metadata["sos"]["kernels"][k_idx][1] != data[i][1]) {
+                        if (IPython.notebook.metadata["sos"]["kernels"][k_idx][1] !== data[i][1]) {
                             var r = confirm("This notebook used Jupyter kernel " + IPython.notebook.metadata["sos"]["kernels"][k_idx][1] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][1] + " instead?");
-                            if (r == true)
+                            if (r === true)
                                 IPython.notebook.metadata["sos"]["kernels"][k_idx][1] = data[i][1];
                         } else {
                             IPython.notebook.metadata["sos"]["kernels"][k_idx][1] = data[i][1];
                         }
-                        if (IPython.notebook.metadata["sos"]["kernels"][k_idx][2] != data[i][2]) {
+                        if (IPython.notebook.metadata["sos"]["kernels"][k_idx][2] !== data[i][2]) {
                             if (IPython.notebook.metadata["sos"]["kernels"][k_idx][2] === "") {
                                 IPython.notebook.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
-                            } else if (data[i][2] != "") {
+                            } else if (data[i][2] !== "") {
                                 var r = confirm("This notebook used language definition " + IPython.notebook.metadata["sos"]["kernels"][k_idx][2] + " for subkernel " + data[i][0] + ". Do you want to switch to " + data[i][2] + " instead?");
-                                if (r == true)
+                                if (r === true)
                                     IPython.notebook.metadata["sos"]["kernels"][k_idx][2] = data[i][2];
                             }
                         } else {
@@ -372,20 +372,20 @@ define([
                 //add dropdown menu of kernels in frontend
                 load_select_kernel();
                 console.log("kernel list updated");
-            } else if (msg_type == "default-kernel") {
+            } else if (msg_type === "default-kernel") {
                 // update the cells when the notebook is being opened.
                 // we also set a global kernel to be used for new cells
                 $("#kernel_selector").val(DisplayName[data]);
                 // a side effect of change is cells without metadata kernel info will change background
                 $("#kernel_selector").change();
-            } else if (msg_type == "cell-kernel") {
+            } else if (msg_type === "cell-kernel") {
                 // get cell from passed cell index, which was sent through the
                 // %frontend magic
-                if (data[0] == -1)
+                if (data[0] === -1)
                     var cell = window.my_panel.cell;
                 else
                     var cell = IPython.notebook.get_cell(data[0]);
-                if (cell.metadata.kernel != DisplayName[data[1]]) {
+                if (cell.metadata.kernel !== DisplayName[data[1]]) {
                     cell.metadata.kernel = DisplayName[data[1]];
                     // set meta information
                     changeStyleOnKernel(cell, data[1])
@@ -395,14 +395,14 @@ define([
                     // otherwise we mark report_output
                     $(".output_wrapper", cell.element).addClass("report_output");
                 }
-            } else if (msg_type == "preview-input") {
+            } else if (msg_type === "preview-input") {
                 cell = window.my_panel.cell;
                 cell.clear_input();
                 cell.set_text(data);
                 cell.clear_output();
-            } else if (msg_type == "preview-kernel") {
+            } else if (msg_type === "preview-kernel") {
                 changeStyleOnKernel(window.my_panel.cell, data);
-            } else if (msg_type == "preview-workflow") {
+            } else if (msg_type === "preview-workflow") {
                 var cell = window.my_panel.cell;
                 cell.clear_input();
                 cell.set_text("%preview --workflow");
@@ -412,7 +412,7 @@ define([
                     "text": data,
                     "name": "stdout"
                 });
-            } else if (msg_type == "tasks-pending") {
+            } else if (msg_type === "tasks-pending") {
                 // console.log(data);
                 /* we record the pending tasks of cells so that we could
                    rerun cells once all tasks have been completed */
@@ -420,11 +420,11 @@ define([
                    can still locate the cell once its tasks are completed. */
                 var cell = IPython.notebook.get_cell(data[0]);
                 window.pending_cells[cell.cell_id] = data[1];
-            } else if (msg_type == "remove-task") {
+            } else if (msg_type === "remove-task") {
                 var item = document.getElementById("table_" + data[0] + "_" + data[1]);
                 if (item)
                     item.parentNode.removeChild(item);
-            } else if (msg_type == "update-duration") {
+            } else if (msg_type === "update-duration") {
                 if (window._duration_updater === undefined) {
                     window._duration_updater = window.setInterval(function() {
                         $("[id^=duration_]").text(function() {
@@ -432,7 +432,7 @@ define([
                         })
                     }, 5000);
                 }
-            } else if (msg_type == "task-status") {
+            } else if (msg_type === "task-status") {
                 // console.log(data);
                 var item = document.getElementById("status_" + data[0] + "_" + data[1]);
                 if (!item)
@@ -450,8 +450,8 @@ define([
                     for (var cell in window.pending_cells) {
                         /* remove task from pending_cells */
                         for (var idx = 0; idx < window.pending_cells[cell].length; ++idx) {
-                            if (window.pending_cells[cell][idx][0] != data[0] ||
-                                window.pending_cells[cell][idx][1] != data[1])
+                            if (window.pending_cells[cell][idx][0] !== data[0] ||
+                                window.pending_cells[cell][idx][1] !== data[1])
                                 continue;
                             window.pending_cells[cell].splice(idx, 1);
                             if (window.pending_cells[cell].length === 0) {
@@ -460,7 +460,7 @@ define([
                                 var cells = IPython.notebook.get_cells();
                                 var rerun = null;
                                 for (var i = 0; i < cells.length; ++i) {
-                                    if (cells[i].cell_id == cell) {
+                                    if (cells[i].cell_id === cell) {
                                         rerun = cells[i];
                                         break;
                                     }
@@ -474,7 +474,7 @@ define([
                         }
                     }
                 }
-            } else if (msg_type == "show_toc") {
+            } else if (msg_type === "show_toc") {
                 show_toc();
             } else {
                 // this is preview output
@@ -487,7 +487,7 @@ define([
         var used_kernels = new Set();
         var cells = IPython.notebook.get_cells();
         for (var i = cells.length - 1; i >= 0; --i) {
-            if (cells[i].cell_type == "code" && cells[i].metadata.kernel)
+            if (cells[i].cell_type === "code" && cells[i].metadata.kernel)
                 used_kernels.add(cells[i].metadata.kernel);
         }
         IPython.notebook.metadata["sos"]["kernels"] = IPython.notebook.metadata["sos"]["kernels"].filter(function(x) {
@@ -523,7 +523,7 @@ define([
             if (lines[l].startsWith("%include") || lines[l].startsWith("%from")) {
                 workflow += lines[l] + "\n";
                 continue
-            } else if (lines[l].startsWith("#") || lines[l].startsWith("%") || lines[l].trim() == "" || lines[l].startsWith("!")) {
+            } else if (lines[l].startsWith("#") || lines[l].startsWith("%") || lines[l].trim() === "" || lines[l].startsWith("!")) {
                 continue
             } else if (lines[l].startsWith("[") && lines[l].endsWith("]")) {
                 workflow += lines.slice(l).join("\n") + "\n\n";
@@ -541,7 +541,7 @@ define([
         } else {
             var opts = sel.options;
             for (var opt, j = 0; opt = opts[j]; j++) {
-                if (opt.value == DisplayName[type]) {
+                if (opt.value === DisplayName[type]) {
                     sel.selectedIndex = j;
                     break;
                 }
@@ -565,7 +565,7 @@ define([
         }
 
 
-        if (type == "sos" && get_workflow_from_cell(cell)) {
+        if (type === "sos" && get_workflow_from_cell(cell)) {
             col = "#F0F0F0";
         } else if (type && BackgroundColor[type]) {
             col = BackgroundColor[type];
@@ -650,7 +650,7 @@ define([
 
         var cells = IPython.notebook.get_cells();
         for (var i = 0; i < cells.length; i++) {
-            if (cells[i].cell_type == "code")
+            if (cells[i].cell_type === "code")
                 changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
         }
         // update droplist of panel cell
@@ -662,7 +662,7 @@ define([
             .css("margin-left", "0.75em")
             .attr("class", "form-control select-xs")
         // .change(select_kernel);
-        if (Jupyter.toolbar.element.has("#kernel_selector").length == 0)
+        if (Jupyter.toolbar.element.has("#kernel_selector").length === 0)
             Jupyter.toolbar.element.append(dropdown);
         // remove any existing items
         $("#kernel_selector").empty();
@@ -680,7 +680,7 @@ define([
 
             var cells = IPython.notebook.get_cells();
             for (var i in cells) {
-                if (cells[i].cell_type == "code" && !cells[i].metadata.kernel) {
+                if (cells[i].cell_type === "code" && !cells[i].metadata.kernel) {
                     changeStyleOnKernel(cells[i], undefined);
                 }
             }
@@ -691,7 +691,7 @@ define([
         var cells = IPython.notebook.get_cells();
         // setting up background color and selection according to notebook metadata
         for (var i in cells) {
-            if (cells[i].cell_type == "code") {
+            if (cells[i].cell_type === "code") {
                 changeStyleOnKernel(cells[i], cells[i].metadata.kernel);
             }
         }
@@ -733,13 +733,13 @@ define([
         var c = data.cell.element; //
         if (c) {
             var ll = $(c).find(":header")
-            if (ll.length == 0) {
+            if (ll.length === 0) {
                 var ll = $(c).prevAll().find(":header");
             }
             var elt = ll[ll.length - 1]
             if (elt) {
                 var highlighted_item = $('.toc').find('a[href="#' + elt.id + '"]');
-                if (evt.type == "execute") {
+                if (evt.type === "execute") {
                     // remove the selected class and add execute class
                     // il the cell is selected again, it will be highligted as selected+running
                     highlighted_item.removeClass("toc-item-highlight-select").addClass("toc-item-highlight-execute")
@@ -842,7 +842,7 @@ define([
             var saveid = $(h).attr("saveid")
             //escape special chars: http://stackoverflow.com/questions/3115150/
             var saveid_search = saveid.replace(/[-[\]{}():\/!;&@=$£%§<>%"'*+?.,~\\^$|#\s]/g, "\\$&");
-            if ($(h).find("a[name=" + saveid_search + "]").length == 0) { //add an anchor with original id (if it does not already exists)
+            if ($(h).find("a[name=" + saveid_search + "]").length === 0) { //add an anchor with original id (if it does not already exists)
                 $(h).prepend($("<a/>").attr("name", saveid));
             }
 
@@ -900,7 +900,7 @@ define([
                 }
                 if ((ui.position.left > 0) && (IPython.notebook.metadata["sos"]["panel"].style === "side")) {
                     IPython.notebook.metadata["sos"]["panel"].style = "float";
-                    if (IPython.notebook.metadata["sos"]["panel"].height == 0)
+                    if (IPython.notebook.metadata["sos"]["panel"].height === 0)
                         IPython.notebook.metadata["sos"]["panel"].height = Math.max($("#site").height() / 2, 200)
                     $("#panel-wrapper").css("height", IPython.notebook.metadata["sos"]["panel"].height);
                     panel_wrapper.removeClass("sidebar-wrapper").addClass("float-wrapper");
@@ -938,8 +938,8 @@ define([
         $("#panel-wrapper").css("position", "fixed");
 
         // if panel-wrapper is undefined (first run(?), then hide it)
-        // if ($("#panel-wrapper").css("display") == undefined) $("#panel-wrapper").css("display", "none") //block
-        if ($("#panel-wrapper").css("display") == undefined) $("#panel-wrapper").css("display", "block") //block
+        // if ($("#panel-wrapper").css("display") === undefined) $("#panel-wrapper").css("display", "none") //block
+        if ($("#panel-wrapper").css("display") === undefined) $("#panel-wrapper").css("display", "block") //block
         $("#site").bind("siteHeight", function() {
             $("#panel-wrapper").css("height", $("#site").height());
         })
@@ -973,7 +973,7 @@ define([
             });
 
             if (IPython.notebook.metadata["sos"]["panel"].style === "side") {
-                if ($("#panel-wrapper").css("display") != "block") {
+                if ($("#panel-wrapper").css("display") !== "block") {
                     $("#notebook-container").css("margin-left", 30);
                     $("#notebook-container").css("width", $("#notebook").width() - 30);
                 } else {
@@ -1155,7 +1155,7 @@ define([
         // console.log("add " + kernel + " " + col);
         var matched = false;
         $("#panel_history option").each(function(index, element) {
-            if (element.value == kernel + ":" + text) {
+            if (element.value === kernel + ":" + text) {
                 matched = true;
                 return false;
             }
@@ -1210,7 +1210,7 @@ define([
 
     var toggle_display_output = function(evt) {
         var cell = evt.notebook.get_selected_cell();
-        if (cell.cell_type == "markdown") {
+        if (cell.cell_type === "markdown") {
             // switch between hide_output and ""
             if (cell.metadata.tags && cell.metadata.tags.indexOf("hide_output") >= 0) {
                 // if report_output on, remove it
@@ -1218,7 +1218,7 @@ define([
             } else {
                 add_tag(cell, "hide_output");
             }
-        } else if (cell.cell_type == "code") {
+        } else if (cell.cell_type === "code") {
             // switch between report_output and ""
             if (cell.metadata.tags && cell.metadata.tags.indexOf("report_output") >= 0) {
                 // if report_output on, remove it
@@ -1244,7 +1244,7 @@ define([
     var execute_in_panel = function(evt) {
         //var cell = IPython.notebook.get_selected_cell();
         var cell = evt.notebook.get_selected_cell();
-        if (cell.cell_type != "code")
+        if (cell.cell_type !== "code")
             return false;
         var text = cell.code_mirror.getSelection();
         if (text === "") {
@@ -1256,7 +1256,7 @@ define([
             // jump to the next non-empty line
             var line_cnt = cm.lineCount();
             while (++cur_line < line_cnt) {
-                if (cm.getLine(cur_line).replace(/^\s+|\s+$/gm, "").length != 0) {
+                if (cm.getLine(cur_line).replace(/^\s+|\s+$/gm, "").length !== 0) {
                     cell.code_mirror.setCursor(cur_line, line_ch["ch"]);
                     break;
                 }
@@ -1273,10 +1273,10 @@ define([
             col = changeStyleOnKernel(panel_cell, panel_cell.metadata.kernel);
         }
         // if in sos mode and is single line, enable automatic preview
-        if ((cell.metadata.kernel == "SoS" || (cell.metadata.kernel === undefined && window.default_kernel == "SoS"))
-            && text.indexOf("\n") == -1 && text.indexOf("%") !== 0) {
+        if ((cell.metadata.kernel === "SoS" || (cell.metadata.kernel === undefined && window.default_kernel === "SoS"))
+            && text.indexOf("\n") === -1 && text.indexOf("%") !== 0) {
             // if it is expression without space
-            if (text.indexOf("=") == -1) {
+            if (text.indexOf("=") === -1) {
                 if (text.trim().match(/^[_A-Za-z0-9\.]+$/))
                     text = "%preview " + text;
             } else {
@@ -1305,7 +1305,7 @@ define([
     }
 
     var update_toc = function(evt, data) {
-        if ($(".toc").length != 0) {
+        if ($(".toc").length !== 0) {
             show_toc();
             highlight_toc_item(evt, data);
         }
@@ -1322,7 +1322,7 @@ define([
         //$("#panel-wrapper").toggle({"complete":function(){
         $("#panel-wrapper").toggle({
             "progress": function() {
-                if ($("#panel-wrapper").css("display") != "block") {
+                if ($("#panel-wrapper").css("display") !== "block") {
                     $("#notebook-container").css("margin-left", 15);
                     $("#notebook-container").css("width", $("#site").width());
                 } else {
@@ -1617,9 +1617,9 @@ define([
     */
 
     function adjustPanel() {
-        if ($("#panel-wrapper").css("display") != "none") {
+        if ($("#panel-wrapper").css("display") !== "none") {
 
-            var panel_width = IPython.notebook.metadata["sos"]["panel"].style == "side" ? $("#panel-wrapper").width() : 0;
+            var panel_width = IPython.notebook.metadata["sos"]["panel"].style === "side" ? $("#panel-wrapper").width() : 0;
             $("#notebook-container").css("margin-left", panel_width + 30);
             $("#notebook-container").css("width", $("#site").width() - panel_width - 30);
         }
@@ -1786,9 +1786,9 @@ define([
 
         // define SOS CodeMirror syntax highlighter
         (function(mod) {
-            //if (typeof exports == "object" && typeof module == "object") // CommonJS
+            //if (typeof exports === "object" && typeof module === "object") // CommonJS
             // mod(require("../../lib/codemirror"));
-            //else if (typeof define == "function" && define.amd) // AMD
+            //else if (typeof define === "function" && define.amd) // AMD
             //  define(["../../lib/codemirror"], mod);
             //else // Plain browser env
             mod(CodeMirror);
@@ -1841,10 +1841,10 @@ define([
 
                 var myKeywords = commonKeywords,
                     myBuiltins = commonBuiltins;
-                if (parserConf.extra_keywords != undefined)
+                if (parserConf.extra_keywords !== undefined)
                     myKeywords = myKeywords.concat(parserConf.extra_keywords);
 
-                if (parserConf.extra_builtins != undefined)
+                if (parserConf.extra_builtins !== undefined)
                     myBuiltins = myBuiltins.concat(parserConf.extra_builtins);
 
                 var singleOperators = parserConf.singleOperators || /^[\+\-\*\/%\$&|\^~<>!@]/;
@@ -1859,7 +1859,7 @@ define([
                 function tokenBase(stream, state) {
                     if (stream.sol()) state.indent = stream.indentation()
                     // Handle scope changes
-                    if (stream.sol() && top(state).type == "py") {
+                    if (stream.sol() && top(state).type === "py") {
                         var scopeOffset = top(state).offset;
                         if (stream.eatSpace()) {
                             var lineOffset = stream.indentation();
@@ -1884,7 +1884,7 @@ define([
                     var ch = stream.peek();
 
                     // Handle Comments
-                    if (ch == "#") {
+                    if (ch === "#") {
                         stream.skipToEnd();
                         return "comment";
                     }
@@ -1967,7 +1967,7 @@ define([
                     if (stream.match(singleDelimiters))
                         return "punctuation";
 
-                    if (state.lastToken == "." && stream.match(identifiers))
+                    if (state.lastToken === "." && stream.match(identifiers))
                         return "property";
 
                     if (stream.match(keywords) || stream.match(wordOperators))
@@ -1980,7 +1980,7 @@ define([
                         return "variable-2";
 
                     if (stream.match(identifiers)) {
-                        if (state.lastToken == "def" || state.lastToken == "class")
+                        if (state.lastToken === "def" || state.lastToken === "class")
                             return "def";
                         return "variable";
                     }
@@ -1994,7 +1994,7 @@ define([
                     while ("rub".indexOf(delimiter.charAt(0).toLowerCase()) >= 0)
                         delimiter = delimiter.substr(1);
 
-                    var singleline = delimiter.length == 1;
+                    var singleline = delimiter.length === 1;
                     var OUTCLASS = "string";
 
                     function tokenString(stream, state) {
@@ -2024,7 +2024,7 @@ define([
                 }
 
                 function pushPyScope(state) {
-                    while (top(state).type != "py") state.scopes.pop()
+                    while (top(state).type !== "py") state.scopes.pop()
                     state.scopes.push({
                         offset: top(state).offset + conf.indentUnit,
                         type: "py",
@@ -2044,10 +2044,10 @@ define([
                 function dedent(stream, state) {
                     var indented = stream.indentation();
                     while (top(state).offset > indented) {
-                        if (top(state).type != "sos") return true;
+                        if (top(state).type !== "sos") return true;
                         state.scopes.pop();
                     }
-                    return top(state).offset != indented;
+                    return top(state).offset !== indented;
                 }
 
                 function tokenLexer(stream, state) {
@@ -2057,35 +2057,35 @@ define([
                     var current = stream.current();
 
                     // Handle decorators
-                    if (state.beginningOfLine && current == "@")
+                    if (state.beginningOfLine && current === "@")
                         return stream.match(identifiers, false) ? "meta" : py3 ? "operator" : ERRORCLASS;
 
 
 
                     if (/\S/.test(current)) state.beginningOfLine = false;
 
-                    //if ((style == "variable" || style == "builtin")
-                    //    && state.lastToken == "meta")
+                    //if ((style === "variable" || style === "builtin")
+                    //    && state.lastToken === "meta")
                     //  style = "meta";
 
                     // Handle scope changes.
-                    if (current == "pass" || current == "return")
+                    if (current === "pass" || current === "return")
                         state.dedent += 1;
 
-                    if (current == "lambda") state.lambda = true;
-                    if (current == ":" && !state.lambda && top(state).type == "py")
+                    if (current === "lambda") state.lambda = true;
+                    if (current === ":" && !state.lambda && top(state).type === "py")
                         pushPyScope(state);
 
-                    var delimiter_index = current.length == 1 ? "[({".indexOf(current) : -1;
-                    if (delimiter_index != -1)
+                    var delimiter_index = current.length === 1 ? "[({".indexOf(current) : -1;
+                    if (delimiter_index !== -1)
                         pushBracketScope(stream, state, "])}".slice(delimiter_index, delimiter_index + 1));
 
                     delimiter_index = "])}".indexOf(current);
-                    if (delimiter_index != -1) {
-                        if (top(state).type == current) state.indent = state.scopes.pop().offset - hangingIndent
+                    if (delimiter_index !== -1) {
+                        if (top(state).type === current) state.indent = state.scopes.pop().offset - hangingIndent
                         else return ERRORCLASS;
                     }
-                    if (state.dedent > 0 && stream.eol() && top(state).type == "py") {
+                    if (state.dedent > 0 && stream.eol() && top(state).type === "py") {
                         if (state.scopes.length > 1) state.scopes.pop();
                         state.dedent -= 1;
                     }
@@ -2114,9 +2114,9 @@ define([
                         if (addErr) state.errorToken = false;
                         var style = tokenLexer(stream, state);
 
-                        if (style && style != "comment")
-                            state.lastToken = (style == "keyword" || style == "punctuation") ? stream.current() : style;
-                        if (style == "punctuation") style = null;
+                        if (style && style !== "comment")
+                            state.lastToken = (style === "keyword" || style === "punctuation") ? stream.current() : style;
+                        if (style === "punctuation") style = null;
 
                         if (stream.eol() && state.lambda)
                             state.lambda = false;
@@ -2124,12 +2124,12 @@ define([
                     },
 
                     indent: function(state, textAfter) {
-                        if (state.tokenize != tokenBase)
+                        if (state.tokenize !== tokenBase)
                             return state.tokenize.isString ? CodeMirror.Pass : 0;
 
                         var scope = top(state),
-                            closing = scope.type == textAfter.charAt(0)
-                        if (scope.align != null)
+                            closing = scope.type === textAfter.charAt(0)
+                        if (scope.align !== null)
                             return scope.align - (closing ? 1 : 0)
                         else
                             return scope.offset - (closing ? hangingIndent : 0)

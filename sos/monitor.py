@@ -149,7 +149,7 @@ def summarizeExecution(task_id, status='Unknown'):
                 peak_nch = int(nch)
     try:
         second_elapsed = end_time - start_time
-    except:
+    except Exception:
         second_elapsed = 0
     result = [
         ('status', status),

@@ -51,7 +51,7 @@ def multi_attempts(fn):
             try:
                 fn(*args, **kwargs)
                 break
-            except:
+            except Exception:
                 if n > 1:
                     raise
     return wrapper

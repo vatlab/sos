@@ -399,7 +399,7 @@ run:
         out = subprocess.check_output('sos status -c docker.yml -q docker -v1', shell=True).decode()
         self.assertEqual(out.strip().count('\n'), 1, 'Expect two lines: {}'.format(out))
         # show be ok
-        subprocess.check_output('sos purge --all -c docker.yml -q docker'.format(tasks[0]), shell=True)
+        subprocess.check_output('sos purge --all -c docker.yml -q docker', shell=True)
         out = subprocess.check_output('sos status -c docker.yml -q docker -v1', shell=True).decode()
         self.assertEqual(out.strip().count('\n'), 0)
 

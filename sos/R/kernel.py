@@ -97,7 +97,7 @@ def _R_repr(obj):
                     # we should give a warning here
                     df_index=None
                 feather.write_dataframe(data, feather_tmp_)
-            except:
+            except Exception:
                 # if data cannot be written, we try to manipulate data
                 # frame to have consistent types and try again
                 for c in data.columns:

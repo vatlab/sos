@@ -347,7 +347,7 @@ def export_notebook(exporter_class, to_format, notebook_file, output_file, unkno
                     sys.stdout.buffer.write(tfile.read())
         try:
             os.remove(tmp)
-        except:
+        except Exception:
             pass
     else:
         ret = subprocess.call(['jupyter', 'nbconvert', os.path.abspath(notebook_file), '--to', to_format,

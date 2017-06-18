@@ -142,7 +142,7 @@ class SoS_Step:
                         return False
                     try:
                         sos_compile('func(' + ''.join(self.values) + ')', filename='<string>', mode='eval')
-                    except:
+                    except Exception:
                         return False
                     return True
                 if validDirective() and self._action is not None:
@@ -513,12 +513,12 @@ class SoS_Script:
         if not content:
             try:
                 content, self.sos_script = locate_script(filename, start='.')
-            except:
+            except Exception:
                 # try to add .sos extension?
                 if not filename.endswith('.sos'):
                     try:
                         content, self.sos_script = locate_script(filename + '.sos', start='.')
-                    except:
+                    except Exception:
                         if not filename.endswith('.ipynb'):
                             try:
                                 content, self.sos_script = locate_script(filename + '.ipynb', start='.')
@@ -590,7 +590,7 @@ class SoS_Script:
                 start_path = ''
             try:
                 content, script_file = locate_script(sos_file + '.sos', start=start_path)
-            except:
+            except Exception:
                 content, script_file = locate_script(sos_file + '.ipynb', start=start_path)
                 # convert ipynb to sos
                 from sos.jupyter.converter import notebook_to_script

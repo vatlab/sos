@@ -194,7 +194,7 @@ def km_from_string(s=''):
             klass = sc.__class__
             klass._oinfo_orig = klass.object_info
             klass.object_info = lambda s,x,y: s._oinfo_orig(x)
-    except:
+    except Exception:
         pass
 
     #XXX: backwards compatibility for IPython < 1.0
@@ -528,7 +528,7 @@ def update_subchannel_msgs(debug=False, force=False):
         else:
             try:
                 b.append(s.splitlines())
-            except:
+            except Exception:
                 b.append([l.encode(vim_encoding) for l in s.splitlines()])
         update_occured = True
     # make a newline so we can just start typing there

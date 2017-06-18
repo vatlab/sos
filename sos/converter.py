@@ -612,10 +612,10 @@ def write_html_content(content_type, content, formatter, html):
             content_type == 'text'
         try:
             lexer = get_lexer_by_name(content_type)
-        except:
+        except Exception:
             try:
                 lexer = guess_lexer(''.join(content))
-            except:
+            except Exception:
                 lexer = TextLexer()
         html.write('{}\n'.format(highlight((''.join(content)),
             lexer, formatter)))
@@ -731,7 +731,7 @@ def script_to_html(script_file, html_file, args=None, unknown_args=None):
     #
     try:
         os.remove(transcript_file)
-    except:
+    except Exception:
         pass
     #
     if no_output_file:
@@ -835,7 +835,7 @@ def script_to_markdown(script_file, markdown_file, style_args=None, unknown_args
         env.logger.info('SoS script saved to {}'.format(markdown_file))
     try:
         os.remove(transcript_file)
-    except:
+    except Exception:
         pass
 
 #
@@ -872,10 +872,10 @@ def write_content(content_type, content, formatter, fh=sys.stdout):
             content_type == 'text'
         try:
             lexer = get_lexer_by_name(content_type)
-        except:
+        except Exception:
             try:
                 lexer = guess_lexer(''.join(content))
-            except:
+            except Exception:
                 lexer = TextLexer()
         fh.write(highlight((''.join(content)), lexer, formatter))
 
@@ -936,6 +936,6 @@ def script_to_term(script_file, output_file, args, unknown_args=None):
     #
     try:
         os.remove(transcript_file)
-    except:
+    except Exception:
         pass
 

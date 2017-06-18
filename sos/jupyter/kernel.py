@@ -869,7 +869,7 @@ class SoS_Kernel(IPythonKernel):
                             continue
                         try:
                             tqu, tid = name[7:].rsplit('_', 1)
-                        except:
+                        except Exception:
                             # incorrect ID...
                             continue
                         host_status[tqu].append(tid)
@@ -879,7 +879,7 @@ class SoS_Kernel(IPythonKernel):
                     for tqu, tids in host_status.items():
                         try:
                             h = Host(tqu)
-                        except:
+                        except Exception:
                             continue
                         for tid in tids:
                             tst = h._task_engine.check_task_status(tid, unknown='unknown')
@@ -1524,7 +1524,7 @@ Available subkernels:\n{}'''.format(
                         (item.startswith("'") and item.endswith("'")):
                         try:
                             item = eval(item)
-                        except:
+                        except Exception:
                             pass
                     if use_sos:
                         obj_desc, preview = self.preview_var(item, style)

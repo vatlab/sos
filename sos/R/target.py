@@ -155,7 +155,7 @@ class R_library(BaseTarget):
                     raise RuntimeError('This should not happen: {}'.format(line))
         try:
             os.remove(output_file)
-        except:
+        except Exception:
             pass
         return ret_val
 

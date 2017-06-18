@@ -392,7 +392,7 @@ class FileTarget(BaseTarget):
                     line = md5.readline()
                     _, _, _, m = line.rsplit('\t', 3)
                     return m.strip()
-                except:
+                except Exception:
                     pass
         self._md5 = fileMD5(self.fullname())
         return self._md5
@@ -412,7 +412,7 @@ class FileTarget(BaseTarget):
     def is_external(self):
         try:
             return os.path.relpath(self.fullname(), env.exec_dir).startswith('..')
-        except:
+        except Exception:
             # under windows the file might be on different volume
             return True
 
