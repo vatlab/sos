@@ -94,3 +94,6 @@ notifications:
             - ben.bob@gmail.com
         on_success: never
         on_failure: always
+
+env:
+    CODECLIMATE_REPO_TOKEN: 8c518b1dd6ddf1a00d988cfdd14f8ccdac8ae153b685a01e73eb424a3b22c344
