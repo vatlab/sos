@@ -777,7 +777,7 @@ def report(script=None, input=None, output=None, **kwargs):
         raise ValueError('Invalid output {}.'.format(output))
 
     # file lock to prevent race condition
-    with fasteners.InterProcessLock('/tmp/report_lock'):
+    with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'report_lock')):
         if isinstance(script, str) and script.strip():
             writer(script.rstrip() + '\n\n')
         if input is not None:

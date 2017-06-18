@@ -277,9 +277,10 @@ def cmd_run(args, workflow_args):
 
     if args.__bin_dirs__:
         import fasteners
+        import tempfile
         for d in args.__bin_dirs__:
             if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
-                with fasteners.InterProcessLock('/tmp/sos_lock_bin'):
+                with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'sos_lock_bin')):
                     os.makedirs(os.path.expanduser(d))
             elif not os.path.isdir(os.path.expanduser(d)):
                 raise ValueError('directory does not exist: {}'.format(d))

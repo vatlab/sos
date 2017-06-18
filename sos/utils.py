@@ -34,6 +34,7 @@ import base64
 import pickle
 import yaml
 import urllib
+import tempfile
 import urllib.parse
 import urllib.request
 import argparse
@@ -897,7 +898,7 @@ def load_config_files(filename=None):
     # global site file
     sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'hosts.yml')
     if os.path.isfile(sos_config_file):
-        with fasteners.InterProcessLock('/tmp/sos_config_'):
+        with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'sos_config_')):
             try:
                 with open(sos_config_file) as config:
                     cfg = yaml.safe_load(config)
@@ -908,7 +909,7 @@ def load_config_files(filename=None):
     # global config file
     sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
     if os.path.isfile(sos_config_file):
-        with fasteners.InterProcessLock('/tmp/sos_config_'):
+        with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'sos_config_')):
             try:
                 with open(sos_config_file) as config:
                     dict_merge(cfg, yaml.safe_load(config))
@@ -919,7 +920,7 @@ def load_config_files(filename=None):
     # local config file
     sos_config_file = 'config.yml'
     if os.path.isfile(sos_config_file):
-        with fasteners.InterProcessLock('/tmp/sos_config_'):
+        with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'sos_config_')):
             try:
                 with open(sos_config_file) as config:
                     dict_merge(cfg, yaml.safe_load(config))
@@ -931,7 +932,7 @@ def load_config_files(filename=None):
     if filename is not None:
         if not os.path.isfile(filename):
             raise RuntimeError('Config file {} not found'.format(filename))
-        with fasteners.InterProcessLock('/tmp/sos_config_'):
+        with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'sos_config_')):
             try:
                 with open(filename) as config:
                     dict_merge(cfg, yaml.safe_load(config))

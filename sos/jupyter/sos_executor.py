@@ -23,6 +23,7 @@ import sys
 import os
 import shlex
 import keyword
+import tempfile
 import time
 from sos.utils import env, frozendict, _parse_error, get_traceback, load_config_files
 from sos.sos_eval import SoS_exec, get_default_global_sigil
@@ -266,7 +267,7 @@ def runfile(script=None, args='', wdir='.', code=None, kernel=None, **kwargs):
         import fasteners
         for d in args.__bin_dirs__:
             if d == '~/.sos/bin' and not os.path.isdir(os.path.expanduser(d)):
-                with fasteners.InterProcessLock('/tmp/sos_lock_bin'):
+                with fasteners.InterProcessLock(os.path.join(tempfile.gettempdir(), 'sos_lock_bin')):
                     os.makedirs(os.path.expanduser(d))
             elif not os.path.isdir(os.path.expanduser(d)):
                 raise ValueError('directory does not exist: {}'.format(d))

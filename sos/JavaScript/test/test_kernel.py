@@ -69,7 +69,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
 ''')
             clear_channels(iopub)
             execute(kc=kc, code="%use JavaScript")
-            stdout, stderr = assemble_output(iopub)
+            _, stderr = assemble_output(iopub)
             self.assertEqual(stderr, '')
             execute(kc=kc, code="%get df")
             wait_for_idle(kc)
@@ -83,7 +83,7 @@ df = pd.DataFrame({'column_{0}'.format(i): arr for i in range(10)})
     def testGetPythonDataFromJavaScript(self):
         with sos_kernel() as kc:
             iopub = kc.iopub_channel
-            msg_id, content = execute(kc=kc, code='''
+            execute(kc=kc, code='''
 null_var = None
 num_var = 123
 import numpy
