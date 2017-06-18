@@ -82,13 +82,7 @@ install: "python setup.py install"
 before_script: cd test
 script:
     # these will generate coverage information
-    - ./run_tests ../test
-    - ./run_tests ../sos/docker/test
-    - ./run_tests ../sos/Bash/test
-    - ./run_tests ../sos/Python2/test
-    - ./run_tests ../sos/Python3/test
-    - ./run_tests ../sos/R/test
-    - ./run_tests ../sos/jupyter/test 
+    - ./run_tests ../test ../sos/docker/test ../sos/Bash/test ../sos/Python2/test ../sos/Python3/test ../sos/R/test ../sos/jupyter/test 
     # - ./run_tests ../sos/JavaScript/test 
     #- ./run_tests ../sos/rq/test
       
