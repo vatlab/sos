@@ -526,7 +526,7 @@ class Base_Step_Executor:
             _tmp_vars = copy.deepcopy(_vars)
             _vars.clear()
             for vidx in range(loop_size):
-                for idx in range(len(_tmp_vars)):
+                for idx, _ in enumerate(_tmp_vars):
                     for var_name, values in zip(fe_iter_names, fe_values):
                         if isinstance(values, Sequence):
                             _tmp_vars[idx][var_name] = values[vidx]
@@ -821,16 +821,16 @@ class Base_Step_Executor:
         result['__changed_vars__'] = set()
         result['__shared__'] = {}
         if 'shared' in self.step.options:
-            vars = self.step.options['shared']
-            if isinstance(vars, str):
-                result['__changed_vars__'].add(vars)
-                result['__shared__'][vars] = copy.deepcopy(env.sos_dict[vars])
-            elif isinstance(vars, Mapping):
-                result['__changed_vars__'] |= vars.keys()
-                for var in vars.keys():
+            rvars = self.step.options['shared']
+            if isinstance(rvars, str):
+                result['__changed_vars__'].add(rvars)
+                result['__shared__'][rvars] = copy.deepcopy(env.sos_dict[rvars])
+            elif isinstance(rvars, Mapping):
+                result['__changed_vars__'] |= rvars.keys()
+                for var in rvars.keys():
                     result['__shared__'][var] = copy.deepcopy(env.sos_dict[var])
-            elif isinstance(vars, Sequence):
-                for item in vars:
+            elif isinstance(rvars, Sequence):
+                for item in rvars:
                     if isinstance(item, str):
                         result['__changed_vars__'].add(item)
                         result['__shared__'][item] = copy.deepcopy(env.sos_dict[item])
@@ -839,9 +839,9 @@ class Base_Step_Executor:
                         for var in item.keys():
                             result['__shared__'][var] = copy.deepcopy(env.sos_dict[var])
                     else:
-                        raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(vars))
+                        raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(rvars))
             else:
-                raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(vars))
+                raise ValueError('Option shared should be a string, a mapping of expression, or a list of string or mappings. {} provided'.format(rvars))
 
         if hasattr(env, 'accessed_vars'):
             result['__environ_vars__'] = self.environ_vars

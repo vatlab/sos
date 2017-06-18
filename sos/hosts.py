@@ -282,8 +282,8 @@ class RemoteHost:
 
     def is_shared(self, path):
         fullpath = os.path.abspath(os.path.expanduser(path))
-        for dir in self.shared_dirs:
-            if fullpath.startswith(dir):
+        for sdir in self.shared_dirs:
+            if fullpath.startswith(sdir):
                 return True
         return False
 
@@ -476,7 +476,7 @@ class RemoteHost:
             '_local_output_{}'.format(task_vars['_index'])] + list(task_vars['__signature_vars__'])
         seen = set()
         # avoid variable to be handled twice
-        vars = [x for x in mvars if not (x in seen or seen.add(x))]
+        rvars = [x for x in mvars if not (x in seen or seen.add(x))]
         preserved = set()
         if 'preserved_vars' in task_vars['_runtime']:
             if isinstance(task_vars['_runtime']['preserved_vars'], str):
@@ -485,8 +485,8 @@ class RemoteHost:
                 preserved |= set(task_vars['_runtime']['preserved_vars'])
             else:
                 raise ValueError('Unacceptable value for runtime option preserved_vars: {}'.format(task_vars['_runtime']['preserved_vars']))
-        env.logger.debug('Translating {}'.format(vars))
-        for var in vars:
+        env.logger.debug('Translating {}'.format(rvars))
+        for var in rvars:
             if var in preserved:
                 env.logger.debug('Value of variable {} is preserved'.format(var))
             elif var == '_runtime':
@@ -802,8 +802,8 @@ class Host:
     def receive_from_host(self, items):
         return self._host_agent.receive_from_host(items)
 
-    def map_var(self, vars):
-        return self._host_agent._map_var(vars)
+    def map_var(self, rvars):
+        return self._host_agent._map_var(rvars)
 
     def submit_task(self, task_id):
         return self._task_engine.submit_task(task_id)

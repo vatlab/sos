@@ -83,16 +83,16 @@ define([
 
     for (var i = 0; i < data.length; i++) {
         // BackgroundColor is color
-        BackgroundColor[data[i][0]] = data[i][3];
-        BackgroundColor[data[i][1]] = data[i][3];
+        window.BackgroundColor[data[i][0]] = data[i][3];
+        window.BackgroundColor[data[i][1]] = data[i][3];
         // DisplayName
-        DisplayName[data[i][0]] = data[i][0];
-        DisplayName[data[i][1]] = data[i][0];
+        window.DisplayName[data[i][0]] = data[i][0];
+        window.DisplayName[data[i][1]] = data[i][0];
         // Name
-        KernelName[data[i][0]] = data[i][1];
-        KernelName[data[i][1]] = data[i][1];
+        window.KernelName[data[i][0]] = data[i][1];
+        window.KernelName[data[i][1]] = data[i][1];
         // KernelList, use displayed name
-        KernelList.push([data[i][0], data[i][0]]);
+        window.KernelList.push([data[i][0], data[i][0]]);
     }
 
     window.filterDataFrame = function(id) {
@@ -110,8 +110,9 @@ define([
                     matched = true;
                     break;
                 }
-                if (!matched)
+                if (!matched) {
                     tr[i].style.display = "none";
+                }
             }
         }
     }
@@ -165,7 +166,6 @@ define([
     }
 
     var my_execute = function(code, callbacks, options) {
-        "use strict"
         /* check if the code is a workflow call, which is marked by
          * %sosrun or %sossave workflowname with options
          */
@@ -180,10 +180,11 @@ define([
                 if (lines[l].match(/^%sosrun($|\s)|^%sossave($|\s)|^%preview\s.*(-w|--workflow).*$/)) {
                     run_notebook = true;
                     break;
-                } else
+                } else {
                     continue
+                }
             } else {
-                run_notebook = false
+                run_notebook = false;
                 break;
             }
         }

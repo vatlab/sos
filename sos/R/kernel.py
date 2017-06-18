@@ -29,9 +29,9 @@ def homogeneous_type(seq):
     iseq = iter(seq)
     first_type = type(next(iseq))
     if first_type in (int, float):
-        return True if all( (type(x) in (int, float)) for x in iseq ) else False
+        return True if all(isinstance(x, (int, float)) for x in iseq) else False
     else:
-        return True if all( (type(x) is first_type) for x in iseq ) else False
+        return True if all(isinstance(x, first_type) for x in iseq) else False
 
 #
 #  support for %get

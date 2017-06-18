@@ -323,14 +323,14 @@ class RuntimeEnvironments(object):
             self._logger.addHandler(ch)
     #
     # attribute exec_dir
-    def _assure_runtime_dir(self, dir):
-        os.makedirs(os.path.join(dir, '.sos'), exist_ok=True)
+    def _assure_runtime_dir(self, rdir):
+        os.makedirs(os.path.join(rdir, '.sos'), exist_ok=True)
 
-    def _set_exec_dir(self, dir):
-        if not os.path.isdir(dir):
-            raise RuntimeError('Exec dir {} does not exist.'.format(dir))
-        self._assure_runtime_dir(dir)
-        self._exec_dir = dir
+    def _set_exec_dir(self, edir):
+        if not os.path.isdir(edir):
+            raise RuntimeError('Exec dir {} does not exist.'.format(edir))
+        self._assure_runtime_dir(edir)
+        self._exec_dir = edir
 
     def _get_exec_dir(self):
         if self._exec_dir is None:

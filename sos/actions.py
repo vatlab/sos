@@ -435,8 +435,8 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     prog.set_description(message + ': \033[32m scanning decompressed files\033[0m')
                     prog.update()
                     if zipfile.is_zipfile(dest):
-                        zip = zipfile.ZipFile(dest)
-                        names = zip.namelist()
+                        zfile = zipfile.ZipFile(dest)
+                        names = zfile.namelist()
                         for name in names:
                             dest_file = os.path.join(dest_dir, name)
                             if not os.path.isfile(dest_file):
@@ -555,9 +555,9 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 prog.set_description(message + ':\033[91m Decompressing\033[0m')
                 prog.update()
                 prog.close()
-                zip = zipfile.ZipFile(dest)
-                zip.extractall(dest_dir)
-                names = zip.namelist()
+                zfile = zipfile.ZipFile(dest)
+                zfile.extractall(dest_dir)
+                names = zfile.namelist()
                 for name in names:
                     if not os.path.isfile(os.path.join(dest_dir, name)):
                         return False

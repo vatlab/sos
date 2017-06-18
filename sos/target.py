@@ -548,15 +548,15 @@ class RuntimeInfo:
                 'signature_vars': self.signature_vars,
                 'script': self.script}
 
-    def __setstate__(self, dict):
-        self.step_md5 = dict['step_md5']
-        self.input_files = dict['input_files']
-        self.output_files = dict['output_files']
-        self.local_input_files = dict['local_input_files']
-        self.local_output_files = dict['local_output_files']
-        self.dependent_files = dict['dependent_files']
-        self.signature_vars = dict['signature_vars']
-        self.script = dict['script']
+    def __setstate__(self, sdict):
+        self.step_md5 = sdict['step_md5']
+        self.input_files = sdict['input_files']
+        self.output_files = sdict['output_files']
+        self.local_input_files = sdict['local_input_files']
+        self.local_output_files = sdict['local_output_files']
+        self.dependent_files = sdict['dependent_files']
+        self.signature_vars = sdict['signature_vars']
+        self.script = sdict['script']
         #
         # the signature might be on a remote machine and has changed location
         self.proc_info = os.path.join(os.path.expanduser('~'), '.sos', '.runtime', '{}.exe_info'.format(

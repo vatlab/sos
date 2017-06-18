@@ -442,7 +442,7 @@ def cmd_resume(args, workflow_args):
             workflow_status(wf)
         sys.exit(0)
     elif len(workflows) > 1:
-        workflows = sorted(workflows, key=lambda x: os.path.getmtime(x))
+        workflows = sorted(workflows, key=os.path.getmtime)
         for wf in workflows:
             env.logger.info('{}\tstarted {} ago'.format(os.path.basename(wf)[:-7],
                 PrettyRelativeTime(time.time() - os.path.getmtime(wf))))
