@@ -181,6 +181,7 @@ class SoS_Kernel(IPythonKernel):
         'render',
         'rerun',
         'run',
+        'save',
         'sandbox',
         'set',
         'sessioninfo',
@@ -389,9 +390,8 @@ class SoS_Kernel(IPythonKernel):
             description='''Save the jupyter notebook as workflow (consisting of all sos
             steps defined in cells starting with section header) or a HTML report to
             specified file.''')
-        parser.add_argument('filename', nargs='?',
-            help='''Filename of saved report or script. Default to notebookname with file
-            extension determined by option --to.''')
+        parser.add_argument('filename',
+            help='''Filename of saved report or script.''')
         parser.add_argument('-f', '--force', action='store_true',
             help='''If destination file already exists, overwrite it.''')
         parser.add_argument('-a', '--append', action='store_true',
@@ -2175,9 +2175,38 @@ Available subkernels:\n{}'''.format(
                 return self._do_execute(code, silent, store_history, user_expressions, allow_stdin)
             # if sos kernel ...
             options, remaining_code = self.get_magic_and_code(code, False)
-            # parse options
-            # save
-            # execute the rest
+            try:
+                parser = self.get_save_parser()
+                try:
+                    args = parser.parse_args(shlex.split(options))
+                except SystemExit:
+                    return
+                filename = self._interpolate_option(args.filename, quiet=False).strip()
+
+                if os.path.isfile(filename) and not args.force:
+                    raise ValueError('Cannot overwrite existing output file {}'.format(filename))
+
+                with open(filename, 'a' if args.append else 'w') as script:
+                    script.write(remaining_code)
+                if args.setx:
+                    import stat
+                    os.chmod(filename, os.stat(filename).st_mode | stat.S_IEXEC)
+
+                self.send_response(self.iopub_socket, 'display_data',
+                    {'source': 'SoS', 'metadata': {},
+                     'data': {
+                         'text/plain': 'Cell content saved to {}\n'.format(filename),
+                         'text/html': HTML('<div class="sos_hint">Cell content saved to <a href="{0}" target="_blank">{0}</a></div>'.format(filename)).data
+                          }
+                     })
+            except Exception as e:
+                self.warn('Failed to save cell: {}'.format(e))
+                return {'status': 'error',
+                    'ename': e.__class__.__name__,
+                    'evalue': str(e),
+                    'traceback': [],
+                    'execution_count': self._execution_count,
+                }
             return self._do_execute(remaining_code, silent, store_history, user_expressions, allow_stdin)
         elif self.MAGIC_SOSSAVE.match(code):
             # get the saved filename
@@ -2228,7 +2257,7 @@ Available subkernels:\n{}'''.format(
                     {'source': 'SoS', 'metadata': {},
                      'data': {
                          'text/plain': 'Workflow saved to {}\n'.format(filename),
-                         'text/html': HTML('Workflow saved to <a href="{0}" target="_blank">{0}</a>'.format(filename)).data
+                         'text/html': HTML('<div class="sos_hint">Workflow saved to <a href="{0}" target="_blank">{0}</a></div>'.format(filename)).data
                           }
                      })
                 #
